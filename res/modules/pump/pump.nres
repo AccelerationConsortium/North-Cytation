@@ -1,0 +1,110 @@
+{
+  "res_id": "pump.2023_04_17",
+  "name": "Syringe pump",
+  "py_name": "syringe_pump",
+  "type": "poseable",
+  "subtype": "pump",
+  "grid": null,
+  "tool": "None",
+  "volume": 1.0,
+  "defaults": {
+	"address": 0,
+    "x": -0.097423,
+    "y": -0.120,
+    "z": 0.46358,
+    "rot": 0.0
+  },
+  "links": {
+    "pump_body": {
+      "obj_name": "pump_body.obj",
+      "joint_settings": "base",
+      "mates": {}
+    },
+    "pump_arm": {
+      "obj_name": "pump_arm.obj",
+      "joint_settings": {
+        "name": "Plunger",
+        "max": 1.0,
+        "min": 0.0,
+        "type": 1,
+        "tform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "dh": [
+          null,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "chain": 1,
+        "defaults": {
+          "counts": 0,
+          "channel": 24
+        },
+        "kinematics": {
+          "slope": -0.00001133,
+          "y_int": 0.034
+        }
+      },
+      "mates": {}
+    },
+    "pump_arrow": {
+      "obj_name": "pump_arrow.obj",
+      "joint_settings": {
+        "name": "Valve",
+        "max": 1.0,
+        "min": 0.0,
+        "type": 2,
+        "tform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "dh": [
+          0.025,
+          0.0,
+          -1.57079632679,
+          null
+        ],
+        "chain": 2,
+        "defaults": {
+          "counts": 0,
+          "channel": 25
+        },
+        "kinematics": {
+          "slope": 0.0031415,
+          "y_int": -1.570796
+        }
+      },
+      "mates": {}
+    }
+  }
+}

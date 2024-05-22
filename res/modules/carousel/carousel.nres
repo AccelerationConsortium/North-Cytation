@@ -1,0 +1,108 @@
+{
+  "res_id": "carousel.2023_04_17",
+  "name": "Carousel",
+  "py_name": "carousel",
+  "type": "poseable",
+  "subtype": "carousel",
+  "grid": null,
+  "tool": "None",
+  "defaults": {
+    "x": -0.225,
+    "y": -0.075,
+    "z": 0,
+    "rot": 3.1416
+  },
+  "links": {
+    "carousel_base": {
+      "obj_name": "carousel_base.obj",
+      "joint_settings": "base",
+      "mates": {}
+    },
+    "carousel_rot": {
+      "obj_name": "carousel_rot.obj",
+      "joint_settings": {
+        "name": "Rotation",
+        "max": 1.0,
+        "min": 0.0,
+        "type": 2,
+        "tform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "dh": [
+          0,
+          0,
+          0,
+          null
+        ],
+        "chain": 0,
+        "defaults": {
+          "counts": 0,
+          "channel": 4
+        },
+        "kinematics": {
+          "slope": -0.0001232,
+          "y_int": 0
+        }
+      },
+      "mates": {}
+    },
+    "carousel_z": {
+      "obj_name": "carousel_z.obj",
+      "joint_settings": {
+        "name": "Height",
+        "max": 1.0,
+        "min": 0.0,
+        "type": 1,
+        "tform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "dh": [
+          null,
+          0,
+          0,
+          0
+        ],
+        "chain": 0,
+        "defaults": {
+          "counts": 0,
+          "channel": 5
+        },
+        "kinematics": {
+          "slope": -2e-06,
+          "y_int": 0.233
+        }
+      },
+      "mates": {}
+    }
+  }
+}

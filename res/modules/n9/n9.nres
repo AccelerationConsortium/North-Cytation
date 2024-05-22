@@ -1,0 +1,187 @@
+{
+	"res_id" : "n9.2023_04_17",
+	"name" : "N9",
+	"py_name" : "n9",
+	"type": "poseable",
+	"subtype": "N9",
+	"grid": null,
+	"tool": "None",
+	"defaults" : {
+		"x": 0,
+		"y": 0,
+		"z": 0,
+		"rot": 0
+	},
+	"links": {
+		"column": {
+	      "obj_name": "column.obj",
+	      "joint_settings": "base",
+	      "mates": {}
+	    },
+	    "link1": {
+			"obj_name": "link1.obj",
+	        "joint_settings": {
+		        "name": "Z axis",
+		        "max": 3.141593,
+		        "min": -3.141593,
+		        "type": 1,
+		        "tform": [],
+		        "dh": [
+		          null,
+		          0,
+		          0,
+		          1.570796
+		        ],
+		        "chain": 0,
+		        "defaults": {
+		          "counts": 0,
+		          "channel": 3
+		        },
+		        "kinematics": {
+		        	"slope" : -0.00001,
+		        	"y_int" : 0.292
+				}
+	      	},
+	      "mates": {}
+
+	    },
+  	    "link2": {
+			"obj_name": "link2.obj",
+	        "joint_settings": {
+		        "name": "Shoulder",
+		        "max": 3.141593,
+		        "min": -3.141593,
+		        "type": 2,
+		        "tform": [],
+		        "dh": [
+		          0,
+		          0,
+		          0,
+		          null
+		        ],
+		        "chain": 0,
+		        "defaults": {
+		          "counts": 0,
+		          "channel": 2
+		        },
+		        "kinematics": {
+		        	"slope" : 0.00006221,
+		        	"y_int" : -2.094415
+				}
+	      	},
+	      "mates": {}
+	    },
+	    "link3": {
+			"obj_name": "link3_probe.obj",
+	        "joint_settings": {
+		        "name": "Elbow",
+		        "max": 3.141593,
+		        "min": -3.141593,
+		        "type": 2,
+		        "tform": [],
+		        "dh": [
+		          0,
+		          0.17,
+		          0,
+		          null
+		        ],
+		        "chain": 0,
+		        "defaults": {
+		          "counts": 0,
+		          "channel": 1
+		        },
+		        "kinematics": {
+		        	"slope" : -0.0001232,
+		        	"y_int" : 2.6179938
+				}
+	      	},
+	    "mates": [
+				{
+					"mate_type" : "pipette",
+				 	"offset" : [0.214, 0, 0.028],
+				 	"invert_attach_logic": false,
+				 	"trigger_channel_idx": 0
+				}
+			]
+	    },
+	    "gripper_base": {
+			"obj_name": "gripper_base.obj",
+	        "joint_settings": {
+		        "name": "Gripper",
+		        "max": null,
+		        "min": null,
+		        "type": 2,
+		        "tform": [],
+		        "dh": [
+		          0,
+		          0.17,
+		          0,
+		          null
+		        ],
+		        "chain": 0,
+		        "defaults": {
+		          "counts": 0,
+		          "channel": 0
+		        },
+		        "kinematics": {
+		        	"slope" : -0.0015708,
+		        	"y_int" : 1.570796
+				}
+	      	},
+	     	"mates" : [
+				{
+					"mate_type" : "digital_output",
+				 	"offset" : [0, 0, 0],
+				 	"invert_attach_logic": false,
+				 	"trigger_channel_idx": 4 
+				}
+			]
+	    },
+	    "g_fing_posx": {
+			"obj_name": "g_fing_posx.obj",
+	        "joint_settings": {
+		        "name": "Gripper fingers",
+		        "max": null,
+		        "min": null,
+		        "type": 1,
+		        "tform": [],
+		        "dh" : [
+		        	null,
+		        	0,
+		        	1.570796,
+		        	0
+		        ],
+		        "chain": 1,
+		        "defaults": {
+		          "counts": 0,
+		          "channel": 8
+		        },
+		        "kinematics": {
+		        	"slope" : 0.00001,
+		        	"y_int" : 0
+		        }
+	      	},
+	      	"mates": {}
+	    },
+	    "g_fing_negx": {
+			"obj_name": "g_fing_negx.obj",
+	        "joint_settings": {
+		        "name": "Gripper fingers (-)",
+		        "max": null,
+		        "min": null,
+		        "type": 1,
+		        "tform": [],
+		        "dh" : [
+		        	null,
+		        	0,
+		        	1.570796,
+		        	0
+		        ],
+		        "chain": 2
+	      	},
+	      "mates": {}
+	    }
+
+	}
+
+}

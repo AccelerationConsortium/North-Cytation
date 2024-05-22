@@ -1,0 +1,117 @@
+{
+  "res_id": "clamp.2023_04_17",
+  "name": "Clamp",
+  "py_name": "clamp",
+  "type": "poseable",
+  "subtype": "clamp",
+  "grid": {
+    "origin": [
+      0.0,
+      0.0,
+      0.014,
+      0
+    ],
+    "count": [
+      1,
+      1,
+      1
+    ],
+    "pitch": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "tool": "gripper",
+  "defaults": {
+    "x": -0.225,
+    "y": 0.01875,
+    "z": 0.047,
+    "rot": 0
+  },
+  "links": {
+    "clamp_body": {
+      "obj_name": "clamp_body.obj",
+      "joint_settings": "base",
+      "mates": {}
+    },
+    "clamp_arm_posx": {
+      "obj_name": "clamp_arm_posx.obj",
+      "joint_settings": {
+        "name": "Actuate clamp",
+        "max": 1.0,
+        "min": 0.0,
+        "type": 2,
+        "tform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "dh": [
+          0,
+          0.033,
+          -1.571,
+          null
+        ],
+        "chain": 1,
+        "defaults": {
+          "counts": 0,
+          "channel": 9
+        },
+        "kinematics": {
+          "slope": -0.000582,
+          "y_int": 0.0
+        }
+      },
+      "mates": {}
+    },
+    "clamp_arm_negx": {
+      "obj_name": "clamp_arm_negx.obj",
+      "joint_settings": {
+        "name": "Actuate clamp",
+        "max": 1.0,
+        "min": 0.0,
+        "type": 2,
+        "tform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "dh": [
+          0,
+          -0.033,
+          -1.571,
+          null
+        ],
+        "chain": 2
+      },
+      "mates": {}
+    }
+  }
+}

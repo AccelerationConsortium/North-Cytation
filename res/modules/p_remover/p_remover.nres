@@ -1,0 +1,46 @@
+{
+  "res_id": "p_remover.2023_04_17",
+  "name": "Pipette tip remover",
+  "py_name": "p_remover",
+  "type": "static",
+  "subtype": "None",
+  "grid": {
+    "origin": [
+      0.01875,
+      0.0555,
+      0.24,
+      0
+    ],
+    "count": [
+      1,
+      1,
+      1
+    ],
+    "pitch": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "tool": "pipette",
+  "defaults": {
+    "x": 0.3,
+    "y": -0.225,
+    "z": 0,
+    "rot": 0
+  },
+  "links": {
+    "p_remover": {
+		"obj_name": "p_remover.obj",
+      	"joint_settings": "base",
+	  	"mates": [
+			{
+				"mate_type" : "rm_pipette",
+			 	"offset" : [0.01875, 0.0555, 0.24],
+			 	"invert_attach_logic": false,
+			 	"trigger_channel_idx": -1
+			}
+		]
+    }
+  }
+}
