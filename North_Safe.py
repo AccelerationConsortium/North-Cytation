@@ -1,6 +1,7 @@
 from north import NorthC9
 from Locator import *
 import numpy as np
+import time
 
 class North_Robot:
 
@@ -9,17 +10,19 @@ class North_Robot:
     GRIPPER_STATUS = "Open"
     PIPETS_USED = 0
     CLAMPED_VIAL = "None"
-    OPEN_VIALS = []
+    PIPET_DIMS = [] #Item 0 = Length, Item 1 = Distance from top of rack
     VIAL_NAMES = [] #List of vials that do not have caps. These cannot be moved
+    VIAL_DF = None #Dataframe tracking vial information
+
     c9 = None
-    DROP_AMOUNT = 0.02 #Droplet amount
     
     #Initialize function
-    def __init__(self, open_vials, vial_names):
+    def __init__(self, vial_df, pipet_dims):
         print("Initializing")
         self.c9 = NorthC9('A', network_serial='AU06CNCF')
-        self.OPEN_VIALS = open_vials
-        self.VIAL_NAMES = vial_names
+        self.VIAL_DF = vial_df
+        self.VIAL_NAMES = vial_df['vial name']
+        self.PIPET_DIMS = pipet_dims
         self.c9.default_vel = 40 #Could make this a parameter
 
     #Reset positions and get rid of any pipet tips
@@ -38,16 +41,28 @@ class North_Robot:
         self.c9.move_z(292, vel=20)
         self.HAS_PIPET = False
 
-    #Add a pipet tip
+    #Add a pipet tip... 
+    #TBD: Adjust the height based on the size of the pipet tip
     def get_pipet(self):
         print("Getting pipet number: " +str(self.PIPETS_USED))
+
+        #First move to the xy location (disabled for now)
         self.c9.goto_safe(p_capture_grid[self.PIPETS_USED])
+
+        #Second move to z location, based off of the height (ignore p_capture_grid height here)
+        #Standard height + delta-Z (PIPET_DIM[0])
+        #self.c9.move_z()
+
         self.HAS_PIPET = True
         self.PIPETS_USED += 1
         
-    #We may need to do a check to see if vials are uncapped or not
-    def pipet_from_vial_into_vial(self, source_vial_num, dest_vial_num, amount_mL, dispense_type="all_at_once",
-                                  measure_weight=False, use_calibration=False, aspirate_conditioning=False):
+    #Pipet from a vial into another vial
+    #Measure_Weight gives you the option to report the mass dispensed
+    #Use calibration (not implemented) is if you want to adjust the volume based off a known calibration
+    #Aspirate conditioning is an alternate way to aspirate (up and down twice)
+    #Dispense_type affects how you dispense... either all_at_once or by_drip but in theory this could be done just by adjusting the dispense speed
+    def pipet_from_vial_into_vial(self, source_vial_num, dest_vial_num, amount_mL, measure_weight=False, use_calibration=False, 
+                                  aspirate_conditioning=False, track_height=True, wait_over_vial=False, aspirate_extra=False, aspirate_speed=0.1, dispense_speed=0.1):
         
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.check_if_vials_are_open([source_vial_num, dest_vial_num]), True, "Can't pipet, at least one vial is capped"])
@@ -59,7 +74,7 @@ class North_Robot:
             if self.HAS_PIPET == False:
                 self.get_pipet()
             
-            print("Pipetting from vial " + self.get_vial_name(source_vial_num) + " to vial " + self.get_vial_name(dest_vial_num) + ", Method: " + dispense_type.replace("_", " "))
+            print("Pipetting from vial " + self.get_vial_name(source_vial_num) + " to vial " + self.get_vial_name(dest_vial_num))
             #print("Dispense type: " + dispense_type)
             
             source_vial_clamped = (self.CLAMPED_VIAL == source_vial_num) #Is the source vial clamped?
@@ -69,15 +84,20 @@ class North_Robot:
             if measure_weight and dest_vial_clamped:
                 initial_mass = self.c9.read_steady_scale()
             
-            #Aspirate from source
+            #Aspirate from source... Need to adjust aspiration height based off of existing volume
             if source_vial_clamped:
                 self.c9.goto_xy_safe(vial_clamp_pip)
-                self.c9.move_z(120)
-                self.c9.goto_z(vial_clamp_pip, vel=15)
+                self.c9.move_z(120) #safe height above vial
+                #self.c9.move_z(self.get_aspirate_height(self.VIAL_DF.at[source_vial_num,'vial volume (mL)'], amount_mL, buffer = 0.5), vel=15)
+                self.c9.move_z(vial_clamp_pip, vel=15) #Needs a different base height for the 
             else:
                 self.c9.goto_xy_safe(rack_pip[source_vial_num])
-                self.c9.move_z(120)
-                self.c9.goto_z(rack_pip[source_vial_num], vel=15)
+                self.c9.move_z(120) #safe height above vial
+                source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
+                if track_height:
+                    self.c9.move_z(self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 76), vel=15)
+                else:
+                    self.c9.goto_z(rack_pip[source_vial_num], vel=15)
             
             #This is for volatile solvents at larger volumes... "Harry's Method"
             if aspirate_conditioning:
@@ -85,8 +105,23 @@ class North_Robot:
                     self.c9.aspirate_ml(0, amount_mL)
                     self.c9.dispense_ml(0, amount_mL)
 
+            self.c9.set_pump_speed(0, aspirate_speed)
             self.c9.aspirate_ml(0, amount_mL)
-                    
+
+            self.c9.move_z(140) #Safe height
+            
+            if wait_over_vial:
+                time.sleep(5)
+
+            air_buffer_mL = 0
+            if aspirate_extra:
+                self.c9.aspirate_mL(0, 0.05)
+                air_buffer_mL = 0.05
+
+            #Track the removed volume in the dataframe
+            original_amount = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
+            self.VIAL_DF.at[source_vial_num,'vial volume (mL)']=(original_amount-amount_mL)
+
             #Dispense at destination
             if dest_vial_clamped:
                 self.c9.goto_xy_safe(vial_clamp_pip)
@@ -95,18 +130,20 @@ class North_Robot:
                 self.c9.goto_xy_safe(rack_pip[dest_vial_num])
                 self.c9.goto_z(rack_pip[dest_vial_num])
             
-            if dispense_type=="all_at_once":
-                self.c9.dispense_ml(0, amount_mL)
-            elif dispense_type == "by_drop":
-                for i in range (0, int(amount_mL/self.DROP_AMOUNT)):
-                    self.c9.dispense_ml(0,self.DROP_AMOUNT)
+            self.c9.set_pump_speed(0, dispense_speed)
+            self.c9.dispense_ml(0, amount_mL+air_buffer_mL)
+
             
+
+            #Track the added volume in the dataframe
+            self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']=self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']+amount_mL
+
+
             #If the destination vial is at the clamp and you want the weight, measure after pipetting
             if measure_weight and dest_vial_clamped:
                 final_mass = self.c9.read_steady_scale()
             
-        measured_mass = final_mass - initial_mass
-                
+        measured_mass = final_mass - initial_mass  
         return measured_mass
 
     #We will need to check if the vial is capped before moving
@@ -162,7 +199,10 @@ class North_Robot:
             self.c9.uncap()
             self.GRIPPER_STATUS = "Cap"
             self.c9.open_clamp()
-            self.OPEN_VIALS.append(self.CLAMPED_VIAL) #track open vials
+            #self.OPEN_VIALS.append(self.CLAMPED_VIAL) #track open vials
+
+            self.VIAL_DF.at[self.CLAMPED_VIAL, 'open']=True
+            #print(self.VIAL_DF)
 
     #Recap the vial in the clamp
     def recap_clamp_vial(self):
@@ -181,7 +221,9 @@ class North_Robot:
             self.c9.open_gripper() #Open the gripper to release the cap
             self.GRIPPER_STATUS = "Open"
 
-            self.OPEN_VIALS.remove(self.CLAMPED_VIAL)
+            #self.OPEN_VIALS.remove(self.CLAMPED_VIAL)
+            self.VIAL_DF.at[self.CLAMPED_VIAL, 'open']=False
+            #print(self.VIAL_DF)
 
     #Checks first that you aren't already there... This mostly applies for cap/decap
     def goto_location_if_not_there(self, location):
@@ -223,8 +265,8 @@ class North_Robot:
         
             self.c9.move_z(292) #Move to a higher height
             #Rotate
-            self.c9.move_axis(self.c9.GRIPPER, vortex_rads, vel=100)
-            self.c9.move_axis(self.c9.GRIPPER, 0, vel=100)
+            self.c9.move_axis(self.c9.GRIPPER, vortex_rads, vel=50)
+            self.c9.move_axis(self.c9.GRIPPER, 0, vel=50)
             
             #Return vial
             if vial_clamped:
@@ -254,11 +296,21 @@ class North_Robot:
         return name
             
     def check_if_vials_are_open(self, vials_to_check):
+
         all_open = True
         for vial in vials_to_check:
-            if (vial not in self.OPEN_VIALS):
+            if not (self.VIAL_DF.at[vial, 'open']):
                 all_open = False
         return all_open
+
+    #Get adjust the aspiration height based on how much is there
+    def get_aspirate_height(self, amount_vial, amount_to_withdraw, buffer, base_height):
+        target_height = base_height + (6*(amount_vial - amount_to_withdraw - buffer))
+        print(target_height)
+        if target_height > base_height:
+            return target_height
+        else:
+            return base_height
 
     def dispense_liquid_into_clamped_vial():
         return None

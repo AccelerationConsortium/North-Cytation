@@ -1,25 +1,26 @@
 import North_Safe
+import numpy as np
+import pandas as pd
 
 #Input data
 POLYMER_VOLUME = 0.1 #how much polymer solution in mL?
-ANTISOLVENT_VOLUME = 2 #How much antisolvent solution in mL?
-PIPET_VOLUME = 0.5 #How much volume do we drip in at a time?
-open_vials = [1,2]
-vial_names = ["Sample", "Polymer Solution", "Antisolvent"]
+ANTISOLVENT_VOLUME = 4 #How much antisolvent solution in mL?
+pipet_length = [0.5, 0.2] #Need to measure these distances
 
-nr = North_Safe.North_Robot(open_vials, vial_names)
+vial_df = pd.read_csv("vial_status_precip.txt", delimiter='\t', index_col='vial index') #Edit this
+
+nr = North_Safe.North_Robot(vial_df, pipet_length)
 
 nr.reset_after_initialization()
 nr.move_vial_to_clamp(0)
 nr.uncap_clamp_vial()
 
-nr.pipet_from_vial_into_vial(1, 0, POLYMER_VOLUME)
-nr.remove_pipet()
-
-num_pipets = int(ANTISOLVENT_VOLUME / PIPET_VOLUME)
-for i in range (0, num_pipets):
-    nr.pipet_from_vial_into_vial(2, 0, PIPET_VOLUME, dispense_type="by_drop")
+nr.pipet_from_vial_into_vial(1, 0, POLYMER_VOLUME, dispense_type="by_drop", wait_over_vial=True, track_height=True)
 
 nr.remove_pipet()
 nr.recap_clamp_vial()
+
+nr.vortex_vial(0, 100000)
+
 nr.return_vial_from_clamp(0)
+nr.c9.move_z(292)

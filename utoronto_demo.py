@@ -23,6 +23,10 @@ def aspirate_to_clamp(vial_num, amount_mL, pipet_num):
     c9.dispense_ml(0, amount_mL)
     remove_pipette()
 
+remove_pipette()
+
+
+
 #Get vial
 c9.goto_safe(rack[0])
 c9.close_gripper()
