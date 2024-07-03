@@ -8,7 +8,8 @@ volume = 0.5
 pipet_length = [0.5, 0.2] #Need to measure these distances
 repeats = 4
 
-speeds = [10,15,20,35]
+speeds = [10]
+
 
 vial_df = pd.read_csv("vial_status.txt", delimiter='\t', index_col='vial index') #Edit this
 
@@ -17,20 +18,21 @@ nr = North_Safe.North_Robot(vial_df, pipet_length)
 
 nr.reset_after_initialization()
 
-
 nr.move_vial_to_clamp(0)
 nr.uncap_clamp_vial()
+
+nr.c9.set_pump_speed(0, 30)
 
 #Calibration Routine. Pipet solvent from one vial to another, measure the mass
 calibration_data = [['Volume (mL)', 'Mass (g)']]
 
 print("\nVolume calibrating: " + str(volume) + " mL\n")
-for i in range (0, repeats):
+for i in range (0, len(speeds)):
     
-    nr.c9.set_pump_speed(0,speeds[i])
+    speed = speeds[i]
 
     mass_pipetted = nr.pipet_from_vial_into_vial(1, 0, volume,
-                    measure_weight=True, aspirate_conditioning=False, wait_over_vial=True, track_height=True)
+                    measure_weight=True, wait_over_vial=True, track_height=True, aspirate_speed=speed, dispense_speed=speed)
 
     mass_formatted = str(mass_pipetted)[0:5]
     print("Speed" + str(speeds[i]) + " mass : " + mass_formatted + " g")

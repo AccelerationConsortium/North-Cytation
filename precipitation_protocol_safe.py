@@ -15,7 +15,7 @@ nr.reset_after_initialization()
 nr.move_vial_to_clamp(0)
 nr.uncap_clamp_vial()
 
-nr.pipet_from_vial_into_vial(1, 0, POLYMER_VOLUME, dispense_type="by_drop", wait_over_vial=True, track_height=True)
+nr.pipet_from_vial_into_vial(1, 0, POLYMER_VOLUME, wait_over_vial=True, track_height=True, dispense_speed=30)
 
 nr.remove_pipet()
 nr.recap_clamp_vial()

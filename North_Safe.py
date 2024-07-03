@@ -62,7 +62,7 @@ class North_Robot:
     #Aspirate conditioning is an alternate way to aspirate (up and down twice)
     #Dispense_type affects how you dispense... either all_at_once or by_drip but in theory this could be done just by adjusting the dispense speed
     def pipet_from_vial_into_vial(self, source_vial_num, dest_vial_num, amount_mL, measure_weight=False, use_calibration=False, 
-                                  aspirate_conditioning=False, track_height=True, wait_over_vial=False, aspirate_extra=False, aspirate_speed=0.1, dispense_speed=0.1):
+                                  aspirate_conditioning=False, track_height=True, wait_over_vial=False, aspirate_extra=False, aspirate_speed=11, dispense_speed=11):
         
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.check_if_vials_are_open([source_vial_num, dest_vial_num]), True, "Can't pipet, at least one vial is capped"])
@@ -105,7 +105,7 @@ class North_Robot:
                     self.c9.aspirate_ml(0, amount_mL)
                     self.c9.dispense_ml(0, amount_mL)
 
-            self.c9.set_pump_speed(0, aspirate_speed)
+            #self.c9.set_pump_speed(0, aspirate_speed)
             self.c9.aspirate_ml(0, amount_mL)
 
             self.c9.move_z(140) #Safe height
@@ -130,7 +130,7 @@ class North_Robot:
                 self.c9.goto_xy_safe(rack_pip[dest_vial_num])
                 self.c9.goto_z(rack_pip[dest_vial_num])
             
-            self.c9.set_pump_speed(0, dispense_speed)
+            #self.c9.set_pump_speed(0, dispense_speed)
             self.c9.dispense_ml(0, amount_mL+air_buffer_mL)
 
             
