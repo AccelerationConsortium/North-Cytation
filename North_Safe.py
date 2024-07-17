@@ -87,9 +87,12 @@ class North_Robot:
             #Aspirate from source... Need to adjust aspiration height based off of existing volume
             if source_vial_clamped:
                 self.c9.goto_xy_safe(vial_clamp_pip)
-                self.c9.move_z(120) #safe height above vial
-                #self.c9.move_z(self.get_aspirate_height(self.VIAL_DF.at[source_vial_num,'vial volume (mL)'], amount_mL, buffer = 0.5), vel=15)
-                self.c9.move_z(vial_clamp_pip, vel=15) #Needs a different base height for the 
+                self.c9.move_z(130) #safe height above vial
+                source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
+                if track_height:
+                    self.c9.move_z(self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 125), vel=15)
+                else:
+                    self.c9.move_z(125, vel=15) #Needs a different base height for the default
             else:
                 self.c9.goto_xy_safe(rack_pip[source_vial_num])
                 self.c9.move_z(120) #safe height above vial
