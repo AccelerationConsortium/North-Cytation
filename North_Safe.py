@@ -9,153 +9,187 @@ class North_Robot:
     #Global variables, must be referenced with 
     HAS_PIPET = False
     GRIPPER_STATUS = "Open"
-    PIPETS_USED = 0
     CLAMPED_VIAL = "None"
     PIPET_DIMS = [] #Item 0 = Length, Item 1 = Distance from top of rack
     VIAL_NAMES = [] #List of vials that do not have caps. These cannot be moved
     VIAL_DF = None #Dataframe tracking vial information
+    
+    #Pipet rack data
+    ACTIVE_PIPET_RACK = 0 #There are two racks... Rack 0 and Rack 1
+    PIPETS_USED = [0,0] #Tracker for each rack
 
+    #Pipet tip dimensions (Future... Let's keep a spreadsheet for this not list them all here)
+    BLUE_DIMS = [20,77]
+    DEFAULT_DIMS = [25,85]
+    FILTER_DIMS = [24,98]
+
+    #Controller
     c9 = None
     
     #Initialize function
-    def __init__(self, vial_df, pipet_dims):
+    def __init__(self, vial_df):
         print("Initializing")
         self.c9 = NorthC9('A', network_serial='AU06CNCF')
         self.VIAL_DF = vial_df
         self.VIAL_NAMES = vial_df['vial name']
-        self.PIPET_DIMS = pipet_dims
-        self.c9.default_vel = 40 #Could make this a parameter
+        self.PIPET_DIMS = self.DEFAULT_DIMS
+        self.c9.default_vel = 20 #Could make this a parameter
 
     #Reset positions and get rid of any pipet tips
     def reset_after_initialization(self):
         self.c9.home_pump(0) #Home the pump
-        #self.c9.home_carousel() #Home the carousel
+        self.c9.home_carousel() #Home the carousel
         self.c9.open_gripper()  #In case there's something
         self.c9.zero_scale() #Zero the scale
         self.remove_pipet() #Remove the pipet, if there's one for some reason   
+
+    #Change the speed of the robot
+    def set_robot_speed(self, speed_in):
+        self.c9.default_vel = speed_in
+
+    #Adjust the pipet tips used and also which rack you are drawing from
+    def set_pipet_tip_type(self, pipet_dims, active_rack):
+        self.ACTIVE_PIPET_RACK = active_rack
+        self.PIPET_DIMS = pipet_dims
 
     #Remove the pipet tip
     def remove_pipet(self):
         print("Removing pipet")
         self.c9.goto_safe(p_remove_approach)
         self.c9.goto(p_remove_cap, vel=5)
-        self.c9.move_z(292, vel=20)
+        remove_pipet_height = 292 #Constant height to remove the pipet (doesn't change with the pipet type, just moving up)
+        self.c9.move_z(remove_pipet_height, vel=20)
         self.HAS_PIPET = False
 
-    #Add a pipet tip... 
-    #TBD: Adjust the height based on the size of the pipet tip
+    #Take a pipet tip from the active rack with the active pipet tip dimensions 
     def get_pipet(self):
         
-        num = (self.PIPETS_USED%16)*3+math.floor(self.PIPETS_USED/16)
+        active_pipet_num = self.PIPETS_USED[self.ACTIVE_PIPET_RACK]
+
+        num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
         print("Getting pipet number: " +str(num))
 
-        #First move to the xy location (disabled for now)
-        self.c9.goto_safe(p_capture_grid[num])
+        #First move to the xy location 
         
-        
+        if self.ACTIVE_PIPET_RACK == 0:
+            location = p_capture_grid[num]
+        elif self.ACTIVE_PIPET_RACK == 1:
+            print("There is currently no programmed spot for the second rack") #location = p_capture_grid_high[num]
+            location = None
 
-        #Second move to z location, based off of the height (ignore p_capture_grid height here)
-        #Standard height + delta-Z (PIPET_DIM[0])
-        #self.c9.move_z()
+        self.c9.goto_xy_safe(location)
+
+        #Second move to z location, based off of the height
+        base_height = self.c9.counts_to_mm(2, location[2])
+        self.c9.move_z(base_height - self.DEFAULT_DIMS[0] + self.PIPET_DIMS[0]) #Adjust height based off of the distance from the default tip (which the measurements were done for)
 
         self.HAS_PIPET = True
-        self.PIPETS_USED += 1
-        
+        self.PIPETS_USED[self.ACTIVE_PIPET_RACK] += 1
+
+    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15):
+        self.c9.move_z(height, speed=move_speed)
+        #self.c9.set_pump_speed(0, pump_speed)
+        if aspirate:
+            self.c9.aspirate_ml(0,amount)
+        else:
+            self.c9.dispense_ml(0,amount)
+
     #Pipet from a vial into another vial
-    #Measure_Weight gives you the option to report the mass dispensed
     #Use calibration (not implemented) is if you want to adjust the volume based off a known calibration
-    #Aspirate conditioning is an alternate way to aspirate (up and down twice)
-    #Dispense_type affects how you dispense... either all_at_once or by_drip but in theory this could be done just by adjusting the dispense speed
-    def pipet_from_vial_into_vial(self, source_vial_num, dest_vial_num, amount_mL, measure_weight=False, use_calibration=False, 
-                                  aspirate_conditioning=False, track_height=True, wait_over_vial=False, aspirate_extra=False, aspirate_speed=11, dispense_speed=11):
-        
+    #Aspirate conditioning is an alternate way to aspirate (up and down some number of cycles)
+    def aspirate_from_vial(self, source_vial_num, amount_mL, use_calibration=False, asp_disp_cycles=0, track_height=True, vial_wait_time=0, aspirate_speed=11):
         error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.check_if_vials_are_open([source_vial_num, dest_vial_num]), True, "Can't pipet, at least one vial is capped"])
-        initial_mass = 0
-        final_mass = 0
+        error_check_list.append([self.check_if_vials_are_open([source_vial_num]), True, "Can't pipet, at least one vial is capped"])
 
         if self.check_for_errors(error_check_list) == False:
             #Check if has pipet, get one if needed
             if self.HAS_PIPET == False:
                 self.get_pipet()
             
-            print("Pipetting from vial " + self.get_vial_name(source_vial_num) + " to vial " + self.get_vial_name(dest_vial_num))
+            print("Pipetting from vial " + self.get_vial_name(source_vial_num))
             #print("Dispense type: " + dispense_type)
             
             source_vial_clamped = (self.CLAMPED_VIAL == source_vial_num) #Is the source vial clamped?
-            dest_vial_clamped = (self.CLAMPED_VIAL == dest_vial_num) #Is the destination vial clamped?
+            source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
                     
-            #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
-            if measure_weight and dest_vial_clamped:
-                initial_mass = self.c9.read_steady_scale()
-            
             #Aspirate from source... Need to adjust aspiration height based off of existing volume
             if source_vial_clamped:
-                self.c9.goto_xy_safe(vial_clamp_pip)
-                self.c9.move_z(130) #safe height above vial
-                source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
+                location = vial_clamp_pip
+                
                 if track_height:
-                    self.c9.move_z(self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 125), vel=15)
+                    height = self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 125)
                 else:
-                    self.c9.move_z(125, vel=15) #Needs a different base height for the default
+                    height = 125
             else:
-                self.c9.goto_xy_safe(rack_pip[source_vial_num])
-                self.c9.move_z(120) #safe height above vial
-                source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
+                location = rack_pip[source_vial_num]
                 if track_height:
-                    self.c9.move_z(self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 76), vel=15)
+                    height = self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 76)
                 else:
-                    self.c9.goto_z(rack_pip[source_vial_num], vel=15)
-            
-            #This is for volatile solvents at larger volumes... "Harry's Method"
-            if aspirate_conditioning:
-                for i in range (0, 2):
-                    self.c9.aspirate_ml(0, amount_mL)
-                    self.c9.dispense_ml(0, amount_mL)
+                    height = rack_pip[source_vial_num] #Edit this
+             
+            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
+            height += height_shift_pipet
 
-            #self.c9.set_pump_speed(0, aspirate_speed)
-            self.c9.aspirate_ml(0, amount_mL)
+            #Move to the correct location and pipet
+            self.c9.goto_xy_safe(location)
+            #If you want to have extra aspirate and dispense steps
+            for i in range (0, asp_disp_cycles):
+                self.pipet_from_location(amount_mL, aspirate_speed, height, True)
+                self.pipet_from_location(amount_mL, aspirate_speed, height, False)
+            self.pipet_from_location(amount_mL, aspirate_speed, height, True)
 
-            self.c9.move_z(140) #Safe height
-            
-            if wait_over_vial:
-                time.sleep(5)
-
-            air_buffer_mL = 0
-            if aspirate_extra:
-                self.c9.aspirate_mL(0, 0.05)
-                air_buffer_mL = 0.05
-
-            #Track the removed volume in the dataframe
+            #Record the volume change
             original_amount = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
             self.VIAL_DF.at[source_vial_num,'vial volume (mL)']=(original_amount-amount_mL)
 
+            #Move to a safe height
+            self.c9.move_z(160, speed=15) 
+            
+            #Wait above the vial for specified time
+            time.sleep(vial_wait_time)
+    
+    #Measure_Weight gives you the option to report the mass dispensed
+    def dispense_into_vial(self, dest_vial_num, amount_mL, dispense_speed=11, measure_weight=False):     
+        error_check_list = [] #List of specific errors for this method
+        error_check_list.append([self.check_if_vials_are_open([dest_vial_num]), True, "Can't pipet, at least one vial is capped"])    
+        
+        if self.check_for_errors(error_check_list) == False:
+            print("Pipetting into vial " + self.get_vial_name(dest_vial_num))
+            
+            dest_vial_clamped = (self.CLAMPED_VIAL == dest_vial_num) #Is the destination vial clamped?
+            dest_vial_volume = self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']
+
             #Dispense at destination
             if dest_vial_clamped:
-                self.c9.goto_xy_safe(vial_clamp_pip)
-                self.c9.goto_z(vial_clamp_pip)
+                location = vial_clamp_pip
             else:
-                self.c9.goto_xy_safe(rack_pip[dest_vial_num])
-                self.c9.goto_z(rack_pip[dest_vial_num])
-            
-            #self.c9.set_pump_speed(0, dispense_speed)
-            self.c9.dispense_ml(0, amount_mL+air_buffer_mL)
+                location = rack_pip[dest_vial_num]
+            height = self.c9.counts_to_mm(2, location[2]) #get the z height of these locations
 
-            
+            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
+            height += height_shift_pipet
+
+            #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
+            if measure_weight and dest_vial_clamped:
+                initial_mass = self.c9.read_steady_scale()
+
+            self.c9.goto_xy_safe(location, vel=15)
+            self.pipet_from_location(amount_mL, dispense_speed, height, False)
 
             #Track the added volume in the dataframe
             self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']=self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']+amount_mL
-
 
             #If the destination vial is at the clamp and you want the weight, measure after pipetting
             if measure_weight and dest_vial_clamped:
                 final_mass = self.c9.read_steady_scale()
             
+            #Move to a safe height
+            self.c9.move_z(160, speed=15) 
+
         measured_mass = final_mass - initial_mass  
         return measured_mass
 
-    def pipet_from_vial_into_wellplate(self, source_vial_num, dest_wp_num, amount_mL, replicate =1, dispense_type = "None", use_calibration=False, 
-                                  aspirate_conditioning=False, track_height=True, wait_over_vial=False, aspirate_extra = False):
+    def dispense_into_wellplate(self, dest_wp_num, amount_mL, replicate = 1, dispense_type = "None", dispense_speed=15):
         """
         To pipette from source vial into well plate given the source_vial_num (from dataframe & txt file), dest_wp_num (array of numbers for wellplate coordinates), amount_mL (
         amount to be dispensed PER WELL!), replicates
@@ -167,99 +201,33 @@ class North_Robot:
         Returns True when pipetting is complete
 
         """
+        #Dispense at wellplate
+        for i in range(replicate):
+            print("Pipetting into well #" + str(dest_wp_num[i]))
 
-        #source_vial, dest_wp, amount_mL, replicates
-        # NO NEED: mesaure_weight, track_height
-        #implement later: wait_over_vial -- when it needs to
-
-        error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.check_if_vials_are_open([source_vial_num]), True, "Can't pipet, at least one vial is capped"])
-
-        if self.check_for_errors(error_check_list) == False:
-            #Check if has pipet, get one if needed
-            if self.HAS_PIPET == False:
-                self.get_pipet()
-
-            
-            source_vial_clamped = (self.CLAMPED_VIAL == source_vial_num) #Is the source vial clamped? (should be)
-            source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
-
-            #Aspirate from source... Need to adjust aspiration height based off of existing volume
-            if source_vial_clamped:
-                self.c9.goto_xy_safe(vial_clamp_pip)
-                self.c9.move_z(160) #safe height above vial
-                
-                #self.c9.move_z(self.get_aspirate_height(self.VIAL_DF.at[source_vial_num,'vial volume (mL)'], amount_mL, buffer = 0.5), vel=15)
-                #self.c9.move_z(vial_clamp_pip, vel=15) #Needs a different base height for the 
-
-                if track_height:
-                    self.c9.move_z(self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 125), vel=15)
-                else:
-                    self.c9.goto_z(160, vel=15)
-
+            location = well_plate_grid[dest_wp_num[i]]
+            if i == 0:
+                self.c9.goto_xy_safe(location)
             else:
-                self.c9.goto_xy_safe(rack_pip[source_vial_num])
-                self.c9.move_z(160) #safe height above vial
-                if track_height:
-                    self.c9.move_z(self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 125), vel=15)
-                else:
-                    self.c9.goto_z(125, vel=15)
-            
-            #This is for volatile solvents at larger volumes... "Harry's Method"
-            if aspirate_conditioning:
-                for i in range (0, 2):
-                    self.c9.aspirate_ml(0, amount_mL)
-                    self.c9.dispense_ml(0, amount_mL)
+                self.c9.goto(location)
 
-#             if dispense_type.lower() == "drop":
-#                 self.c9.set_pump_speed(0, 25)
-#                 print("dropped")
-#             
-#             elif dispense_type.lower() == "slow":
-#                 self.c9.set_pump_speed(0,20)
-#     
+            height = self.c9.counts_to_mm(2, location[2])
 
-            #self.c9.set_pump_speed(0, aspirate_speed)
-            self.c9.aspirate_ml(0, amount_mL*replicate)
+            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
+            height += height_shift_pipet
 
-            #self.c9.move_z(180) #Safe height
-            
-            if wait_over_vial:
-                time.sleep(5)
+            self.pipet_from_location(amount_mL, dispense_speed, height, False)            
 
-            air_buffer_mL = 0
-            if aspirate_extra:
-                self.c9.aspirate_mL(0, 0.05)
-                air_buffer_mL = 0.05
-
-            #Track the removed volume in the dataframe
-            original_amount = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
-            self.VIAL_DF.at[source_vial_num,'vial volume (mL)']=original_amount-(amount_mL*replicate)
-            #print(self.VIAL_DF)
-
-            self.c9.default_vel = 15 
-            #Dispense at wellplate
-            for i in range(replicate):
-                if i == 0:
-                    self.c9.goto_xy_safe(well_plate_grid[dest_wp_num[i]])
-                    self.c9.goto_z(well_plate_grid[dest_wp_num[i]])
-                else:
-                    self.c9.goto(well_plate_grid[dest_wp_num[i]])
-
-                self.c9.dispense_ml(0, amount_mL+air_buffer_mL)
-                print("Pipetting from vial " + self.get_vial_name(source_vial_num) + " to well #" + str(dest_wp_num[i]))
+            if dispense_type.lower() == "drop" and i == replicate-1: #last replicate
+                self.c9.default_vel=40
+                self.c9.move_z(125) #move to safe height
+                time.sleep(2)
+                print("last drop")
                 
-                if dispense_type.lower() == "drop" and i == replicate-1: #last replicate
-                    self.c9.default_vel=40
-                    self.c9.move_z(125)
-                    time.sleep(2)
-                    print("last drop")
-                    
-                elif dispense_type.lower() == "drop" or dispense_type.lower() == "slow":
-                    time.sleep(2)
-                    
-
-                print("Dispense type: " + dispense_type)
+            elif dispense_type.lower() == "drop" or dispense_type.lower() == "slow":
+                time.sleep(2)
+                
+            print("Dispense type: " + dispense_type)
         return True
 
     #We will need to check if the vial is capped before moving
@@ -436,8 +404,7 @@ class North_Robot:
         return None
     def set_heater_temperature():
         return None
-    def dispense_from_vial_into_wellplate():
-        return None
+
 
     
     
