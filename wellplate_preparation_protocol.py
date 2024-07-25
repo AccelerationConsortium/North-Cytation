@@ -5,14 +5,21 @@ import pandas as pd
 import math
 
 #Input data
-pipet_length = [0.5, 0.2] #Need to measure these distances
-PUMP_SPEED = 30 #pipetting pump speed
-REPLICATES = 3 #constant for all samples
-MAX_SOLUTIONS = 2 #max number of solutions that are added into each well-- can maybe add function to detect "solution" from column names
+BLUE_DIMS = [20,77]
+DEFAULT_DIMS = [25,85]
+FILTER_DIMS = [24,98]
+
+
+PUMP_SPEED = 10 #pipetting pump speed
+REPLICATES = 5 #constant for all samples #need to update to read from vial df
+MAX_SOLUTIONS = 1 #max number of solutions that are added into each well-- can maybe add function to detect "solution" from column names
 pipet_count = 0
 
 #needed files: 1. vial_status 2.wellplate_recipe
+VIAL_FILE = "vial_status_wellplate - test.txt" #txt
+RECIPE_FILE = "wellplate_recipe - test.csv" #csv
 
+#TODO: could implement translating from the recipe kind of file (with columns saying which solutions to add)
 
 def generate_wellplate_placement(recipe_df, n = REPLICATES, starting_row = 0) -> list: #TODO: EDIT & FINISH!!!
     """
@@ -135,8 +142,9 @@ def check_enough_volume(vial_df, recipe_df) -> list:
                 required_vol += curr_amount*REPLICATES
         
         required_volumes.append(required_vol)
+        available_volume = row["Total Volume"]
             
-        if required_vol > row["Total Volume"]: #insufficient volume, add vial name to list
+        if required_vol > available_volume: #insufficient volume, add vial name to list
             insufficient_volume_list.append(curr_sol_name)
             
 
@@ -145,11 +153,22 @@ def check_enough_volume(vial_df, recipe_df) -> list:
     
     return insufficient_volume_list
 
+def check_next_vial(recipe_df, curr_column, curr_vial_name, curr_step) :
+    """ Checks if next step in recipe is pipeted from the same vial. If so, no capping nor change of pipettes (returns true & i++).
+    """
+    if curr_step == len(recipe_df)-1: 
+        return False, curr_step
+    elif curr_vial_name == recipe_df[curr_column].loc[curr_step+1]: #TODO: check if enough volume (or if check_enough_volume already does)
+        return True, curr_step+1
+    else:
+        return False, curr_step
+    
+
 
 #Loading data
-vial_df = pd.read_csv("vial_status_wellplate.txt", delimiter='\t', index_col='vial index') #Edit this
+vial_df = pd.read_csv(VIAL_FILE, delimiter='\t', index_col='vial index') #Edit this
 vial_df.astype({'vial volume (mL)': 'float'})
-samples_df = pd.read_csv("wellplate_recipe.csv", delimiter=',') #assumes all values are valid 
+samples_df = pd.read_csv(RECIPE_FILE, delimiter=',') #assumes all values are valid 
 samples_df["Wellplate Index"] = samples_df["Location"].apply(get_wp_num_list)
 
 
@@ -157,7 +176,6 @@ print("vial_df: \n", vial_df)
 print("Samples_df: \n", samples_df)
 
 #Check there is enough solution in the vials to prepare the wellplates...
-
 if (len(check_enough_volume(vial_df, samples_df))>0): #print error message if insufficient volume of at least one solution (in vial)
     print("ERROR: Insufficient volume of: ", check_enough_volume(vial_df, samples_df))
 
@@ -165,14 +183,18 @@ else: #enough solution, TODO: could include more error checks for the csv file..
 
 
     #Initializing Robot
-    nr = North_Safe.North_Robot(vial_df, pipet_length)
+    nr = North_Safe.North_Robot(vial_df)
 
     nr.reset_after_initialization()
+    
+    nr.set_pipet_tip_type(BLUE_DIMS, 0) #SET!!
     nr.c9.set_pump_speed(0,PUMP_SPEED)
 
-    for i in range(len(samples_df)): #for each sample in samples_df
+    i = 0
+    while i < len(samples_df): #for each sample in samples_df
         print("**--------------------------------------------------**")
-        print("Preparing Sample", i, ":", samples_df['Sample Name'][i])
+        print("Preparing Sample", i, ":", samples_df['Solution Name'][i])
+        
 
 
         for j in range(MAX_SOLUTIONS): #for each solution (ex. Solution 1, Solution 2) to be added to well plate 
@@ -184,9 +206,20 @@ else: #enough solution, TODO: could include more error checks for the csv file..
             curr_amount = float(samples_df[amount_column][i]) #amount (PER WELL) to be added
 
             curr_dispense_type = "None"
+            curr_aspirate_extra = False
 
-            if (j>0 and "nan" not in str(samples_df["Type"][i]).lower()): #by default the dispense type applies to 2nd solution to be added
+            curr_replicates = len(samples_df["Wellplate Index"][i])
+
+            if ("nan" not in str(samples_df["Type"][i]).lower()):
                 curr_dispense_type = str(samples_df["Type"][i])
+                print("Getting dispense type -- ", curr_dispense_type)
+                if curr_dispense_type.lower() == "drop" or curr_dispense_type.lower() == "drop-touch":
+                    nr.c9.set_pump_speed(0, 20)
+            
+                elif curr_dispense_type.lower() == "slow":
+                    nr.c9.set_pump_speed(0,15)
+                
+    
 
             if "nan" in curr_vial_name.lower():
                 print('break!') #TODO: Remove later
@@ -195,15 +228,42 @@ else: #enough solution, TODO: could include more error checks for the csv file..
             curr_vial_num = get_non_empty_vial_num(curr_vial_name, vial_df) #see how to fix up for multiple vials...
             print("Vial num", curr_vial_num)
 
+
+            nr.move_vial_to_clamp(curr_vial_num) #open clamp at the end
+            nr.uncap_clamp_vial() #opens clamp at the end 
+            nr.c9.close_clamp()
             
+            check_next_vial_bool = True #default, so it runs the first time, but doesn't change i
+            
+            while check_next_vial_bool: #keeps pipetting when next step transfers from same vial
+                num_replicates = len(samples_df["Wellplate Index"][i])
+                nr.aspirate_from_vial(curr_vial_num, curr_amount*num_replicates)
+                nr.dispense_into_wellplate(samples_df["Wellplate Index"][i], curr_amount,num_replicates, dispense_type = curr_dispense_type)
+                
+                check_next_vial_bool, i = check_next_vial(samples_df, sol_column, curr_vial_name, curr_step=i) #returns next i value
+                
+                #update values for next run with new i
+                if check_next_vial_bool: #not changing pipette tips for next step in protocol, update num_duplicates, amount & dispense_type
+                    curr_amount = float(samples_df[amount_column][i])
+                    curr_replicates = len(samples_df["Wellplate Index"][i])
+                    curr_dispense_type = str(samples_df["Type"][i])
+                    #print(samples_df["Type"][i])
+                    
+                    if curr_dispense_type.lower() == "drop" or curr_dispense_type.lower() == "drop-touch":
+                        nr.c9.set_pump_speed(0, 20)
+                
+                    elif curr_dispense_type.lower() == "slow":
+                        nr.c9.set_pump_speed(0,15)
 
-            nr.move_vial_to_clamp(curr_vial_num)
-            nr.uncap_clamp_vial()
-            nr.pipet_from_vial_into_wellplate(curr_vial_num, samples_df["Wellplate Index"][i], curr_amount, REPLICATES, curr_dispense_type)
+                print("Check next:", check_next_vial_bool)
+                print("updated i:", i)
+                
 
+            nr.c9.default_vel=40
             nr.remove_pipet()
             nr.recap_clamp_vial()
             nr.return_vial_from_clamp(curr_vial_num)
             pipet_count += 1
-
+        i = i+1 #made a while loop, so can update i to skip some iterations
+    
     nr.c9.move_z(292)
