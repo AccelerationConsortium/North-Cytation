@@ -202,7 +202,7 @@ class North_Robot:
         To pipette from source vial into well plate given the source_vial_num (from dataframe & txt file), dest_wp_num (array of numbers for wellplate coordinates), amount_mL (
         amount to be dispensed PER WELL!), replicates
         
-        amount_mL is PER WELL!!!
+        amount_mL is PER WELL!!! -- switch to amounts if using demo (and want various volumes)
 
         Need to provide dest_wp_num in a list, to accomodate for multiple repeats~ (so only change pipetting once)
 
@@ -212,7 +212,7 @@ class North_Robot:
         
         #Dispense at wellplate
         for i in range(replicate):
-            print("Pipetting into well #" + str(dest_wp_num[i]))
+            
 
             location = well_plate_grid[dest_wp_num[i]]
 
@@ -221,39 +221,50 @@ class North_Robot:
             height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
             height += height_shift_pipet    
             
+            #amount_mL = amounts[i] *Uncomment if want to dispense multiple (demo)
             
             if i == 0:
                 self.c9.goto_xy_safe(location)
-                print("Z before dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3))) #z-axis value
-                print("x at location", self.get_x_mm()) #x-axis value
+                #print("Z before dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3))) #z-axis value
+                #print("x at location", self.get_x_mm()) #x-axis value
                 
             else: #need to update location with new height for the different pipette tips
                 location_copy = location.copy()
                 location_copy[3] = self.c9.mm_to_counts(3, height)
                 self.c9.goto(location_copy) #shouldn't have to move the height
 
-            if dispense_type.lower() == "drop-touch": #move lower & towards side of well before dispensing
-                #self.move_rel_z(-5)
-                height -= 5 #go down 5mm
-                self.move_rel_x(-3)
+            if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
+                height -= 5 #goes 5mm lower when dispensing
+                
                 print("x before dispense", self.get_x_mm())
 
             self.pipet_from_location(amount_mL, dispense_speed, height, False) #dispense
-            print("Z at dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3)))
+            time.sleep(1)
+            
+            #print("Z at dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3)))
+            print("Transfering", amount_mL, "mL into well #" + str(dest_wp_num[i]))
 
             if dispense_type.lower() == "drop" and i == replicate-1: #last replicate
-                self.c9.default_vel=40
+                #self.c9.default_vel=40
                 self.c9.move_z(125) #move to safe height
-                time.sleep(2)
+                time.sleep(1)
                 print("last drop")
                 
             elif dispense_type.lower() == "drop" or dispense_type.lower() == "slow":
                 time.sleep(2)
                 
             elif dispense_type.lower() == "drop-touch":
-                time.sleep(5)
+                self.move_rel_x(-3) #-1.75 for quartz WP, -3 for PP
+                time.sleep(1)
                 self.move_rel_z(5) #move back up before moving (goto() -- unsafe) to next well
+            
+            elif dispense_type.lower() == "touch":
+                self.move_rel_x(3) #1.75 for quartz WP, 3 for PP
+                time.sleep(1)
+                self.move_rel_z(5)
                
+            # if (i == replicate-1 and dispense_type.lower() == "nan"): #wait 3 seconds for last drop
+            #     self.move_rel_x(-3) #move right just to get rid of excess
                 
             print("Dispense type: " + dispense_type)
             
@@ -330,7 +341,7 @@ class North_Robot:
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not
             self.c9.close_clamp() #Make sure vial is clamped
-            self.c9.cap() #Cap the vial
+            self.c9.cap(revs=2, torque_thresh = 1300) #Cap the vial
             self.c9.open_gripper() #Open the gripper to release the cap
             self.GRIPPER_STATUS = "Open"
 

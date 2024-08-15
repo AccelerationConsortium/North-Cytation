@@ -3,7 +3,7 @@ from Locator import *
 import pandas as pd
 import time
 
-VIAL_FILE = "vial_status_wellplate - test.txt"
+VIAL_FILE = "vial_status_wellplate.txt"
 
 #will try to work
 BLUE_DIMS = [20,77]
@@ -19,15 +19,50 @@ nr.set_pipet_tip_type(DEFAULT_DIMS, 0)
 nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
 
 
-#**TESTING TOUCH Pipette location
+##**TEST CAPPING**
+# nr.move_vial_to_clamp(0) #open clamp at the end
+# nr.uncap_clamp_vial() #opens clamp at the end 
+# 
+# nr.recap_clamp_vial()
+# nr.c9.open_clamp()
+# #nr.return_vial_from_clamp(0)
+# nr.c9.move_z(292)
+
+##**TEST vortexing before pipette
+# nr.move_vial_to_clamp(5) #open clamp at the end
+# nr.vortex_vial(5, 150000)
+# nr.uncap_clamp_vial() #opens clamp at the end 
+# nr.recap_clamp_vial()
+# nr.c9.close_clamp()
+# nr.return_vial_from_clamp(5)
+
+
+##**TEST Quartz Wellplate
 nr.get_pipet()
-for i in range(2):
-    nr.c9.goto_safe(well_plate_grid[i])
-    nr.move_rel_z(-5)
-    nr.move_rel_x(-4)
-    time.sleep(5)
-    
+nr.c9.goto_safe(well_plate_grid[0])
+time.sleep(2)
+
+nr.move_rel_z(-5)
+nr.move_rel_x(3)
+time.sleep(2)
+
+nr.move_rel_x(-5.5)
+time.sleep(2)
+
 nr.remove_pipet()
+
+
+
+#**TESTING TOUCH Pipette location
+# nr.get_pipet()
+# for i in range(2):
+#     nr.c9.goto_safe(well_plate_grid[i+40])
+#     nr.move_rel_z(-5)
+#     nr.move_rel_x(1.75)
+#     #nr.move_rel_x(1)
+#     time.sleep(3)
+#     
+# nr.remove_pipet()
 
 
 #**TESTING move_rel_x, y and z

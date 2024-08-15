@@ -79,6 +79,21 @@ def get_wp_num_list(s) -> list:
         
     return wp_num_list
 
+def get_amounts_list(s) -> list: #can merge with get_wp_num_list later on
+    """
+    Converts string of amounts to a list with amounts
+    """
+    amounts_list = []
+
+    if s != "nan": 
+        s = str(s)
+        s_list = s.split(",")
+        for l in s_list:
+            amounts_list.append(float(l))
+        
+    return amounts_list
+
+
 def get_non_empty_vial_num(name, vial_df) -> int:
     """
     Returns list of the indices in vial dataframe which have the same name as indicated.
@@ -116,7 +131,7 @@ def check_enough_volume(vial_df, recipe_df) -> list:
 
         total_volume = 0
         for i in rows_index: #for each vial with same name 
-            total_volume += (vial_df["vial volume (mL)"][i]-1) #leaves 1mL buffer for each vial
+            total_volume += (vial_df["vial volume (mL)"][i]-0.5) #leaves 0.5mL buffer for each vial
         
         volumes.append(total_volume)
     
@@ -139,7 +154,7 @@ def check_enough_volume(vial_df, recipe_df) -> list:
 
             for index2, row2 in solutions_needed.iterrows(): 
                 curr_amount = float(row2[amount_column])
-                required_vol += curr_amount*REPLICATES
+                required_vol += curr_amount*len(row2["Wellplate Index"])
         
         required_volumes.append(required_vol)
         available_volume = row["Total Volume"]
@@ -172,6 +187,13 @@ samples_df = pd.read_csv(RECIPE_FILE, delimiter=',') #assumes all values are val
 samples_df["Wellplate Index"] = samples_df["Location"].apply(get_wp_num_list)
 
 
+samples_df = samples_df.sort_values(by=['Solution 1'], ignore_index = True, ascending = False)
+samples_df.to_csv('samples_df.csv', index=False)
+#get the kind that has the highest amount --> anti-solvent
+#pipette that kind first
+#then continue with the rest
+
+
 print("vial_df: \n", vial_df)
 print("Samples_df: \n", samples_df)
 
@@ -185,7 +207,9 @@ else: #enough solution, TODO: could include more error checks for the csv file..
     #Initializing Robot
     nr = North_Safe.North_Robot(vial_df)
 
-    nr.reset_after_initialization()
+#     nr.c9.open_clamp()
+#     nr.reset_after_initialization()
+    
     
     nr.set_pipet_tip_type(BLUE_DIMS, 0) #SET!!
     nr.c9.set_pump_speed(0,PUMP_SPEED)
@@ -204,9 +228,10 @@ else: #enough solution, TODO: could include more error checks for the csv file..
     
             amount_column = "Amount " + str(j+1) + " (mL)"
             curr_amount = float(samples_df[amount_column][i]) #amount (PER WELL) to be added
-
+           
             curr_dispense_type = "None"
             curr_aspirate_extra = False
+            height_track = True
 
             curr_replicates = len(samples_df["Wellplate Index"][i])
 
@@ -230,15 +255,26 @@ else: #enough solution, TODO: could include more error checks for the csv file..
 
 
             nr.move_vial_to_clamp(curr_vial_num) #open clamp at the end
+            
+            if "cloudy" in curr_vial_name.lower():
+                nr.vortex_vial(5, 150000)
+            
             nr.uncap_clamp_vial() #opens clamp at the end 
             nr.c9.close_clamp()
             
             check_next_vial_bool = True #default, so it runs the first time, but doesn't change i
             
             while check_next_vial_bool: #keeps pipetting when next step transfers from same vial
+                nr.set_robot_speed(20)
                 num_replicates = len(samples_df["Wellplate Index"][i])
-                nr.aspirate_from_vial(curr_vial_num, curr_amount*num_replicates)
+
+#                 if "cloudy" in curr_vial_name.lower():
+#                     height_track = False #aspirate from bottom of vial (more precipitate?)
+
+
+                nr.aspirate_from_vial(curr_vial_num, curr_amount*num_replicates, track_height=height_track)
                 nr.dispense_into_wellplate(samples_df["Wellplate Index"][i], curr_amount,num_replicates, dispense_type = curr_dispense_type)
+        
                 
                 check_next_vial_bool, i = check_next_vial(samples_df, sol_column, curr_vial_name, curr_step=i) #returns next i value
                 
