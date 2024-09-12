@@ -37,11 +37,12 @@ class North_Robot:
 
     #Reset positions and get rid of any pipet tips
     def reset_after_initialization(self):
+        self.remove_pipet() #Remove the pipet, if there's one for some reason
         self.c9.home_pump(0) #Home the pump
         #self.c9.home_carousel() #Home the carousel
         self.c9.open_gripper()  #In case there's something
         #self.c9.zero_scale() #Zero the scale
-        self.remove_pipet() #Remove the pipet, if there's one for some reason   
+        #self.remove_pipet() #Remove the pipet, if there's one for some reason   
 
     #Change the speed of the robot
     def set_robot_speed(self, speed_in):
@@ -179,7 +180,7 @@ class North_Robot:
                 initial_mass = self.c9.read_steady_scale()
 
             self.c9.goto_xy_safe(location, vel=15)
-            self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False)
+            self.pipet_from_location(amount_mL, dispense_speed, height+20, aspirate = False)
 
             #Track the added volume in the dataframe
             self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']=self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']+amount_mL
@@ -221,14 +222,14 @@ class North_Robot:
             height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
             height += height_shift_pipet    
             
-            #amount_mL = amounts[i] *Uncomment if want to dispense multiple (demo)
+            #amount_mL = amounts[i] *Uncomment if want to dispense multiple amounts in same move(demo)
             
             if i == 0:
                 self.c9.goto_xy_safe(location)
                 #print("Z before dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3))) #z-axis value
                 #print("x at location", self.get_x_mm()) #x-axis value
                 
-            else: #need to update location with new height for the different pipette tips
+            else: #need to update location with new height for the different pipette tips (so it doesn't keep going up to safe height and back down)
                 location_copy = location.copy()
                 location_copy[3] = self.c9.mm_to_counts(3, height)
                 self.c9.goto(location_copy) #shouldn't have to move the height
@@ -236,7 +237,7 @@ class North_Robot:
             if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
                 height -= 5 #goes 5mm lower when dispensing
                 
-                print("x before dispense", self.get_x_mm())
+                #print("x before dispense", self.get_x_mm())
 
             self.pipet_from_location(amount_mL, dispense_speed, height, False) #dispense
             time.sleep(1)
@@ -254,12 +255,12 @@ class North_Robot:
                 time.sleep(2)
                 
             elif dispense_type.lower() == "drop-touch":
-                self.move_rel_x(-3) #-1.75 for quartz WP, -3 for PP
+                self.move_rel_x(-1.75) #-1.75 for quartz WP, -3 for PS
                 time.sleep(1)
                 self.move_rel_z(5) #move back up before moving (goto() -- unsafe) to next well
             
             elif dispense_type.lower() == "touch":
-                self.move_rel_x(3) #1.75 for quartz WP, 3 for PP
+                self.move_rel_x(2) #1.75 for quartz WP, 3 for PS
                 time.sleep(1)
                 self.move_rel_z(5)
                
