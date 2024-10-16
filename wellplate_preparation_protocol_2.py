@@ -16,7 +16,7 @@ MAX_SOLUTIONS = 1 #max number of solutions that are added into each well-- can m
 pipet_count = 0
 
 #needed files: 1. vial_status 2.wellplate_recipe
-VIAL_FILE = "vial_status_wellplate - test.txt" #txt
+VIAL_FILE = "vial_status_wellplate.txt" #txt
 RECIPE_FILE = "wellplate_recipe - test.csv" #csv
 
 #TODO: could implement translating from the recipe kind of file (with columns saying which solutions to add)
@@ -146,15 +146,11 @@ def check_enough_volume(vial_df, recipe_df) -> list:
         
         required_vol = 0
 
-        for j in range(MAX_SOLUTIONS):
-            # sol_column = "Solution " + str(j+1) #naming starts at 1 -- column name
-            # amount_column = "Amount " + str(j+1) + " (mL)" #column name for the amount column
+        solutions_needed = recipe_df[recipe_df["Solution 1"]==curr_sol_name] #df with rows in which the solution needed is the same as the vial sol.
 
-            solutions_needed = recipe_df[recipe_df[sol_column]==curr_sol_name] #df with rows in which the solution needed is the same as the vial sol.
-
-            for index2, row2 in solutions_needed.iterrows(): 
-                curr_amount = float(row2[amount_column])
-                required_vol += curr_amount*len(row2["Wellplate Index"])
+        for index2, row2 in solutions_needed.iterrows(): 
+            curr_amount = float(row2["Amount 1 (mL)"])
+            required_vol += curr_amount*len(row2["Wellplate Index"])
         
         required_volumes.append(required_vol)
         available_volume = row["Total Volume"]
@@ -207,8 +203,8 @@ else: #enough solution, TODO: could include more error checks for the csv file..
     #Initializing Robot
     nr = North_Safe.North_Robot(vial_df)
 
-#     nr.c9.open_clamp()
-#     nr.reset_after_initialization()
+    nr.c9.open_clamp()
+    nr.reset_after_initialization()
     
     
     nr.set_pipet_tip_type(BLUE_DIMS, 0) #SET!!
@@ -219,87 +215,86 @@ else: #enough solution, TODO: could include more error checks for the csv file..
         print("**--------------------------------------------------**")
         print("Preparing Sample", i, ":", samples_df['Solution Name'][i])
         
+        curr_vial_name = str(samples_df["Solution 1"][i]) #name of solution (vial) to be added -- still in sample i (but j changes the column to access)
+        print(curr_vial_name)
+
+        curr_amount = float(samples_df["Amount 1 (mL)"][i]) #amount (PER WELL) to be added
+        
+        curr_dispense_type = "None"
+        curr_aspirate_extra = False
+        height_track = True
+
+        curr_replicates = len(samples_df["Wellplate Index"][i])
+
+        if ("nan" not in str(samples_df["Type"][i]).lower()):
+            curr_dispense_type = str(samples_df["Type"][i])
+            print("Getting dispense type -- ", curr_dispense_type)
+            if curr_dispense_type.lower() == "drop" or curr_dispense_type.lower() == "drop-touch":
+                nr.c9.set_pump_speed(0, 20)
+        
+            elif curr_dispense_type.lower() == "slow":
+                nr.c9.set_pump_speed(0,15)
+
+        # if "nan" in curr_vial_name.lower():
+        #     print('break!') #TODO: Remove later
+        #     break
+        
+        curr_vial_num = get_non_empty_vial_num(curr_vial_name, vial_df) #see how to fix up for multiple vials...
+        print("Vial num", curr_vial_num)
 
 
-        for j in range(MAX_SOLUTIONS): #for each solution (ex. Solution 1, Solution 2) to be added to well plate 
-            sol_column = "Solution " + str(j+1) #naming starts at 1
-            curr_vial_name = str(samples_df[sol_column][i]) #name of solution (vial) to be added -- still in sample i (but j changes the column to access)
-            print(curr_vial_name)
+        nr.move_vial_to_clamp(curr_vial_num) #open clamp at the end
+        
+        if "cloudy" in curr_vial_name.lower():
+            nr.vortex_vial(5, 150000)
+        
+        nr.uncap_clamp_vial() #opens clamp at the end 
+        nr.c9.close_clamp()
+        
+        check_next_vial_bool = True #default, so it runs the first time, but doesn't change i
+        
+        while check_next_vial_bool: #keeps pipetting when next step transfers are from same vial
+            nr.set_robot_speed(15)
+            num_replicates = len(samples_df["Wellplate Index"][i])
+            print("num rreplicates = ", num_replicates)
+
+
+            if (curr_amount < 0.03): #small amounts -- need to aspirate one more replicate of the amount (should be left in pipette)
+                amount_aspirate = curr_amount*(num_replicates+2)
+            else:
+                amount_aspirate = curr_amount*num_replicates
+
+            nr.aspirate_from_vial(curr_vial_num, amount_aspirate, track_height=height_track)
+            nr.dispense_into_wellplate(samples_df["Wellplate Index"][i], curr_amount,num_replicates, dispense_type = curr_dispense_type)
+
+            if (curr_amount < 0.02): #aspirated extra -- dispense back into vial
+                nr.dispense_into_vial(curr_vial_num, curr_amount)
     
-            amount_column = "Amount " + str(j+1) + " (mL)"
-            curr_amount = float(samples_df[amount_column][i]) #amount (PER WELL) to be added
-           
-            curr_dispense_type = "None"
-            curr_aspirate_extra = False
-            height_track = True
-
-            curr_replicates = len(samples_df["Wellplate Index"][i])
-
-            if ("nan" not in str(samples_df["Type"][i]).lower()):
+            
+            check_next_vial_bool, i = check_next_vial(samples_df, "Solution 1", curr_vial_name, curr_step=i) #returns next i value
+            
+            #update values for next run with new i
+            if check_next_vial_bool: #not changing pipette tips for next step in protocol, update num_duplicates, amount & dispense_type
+                curr_amount = float(samples_df["Amount 1 (mL)"][i])
+                curr_replicates = len(samples_df["Wellplate Index"][i])
                 curr_dispense_type = str(samples_df["Type"][i])
-                print("Getting dispense type -- ", curr_dispense_type)
+                #print(samples_df["Type"][i])
+                
                 if curr_dispense_type.lower() == "drop" or curr_dispense_type.lower() == "drop-touch":
                     nr.c9.set_pump_speed(0, 20)
             
                 elif curr_dispense_type.lower() == "slow":
                     nr.c9.set_pump_speed(0,15)
-                
-    
 
-            if "nan" in curr_vial_name.lower():
-                print('break!') #TODO: Remove later
-                break
-            
-            curr_vial_num = get_non_empty_vial_num(curr_vial_name, vial_df) #see how to fix up for multiple vials...
-            print("Vial num", curr_vial_num)
-
-
-            nr.move_vial_to_clamp(curr_vial_num) #open clamp at the end
-            
-            if "cloudy" in curr_vial_name.lower():
-                nr.vortex_vial(5, 150000)
-            
-            nr.uncap_clamp_vial() #opens clamp at the end 
-            nr.c9.close_clamp()
-            
-            check_next_vial_bool = True #default, so it runs the first time, but doesn't change i
-            
-            while check_next_vial_bool: #keeps pipetting when next step transfers from same vial
-                nr.set_robot_speed(20)
-                num_replicates = len(samples_df["Wellplate Index"][i])
-
-#                 if "cloudy" in curr_vial_name.lower():
-#                     height_track = False #aspirate from bottom of vial (more precipitate?)
-
-
-                nr.aspirate_from_vial(curr_vial_num, curr_amount*num_replicates, track_height=height_track)
-                nr.dispense_into_wellplate(samples_df["Wellplate Index"][i], curr_amount,num_replicates, dispense_type = curr_dispense_type)
-        
-                
-                check_next_vial_bool, i = check_next_vial(samples_df, sol_column, curr_vial_name, curr_step=i) #returns next i value
-                
-                #update values for next run with new i
-                if check_next_vial_bool: #not changing pipette tips for next step in protocol, update num_duplicates, amount & dispense_type
-                    curr_amount = float(samples_df[amount_column][i])
-                    curr_replicates = len(samples_df["Wellplate Index"][i])
-                    curr_dispense_type = str(samples_df["Type"][i])
-                    #print(samples_df["Type"][i])
-                    
-                    if curr_dispense_type.lower() == "drop" or curr_dispense_type.lower() == "drop-touch":
-                        nr.c9.set_pump_speed(0, 20)
-                
-                    elif curr_dispense_type.lower() == "slow":
-                        nr.c9.set_pump_speed(0,15)
-
-                print("Check next:", check_next_vial_bool)
-                print("updated i:", i)
+            print("Check next:", check_next_vial_bool)
+            print("updated i:", i)
                 
 
-            nr.c9.default_vel=40
-            nr.remove_pipet()
-            nr.recap_clamp_vial()
-            nr.return_vial_from_clamp(curr_vial_num)
-            pipet_count += 1
-        i = i+1 #made a while loop, so can update i to skip some iterations
+        nr.c9.default_vel=40
+        nr.remove_pipet()
+        nr.recap_clamp_vial()
+        nr.return_vial_from_clamp(curr_vial_num)
+        pipet_count += 1
+        i = i+1 #made a while loop (outer loop for samples_df), so can update i to skip some iterations
     
     nr.c9.move_z(292)
