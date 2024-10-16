@@ -80,7 +80,7 @@ class North_Robot:
         self.c9.goto_xy_safe(location)
 
         #Second move to z location, based off of the height
-        base_height = self.c9.counts_to_mm(2, location[2])
+        base_height = self.c9.counts_to_mm(3, location[3])
         self.c9.move_z(base_height - self.DEFAULT_DIMS[0] + self.PIPET_DIMS[0]) #Adjust height based off of the distance from the default tip (which the measurements were done for)
 
         self.HAS_PIPET = True
