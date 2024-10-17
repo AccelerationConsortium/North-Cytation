@@ -4,6 +4,67 @@ import numpy as np
 import time
 import math
 
+class North_Track:
+
+    #Controller
+    c9 = None
+    NR_WELL_PLATE_X = 130993
+    NR_WELL_PLATE_Y_GRAB = 88396
+    NR_WELL_PLATE_Y_RELEASE = 86000
+    WELL_PLATE_TRANSFER_Y = 75000
+    CYT_SAFE_X = 52000
+    MAX_HEIGHT = 0
+    CYT_TRAY_Y_RELEASE = 5500
+    CYT_TRAY_Y_GRAB = 7500
+    CYT_TRAY_X = 72698
+
+    def __init__(self, c9):
+        self.c9 = c9
+
+    def open_gripper(self):
+        self.c9.set_output(4, True)  
+        self.c9.set_output(5, False)
+        self.c9.delay(2)
+    def close_gripper(self):
+        self.c9.set_output(5, True)  #gripper close
+        self.c9.set_output(4, False)
+        self.c9.delay(2)
+
+    def grab_well_plate_from_nr(self):
+        self.open_gripper()
+        self.c9.move_axis(7, self.NR_WELL_PLATE_X, vel=75) #left to WP
+        self.c9.move_axis(6, self.NR_WELL_PLATE_Y_GRAB, vel=50) #down
+        self.close_gripper()
+        self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=50) #up slightly
+
+    def move_gripper_to_cytation(self):
+        self.c9.move_axis(7, self.CYT_SAFE_X, vel=75) #past Cytation loading
+        self.c9.move_axis(6,self.MAX_HEIGHT,vel=50) #up to max height
+    
+    def release_well_plate_in_cytation(self):
+        #OPEN CYTATION TRAY
+        self.c9.move_axis(7, self.CYT_TRAY_X, vel=50) #to well plate loading
+        self.c9.move_axis(6, self.CYT_TRAY_Y_RELEASE,vel=25) #down slightly
+        self.open_gripper()
+        self.c9.move_axis(6,self.MAX_HEIGHT, vel=50) #back to max height
+        #CLOSE CYTATION TRAY
+
+    def grab_well_plate_from_cytation(self):
+        #OPEN CYTATION TRAY
+        self.open_gripper()
+        self.c9.move_axis(6, self.CYT_TRAY_Y_GRAB,vel=25) #down slightly
+        self.close_gripper()
+        self.c9.move_axis(6,self.MAX_HEIGHT,vel=50) #up to max height
+        self.c9.move_axis(7, self.CYT_SAFE_X, vel=50) #past Cytation loading
+        #CLOSE CYTATION TRAY
+        
+    def return_well_plate_to_nr(self):
+        self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=50) #down
+        self.c9.move_axis(7, self.NR_WELL_PLATE_X , vel=95) #left to WP
+        self.c9.move_axis(6, self.NR_WELL_PLATE_Y_RELEASE, vel=50) #down
+        self.open_gripper()
+        self.c9.move_axis(6, self.MAX_HEIGHT, vel=50) #max_height
+
 class North_Robot:
 
     #Global variables, must be referenced with 
@@ -27,9 +88,9 @@ class North_Robot:
     c9 = None
     
     #Initialize function
-    def __init__(self, vial_df):
+    def __init__(self, c9, vial_df=None):
         print("Initializing")
-        self.c9 = NorthC9('A', network_serial='AU06CNCF')
+        self.c9 = c9
         self.VIAL_DF = vial_df
         self.VIAL_NAMES = vial_df['vial name']
         self.PIPET_DIMS = self.DEFAULT_DIMS
@@ -37,12 +98,11 @@ class North_Robot:
 
     #Reset positions and get rid of any pipet tips
     def reset_after_initialization(self):
-        self.remove_pipet() #Remove the pipet, if there's one for some reason
         self.c9.home_pump(0) #Home the pump
-        #self.c9.home_carousel() #Home the carousel
+        self.c9.home_carousel() #Home the carousel
         self.c9.open_gripper()  #In case there's something
-        #self.c9.zero_scale() #Zero the scale
-        #self.remove_pipet() #Remove the pipet, if there's one for some reason   
+        self.c9.zero_scale() #Zero the scale
+        self.remove_pipet() #Remove the pipet, if there's one for some reason   
 
     #Change the speed of the robot
     def set_robot_speed(self, speed_in):
@@ -75,8 +135,8 @@ class North_Robot:
         if self.ACTIVE_PIPET_RACK == 0:
             location = p_capture_grid[num]
         elif self.ACTIVE_PIPET_RACK == 1:
-            location = p_capture_grid_high[num]
-            
+            print("There is currently no programmed spot for the second rack") #location = p_capture_grid_high[num]
+            location = None
 
         self.c9.goto_xy_safe(location)
 
@@ -88,7 +148,7 @@ class North_Robot:
         self.PIPETS_USED[self.ACTIVE_PIPET_RACK] += 1
 
     def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15):
-        self.c9.move_z(height, vel=move_speed)
+        self.c9.move_z(height, speed=move_speed)
         #self.c9.set_pump_speed(0, pump_speed)
         if aspirate:
             self.c9.aspirate_ml(0,amount)
@@ -143,20 +203,16 @@ class North_Robot:
             original_amount = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
             self.VIAL_DF.at[source_vial_num,'vial volume (mL)']=(original_amount-amount_mL)
 
-            if vial_wait_time > 0:
-                self.c9.move_z(160, vel=15) 
+            #Move to a safe height
+            self.c9.move_z(160, speed=15) 
             
-                #Wait above the vial for specified time
-                time.sleep(vial_wait_time)
+            #Wait above the vial for specified time
+            time.sleep(vial_wait_time)
     
     #Measure_Weight gives you the option to report the mass dispensed
     def dispense_into_vial(self, dest_vial_num, amount_mL, dispense_speed=11, measure_weight=False):     
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.check_if_vials_are_open([dest_vial_num]), True, "Can't pipet, at least one vial is capped"])    
-        
-        #dummy variables:
-        final_mass = 0
-        initial_mass = 0
         
         if self.check_for_errors(error_check_list) == False:
             print("Pipetting into vial " + self.get_vial_name(dest_vial_num))
@@ -169,18 +225,17 @@ class North_Robot:
                 location = vial_clamp_pip
             else:
                 location = rack_pip[dest_vial_num]
-            height = self.c9.counts_to_mm(3, location[3]) #get the z height of these locations
+            height = self.c9.counts_to_mm(2, location[2]) #get the z height of these locations
 
             height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
             height += height_shift_pipet
-            print("height for vial dispense:", height)
 
             #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
             if measure_weight and dest_vial_clamped:
                 initial_mass = self.c9.read_steady_scale()
 
             self.c9.goto_xy_safe(location, vel=15)
-            self.pipet_from_location(amount_mL, dispense_speed, height+20, aspirate = False)
+            self.pipet_from_location(amount_mL, dispense_speed, height, False)
 
             #Track the added volume in the dataframe
             self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']=self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']+amount_mL
@@ -190,85 +245,50 @@ class North_Robot:
                 final_mass = self.c9.read_steady_scale()
             
             #Move to a safe height
-            self.c9.move_z(height+60, vel=15) #dispense is always near the top
-            #print("height+60:", height+60)
-            #self.c9.move_z(180, vel=15)
-
+            self.c9.move_z(160, speed=15) 
 
         measured_mass = final_mass - initial_mass  
         return measured_mass
 
-    def dispense_into_wellplate(self, dest_wp_num, amount_mL, replicate, dispense_type = "None", dispense_speed=15):
+    def dispense_into_wellplate(self, dest_wp_num, amount_mL, replicate = 1, dispense_type = "None", dispense_speed=15):
         """
         To pipette from source vial into well plate given the source_vial_num (from dataframe & txt file), dest_wp_num (array of numbers for wellplate coordinates), amount_mL (
         amount to be dispensed PER WELL!), replicates
         
-        amount_mL is PER WELL!!! -- switch to amounts if using demo (and want various volumes)
+        amount_mL is PER WELL!!!
 
         Need to provide dest_wp_num in a list, to accomodate for multiple repeats~ (so only change pipetting once)
 
         Returns True when pipetting is complete
 
         """
-        
         #Dispense at wellplate
         for i in range(replicate):
-            
+            print("Pipetting into well #" + str(dest_wp_num[i]))
 
             location = well_plate_grid[dest_wp_num[i]]
-
-            height = self.c9.counts_to_mm(3, location[3])
-        
-            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
-            height += height_shift_pipet    
-            
-            #amount_mL = amounts[i] *Uncomment if want to dispense multiple amounts in same move(demo)
-            
             if i == 0:
                 self.c9.goto_xy_safe(location)
-                #print("Z before dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3))) #z-axis value
-                #print("x at location", self.get_x_mm()) #x-axis value
-                
-            else: #need to update location with new height for the different pipette tips (so it doesn't keep going up to safe height and back down)
-                location_copy = location.copy()
-                location_copy[3] = self.c9.mm_to_counts(3, height)
-                self.c9.goto(location_copy) #shouldn't have to move the height
+            else:
+                self.c9.goto(location)
 
-            if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
-                height -= 5 #goes 5mm lower when dispensing
-                
-                #print("x before dispense", self.get_x_mm())
+            height = self.c9.counts_to_mm(2, location[2])
 
-            self.pipet_from_location(amount_mL, dispense_speed, height, False) #dispense
-            time.sleep(1)
-            
-            #print("Z at dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3)))
-            print("Transfering", amount_mL, "mL into well #" + str(dest_wp_num[i]))
+            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
+            height += height_shift_pipet
+
+            self.pipet_from_location(amount_mL, dispense_speed, height, False)            
 
             if dispense_type.lower() == "drop" and i == replicate-1: #last replicate
-                #self.c9.default_vel=40
+                self.c9.default_vel=40
                 self.c9.move_z(125) #move to safe height
-                time.sleep(1)
+                time.sleep(2)
                 print("last drop")
                 
             elif dispense_type.lower() == "drop" or dispense_type.lower() == "slow":
                 time.sleep(2)
                 
-            elif dispense_type.lower() == "drop-touch":
-                self.move_rel_x(-1.75) #-1.75 for quartz WP, -3 for PS
-                time.sleep(1)
-                self.move_rel_z(5) #move back up before moving (goto() -- unsafe) to next well
-            
-            elif dispense_type.lower() == "touch":
-                self.move_rel_x(2) #1.75 for quartz WP, 3 for PS
-                time.sleep(1)
-                self.move_rel_z(5)
-               
-            # if (i == replicate-1 and dispense_type.lower() == "nan"): #wait 3 seconds for last drop
-            #     self.move_rel_x(-3) #move right just to get rid of excess
-                
             print("Dispense type: " + dispense_type)
-            
         return True
 
     #We will need to check if the vial is capped before moving
@@ -342,7 +362,7 @@ class North_Robot:
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not
             self.c9.close_clamp() #Make sure vial is clamped
-            self.c9.cap(revs=2, torque_thresh = 1300) #Cap the vial
+            self.c9.cap() #Cap the vial
             self.c9.open_gripper() #Open the gripper to release the cap
             self.GRIPPER_STATUS = "Open"
 
@@ -446,36 +466,6 @@ class North_Robot:
     def set_heater_temperature():
         return None
 
-    def move_rel_x(self, x_distance:float):
-        """
-        Move x_distance (in mm) along the x-axis. Relative position (not absolute). Left is positive, right is negative.
-        """
-        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(0), self.c9.get_axis_position(1), self.c9.get_axis_position(2))
-        #tuple (x (mm), y (mm), theta (mm))
-        target_x =  current_loc_mm[0] + x_distance
-        self.c9.move_xy(target_x, current_loc_mm[1])
-    
-    def move_rel_y(self, y_distance:float):
-        """
-        Move y_distance (in mm) along the y-axis. Relative position (not absolute). Forward is positive, backwards is negative.
-        """
-        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(0), self.c9.get_axis_position(1), self.c9.get_axis_position(2))
-        #tuple (x (mm), y (mm), theta (mm))
-        target_y =  current_loc_mm[1] + y_distance
-        self.c9.move_xy(current_loc_mm[0], target_y)
-        
-    def move_rel_z(self, z_distance:float):
-        """
-        Move z_distance (in mm) along z-axis. Positive z_distance = up
-        """
-        curr_z = self.c9.counts_to_mm(3, self.c9.get_axis_position(3))
-        target_z = curr_z + z_distance
-        self.c9.move_z(target_z)
-        
-    def get_x_mm(self) -> float:
-        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(0), self.c9.get_axis_position(1), self.c9.get_axis_position(2))
-        return current_loc_mm[0]
-        
 
     
     
