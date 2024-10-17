@@ -1,3 +1,5 @@
+import sys
+sys.path.append("../utoronto_demo")
 from north import NorthC9
 from Locator import *
 

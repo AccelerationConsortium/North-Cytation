@@ -1,7 +1,8 @@
+import sys
+sys.path.append("../utoronto_demo")
 from north import NorthC9
 from Locator import *
 import os
-from north import NorthC9
 
 
 c9 = NorthC9('A', network_serial='AU06CNCF')

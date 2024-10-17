@@ -1,5 +1,6 @@
-from biotek import Biotek
 import sys
+sys.path.append("../utoronto_demo")
+from biotek import Biotek
 
 # Cytation 5
 readerType = 21
