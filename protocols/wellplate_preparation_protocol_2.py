@@ -1,3 +1,10 @@
+import sys
+sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
+sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
+import os
+
+from north import NorthC9
+
 import North_Safe
 from Locator import *
 import numpy as np
@@ -16,8 +23,8 @@ MAX_SOLUTIONS = 1 #max number of solutions that are added into each well-- can m
 pipet_count = 0
 
 #needed files: 1. vial_status 2.wellplate_recipe
-VIAL_FILE = "vial_status_wellplate.txt" #txt
-RECIPE_FILE = "wellplate_recipe - test.csv" #csv
+VIAL_FILE = "C://Users//Imaging Controller//Desktop//utoronto_demo//status//vial_status_wellplate.txt" #txt
+RECIPE_FILE = "C://Users//Imaging Controller//Desktop//utoronto_demo//recipes//wellplate_recipe - test.csv" #csv
 
 #TODO: could implement translating from the recipe kind of file (with columns saying which solutions to add)
 
@@ -180,7 +187,7 @@ def check_next_vial(recipe_df, curr_column, curr_vial_name, curr_step) :
 vial_df = pd.read_csv(VIAL_FILE, delimiter='\t', index_col='vial index') #Edit this
 vial_df.astype({'vial volume (mL)': 'float'})
 samples_df = pd.read_csv(RECIPE_FILE, delimiter=',') #assumes all values are valid 
-samples_df["Wellplate Index"] = samples_df["Location"].apply(get_wp_num_list)
+samples_df["Wellplate Index"] = samples_df["Location"].apply(get_wp_num_list) #sorts
 
 
 samples_df = samples_df.sort_values(by=['Solution 1'], ignore_index = True, ascending = False)
@@ -199,9 +206,10 @@ if (len(check_enough_volume(vial_df, samples_df))>0): #print error message if in
 
 else: #enough solution, TODO: could include more error checks for the csv file...
 
+    c9 = NorthC9('A', network_serial='AU06CNCF')
 
     #Initializing Robot
-    nr = North_Safe.North_Robot(vial_df)
+    nr = North_Safe.North_Robot(c9, vial_df)
 
     nr.c9.open_clamp()
     nr.reset_after_initialization()
@@ -209,8 +217,10 @@ else: #enough solution, TODO: could include more error checks for the csv file..
     
     nr.set_pipet_tip_type(BLUE_DIMS, 0) #SET!!
     nr.c9.set_pump_speed(0,PUMP_SPEED)
+    nr.set_robot_speed(10)
 
     i = 0
+    
     while i < len(samples_df): #for each sample in samples_df
         print("**--------------------------------------------------**")
         print("Preparing Sample", i, ":", samples_df['Solution Name'][i])

@@ -1,22 +1,52 @@
+import sys
+sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
+sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
+import os
+
+from north import NorthC9
 import North_Safe
 from Locator import *
 import pandas as pd
 import time
 
-VIAL_FILE = "vial_status_wellplate.txt"
+VIAL_FILE = "C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status\\vial_status_wellplate.txt"
 
 #will try to work
 BLUE_DIMS = [20,77]
 DEFAULT_DIMS = [25,85]
 FILTER_DIMS = [24,98]
 
+c9 = NorthC9('A', network_serial='AU06CNCF')
+
 vial_df = pd.read_csv(VIAL_FILE, delimiter='\t', index_col='vial index')
-nr = North_Safe.North_Robot(vial_df)
-nr.set_robot_speed(8)
+nr = North_Safe.North_Robot(c9,vial_df)
+nr.set_robot_speed(20)
 
-nr.set_pipet_tip_type(DEFAULT_DIMS, 1) #only works with default dims (because of going to location -- not height asdjusted) & bottom row pipettes cleared!!
-
+c9.move_z(300)
 nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
+
+nr.set_pipet_tip_type(BLUE_DIMS, 0) #only works with default dims (because of going to location -- not height asdjusted) & bottom row pipettes cleared!!
+
+nr.get_pipet()
+
+# for i in range(3):
+#     nr.c9.goto_safe(well_plate_new_grid[i])
+nr.c9.goto_safe(well_plate_new_grid[0])
+time.sleep(2)
+nr.c9.goto_safe(well_plate_new_grid[1])
+time.sleep(2)
+nr.c9.goto_safe(well_plate_new_grid[12])
+time.sleep(2)
+nr.c9.goto_safe(well_plate_new_grid[18])
+time.sleep(2)
+
+nr.set_robot_speed(50)
+nr.remove_pipet()
+
+c9.move_z(300)
+
+nr.c9 = None
+os._exit(0)
 
 
 ##**TEST CAPPING**
@@ -38,18 +68,18 @@ nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
 
 
 ##**TEST Quartz Wellplate
-nr.get_pipet()
-nr.c9.goto_safe(well_plate_grid[13])
-time.sleep(2)
-
-nr.move_rel_z(-5)
-nr.move_rel_x(1.75)
-time.sleep(2)
-
-nr.move_rel_x(-3.5)
-time.sleep(2)
-
-nr.remove_pipet()
+# nr.get_pipet()
+# nr.c9.goto_safe(well_plate_grid[13])
+# time.sleep(2)
+# 
+# nr.move_rel_z(-5)
+# nr.move_rel_x(1.75)
+# time.sleep(2)
+# 
+# nr.move_rel_x(-3.5)
+# time.sleep(2)
+# 
+# nr.remove_pipet()
 
 
 
