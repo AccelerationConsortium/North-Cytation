@@ -27,6 +27,7 @@ class North_Track:
     CYT_TRAY_Y_GRAB = 7500
     CYT_TRAY_X = 68608
 
+    QUARTZ_WP_OFFSET = 1500
 
     #Speed horizontal
     DEFAULT_X_SPEED = 50
@@ -52,10 +53,12 @@ class North_Track:
         self.c9.set_output(4, False)
         self.c9.delay(2)
 
-    def grab_well_plate_from_nr(self, well_plate_num, grab_lid=False):
+    def grab_well_plate_from_nr(self, well_plate_num, grab_lid=False,quartz_wp=False):
         move_up = 0
         if grab_lid:
             move_up = self.LID_DISTANCE_Y 
+        if quartz_wp:
+            move_up = -self.QUARTZ_WP_OFFSET #
         self.open_gripper()
         self.c9.move_axis(7, self.NR_WELL_PLATE_X[well_plate_num], vel=self.DEFAULT_X_SPEED) #left to WP
         self.c9.move_axis(6, self.NR_WELL_PLATE_Y[well_plate_num]-move_up, vel=self.DEFAULT_Y_SPEED) #down
@@ -66,27 +69,33 @@ class North_Track:
         self.c9.move_axis(7, self.CYT_SAFE_X, vel=self.DEFAULT_X_SPEED) #past Cytation loading
         self.c9.move_axis(6,self.MAX_HEIGHT,vel=self.DEFAULT_Y_SPEED) #up to max height
     
-    def release_well_plate_in_cytation(self):
+    def release_well_plate_in_cytation(self,quartz_wp=False):
+        if quartz_wp:
+            move_up = -self.QUARTZ_WP_OFFSET #
         #OPEN CYTATION TRAY
         self.c9.move_axis(7, self.CYT_TRAY_X, vel=self.DEFAULT_X_SPEED) #to well plate loading
-        self.c9.move_axis(6, self.CYT_TRAY_Y_RELEASE,vel=25) #down slightly
+        self.c9.move_axis(6, self.CYT_TRAY_Y_RELEASE-move_up,vel=25) #down slightly
         self.open_gripper()
         self.c9.move_axis(6,self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #back to max height
         #CLOSE CYTATION TRAY
 
-    def grab_well_plate_from_cytation(self):
+    def grab_well_plate_from_cytation(self,quartz_wp=False):
         #OPEN CYTATION TRAY
+        if quartz_wp:
+            move_up = -self.QUARTZ_WP_OFFSET #
         self.open_gripper()
-        self.c9.move_axis(6, self.CYT_TRAY_Y_GRAB,vel=25) #down slightly
+        self.c9.move_axis(6, self.CYT_TRAY_Y_GRAB-move_up,vel=25) #down slightly
         self.close_gripper()
         self.c9.move_axis(6,self.MAX_HEIGHT,vel=self.DEFAULT_Y_SPEED) #up to max height
         self.c9.move_axis(7, self.CYT_SAFE_X, vel=self.DEFAULT_X_SPEED) #past Cytation loading
         #CLOSE CYTATION TRAY
         
-    def return_well_plate_to_nr(self, well_plate_num, grab_lid=False):
+    def return_well_plate_to_nr(self, well_plate_num, grab_lid=False,quartz_wp=False):
         move_up = 0
         if grab_lid:
             move_up = self.LID_DISTANCE_Y 
+        if quartz_wp:
+            move_up = -self.QUARTZ_WP_OFFSET #
         self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=self.DEFAULT_Y_SPEED) #down
         self.c9.move_axis(7, self.NR_WELL_PLATE_X[well_plate_num] , vel=self.DEFAULT_X_SPEED) #left to WP
         self.c9.move_axis(6, self.NR_WELL_PLATE_Y[well_plate_num]-self.RELEASE_DISTANCE_Y-move_up, vel=50) #down
@@ -106,7 +115,8 @@ class North_Robot:
     PIPET_DIMS = [] #Item 0 = Length, Item 1 = Distance from top of rack
     VIAL_NAMES = [] #List of vials that do not have caps. These cannot be moved
     VIAL_DF = None #Dataframe tracking vial information
-    
+    PIPET_ARRAY = None
+
     #Pipet rack data
     ACTIVE_PIPET_RACK = 0 #There are two racks... Rack 0 and Rack 1
     PIPETS_USED = [0,0] #Tracker for each rack
@@ -120,7 +130,7 @@ class North_Robot:
     c9 = None
     
     #Initialize function
-    def __init__(self, c9, vial_df=None):
+    def __init__(self, c9, vial_df=None,pipet_array=None):
         print("Initializing Desktop ver")
         self.c9 = c9
         self.VIAL_DF = vial_df
@@ -130,6 +140,7 @@ class North_Robot:
             print("No vial file inputted")
         self.PIPET_DIMS = self.DEFAULT_DIMS
         self.c9.default_vel = 20 #Could make this a parameter
+        self.PIPET_ARRAY = pipet_array
 
     #Reset positions and get rid of any pipet tips
     def reset_after_initialization(self):
@@ -161,7 +172,10 @@ class North_Robot:
     #Take a pipet tip from the active rack with the active pipet tip dimensions 
     def get_pipet(self):
         
-        active_pipet_num = self.PIPETS_USED[self.ACTIVE_PIPET_RACK]
+        try:
+            active_pipet_num = self.PIPET_ARRAY[self.PIPETS_USED[self.ACTIVE_PIPET_RACK]]
+        except:
+            active_pipet_num = self.PIPETS_USED[self.ACTIVE_PIPET_RACK]
 
         num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
         print("Getting pipet number: " +str(num))
@@ -181,6 +195,8 @@ class North_Robot:
 
         self.HAS_PIPET = True
         self.PIPETS_USED[self.ACTIVE_PIPET_RACK] += 1
+
+        print ("Pipets: ", self.PIPETS_USED)
 
     def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15):
         self.c9.move_z(height, vel=move_speed)
@@ -289,7 +305,7 @@ class North_Robot:
         measured_mass = final_mass - initial_mass  
         return measured_mass
 
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=15):
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=15,wait_time=0.5):
         """
         To pipette from source vial into well plate given the source_vial_num (from dataframe & txt file), dest_wp_num (array of numbers for wellplate coordinates), amount_mL (
         amount to be dispensed PER WELL!), replicates, dispense_type options ("touch", "drop-touch", "drop", "slow")
@@ -330,7 +346,7 @@ class North_Robot:
                 #print("x before dispense", self.get_x_mm())
 
             self.pipet_from_location(amount_mL, dispense_speed, height, False) #dispense
-            time.sleep(0.2)
+            time.sleep(wait_time)
             
             #print("Z at dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3)))
             print("Transfering", amount_mL, "mL into well #" + str(dest_wp_num_array[i]))

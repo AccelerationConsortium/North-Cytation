@@ -12,8 +12,13 @@ nr_track = North_Track(c9)
 nr_robot = North_Robot(c9)
 
 try:
-    nr_track.open_gripper()
+    c9.move_axis(6, 0)
+    c9.move_axis(7, 132107)
+    c9.move_axis(6, 83275)
     nr_track.close_gripper()
+    c9.move_axis(6, 75000)
+    c9.move_axis(7, 100000)
+    nr_track.open_gripper()
 except KeyboardInterrupt:
     os._exit(0)
     c9 = None
