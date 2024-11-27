@@ -4,6 +4,9 @@ import numpy as np
 import time
 import math
 import pandas as pd
+import sys
+sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
+sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
 
 class North_Track:
 
@@ -27,7 +30,7 @@ class North_Track:
     CYT_TRAY_Y_GRAB = 7500
     CYT_TRAY_X = 68608
 
-    QUARTZ_WP_OFFSET = 1500
+    QUARTZ_WP_OFFSET = 1300
 
     #Speed horizontal
     DEFAULT_X_SPEED = 50
@@ -70,6 +73,7 @@ class North_Track:
         self.c9.move_axis(6,self.MAX_HEIGHT,vel=self.DEFAULT_Y_SPEED) #up to max height
     
     def release_well_plate_in_cytation(self,quartz_wp=False):
+        move_up = 0
         if quartz_wp:
             move_up = -self.QUARTZ_WP_OFFSET #
         #OPEN CYTATION TRAY
@@ -81,6 +85,7 @@ class North_Track:
 
     def grab_well_plate_from_cytation(self,quartz_wp=False):
         #OPEN CYTATION TRAY
+        move_up = 0
         if quartz_wp:
             move_up = -self.QUARTZ_WP_OFFSET #
         self.open_gripper()
@@ -117,6 +122,9 @@ class North_Robot:
     VIAL_DF = None #Dataframe tracking vial information
     PIPET_ARRAY = None
 
+    VIAL_FILE = None
+    PIPET_FILE = None
+
     #Pipet rack data
     ACTIVE_PIPET_RACK = 0 #There are two racks... Rack 0 and Rack 1
     PIPETS_USED = [0,0] #Tracker for each rack
@@ -130,17 +138,27 @@ class North_Robot:
     c9 = None
     
     #Initialize function
-    def __init__(self, c9, vial_df=None,pipet_array=None):
-        print("Initializing Desktop ver")
+    def __init__(self, c9, vial_file=None,delim=',',pipet_file=None):
+        print("Initializing North Robot")
         self.c9 = c9
-        self.VIAL_DF = vial_df
         try:
-            self.VIAL_NAMES = vial_df['vial name']
-        except:
-            print("No vial file inputted")
+            self.VIAL_FILE = vial_file
+            self.VIAL_DF = pd.read_csv(vial_file, delimiter=delim)
+            self.VIAL_NAMES = self.VIAL_DF['vial name']
+        except Exception as e:
+            print("No vial file inputted", e)
         self.PIPET_DIMS = self.DEFAULT_DIMS
         self.c9.default_vel = 20 #Could make this a parameter
-        self.PIPET_ARRAY = pipet_array
+        if pipet_file:
+            self.PIPET_FILE = pipet_file
+        else:
+            self.PIPET_FILE = "../utoronto_demo/status/pipets.txt"
+        try:
+            with open(self.PIPET_FILE) as f:
+                pipets = np.array(f.read().split(','))
+            self.PIPET_ARRAY = pipets.astype(np.int16)
+        except:    
+            print("Cannot open pipet file... using default sequence")
 
     #Reset positions and get rid of any pipet tips
     def reset_after_initialization(self):
@@ -173,12 +191,12 @@ class North_Robot:
     def get_pipet(self):
         
         try:
-            active_pipet_num = self.PIPET_ARRAY[self.PIPETS_USED[self.ACTIVE_PIPET_RACK]]
+            active_pipet_num = self.PIPET_ARRAY[0] #First available pipet
         except:
             active_pipet_num = self.PIPETS_USED[self.ACTIVE_PIPET_RACK]
 
         num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
-        print("Getting pipet number: " +str(num))
+        print(f"Getting pipet number: {active_pipet_num} from rack {self.ACTIVE_PIPET_RACK}")
 
         #First move to the xy location 
         
@@ -196,7 +214,10 @@ class North_Robot:
         self.HAS_PIPET = True
         self.PIPETS_USED[self.ACTIVE_PIPET_RACK] += 1
 
-        print ("Pipets: ", self.PIPETS_USED)
+        self.PIPET_ARRAY = np.delete(self.PIPET_ARRAY, 0)
+        self.save_pipet_status(self.PIPET_FILE)
+
+        #print ("Pipets: ", self.PIPETS_USED)
 
     def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15):
         self.c9.move_z(height, vel=move_speed)
@@ -263,6 +284,10 @@ class North_Robot:
             
             #Wait above the vial for specified time
             time.sleep(vial_wait_time)
+        try:
+            self.save_vial_status(self.VIAL_FILE)
+        except:
+            print("Cannot save updated vial status")
     
     #Measure_Weight gives you the option to report the mass dispensed
     def dispense_into_vial(self, dest_vial_num, amount_mL, dispense_speed=11, measure_weight=False):     
@@ -302,10 +327,13 @@ class North_Robot:
         #Move to a safe height
         self.c9.move_z(height+60, vel=15) #dispense is always near the top
 
-        measured_mass = final_mass - initial_mass  
-        return measured_mass
+        if measure_weight:
+            measured_mass = final_mass - initial_mass  
+            return measured_mass
+        else:
+            return True
 
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=15,wait_time=0.5):
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=15,wait_time=1):
         """
         To pipette from source vial into well plate given the source_vial_num (from dataframe & txt file), dest_wp_num (array of numbers for wellplate coordinates), amount_mL (
         amount to be dispensed PER WELL!), replicates, dispense_type options ("touch", "drop-touch", "drop", "slow")
@@ -329,16 +357,18 @@ class North_Robot:
             height += height_shift_pipet    
             
             #amount_mL = amounts[i] #*Uncomment if want to dispense multiple amounts in same move(demo)
-            
+
             if i == 0:
-                self.c9.goto_xy_safe(location)
+                self.c9.goto_xy_safe(location, vel=5)
                 #print("Z before dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3))) #z-axis value
                 #print("x at location", self.get_x_mm()) #x-axis value
                 
             else: #need to update location with new height for the different pipette tips (so it doesn't keep going up to safe height and back down)
                 location_copy = location.copy()
                 location_copy[3] = self.c9.mm_to_counts(3, height) #to use the adjusted height & not the default one (we adjust the height in this function)
-                self.c9.goto(location_copy) #doesn't move the height
+                self.c9.goto(location_copy, vel=5) #doesn't move the height
+                
+            #self.move_rel_x(2) #This shouldn't need to happen... Something is up
 
             if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
                 height -= 5 #goes 5mm lower when dispensing
@@ -393,8 +423,8 @@ class North_Robot:
             self.CLAMPED_VIAL = vial_num
 
     #We will need to check if the vial is capped before moving
-    def return_vial_from_clamp(self, vial_num):
-        print("Moving vial " + self.get_vial_name(vial_num) + " from clamp")
+    def return_vial_from_clamp(self):
+        print("Moving vial " + self.get_vial_name(self.CLAMPED_VIAL) + " from clamp")
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot return vial from clamp, gripper full"])
@@ -406,7 +436,7 @@ class North_Robot:
             self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not 
             self.c9.close_gripper() #Grab vial
             self.c9.open_clamp() #unclamp vial
-            self.c9.goto_safe(rack[vial_num]) #Move back to vial rack
+            self.c9.goto_safe(rack[int(self.CLAMPED_VIAL)]) #Move back to vial rack
             self.c9.open_gripper() #Release vial
             self.CLAMPED_VIAL = "None"
 
@@ -431,6 +461,10 @@ class North_Robot:
 
             self.VIAL_DF.at[self.CLAMPED_VIAL, 'open']=True
             #print(self.VIAL_DF)
+            try:
+                self.save_vial_status(self.VIAL_FILE)
+            except:
+                print("Cannot save vial file")
 
     #Recap the vial in the clamp
     def recap_clamp_vial(self):
@@ -452,6 +486,11 @@ class North_Robot:
             #self.OPEN_VIALS.remove(self.CLAMPED_VIAL)
             self.VIAL_DF.at[self.CLAMPED_VIAL, 'open']=False
             #print(self.VIAL_DF)
+
+            try:
+                self.save_vial_status(self.VIAL_FILE)
+            except:
+                print("Cannot save vial file")
 
     #Checks first that you aren't already there... This mostly applies for cap/decap
     def goto_location_if_not_there(self, location):
@@ -582,3 +621,12 @@ class North_Robot:
     def save_vial_status(self,file):
         self.VIAL_DF.to_csv(file, index=False,sep='\t')
 
+    def save_pipet_status(self,file):
+        save_data = ','.join(map(str, self.PIPET_ARRAY.flatten()))
+        with open(file, "w") as output:
+            output.write(save_data.replace('\0', ''))
+
+    def reset_robot(self):
+        self.c9.open_gripper()
+        self.c9.open_clamp()
+        self.remove_pipet()

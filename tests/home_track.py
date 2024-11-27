@@ -5,7 +5,7 @@ from Locator import *
 import os
 
 c9 = NorthC9('A', network_serial='AU06CNCF')
-print(c9.pumps)
+#print(c9.pumps)
 
 for i in range (0,8):
     c9.home_axis(i)

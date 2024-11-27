@@ -28,7 +28,7 @@ def open_and_close():
     readerType = 21
     ComPort = 4
     appName = 'Gen5.Application'
-    #gen5 = Biotek(readerType, ComPort, appName)
+    gen5 = Biotek()
 
     #North Robot
     c9 = NorthC9('A', network_serial='AU06CNCF')
@@ -37,20 +37,15 @@ def open_and_close():
     nr_robot = North_Robot(c9)
 
     try:
-        #nr_track.grab_well_plate_from_nr(0)
+        nr_track.grab_well_plate_from_nr(0)
         #nr_track.return_well_plate_to_nr(1)
-        nr_track.grab_well_plate_from_nr(1,True)
-        nr_track.return_well_plate_to_nr(2,True)
-        nr_track.grab_well_plate_from_nr(2,True)
-        nr_track.return_well_plate_to_nr(1,True)
-        #nr_track.move_gripper_to_cytation()
-        #gen5.CarrierOut()
-        #nr_track.release_well_pla
-        # te_in_cytation()
-        #gen5.CarrierIn()
-        #gen5.CarrierOut()
-        #nr_track.grab_well_plate_from_cytation()
-        #gen5.CarrierIn()
+        nr_track.move_gripper_to_cytation()
+        gen5.CarrierOut()
+        nr_track.release_well_plate_in_cytation()
+        gen5.CarrierIn()
+        gen5.CarrierOut()
+        nr_track.grab_well_plate_from_cytation()
+        nr_track.return_well_plate_to_nr(0)
     except KeyboardInterrupt:
         #os._exit(0)
         #gen5.close()

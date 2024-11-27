@@ -8,29 +8,39 @@ from north import NorthC9
 import pandas as pd
 import time
 
-#VIAL_FILE = "C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status\\vial_status_wellplate.txt"
+VIAL_FILE = "../utoronto_demo/status/vials_color.txt"  # Vials used
+PIPET_FILE = "../utoronto_demo/status/pipets.txt"
 
 #will try to work
 BLUE_DIMS = [20,77]
 DEFAULT_DIMS = [25,85]
 FILTER_DIMS = [24,98]
 
-#vial_df = pd.read_csv(VIAL_FILE, delimiter='\t', index_col='vial index')
-#print(vial_df)
+
 c9 = NorthC9('A', network_serial='AU06CNCF')
-nr = North_Safe.North_Robot(c9)
+nr = North_Safe.North_Robot(c9,VIAL_FILE,PIPET_FILE)
 nr.set_robot_speed(20)
-
 nr.set_pipet_tip_type(DEFAULT_DIMS, 0)
-
 nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
 
+try:
+    #checking get_pipet (change pipette tip type for the runs)
+    '''
+    for i in range(0,5):
+        nr.move_vial_to_clamp(i)
+        nr.uncap_clamp_vial()
+        nr.get_pipet()
+        nr.aspirate_from_vial(i,0.2)
+        nr.dispense_into_wellplate([0+i,1+i,2+i,3+i],[0.050,0.050,0.050,0.050])
+        nr.remove_pipet()
+        nr.recap_clamp_vial()
+        nr.return_vial_from_clamp()
+    '''
+    nr.c9.move_z(292)
+except Exception as e:
+    print(e)
+    nr.reset_robot()
 
-#checking get_pipet (change pipette tip type for the runs)
-for i in range(1):
-    nr.get_pipet()
-    nr.c9.goto_safe(well_plate_new_grid[0])
-    nr.remove_pipet()
 
 #testing well-plate position -- test with normal pipette tip
 # nr.get_pipet()
