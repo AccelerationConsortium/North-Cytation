@@ -19,12 +19,16 @@ FILTER_DIMS = [24,98]
 
 c9 = NorthC9('A', network_serial='AU06CNCF')
 nr = North_Safe.North_Robot(c9,VIAL_FILE,PIPET_FILE)
+nr_track = North_Safe.North_Track(c9)
 nr.set_robot_speed(20)
 nr.set_pipet_tip_type(DEFAULT_DIMS, 0)
 nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
 
 try:
     #checking get_pipet (change pipette tip type for the runs)
+    nr_track.origin()
+    nr.reset_robot()
+
     '''
     for i in range(0,5):
         nr.move_vial_to_clamp(i)

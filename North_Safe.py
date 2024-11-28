@@ -138,13 +138,18 @@ class North_Robot:
     c9 = None
     
     #Initialize function
-    def __init__(self, c9, vial_file=None,delim=',',pipet_file=None):
+    def __init__(self, c9, vial_file=None,pipet_file=None):
         print("Initializing North Robot")
         self.c9 = c9
         try:
             self.VIAL_FILE = vial_file
-            self.VIAL_DF = pd.read_csv(vial_file, delimiter=delim)
+            self.VIAL_DF = pd.read_csv(vial_file, sep=r"\t", engine="python")
+
+            print(self.VIAL_DF)
+            print(self.VIAL_DF['vial volume (mL)'])
+
             self.VIAL_NAMES = self.VIAL_DF['vial name']
+            print(self.VIAL_NAMES)
         except Exception as e:
             print("No vial file inputted", e)
         self.PIPET_DIMS = self.DEFAULT_DIMS
@@ -223,9 +228,18 @@ class North_Robot:
         self.c9.move_z(height, vel=move_speed)
         #self.c9.set_pump_speed(0, pump_speed)
         if aspirate:
-            self.c9.aspirate_ml(0,amount)
+            if amount <= 1:
+                try:
+                    self.c9.aspirate_ml(0,amount)
+                except:
+                    print("Cannot aspirate (North Safe)... See previous error")
+            else:
+                print("Cannot aspirate more than 1 mL")
         else:
-            self.c9.dispense_ml(0,amount)
+            try:
+                self.c9.dispense_ml(0,amount)
+            except: #If there's not enough to dispense
+                self.c9.move_pump(0,0)
 
     #Pipet from a vial into another vial
     #Use calibration (not implemented) is if you want to adjust the volume based off a known calibration
@@ -264,7 +278,7 @@ class North_Robot:
             height += height_shift_pipet
 
             #Move to the correct location and pipet
-            self.c9.goto_xy_safe(location)
+            self.c9.goto_xy_safe(location,vel=15)
             #If you want to have extra aspirate and dispense steps
             for i in range (0, asp_disp_cycles):
                 self.pipet_from_location(amount_mL, aspirate_speed, height, True)
@@ -346,10 +360,14 @@ class North_Robot:
 
         """
         #Dispense at wellplate
+        first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
 
             location = well_plate_new_grid[dest_wp_num_array[i]] #Where are we dispensing
             amount_mL = amount_mL_array[i] #What amount for this well
+
+            if amount_mL == 0:
+                continue
 
             height = self.c9.counts_to_mm(3, location[3])
         
@@ -358,8 +376,9 @@ class North_Robot:
             
             #amount_mL = amounts[i] #*Uncomment if want to dispense multiple amounts in same move(demo)
 
-            if i == 0:
-                self.c9.goto_xy_safe(location, vel=5)
+            if first_dispense:
+                self.c9.goto_xy_safe(location, vel=15)
+                first_dispense = False
                 #print("Z before dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3))) #z-axis value
                 #print("x at location", self.get_x_mm()) #x-axis value
                 
