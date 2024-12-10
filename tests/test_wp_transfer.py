@@ -45,6 +45,7 @@ def open_and_close():
         gen5.CarrierIn()
         gen5.CarrierOut()
         nr_track.grab_well_plate_from_cytation()
+        gen5.CarrierIn()
         nr_track.return_well_plate_to_nr(0)
     except KeyboardInterrupt:
         #os._exit(0)

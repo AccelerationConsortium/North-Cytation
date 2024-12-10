@@ -60,6 +60,7 @@ data_colors_uL = np.insert(data_colors_uL,0,[0,0.25,0,0],0)
 data_colors_uL = np.insert(data_colors_uL,0,[0.25,0,0,0],0)
 
 print(data_colors_uL)
+
 print("Row sums:", np.sum(data_colors_uL * 1000, axis=1))  # Should all equal 250
 
 data_colors_uL = np.repeat(data_colors_uL, replicates, axis=0)
