@@ -472,7 +472,7 @@ class North_Robot:
         print("Has Pipet: " + str(self.HAS_PIPET))
 
     #Removes the target vial, vortexes it, then puts it back
-    def vortex_vial(self, vial_num, vortex_rads):
+    def vortex_vial(self, vial_num, vortex_time, vortex_speed=70):
         print("Vortexing Vial: " + self.get_vial_name(vial_num))
         vial_clamped = (self.CLAMPED_VIAL == vial_num) #Is the vial clamped?
         
@@ -481,7 +481,11 @@ class North_Robot:
         error_check_list.append([self.check_if_vials_are_open([vial_num]), False, "Can't vortex, vial not capped"])
         error_check_list.append([self.HAS_PIPET, False, "Can't vortex vial, holding pipet"])
         
+        #Correlate vortex_rads to time and speed
+        vortex_rads = (vortex_time-0.158)/9.95E-4*vortex_speed
+
         if self.check_for_errors(error_check_list) == False:
+            self.c9.move_axis(self.c9.GRIPPER, 0, vel=50)
             #Get vial
             if vial_clamped:
                 self.goto_location_if_not_there(vial_clamp)
@@ -494,7 +498,6 @@ class North_Robot:
             self.c9.move_z(292) #Move to a higher height
             #Rotate
             self.c9.move_axis(self.c9.GRIPPER, vortex_rads, vel=50)
-            self.c9.move_axis(self.c9.GRIPPER, 0, vel=50)
             
             #Return vial
             if vial_clamped:
