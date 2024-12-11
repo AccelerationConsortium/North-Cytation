@@ -9,7 +9,7 @@ from prefect import flow, serve
 import time
 
 
-def move_wp_to_cyt_to_test_then_back(well_plate_num=1, lid_storage_num=2):
+def move_wp_to_cyt_to_test_then_back(well_plate_num=0, lid_storage_num=2):
 
     # Cytation 5 connection
     gen5 = Biotek()
@@ -23,12 +23,8 @@ def move_wp_to_cyt_to_test_then_back(well_plate_num=1, lid_storage_num=2):
         nr_track.set_horizontal_speed(50)
         nr_track.set_vertical_speed(50)
 
-        # Move lid
-        nr_track.grab_well_plate_from_nr(well_plate_num, grab_lid=True)
-        nr_track.return_well_plate_to_nr(lid_storage_num, grab_lid=True)
-
-        # Move well-plate to cytation
-        nr_track.grab_well_plate_from_nr(well_plate_num, quartz_wp=True)
+        # Move well plate to cytation
+        nr_track.grab_well_plate_from_nr(0, quartz_wp=True)
         nr_track.move_gripper_to_cytation()
         gen5.CarrierOut()
         nr_track.release_well_plate_in_cytation(quartz_wp=True)
@@ -36,27 +32,21 @@ def move_wp_to_cyt_to_test_then_back(well_plate_num=1, lid_storage_num=2):
 
         # Run cytation protocol
 
-        plate = gen5.load_protocol(r"C:\Protocols\test_read_speed.prt")
+        plate = gen5.load_protocol(r"C:\Protocols\Stanley_Degradation_Test.prt")
         run = gen5.run_protocol(plate)
-        # Start Time tracking
-        start = time.time()
-        print(f"{start=}")
         while gen5.protocol_in_progress(run):
-            # print("Read in progress...")
-            # time.sleep(10)
-            end = time.time()
-        print(f"{end=}")
-        elapsed_time = end - start
-        print(f"{elapsed_time=}")
+             print("Read in progress...")
+             time.sleep(10)
+
         # Return well-plate to storage
         gen5.CarrierOut()
         nr_track.grab_well_plate_from_cytation(quartz_wp=True)
         gen5.CarrierIn()
-        nr_track.return_well_plate_to_nr(well_plate_num, quartz_wp=True)
+        nr_track.return_well_plate_to_nr(1, quartz_wp=True)
 
         # Return lid
-        nr_track.grab_well_plate_from_nr(lid_storage_num, grab_lid=True)
-        nr_track.return_well_plate_to_nr(well_plate_num, grab_lid=True)
+        nr_track.grab_well_plate_from_nr(2, grab_lid=True)
+        nr_track.return_well_plate_to_nr(1, grab_lid=True)
 
         nr_track.origin()
 
