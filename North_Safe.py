@@ -38,8 +38,19 @@ class North_Track:
     #Speed vertical
     DEFAULT_Y_SPEED = 50
 
-    def __init__(self, c9):
+    #Source wellplate stack constants
+    SOURCE_X = 2950
+    SOURCE_Y = [82800, 76500, 69800, 63400, 57000, 50300, 43800]
+
+    SAFE_MOVE_SOURCE_X = 22000
+    SAFE_MOVE_SOURCE_Y = 4000 #up before moving to SAFE_MOVE_SOURCE_X
+
+    num_source = 0 #number of wellplates in source stack
+
+
+    def __init__(self, c9, num_source = 0):
         self.c9 = c9
+        self.num_source = num_source
 
     def set_horizontal_speed(self,vel):
         self.c9.DEFAULT_X_SPEED = vel
@@ -110,6 +121,37 @@ class North_Track:
     def origin(self):
         self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #max_height
         self.c9.move_axis(7, 0, vel=self.DEFAULT_X_SPEED)
+    
+    def get_next_WP_from_source(self): 
+        #TODO: change velocities back to default ones
+        #TODO: continue adding heights after 7 WP
+        #TODO: save the new num_source to external file?
+
+        if self.num_source>0: #have at least one WP in stack
+            print(f"Getting Wellplate #{self.num_source} from source stack at Y: {self.SOURCE_Y[self.num_source-1]}")
+            self.c9.move_axis(6, 0, vel=20)
+            self.open_gripper() 
+
+            #to source wp stack
+            self.c9.move_axis(7, self.SOURCE_X, vel=15)
+            self.c9.move_axis(6, self.SOURCE_Y[self.num_source-1], vel=10)
+            self.close_gripper()
+
+            #up to "safe" area and move down 
+            self.c9.move_axis(6, self.SAFE_MOVE_SOURCE_Y, vel=15)
+            self.c9.move_axis(7, self.SAFE_MOVE_SOURCE_X, vel=15)
+            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=15)
+
+            #move to WP to pipetting stand
+            self.c9.move_axis(7, self.NR_WELL_PLATE_X[0], vel=15)
+            self.c9.move_axis(6, self.NR_WELL_PLATE_Y[0], vel=5)
+            self.open_gripper()
+            self.c9.move_axis(6, 0, vel=20)
+
+            self.num_source -= 1
+            print(f"# of wellplates remaining in source stack: {self.num_source}")
+        else:
+            print("Cannot get wellplate from empty stack")
 
 class North_Robot:
 
@@ -145,11 +187,11 @@ class North_Robot:
             self.VIAL_FILE = vial_file
             self.VIAL_DF = pd.read_csv(vial_file, sep=r"\t", engine="python")
 
-            print(self.VIAL_DF)
-            print(self.VIAL_DF['vial volume (mL)'])
+            print("Initial Vial States:\n", self.VIAL_DF)
+            #print("Vial Volumes: ", self.VIAL_DF['vial volume (mL)'].values)
 
             self.VIAL_NAMES = self.VIAL_DF['vial name']
-            print(self.VIAL_NAMES)
+            #print(self.VIAL_NAMES)
         except Exception as e:
             print("No vial file inputted", e)
         self.PIPET_DIMS = self.DEFAULT_DIMS
@@ -195,7 +237,7 @@ class North_Robot:
     #Take a pipet tip from the active rack with the active pipet tip dimensions 
     def get_pipet(self):
         error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.HAS_PIPET, True, "Can't get pipet, already have pipet tip"])
+        error_check_list.append([self.HAS_PIPET, False, "Can't get pipet, already have pipet tip"])
 
         if self.check_for_errors(error_check_list) == False:
             try:
@@ -366,7 +408,11 @@ class North_Robot:
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
 
-            location = well_plate_new_grid[dest_wp_num_array[i]] #Where are we dispensing
+            try:
+                location = well_plate_new_grid[dest_wp_num_array[i]] #Where are we dispensing
+            except:
+                location = well_plate_new_grid[self.convert_well_into_index(dest_wp_num_array[i])]
+
             amount_mL = amount_mL_array[i] #What amount for this well
 
             if amount_mL == 0:
@@ -429,44 +475,45 @@ class North_Robot:
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
 
-        vial_indices = [0,1,2] #This should be determined in step 1
-        well_plate_df = pd.DataFrame()
-        well_plate_df['well_index']= [0,1,3,6]
-        well_plate_df['Vial_0'] = [0,0.2,0.3,0.1]
-        well_plate_df['Vial_1'] = [0.1,0.1,0.2,0.2]
-        well_plate_df['Vial_2'] = [0.7,0.4,0.1,0]
-        
+        well_plate_dispense_2d_array = well_plate_df.values
+        well_plate_indices = well_plate_df['well_index'].values
+        print("Well plate indices: ", well_plate_indices)
+
         #Step 2: Systematically dispense based one liquid at a time
         for i in range (0, len(vial_indices)):
 
-            vial_index = vial_indices[i]
-            well_plate_dispense_2d_array = well_plate_df[1:].values
-            vol_needed = np.sum(well_plate_dispense_2d_array[i])
+            vial_index = vial_indices[i]          
+
+            vol_needed = np.sum(well_plate_dispense_2d_array[:, i+1])
+            print("Volume Needed: ", vol_needed)
 
             vial_open = self.check_if_vials_are_open([vial_index])
 
             if not vial_open:
+                print(f"Vial {vial_index} not open, moving to clamp")
                 self.move_vial_to_clamp(vial_index)
                 self.uncap_clamp_vial()
             
-            self.get_pipet()
-          
+              
             print("Aspirating from Vial: ", vial_index)
             print("Total volume: ", vol_needed)
             vol_buffer_n = vol_buffer
 
             last_index = 0
+            vol_dispensed = 0
             while round(vol_dispensed,3) < round(vol_needed,3):
                 dispense_vol=0
                 dispense_array = []
+                well_plate_array = []
                 processing=True
                 while processing:
                     try:
-                        volume = round(well_plate_dispense_2d_array[last_index,i],3)
+                        volume = round(well_plate_dispense_2d_array[last_index,i+1],3)
 
                         if dispense_vol+volume<=vol_limit:
                             dispense_vol+=volume
                             dispense_array.append(round(float(volume),3))
+                            well_plate_array.append(well_plate_indices[last_index])
                             last_index+=1
                         else:
                             processing=False
@@ -477,9 +524,9 @@ class North_Robot:
                 self.aspirate_from_vial(vial_index,dispense_vol+vol_buffer_n)
                 vol_buffer_n=0
 
-                #indices to dispense
-                well_plate_array = np.arange((last_index-len(dispense_array)),last_index,1)
-                well_plate_array = [int(x) for x in well_plate_array]
+                #indices to dispense... this is not right
+                #well_plate_array = np.arange((last_index-len(dispense_array)),last_index,1)
+                #well_plate_array = [int(x) for x in well_plate_array]
 
                 print("Indices dipensed:", well_plate_array)
                 print("Dispense volumes:", dispense_array)
@@ -495,7 +542,7 @@ class North_Robot:
 
             self.remove_pipet()
 
-            if self.CLAMPED_VIAL.isnumeric():
+            if str(self.CLAMPED_VIAL).isnumeric():
                 self.recap_clamp_vial()
                 self.return_vial_from_clamp()
 
@@ -517,7 +564,7 @@ class North_Robot:
             self.c9.goto_safe(vial_clamp) #move vial to clamp
             #self.c9.close_clamp() #clamp vial
             self.c9.open_gripper() #release vial
-            self.CLAMPED_VIAL = vial_num
+            self.CLAMPED_VIAL = vial_num          
 
     #We will need to check if the vial is capped before moving
     def return_vial_from_clamp(self):
@@ -536,6 +583,55 @@ class North_Robot:
             self.c9.goto_safe(rack[int(self.CLAMPED_VIAL)]) #Move back to vial rack
             self.c9.open_gripper() #Release vial
             self.CLAMPED_VIAL = "None"
+
+    #Move a vial to the photoreactor. To do: Add a tracker for whether the reactors are full. 
+    def move_vial_to_photoreactor(self, vial_num, reactor_num):
+        print("Moving vial " + self.get_vial_name(vial_num) + " to photoreactor " + str(reactor_num))
+
+        location = None
+        if reactor_num==1:
+            location = photo_reactor_1
+        elif reactor_num==2:
+            location = photo_reactor_2
+
+
+        error_check_list = [] #List of specific errors for this method
+        error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot move vial to clamp, gripper full"])
+        error_check_list.append([self.HAS_PIPET, False, "Cannot move vial to clamp, robot holding pipet"])
+        #error_check_list.append([str(self.CLAMPED_VIAL).isnumeric(), False, "Cannot move vial to clamp, clamp full"])
+        error_check_list.append([self.check_if_vials_are_open([vial_num]), False, "Can't move vial, vial is uncapped"])
+
+        if self.check_for_errors(error_check_list) == False:
+            self.goto_location_if_not_there(rack[vial_num]) #move to vial
+            self.c9.close_gripper() #grip vial
+            self.c9.goto_safe(location) #move vial to clamp
+            #self.c9.close_clamp() #clamp vial
+            self.c9.open_gripper() #release vial
+            #self.CLAMPED_VIAL = vial_num          
+
+    #Return a vial from the photoreactor to the tray. To do: Add a tracker for whether the reactors are full. 
+    def return_vial_from_photoreactor(self, vial_num, reactor_num):
+        print("Moving vial " + self.get_vial_name(self.CLAMPED_VIAL) + " from photoreactor " + str(reactor_num))
+
+        location = None
+        if reactor_num==1:
+            location = photo_reactor_1
+        elif reactor_num==2:
+            location = photo_reactor_2
+
+        error_check_list = [] #List of specific errors for this method
+        error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot return vial from clamp, gripper full"])
+        error_check_list.append([self.HAS_PIPET, False, "Cannot return vial from clamp, robot holding pipet"])
+        #error_check_list.append([str(self.CLAMPED_VIAL).isnumeric(), True, "Cannot return vial from clamp, no vial in clamp"])
+        #error_check_list.append([self.check_if_vials_are_open([self.CLAMPED_VIAL]), False, "Can't return vial, vial is uncapped"])
+
+        if self.check_for_errors(error_check_list) == False:
+            self.goto_location_if_not_there(location) #Maybe check if it is already there or not 
+            self.c9.close_gripper() #Grab vial
+            self.c9.open_clamp() #unclamp vial
+            self.c9.goto_safe(rack[vial_num]) #Move back to vial rack
+            self.c9.open_gripper() #Release vial
+            #self.CLAMPED_VIAL = "None"
 
     #Uncap the vial in the clamp
     def uncap_clamp_vial(self):
@@ -620,8 +716,9 @@ class North_Robot:
         #Correlate vortex_rads to time and speed
         vortex_rads = (vortex_time-0.158)/9.95E-4*vortex_speed
 
+        print(vortex_rads)
+
         if self.check_for_errors(error_check_list) == False:
-            self.c9.move_axis(self.c9.GRIPPER, 0, vel=50)
             #Get vial
             if vial_clamped:
                 self.goto_location_if_not_there(vial_clamp)
@@ -633,7 +730,10 @@ class North_Robot:
         
             self.c9.move_z(292) #Move to a higher height
             #Rotate
-            self.c9.move_axis(self.c9.GRIPPER, vortex_rads, vel=50)
+
+            self.c9.spin_axis(self.c9.GRIPPER, 1000*vortex_speed, 500000)
+            time.sleep(vortex_time)
+            self.c9.spin_axis(self.c9.GRIPPER, 0, 500000)
             
             #Return vial
             if vial_clamped:
@@ -714,6 +814,11 @@ class North_Robot:
         target_z = curr_z + z_distance
         self.c9.move_z(target_z)
         
+    def spin(self, radians, velocity):
+        curr_rad = self.c9.counts_to_rad(self.c9.GRIPPER, self.c9.get_axis_position(self.c9.GRIPPER))
+        target_rad = curr_rad+radians
+        self.c9.move_axis_rad(self.c9.GRIPPER, target_rad, vel=velocity)
+
     def get_x_mm(self) -> float:
         current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(0), self.c9.get_axis_position(1), self.c9.get_axis_position(2))
         return current_loc_mm[0]
@@ -730,3 +835,11 @@ class North_Robot:
         self.c9.open_gripper()
         self.c9.open_clamp()
         self.remove_pipet()
+
+    #Convert wells to indices as needed
+    def convert_well_into_index(self, well):
+        rows = ['A','B','C','D','E','F','G','H']
+        well_row = rows.index(well[0:1])
+        well_col = int(well[1:])
+        index = well_row*12 + well_col - 1
+        return index

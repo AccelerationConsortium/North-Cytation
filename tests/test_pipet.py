@@ -11,11 +11,7 @@ import time
 VIAL_FILE = "../utoronto_demo/status/vials_color.txt"  # Vials used
 PIPET_FILE = "../utoronto_demo/status/pipets.txt"
 
-#will try to work
-BLUE_DIMS = [20,77]
 DEFAULT_DIMS = [25,85]
-FILTER_DIMS = [24,98]
-
 
 c9 = NorthC9('A', network_serial='AU06CNCF')
 nr = North_Safe.North_Robot(c9,VIAL_FILE,PIPET_FILE)
@@ -24,24 +20,27 @@ nr.set_robot_speed(20)
 nr.set_pipet_tip_type(DEFAULT_DIMS, 0)
 nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
 
-try:
-    #checking get_pipet (change pipette tip type for the runs)
-    nr_track.origin()
-    nr.reset_robot()
+#input()
 
-    '''
-    for i in range(0,5):
-        nr.move_vial_to_clamp(i)
-        nr.uncap_clamp_vial()
-        nr.get_pipet()
-        nr.aspirate_from_vial(i,0.2)
-        nr.dispense_into_wellplate([0+i,1+i,2+i,3+i],[0.050,0.050,0.050,0.050])
-        nr.remove_pipet()
-        nr.recap_clamp_vial()
-        nr.return_vial_from_clamp()
-    '''
-    nr.c9.move_z(292)
-except Exception as e:
+try:
+    #nr.c9.goto_safe(vial_clamp_pip)
+     vial_indices = [0,1] #This should be determined in step 1
+     well_plate_df = pd.DataFrame()
+     well_plate_df['well_index']= ['C7','C8']
+     well_plate_df['Vial_0'] = [0,0.1]
+     well_plate_df['Vial_1'] = [0.1,0.1]
+
+     print(well_plate_df)
+
+     #nr.get_pipet()
+    
+    
+    # nr.remove_pipet()
+
+     nr.dispense_from_vials_into_wellplate(well_plate_df, vial_indices)
+
+     nr.c9.move_z(292)
+except KeyboardInterrupt as e:
     print(e)
     nr.reset_robot()
 
