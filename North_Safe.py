@@ -168,8 +168,8 @@ class North_Robot:
     PIPET_FILE = None
 
     #Pipet rack data
-    ACTIVE_PIPET_RACK = 0 #There are two racks... Rack 0 and Rack 1
-    PIPETS_USED = [0,0] #Tracker for each rack
+    ACTIVE_PIPET_RACK = 0 #There are two racks... Rack 0 and Rack 1... This may become deprecated
+    PIPETS_USED = [0,0] #Tracker for each rack... This may become deprecated
 
     #Pipet tip dimensions (Future... Let's keep a spreadsheet for this not list them all here)
     BLUE_DIMS = [20,77]
@@ -187,8 +187,8 @@ class North_Robot:
             self.VIAL_FILE = vial_file
             self.VIAL_DF = pd.read_csv(vial_file, sep=r"\t", engine="python")
 
-            print("Initial Vial States:\n", self.VIAL_DF)
-            #print("Vial Volumes: ", self.VIAL_DF['vial volume (mL)'].values)
+            #print(self.VIAL_DF)
+            #print(self.VIAL_DF['vial volume (mL)'])
 
             self.VIAL_NAMES = self.VIAL_DF['vial name']
             #print(self.VIAL_NAMES)
@@ -209,7 +209,7 @@ class North_Robot:
 
     #Reset positions and get rid of any pipet tips
     def reset_after_initialization(self):
-        self.c9.move_z(200)
+        self.c9.move_z(292)
         self.c9.home_pump(0) #Home the pump
         #self.c9.home_carousel() #Home the carousel
         self.c9.open_gripper()  #In case there's something
@@ -293,56 +293,61 @@ class North_Robot:
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.check_if_vials_are_open([source_vial_num]), True, "Can't pipet, at least one vial is capped"])
 
-        if self.check_for_errors(error_check_list) == False:
-            #Check if has pipet, get one if needed
-            if self.HAS_PIPET == False:
-                self.get_pipet()
-            
-            print("Pipetting from vial " + self.get_vial_name(source_vial_num))
-            #print("Dispense type: " + dispense_type)
-            
-            source_vial_clamped = (self.CLAMPED_VIAL == source_vial_num) #Is the source vial clamped?
-            source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
-                    
-            #Aspirate from source... Need to adjust aspiration height based off of existing volume
-            if source_vial_clamped:
-                location = vial_clamp_pip
+        #Move the vial to clamp if needed to aspirate
+        if self.check_for_errors(error_check_list):
+            print("Moving vial to clamp to uncap")
+            self.move_vial_to_clamp(source_vial_num)
+            self.uncap_clamp_vial()        
+
+        #Check if has pipet, get one if needed
+        if self.HAS_PIPET == False:
+            self.get_pipet()
+        
+        print("Pipetting from vial " + self.get_vial_name(source_vial_num))
+        #print("Dispense type: " + dispense_type)
+        
+        source_vial_clamped = (self.CLAMPED_VIAL == source_vial_num) #Is the source vial clamped?
+        source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
                 
-                if track_height:
-                    height = self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 125)
-                else:
-                    height = 125
+        #Aspirate from source... Need to adjust aspiration height based off of existing volume
+        if source_vial_clamped:
+            location = vial_clamp_pip
+            
+            if track_height:
+                height = self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 125)
             else:
-                location = rack_pip[source_vial_num]
-                if track_height:
-                    height = self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 76)
-                else:
-                    height = rack_pip[source_vial_num] #Edit this
-             
-            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
-            height += height_shift_pipet
+                height = 125
+        else:
+            location = rack_pip[source_vial_num]
+            if track_height:
+                height = self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 76)
+            else:
+                height = rack_pip[source_vial_num] #Edit this
+            
+        height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
+        height += height_shift_pipet
 
-            #Move to the correct location and pipet
-            self.c9.goto_xy_safe(location,vel=15)
-            #If you want to have extra aspirate and dispense steps
-            for i in range (0, asp_disp_cycles):
-                self.pipet_from_location(amount_mL, aspirate_speed, height, True)
-                self.pipet_from_location(amount_mL, aspirate_speed, height, False)
+        #Move to the correct location and pipet
+        self.c9.goto_xy_safe(location,vel=15)
+        #If you want to have extra aspirate and dispense steps
+        for i in range (0, asp_disp_cycles):
             self.pipet_from_location(amount_mL, aspirate_speed, height, True)
+            self.pipet_from_location(amount_mL, aspirate_speed, height, False)
+        self.pipet_from_location(amount_mL, aspirate_speed, height, True)
 
-            #Record the volume change
-            original_amount = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
-            self.VIAL_DF.at[source_vial_num,'vial volume (mL)']=(original_amount-amount_mL)
+        #Record the volume change
+        original_amount = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
+        self.VIAL_DF.at[source_vial_num,'vial volume (mL)']=(original_amount-amount_mL)
 
-            #Move to a safe height
-            if vial_wait_time > 0:
-                self.c9.move_z(160, vel=15) 
-            
-                #Wait above the vial for specified time
-                time.sleep(vial_wait_time)
-            
+        #Move to a safe height
+        if vial_wait_time > 0:
+            self.c9.move_z(160, vel=15) 
+        
             #Wait above the vial for specified time
             time.sleep(vial_wait_time)
+        
+        #Wait above the vial for specified time
+        time.sleep(vial_wait_time)
         try:
             self.save_vial_status(self.VIAL_FILE)
         except:
@@ -835,11 +840,3 @@ class North_Robot:
         self.c9.open_gripper()
         self.c9.open_clamp()
         self.remove_pipet()
-
-    #Convert wells to indices as needed
-    def convert_well_into_index(self, well):
-        rows = ['A','B','C','D','E','F','G','H']
-        well_row = rows.index(well[0:1])
-        well_col = int(well[1:])
-        index = well_row*12 + well_col - 1
-        return index
