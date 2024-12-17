@@ -46,11 +46,15 @@ class North_Track:
     SAFE_MOVE_SOURCE_Y = 4000 #up before moving to SAFE_MOVE_SOURCE_X
 
     num_source = 0 #number of wellplates in source stack
+    well_plate_df = None
 
-
-    def __init__(self, c9, num_source = 0):
+    #Let's initialize the number of well plates from a file
+    def __init__(self, c9):
         self.c9 = c9
-        self.num_source = num_source
+        self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python")
+        print(self.well_plate_df)
+        self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
+        print(self.num_source)
 
     def set_horizontal_speed(self,vel):
         self.c9.DEFAULT_X_SPEED = vel
@@ -133,22 +137,29 @@ class North_Track:
             self.open_gripper() 
 
             #to source wp stack
-            self.c9.move_axis(7, self.SOURCE_X, vel=15)
-            self.c9.move_axis(6, self.SOURCE_Y[self.num_source-1], vel=10)
+            self.c9.move_axis(7, self.SOURCE_X, vel=30)
+            self.c9.move_axis(6, self.SOURCE_Y[self.num_source-1], vel=20)
             self.close_gripper()
 
             #up to "safe" area and move down 
-            self.c9.move_axis(6, self.SAFE_MOVE_SOURCE_Y, vel=15)
-            self.c9.move_axis(7, self.SAFE_MOVE_SOURCE_X, vel=15)
-            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=15)
+            self.c9.move_axis(6, self.SAFE_MOVE_SOURCE_Y, vel=20)
+            self.c9.move_axis(7, self.SAFE_MOVE_SOURCE_X, vel=30)
+            #self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=15)
 
             #move to WP to pipetting stand
-            self.c9.move_axis(7, self.NR_WELL_PLATE_X[0], vel=15)
-            self.c9.move_axis(6, self.NR_WELL_PLATE_Y[0], vel=5)
-            self.open_gripper()
-            self.c9.move_axis(6, 0, vel=20)
+            #self.c9.move_axis(7, self.NR_WELL_PLATE_X[0], vel=30)
+            #self.c9.move_axis(6, self.NR_WELL_PLATE_Y[0], vel=5)
+            #self.open_gripper()
+            #self.c9.move_axis(6, 0, vel=20)
 
             self.num_source -= 1
+
+            
+            self.well_plate_df.loc[self.well_plate_df['Location']=='Input','Status'] = self.num_source
+            print(self.well_plate_df)
+            self.well_plate_df.to_csv("../utoronto_demo/status/wellplate_storage_status.txt", index=False,sep=',')
+            print(self.num_source)
+
             print(f"# of wellplates remaining in source stack: {self.num_source}")
         else:
             print("Cannot get wellplate from empty stack")
@@ -209,11 +220,11 @@ class North_Robot:
 
     #Reset positions and get rid of any pipet tips
     def reset_after_initialization(self):
-        self.c9.move_z(292)
         self.c9.home_pump(0) #Home the pump
         #self.c9.home_carousel() #Home the carousel
         self.c9.open_gripper()  #In case there's something
         self.c9.zero_scale() #Zero the scale
+        self.c9.move_z(292)
         #self.remove_pipet() #Remove the pipet, if there's one for some reason   
 
     #Change the speed of the robot
@@ -303,27 +314,31 @@ class North_Robot:
         if self.HAS_PIPET == False:
             self.get_pipet()
         
-        print("Pipetting from vial " + self.get_vial_name(source_vial_num))
+        print("Pipetting from vial " + self.get_vial_name(source_vial_num) + ", amount: "  + str(amount_mL) + " mL")
         #print("Dispense type: " + dispense_type)
         
         source_vial_clamped = (self.CLAMPED_VIAL == source_vial_num) #Is the source vial clamped?
         source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
-                
+
+        #The height at which the pipet touches the ground for the 1 mL pipet
+        CLAMP_BASE_HEIGHT = 114.5
+        VIAL_RACK_BASE_HEIGHT = 67.25
+
         #Aspirate from source... Need to adjust aspiration height based off of existing volume
         if source_vial_clamped:
             location = vial_clamp_pip
             
             if track_height:
-                height = self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 125)
+                height = self.get_aspirate_height(source_vial_volume, amount_mL, CLAMP_BASE_HEIGHT)
             else:
-                height = 125
+                height = CLAMP_BASE_HEIGHT
         else:
             location = rack_pip[source_vial_num]
             if track_height:
-                height = self.get_aspirate_height(source_vial_volume, amount_mL, 0.5, 76)
+                height = self.get_aspirate_height(source_vial_volume, amount_mL, VIAL_RACK_BASE_HEIGHT)
             else:
-                height = rack_pip[source_vial_num] #Edit this
-            
+                height = VIAL_RACK_BASE_HEIGHT 
+  
         height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
         height += height_shift_pipet
 
@@ -357,10 +372,9 @@ class North_Robot:
     def dispense_into_vial(self, dest_vial_num, amount_mL, dispense_speed=11, measure_weight=False):     
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.check_if_vials_are_open([dest_vial_num]), True, "Can't pipet, at least one vial is capped"])    
-        
+        print("Pipetting into vial " + self.get_vial_name(dest_vial_num))
+
         if self.check_for_errors(error_check_list) == False:
-            print("Pipetting into vial " + self.get_vial_name(dest_vial_num))
-            
             dest_vial_clamped = (self.CLAMPED_VIAL == dest_vial_num) #Is the destination vial clamped?
             dest_vial_volume = self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']
 
@@ -387,9 +401,9 @@ class North_Robot:
             #If the destination vial is at the clamp and you want the weight, measure after pipetting
             if measure_weight and dest_vial_clamped:
                 final_mass = self.c9.read_steady_scale()
-            
-        #Move to a safe height
-        self.c9.move_z(height+60, vel=15) #dispense is always near the top
+                
+            #Move to a safe height
+            self.c9.move_z(height+60, vel=15) #dispense is always near the top
 
         if measure_weight:
             measured_mass = final_mass - initial_mass  
@@ -474,7 +488,6 @@ class North_Robot:
             print("Dispense type: " + dispense_type)
             
         return True
-
 
     def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, vol_limit=0.95, vol_buffer=0.05):
 
@@ -719,9 +732,9 @@ class North_Robot:
         error_check_list.append([self.HAS_PIPET, False, "Can't vortex vial, holding pipet"])
         
         #Correlate vortex_rads to time and speed
-        vortex_rads = (vortex_time-0.158)/9.95E-4*vortex_speed
+        # vortex_rads = (vortex_time-0.158)/9.95E-4*vortex_speed
 
-        print(vortex_rads)
+        # print(vortex_rads)
 
         if self.check_for_errors(error_check_list) == False:
             #Get vial
@@ -776,9 +789,9 @@ class North_Robot:
         return all_open
 
     #Get adjust the aspiration height based on how much is there
-    def get_aspirate_height(self, amount_vial, amount_to_withdraw, buffer, base_height):
+    def get_aspirate_height(self, amount_vial, amount_to_withdraw, base_height, buffer=0.5):
         target_height = base_height + (6*(amount_vial - amount_to_withdraw - buffer))
-        print(target_height)
+        #print(target_height)
         if target_height > base_height:
             return target_height
         else:
@@ -837,6 +850,17 @@ class North_Robot:
             output.write(save_data.replace('\0', ''))
 
     def reset_robot(self):
+        self.c9.move_pump(0,0)
         self.c9.open_gripper()
         self.c9.open_clamp()
         self.remove_pipet()
+
+    def finish_pipetting(self):
+        if self.HAS_PIPET:
+            self.remove_pipet()
+        if self.GRIPPER_STATUS=="Cap" and str(self.CLAMPED_VIAL).isnumeric():
+            self.recap_clamp_vial()
+            self.return_vial_from_clamp()
+
+    def move_home(self):
+        self.c9.goto_safe(home)
