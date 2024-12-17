@@ -38,7 +38,7 @@ def sample_workflow(input_vial_status_file, source_vial_position, dest_vial_posi
     lash_e.run_photoreactor(dest_vial_position,target_rpm=600,intensity=100,duration=reactor_time,reactor_num=1)
 
     #Transfer the well plate to the cytation and measure
-    lash_e.measure_wellplate(cytation_protocol_file_path,0)
+    lash_e.measure_wellplate(cytation_protocol_file_path)
     
 #Execute the sample workflow. Pipet from vial 0 to vial 1, then to positions 0,1,2 in the well plate. The total pipetted volume is 0.6 mL or 600 uL. 300 uL will go to vial 1, 100 uL will go to each well.
 #Note I will have a conversion of "A1" to 0 and "A2" to 1 for the future, so you could do ["A1", "A2", "A3"] if you prefer that over 0,1,2
