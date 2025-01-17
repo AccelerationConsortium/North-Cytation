@@ -144,16 +144,8 @@ class North_Track:
             #up to "safe" area and move down 
             self.c9.move_axis(6, self.SAFE_MOVE_SOURCE_Y, vel=20)
             self.c9.move_axis(7, self.SAFE_MOVE_SOURCE_X, vel=30)
-            #self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=15)
-
-            #move to WP to pipetting stand
-            #self.c9.move_axis(7, self.NR_WELL_PLATE_X[0], vel=30)
-            #self.c9.move_axis(6, self.NR_WELL_PLATE_Y[0], vel=5)
-            #self.open_gripper()
-            #self.c9.move_axis(6, 0, vel=20)
 
             self.num_source -= 1
-
             
             self.well_plate_df.loc[self.well_plate_df['Location']=='Input','Status'] = self.num_source
             print(self.well_plate_df)
