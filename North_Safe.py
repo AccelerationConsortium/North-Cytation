@@ -8,6 +8,8 @@ import sys
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
 
+#12345
+
 class North_Track:
 
     #Controller
@@ -138,11 +140,11 @@ class North_Track:
 
             #to source wp stack
             self.c9.move_axis(7, self.SOURCE_X, vel=30)
-            self.c9.move_axis(6, self.SOURCE_Y[self.num_source-1], vel=20)
+            self.c9.move_axis(6, self.SOURCE_Y[self.num_source-1], vel=30)
             self.close_gripper()
 
             #up to "safe" area and move down 
-            self.c9.move_axis(6, self.SAFE_MOVE_SOURCE_Y, vel=20)
+            self.c9.move_axis(6, self.SAFE_MOVE_SOURCE_Y, vel=30)
             self.c9.move_axis(7, self.SAFE_MOVE_SOURCE_X, vel=30)
 
             self.num_source -= 1
@@ -231,7 +233,7 @@ class North_Robot:
     #Remove the pipet tip
     def remove_pipet(self):
         print("Removing pipet")
-        self.c9.goto_safe(p_remove_approach)
+        self.c9.goto_safe(p_remove_approach,vel=30)
         self.c9.goto(p_remove_cap, vel=5)
         remove_pipet_height = 292 #Constant height to remove the pipet (doesn't change with the pipet type, just moving up)
         self.c9.move_z(remove_pipet_height, vel=20)
@@ -614,7 +616,7 @@ class North_Robot:
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(rack[vial_num]) #move to vial
             self.c9.close_gripper() #grip vial
-            self.c9.goto_safe(location) #move vial to clamp
+            self.c9.goto_safe(location,vel=30) #move vial to clamp
             #self.c9.close_clamp() #clamp vial
             self.c9.open_gripper() #release vial
             #self.CLAMPED_VIAL = vial_num          
@@ -699,7 +701,7 @@ class North_Robot:
     def goto_location_if_not_there(self, location):
         difference_threshold = 550
         if self.get_location_distance(location, self.c9.get_robot_positions()) > difference_threshold:
-            self.c9.goto_safe(location)
+            self.c9.goto_safe(location,vel=30)
 
     #Measurement for how far two points are
     def get_location_distance(self, loc_1, loc_2):
