@@ -38,15 +38,10 @@ def open_and_close():
 
     try:
         nr_track.grab_well_plate_from_nr(0)
-        #nr_track.return_well_plate_to_nr(1)
-        nr_track.move_gripper_to_cytation()
-        gen5.CarrierOut()
-        nr_track.release_well_plate_in_cytation()
-        gen5.CarrierIn()
-        gen5.CarrierOut()
-        nr_track.grab_well_plate_from_cytation()
-        gen5.CarrierIn()
+        nr_track.return_well_plate_to_nr(2)
+        nr_track.grab_well_plate_from_nr(2)
         nr_track.return_well_plate_to_nr(0)
+        nr_track.move_gripper_to_cytation()
     except KeyboardInterrupt:
         #os._exit(0)
         #gen5.close()

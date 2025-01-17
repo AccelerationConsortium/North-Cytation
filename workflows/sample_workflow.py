@@ -17,6 +17,7 @@ def sample_workflow(input_vial_status_file, source_vials, aspirate_volumes, dest
 
     lash_e.grab_new_wellplate()
     
+    
     #This uncaps our target vessel to receive liquids in the clamp
     lash_e.nr_robot.move_vial_to_clamp(dest_vial_position)
     lash_e.nr_robot.uncap_clamp_vial()
@@ -53,4 +54,4 @@ def sample_workflow(input_vial_status_file, source_vials, aspirate_volumes, dest
 #Execute the sample workflow. Pipet from vial 0 to vial 1, then to positions 0,1,2 in the well plate. The total pipetted volume is 0.6 mL or 600 uL. 300 uL will go to vial 1, 100 uL will go to each well.
 #Note I will have a conversion of "A1" to 0 and "A2" to 1 for the future, so you could do ["A1", "A2", "A3"] if you prefer that over 0,1,2
 #Your protocol needs to be made inside the gen5 software, including the automated export
-sample_workflow("../utoronto_demo/status/sample_input_vials.txt", [0,1], [0.6,0.6], 2, [0,1,2], 5, r"C:\Protocols\Spectral_Automation.prt")
+sample_workflow("../utoronto_demo/status/sample_input_vials.txt", [0,1], [0.6,0.6], 2, [0,1,2], 5, r"C:\Protocols\Quick_Measurement.prt")

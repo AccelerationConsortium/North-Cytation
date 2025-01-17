@@ -12,5 +12,8 @@ for i in range (6,8):
 
 #c9.move_axis(7,80000)
 
+#c9.home_axis(2)
+
+
 #for i in range (0,7):
 #    c9.home_axis(i)
