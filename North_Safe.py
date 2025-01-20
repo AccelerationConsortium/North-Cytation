@@ -692,7 +692,7 @@ class North_Robot:
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not
             self.c9.close_clamp() #Make sure vial is clamped
-            self.c9.cap(revs=2, torque_thresh = 1300) #Cap the vial #Cap the vial
+            self.c9.cap(revs=1.8, torque_thresh = 1300) #Cap the vial #Cap the vial
             self.c9.open_gripper() #Open the gripper to release the cap
             self.GRIPPER_STATUS = "Open"
 

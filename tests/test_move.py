@@ -9,8 +9,7 @@ from Locator import *
 import pandas as pd
 import time
 
-VIAL_FILE = "C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status\\vial_status_wellplate.txt"
-
+VIAL_FILE = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\status\sample_input_vials.txt"
 #will try to work
 BLUE_DIMS = [20,77]
 DEFAULT_DIMS = [25,85]
@@ -18,45 +17,53 @@ FILTER_DIMS = [24,98]
 
 c9 = NorthC9('A', network_serial='AU06CNCF')
 
-vial_df = pd.read_csv(VIAL_FILE, delimiter='\t', index_col='vial index')
-nr = North_Safe.North_Robot(c9,vial_df)
+#vial_df = pd.read_csv(VIAL_FILE, delimiter='\t', index_col='vial index')
+#vial_df = pd.read_csv(VIAL_FILE, sep=r"\t", engine="python")
+nr = North_Safe.North_Robot(c9,VIAL_FILE)
 nr.set_robot_speed(20)
 
 c9.move_z(300)
-nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
+#nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
 
-nr.set_pipet_tip_type(BLUE_DIMS, 0) #only works with default dims (because of going to location -- not height asdjusted) & bottom row pipettes cleared!!
+# nr.set_pipet_tip_type(BLUE_DIMS, 0) #only works with default dims (because of going to location -- not height asdjusted) & bottom row pipettes cleared!!
 
-nr.get_pipet()
+# nr.get_pipet()
 
 # for i in range(3):
 #     nr.c9.goto_safe(well_plate_new_grid[i])
-nr.c9.goto_safe(well_plate_new_grid[0])
-time.sleep(2)
-nr.c9.goto_safe(well_plate_new_grid[1])
-time.sleep(2)
-nr.c9.goto_safe(well_plate_new_grid[12])
-time.sleep(2)
-nr.c9.goto_safe(well_plate_new_grid[18])
-time.sleep(2)
+# nr.c9.goto_safe(well_plate_new_grid[0])
+# time.sleep(2)
+# nr.c9.goto_safe(well_plate_new_grid[1])
+# time.sleep(2)
+# nr.c9.goto_safe(well_plate_new_grid[12])
+# time.sleep(2)
+# nr.c9.goto_safe(well_plate_new_grid[18])
+# time.sleep(2)
 
-nr.set_robot_speed(50)
-nr.remove_pipet()
+# nr.set_robot_speed(50)
+# nr.remove_pipet()
 
-c9.move_z(300)
+# c9.move_z(300)
 
-nr.c9 = None
-os._exit(0)
+# nr.c9 = None
+# os._exit(0)
 
 
 ##**TEST CAPPING**
-# nr.move_vial_to_clamp(0) #open clamp at the end
-# nr.uncap_clamp_vial() #opens clamp at the end 
-# 
-# nr.recap_clamp_vial()
-# nr.c9.open_clamp()
-# #nr.return_vial_from_clamp(0)
-# nr.c9.move_z(292)
+input("enter when ready")
+
+try:
+    for i in range(1):
+        nr.move_vial_to_clamp(2) #open clamp at the end
+        nr.uncap_clamp_vial() #opens clamp at the end 
+
+        nr.recap_clamp_vial()
+        nr.c9.open_clamp()
+        nr.return_vial_from_clamp()
+        nr.c9.move_z(292)
+        time.sleep(5)
+except KeyboardInterrupt:
+    c9 = None
 
 ##**TEST vortexing before pipette
 # nr.move_vial_to_clamp(5) #open clamp at the end
