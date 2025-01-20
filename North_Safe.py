@@ -295,6 +295,7 @@ class North_Robot:
     def aspirate_from_vial(self, source_vial_num, amount_mL, use_calibration=False, asp_disp_cycles=0, track_height=True, vial_wait_time=0, aspirate_speed=11):
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.check_if_vials_are_open([source_vial_num]), True, "Can't pipet, at least one vial is capped"])
+        error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>=0.2,True,"Can't pipet more than 0.2 mL from small pipet"])
 
         #Move the vial to clamp if needed to aspirate
         if self.check_for_errors(error_check_list):
