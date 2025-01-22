@@ -8,8 +8,6 @@ import sys
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
 
-#12345
-
 class North_Track:
 
     #Controller
@@ -54,9 +52,9 @@ class North_Track:
     def __init__(self, c9):
         self.c9 = c9
         self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python")
-        print(self.well_plate_df)
+        #print(self.well_plate_df)
         self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
-        print(self.num_source)
+        #print(self.num_source)
 
     def set_horizontal_speed(self,vel):
         self.c9.DEFAULT_X_SPEED = vel
@@ -146,16 +144,8 @@ class North_Track:
             #up to "safe" area and move down 
             self.c9.move_axis(6, self.SAFE_MOVE_SOURCE_Y, vel=30)
             self.c9.move_axis(7, self.SAFE_MOVE_SOURCE_X, vel=30)
-            #self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=15)
-
-            #move to WP to pipetting stand
-            #self.c9.move_axis(7, self.NR_WELL_PLATE_X[0], vel=30)
-            #self.c9.move_axis(6, self.NR_WELL_PLATE_Y[0], vel=5)
-            #self.open_gripper()
-            #self.c9.move_axis(6, 0, vel=20)
 
             self.num_source -= 1
-
             
             self.well_plate_df.loc[self.well_plate_df['Location']=='Input','Status'] = self.num_source
             print(self.well_plate_df)
@@ -167,42 +157,40 @@ class North_Track:
             print("Cannot get wellplate from empty stack")
 
 class North_Robot:
-
     #Global variables, must be referenced with 
-    HAS_PIPET = False
     GRIPPER_STATUS = "Open"
     CLAMPED_VIAL = "None"
-    PIPET_DIMS = [] #Item 0 = Length, Item 1 = Distance from top of rack
+    
     VIAL_NAMES = [] #List of vials that do not have caps. These cannot be moved
     VIAL_DF = None #Dataframe tracking vial information
-    PIPET_ARRAY = None
-
     VIAL_FILE = None
-    PIPET_FILE = None
-
+    
     #Pipet rack data
-    ACTIVE_PIPET_RACK = 0 #There are two racks... Rack 0 and Rack 1... This may become deprecated
-    PIPETS_USED = [0,0] #Tracker for each rack... This may become deprecated
+    PIPET_DIMS = [] #Item 0 = Length, Item 1 = Distance from top of rack
+    BLUE_DIMS = [20,77] #Large blue tips (mm)
+    DEFAULT_DIMS = [25,85] #Default Tips from MT (mm)
+    FILTER_DIMS = [24,98] #Large filter tips (mm)
 
-    #Pipet tip dimensions (Future... Let's keep a spreadsheet for this not list them all here)
-    BLUE_DIMS = [20,77]
-    DEFAULT_DIMS = [25,85]
-    FILTER_DIMS = [24,98]
+    HAS_PIPET = False
+    PIPET_FILE = None
+    LOWER_PIPET_ARRAY_INDEX = 0 #Track the status of the pipets used (in the lower rack)
+    HIGHER_PIPET_ARRAY_INDEX = 1 #Track the status of the pipets used (in the upper rack)
+    PIPETS_USED = [0,0] #Tracker for each rack... This may become deprecated
+    DEFAULT_SMALL_TIP_DELTA_Z = -25 #TODO: This value needs to be measured
+    HELD_PIPET_INDEX = None   
 
     #Controller
     c9 = None
     
     #Initialize function
-    def __init__(self, c9, vial_file=None,pipet_file=None):
+    def __init__(self, c9,vial_file=None,pipet_file=None):
         print("Initializing North Robot")
         self.c9 = c9
         try:
             self.VIAL_FILE = vial_file
             self.VIAL_DF = pd.read_csv(vial_file, sep=r"\t", engine="python")
-
             #print(self.VIAL_DF)
             #print(self.VIAL_DF['vial volume (mL)'])
-
             self.VIAL_NAMES = self.VIAL_DF['vial name']
             #print(self.VIAL_NAMES)
         except Exception as e:
@@ -216,7 +204,9 @@ class North_Robot:
         try:
             with open(self.PIPET_FILE) as f:
                 pipets = np.array(f.read().split(','))
-            self.PIPET_ARRAY = pipets.astype(np.int16)
+                self.PIPETS_USED[self.LOWER_PIPET_ARRAY_INDEX]=int(pipets[0])
+                self.PIPETS_USED[self.HIGHER_PIPET_ARRAY_INDEX]=int(pipets[1])
+            #self.PIPET_ARRAY = pipets.astype(np.int16)
         except:    
             print("Cannot open pipet file... using default sequence")
 
@@ -239,34 +229,36 @@ class North_Robot:
         self.PIPET_DIMS = pipet_dims
 
     #Remove the pipet tip
+    #TODO: Change this as needed based on the HELD_PIPET_INDEX (either 0=LOWER_INDEX [1 mL pipet] or 1=UPPER_INDEX [small pipet])
     def remove_pipet(self):
         print("Removing pipet")
         self.c9.goto_safe(p_remove_approach,vel=30)
-        self.c9.goto(p_remove_cap, vel=5)
+        if self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX:
+            self.c9.goto(p_remove_cap, vel=5)
+        elif self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX:
+            self.c9.goto(p_remove_small, vel=5)
         remove_pipet_height = 292 #Constant height to remove the pipet (doesn't change with the pipet type, just moving up)
         self.c9.move_z(remove_pipet_height, vel=20)
         self.HAS_PIPET = False
 
     #Take a pipet tip from the active rack with the active pipet tip dimensions 
-    def get_pipet(self):
+    def get_pipet(self, pipet_rack_index=LOWER_PIPET_ARRAY_INDEX):
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.HAS_PIPET, False, "Can't get pipet, already have pipet tip"])
 
         if self.check_for_errors(error_check_list) == False:
-            try:
-                active_pipet_num = self.PIPET_ARRAY[0] #First available pipet
-            except:
-                active_pipet_num = self.PIPETS_USED[self.ACTIVE_PIPET_RACK]
+            
+            active_pipet_num = self.PIPETS_USED[pipet_rack_index] #First available pipet
 
             num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
-            print(f"Getting pipet number: {active_pipet_num} from rack {self.ACTIVE_PIPET_RACK}")
+            print(f"Getting pipet number: {active_pipet_num} from rack {pipet_rack_index}")
 
             #First move to the xy location 
-            
-            if self.ACTIVE_PIPET_RACK == 0:
+            #TODO: The higher_grid needs to be defined as a location
+            if pipet_rack_index == self.LOWER_PIPET_ARRAY_INDEX:
                 location = p_capture_grid[num]
-            elif self.ACTIVE_PIPET_RACK == 1:
-                location = p_capture_grid_high[num]
+            elif pipet_rack_index == self.HIGHER_PIPET_ARRAY_INDEX: 
+                location = p_capture_high[num]
 
             self.c9.goto_xy_safe(location)
 
@@ -274,13 +266,14 @@ class North_Robot:
             base_height = self.c9.counts_to_mm(3, location[3])
             self.c9.move_z(base_height - self.DEFAULT_DIMS[0] + self.PIPET_DIMS[0]) #Adjust height based off of the distance from the default tip (which the measurements were done for)
 
+            #We have a pipet. What kind of pipet do we have? How many pipets are left in the rack?
             self.HAS_PIPET = True
-            self.PIPETS_USED[self.ACTIVE_PIPET_RACK] += 1
+            self.HELD_PIPET_INDEX = pipet_rack_index
+            self.PIPETS_USED[pipet_rack_index] += 1
 
-            self.PIPET_ARRAY = np.delete(self.PIPET_ARRAY, 0)
+            #self.PIPET_ARRAY = np.delete(self.PIPET_ARRAY, 0)
             self.save_pipet_status(self.PIPET_FILE)
-
-            #print ("Pipets: ", self.PIPETS_USED)
+            #print ("Pipets: ", self.PIPETS_USED) 
 
     def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15):
         self.c9.move_z(height, vel=move_speed)
@@ -305,16 +298,28 @@ class North_Robot:
     def aspirate_from_vial(self, source_vial_num, amount_mL, use_calibration=False, asp_disp_cycles=0, track_height=True, vial_wait_time=0, aspirate_speed=11):
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.check_if_vials_are_open([source_vial_num]), True, "Can't pipet, at least one vial is capped"])
+       
 
         #Move the vial to clamp if needed to aspirate
         if self.check_for_errors(error_check_list):
             print("Moving vial to clamp to uncap")
             self.move_vial_to_clamp(source_vial_num)
             self.uncap_clamp_vial()        
+        
+        if self.HAS_PIPET == True:
+            error_check_list = []
+            error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>=0.25,True,"Can't pipet more than 0.2 mL from small pipet"])
+            self.check_for_errors(error_check_list)
 
         #Check if has pipet, get one if needed
         if self.HAS_PIPET == False:
-            self.get_pipet()
+            if amount_mL <= 0.25:
+                self.get_pipet(pipet_rack_index=self.HIGHER_PIPET_ARRAY_INDEX)
+            elif amount_mL <= 1.0:
+                self.get_pipet(pipet_rack_index=self.LOWER_PIPET_ARRAY_INDEX)
+            else:
+                print("Cannot Aspirate more than 1.0 mL or less than 0.0 mL")
+                return None
         
         print("Pipetting from vial " + self.get_vial_name(source_vial_num) + ", amount: "  + str(amount_mL) + " mL")
         #print("Dispense type: " + dispense_type)
@@ -341,8 +346,7 @@ class North_Robot:
             else:
                 height = VIAL_RACK_BASE_HEIGHT 
   
-        height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
-        height += height_shift_pipet
+        height = self.adjust_height_based_on_pipet_held(height)
 
         #Move to the correct location and pipet
         self.c9.goto_xy_safe(location,vel=15)
@@ -370,11 +374,20 @@ class North_Robot:
         except:
             print("Cannot save updated vial status")
     
+    def adjust_height_based_on_pipet_held(self, height):
+        height_shift_pipet = 0
+        if self.HELD_PIPET_INDEX == self.LOWER_PIPET_ARRAY_INDEX:
+            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
+        elif self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX:
+            height_shift_pipet = self.DEFAULT_SMALL_TIP_DELTA_Z #Adjust height based on difference from default dims
+        height += height_shift_pipet
+        return height
+
     #Measure_Weight gives you the option to report the mass dispensed
     def dispense_into_vial(self, dest_vial_num, amount_mL, dispense_speed=11, measure_weight=False):     
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.check_if_vials_are_open([dest_vial_num]), True, "Can't pipet, at least one vial is capped"])    
-        print("Pipetting into vial " + self.get_vial_name(dest_vial_num))
+        print("Pipetting into vial " + self.get_vial_name(dest_vial_num) + ", amount: " + str(amount_mL) + " mL")
 
         if self.check_for_errors(error_check_list) == False:
             dest_vial_clamped = (self.CLAMPED_VIAL == dest_vial_num) #Is the destination vial clamped?
@@ -386,9 +399,7 @@ class North_Robot:
             else:
                 location = rack_pip[dest_vial_num]
             height = self.c9.counts_to_mm(3, location[3]) #get the z height of these locations
-
-            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
-            height += height_shift_pipet
+            height = self.adjust_height_based_on_pipet_held(height)
 
             #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
             if measure_weight and dest_vial_clamped:
@@ -440,9 +451,7 @@ class North_Robot:
                 continue
 
             height = self.c9.counts_to_mm(3, location[3])
-        
-            height_shift_pipet = self.PIPET_DIMS[1] - self.DEFAULT_DIMS[1] #Adjust height based on the pipet dimensions
-            height += height_shift_pipet    
+            height = self.adjust_height_based_on_pipet_held(height) 
             
             #amount_mL = amounts[i] #*Uncomment if want to dispense multiple amounts in same move(demo)
 
@@ -472,7 +481,7 @@ class North_Robot:
                 #self.c9.default_vel=40
                 self.c9.move_z(125) #move to safe height
                 time.sleep(1)
-                print("last drop")
+                #print("last drop")
                 
             elif dispense_type.lower() == "drop" or dispense_type.lower() == "slow":
                 time.sleep(2)
@@ -487,84 +496,103 @@ class North_Robot:
                 time.sleep(0.2)
                 self.move_rel_z(10)           
                 
-            print("Dispense type: " + dispense_type)
+            #print("Dispense type: " + dispense_type)
             
         return True
 
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, vol_limit=0.95, vol_buffer=0.05):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
 
-        well_plate_dispense_2d_array = well_plate_df.values
-        well_plate_indices = well_plate_df['well_index'].values
-        print("Well plate indices: ", well_plate_indices)
+        well_plate_df_low = well_plate_df.where(well_plate_df<=low_volume_cutoff).fillna(0) # Create a new DataFrame with values below 0.05
+        well_plate_df_high = well_plate_df.mask(well_plate_df <= low_volume_cutoff, 0) #Create a dataframe where the values are above 0.05
 
-        #Step 2: Systematically dispense based one liquid at a time
-        for i in range (0, len(vial_indices)):
+        print(well_plate_df)
+        print(well_plate_df_low)
+        print(well_plate_df_high)
 
-            vial_index = vial_indices[i]          
+        
 
-            vol_needed = np.sum(well_plate_dispense_2d_array[:, i+1])
-            print("Volume Needed: ", vol_needed)
+        well_plate_instructions = [[well_plate_df_high,1.0],[well_plate_df_low,0.2]] #Magic numbers for now
 
-            vial_open = self.check_if_vials_are_open([vial_index])
-
-            if not vial_open:
-                print(f"Vial {vial_index} not open, moving to clamp")
-                self.move_vial_to_clamp(vial_index)
-                self.uncap_clamp_vial()
+        for well_plate_instruction in well_plate_instructions:
             
-              
-            print("Aspirating from Vial: ", vial_index)
-            print("Total volume: ", vol_needed)
-            vol_buffer_n = vol_buffer
+            well_plate_df = well_plate_instruction[0]
+            max_volume = well_plate_instruction[1]
+            
+            well_plate_dispense_2d_array = well_plate_df.values
+            well_plate_indices = well_plate_df.index.tolist() #TODO: This should be more flexible potentially
+            print("Well plate indices: ", well_plate_indices)
 
-            last_index = 0
-            vol_dispensed = 0
-            while round(vol_dispensed,3) < round(vol_needed,3):
-                dispense_vol=0
-                dispense_array = []
-                well_plate_array = []
-                processing=True
-                while processing:
-                    try:
-                        volume = round(well_plate_dispense_2d_array[last_index,i+1],3)
+            #Step 2: Systematically dispense based one liquid at a time
+            for i in range (0, len(vial_indices)):
 
-                        if dispense_vol+volume<=vol_limit:
-                            dispense_vol+=volume
-                            dispense_array.append(round(float(volume),3))
-                            well_plate_array.append(well_plate_indices[last_index])
-                            last_index+=1
-                        else:
+                vial_index = vial_indices[i]          
+
+                vol_needed = np.sum(well_plate_dispense_2d_array[:, i])
+                print("Volume Needed: ", vol_needed)
+
+                vial_open = self.check_if_vials_are_open([vial_index])
+
+                if not vial_open:
+                    print(f"Vial {vial_index} not open, moving to clamp")
+                    self.move_vial_to_clamp(vial_index)
+                    self.uncap_clamp_vial()
+                
+                print("Aspirating from Vial: ", vial_index)
+                print("Total volume: ", vol_needed)
+                last_index = 0
+                vol_dispensed = 0
+                while round(vol_dispensed,3) < round(vol_needed,3):
+                    dispense_vol=0
+                    dispense_array = []
+                    well_plate_array = []
+                    processing=True
+                    while processing:
+                        try:
+                            volume = round(well_plate_dispense_2d_array[last_index,i],3)
+
+                            if dispense_vol+volume<=max_volume:
+                                dispense_vol+=volume
+                                dispense_array.append(round(float(volume),3))
+                                well_plate_array.append(well_plate_indices[last_index])
+                                last_index+=1
+                            else:
+                                processing=False
+                        except:
                             processing=False
-                    except:
-                        processing=False
-                print(f"Amount to Dispense:{dispense_vol}")
-                print(f"Aspirating solution {vial_index}: {dispense_vol+vol_buffer_n} uL")
-                self.aspirate_from_vial(vial_index,dispense_vol+vol_buffer_n)
-                vol_buffer_n=0
-
-                #indices to dispense... this is not right
-                #well_plate_array = np.arange((last_index-len(dispense_array)),last_index,1)
-                #well_plate_array = [int(x) for x in well_plate_array]
-
-                print("Indices dipensed:", well_plate_array)
-                print("Dispense volumes:", dispense_array)
-                print("Dispense sum", np.sum(dispense_array))
-
-                self.dispense_into_wellplate(well_plate_array,dispense_array)
-
-                vol_dispensed += dispense_vol
-
-                print(f"Solution Dispensed {vial_index}: {vol_dispensed} uL")     
+                    print(f"Amount to Dispense:{dispense_vol}")
             
-            self.dispense_into_vial(vial_index,vol_buffer)
+                    vol_buffer=0 #Might be nice to aspirate a bit extra if possible, especially for many dispenses
+                    if vol_dispensed == 0:
+                        vol_buffer = min(max_volume-dispense_vol,max_volume/20) #Get a buffer the first time
+                    else:
+                        vol_buffer = min(0, max_volume-dispense_vol-vol_buffer) #Buffer is either 0 or somewhat less than 0, meaning we have to aspirate less than target
 
-            self.remove_pipet()
+                    print(f"Aspirating solution {vial_index}: {dispense_vol+vol_buffer} uL")
+                    self.aspirate_from_vial(vial_index,dispense_vol+vol_buffer)
+  
+                    #indices to dispense... this is not right
+                    #well_plate_array = np.arange((last_index-len(dispense_array)),last_index,1)
+                    #well_plate_array = [int(x) for x in well_plate_array]
 
-            if str(self.CLAMPED_VIAL).isnumeric():
-                self.recap_clamp_vial()
-                self.return_vial_from_clamp()
+                    print("Indices dipensed:", well_plate_array)
+                    print("Dispense volumes:", dispense_array)
+                    print("Dispense sum", np.sum(dispense_array))
+
+                    self.dispense_into_wellplate(well_plate_array,dispense_array)
+
+                    vol_dispensed += dispense_vol
+
+                    print(f"Solution Dispensed {vial_index}: {vol_dispensed} uL")     
+                
+                self.dispense_into_vial(vial_index,max_volume)
+
+                self.remove_pipet()
+
+                if str(self.CLAMPED_VIAL).isnumeric():
+                    self.recap_clamp_vial()
+                    self.return_vial_from_clamp()
 
         return True
 
@@ -692,7 +720,7 @@ class North_Robot:
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not
             self.c9.close_clamp() #Make sure vial is clamped
-            self.c9.cap(revs=1.8, torque_thresh = 1300) #Cap the vial #Cap the vial
+            self.c9.cap(revs=1.9, torque_thresh = 400) #Cap the vial #Cap the vial
             self.c9.open_gripper() #Open the gripper to release the cap
             self.GRIPPER_STATUS = "Open"
 
@@ -847,7 +875,7 @@ class North_Robot:
         self.VIAL_DF.to_csv(file, index=False,sep='\t')
 
     def save_pipet_status(self,file):
-        save_data = ','.join(map(str, self.PIPET_ARRAY.flatten()))
+        save_data = ','.join(map(str, self.PIPETS_USED))
         with open(file, "w") as output:
             output.write(save_data.replace('\0', ''))
 
@@ -855,6 +883,9 @@ class North_Robot:
         self.c9.move_pump(0,0)
         self.c9.open_gripper()
         self.c9.open_clamp()
+        self.HELD_PIPET_INDEX = 0 
+        self.remove_pipet()
+        self.HELD_PIPET_INDEX = 1
         self.remove_pipet()
 
     def finish_pipetting(self):

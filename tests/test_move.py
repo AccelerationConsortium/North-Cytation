@@ -23,7 +23,7 @@ nr = North_Safe.North_Robot(c9,VIAL_FILE)
 nr.set_robot_speed(20)
 
 c9.move_z(300)
-#nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
+nr.reset_after_initialization() ##turn back on the home carousel & zerosscale
 
 # nr.set_pipet_tip_type(BLUE_DIMS, 0) #only works with default dims (because of going to location -- not height asdjusted) & bottom row pipettes cleared!!
 

@@ -15,12 +15,16 @@ class Lash_E:
     nr_track = None
     cytation = None
 
-    def __init__(self, vial_file):
+    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True):
         c9 = NorthC9("A", network_serial="AU06CNCF")
-        self.nr_robot = North_Robot(c9, vial_file)
-        self.nr_track = North_Track(c9)
-        self.cytation = Biotek()
-        self.nr_robot.reset_after_initialization()
+        if initialize_robot:
+            self.nr_robot = North_Robot(c9, vial_file)
+            self.nr_robot.reset_after_initialization()
+        if initialize_track:
+            self.nr_track = North_Track(c9)
+        if initialize_biotek:
+            self.cytation = Biotek()
+        
 
     def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False):
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)
