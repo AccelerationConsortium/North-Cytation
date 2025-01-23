@@ -500,7 +500,7 @@ class North_Robot:
             
         return True
 
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.20):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
 
@@ -509,9 +509,7 @@ class North_Robot:
 
         print(well_plate_df)
         print(well_plate_df_low)
-        print(well_plate_df_high)
-
-        
+        print(well_plate_df_high)       
 
         well_plate_instructions = [[well_plate_df_high,1.0],[well_plate_df_low,0.2]] #Magic numbers for now
 
