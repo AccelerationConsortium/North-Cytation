@@ -11,7 +11,8 @@ import numpy as np
 #export_directory = Path("C:\Users\Imaging Controller\Desktop\utoronto_demo\Calibration Data\Calibration Jan 2025") #edit
 
 
-EXPORT_FILEPATH = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\Calibration Data\Calibration Jan 2025\calibration_water_250_multi_constant.txt" #put solvent, dispense_method, into notes
+EXPORT_FILEPATH_1 = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\Calibration Data\Calibration Jan 2025\calibration_water_250_multi_variable_1.txt" #put solvent, dispense_method, into notes
+EXPORT_FILEPATH_2 = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\Calibration Data\Calibration Jan 2025\calibration_water_250_multi_variable_buffer_1.txt" #put solvent, dispense_method, into notes
 #ASPIRATE_VOLUMES = [0.75, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05]
 #ASPIRATE_VOLUMES = [0.04, 0.03, 0.02, 0.01]
 ASPIRATE_VOLUMES = [0.075, 0.05, 0.025, 0.01, 0.005]
@@ -28,8 +29,9 @@ def consistent_v_multi(volumes, replicates):
         multi_volumes.append(temp_volumes)
     return multi_volumes
 
-ASPIRATE_VOLUMES_MULTI = consistent_v_multi([0.075, 0.05, 0.025, 0.01, 0.005], 3)
+#ASPIRATE_VOLUMES_MULTI = consistent_v_multi([0.075, 0.05, 0.025, 0.01, 0.005], 3) #for constant V
 
+ASPIRATE_VOLUMES_MULTI = [[0.075, 0.05, 0.025, 0.01, 0.005], [0.075, 0.05, 0.025, 0.01, 0.005], [0.075, 0.05, 0.025, 0.01, 0.005]]
 
 
 def dispense_all_calibration(input_vial_status_file, source_vial, aspirate_volumes, replicates, dest_vial_position, export_path, buffer = 0):
@@ -131,4 +133,5 @@ def multi_dispense_calibration(input_vial_status_file, source_vial, aspirate_vol
         lash_e = None
     
 
-multi_dispense_calibration(input_vial_status_file="../utoronto_demo/status/vial_status_wellplate - test.txt", source_vial = 0, aspirate_volume_list=ASPIRATE_VOLUMES_MULTI, dest_vial_position=1, export_path = EXPORT_FILEPATH, buffer=0)
+#multi_dispense_calibration(input_vial_status_file="../utoronto_demo/status/vial_status_wellplate - test.txt", source_vial = 0, aspirate_volume_list=ASPIRATE_VOLUMES_MULTI, dest_vial_position=1, export_path = EXPORT_FILEPATH_2, buffer=0.01)
+multi_dispense_calibration(input_vial_status_file="../utoronto_demo/status/vial_status_wellplate - test.txt", source_vial = 0, aspirate_volume_list=ASPIRATE_VOLUMES_MULTI, dest_vial_position=1, export_path = EXPORT_FILEPATH_1, buffer=0)
