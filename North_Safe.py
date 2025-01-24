@@ -398,15 +398,15 @@ class North_Robot:
                 location = vial_clamp_pip
             else:
                 location = rack_pip[dest_vial_num]
-            height = self.c9.counts_to_mm(3, location[3]) #get the z height of these locations
-            height = self.adjust_height_based_on_pipet_held(height)
+            height = self.c9.counts_to_mm(3, location[3]) #baseline z-height. Where is this? 
+            height = self.adjust_height_based_on_pipet_held(height) #<-- Potential issue here
 
             #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
             if measure_weight and dest_vial_clamped:
                 initial_mass = self.c9.read_steady_scale()
 
             self.c9.goto_xy_safe(location, vel=15)
-            self.pipet_from_location(amount_mL, dispense_speed, height+20, aspirate = False)
+            self.pipet_from_location(amount_mL, dispense_speed, height+60, aspirate = False) #What is this 20? Why do we even need it?
 
             #Track the added volume in the dataframe
             self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']=self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']+amount_mL
@@ -500,20 +500,21 @@ class North_Robot:
             
         return True
 
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05):
+    def dispense_from_vial_into_vial(self):
+        None
+
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.10):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
 
         well_plate_df_low = well_plate_df.where(well_plate_df<=low_volume_cutoff).fillna(0) # Create a new DataFrame with values below 0.05
         well_plate_df_high = well_plate_df.mask(well_plate_df <= low_volume_cutoff, 0) #Create a dataframe where the values are above 0.05
 
-        print(well_plate_df)
-        print(well_plate_df_low)
-        print(well_plate_df_high)
+        #print(well_plate_df)
+        #print(well_plate_df_low)
+        #print(well_plate_df_high)
 
-        
-
-        well_plate_instructions = [[well_plate_df_high,1.0],[well_plate_df_low,0.2]] #Magic numbers for now
+        well_plate_instructions = [[well_plate_df_low,0.25],[well_plate_df_high,1.0]] #Magic numbers for now
 
         for well_plate_instruction in well_plate_instructions:
             
@@ -564,13 +565,19 @@ class North_Robot:
                     print(f"Amount to Dispense:{dispense_vol}")
             
                     vol_buffer=0 #Might be nice to aspirate a bit extra if possible, especially for many dispenses
+                    vol_remaining=0
                     if vol_dispensed == 0:
                         vol_buffer = min(max_volume-dispense_vol,max_volume/20) #Get a buffer the first time
+                        vol_remaining = vol_buffer
                     else:
                         vol_buffer = min(0, max_volume-dispense_vol-vol_buffer) #Buffer is either 0 or somewhat less than 0, meaning we have to aspirate less than target
+                        vol_remaining = vol_remaining+vol_buffer
 
                     print(f"Aspirating solution {vial_index}: {dispense_vol+vol_buffer} uL")
                     self.aspirate_from_vial(vial_index,dispense_vol+vol_buffer)
+                    
+                    if vol_buffer > 0:
+                        self.dispense_into_vial(vial_index,vol_buffer/2)
   
                     #indices to dispense... this is not right
                     #well_plate_array = np.arange((last_index-len(dispense_array)),last_index,1)
@@ -586,7 +593,9 @@ class North_Robot:
 
                     print(f"Solution Dispensed {vial_index}: {vol_dispensed} uL")     
                 
-                self.dispense_into_vial(vial_index,max_volume)
+                print("Vol remaining, returning to vial: ", vol_remaining)
+                self.dispense_into_vial(vial_index,vol_remaining)
+                #self.dispense_into_vial(vial_index,dispense_vol+vol_buffer-np.sum(dispense_array))
 
                 self.remove_pipet()
 
