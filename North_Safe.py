@@ -504,6 +504,7 @@ class North_Robot:
         None
 
     def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.10):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.20):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
 
