@@ -105,5 +105,5 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path, initial_
         
 #Note I will have a conversion of "A1" to 0 and "A2" to 1 for the future, so you could do ["A1", "A2", "A3"] if you prefer that over 0,1,2
 #Your protocol needs to be made inside the gen5 software, including the automated export
-sample_workflow(".txt", r"C:\Protocols\Spectral_Automation.prt")
+sample_workflow("../utoronto_demo/status/Peroxide_assay_sample_input_vials_SQ.txt", r"C:\Protocols\Serena_Test_A1A3.prt")
 

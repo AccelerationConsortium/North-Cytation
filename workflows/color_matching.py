@@ -72,14 +72,14 @@ input("Only hit enter if the status of the vials (including open/close) is corre
 
 #List of measurement files for Cytation. Unfortunately this will be annoying!
 #TODO: Create this list of files,adjust paths, see if I can edit them
-file_0=None
-file_1=None
-file_2=None
-file_3=None
+file_0="C://Protocols//Color_Matching//SweepA1A6.prt"
+file_1="C://Protocols//Color_Matching//SweepA7A12.prt"
+file_2="C://Protocols//Color_Matching//SweepB1B6.prt"
+file_3="C://Protocols//Color_Matching//SweepB7B12.prt"
 file_list = [file_1, file_2, file_3]
 
 #TODO: Change this to the folder we save to upstairs
-SOURCE_DATA_FOLDER = "C://Users//owenm//OneDrive//Desktop//spectral difference"
+SOURCE_DATA_FOLDER = "C://Users//Imaging Controller//Desktop//Color_Matching"
 
 #Get initial recs
 campaign = recommender.initialize_campaign()
@@ -89,14 +89,14 @@ print(recommendations)
 #Experimental workflow and data gathering
 #create_initial_colors(file_0,5,recommendations)
 
-#Get analysis
-results,ref_file = analyze_data(SOURCE_DATA_FOLDER)
-print("Results: ", results)
+# #Get analysis
+# results,ref_file = analyze_data(SOURCE_DATA_FOLDER)
+# print("Results: ", results)
 
-#Subsequent measurements: TODO add in condition for stopping
-for i in range (0,3):
-    campaign,recommendations = recommender.get_new_recs_from_results(campaign,recommendations,results,6)
-    print("New Recs: ", recommendations)
-    #find_closer_color_match(6*i,file_list[i])
-    results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file)
-    print("Results: ", results)
+# #Subsequent measurements: TODO add in condition for stopping
+# for i in range (0,3):
+#     campaign,recommendations = recommender.get_new_recs_from_results(campaign,recommendations,results,6)
+#     print("New Recs: ", recommendations)
+#     #find_closer_color_match(6*i,file_list[i])
+#     results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file)
+#     print("Results: ", results)
