@@ -6,7 +6,7 @@ from North_Safe import North_Track
 from north import NorthC9
 import pandas as pd
 from biotek import Biotek
-import photoreactor_controller as photo_reactor
+from photoreactor_controller import Photoreactor_Controller
 import time
 
 class Lash_E:
@@ -14,8 +14,9 @@ class Lash_E:
     nr_robot = None
     nr_track = None
     cytation = None
+    photoreactor = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True):
+    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True):
         c9 = NorthC9("A", network_serial="AU06CNCF")
         if initialize_robot:
             self.nr_robot = North_Robot(c9, vial_file)
@@ -24,7 +25,9 @@ class Lash_E:
             self.nr_track = North_Track(c9)
         if initialize_biotek:
             self.cytation = Biotek()
-        
+        if initialize_photoreactor:
+            self.photoreactor = Photoreactor_Controller()
+            self.photoreactor.initialize_photoreactor()
 
     def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False):
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)

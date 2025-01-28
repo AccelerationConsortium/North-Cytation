@@ -336,6 +336,12 @@ class North_Robot:
         #The height at which the pipet touches the ground for the 1 mL pipet
         CLAMP_BASE_HEIGHT = 114.5
         VIAL_RACK_BASE_HEIGHT = 67.25
+        PR_BASE_HEIGHT = 109
+
+        MIN_SMALLPIP_HEIGHT_VIAL_RACK = 60.70 #At  ~3 mL
+        MIN_SMALLPIP_HEIGHT_VIAL_RACK_LEFT_EDGE = 47.80 #At ~0.5 mL
+        MIN_SMALLPIP_HEIGHT_CLAMP = 92.03 #At ~0 mL
+        MIN_SMALLPIP_HEIGHT_PR = 64.28 #At ~ 2 mL
 
         #Aspirate from source... Need to adjust aspiration height based off of existing volume
         if source_vial_clamped:
