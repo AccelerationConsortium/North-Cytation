@@ -1,6 +1,6 @@
 import sys
 sys.path.append("../utoronto_demo")
-from master_usdl_coordinator import Lash_E
+#from master_usdl_coordinator import Lash_E
 import pandas as pd
 import numpy as np
 import analysis.spectral_difference as spec_dif
@@ -68,7 +68,7 @@ print(vial_status)
 input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-lash_e = Lash_E(input_vial_status_file)
+#lash_e = Lash_E(input_vial_status_file)
 
 #List of measurement files for Cytation. Unfortunately this will be annoying!
 #TODO: Create this list of files,adjust paths, see if I can edit them
@@ -87,7 +87,7 @@ campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations)
 
 #Experimental workflow and data gathering
-create_initial_colors(file_0,5,recommendations)
+#create_initial_colors(file_0,5,recommendations)
 
 #Get analysis
 results,ref_file = analyze_data(SOURCE_DATA_FOLDER)
