@@ -1,3 +1,5 @@
+import sys
+sys.path.append(r"C:\Users\Imaging Controller\anaconda3\Lib\site-packages")
 import baybe
 from baybe.targets import NumericalTarget, TargetMode, TargetTransformation
 from baybe.objectives import SingleTargetObjective

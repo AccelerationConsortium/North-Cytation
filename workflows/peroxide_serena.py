@@ -20,23 +20,23 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path):
     #lash_e.grab_new_wellplate()
     
     #Step 1: Add 20 µL "reagent A" (vial 0) to "reagent B" (vial 1).
-    lash_e.nr_robot.aspirate_from_vial(0, 0.02)
-    lash_e.nr_robot.dispense_into_vial(1, 0.02)
-    lash_e.remove_pipet()
+    lash_e.nr_robot.aspirate_from_vial(47, 0.02)
+    lash_e.nr_robot.dispense_into_vial(43, 0.02)
+    lash_e.nr_robot.remove_pipet()
     #OAM: Better to do 20 uL with the small tip, then remove it
     #The small tip can't do the 500 uL in the next steps, so it has to be 200 uL or switch tips
     
     for _ in range (3):
-        lash_e.nr_robot.aspirate_from_vial(1, 0.25)
-        lash_e.nr_robot.dispense_into_vial(1, 0.25)
+        lash_e.nr_robot.aspirate_from_vial(43, 0.25)
+        lash_e.nr_robot.dispense_into_vial(43, 0.25)
     lash_e.nr_robot.remove_pipet() # This step is for pipetting up and down *3 to simulate mixing.
     
     #Step 2: incubate reagent A + B = "Working Reagent" (Vial 1) for 20 min
-    time.sleep(1200)
+    #time.sleep(1200)
 
     #Step 3: Add 150 µL "Woring Reagent" (vial 1) to 950 µL deionized water (Vials 6-11) to dilute the Working Reagent.
-    for i in range (6, 7): 
-        lash_e.nr_robot.aspirate_from_vial(1, 0.150)
+    for i in range (45, 46): 
+        lash_e.nr_robot.aspirate_from_vial(43, 0.150)
         lash_e.nr_robot.dispense_into_vial(i, 0.150)
         for _ in range (3):
             lash_e.nr_robot.aspirate_from_vial(i, 0.25)
@@ -53,10 +53,10 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path):
     #start_time = time.time()
     #next_plate_reading = incubation_tracker["start_time"] + incubation_time
  
-    for i in range (6, 7):
+    for i in range (45, 46):
         #next_addition_time = start_time + (i-6) * interval
         if True: #time.time() == next_addition_time:
-            lash_e.nr_robot.aspirate_from_vial(1, 0.02)
+            lash_e.nr_robot.aspirate_from_vial(2, 0.02)
             lash_e.nr_robot.dispense_into_vial(i, 0.02)
             for _ in range (3):
                 lash_e.nr_robot.aspirate_from_vial(i, 0.25)
@@ -82,5 +82,5 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path):
         
 #Note I will have a conversion of "A1" to 0 and "A2" to 1 for the future, so you could do ["A1", "A2", "A3"] if you prefer that over 0,1,2
 #Your protocol needs to be made inside the gen5 software, including the automated export
-sample_workflow(".txt", r"C:\Protocols\Spectral_Automation.prt")
+sample_workflow("../utoronto_demo/status/Peroxide_assay_sample_input_vials_SQ.txt", r"C:\Protocols\Serena_Test_A1A3.prt")
 
