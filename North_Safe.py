@@ -230,7 +230,6 @@ class North_Robot:
         self.PIPET_DIMS = pipet_dims
 
     #Remove the pipet tip
-    #TODO: Change this as needed based on the HELD_PIPET_INDEX (either 0=LOWER_INDEX [1 mL pipet] or 1=UPPER_INDEX [small pipet])
     def remove_pipet(self):
         print("Removing pipet")
         self.c9.goto_safe(p_remove_approach,vel=30)
@@ -296,10 +295,9 @@ class North_Robot:
     #Pipet from a vial into another vial
     #Use calibration (not implemented) is if you want to adjust the volume based off a known calibration
     #Aspirate conditioning is an alternate way to aspirate (up and down some number of cycles)
-    def aspirate_from_vial(self, source_vial_num, amount_mL, specified_tip=None, use_calibration=False, asp_disp_cycles=0, track_height=True, vial_wait_time=0, aspirate_speed=11):
+    def aspirate_from_vial(self, source_vial_num, amount_mL, move_to_aspirate=True, specified_tip=None, use_calibration=False, asp_disp_cycles=0, track_height=True, vial_wait_time=0, aspirate_speed=11):
         error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.check_if_vials_are_open([source_vial_num]), True, "Can't pipet, at least one vial is capped"])
-       
+        error_check_list.append([self.is_vial_pipetable(source_vial_num), True, "Can't pipet from vial. Vial may be marked as closed."])
 
         #Move the vial to clamp if needed to aspirate
         if self.check_for_errors(error_check_list):
@@ -361,7 +359,8 @@ class North_Robot:
         height = self.adjust_height_based_on_pipet_held(height)
 
         #Move to the correct location and pipet
-        self.c9.goto_xy_safe(location,vel=15)
+        if move_to_aspirate:
+            self.c9.goto_xy_safe(location,vel=15)
         #If you want to have extra aspirate and dispense steps
         for i in range (0, asp_disp_cycles):
             self.pipet_from_location(amount_mL, aspirate_speed, height, True)
@@ -394,10 +393,18 @@ class North_Robot:
         height += height_shift_pipet
         return height
 
+    #TODO: Move the vial to a new area, for example to make it more accessible. 
+    def move_vial(initial_index, final_index):
+        None
+
+    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True):
+        self.aspirate_from_vial(source_vial_index,volume,move_to_aspirate=move_to_aspirate)
+        self.dispense_into_vial(dest_vial_index,volume,move_to_dispense=move_to_dispense)
+
     #Measure_Weight gives you the option to report the mass dispensed
     def dispense_into_vial(self, dest_vial_num, amount_mL, initial_move=True,dispense_speed=11, measure_weight=False):     
         error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.check_if_vials_are_open([dest_vial_num]), True, "Can't pipet, at least one vial is capped"])    
+        error_check_list.append([self.is_vial_pipetable(dest_vial_num), True, "Can't pipet, at least one vial is capped"])    
         print("Pipetting into vial " + self.get_vial_name(dest_vial_num) + ", amount: " + str(amount_mL) + " mL")
 
         if self.check_for_errors(error_check_list) == False:
@@ -642,7 +649,7 @@ class North_Robot:
         error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot move vial to clamp, gripper full"])
         error_check_list.append([self.HAS_PIPET, False, "Cannot move vial to clamp, robot holding pipet"])
         error_check_list.append([str(self.CLAMPED_VIAL).isnumeric(), False, "Cannot move vial to clamp, clamp full"])
-        error_check_list.append([self.check_if_vials_are_open([vial_num]), False, "Can't move vial, vial is uncapped"])
+        error_check_list.append([self.is_vial_movable(vial_num), True, "Can't move vial, vial is uncapped."])
 
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(rack[vial_num]) #move to vial
@@ -685,7 +692,7 @@ class North_Robot:
         error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot move vial to clamp, gripper full"])
         error_check_list.append([self.HAS_PIPET, False, "Cannot move vial to clamp, robot holding pipet"])
         #error_check_list.append([str(self.CLAMPED_VIAL).isnumeric(), False, "Cannot move vial to clamp, clamp full"])
-        error_check_list.append([self.check_if_vials_are_open([vial_num]), False, "Can't move vial, vial is uncapped"])
+        error_check_list.append([self.is_vial_movable(vial_num), True, "Can't move vial, vial is uncapped"])
 
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(rack[vial_num]) #move to vial
@@ -848,13 +855,21 @@ class North_Robot:
             name = str(vial_num)
         return name
             
-    def check_if_vials_are_open(self, vials_to_check):
-
-        all_open = True
-        for vial in vials_to_check:
-            if not (self.VIAL_DF.at[vial, 'open']):
-                all_open = False
-        return all_open
+    def is_vial_movable(self, vial_index):
+        movable = False
+        try: #New syntax for the vial file
+            movable = (self.VIAL_DF.at[vial_index, 'cap_status'] == "close_cap" or  self.VIAL_DF.at[vial_index, 'cap_status'] == "open_cap")
+        except: #Old syntax for the vial file
+            movable = not self.VIAL_DF.at[vial_index, 'open']
+        return movable
+    
+    def is_vial_pipetable(self, vial_index):
+        pipetable = False
+        try: #New syntax for the vial file
+            pipetable = (self.VIAL_DF.at[vial_index, 'cap_status'] == "no_cap" or  self.VIAL_DF.at[vial_index, 'cap_status'] == "open_cap")
+        except: #Old syntax for the vial file
+            pipetable = self.VIAL_DF.at[vial_index, 'open']
+        return pipetable
 
     #Get adjust the aspiration height based on how much is there
     def get_aspirate_height(self, amount_vial, amount_to_withdraw, base_height, buffer=0.5):
