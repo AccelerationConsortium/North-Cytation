@@ -46,8 +46,8 @@ def generate_random_matrix(rows, cols, row_sum, divisible_by, min_value):
 
 
 # Parameters
-rows = 12 #number of samples generated
-replicates = 2 #number of replicates
+rows = 3 #number of samples generated
+replicates = 1 #number of replicates
 cols = 4 #number of colors
 
 row_sum = 250 #max per well 
@@ -56,19 +56,19 @@ min_value = 40 #It's actually divis_by + this value
 
 data_colors_uL = generate_random_matrix(rows, cols, row_sum, divisible_by, min_value)/1000
 
-print(data_colors_uL)
-
 print("Row sums:", np.sum(data_colors_uL * 1000, axis=1))  # Should all equal 250
 
 data_colors_uL = np.repeat(data_colors_uL, replicates, axis=0)
-print(data_colors_uL)
 
 sum_colors = np.sum(data_colors_uL,0)
-print(sum_colors) #how much of each volume is used
+print("Total volume per vial:", sum_colors) #how much of each volume is used
 
 #needed files: 1. vial_status 2.wellplate_recipe
 VIAL_FILE = "../utoronto_demo/status/vials_color.txt" #txt
+vial_df = pd.read_csv(VIAL_FILE, sep=r'\t', engine='python')
+vial_indices = vial_df['vial index'].values
+print("Vial indices:", vial_indices)
 
 lash_e = Lash_E(VIAL_FILE, initialize_biotek=False)
 
-lash_e.nr_robot.dispense_from_vials_into_wellplate(pd.DataFrame(data_colors_uL), [0,1,2,3])
+lash_e.nr_robot.dispense_from_vials_into_wellplate(pd.DataFrame(data_colors_uL), vial_indices)
