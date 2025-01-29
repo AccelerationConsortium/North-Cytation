@@ -304,11 +304,6 @@ class North_Robot:
             print("Moving vial to clamp to uncap")
             self.move_vial_to_clamp(source_vial_num)
             self.uncap_clamp_vial()        
-        
-        if self.HAS_PIPET == True:
-            error_check_list = []
-            error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>=0.25,True,"Can't pipet more than 0.25 mL from small pipet"])
-            self.check_for_errors(error_check_list)
 
         #Check if has pipet, get one if needed
         if self.HAS_PIPET == False:
@@ -325,6 +320,15 @@ class North_Robot:
         else:
             print("Not getting pipet, machine has pipet already")
         
+        if self.HAS_PIPET == True:
+            error_check_list = []
+            error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>=0.25,True,"Can't pipet more than 0.25 mL from small pipet"])
+            error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL<0.01,True,"Can't pipet less than 10 uL from small pipet"])
+            error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL>=1.00,True,"Can't pipet more than 1.00 mL from large pipet"])
+            error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL<0.025,True,"Can't pipet less than 25 uL from large pipet"])
+            if self.check_for_errors(error_check_list): #If pipets are in ranges that don't work
+                return False
+
         print("Pipetting from vial " + self.get_vial_name(source_vial_num) + ", amount: "  + str(amount_mL) + " mL")
         #print("Dispense type: " + dispense_type)
         
@@ -397,9 +401,29 @@ class North_Robot:
     def move_vial(initial_index, final_index):
         None
 
-    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True):
-        self.aspirate_from_vial(source_vial_index,volume,move_to_aspirate=move_to_aspirate)
+    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True, buffer_vol=0.01):
+        if volume < 0.2 and volume >= 0.02:
+            tip_type = self.HIGHER_PIPET_ARRAY_INDEX
+            max_volume = 0.25
+        elif volume >= 0.2 and volume <= 1.00:
+            tip_type = self.LOWER_PIPET_ARRAY_INDEX
+            max_volume = 1.00
+        else:
+            print(f"Cannot accurately dispense: {volume} mL")
+            return False
+        
+        extra_aspirate = 0
+        if max_volume-volume >= 2*buffer_vol:
+            extra_aspirate = 2*buffer_vol
+        
+        self.aspirate_from_vial(source_vial_index,volume+extra_aspirate,move_to_aspirate=move_to_aspirate,specified_tip=tip_type)
+        if extra_aspirate > 0:
+            self.dispense_into_vial(source_vial_index,buffer_vol,move_to_dispense=False)
+        
         self.dispense_into_vial(dest_vial_index,volume,move_to_dispense=move_to_dispense)
+        
+        if extra_aspirate > 0:
+            self.dispense_into_vial(source_vial_index,buffer_vol,move_to_dispense=move_to_dispense)
 
     #Measure_Weight gives you the option to report the mass dispensed
     def dispense_into_vial(self, dest_vial_num, amount_mL, initial_move=True,dispense_speed=11, measure_weight=False):     
@@ -417,7 +441,7 @@ class North_Robot:
             else:
                 location = rack_pip[dest_vial_num]
             height = self.c9.counts_to_mm(3, location[3]) #baseline z-height. Where is this? 
-            height = self.adjust_height_based_on_pipet_held(height) #<-- Potential issue here
+            height = self.adjust_height_based_on_pipet_held(height)
 
             #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
             if measure_weight and dest_vial_clamped:
@@ -426,13 +450,7 @@ class North_Robot:
             if initial_move:
                 self.c9.goto_xy_safe(location, vel=15)
 
-            #Note to Monique: I think this is a locator issue
-            if dest_vial_clamped:
-                add_height = 20
-            else:
-                add_height = 55
-
-            self.pipet_from_location(amount_mL, dispense_speed, height+add_height, aspirate = False)
+            self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False)
 
             #Track the added volume in the dataframe
             self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']=self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']+amount_mL
@@ -526,19 +544,12 @@ class North_Robot:
             
         return True
 
-    def dispense_from_vial_into_vial(self, aspirate_vial, aspirate_volume, dispense_vial, dispense_volume):
-        None
-
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.10):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.01):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
 
-        well_plate_df_low = well_plate_df.where(well_plate_df<=low_volume_cutoff).fillna(0) # Create a new DataFrame with values below 0.10
-        well_plate_df_high = well_plate_df.mask(well_plate_df <= low_volume_cutoff, 0) #Create a dataframe where the values are above 0.10
-
-        #print(well_plate_df)
-        #print(well_plate_df_low)
-        #print(well_plate_df_high)
+        well_plate_df_low = well_plate_df.where(well_plate_df<low_volume_cutoff).fillna(0) # Create a new DataFrame with values below the cutoff
+        well_plate_df_high = well_plate_df.mask(well_plate_df < low_volume_cutoff, 0) #Create a dataframe where the values are above the cutoff
 
         well_plate_instructions = [[well_plate_df_high,1.0,self.LOWER_PIPET_ARRAY_INDEX],[well_plate_df_low,0.25,self.HIGHER_PIPET_ARRAY_INDEX]] #Magic numbers for now
 
@@ -594,12 +605,12 @@ class North_Robot:
                     extra_aspirate_vol=0 #Might be nice to aspirate a bit extra if possible, especially for many dispenses
                     sacrificial_dispense_vol=0 #Amount to dispense back
                     if vol_dispensed == 0:
-                        extra_aspirate_vol = min(max_volume-dispense_vol,max_volume/10) #Either max/10 (eg 100 uL or 25uL) or MAX-DISPENSE (which could be as low as 0 uL)
-                        if extra_aspirate_vol == max_volume/10:
-                            sacrificial_dispense_vol=max_volume/20
+                        extra_aspirate_vol = min(max_volume-dispense_vol,buffer_vol*2) #Either 20 uL or MAX-DISPENSE (which could be as low as 0 uL)
+                        if extra_aspirate_vol == buffer_vol*2:
+                            sacrificial_dispense_vol=buffer_vol
                     else:
-                        extra_aspirate_vol = min(max_volume/20, max_volume-dispense_vol-vol_remaining) #Either max/20 (50 uL or 12.5 uL) or less
-                        if extra_aspirate_vol == max_volume/20:
+                        extra_aspirate_vol = min(buffer_vol, max_volume-dispense_vol-vol_remaining) #Either 20 uL or less
+                        if extra_aspirate_vol == buffer_vol:
                             sacrificial_dispense_vol = extra_aspirate_vol #Just do this if there is enough
                     
                     vol_remaining = vol_remaining+extra_aspirate_vol-sacrificial_dispense_vol #What's leftover?
@@ -611,7 +622,7 @@ class North_Robot:
                     self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index)
                     
                     if extra_aspirate_vol > 0:
-                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,initial_move=False)
+                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,move_to_aspirate=False)
   
                     #indices to dispense... this is not right
                     #well_plate_array = np.arange((last_index-len(dispense_array)),last_index,1)
