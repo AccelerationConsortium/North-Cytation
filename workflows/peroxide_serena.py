@@ -6,9 +6,11 @@ import pandas as pd
 import numpy as np
 
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2):
+    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
     lash_e.nr_robot.dispense_from_vial_into_vial(reaction_mixture_index,sample_index,volume=volume)
     mix_current_sample(lash_e,sample_index)
     lash_e.nr_robot.remove_pipet()
+    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
 
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,well_volume=0.2):
     lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates)
@@ -59,7 +61,8 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path, initial_
     #Step 4: Move the reaction mixture vial (vial 2) to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_photoreactor(reaction_mixture_index, reactor_num=1)
     #Turn on photoreactor
-    #Set photoreactor rpm to 600 
+    lash_e.photoreactor.turn_on_reactor_led(reactor_num=1,intensity=100)
+    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
 
     #Step 5: Add 200 µL "reaction mixture" (vial in the photoreactor) to "Diluted Working Reagent" (Vials 6-11). 
             # Six aliquots need to be taken from the "reaction mixture" and added to the "diluted working reagent" at 0, 5, 10, 15, 20, 25 time marks for incubation (18 min).
@@ -102,6 +105,9 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path, initial_
                 items_completed+=1
         
         time.sleep(0.1)
+
+    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
+    lash_e.photoreactor.turn_off_reactor_led(reactor_num=1)
         
 #Note I will have a conversion of "A1" to 0 and "A2" to 1 for the future, so you could do ["A1", "A2", "A3"] if you prefer that over 0,1,2
 #Your protocol needs to be made inside the gen5 software, including the automated export
