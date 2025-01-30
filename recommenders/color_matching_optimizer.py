@@ -23,12 +23,12 @@ def initialize_campaign():
 
     parameters = [
         NumericalDiscreteParameter(
-            name = 'R',
+            name = 'Water',
             values = np.array(range(0, 240, 10))
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
-            name = 'B',
+            name = 'R',
             values = np.array(range(0, 240, 10)),
             #encoding = 'INT'
             ),
@@ -38,14 +38,14 @@ def initialize_campaign():
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
-            name = 'Water',
+            name = 'B',
             values= np.array(range(0, 240, 10)),
             #encoding = 'INT'
             ),
     ]
 
     constraints = [DiscreteSumConstraint(
-            parameters=["R", "Y", "B", "Water"],  # these parameters must exist in the search space
+            parameters=["Water", "R", "Y", "B"],  # these parameters must exist in the search space
             condition=ThresholdCondition(  # set condition that should apply to the sum
             threshold=240,
             operator="="))]

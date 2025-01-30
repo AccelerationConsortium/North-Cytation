@@ -47,7 +47,7 @@ def generate_random_matrix(rows, cols, row_sum, divisible_by, min_value):
 
 # Parameters
 rows = 3 #number of samples generated
-replicates = 1 #number of replicates
+replicates = 2 #number of replicates
 cols = 4 #number of colors
 
 row_sum = 250 #max per well 
@@ -64,11 +64,11 @@ sum_colors = np.sum(data_colors_uL,0)
 print("Total volume per vial:", sum_colors) #how much of each volume is used
 
 #needed files: 1. vial_status 2.wellplate_recipe
-VIAL_FILE = "../utoronto_demo/status/vials_color.txt" #txt
+VIAL_FILE="../utoronto_demo/status/color_matching_vials.txt"
 vial_df = pd.read_csv(VIAL_FILE, sep=r'\t', engine='python')
 vial_indices = vial_df['vial index'].values
-print("Vial indices:", vial_indices)
+print("Vial indices:", vial_indices[0:cols])
 
 lash_e = Lash_E(VIAL_FILE, initialize_biotek=False)
 
-lash_e.nr_robot.dispense_from_vials_into_wellplate(pd.DataFrame(data_colors_uL), vial_indices)
+lash_e.nr_robot.dispense_from_vials_into_wellplate(pd.DataFrame(data_colors_uL), vial_indices[0:cols])

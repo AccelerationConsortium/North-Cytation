@@ -176,7 +176,7 @@ class North_Robot:
     LOWER_PIPET_ARRAY_INDEX = 0 #Track the status of the pipets used (in the lower rack)
     HIGHER_PIPET_ARRAY_INDEX = 1 #Track the status of the pipets used (in the upper rack)
     PIPETS_USED = [0,0] #Tracker for each rack... This may become deprecated
-    DEFAULT_SMALL_TIP_DELTA_Z = -24 #TODO: This value needs to be measured
+    DEFAULT_SMALL_TIP_DELTA_Z = -20 #TODO: This value needs to be measured
     HELD_PIPET_INDEX = None   
 
     #Controller
@@ -275,8 +275,9 @@ class North_Robot:
             self.save_pipet_status(self.PIPET_FILE)
             #print ("Pipets: ", self.PIPETS_USED) 
 
-    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15):
-        self.c9.move_z(height, vel=move_speed)
+    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15, initial_move=True):
+        if initial_move:
+            self.c9.move_z(height, vel=move_speed)
         #self.c9.set_pump_speed(0, pump_speed)
         if aspirate:
             if amount <= 1:
@@ -308,7 +309,7 @@ class North_Robot:
         #Check if has pipet, get one if needed
         if self.HAS_PIPET == False:
             if specified_tip is None:
-                if amount_mL <= 0.25:
+                if amount_mL <= 0.200:
                     pipet_rack_index=self.HIGHER_PIPET_ARRAY_INDEX
                 elif amount_mL <= 1.0:
                     pipet_rack_index=self.LOWER_PIPET_ARRAY_INDEX
@@ -322,10 +323,10 @@ class North_Robot:
         
         if self.HAS_PIPET == True:
             error_check_list = []
-            error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>=0.25,True,"Can't pipet more than 0.25 mL from small pipet"])
-            error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL<0.01,True,"Can't pipet less than 10 uL from small pipet"])
-            error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL>=1.00,True,"Can't pipet more than 1.00 mL from large pipet"])
-            error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL<0.025,True,"Can't pipet less than 25 uL from large pipet"])
+            error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>=0.25,False,"Can't pipet more than 0.25 mL from small pipet"])
+            error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL<0.01,False,"Can't pipet less than 10 uL from small pipet"])
+            error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL>=1.00,False,"Can't pipet more than 1.00 mL from large pipet"])
+            error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL<0.025,False,"Can't pipet less than 25 uL from large pipet"])
             if self.check_for_errors(error_check_list): #If pipets are in ranges that don't work
                 return False
 
@@ -369,7 +370,7 @@ class North_Robot:
         for i in range (0, asp_disp_cycles):
             self.pipet_from_location(amount_mL, aspirate_speed, height, True)
             self.pipet_from_location(amount_mL, aspirate_speed, height, False)
-        self.pipet_from_location(amount_mL, aspirate_speed, height, True)
+        self.pipet_from_location(amount_mL, aspirate_speed, height, True, initial_move=move_to_aspirate)
 
         #Record the volume change
         original_amount = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
@@ -401,7 +402,7 @@ class North_Robot:
     def move_vial(initial_index, final_index):
         None
 
-    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True, buffer_vol=0.01):
+    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True, buffer_vol=0.02):
         if volume < 0.2 and volume >= 0.02:
             tip_type = self.HIGHER_PIPET_ARRAY_INDEX
             max_volume = 0.25
@@ -450,7 +451,7 @@ class North_Robot:
             if initial_move:
                 self.c9.goto_xy_safe(location, vel=15)
 
-            self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False)
+            self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
 
             #Track the added volume in the dataframe
             self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']=self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']+amount_mL
@@ -544,7 +545,7 @@ class North_Robot:
             
         return True
 
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.01):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
 
@@ -570,7 +571,7 @@ class North_Robot:
 
                 vol_needed = np.sum(well_plate_dispense_2d_array[:, i])
 
-                vial_open = self.check_if_vials_are_open([vial_index])
+                vial_open = self.is_vial_pipetable(vial_index)
 
                 if not vial_open:
                     print(f"Vial {vial_index} not open, moving to clamp")
@@ -622,7 +623,7 @@ class North_Robot:
                     self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index)
                     
                     if extra_aspirate_vol > 0:
-                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,move_to_aspirate=False)
+                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,initial_move=False)
   
                     #indices to dispense... this is not right
                     #well_plate_array = np.arange((last_index-len(dispense_array)),last_index,1)
@@ -639,7 +640,7 @@ class North_Robot:
                     print(f"Solution Dispensed {vial_index}: {vol_dispensed} uL")     
                 
                 print("Vol remaining, returning to vial: ", vol_remaining)
-                print()
+                
                 
                 if vol_needed>0 and vol_remaining>0:
                     self.dispense_into_vial(vial_index,vol_remaining)
@@ -649,6 +650,8 @@ class North_Robot:
                 if str(self.CLAMPED_VIAL).isnumeric():
                     self.recap_clamp_vial()
                     self.return_vial_from_clamp()
+                
+                print()
 
         return True
 
@@ -678,7 +681,7 @@ class North_Robot:
         error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot return vial from clamp, gripper full"])
         error_check_list.append([self.HAS_PIPET, False, "Cannot return vial from clamp, robot holding pipet"])
         error_check_list.append([str(self.CLAMPED_VIAL).isnumeric(), True, "Cannot return vial from clamp, no vial in clamp"])
-        error_check_list.append([self.check_if_vials_are_open([self.CLAMPED_VIAL]), False, "Can't return vial, vial is uncapped"])
+        error_check_list.append([self.is_vial_movable(self.CLAMPED_VIAL), True, "Can't return vial, vial is uncapped"])
 
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not 
@@ -745,7 +748,7 @@ class North_Robot:
         error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot uncap, gripper full"])
         #error_check_list.append([self.HAS_PIPET, False, "Can't uncap vial, holding pipet"])
         error_check_list.append([str(self.CLAMPED_VIAL).isnumeric(), True, "Cannot uncap, no vial in clamp"])
-        error_check_list.append([self.check_if_vials_are_open([self.CLAMPED_VIAL]), False, "Can't uncap, vial is uncapped already"])
+        error_check_list.append([self.is_vial_movable(self.CLAMPED_VIAL), True, "Can't uncap, vial is uncapped already"])
 
         if self.check_for_errors(error_check_list) == False:
             self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not   
@@ -770,7 +773,7 @@ class North_Robot:
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS, "Cap", "Cannot recap, no cap in gripper"])
         #error_check_list.append([self.HAS_PIPET, False, "Can't recap vial, holding pipet"])
-        error_check_list.append([self.check_if_vials_are_open([self.CLAMPED_VIAL]), True, "Can't recap, vial is capped already"])
+        error_check_list.append([self.is_vial_movable(self.CLAMPED_VIAL), False, "Can't recap, vial is capped already"])
         error_check_list.append([str(self.CLAMPED_VIAL).isnumeric(), True, "Cannot recap, no vial in clamp"])
         
         if self.check_for_errors(error_check_list) == False:
@@ -814,7 +817,7 @@ class North_Robot:
         
         error_check_list = []
         error_check_list.append([self.GRIPPER_STATUS, "Open", "Can't Vortex, gripper is used"])
-        error_check_list.append([self.check_if_vials_are_open([vial_num]), False, "Can't vortex, vial not capped"])
+        error_check_list.append([self.is_vial_movable(vial_num), True, "Can't vortex, vial not capped"])
         error_check_list.append([self.HAS_PIPET, False, "Can't vortex vial, holding pipet"])
         
         #Correlate vortex_rads to time and speed

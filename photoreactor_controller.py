@@ -1,7 +1,7 @@
 import subprocess
 
 class Photoreactor_Controller:
-    def run_command(command):
+    def run_command(self,command):
         try:
             result = subprocess.run(
                 ['mpremote', 'connect', 'COM6', 'exec', command],
@@ -20,21 +20,26 @@ class Photoreactor_Controller:
         except Exception as e:
             print(f"Error running mpremote: {e}")
 
-    def initialize_photoreactor():
+    def initialize_photoreactor(self):
         command = f"import reactor_test; reactor_test.initialize_photoreactor()"
-        run_command(command)
-    def run_photoreactor(rpm,duration,intensity,reactor_num):
+        self.run_command(command)
+    
+    def run_photoreactor(self,rpm,duration,intensity,reactor_num):
         command = f"import reactor_test; reactor_test.run_reactor({rpm},{duration},{intensity},{reactor_num})"
-        run_command(command)
-    def turn_on_reactor_led(reactor_num, intensity):
+        self.run_command(command)
+    
+    def turn_on_reactor_led(self,reactor_num, intensity):
         command = f"import reactor_test; reactor_test.turn_on_reactor_led({reactor_num},{intensity})"
-        run_command(command)
-    def turn_off_reactor_led(reactor_num):
+        self.run_command(command)
+    
+    def turn_off_reactor_led(self,reactor_num):
         command = f"import reactor_test; reactor_test.turn_off_reactor_led({reactor_num})"
-        run_command(command)
-    def turn_on_reactor_fan(reactor_num, rpm):
+        self.run_command(command)
+    
+    def turn_on_reactor_fan(self,reactor_num, rpm):
         command = f"import reactor_test; reactor_test.turn_on_reactor_fan({reactor_num},{rpm})"
-        run_command(command)
-    def turn_off_reactor_fan(reactor_num):
+        self.run_command(command)
+    
+    def turn_off_reactor_fan(self,reactor_num):
         command = f"import reactor_test; reactor_test.turn_off_reactor_fan({reactor_num})"
-        run_command(command)
+        self.run_command(command)

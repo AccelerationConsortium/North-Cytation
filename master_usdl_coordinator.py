@@ -27,7 +27,6 @@ class Lash_E:
             self.cytation = Biotek()
         if initialize_photoreactor:
             self.photoreactor = Photoreactor_Controller()
-            self.photoreactor.initialize_photoreactor()
 
     def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False):
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)
@@ -58,7 +57,7 @@ class Lash_E:
 
     def run_photoreactor(self,dest_vial_position,target_rpm,intensity,duration,reactor_num):
         self.nr_robot.move_vial_to_photoreactor(dest_vial_position,reactor_num)
-        photo_reactor.run_photoreactor(target_rpm,duration,intensity,reactor_num)
+        self.photoreactor.run_photoreactor(target_rpm,duration,intensity,reactor_num)
         self.nr_robot.return_vial_from_photoreactor(dest_vial_position,reactor_num)
 
     def grab_new_wellplate(self,dest_wp_position=0):
