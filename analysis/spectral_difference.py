@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import math
 
 #We will need the file data and the labels
 
@@ -18,7 +19,10 @@ def remove_overflow(data):
             last_valid_value = value  # Update the last valid value
     return processed_data
 
-def get_differences(reference_data_file, reference_index, target_data_file, target_index_list):
+#whole and key_wavelengths
+COMP_METHOD_A = 0
+COMP_METHOD_B = 1
+def get_differences(reference_data_file, reference_index, target_data_file, target_index_list,difference_type=COMP_METHOD_A,plotter=None):
 
     #print("Reference file: ", reference_data_file)
     #print("Reference index", reference_index)
@@ -32,17 +36,40 @@ def get_differences(reference_data_file, reference_index, target_data_file, targ
     wavelengths_comp = comp_data['Wavelength'].values
 
     ref_spectra = ref_data.iloc[:, reference_index+1].values
+    ref_spectra = remove_overflow(ref_spectra)
 
     #print("Ref spectra", ref_spectra)
+    if plotter is not None:
+        plotter.add_data(0,wavelengths_ref,ref_spectra)
+        plotter.add_data(1,wavelengths_ref,ref_spectra)
 
     difference = []
     for i in target_index_list:
         if np.all(wavelengths_ref == wavelengths_comp):
             comp_spectra=comp_data.iloc[:,i+1].values
 
-            print(comp_spectra)
+            comp_spectra = remove_overflow(comp_spectra)
+            
+            if plotter is not None:
+                plotter.add_data(1,wavelengths_ref,comp_spectra)
 
-            difference.append(float(np.sum(np.array(remove_overflow(ref_spectra))-np.array(remove_overflow(comp_spectra)))))
+            if difference_type==COMP_METHOD_A:
+                difference.append(float(np.sum(np.array(ref_spectra)-np.array(comp_spectra))))
+            elif difference_type==COMP_METHOD_B:
+                peak_red_wavelength = 425
+                peak_yellow_wavelength = 520
+                peak_blue_wavelength = 630
+
+                red_index = np.abs(wavelengths_ref - peak_red_wavelength).argmin()
+                yellow_index = np.abs(wavelengths_ref - peak_yellow_wavelength).argmin()
+                blue_index = np.abs(wavelengths_ref - peak_blue_wavelength).argmin()
+
+                red_dif = ref_spectra[red_index]-comp_spectra[red_index]
+                yellow_dif = ref_spectra[yellow_index]-comp_spectra[yellow_index]
+                blue_dif = ref_spectra[blue_index]-comp_spectra[blue_index]
+
+                difference.append (math.sqrt(red_dif**2 + yellow_dif**2 + blue_dif**2)) #sum squares error
+
         else:
             print("Script failed - spectra not comparable")
             difference.append(None)

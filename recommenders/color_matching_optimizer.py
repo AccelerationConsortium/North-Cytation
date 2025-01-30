@@ -11,11 +11,11 @@ import numpy as np
 from baybe.constraints import DiscreteSumConstraint, ThresholdCondition
 
 
-def initialize_campaign():
+def initialize_campaign(bounds):
     target = NumericalTarget(
         name = 'output',
         mode = TargetMode.MATCH,
-        bounds=(-35, 35), #Not sure here...
+        bounds=(-bounds, bounds), #Not sure here...
         transformation=TargetTransformation.TRIANGULAR,
     )
 
@@ -58,8 +58,7 @@ def get_initial_recommendations(campaign,size):
     initial_suggestions = campaign.recommend(batch_size=size)
     return campaign,initial_suggestions
 
-def get_new_recs_from_results(campaign,data_to_add,results,size):
-    data_to_add['output']=results
-    campaign.add_measurements(data_to_add)
+def get_new_recs_from_results(campaign,data,size):
+    campaign.add_measurements(data)
     new_suggestions = campaign.recommend(batch_size=size)
     return campaign,new_suggestions
