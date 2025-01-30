@@ -87,16 +87,16 @@ campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations)
 
 #Experimental workflow and data gathering
-#create_initial_colors(file_0,5,recommendations)
+create_initial_colors(file_0,5,recommendations)
 
 # #Get analysis
-# results,ref_file = analyze_data(SOURCE_DATA_FOLDER)
-# print("Results: ", results)
+results,ref_file = analyze_data(SOURCE_DATA_FOLDER)
+print("Results: ", results)
 
 # #Subsequent measurements: TODO add in condition for stopping
-# for i in range (0,3):
-#     campaign,recommendations = recommender.get_new_recs_from_results(campaign,recommendations,results,6)
-#     print("New Recs: ", recommendations)
-#     #find_closer_color_match(6*i,file_list[i])
-#     results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file)
-#     print("Results: ", results)
+for i in range (0,3):
+    campaign,recommendations = recommender.get_new_recs_from_results(campaign,recommendations,results,6)
+    print("New Recs: ", recommendations)
+    find_closer_color_match(6*i,file_list[i])
+    results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file)
+    print("Results: ", results)

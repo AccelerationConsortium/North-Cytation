@@ -51,9 +51,7 @@ def initialize_campaign():
             operator="="))]
 
     searchspace = SearchSpace.from_product(parameters=parameters, constraints=constraints)
-
     campaign = Campaign(searchspace, objective)
-
     return campaign
 
 def get_initial_recommendations(campaign,size):
