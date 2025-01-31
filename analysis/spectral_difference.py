@@ -24,10 +24,10 @@ COMP_METHOD_A = 0
 COMP_METHOD_B = 1
 def get_differences(reference_data_file, reference_index, target_data_file, target_index_list,difference_type=COMP_METHOD_A,plotter=None):
 
-    #print("Reference file: ", reference_data_file)
-    #print("Reference index", reference_index)
-    #print("Target Data file", target_data_file)
-    #print("Target index ", target_index_list)
+    print("Reference file: ", reference_data_file)
+    print("Reference index", reference_index)
+    print("Target Data file", target_data_file)
+    print("Target index ", target_index_list)
 
     ref_data = pd.read_csv(reference_data_file, sep='\t', skiprows=[0,1])
     comp_data = pd.read_csv(target_data_file, sep='\t', skiprows=[0,1])
@@ -40,6 +40,9 @@ def get_differences(reference_data_file, reference_index, target_data_file, targ
 
     #print("Ref spectra", ref_spectra)
     if plotter is not None:
+        print(type(wavelengths_ref), type(ref_spectra))
+        print(len(wavelengths_ref), len(ref_spectra))
+
         plotter.add_data(0,wavelengths_ref,ref_spectra)
         plotter.add_data(1,wavelengths_ref,ref_spectra)
 

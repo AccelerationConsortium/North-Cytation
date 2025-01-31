@@ -20,7 +20,7 @@ def create_initial_colors(measurement_file, initial_guesses, initial_volumes):
     lash_e.nr_robot.finish_pipetting()
 
     initial_wells = range(1,1+initial_guesses)
-    active_vials = range(1,5)
+    #active_vials = range(1,5)
 
     initial_volumes.index = initial_wells #Set wells
     print("Initial:\n", initial_volumes)
@@ -46,14 +46,14 @@ def analyze_data(source_data_folder, reference_file=None,  reference_index=0):
 
     print(comparison_index_list)
 
-    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter)
+    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter=plotter)
 
     return differences_list,reference_file   
 
 def find_closer_color_match(measurement_file,start_index,volumes):
 
     wells = range(start_index,6+start_index)
-    active_vials = range(1,5)
+    #active_vials = range(1,5)
 
     volumes.index = wells
     print("New Volumes:\n", volumes)
@@ -69,6 +69,8 @@ def find_closer_color_match(measurement_file,start_index,volumes):
 input_vial_status_file="../utoronto_demo/status/color_matching_vials.txt"
 vial_status = pd.read_csv(input_vial_status_file, sep=r"\t", engine="python")
 print(vial_status)
+active_vials = vial_status['vial index'].values[1:]
+print("Active vials: ", active_vials)
 input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
@@ -82,11 +84,15 @@ file_0=r"C:\Protocols\Color_Matching\Sweep_A1A6.prt"
 file_1=r"C:\Protocols\Color_Matching\Sweep_A7A12.prt"
 file_2=r"C:\Protocols\Color_Matching\Sweep_B1B6.prt"
 file_3=r"C:\Protocols\Color_Matching\Sweep_B7B12.prt"
-file_list = [file_1, file_2, file_3]
+file_4=r"C:\Protocols\Color_Matching\Sweep_C1C6.prt"
+file_5=r"C:\Protocols\Color_Matching\Sweep_C7C12.prt"
+file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
+file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
+file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
 
 #TODO: Change this to the folder we save to upstairs
 SOURCE_DATA_FOLDER = "C://Users//Imaging Controller//Desktop//Color_Matching"
-#ref_file = r"C:\Users\Imaging Controller\Desktop\Color_Matching\Experiment1_250129_174113_.txt"
+#ref_file = r"C:\Users\Imaging Controller\Desktop\Color_Matching\Experiment1_250130_151633_.txt"
 # #Get initial recs
 campaign = recommender.initialize_campaign(20)
 campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
@@ -95,7 +101,7 @@ print(recommendations/1000)
 # #Experimental workflow and data gathering
 create_initial_colors(file_0,5,recommendations/1000)
 
-plotter = north_gui.RealTimePlot(num_subplots=3, styles=[{"color": "r"}, {"color": "g"}, {"color": "b", "linestyle": "--"}])
+plotter = north_gui.RealTimePlot(num_subplots=3, styles=[{"color": "r"}, {"color": "g"}, {"color": "b", "marker": "o", "linestyle": "None"}])
 
 # # #Get analysis
 results,ref_file = analyze_data(SOURCE_DATA_FOLDER)
@@ -103,10 +109,11 @@ print("Results: ", results)
 recommendations['output']=results
 campaign_data = recommendations
 
-plotter.add_data(2,[0]*5,results)
+plotter.add_data(2,[1]*5,results,plot_type='o')
 
-# #Subsequent measurements: TODO add in condition for stopping... Probably best to use Ilya's code
-for i in range (0,3):
+
+#Subsequent measurements: TODO add in condition for stopping... Probably best to use Ilya's code
+for i in range (0,7):
      campaign,recommendations = recommender.get_new_recs_from_results(campaign,recommendations,6)
      
      print("New Recs: ", recommendations/1000)
@@ -116,7 +123,7 @@ for i in range (0,3):
 
      recommendations['output']=results
      campaign_data = pd.concat([campaign_data, recommendations], ignore_index=True)
-     plotter.add_data(2,[i+1]*6,results)
+     plotter.add_data(2,[i+2]*6,results,plot_type='o')
 
 print("Final data:\n", campaign_data)
 # Get current date and time
@@ -127,3 +134,4 @@ filename = f"data_{timestamp}.csv"
 
 pd.to_csv(campaign_data)
 print(f"Saved CSV as: {filename}")
+plotter.save_figure()

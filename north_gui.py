@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+import itertools
+import datetime
 
 class RealTimePlot:
     def __init__(self, num_subplots=1, styles=None):
@@ -9,67 +10,71 @@ class RealTimePlot:
 
         Parameters:
         - num_subplots (int): Number of subplots in the figure.
-        - update_interval (int): Interval (in ms) for updating the plots.
         - styles (list of dict): List of customization options for each subplot.
         """
         self.num_subplots = num_subplots
         self.styles = styles if styles else [{} for _ in range(num_subplots)]
-        
+        self.colors = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])  # Cycle through colors
+
         # Create horizontal layout (1 row, num_subplots columns)
-        self.fig, self.axes = plt.subplots(1, num_subplots, figsize=(8*num_subplots, 5))  
+        self.fig, self.axes = plt.subplots(1, num_subplots, figsize=(6*num_subplots, 4))  
         if num_subplots == 1:
             self.axes = [self.axes]  # Ensure it's iterable
 
-        # Store data for each subplot
-        self.x_data = [[] for _ in range(num_subplots)]
-        self.y_data = [[] for _ in range(num_subplots)]
-        self.lines = []
+        # Store multiple data series per subplot
+        self.lines = [[] for _ in range(num_subplots)]  # List of lists for multiple series
 
         for i, ax in enumerate(self.axes):
-            line, = ax.plot([], [], **self.styles[i])  # Apply style
-            self.lines.append(line)
-            ax.set_xlim(0, 10)  # Initial x-axis range
-            ax.set_ylim(-1, 1)  # Initial y-axis range
+            ax.set_xlim(300, 800)  # Initial x-axis range
+            ax.set_ylim(0, 3)  # Initial y-axis range
             ax.set_title(f"Plot {i+1}")
 
-        # Enable interactive mode
-        plt.ion()
-        plt.show()
+        plt.show(block=False)  # No blocking for updates
+        self.fig.canvas.flush_events()  # Ensure initial drawing is flushed
 
-    def add_data(self, subplot_index, x_data, y_data):
+    def add_data(self, subplot_index, x_data, y_data, plot_type='-'):
         """
-        Adds data to the specified subplot.
-
-        Parameters:
-        - subplot_index (int): Index of the subplot to update.
-        - x (float): New x-value.
-        - y (float): New y-value.
+        Adds a new data series to the specified subplot with a different color.
+        Optionally, you can plot points or lines by setting plot_type.
         """
+        if subplot_index < 0 or subplot_index >= self.num_subplots:
+            raise IndexError("Invalid subplot index")
 
-        for i in range (0, len(x_data)):
-            x = x_data[i]
-            y = y_data[i]
-            if subplot_index < 0 or subplot_index >= self.num_subplots:
-                raise IndexError("Invalid subplot index")
+        color = next(self.colors)  # Pick a new color
+        print(f"Adding new series to subplot {subplot_index} with color {color} and plot type {plot_type}")
 
-            self.x_data[subplot_index].append(x)
-            self.y_data[subplot_index].append(y)
+        # Choose between plotting points ('o') or lines ('-')
+        line, = self.axes[subplot_index].plot(x_data, y_data, plot_type, color=color)
+        self.lines[subplot_index].append(line)
 
-            # Keep only recent data for real-time effect
-            if len(self.x_data[subplot_index]) > 100:
-                self.x_data[subplot_index].pop(0)
-                self.y_data[subplot_index].pop(0)
+        # 🔹 **Fix: Ensure autoscaling after new data is added**
+        x_all = np.concatenate([line.get_xdata() for line in self.lines[subplot_index]])
+        y_all = np.concatenate([line.get_ydata() for line in self.lines[subplot_index]])
 
-            # Update plot immediately
-            self.lines[subplot_index].set_data(self.x_data[subplot_index], self.y_data[subplot_index])
-            self.axes[subplot_index].relim()
-            self.axes[subplot_index].autoscale_view()
-            
-            plt.pause(0.001)  # Force real-time update
+        if len(x_all) > 0 and len(y_all) > 0:  # Avoid errors if empty
+            self.axes[subplot_index].set_xlim(min(x_all), max(x_all))
+            self.axes[subplot_index].set_ylim(min(y_all), max(y_all))
+
+        # Only redraw the canvas when new data is added
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
     def show(self):
         """
         Displays the plot (blocks execution).
         """
-        plt.ioff()
         plt.show()
+
+    def save_figure(self):
+        """
+        Saves the current figure with a filename based on the current date and time.
+        """
+        # Get the current date and time
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        
+        # Create a filename with the current date and time
+        filename = f"plot_{current_time}.png"
+        
+        # Save the figure
+        self.fig.savefig(filename)
+        print(f"Figure saved as {filename}")

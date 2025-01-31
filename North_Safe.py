@@ -335,11 +335,13 @@ class North_Robot:
         
         source_vial_clamped = (self.CLAMPED_VIAL == source_vial_num) #Is the source vial clamped?
         source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial volume (mL)']
+        source_vial_rack = self.VIAL_DF.at[source_vial_num,'rack'] #A or B
 
         #The height at which the pipet touches the ground for the 1 mL pipet
         CLAMP_BASE_HEIGHT = 114.5
         VIAL_RACK_BASE_HEIGHT = 67.25
         PR_BASE_HEIGHT = 109
+        LARGE_VIAL_BASE_HEIGHT = 55
 
         MIN_SMALLPIP_HEIGHT_VIAL_RACK = 60.70 #At  ~3 mL
         MIN_SMALLPIP_HEIGHT_VIAL_RACK_LEFT_EDGE = 47.80 #At ~0.5 mL
@@ -355,11 +357,18 @@ class North_Robot:
             else:
                 height = CLAMP_BASE_HEIGHT
         else:
-            location = rack_pip[source_vial_num]
+            if source_vial_rack=="A":
+                location = rack_pip[source_vial_num]
+                vial_type = "8mL"
+                base_height = VIAL_RACK_BASE_HEIGHT
+            elif source_vial_rack=="B":
+                location = large_vial_pip[source_vial_num]
+                vial_type = "20mL"
+                base_height = LARGE_VIAL_BASE_HEIGHT
             if track_height:
-                height = self.get_aspirate_height(source_vial_volume, amount_mL, VIAL_RACK_BASE_HEIGHT)
+                height = self.get_aspirate_height(source_vial_volume, amount_mL, base_height,vial_type)
             else:
-                height = VIAL_RACK_BASE_HEIGHT 
+                height = base_height
   
         height = self.adjust_height_based_on_pipet_held(height)
 
@@ -402,7 +411,7 @@ class North_Robot:
     def move_vial(initial_index, final_index):
         None
 
-    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True, buffer_vol=0.02):
+    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0.02):
         if volume < 0.2 and volume >= 0.02:
             tip_type = self.HIGHER_PIPET_ARRAY_INDEX
             max_volume = 0.25
@@ -419,12 +428,12 @@ class North_Robot:
         
         self.aspirate_from_vial(source_vial_index,volume+extra_aspirate,move_to_aspirate=move_to_aspirate,specified_tip=tip_type)
         if extra_aspirate > 0:
-            self.dispense_into_vial(source_vial_index,buffer_vol,move_to_dispense=False)
+            self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=False)
         
-        self.dispense_into_vial(dest_vial_index,volume,move_to_dispense=move_to_dispense)
+        self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense)
         
         if extra_aspirate > 0:
-            self.dispense_into_vial(source_vial_index,buffer_vol,move_to_dispense=move_to_dispense)
+            self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=move_to_dispense)
 
     #Measure_Weight gives you the option to report the mass dispensed
     def dispense_into_vial(self, dest_vial_num, amount_mL, initial_move=True,dispense_speed=11, measure_weight=False):     
@@ -435,12 +444,16 @@ class North_Robot:
         if self.check_for_errors(error_check_list) == False:
             dest_vial_clamped = (self.CLAMPED_VIAL == dest_vial_num) #Is the destination vial clamped?
             dest_vial_volume = self.VIAL_DF.at[dest_vial_num,'vial volume (mL)']
+            source_vial_rack = self.VIAL_DF.at[dest_vial_num,'rack'] #A or B
 
             #Dispense at destination
             if dest_vial_clamped:
                 location = vial_clamp_pip
             else:
-                location = rack_pip[dest_vial_num]
+                if source_vial_rack=="A":
+                    location = rack_pip[dest_vial_num]
+                elif source_vial_rack=="B":
+                    location = large_vial_pip[dest_vial_num]
             height = self.c9.counts_to_mm(3, location[3]) #baseline z-height. Where is this? 
             height = self.adjust_height_based_on_pipet_held(height)
 
@@ -886,8 +899,15 @@ class North_Robot:
         return pipetable
 
     #Get adjust the aspiration height based on how much is there
-    def get_aspirate_height(self, amount_vial, amount_to_withdraw, base_height, buffer=0.5):
-        target_height = base_height + (6*(amount_vial - amount_to_withdraw - buffer))
+    def get_aspirate_height(self, amount_vial, amount_to_withdraw, base_height, vial_type="8mL", buffer=0.5):
+        
+        height_volume_constant = 0
+        if vial_type=="8mL":
+            height_volume_constant=6
+        elif vial_type=="20mL":
+            height_volume_constant=2
+
+        target_height = base_height + (height_volume_constant*(amount_vial - amount_to_withdraw - buffer))
         #print(target_height)
         if target_height > base_height:
             return target_height
