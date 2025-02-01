@@ -57,7 +57,7 @@ def get_differences(reference_data_file, reference_index, target_data_file, targ
                 plotter.add_data(1,wavelengths_ref,comp_spectra)
 
             if difference_type==COMP_METHOD_A:
-                difference.append(float(np.sum(np.array(ref_spectra)-np.array(comp_spectra))))
+                difference.append(float(np.sum(np.abs(np.array(ref_spectra)-np.array(comp_spectra)))))
             elif difference_type==COMP_METHOD_B:
                 peak_red_wavelength = 425
                 peak_yellow_wavelength = 520

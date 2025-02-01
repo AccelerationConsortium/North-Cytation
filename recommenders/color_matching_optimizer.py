@@ -11,12 +11,11 @@ import numpy as np
 from baybe.constraints import DiscreteSumConstraint, ThresholdCondition
 
 
-def initialize_campaign(bounds):
+def initialize_campaign(upper_bound):
     target = NumericalTarget(
         name = 'output',
-        mode = TargetMode.MATCH,
-        bounds=(-bounds, bounds), #Not sure here...
-        transformation=TargetTransformation.TRIANGULAR,
+        mode = TargetMode.MIN,
+        bounds=(0, upper_bound),
     )
 
     objective = SingleTargetObjective(target=target)
