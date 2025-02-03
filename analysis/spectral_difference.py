@@ -47,14 +47,13 @@ def get_differences(reference_data_file, reference_index, target_data_file, targ
         plotter.add_data(1,wavelengths_ref,ref_spectra)
 
     difference = []
+    comp_spectra_list = []
     for i in target_index_list:
         if np.all(wavelengths_ref == wavelengths_comp):
             comp_spectra=comp_data.iloc[:,i+1].values
 
             comp_spectra = remove_overflow(comp_spectra)
-            
-            if plotter is not None:
-                plotter.add_data(1,wavelengths_ref,comp_spectra)
+            comp_spectra_list.append(comp_spectra)
 
             if difference_type==COMP_METHOD_A:
                 difference.append(float(np.sum(np.abs(np.array(ref_spectra)-np.array(comp_spectra)))))
@@ -72,10 +71,13 @@ def get_differences(reference_data_file, reference_index, target_data_file, targ
                 blue_dif = ref_spectra[blue_index]-comp_spectra[blue_index]
 
                 difference.append (math.sqrt(red_dif**2 + yellow_dif**2 + blue_dif**2)) #sum squares error
-
         else:
             print("Script failed - spectra not comparable")
             difference.append(None)
+    
+    if plotter is not None:
+        best_spectra_index = np.argmin(difference)
+        plotter.add_data(1,wavelengths_ref,comp_spectra_list[best_spectra_index])
 
     return difference
 

@@ -250,6 +250,8 @@ class North_Robot:
             
             active_pipet_num = self.PIPETS_USED[pipet_rack_index] #First available pipet
 
+            MAX_PIPETS=47
+
             num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
             print(f"Getting pipet number: {active_pipet_num} from rack {pipet_rack_index}")
 
@@ -437,6 +439,20 @@ class North_Robot:
         if extra_aspirate > 0:
             self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=move_to_dispense)
 
+    #TODO add error checks and safeguards
+    def pipet_from_wellplate(self,wp_index,volume,aspirate_speed=10,aspirate=True,move_to_aspirate=True):
+        location = well_plate_new_grid[wp_index]
+        height = self.c9.counts_to_mm(3, location[3])
+        height = self.adjust_height_based_on_pipet_held(height) 
+        if aspirate:
+            height = height - 12 #Go to the bottom of the well
+
+        if move_to_aspirate:
+                self.c9.goto_xy_safe(location, vel=15)
+
+        self.pipet_from_location(volume, aspirate_speed, height, aspirate = aspirate, initial_move=move_to_aspirate)
+
+
     #Measure_Weight gives you the option to report the mass dispensed
     def dispense_into_vial(self, dest_vial_num, amount_mL, initial_move=True,dispense_speed=11, measure_weight=False):     
         error_check_list = [] #List of specific errors for this method
@@ -476,7 +492,7 @@ class North_Robot:
                 final_mass = self.c9.read_steady_scale()
                 
             #Move to a safe height
-            self.c9.move_z(height+60, vel=15) #dispense is always near the top
+            #self.c9.move_z(height+60, vel=15) #dispense is always near the top
 
         if measure_weight:
             measured_mass = final_mass - initial_mass  
@@ -530,6 +546,9 @@ class North_Robot:
                 height -= 5 #goes 5mm lower when dispensing
                 
                 #print("x before dispense", self.get_x_mm())
+
+            if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX:
+                dispense_speed = 10 #Use lower dispense speed for smaller tip
 
             self.pipet_from_location(amount_mL, dispense_speed, height, False) #dispense
             time.sleep(wait_time)

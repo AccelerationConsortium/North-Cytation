@@ -32,7 +32,7 @@ class RealTimePlot:
         plt.show(block=False)  # No blocking for updates
         self.fig.canvas.flush_events()  # Ensure initial drawing is flushed
 
-    def add_data(self, subplot_index, x_data, y_data, plot_type='-'):
+    def add_data(self, subplot_index, x_data, y_data, plot_type='-',color=None):
         """
         Adds a new data series to the specified subplot with a different color.
         Optionally, you can plot points or lines by setting plot_type.
@@ -40,7 +40,8 @@ class RealTimePlot:
         if subplot_index < 0 or subplot_index >= self.num_subplots:
             raise IndexError("Invalid subplot index")
 
-        color = next(self.colors)  # Pick a new color
+        if color is None:
+            color = next(self.colors)  # Pick a new color
         print(f"Adding new series to subplot {subplot_index} with color {color} and plot type {plot_type}")
 
         # Choose between plotting points ('o') or lines ('-')

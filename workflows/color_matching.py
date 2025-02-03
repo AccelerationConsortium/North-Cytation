@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 import pandas as pd
@@ -6,8 +7,22 @@ import numpy as np
 import analysis.spectral_difference as spec_dif
 import recommenders.color_matching_optimizer as recommender
 import random
-import datetime
+from datetime import datetime
 import north_gui
+import os
+
+def mix_wells(wells, wash_location=3, wash_volume=0.1, repeats=2):
+    for well in wells:
+        lash_e.nr_robot.aspirate_from_vial(wash_location,wash_volume)
+        lash_e.nr_robot.dispense_into_vial(wash_location,wash_volume,initial_move=False)
+        for i in range (0,repeats):
+            lash_e.nr_robot.dispense_from_vial_into_vial(wash_location,wash_location,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
+        
+        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume)
+        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
+        for i in range (0, repeats):
+            lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
+            lash_e.nr_robot.pipet_from_wellplate(well, wash_volume,aspirate=False,move_to_aspirate=False)
 
 #Define your workflow! Make sure that it has parameters that can be changed!
 def create_initial_colors(measurement_file, initial_guesses, initial_volumes):
@@ -26,6 +41,7 @@ def create_initial_colors(measurement_file, initial_guesses, initial_volumes):
     print("Initial:\n", initial_volumes)
 
     lash_e.nr_robot.dispense_from_vials_into_wellplate(initial_volumes,active_vials)
+    mix_wells(initial_wells)
     lash_e.nr_robot.finish_pipetting()
 
     print("Measurement file: ", measurement_file)
@@ -59,6 +75,7 @@ def find_closer_color_match(measurement_file,start_index,volumes):
     print("New Volumes:\n", volumes)
 
     lash_e.nr_robot.dispense_from_vials_into_wellplate(volumes,active_vials)
+    mix_wells(wells)
     lash_e.nr_robot.finish_pipetting()
 
     print("Measurement file: ", measurement_file)
@@ -69,12 +86,20 @@ def find_closer_color_match(measurement_file,start_index,volumes):
 input_vial_status_file="../utoronto_demo/status/color_matching_vials.txt"
 vial_status = pd.read_csv(input_vial_status_file, sep=r"\t", engine="python")
 print(vial_status)
-active_vials = vial_status['vial index'].values[1:]
+active_vials = vial_status['vial index'].values[1:5]
 print("Active vials: ", active_vials)
 input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(input_vial_status_file)
+
+# Create the full path and the folder
+# Get current date and time as a string
+SOURCE_DATA_FOLDER = "C://Users//Imaging Controller//Desktop//Color_Matching"
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+folder_path = os.path.join(SOURCE_DATA_FOLDER, timestamp)
+os.makedirs(folder_path, exist_ok=True)
+print(f"Folder created at: {folder_path}")
 
 #List of measurement files for Cytation. Unfortunately this will be annoying!
 #TODO: Create this list of files,adjust paths, see if I can edit them
@@ -89,12 +114,12 @@ file_5=r"C:\Protocols\Color_Matching\Sweep_C7C12.prt"
 file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
 file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
 file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
+file_list = []
+num_files = len(file_list)
 
-#TODO: Change this to the folder we save to upstairs
-SOURCE_DATA_FOLDER = "C://Users//Imaging Controller//Desktop//Color_Matching"
 #ref_file = r"C:\Users\Imaging Controller\Desktop\Color_Matching\Experiment1_250130_151633_.txt"
 # #Get initial recs
-campaign = recommender.initialize_campaign(50,0)
+campaign = recommender.initialize_campaign(50,1) #upper bound=50, seed=0
 campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations/1000)
 
@@ -113,7 +138,7 @@ plotter.add_data(2,[1]*5,results,plot_type='o')
 
 
 #Subsequent measurements: TODO add in condition for stopping... Probably best to use Ilya's code
-for i in range (0,7):
+for i in range (0,num_files):
      campaign,recommendations = recommender.get_new_recs_from_results(campaign,recommendations,6)
      
      print("New Recs: ", recommendations/1000)
@@ -132,6 +157,28 @@ timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 # Define filename... Eventually add the random number seed
 filename = f"data_{timestamp}.csv"
 
-pd.to_csv(campaign_data)
-print(f"Saved CSV as: {filename}")
-plotter.save_figure()
+try:
+    campaign_data.to_csv(filename)
+    print(f"Saved CSV as: {filename}")
+except: 
+    plotter.save_figure()
+
+best_result_index = np.argmin(campaign_data['output'].values)
+print("Best result index: ", best_result_index)
+best_composition=campaign_data.iloc[best_result_index].tolist()
+print("Best composition: ", best_composition)
+
+recreate_volume = 2.0
+
+recreate_vial = np.array(best_composition)*recreate_volume/1000
+
+for i in range (0, len(active_vials)):
+    color_volume = recreate_vial[i]
+    if color_volume < 1.0:
+        lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume)
+    else:
+        lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume-1)
+        lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,1)
+    lash_e.nr_robot.remove_pipet()
+
+
