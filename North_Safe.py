@@ -293,6 +293,8 @@ class North_Robot:
             except: #If there's not enough to dispense
                 self.c9.move_pump(0,0)
 
+        #raise RuntimeError(f'Cannot move pump to {new_pos}, pump too empty/full to dispense {ml} mL')
+
     #Pipet from a vial into another vial
     #Use calibration (not implemented) is if you want to adjust the volume based off a known calibration
     #Aspirate conditioning is an alternate way to aspirate (up and down some number of cycles)

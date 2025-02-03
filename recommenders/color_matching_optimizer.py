@@ -9,9 +9,12 @@ from baybe.parameters import NumericalDiscreteParameter, NumericalContinuousPara
 from baybe.searchspace import SearchSpace
 import numpy as np
 from baybe.constraints import DiscreteSumConstraint, ThresholdCondition
+from baybe.utils.random import set_random_seed
 
 
-def initialize_campaign(upper_bound):
+def initialize_campaign(upper_bound, random_seed):
+    set_random_seed(random_seed) 
+
     target = NumericalTarget(
         name = 'output',
         mode = TargetMode.MIN,

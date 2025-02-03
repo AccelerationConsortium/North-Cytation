@@ -94,7 +94,7 @@ file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
 SOURCE_DATA_FOLDER = "C://Users//Imaging Controller//Desktop//Color_Matching"
 #ref_file = r"C:\Users\Imaging Controller\Desktop\Color_Matching\Experiment1_250130_151633_.txt"
 # #Get initial recs
-campaign = recommender.initialize_campaign(100)
+campaign = recommender.initialize_campaign(50,0)
 campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations/1000)
 
