@@ -9,14 +9,16 @@ from baybe.parameters import NumericalDiscreteParameter, NumericalContinuousPara
 from baybe.searchspace import SearchSpace
 import numpy as np
 from baybe.constraints import DiscreteSumConstraint, ThresholdCondition
+from baybe.utils.random import set_random_seed
 
 
-def initialize_campaign(bounds):
+def initialize_campaign(upper_bound, random_seed):
+    set_random_seed(random_seed) 
+
     target = NumericalTarget(
         name = 'output',
-        mode = TargetMode.MATCH,
-        bounds=(-bounds, bounds), #Not sure here...
-        transformation=TargetTransformation.TRIANGULAR,
+        mode = TargetMode.MIN,
+        bounds=(0, upper_bound),
     )
 
     objective = SingleTargetObjective(target=target)
