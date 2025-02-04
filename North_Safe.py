@@ -5,6 +5,7 @@ import time
 import math
 import pandas as pd
 import sys
+import slack_agent
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
 
@@ -181,7 +182,7 @@ class North_Robot:
 
     #Controller
     c9 = None
-    
+   
     #Initialize function
     def __init__(self, c9,vial_file=None,pipet_file=None):
         print("Initializing North Robot")
@@ -218,13 +219,13 @@ class North_Robot:
         self.c9.open_gripper()  #In case there's something
         self.c9.zero_scale() #Zero the scale
         self.c9.move_z(292)
-        #self.remove_pipet() #Remove the pipet, if there's one for some reason   
+        self.remove_pipet() #Remove the pipet, if there's one for some reason   
 
-    #Change the speed of the robot
+    #Change the speed of the robot. Note: I think this function is rarely used. 
     def set_robot_speed(self, speed_in):
         self.c9.default_vel = speed_in
 
-    #Adjust the pipet tips used and also which rack you are drawing from
+    #Adjust the pipet tips used and also which rack you are drawing from. Note: This could end up deprecated depending on how we do the data structures. 
     def set_pipet_tip_type(self, pipet_dims, active_rack):
         self.ACTIVE_PIPET_RACK = active_rack
         self.PIPET_DIMS = pipet_dims
@@ -250,7 +251,14 @@ class North_Robot:
             
             active_pipet_num = self.PIPETS_USED[pipet_rack_index] #First available pipet
 
+            #This is to pause the program and send a slack message when the pipets are out!
             MAX_PIPETS=47
+            if active_pipet_num > MAX_PIPETS:
+                slack_agent.send_slack_message("The North Robot is out of pipets! Please refill pipets then hit enter on the terminal!")
+                input("Paused! Please refill ALL pipets then hit enter!")
+                self.PIPETS_USED=[0,0]
+                self.save_pipet_status(self.PIPET_FILE)
+                active_pipet_num=0
 
             num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
             print(f"Getting pipet number: {active_pipet_num} from rack {pipet_rack_index}")
@@ -277,6 +285,7 @@ class North_Robot:
             self.save_pipet_status(self.PIPET_FILE)
             #print ("Pipets: ", self.PIPETS_USED) 
 
+    #The only actual method where the pump is called to aspirate or dispense
     def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15, initial_move=True):
         if initial_move:
             self.c9.move_z(height, vel=move_speed)
@@ -415,6 +424,7 @@ class North_Robot:
     def move_vial(initial_index, final_index):
         None
 
+    #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0.02):
         if volume < 0.2 and volume >= 0.02:
             tip_type = self.HIGHER_PIPET_ARRAY_INDEX
@@ -451,7 +461,6 @@ class North_Robot:
                 self.c9.goto_xy_safe(location, vel=15)
 
         self.pipet_from_location(volume, aspirate_speed, height, aspirate = aspirate, initial_move=move_to_aspirate)
-
 
     #Measure_Weight gives you the option to report the mass dispensed
     def dispense_into_vial(self, dest_vial_num, amount_mL, initial_move=True,dispense_speed=11, measure_weight=False):     
@@ -837,13 +846,6 @@ class North_Robot:
         difference = np.sum(np.absolute(np.array(loc_2)[1:4] - np.array(loc_1)[1:4]))
         return difference
     
-    #print the global variables
-    def print_status(self):
-        print("Gripper Status: " + self.GRIPPER_STATUS)
-        print("Clamp Status: " + str(self.CLAMPED_VIAL))
-        print("Pipets Used: " + str(self.PIPETS_USED))
-        print("Has Pipet: " + str(self.HAS_PIPET))
-
     #Removes the target vial, vortexes it, then puts it back
     def vortex_vial(self, vial_num, vortex_time, vortex_speed=70):
         print("Vortexing Vial: " + self.get_vial_name(vial_num))
@@ -895,14 +897,7 @@ class North_Robot:
                 print(error_check[2])
         return error_occured
 
-    def get_vial_name(self, vial_num):
-        name = ""
-        try:
-            name = str(vial_num) + " (" + self.VIAL_NAMES[vial_num] + ")"
-        except:
-            name = str(vial_num)
-        return name
-            
+   #Check to see if we can move the vial         
     def is_vial_movable(self, vial_index):
         movable = False
         try: #New syntax for the vial file
@@ -911,6 +906,7 @@ class North_Robot:
             movable = not self.VIAL_DF.at[vial_index, 'open']
         return movable
     
+    #Check to see if the pipet can have liquids added/removed
     def is_vial_pipetable(self, vial_index):
         pipetable = False
         try: #New syntax for the vial file
@@ -944,6 +940,7 @@ class North_Robot:
     def set_heater_temperature():
         return None
 
+    #Translate in the x direction
     def move_rel_x(self, x_distance:float):
         """
         Move x_distance (in mm) along the x-axis. Relative position (not absolute). Left is positive, right is negative.
@@ -953,6 +950,7 @@ class North_Robot:
         target_x =  current_loc_mm[0] + x_distance
         self.c9.move_xy(target_x, current_loc_mm[1])
     
+    #Translate in the y direction
     def move_rel_y(self, y_distance:float):
         """
         Move y_distance (in mm) along the y-axis. Relative position (not absolute). Forward is positive, backwards is negative.
@@ -962,6 +960,7 @@ class North_Robot:
         target_y =  current_loc_mm[1] + y_distance
         self.c9.move_xy(current_loc_mm[0], target_y)
         
+    #Translate in the z direction    
     def move_rel_z(self, z_distance:float):
         """
         Move z_distance (in mm) along z-axis. Positive z_distance = up
@@ -969,24 +968,18 @@ class North_Robot:
         curr_z = self.c9.counts_to_mm(3, self.c9.get_axis_position(3))
         target_z = curr_z + z_distance
         self.c9.move_z(target_z)
-        
-    def spin(self, radians, velocity):
-        curr_rad = self.c9.counts_to_rad(self.c9.GRIPPER, self.c9.get_axis_position(self.c9.GRIPPER))
-        target_rad = curr_rad+radians
-        self.c9.move_axis_rad(self.c9.GRIPPER, target_rad, vel=velocity)
-
-    def get_x_mm(self) -> float:
-        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(0), self.c9.get_axis_position(1), self.c9.get_axis_position(2))
-        return current_loc_mm[0]
-    
+  
+    #Save the status of the vials to a file
     def save_vial_status(self,file):
         self.VIAL_DF.to_csv(file, index=False,sep='\t')
 
+    #Save the status of the pipets to a file
     def save_pipet_status(self,file):
         save_data = ','.join(map(str, self.PIPETS_USED))
         with open(file, "w") as output:
             output.write(save_data.replace('\0', ''))
 
+    #Just get everything back to normal
     def reset_robot(self):
         self.c9.move_pump(0,0)
         self.c9.open_gripper()
@@ -996,6 +989,7 @@ class North_Robot:
         self.HELD_PIPET_INDEX = 1
         self.remove_pipet()
 
+    #Remove pipets and move any clamped vials back to their normal positions
     def finish_pipetting(self):
         if self.HAS_PIPET:
             self.remove_pipet()
@@ -1003,5 +997,6 @@ class North_Robot:
             self.recap_clamp_vial()
             self.return_vial_from_clamp()
 
+    #Move the robot to the home position    
     def move_home(self):
         self.c9.goto_safe(home)
