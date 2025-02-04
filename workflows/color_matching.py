@@ -47,7 +47,7 @@ def create_initial_colors(measurement_file, initial_guesses, initial_volumes):
     print("Measurement file: ", measurement_file)
     lash_e.measure_wellplate(measurement_file)
 
-def analyze_data(source_data_folder, reference_file=None,  reference_index=0):
+def analyze_data(source_data_folder, reference_file=None,  reference_index=0, dif_type = spec_dif.COMP_METHOD_A):
     
     #Step 1: Look in folder for most recent file
     comparison_file = spec_dif.get_most_recent_file(source_data_folder)
@@ -62,7 +62,7 @@ def analyze_data(source_data_folder, reference_file=None,  reference_index=0):
 
     print(comparison_index_list)
 
-    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter=plotter)
+    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter=plotter,difference_type=dif_type)
 
     return differences_list,reference_file   
 
@@ -114,12 +114,19 @@ file_5=r"C:\Protocols\Color_Matching\Sweep_C7C12.prt"
 file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
 file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
 file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
-file_list = []
+file_list = [file_1, file_2, file_3]
+#file_list = []
 num_files = len(file_list)
 
 #ref_file = r"C:\Users\Imaging Controller\Desktop\Color_Matching\Experiment1_250130_151633_.txt"
 # #Get initial recs
-campaign = recommender.initialize_campaign(50,1) #upper bound=50, seed=0
+random_seed = 4
+campaign,searchspace = recommender.initialize_campaign(50,random_seed) #upper bound=50, seed=0
+
+print(searchspace)
+
+input()
+
 campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations/1000)
 
@@ -129,7 +136,7 @@ create_initial_colors(file_0,5,recommendations/1000)
 plotter = north_gui.RealTimePlot(num_subplots=3, styles=[{"color": "r"}, {"color": "g"}, {"color": "b", "marker": "o", "linestyle": "None"}])
 
 # # #Get analysis
-results,ref_file = analyze_data(SOURCE_DATA_FOLDER)
+results,ref_file = analyze_data(SOURCE_DATA_FOLDER, dif_type=spec_dif.COMP_METHOD_B)
 print("Results: ", results)
 recommendations['output']=results
 campaign_data = recommendations
@@ -143,7 +150,7 @@ for i in range (0,num_files):
      
      print("New Recs: ", recommendations/1000)
      find_closer_color_match(file_list[i],6*(i+1),recommendations/1000)
-     results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file)
+     results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file,dif_type=spec_dif.COMP_METHOD_B)
      print("Results: ", results)
 
      recommendations['output']=results
@@ -154,14 +161,16 @@ print("Final data:\n", campaign_data)
 # Get current date and time
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-# Define filename... Eventually add the random number seed
-filename = f"data_{timestamp}.csv"
+
 
 try:
+    # Define filename... Eventually add the random number seed
+    filename = SOURCE_DATA_FOLDER+f"/data_{timestamp}_seed_{random_seed}.csv"
     campaign_data.to_csv(filename)
     print(f"Saved CSV as: {filename}")
+    plotter.save_figure(SOURCE_DATA_FOLDER)
 except: 
-    plotter.save_figure()
+    print("Issue saving graphic!")
 
 best_result_index = np.argmin(campaign_data['output'].values)
 print("Best result index: ", best_result_index)
@@ -170,7 +179,7 @@ print("Best composition: ", best_composition)
 
 recreate_volume = 2.0
 
-recreate_vial = np.array(best_composition)*recreate_volume/1000
+recreate_vial = np.array(best_composition)*recreate_volume/1000/0.240
 
 for i in range (0, len(active_vials)):
     color_volume = recreate_vial[i]
@@ -180,5 +189,10 @@ for i in range (0, len(active_vials)):
         lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume-1)
         lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,1)
     lash_e.nr_robot.remove_pipet()
+
+lash_e.nr_robot.vortex_vial(6,5)
+lash_e.nr_robot.move_home()
+
+
 
 

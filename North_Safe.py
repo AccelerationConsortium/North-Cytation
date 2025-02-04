@@ -872,10 +872,13 @@ class North_Robot:
             self.c9.move_z(292) #Move to a higher height
             #Rotate
 
-            self.c9.spin_axis(self.c9.GRIPPER, 1000*vortex_speed, 500000)
-            time.sleep(vortex_time)
-            self.c9.spin_axis(self.c9.GRIPPER, 0, 500000)
-            
+            #self.c9.spin_axis(self.c9.GRIPPER, 1000*vortex_speed, 500000)
+            #time.sleep(vortex_time)
+            #self.c9.spin_axis(self.c9.GRIPPER, 0, 500000)
+
+            self.c9.move_axis(self.c9.GRIPPER, 1000*vortex_time*vortex_speed, vel=vortex_speed,accel=10000)
+            #self.c9.reduce_axis_position(axis=self.c9.GRIPPER)
+           
             #Return vial
             if vial_clamped:
                 self.c9.goto_safe(vial_clamp)

@@ -66,7 +66,7 @@ class RealTimePlot:
         """
         plt.show()
 
-    def save_figure(self):
+    def save_figure(self, folder_path):
         """
         Saves the current figure with a filename based on the current date and time.
         """
@@ -74,7 +74,7 @@ class RealTimePlot:
         current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         
         # Create a filename with the current date and time
-        filename = f"plot_{current_time}.png"
+        filename = folder_path+f"/plot_{current_time}.png"
         
         # Save the figure
         self.fig.savefig(filename)

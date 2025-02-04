@@ -54,7 +54,7 @@ def initialize_campaign(upper_bound, random_seed):
 
     searchspace = SearchSpace.from_product(parameters=parameters, constraints=constraints)
     campaign = Campaign(searchspace, objective)
-    return campaign
+    return campaign,searchspace
 
 def get_initial_recommendations(campaign,size):
     initial_suggestions = campaign.recommend(batch_size=size)
