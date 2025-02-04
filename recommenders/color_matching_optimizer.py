@@ -10,9 +10,9 @@ from baybe.searchspace import SearchSpace
 import numpy as np
 from baybe.constraints import DiscreteSumConstraint, ThresholdCondition
 from baybe.utils.random import set_random_seed
+from baybe.recommenders import RandomRecommender
 
-
-def initialize_campaign(upper_bound, random_seed):
+def initialize_campaign(upper_bound, random_seed, random_recs=False):
     set_random_seed(random_seed) 
 
     target = NumericalTarget(
@@ -53,7 +53,12 @@ def initialize_campaign(upper_bound, random_seed):
             operator="="))]
 
     searchspace = SearchSpace.from_product(parameters=parameters, constraints=constraints)
-    campaign = Campaign(searchspace, objective)
+    
+    if not random_recs:
+        campaign = Campaign(searchspace, objective)
+    else:
+        recommender = RandomRecommender()
+        campaign = Campaign(searchspace, objective, recommender)
     return campaign
 
 def get_initial_recommendations(campaign,size):
