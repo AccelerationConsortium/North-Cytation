@@ -518,22 +518,10 @@ class North_Robot:
 
         return successful_dispense,measured_mass
 
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=15,wait_time=1):
-        """
-        To pipette from source vial into well plate given the source_vial_num (from dataframe & txt file), dest_wp_num (array of numbers for wellplate coordinates), amount_mL (
-        amount to be dispensed PER WELL!), replicates, dispense_type options ("touch", "drop-touch", "drop", "slow")
-        
-        amount_mL is PER WELL!!!
-
-        Need to provide dest_wp_num in a list, to accomodate for multiple repeats~ (so only change pipetting once)
-
-        Returns True when pipetting is complete
-
-        """
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=11,wait_time=1):
         #Dispense at wellplate
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
-
             try:
                 location = well_plate_new_grid[dest_wp_num_array[i]] #Where are we dispensing
             except:
@@ -546,39 +534,30 @@ class North_Robot:
 
             height = self.c9.counts_to_mm(3, location[3])
             height = self.adjust_height_based_on_pipet_held(height) 
-            
-            #amount_mL = amounts[i] #*Uncomment if want to dispense multiple amounts in same move(demo)
 
             if first_dispense:
                 self.c9.goto_xy_safe(location, vel=15)
                 first_dispense = False
-                #print("Z before dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3))) #z-axis value
-                #print("x at location", self.get_x_mm()) #x-axis value
                 
-            else: #need to update location with new height for the different pipette tips (so it doesn't keep going up to safe height and back down)
-                location_copy = location.copy()
-                location_copy[3] = self.c9.mm_to_counts(3, height) #to use the adjusted height & not the default one (we adjust the height in this function)
-                self.c9.goto(location_copy, vel=5) #doesn't move the height
+            else: 
+                self.c9.goto_xy(location, vel=5) 
 
             if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
                 height -= 5 #goes 5mm lower when dispensing
-                
-                #print("x before dispense", self.get_x_mm())
 
             if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX:
-                dispense_speed = 10 #Use lower dispense speed for smaller tip
+                dispense_speed = 8 #Use lower dispense speed for smaller tip
 
-            self.pipet_from_location(amount_mL, dispense_speed, height, False) #dispense
-            time.sleep(wait_time)
-            
-            #print("Z at dispense", self.c9.counts_to_mm(3, self.c9.get_axis_position(3)))
             print("Transfering", amount_mL, "mL into well #" + str(dest_wp_num_array[i]))
 
+            #Dispense and then wait
+            self.pipet_from_location(amount_mL, dispense_speed, height, False)
+            time.sleep(wait_time)
+
+            #OAM Notes: This code does not appear extensible but keep for now. 
             if dispense_type.lower() == "drop" and i == len(dest_wp_num_array)-1: #last replicate
-                #self.c9.default_vel=40
                 self.c9.move_z(125) #move to safe height
                 time.sleep(1)
-                #print("last drop")
                 
             elif dispense_type.lower() == "drop" or dispense_type.lower() == "slow":
                 time.sleep(2)
@@ -592,8 +571,6 @@ class North_Robot:
                 self.move_rel_x(2.5) #1.75 for quartz WP, 3 for PS
                 time.sleep(0.2)
                 self.move_rel_z(10)           
-                
-            #print("Dispense type: " + dispense_type)
             
         return True
 
