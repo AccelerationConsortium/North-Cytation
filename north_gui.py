@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 import datetime
+import slack_agent
 
 class RealTimePlot:
-    def __init__(self, num_subplots=1, styles=None):
+    def __init__(self, num_subplots=1, titles=None, x_titles=None, y_titles=None, styles=None):
         """
         Initializes the real-time plot with horizontal subplots.
 
@@ -27,7 +28,12 @@ class RealTimePlot:
         for i, ax in enumerate(self.axes):
             ax.set_xlim(300, 800)  # Initial x-axis range
             ax.set_ylim(0, 3)  # Initial y-axis range
-            ax.set_title(f"Plot {i+1}")
+            if titles is not None:
+                ax.set_title(titles[i])
+            if x_titles is not None:
+                ax.set_xlabel(x_titles[i])
+            if y_titles is not None:
+                ax.set_ylabel(y_titles[i])
 
         plt.show(block=False)  # No blocking for updates
         self.fig.canvas.flush_events()  # Ensure initial drawing is flushed
@@ -79,3 +85,7 @@ class RealTimePlot:
         # Save the figure
         self.fig.savefig(filename)
         print(f"Figure saved as {filename}")
+        return filename
+    
+    def upload_file(filename):
+        slack_agent.upload_and_post_file(filename)

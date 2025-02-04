@@ -10,6 +10,8 @@ import random
 from datetime import datetime
 import north_gui
 import os
+import slack_agent
+import itertools
 
 def mix_wells(wells, wash_location=3, wash_volume=0.1, repeats=2):
     for well in wells:
@@ -62,7 +64,7 @@ def analyze_data(source_data_folder, reference_file=None,  reference_index=0, di
 
     print(comparison_index_list)
 
-    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter=plotter,difference_type=dif_type)
+    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter=plotter,difference_type=analysis_type,color=graph_color)
 
     return differences_list,reference_file   
 
@@ -114,18 +116,24 @@ file_5=r"C:\Protocols\Color_Matching\Sweep_C7C12.prt"
 file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
 file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
 file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
-file_list = [file_1, file_2, file_3]
-#file_list = []
+file_list = [file_1, file_2, file_3,file_4,file_5]
 num_files = len(file_list)
 
 #ref_file = r"C:\Users\Imaging Controller\Desktop\Color_Matching\Experiment1_250130_151633_.txt"
 # #Get initial recs
-random_seed = 4
-campaign,searchspace = recommender.initialize_campaign(50,random_seed) #upper bound=50, seed=0
+method = "method_a" #Change this
+random_recs = False #Change this
+seed = 3 #No need to change this
 
-print(searchspace)
+if method == "method_a":
+    upper_bound = 50
+    analysis_type = spec_dif.COMP_METHOD_A 
+elif method == "method_b":
+    upper_bound = 5
+    analysis_type = spec_dif.COMP_METHOD_B 
 
-input()
+
+campaign = recommender.initialize_campaign(upper_bound,seed,random_recs=random_recs) 
 
 campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations/1000)
@@ -133,7 +141,14 @@ print(recommendations/1000)
 # #Experimental workflow and data gathering
 create_initial_colors(file_0,5,recommendations/1000)
 
-plotter = north_gui.RealTimePlot(num_subplots=3, styles=[{"color": "r"}, {"color": "g"}, {"color": "b", "marker": "o", "linestyle": "None"}])
+plotter = north_gui.RealTimePlot(num_subplots=3, 
+                                 titles=['Target Spectra', 'Closest Spectra Per Batch','Optimization Target'],
+                                   x_titles=['Wavelength (nm)', 'Wavelength (nm)', 'Batch #'],
+                                   y_titles=['Intensity', 'Intensity', 'Spectral Match (0 optimal)'],
+                                   styles=[{}, {}, {"marker": "o", "linestyle": "None"}])
+
+colors = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
+graph_color = next(colors)
 
 # # #Get analysis
 results,ref_file = analyze_data(SOURCE_DATA_FOLDER, dif_type=spec_dif.COMP_METHOD_B)
@@ -141,13 +156,13 @@ print("Results: ", results)
 recommendations['output']=results
 campaign_data = recommendations
 
-plotter.add_data(2,[1]*5,results,plot_type='o')
-
+plotter.add_data(2,[1]*5,results,plot_type='o',color=graph_color)
 
 #Subsequent measurements: TODO add in condition for stopping... Probably best to use Ilya's code
 for i in range (0,num_files):
      campaign,recommendations = recommender.get_new_recs_from_results(campaign,recommendations,6)
-     
+     graph_color = next(colors)
+
      print("New Recs: ", recommendations/1000)
      find_closer_color_match(file_list[i],6*(i+1),recommendations/1000)
      results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file,dif_type=spec_dif.COMP_METHOD_B)
@@ -155,7 +170,7 @@ for i in range (0,num_files):
 
      recommendations['output']=results
      campaign_data = pd.concat([campaign_data, recommendations], ignore_index=True)
-     plotter.add_data(2,[i+2]*6,results,plot_type='o')
+     plotter.add_data(2,[i+2]*6,results,plot_type='o',color=graph_color)
 
 print("Final data:\n", campaign_data)
 # Get current date and time
@@ -168,9 +183,14 @@ try:
     filename = SOURCE_DATA_FOLDER+f"/data_{timestamp}_seed_{random_seed}.csv"
     campaign_data.to_csv(filename)
     print(f"Saved CSV as: {filename}")
-    plotter.save_figure(SOURCE_DATA_FOLDER)
-except: 
-    print("Issue saving graphic!")
+except:
+    print ("Issue saving data")
+try: 
+    file_name = plotter.save_figure()
+    slack_agent.send_slack_message("Color matching demo is complete: Here is the visual summary")
+    plotter.upload_file(file_name)
+except:
+    print ("Issue saving figure")
 
 best_result_index = np.argmin(campaign_data['output'].values)
 print("Best result index: ", best_result_index)
@@ -179,15 +199,15 @@ print("Best composition: ", best_composition)
 
 recreate_volume = 2.0
 
-recreate_vial = np.array(best_composition)*recreate_volume/1000/0.240
+recreate_vial = np.array(best_composition)*recreate_volume/240
 
 for i in range (0, len(active_vials)):
     color_volume = recreate_vial[i]
     if color_volume < 1.0:
         lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume)
     else:
-        lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume-1)
-        lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,1)
+        for i in range (0,2):
+            lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume/2)
     lash_e.nr_robot.remove_pipet()
 
 lash_e.nr_robot.vortex_vial(6,5)

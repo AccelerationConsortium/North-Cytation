@@ -22,7 +22,7 @@ def remove_overflow(data):
 #whole and key_wavelengths
 COMP_METHOD_A = 0
 COMP_METHOD_B = 1
-def get_differences(reference_data_file, reference_index, target_data_file, target_index_list,difference_type=COMP_METHOD_A,plotter=None):
+def get_differences(reference_data_file, reference_index, target_data_file, target_index_list,difference_type=COMP_METHOD_A,plotter=None,color=None):
 
     print("Reference file: ", reference_data_file)
     print("Reference index", reference_index)
@@ -39,12 +39,12 @@ def get_differences(reference_data_file, reference_index, target_data_file, targ
     ref_spectra = remove_overflow(ref_spectra)
 
     #print("Ref spectra", ref_spectra)
-    if plotter is not None:
+    if plotter is not None and reference_data_file == target_data_file:
         print(type(wavelengths_ref), type(ref_spectra))
         print(len(wavelengths_ref), len(ref_spectra))
 
-        plotter.add_data(0,wavelengths_ref,ref_spectra)
-        plotter.add_data(1,wavelengths_ref,ref_spectra)
+        plotter.add_data(0,wavelengths_ref,ref_spectra,color='r')
+        plotter.add_data(1,wavelengths_ref,ref_spectra,color='r')
 
     difference = []
     comp_spectra_list = []
@@ -77,7 +77,7 @@ def get_differences(reference_data_file, reference_index, target_data_file, targ
     
     if plotter is not None:
         best_spectra_index = np.argmin(difference)
-        plotter.add_data(1,wavelengths_ref,comp_spectra_list[best_spectra_index])
+        plotter.add_data(1,wavelengths_ref,comp_spectra_list[best_spectra_index],color=color)
 
     return difference
 
