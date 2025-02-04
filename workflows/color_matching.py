@@ -10,6 +10,7 @@ import random
 from datetime import datetime
 import north_gui
 import os
+import slack_agent
 
 def mix_wells(wells, wash_location=3, wash_volume=0.1, repeats=2):
     for well in wells:
@@ -160,8 +161,14 @@ filename = f"data_{timestamp}.csv"
 try:
     campaign_data.to_csv(filename)
     print(f"Saved CSV as: {filename}")
-except: 
-    plotter.save_figure()
+except:
+    print ("Issue saving data")
+try: 
+    file_name = plotter.save_figure()
+    slack_agent.send_slack_message("Color matching demo is complete: Here is the visual summary")
+    plotter.upload_file(file_name)
+except:
+    print ("Issue saving figure")
 
 best_result_index = np.argmin(campaign_data['output'].values)
 print("Best result index: ", best_result_index)

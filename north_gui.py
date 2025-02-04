@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 import datetime
+import slack_agent
 
 class RealTimePlot:
     def __init__(self, num_subplots=1, styles=None):
@@ -79,3 +80,7 @@ class RealTimePlot:
         # Save the figure
         self.fig.savefig(filename)
         print(f"Figure saved as {filename}")
+        return filename
+    
+    def upload_file(filename):
+        slack_agent.upload_and_post_file(filename)
