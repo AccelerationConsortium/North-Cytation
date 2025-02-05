@@ -25,7 +25,7 @@ def send_slack_message(message):
     else:
         print(f"Error: {response.status_code}, {response.text}")
 
-def upload_and_post_file(file_path):
+def upload_and_post_file(file_path, message):
     try:
         # ✅ Step 1: Upload File
         logging.info(f"Uploading file: {file_path}")
@@ -41,7 +41,7 @@ def upload_and_post_file(file_path):
         # ✅ Step 2: Post Message with File Link
         response = client.chat_postMessage(
             channel=SLACK_CHANNEL,
-            text=f"📎 Here is the uploaded file: {file_url}",
+            text=message+f"{file_url}",
         )
 
         if response["ok"]:

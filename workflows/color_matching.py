@@ -1,3 +1,4 @@
+from re import search
 import sys
 
 sys.path.append("../utoronto_demo")
@@ -37,7 +38,7 @@ def create_initial_colors(measurement_file, initial_guesses, initial_volumes):
     lash_e.nr_robot.finish_pipetting()
 
     initial_wells = range(1,1+initial_guesses)
-    #active_vials = range(1,5)
+    active_vials = range(1,5)
 
     initial_volumes.index = initial_wells #Set wells
     print("Initial:\n", initial_volumes)
@@ -115,8 +116,9 @@ file_4=r"C:\Protocols\Color_Matching\Sweep_C1C6.prt"
 file_5=r"C:\Protocols\Color_Matching\Sweep_C7C12.prt"
 file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
 file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
-file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
-file_list = [file_1, file_2, file_3,file_4,file_5]
+#file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
+#file_list = [file_1, file_2, file_3,file_4,file_5]
+file_list=[]
 num_files = len(file_list)
 
 #ref_file = r"C:\Users\Imaging Controller\Desktop\Color_Matching\Experiment1_250130_151633_.txt"
@@ -133,10 +135,14 @@ elif method == "method_b":
     analysis_type = spec_dif.COMP_METHOD_B 
 
 
-campaign = recommender.initialize_campaign(upper_bound,seed,random_recs=random_recs) 
+campaign,searchspace = recommender.initialize_campaign(upper_bound,seed,random_recs=random_recs) 
 
 campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations/1000)
+
+#print("Searchspace Size: ", searchspace)
+
+#input("Pausing to wait for enter...")
 
 # #Experimental workflow and data gathering
 create_initial_colors(file_0,5,recommendations/1000)
@@ -176,21 +182,18 @@ print("Final data:\n", campaign_data)
 # Get current date and time
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-
-
 try:
     # Define filename... Eventually add the random number seed
-    filename = SOURCE_DATA_FOLDER+f"/data_{timestamp}_seed_{random_seed}.csv"
+    filename = SOURCE_DATA_FOLDER+f"/data_{timestamp}_seed_{seed}.csv"
     campaign_data.to_csv(filename)
     print(f"Saved CSV as: {filename}")
 except:
     print ("Issue saving data")
 try: 
-    file_name = plotter.save_figure()
-    slack_agent.send_slack_message("Color matching demo is complete: Here is the visual summary")
-    plotter.upload_file(file_name)
-except:
-    print ("Issue saving figure")
+    file_name = plotter.save_figure(SOURCE_DATA_FOLDER)
+    plotter.upload_file(file_name,"Color matching demo is complete: Here is the visual summary: ")
+except Exception as e:
+    print ("Issue saving figure", e)
 
 best_result_index = np.argmin(campaign_data['output'].values)
 print("Best result index: ", best_result_index)

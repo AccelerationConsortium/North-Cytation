@@ -87,5 +87,5 @@ class RealTimePlot:
         print(f"Figure saved as {filename}")
         return filename
     
-    def upload_file(filename):
-        slack_agent.upload_and_post_file(filename)
+    def upload_file(self,filename,message):
+        slack_agent.upload_and_post_file(filename,message)

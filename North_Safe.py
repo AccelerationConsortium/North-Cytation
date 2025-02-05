@@ -321,7 +321,7 @@ class North_Robot:
         return pipet_rack_index
     
     #Check if the aspiration volume is within limits... Make extensible in the future
-    def aspiration_volume_unacceptable(self,amount_mL,pipet_type_index):
+    def aspiration_volume_unacceptable(self,amount_mL):
         error_check_list = []
         error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>=0.25,False,"Can't pipet more than 0.25 mL from small pipet"])
         error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL<0.01,False,"Can't pipet less than 10 uL from small pipet"])
@@ -357,7 +357,7 @@ class North_Robot:
         
         #Check for an issue with the pipet and the specified amount
         if self.HAS_PIPET == True:
-            if self.aspiration_volume_unacceptable(amount_mL,pipet_rack_index):
+            if self.aspiration_volume_unacceptable(amount_mL):
                 return False
 
         #Get current volume
@@ -387,7 +387,9 @@ class North_Robot:
             height = base_height #Go to the minimum height
   
         #Adjust for different pipet type
-        height = self.adjust_height_based_on_pipet_held(location, height)
+        height = self.adjust_height_based_on_pipet_held(height)
+
+        print("Aspirate height: ", height)
 
         #TODO: Check to make sure we aren't going too low for the small pipet tips only. Ideally we wouldn't need this. 
         if self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX:
@@ -488,21 +490,21 @@ class North_Robot:
             dest_vial_clamped = (self.CLAMPED_VIAL == dest_vial_num) #Is the destination vial clamped?
             dest_vial_volume = self.VIAL_DF.at[dest_vial_num,'vial volume (mL)'] #What is the current vial volume
 
-            #Where is the vial?
-            location = self.get_vial_pipetting_location(dest_vial_num)
-
-            #What height do we need to go to?
-            height = self.c9.counts_to_mm(3, location[3]) #baseline z-height
-            height = self.adjust_height_based_on_pipet_held(height)
-
             #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
             if measure_weight and dest_vial_clamped:
                 initial_mass = self.c9.read_steady_scale()
 
-            #Move to the location if told to (Could change this to an auto-check)
-            if initial_move:
-                self.c9.goto_xy_safe(location, vel=15)
+            #Where is the vial?
+            location,base_height = self.get_vial_pipetting_location(dest_vial_num)
+            
+            #What height do we need to go to?
+            height = self.c9.counts_to_mm(3, location[3]) #baseline z-height
+            height = self.adjust_height_based_on_pipet_held(height)
 
+            #Move to the location if told to (Could change this to an auto-check)
+            if initial_move:               
+                self.c9.goto_xy_safe(location, vel=15)   
+            
             #Pipet into the vial
             self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
 
@@ -539,8 +541,9 @@ class North_Robot:
                 self.c9.goto_xy_safe(location, vel=15)
                 first_dispense = False
                 
-            else: 
-                self.c9.goto_xy(location, vel=5) 
+            else:
+                print(height)
+                self.c9.goto_xy_safe(location, vel=5, safe_height=height)
 
             if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
                 height -= 5 #goes 5mm lower when dispensing
@@ -743,11 +746,13 @@ class North_Robot:
             self.c9.goto_safe(location,vel=30) #move vial to clamp
             #self.c9.close_clamp() #clamp vial
             self.c9.open_gripper() #release vial
-            #self.CLAMPED_VIAL = vial_num          
+            #self.CLAMPED_VIAL = vial_num       
+            # 
+            self.PR_VIALS[reactor_num-1]=vial_num
 
     #Return a vial from the photoreactor to the tray. To do: Add a tracker for whether the reactors are full. 
     def return_vial_from_photoreactor(self, vial_num, reactor_num):
-        print("Moving vial " + self.get_vial_name(self.CLAMPED_VIAL) + " from photoreactor " + str(reactor_num))
+        print("Moving vial " + self.get_vial_name(vial_num) + " from photoreactor " + str(reactor_num))
 
         location = None
         if reactor_num==1:
@@ -768,6 +773,7 @@ class North_Robot:
             self.c9.goto_safe(rack[vial_num]) #Move back to vial rack
             self.c9.open_gripper() #Release vial
             #self.CLAMPED_VIAL = "None"
+            self.PR_VIALS[reactor_num-1]=None
 
     #Uncap the vial in the clamp
     def uncap_clamp_vial(self):
@@ -865,7 +871,7 @@ class North_Robot:
             #self.c9.spin_axis(self.c9.GRIPPER, 0, 500000)
 
             self.c9.move_axis(self.c9.GRIPPER, 1000*vortex_time*vortex_speed, vel=vortex_speed,accel=10000)
-            #self.c9.reduce_axis_position(axis=self.c9.GRIPPER)
+            self.c9.reduce_axis_position(axis=self.c9.GRIPPER)
            
             #Return vial
             if vial_clamped:
@@ -985,13 +991,16 @@ class North_Robot:
     def move_home(self):
         self.c9.goto_safe(home)
 
+    def get_vial_name(self,vial_num):
+        return self.VIAL_DF.at[vial_num,'vial name']
+
     #Just a method to find the position of a vial that may be in a different position
     #Better to update this method then have this in the methods that find vials... More extensible
     def get_vial_pipetting_location(self,vial_num):
         #The height at which the pipet touches the ground for the 1 mL pipet
         CLAMP_BASE_HEIGHT = 114.5
         VIAL_RACK_BASE_HEIGHT = 67.25
-        PR_BASE_HEIGHT = 109
+        PR_BASE_HEIGHT = 80 #Need to fine tune this
         LARGE_VIAL_BASE_HEIGHT = 55    
 
         vial_clamped = (self.CLAMPED_VIAL == vial_num) #Is the vial clamped?
