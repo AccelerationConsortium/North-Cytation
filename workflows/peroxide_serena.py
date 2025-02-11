@@ -6,11 +6,11 @@ import pandas as pd
 import numpy as np
 
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2):
-    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
+    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
     lash_e.nr_robot.dispense_from_vial_into_vial(reaction_mixture_index,sample_index,volume=volume)
     mix_current_sample(lash_e,sample_index)
     lash_e.nr_robot.remove_pipet()
-    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
+    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
 
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,well_volume=0.2):
     lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates)
@@ -23,17 +23,21 @@ def mix_current_sample(lash_e, sample_index, repeats=3, volume=0.25):
         lash_e.nr_robot.dispense_from_vial_into_vial(sample_index,sample_index,volume=volume,move_to_aspirate=False,move_to_dispense=False)
 
 #Define your workflow! Make sure that it has parameters that can be changed!
-def sample_workflow(input_vial_status_file,cytation_protocol_file_path, initial_incubation_time=1200,incubation_time=18*60,interval=5*60,replicates=3):
+def peroxide_workflow(initial_incubation_time=1200,incubation_time=18*60,interval=5*60,replicates=3):
   
     # Initial State of your Vials, so the robot can know where to pipet
-    vial_status = pd.read_csv(input_vial_status_file, sep=r"\t", engine="python")
+    INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.txt"
+    MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt"
+
+    # Initial State of your Vials, so the robot can know where to pipet
+    vial_status = pd.read_csv(INPUT_VIAL_STATUS_FILE, sep=",")
     print(vial_status)
 
     #This section is simply to create easier to remember and read indices for the vials
-    vial_numbers = vial_status['vial index'].values #Gives you the values
-    reagent_A_index = vial_status[vial_status['vial name']=="Reagent_A"]
-    reagent_B_index = vial_status[vial_status['vial name']=="Reagent_B"]
-    reaction_mixture_index = vial_status[vial_status['vial name']=="Rxn_Mixture"]
+    vial_numbers = vial_status['vial_index'].values #Gives you the values
+    reagent_A_index = vial_status.loc[vial_status['vial_name']=="Reagent_A", 'vial_index']
+    reagent_B_index = vial_status.loc[vial_status['vial_name']=="Reagent_B", 'vial_index']
+    reaction_mixture_index = vial_status.loc[vial_status['vial_name']=="Rxn_Mixture", 'vial_index']
     
     #Get the active indices
     num_samples = vial_status.shape[0]-3 #Gets the total number of samples from the input vial
@@ -42,7 +46,7 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path, initial_
     input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
     
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(input_vial_status_file)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
     
     #Step 1: Add 20 µL "reagent A" (vial 0) to "reagent B" (vial 1).
     lash_e.nr_robot.dispense_from_vial_into_vial(reagent_A_index,reagent_B_index,volume=0.02)
@@ -61,8 +65,8 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path, initial_
     #Step 4: Move the reaction mixture vial (vial 2) to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_photoreactor(reaction_mixture_index, reactor_num=1)
     #Turn on photoreactor
-    lash_e.photoreactor.turn_on_reactor_led(reactor_num=1,intensity=100)
-    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
+    lash_e.photoreactor.turn_on_reactor_led(reactor_num=0,intensity=100)
+    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
 
     #Step 5: Add 200 µL "reaction mixture" (vial in the photoreactor) to "Diluted Working Reagent" (Vials 6-11). 
             # Six aliquots need to be taken from the "reaction mixture" and added to the "diluted working reagent" at 0, 5, 10, 15, 20, 25 time marks for incubation (18 min).
@@ -100,7 +104,7 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path, initial_
                 dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2)
                 items_completed+=1
             elif action_required=="measure_samples":
-                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,starting_well_index,cytation_protocol_file_path,replicates)
+                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,starting_well_index,MEASUREMENT_PROTOCOL_FILE,replicates)
                 starting_well_index += replicates
                 items_completed+=1
         
@@ -109,7 +113,5 @@ def sample_workflow(input_vial_status_file,cytation_protocol_file_path, initial_
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=1)
         
-#Note I will have a conversion of "A1" to 0 and "A2" to 1 for the future, so you could do ["A1", "A2", "A3"] if you prefer that over 0,1,2
-#Your protocol needs to be made inside the gen5 software, including the automated export
-sample_workflow("../utoronto_demo/status/Peroxide_assay_sample_input_vials_SQ.txt", r"C:\Protocols\Serena_Test_A1A3.prt")
+peroxide_workflow() #Run your workflow
 
