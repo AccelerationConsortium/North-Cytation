@@ -179,10 +179,14 @@ class North_Robot:
     HIGHER_PIPET_ARRAY_INDEX = 1 #Track the status of the pipets used (in the upper rack)
     PIPETS_USED = [0,0] #Tracker for each rack... This may become deprecated
     DEFAULT_SMALL_TIP_DELTA_Z = -20 #TODO: This value needs to be measured
+    
+    CURRENT_PUMP_SPEED = 11
+    
     HELD_PIPET_INDEX = None   
 
     #Controller
     c9 = None
+    
    
     #Initialize function
     def __init__(self, c9,vial_file=None,pipet_file=None):
@@ -290,7 +294,8 @@ class North_Robot:
     def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15, initial_move=True):
         if initial_move:
             self.c9.move_z(height, vel=move_speed)
-        #self.c9.set_pump_speed(0, pump_speed)
+        if pump_speed != self.CURRENT_PUMP_SPEED:
+            self.c9.set_pump_speed(0, pump_speed)
         if aspirate:
             if amount <= 1:
                 try:
@@ -323,9 +328,9 @@ class North_Robot:
     #Check if the aspiration volume is within limits... Make extensible in the future
     def aspiration_volume_unacceptable(self,amount_mL):
         error_check_list = []
-        error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>=0.25,False,"Can't pipet more than 0.25 mL from small pipet"])
+        error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>0.25,False,"Can't pipet more than 0.25 mL from small pipet"])
         error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL<0.01,False,"Can't pipet less than 10 uL from small pipet"])
-        error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL>=1.00,False,"Can't pipet more than 1.00 mL from large pipet"])
+        error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL>1.00,False,"Can't pipet more than 1.00 mL from large pipet"])
         error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL<0.025,False,"Can't pipet less than 25 uL from large pipet"])
         return self.check_for_errors(error_check_list,True) #Return True if issue
 
@@ -549,7 +554,7 @@ class North_Robot:
                 height -= 5 #goes 5mm lower when dispensing
 
             if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX:
-                dispense_speed = 8 #Use lower dispense speed for smaller tip
+                dispense_speed = 13 #Use lower dispense speed for smaller tip
 
             print("Transfering", amount_mL, "mL into well #" + str(dest_wp_num_array[i]))
 

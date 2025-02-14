@@ -14,10 +14,11 @@ PIPET_FILE = "../utoronto_demo/status/pipets.txt"
 
 c9 = NorthC9('A', network_serial='AU06CNCF')
 nr = North_Safe.North_Robot(c9,VIAL_FILE,PIPET_FILE)
-nr_track = North_Safe.North_Track(c9, num_source=4)
+nr_track = North_Safe.North_Track(c9)
 
 try:
-    nr_track.get_next_WP_from_source()
+    #nr_track.return_well_plate_to_nr(0)
+   #nr_track.get_next_WP_from_source()
     
     #looping to check multiple
     # for i in range(2):

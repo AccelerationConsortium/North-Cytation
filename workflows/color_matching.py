@@ -38,7 +38,6 @@ def create_initial_colors(measurement_file, initial_guesses, initial_volumes):
     lash_e.nr_robot.finish_pipetting()
 
     initial_wells = range(1,1+initial_guesses)
-    active_vials = range(1,5)
 
     initial_volumes.index = initial_wells #Set wells
     print("Initial:\n", initial_volumes)
@@ -65,7 +64,7 @@ def analyze_data(source_data_folder, reference_file=None,  reference_index=0, di
 
     print(comparison_index_list)
 
-    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter=plotter,difference_type=analysis_type,color=graph_color)
+    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter=plotter,difference_type=dif_type,color=graph_color)
 
     return differences_list,reference_file   
 
@@ -117,20 +116,26 @@ file_5=r"C:\Protocols\Color_Matching\Sweep_C7C12.prt"
 file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
 file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
 #file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
-#file_list = [file_1, file_2, file_3,file_4,file_5]
-file_list=[]
+file_list = [file_1, file_2, file_3,file_4,file_5]
+#file_list=[file_1]
 num_files = len(file_list)
 
 #ref_file = r"C:\Users\Imaging Controller\Desktop\Color_Matching\Experiment1_250130_151633_.txt"
 # #Get initial recs
 method = "method_a" #Change this
-random_recs = False #Change this
-seed = 3 #No need to change this
+random_recs = True #Change this
+seed = 8 #No need to change this
 
 if method == "method_a":
     upper_bound = 50
     analysis_type = spec_dif.COMP_METHOD_A 
 elif method == "method_b":
+
+
+
+
+
+    
     upper_bound = 5
     analysis_type = spec_dif.COMP_METHOD_B 
 
@@ -139,6 +144,7 @@ campaign,searchspace = recommender.initialize_campaign(upper_bound,seed,random_r
 
 campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations/1000)
+print(f"Model method: {method}, random: {random_recs}, seed #: {seed}")
 
 #print("Searchspace Size: ", searchspace)
 
@@ -157,7 +163,7 @@ colors = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
 graph_color = next(colors)
 
 # # #Get analysis
-results,ref_file = analyze_data(SOURCE_DATA_FOLDER, dif_type=spec_dif.COMP_METHOD_B)
+results,ref_file = analyze_data(SOURCE_DATA_FOLDER, dif_type=analysis_type)
 print("Results: ", results)
 recommendations['output']=results
 campaign_data = recommendations
@@ -171,7 +177,7 @@ for i in range (0,num_files):
 
      print("New Recs: ", recommendations/1000)
      find_closer_color_match(file_list[i],6*(i+1),recommendations/1000)
-     results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file,dif_type=spec_dif.COMP_METHOD_B)
+     results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file,dif_type=analysis_type)
      print("Results: ", results)
 
      recommendations['output']=results
@@ -198,18 +204,20 @@ except Exception as e:
 best_result_index = np.argmin(campaign_data['output'].values)
 print("Best result index: ", best_result_index)
 best_composition=campaign_data.iloc[best_result_index].tolist()
-print("Best composition: ", best_composition)
+
 
 recreate_volume = 2.0
 
 recreate_vial = np.array(best_composition)*recreate_volume/240
+
+print("Best composition: ", recreate_vial)
 
 for i in range (0, len(active_vials)):
     color_volume = recreate_vial[i]
     if color_volume < 1.0:
         lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume)
     else:
-        for i in range (0,2):
+        for j in range (0,2):
             lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume/2)
     lash_e.nr_robot.remove_pipet()
 

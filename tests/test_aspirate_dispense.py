@@ -15,8 +15,11 @@ def sample_workflow(input_vial_status_file):
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(input_vial_status_file)
 
-    lash_e.nr_robot.dispense_from_vial_into_vial(4,0,0.4)
+    lash_e.nr_robot.dispense_from_vial_into_vial(4,0,0.8)
     lash_e.nr_robot.remove_pipet()
+    lash_e.nr_robot.aspirate_from_vial(4,0.9)
+    lash_e.nr_robot.dispense_into_wellplate([0,1,2],[0.2,0.2,0.2])
+    lash_e.nr_robot.dispense_into_vial(0,0.4)
 
 
 sample_workflow("../utoronto_demo/status/color_matching_vials.txt")
