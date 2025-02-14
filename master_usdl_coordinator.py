@@ -55,10 +55,10 @@ class Lash_E:
         self.move_wellplate_back_from_cytation(wellplate_index,quartz=quartz)
         self.nr_track.origin()
 
-    def run_photoreactor(self,dest_vial_position,target_rpm,intensity,duration,reactor_num):
-        self.nr_robot.move_vial_to_photoreactor(dest_vial_position,reactor_num)
+    def run_photoreactor(self,vial_index,target_rpm,intensity,duration,reactor_num):
+        self.nr_robot.move_vial_to_location(vial_index,'photoreactor_array',reactor_num)
         self.photoreactor.run_photoreactor(target_rpm,duration,intensity,reactor_num)
-        self.nr_robot.return_vial_from_photoreactor(dest_vial_position,reactor_num)
+        self.nr_robot.return_vial_home(vial_index)
 
     def grab_new_wellplate(self,dest_wp_position=0):
         self.nr_track.get_next_WP_from_source()
