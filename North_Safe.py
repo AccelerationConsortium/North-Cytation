@@ -56,8 +56,8 @@ class North_Track:
         self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python")
         #print(self.well_plate_df)
         self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
-        for i in range (6,8): #Home the track
-            self.c9.home_axis(i)
+        # for i in range (6,8): #Home the track
+        #     self.c9.home_axis(i)
 
     def set_horizontal_speed(self,vel):
         self.c9.DEFAULT_X_SPEED = vel
@@ -195,7 +195,7 @@ class North_Robot:
         try:
             self.VIAL_FILE = vial_file
             self.VIAL_DF = pd.read_csv(vial_file, sep=",", engine="python")
-            self.HOME_VIAL_DF = self.VIAL_DF
+            self.HOME_VIAL_DF = self.VIAL_DF.copy()
             self.VIAL_DF.index = self.VIAL_DF['vial_index'].values
             self.VIAL_NAMES = self.VIAL_DF['vial_name']
         except Exception as e:
@@ -213,10 +213,11 @@ class North_Robot:
                 self.PIPETS_USED[self.HIGHER_PIPET_ARRAY_INDEX]=int(pipets[1])
         except:    
             print("Cannot open pipet file... using default sequence")
-        sys.excepthook = self.global_exception_handler
+        #sys.excepthook = self.global_exception_handler
 
     #Reset positions and get rid of any pipet tips
     def reset_after_initialization(self):
+        print("Resetting robot and homing as needed")
         self.c9.home_pump(0) #Home the pump
         #self.c9.home_carousel() #Home the carousel
         self.reset_robot() 
@@ -345,7 +346,7 @@ class North_Robot:
         #Move the vial to clamp if needed to aspirate
         if self.check_for_errors(error_check_list):
             print("Moving vial to clamp to uncap")
-            self.move_vial_to_clamp(source_vial_num)
+            self.move_vial_to_location(source_vial_num,location='clamp',location_index=0)
             self.uncap_clamp_vial()        
 
         #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
@@ -358,13 +359,13 @@ class North_Robot:
             aspiration_error = self.check_if_aspiration_volume_unacceptable(amount_mL) 
 
         #Get current volume
-        source_vial_volume = self.VIAL_DF.at[source_vial_num,'vial_volume']
+        source_vial_volume = self.get_vial_info(source_vial_num,'vial_volume')
 
         #Reject aspiration if the volume is not high enough
         if source_vial_volume < amount_mL:
             self.pause_after_error("Cannot aspirate more volume than in vial")
 
-        print("Pipetting from vial " + self.get_vial_name(source_vial_num) + ", amount: "  + str(amount_mL) + " mL")
+        print("Pipetting from vial " + self.get_vial_info(source_vial_num,'vial_name') + ", amount: "  + str(amount_mL) + " mL")
 
         #Where are we pipetting from?  
         location = self.get_vial_location(source_vial_num,True)
@@ -407,8 +408,7 @@ class North_Robot:
         self.pipet_from_location(amount_mL, aspirate_speed, height, True, initial_move=move_to_aspirate)
 
         #Record the volume change
-        original_amount = self.VIAL_DF.at[source_vial_num,'vial_volume']
-        self.VIAL_DF.at[source_vial_num,'vial_volume']=(original_amount-amount_mL)
+        self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
 
         #Move to a safe height and wait if required
         if vial_wait_time > 0:
@@ -502,6 +502,8 @@ class North_Robot:
 
         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
+
+        self.save_vial_status()
 
         #If the destination vial is at the clamp and you want the weight, measure after pipetting
         if measure_weight and dest_vial_clamped:
@@ -682,15 +684,21 @@ class North_Robot:
 
     #Check the original status of the vial in order to send it to its home location
     def return_vial_home(self,vial_num):
-        home_location = self.HOME_VIAL_DF.loc[self.HOME_VIAL_DF['vial_index'] == vial_num, 'location'].values
-        home_location_index = self.HOME_VIAL_DF.loc[self.HOME_VIAL_DF['vial_index'] == vial_num, 'location_index'].values
-        self.move_vial_to_location(self,vial_num,home_location,home_location_index)
+        home_location = self.HOME_VIAL_DF.loc[self.HOME_VIAL_DF['vial_index'] == vial_num, 'location'].values[0]
+        home_location_index = self.HOME_VIAL_DF.loc[self.HOME_VIAL_DF['vial_index'] == vial_num, 'location_index'].values[0]
+        vial_location = self.get_vial_info(vial_num,'location')
+        if vial_location == 'clamp' and self.GRIPPER_STATUS == "Cap":
+            print("Test")
+            self.recap_clamp_vial()
+        self.move_vial_to_location(vial_num,home_location,home_location_index)
+        self.save_vial_status(self.VIAL_FILE)
 
     #Send the vial to a specified location, but store its home position
     def move_vial_to_location(self,vial_num,location,location_index):
         print("Moving vial " + self.get_vial_info(vial_num,'vial_name') + " to " + location + ": " + str(location_index))
 
         initial_location = self.get_vial_location(vial_num, False)
+
         destination = self.get_location(False,location,location_index)
         destination_empty = self.get_vial_in_location(location,location_index) is None
 
@@ -710,13 +718,17 @@ class North_Robot:
         self.VIAL_DF.at[vial_num, 'location']=location
         self.VIAL_DF.at[vial_num, 'location_index']=location_index
 
-    #What index is at the specific location
-    def get_vial_in_location(self,location_name,location_index):
-        location_list = self.VIAL_DF['location'].values
-        if location_name in location_list:
-            return self.VIAL_DF.loc[self.VIAL_DF['location'] == location_name and self.VIAL_DF['location_index']==location_index, 'vial_index'].values
-        else:
-            return None
+        self.save_vial_status(self.VIAL_FILE)
+
+    def get_vial_in_location(self, location_name, location_index):
+        # Filter rows where both conditions match
+        mask = (self.VIAL_DF['location'] == location_name) & (self.VIAL_DF['location_index'] == location_index)
+        
+        # Get the matching values
+        matching_vials = self.VIAL_DF.loc[mask, 'vial_index'].values
+
+        # Return the first match or None if no match is found
+        return matching_vials[0] if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
     def uncap_clamp_vial(self):
@@ -739,7 +751,7 @@ class North_Robot:
         self.GRIPPER_STATUS = "Cap"
         self.c9.open_clamp()
 
-        self.VIAL_DF.at[self.CLAMPED_VIAL, 'capped']=False
+        self.VIAL_DF.at[clamp_vial_index, 'capped']=False
 
         try:
             self.save_vial_status(self.VIAL_FILE)
@@ -760,13 +772,14 @@ class North_Robot:
         
         self.check_for_errors(error_check_list,True) #Let's pause if there is an error
 
-        self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not
+        self.goto_location_if_not_there(vial_clamp)
         self.c9.close_clamp() #Make sure vial is clamped
-        self.c9.cap(revs=1.9, torque_thresh = 400) #Cap the vial #Cap the vial
+        self.c9.cap(revs=2.0, torque_thresh = 600) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap
         self.GRIPPER_STATUS = "Open"
+        self.c9.open_clamp()
 
-        self.VIAL_DF.at[self.CLAMPED_VIAL, 'capped']=True #Update the vial status
+        self.VIAL_DF.at[clamp_vial_index, 'capped']=True #Update the vial status
 
         try:
             self.save_vial_status(self.VIAL_FILE)
@@ -825,13 +838,13 @@ class North_Robot:
    #Check to see if we can move the vial         
     def is_vial_movable(self, vial_index):
         movable = False
-        movable = self.get_vial_info(vial_index,'capped') == "True" and self.get_vial_info(vial_index,'vial_type') == "8_mL"
+        movable = self.get_vial_info(vial_index,'capped') == True and self.get_vial_info(vial_index,'vial_type') == "8_mL"
         return movable
     
     #Check to see if the pipet can have liquids added/removed
     def is_vial_pipetable(self, vial_index):
         pipetable = False
-        pipetable = self.get_vial_info(vial_index,'capped') == "False" or self.get_vial_info(vial_index,'cap_type') == "open"
+        pipetable = self.get_vial_info(vial_index,'capped') == False or self.get_vial_info(vial_index,'cap_type') == "open"
         return pipetable
 
     #Get adjust the aspiration height based on how much is there
@@ -879,7 +892,7 @@ class North_Robot:
         self.c9.move_z(target_z)
   
     #Save the status of the vials to a file
-    def save_vial_status(self,file):
+    def save_vial_status(self,file=VIAL_FILE):
         self.VIAL_DF.to_csv(file, index=False,sep=',')
 
     #Save the status of the pipets to a file
@@ -897,6 +910,7 @@ class North_Robot:
         try:
             self.remove_tips_and_move_home()
         except:
+            print("Homing robot before proceeding...")
             self.c9.home_robot()
             self.remove_tips_and_move_home()
 
@@ -915,7 +929,18 @@ class North_Robot:
     #Get some piece of information about a vial
     #vial_index,vial_name,location,location_index,vial_volume,capped,cap_type,vial_type
     def get_vial_info(self,vial_num,column_name):
-        return self.VIAL_DF.loc[self.VIAL_DF['vial_index'] == vial_num, column_name].values
+        values = self.VIAL_DF.loc[self.VIAL_DF['vial_index'] == vial_num, column_name].values
+        if len(values) > 0:
+            return values[0]  # Return the first match
+        else:
+            return None  # Handle case where no match is found    
+
+    def get_vial_index_from_name(self,vial_name):
+        values = self.VIAL_DF.loc[self.VIAL_DF['vial_name'] == vial_name, 'vial_index'].values
+        if len(values) > 0:
+            return values[0]  # Return the first match
+        else:
+            return None  # Handle case where no match is found  
 
     #Physical method that get's hard-coded minimum heights for pipetting    
     def get_min_pipetting_height(self,vial_num):
@@ -927,7 +952,7 @@ class North_Robot:
         #These constants should be considered properties that we can take in from files later
         CLAMP_BASE_HEIGHT = 114.5
         VIAL_RACK_BASE_HEIGHT = 67.25
-        PR_BASE_HEIGHT = 80 #Need to fine tune this
+        PR_BASE_HEIGHT = 85 #Need to fine tune this
         LARGE_VIAL_BASE_HEIGHT = 55    
     
         if location_name=='main_8mL_rack':
@@ -965,7 +990,7 @@ class North_Robot:
                 location = vial_clamp_pip
         else: #For the gripper
            if location_name=='main_8mL_rack':
-                location = rack_pip[location_index]
+                location = rack[location_index]
            elif location_name=='large_vial_rack':
                 print("No defined location")
            elif location_name=='photoreactor_array':
