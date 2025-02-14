@@ -23,30 +23,30 @@ def mix_current_sample(lash_e, sample_index, repeats=3, volume=0.25):
         lash_e.nr_robot.dispense_from_vial_into_vial(sample_index,sample_index,volume=volume,move_to_aspirate=False,move_to_dispense=False)
 
 #Define your workflow! Make sure that it has parameters that can be changed!
-def peroxide_workflow(initial_incubation_time=1200,incubation_time=18*60,interval=5*60,replicates=3):
+def peroxide_workflow(initial_incubation_time=30,incubation_time=7*60,interval=5*60,replicates=3):
   
     # Initial State of your Vials, so the robot can know where to pipet
-    INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.txt"
+    INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay.txt"
     MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt"
 
     # Initial State of your Vials, so the robot can know where to pipet
     vial_status = pd.read_csv(INPUT_VIAL_STATUS_FILE, sep=",")
     print(vial_status)
 
+    #Initialize the workstation, which includes the robot, track, cytation and photoreactors
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
+
     #This section is simply to create easier to remember and read indices for the vials
     vial_numbers = vial_status['vial_index'].values #Gives you the values
-    reagent_A_index = vial_status.loc[vial_status['vial_name']=="Reagent_A", 'vial_index']
-    reagent_B_index = vial_status.loc[vial_status['vial_name']=="Reagent_B", 'vial_index']
-    reaction_mixture_index = vial_status.loc[vial_status['vial_name']=="Rxn_Mixture", 'vial_index']
+    reaction_mixture_index = lash_e.nr_robot.get_vial_index_from_name('Rxn_Mixture') #Get the ID of our target reactor
+    reagent_A_index = lash_e.nr_robot.get_vial_index_from_name('Reagent_A')
+    reagent_B_index = lash_e.nr_robot.get_vial_index_from_name('Reagent_B')
     
     #Get the active indices
     num_samples = vial_status.shape[0]-3 #Gets the total number of samples from the input vial
-    sample_indices = vial_status.index.values[3:] #Gets the indices for the samples
+    sample_indices = vial_status.index.values[3:] #Gets the indices for the samples (0,5, etc.)
 
-    input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
-    
-    #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
+    input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")    
     
     #Step 1: Add 20 µL "reagent A" (vial 0) to "reagent B" (vial 1).
     lash_e.nr_robot.dispense_from_vial_into_vial(reagent_A_index,reagent_B_index,volume=0.02)
