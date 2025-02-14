@@ -39,4 +39,4 @@ All code written by Owen Melville with contributions by Ilya Yakavets, Monique N
 
 The sample workflow contained in this video is labelled and contains the programming elements in the sample_workflow.py program in the "workflows" directory. 
 
-[![Sample Workflow]([https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=VIDEO_ID](https://youtu.be/b5xtcwcI-eg))
+
