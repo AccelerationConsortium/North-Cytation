@@ -855,11 +855,13 @@ class North_Robot:
         else:
             return base_height
 
-    def dispense_liquid_into_clamped_vial(): #Can work on this
+    def dispense_liquid_into_vial(target_vial_index, dispense_amountyes): #Can work on this
         return None
-    def dispense_solid_into_clamped_vial(): #Can work on this
+    
+    def dispense_solid_into_vial(target_vial_index, dispense_mass): #Can work on this
         return None
-    def set_heater_temperature(): #Can work on this
+    
+    def set_heater_temperature(target_temperature): #Can work on this
         return None
 
     #Translate in the x direction
