@@ -161,7 +161,8 @@ class North_Track:
 
 class North_Robot:
     #What's in the robot's gripper
-    GRIPPER_STATUS = "Open"
+    GRIPPER_STATUS = None #Could be None, "Cap" or "Open"
+    GRIPPER_VIAL_INDEX = None #Could be None or the index of the vial/cap
     
     VIAL_DF = None #Dataframe tracking vial information
     HOME_VIAL_DF = None #Keeps track of original data and home positions
@@ -172,21 +173,19 @@ class North_Robot:
     BLUE_DIMS = [20,77] #Large blue tips (mm)
     DEFAULT_DIMS = [25,85] #Default Tips from MT (mm)
     FILTER_DIMS = [24,98] #Large filter tips (mm)
-
-    HAS_PIPET = False #Does the robot have an active pipet or not
-    PIPET_FILE = None #Where do we store how many pipets there are?
-    LOWER_PIPET_ARRAY_INDEX = 0 #Track the status of the pipets used (in the lower rack). Should probably make this a label
-    HIGHER_PIPET_ARRAY_INDEX = 1 #Track the status of the pipets used (in the upper rack). Should probably make this a label
-    PIPETS_USED = [0,0] #Tracker for each rack
     DEFAULT_SMALL_TIP_DELTA_Z = -20 #This is the height difference between the bottom of the small pipet tip and the large tip
-    
-    CURRENT_PUMP_SPEED = 11
-    
+
     HELD_PIPET_INDEX = None #What kind of pipet do we have  
+    PIPET_FILE = None #Where do we store how many pipets there are?
+    LOWER_PIPET_ARRAY_INDEX = "lower_rack_1" #Label representing the lower rack at the back with 1000 uL tips
+    HIGHER_PIPET_ARRAY_INDEX = "upper_rack_2" #Label representing the upper rack at the back with 250 uL tips
+    PIPETS_USED = [0,0] #Tracker for each rack
+    PIPET_FLUID_INDEX = None #What vial was the fluid aspirated from?
+
+    CURRENT_PUMP_SPEED = 11
 
     #Controller
     c9 = None
-    
    
     #Initialize function
     def __init__(self, c9,vial_file=None,pipet_file=None):
