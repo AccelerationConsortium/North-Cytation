@@ -55,10 +55,15 @@ class North_Track:
     def __init__(self, c9):
         self.c9 = c9
         self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python")
-        #print(self.well_plate_df)
         self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
-        # for i in range (6,8): #Home the track
-        #     self.c9.home_axis(i)
+        #Load yaml data
+        self.reset_after_initialization()
+    
+    def reset_after_initialization(self):
+        None
+        #Return well plate if well-plate in gripper
+        #Send used well plate to trash
+        #Send unused well plate back to source
 
     def set_horizontal_speed(self,vel):
         self.c9.DEFAULT_X_SPEED = vel
