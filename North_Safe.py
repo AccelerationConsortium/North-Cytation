@@ -55,10 +55,15 @@ class North_Track:
     def __init__(self, c9):
         self.c9 = c9
         self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python")
-        #print(self.well_plate_df)
         self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
-        # for i in range (6,8): #Home the track
-        #     self.c9.home_axis(i)
+        #Load yaml data
+        self.reset_after_initialization()
+    
+    def reset_after_initialization(self):
+        None
+        #Return well plate if well-plate in gripper
+        #Send used well plate to trash
+        #Send unused well plate back to source
 
     def set_horizontal_speed(self,vel):
         self.c9.DEFAULT_X_SPEED = vel
@@ -304,7 +309,7 @@ class North_Robot:
         if active_pipet_num > MAX_PIPETS:
             self.pause_after_error("The North Robot is out of pipets! Please refill pipets then hit enter on the terminal!")
             self.PIPETS_USED=[0,0]
-            self.save_pipet_status(self.PIPET_FILE)
+            self.save_robot_status()
             active_pipet_num=0
 
         #This conversion is neccessary to take the tips in the correct order.
