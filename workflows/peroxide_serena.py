@@ -18,6 +18,8 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
     lash_e.nr_robot.remove_pipet()
     lash_e.measure_wellplate(cytation_protocol_file_path)
 
+    
+
 def mix_current_sample(lash_e, sample_index, new_pipet=False,repeats=3, volume=0.25):
     if new_pipet:
         lash_e.nr_robot.remove_pipet()

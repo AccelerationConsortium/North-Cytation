@@ -20,7 +20,6 @@ class Lash_E:
         c9 = NorthC9("A", network_serial="AU06CNCF")
         if initialize_robot:
             self.nr_robot = North_Robot(c9, vial_file)
-            self.nr_robot.reset_after_initialization()
         if initialize_track:
             self.nr_track = North_Track(c9)
         if initialize_biotek:

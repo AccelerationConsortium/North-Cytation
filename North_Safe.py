@@ -6,6 +6,7 @@ import time
 import math
 import pandas as pd
 import sys
+from other.north_methods import recap_clamp_vial
 import slack_agent
 import yaml
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
@@ -216,11 +217,11 @@ class North_Robot:
             if self.GRIPPER_STATUS is not None: #If the gripper is full, let's address that
                 vial_index = self.GRIPPER_VIAL_INDEX
                 if self.GRIPPER_STATUS == "Cap": #If we have the cap, the vial must be in the gripper.
-                    print("The report reports having a cap in its gripper... Recapping the clamp vial...")
+                    print("The robot reports having a cap in its gripper... Recapping the clamp vial...")
                     self.recap_clamp_vial()
                     self.return_vial_home(vial_index)
                 elif self.GRIPPER_STATUS == "Vial": #We need to know where this vial is intended to be!
-                    print("The report reports having a vial in the gripper... Returning that vial home...")
+                    print("The robot reports having a vial in the gripper... Returning that vial home...")
                     location = self.get_vial_info(vial_index,'home_location')
                     location_index = self.get_vial_info(vial_index,'home_location_index')
                     self.drop_off_vial(vial_index,location=location,location_index=location_index)
@@ -231,12 +232,17 @@ class North_Robot:
                 volume = self.PIPET_FLUID_VOLUME
                 self.dispense_into_vial(vial_index,volume)
 
-        except:
-            print("An error occured during initialization, homing components")
-            self.c9.home_pump(0) #Home the pump
+        except Exception as e:
+            print("An error occured during initialization, homing components: ", e)
             self.c9.home_carousel() #Home the carousel
             self.c9.home_robot() #Home the robot
+            self.c9.home_pump(0) #Home the pump
+            for i in range (6,8): #Home the track
+                self.c9.home_axis(i)
             self.reset_after_initialization()
+        
+        self.c9.open_gripper()
+        self.c9.home_pump(0)
 
     #Save the status of the robot to memory
     def save_robot_status(self):
@@ -258,16 +264,28 @@ class North_Robot:
 
     #Update the status of the robot from memory
     def get_robot_status(self):
-        #Get the vial dataframe
+        # Get the vial dataframe
         try:
             self.VIAL_DF = pd.read_csv(self.VIAL_FILE, sep=",")
             self.VIAL_DF.index = self.VIAL_DF['vial_index'].values
         except:
             self.pause_after_error("Issue reading vial status", False)
 
-        #Get the robot status
-        with open("robot_status.yaml", "r") as file:
+        # Get the robot status
+        with open(self.ROBOT_STATUS_FILE, "r") as file:
             robot_status = yaml.safe_load(file)
+
+        # Convert "None" or "null" strings to actual None. CHATGPT
+        def convert_none(value):
+            if isinstance(value, dict):
+                return {k: convert_none(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [convert_none(v) for v in value]
+            elif value in ["None", "null"]:
+                return None
+            return value
+
+        robot_status = convert_none(robot_status)
 
         try:
             self.GRIPPER_STATUS = robot_status['gripper_status']
@@ -277,7 +295,7 @@ class North_Robot:
             self.PIPETS_USED[self.HIGHER_PIPET_ARRAY_INDEX] = robot_status['pipets_used']['upper_rack_1']
             self.PIPET_FLUID_VOLUME = robot_status['pipet_fluid_volume']
         except:
-            self.pause_after_error("Issue reading robot status", False)      
+            self.pause_after_error("Issue reading robot status", False)
 
     #Remove the pipet tip
     def remove_pipet(self):
@@ -322,11 +340,10 @@ class North_Robot:
         elif pipet_rack_index == self.HIGHER_PIPET_ARRAY_INDEX: 
             location = p_capture_high[num]
 
+        #Move to get the pipet tip
         self.c9.goto_xy_safe(location)
-
-        #Second move to z location, based off of the height
         base_height = self.c9.counts_to_mm(3, location[3])
-        self.c9.move_z(base_height - self.DEFAULT_DIMS[0] + self.PIPET_DIMS[0]) #Adjust height based off of the distance from the default tip (which the measurements were done for)
+        self.c9.move_z(base_height) 
 
         #We have a pipet. What kind of pipet do we have? How many pipets are left in the rack?
         self.HELD_PIPET_INDEX = pipet_rack_index
@@ -465,7 +482,7 @@ class North_Robot:
             time.sleep(vial_wait_time)
         
         #Update the new volume in memory
-        self.PIPET_FLUID_VIAL_INDEX = source_vial_num
+        self.PIPET_FLUID_VIAL_INDEX = int(source_vial_num)
         self.PIPET_FLUID_VOLUME += amount_mL
         self.save_robot_status()
     
@@ -745,7 +762,7 @@ class North_Robot:
         destination = self.get_location(False,location,location_index)
         destination_empty = self.get_vial_in_location(location,location_index) is None
 
-        self.check_for_errors([destination_empty, True, "Cannot move vial to destination, destination full"],True)
+        self.check_for_errors([[destination_empty, True, "Cannot move vial to destination, destination full"]],True)
 
         self.c9.goto_safe(destination) #move vial to destination
         self.c9.open_gripper() #release vial
@@ -760,12 +777,13 @@ class North_Robot:
         initial_location = self.get_vial_location(vial_num, False)
 
         error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot move vial to destination, gripper full"])
-        error_check_list.append([self.HAS_PIPET, False, "Cannot move vial to destination, robot holding pipet"])
+        error_check_list.append([self.GRIPPER_STATUS is None, True, "Cannot move vial to destination, gripper full"])
+        error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Cannot move vial to destination, robot holding pipet"])
         error_check_list.append([self.is_vial_movable(vial_num), True, "Can't move vial, vial is uncapped."])  
 
         self.check_for_errors(error_check_list,True) #Check for an error, and pause if there's an issue
 
+        #self.open_gripper()
         self.goto_location_if_not_there(initial_location) #move to vial
         self.c9.close_gripper() #grip vial
         
@@ -776,8 +794,8 @@ class North_Robot:
     #Send the vial to a specified location
     def move_vial_to_location(self,vial_num,location,location_index):
         print("Moving vial " + self.get_vial_info(vial_num,'vial_name') + " to " + location + ": " + str(location_index))
-        self.c9.grab_vial(vial_num) #Grab the vial
-        self.c9.drop_off_vial(vial_num,location,location_index) #Drop off the vial
+        self.grab_vial(vial_num) #Grab the vial
+        self.drop_off_vial(vial_num,location,location_index) #Drop off the vial
 
     def get_vial_in_location(self, location_name, location_index):
         # Filter rows where both conditions match
@@ -787,7 +805,7 @@ class North_Robot:
         matching_vials = self.VIAL_DF.loc[mask, 'vial_index'].values
 
         # Return the first match or None if no match is found
-        return matching_vials[0] if len(matching_vials) > 0 else None
+        return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
     def uncap_clamp_vial(self):
@@ -796,8 +814,8 @@ class North_Robot:
         clamp_vial_index = self.get_vial_in_location('clamp',0)
 
         error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.GRIPPER_STATUS, "Open", "Cannot uncap, gripper full"])
-        error_check_list.append([self.HAS_PIPET, False, "Can't uncap vial, holding pipet"])
+        error_check_list.append([self.GRIPPER_STATUS is None, True, "Cannot uncap, gripper full"])
+        error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't uncap vial, holding pipet"])
         error_check_list.append([clamp_vial_index is None, False, "Cannot uncap, no vial in clamp"])
         error_check_list.append([self.is_vial_movable(clamp_vial_index), True, "Can't uncap, vial is uncapped already"])
 
@@ -811,6 +829,7 @@ class North_Robot:
         self.c9.open_clamp()
 
         self.VIAL_DF.at[clamp_vial_index, 'capped']=False
+        self.GRIPPER_VIAL_INDEX = clamp_vial_index
         self.save_robot_status()
 
     #Recap the vial in the clamp
@@ -821,7 +840,7 @@ class North_Robot:
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS, "Cap", "Cannot recap, no cap in gripper"])
-        error_check_list.append([self.HAS_PIPET, False, "Can't recap vial, holding pipet"])
+        error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't recap vial, holding pipet"])
         error_check_list.append([clamp_vial_index is None, False, "Cannot recap, no vial in clamp"])
         error_check_list.append([self.is_vial_movable(clamp_vial_index), False, "Can't recap, vial is capped already"])
         
@@ -831,10 +850,11 @@ class North_Robot:
         self.c9.close_clamp() #Make sure vial is clamped
         self.c9.cap(revs=2.0, torque_thresh = 600) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap
-        self.GRIPPER_STATUS = "Open"
+        self.GRIPPER_STATUS = None
         self.c9.open_clamp()
 
         self.VIAL_DF.at[clamp_vial_index, 'capped']=True #Update the vial status
+        self.GRIPPER_VIAL_INDEX = None
         self.save_robot_status()
 
     #Checks first that you aren't already there... This mostly applies for cap/decap
@@ -852,7 +872,9 @@ class North_Robot:
     def vortex_vial(self, vial_num, vortex_time, vortex_speed=70):
         print("Vortexing Vial: " + self.get_vial_info(vial_num,'vial_name'))
         
-        if self.GRIPPER_VIAL_INDEX is None: #Get vial if the vial isn't already held
+        if not self.GRIPPER_STATUS == "Vial": #Get vial if the vial isn't already held
+            if self.GRIPPER_VIAL_INDEX == vial_num and self.GRIPPER_STATUS == "Cap":
+                self.recap_clamp_vial()
             vial_location = self.get_vial_location(vial_num,False)
             self.grab_vial(vial_num)
     

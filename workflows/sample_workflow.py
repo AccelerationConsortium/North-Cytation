@@ -42,14 +42,12 @@ def sample_workflow(aspiration_volume, replicates=3):
     lash_e.nr_robot.dispense_from_vial_into_vial(reservoir_B_index,target_vial_index,aspiration_volume)
     lash_e.nr_robot.remove_pipet()
 
-    #Remove the pipet and return the vial if needed
-    lash_e.nr_robot.return_vial_home(target_vial_index)
-
     #Mix your vessel using vortexing for ~5 seconds
+    lash_e.nr_robot.grab_vial
     lash_e.nr_robot.vortex_vial(target_vial_index,vortex_time=5)
 
     # Move the vial to the photoreactor. Since there are multiple reactors, we are going to reactor 0.
-    lash_e.nr_robot.move_vial_to_location(target_vial_index,location='photoreactor_array',location_index=0)
+    lash_e.nr_robot.drop_off_vial(target_vial_index,location='photoreactor_array',location_index=0)
     lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM,intensity=100) #Let's turn on the photoreactor to intensity 100
     lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM,rpm=600) #Let's start stirring at 600 rpm
     lash_e.nr_robot.move_home()
