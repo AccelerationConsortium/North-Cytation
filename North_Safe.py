@@ -6,7 +6,6 @@ import time
 import math
 import pandas as pd
 import sys
-from other.north_methods import recap_clamp_vial
 import slack_agent
 import yaml
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
@@ -161,6 +160,30 @@ class North_Track:
         else:
             print("Cannot get wellplate from empty stack")
 
+class North_T8:
+
+    t8 = None
+
+    def __init__(self,c9):
+        self.t8 = NorthC9('B', network=c9.network)
+        self.t8.get_info()
+    
+    def autotune(self,channel, target_temp):
+        self.t8.disable_channel(channel)
+        self.t8.set_temp(channel, target_temp)
+        self.t8.enable_channel(channel)
+        self.t8.temp_autotune(channel, True)
+
+    def set_temp(self,channel,target_temp):
+        self.t8.set_temp(channel, target_temp)
+        self.t8.enable_channel(channel)
+    
+    def get_temp(self,channel):
+        return self.t8.get_temp(channel)
+
+    def turn_off_heating(self,channel):
+        self.t8.disable_channel(channel)
+
 class North_Robot:
     ROBOT_STATUS_FILE = "../utoronto_demo/status/robot_status.yaml" #Store the state of the robot. Update this after every method that alters the state. 
 
@@ -201,10 +224,16 @@ class North_Robot:
     def reset_after_initialization(self):
         print("Physical initialization of North Robot...")
         self.c9.default_vel = 20 #Set the default speed of the robot
-        self.c9.zero_scale()
+        #self.c9.zero_scale() #TODO this is broken
         self.c9.open_clamp()
         
         try: #Try resetting. If a home is required, some of these actions may fail. 
+            if self.PIPET_FLUID_VIAL_INDEX is not None and self.PIPET_FLUID_VOLUME > 0: #If we still have liquid leftover
+                print("The robot reports having liquid in its tip... Returning that liquid...")
+                vial_index = self.PIPET_FLUID_VIAL_INDEX 
+                volume = self.PIPET_FLUID_VOLUME
+                self.dispense_into_vial(vial_index,volume)
+            
             if self.HELD_PIPET_INDEX is not None: #If we've got a pipet tip, let's get rid of it
                 print("The robot reports having a tip, removing the tip")
                 self.remove_pipet()
@@ -220,13 +249,7 @@ class North_Robot:
                     location = self.get_vial_info(vial_index,'home_location')
                     location_index = self.get_vial_info(vial_index,'home_location_index')
                     self.drop_off_vial(vial_index,location=location,location_index=location_index)
-            
-            if self.PIPET_FLUID_VIAL_INDEX is not None and self.PIPET_FLUID_VOLUME > 0: #If we still have liquid leftover
-                print("The robot reports having liquid in its tip... Returning that liquid...")
-                vial_index = self.PIPET_FLUID_VIAL_INDEX 
-                volume = self.PIPET_FLUID_VOLUME
-                self.dispense_into_vial(vial_index,volume)
-
+            self.move_home()
         except Exception as e:
             print("An error occured during initialization, homing components: ", e)
             self.c9.home_carousel() #Home the carousel
@@ -250,7 +273,7 @@ class North_Robot:
             "held_pipet_index": self.HELD_PIPET_INDEX,
             "pipets_used": {"lower_rack_1": self.PIPETS_USED[self.LOWER_PIPET_ARRAY_INDEX], "upper_rack_1": self.PIPETS_USED[self.HIGHER_PIPET_ARRAY_INDEX]},
             "pipet_fluid_vial_index": self.PIPET_FLUID_VIAL_INDEX,
-            "pipet_fluid_volume": self.PIPET_FLUID_VOLUME
+            "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME)
         }
 
         # Writing to a file
@@ -339,6 +362,8 @@ class North_Robot:
         self.c9.goto_xy_safe(location)
         base_height = self.c9.counts_to_mm(3, location[3])
         self.c9.move_z(base_height) 
+
+        self.c9.move_z(292,vel=5)
 
         #We have a pipet. What kind of pipet do we have? How many pipets are left in the rack?
         self.HELD_PIPET_INDEX = pipet_rack_index
@@ -627,7 +652,8 @@ class North_Robot:
     def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
-        vols_required = np.sum(well_plate_dispense_2d_array)
+        well_plate_dispense_2d_array=well_plate_df.values
+        vols_required = np.sum(well_plate_dispense_2d_array, axis=0)
         print("Total volumes needed: ", vols_required)
         for i in range (0, len(vial_indices)):
             vial = vial_indices[i]
@@ -819,7 +845,7 @@ class North_Robot:
         self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not   
         self.c9.close_clamp() #clamp vial
         self.c9.close_gripper()
-        self.c9.uncap()
+        self.c9.uncap(revs=3)
         self.GRIPPER_STATUS = "Cap"
         self.c9.open_clamp()
 
@@ -951,6 +977,7 @@ class North_Robot:
   
     #Move the robot to the home position    
     def move_home(self):
+        print("Moving robot to home position")
         self.c9.goto_safe(home)
 
     #Get some piece of information about a vial
@@ -981,11 +1008,14 @@ class North_Robot:
         VIAL_RACK_BASE_HEIGHT = 67.25
         PR_BASE_HEIGHT = 85 #Need to fine tune this
         LARGE_VIAL_BASE_HEIGHT = 55    
+        SMALL_VIAL_BASE_HEIGHT = 97
     
         if location_name=='main_8mL_rack':
             min_height = VIAL_RACK_BASE_HEIGHT 
         elif location_name=='large_vial_rack':
             min_height = LARGE_VIAL_BASE_HEIGHT
+        elif location_name=='small_vial_rack':
+            min_height = SMALL_VIAL_BASE_HEIGHT
         elif location_name=='photoreactor_array':
             min_height = PR_BASE_HEIGHT
         elif location_name=='clamp':
@@ -1008,6 +1038,8 @@ class North_Robot:
                 location = rack_pip[location_index]
             elif location_name=='large_vial_rack':
                 location = large_vial_pip[location_index]
+            elif location_name=='small_vial_rack':
+                location = small_vial_pip[location_index]
             elif location_name=='photoreactor_array':
                 if location_index==0:
                     location=PR_PIP_0
@@ -1020,6 +1052,8 @@ class North_Robot:
                 location = rack[location_index]
            elif location_name=='large_vial_rack':
                 print("No defined location")
+           elif location_name=='small_vial_rack':
+               print("No defined location")
            elif location_name=='photoreactor_array':
                 if location_index==0:
                     location=photo_reactor_0

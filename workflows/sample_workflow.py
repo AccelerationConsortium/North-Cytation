@@ -49,7 +49,7 @@ def sample_workflow(aspiration_volume, replicates=3):
     # Move the vial to the photoreactor. Since there are multiple reactors, we are going to reactor 0.
     lash_e.nr_robot.drop_off_vial(target_vial_index,location='photoreactor_array',location_index=0)
     lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM,intensity=100) #Let's turn on the photoreactor to intensity 100
-    lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM,rpm=600) #Let's start stirring at 600 rpm
+    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=REACTOR_NUM,rpm=600) #Let's start stirring at 600 rpm. TODO this is currently not working!
     lash_e.nr_robot.move_home()
     time.sleep(3)
 

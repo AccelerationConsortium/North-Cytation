@@ -12,7 +12,8 @@ class Biotek:
         if self.TestReaderCommunication() == 1:
             print(self.appName + ' is connected')
         else:
-            print("Carrier not connected")
+            input("Carrier not connected")
+            
 
     def TestReaderCommunication(self):
         TestReaderCommunication_id = self.appDispatch.GetIDsOfNames('TestReaderCommunication')

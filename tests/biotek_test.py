@@ -1,14 +1,7 @@
 import sys
 sys.path.append("../utoronto_demo")
-from biotek import Biotek
+from master_usdl_coordinator import Lash_E
 
-# Cytation 5
-readerType = 21
-ComPort = 4
-appName = 'Gen5.Application'
+lash_e = Lash_E(None)
 
-gen5 = Biotek(readerType, ComPort, appName)
-
-gen5.CarrierOut()
-gen5.CarrierIn()
-
+#lash_e.run_cytation_program(r"C:\Protocols\Color_Matching\Sweep_A1A6.prt")
