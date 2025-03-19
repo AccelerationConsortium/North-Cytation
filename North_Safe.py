@@ -197,7 +197,6 @@ class North_Robot:
     GRIPPER_VIAL_INDEX = None #Could be None or the index of the vial/cap
     
     VIAL_DF = None #Track the status of all vials part of the experiment. 
-    HOME_VIAL_DF = None #Keeps track of the original state of all the vials, for reference. 
     VIAL_FILE = None #File that we save the vial data in 
     
     #All of this data doesn't seem to need to be tracked here. TODO: Compartmentalize and place appropriately. 

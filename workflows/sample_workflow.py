@@ -5,8 +5,18 @@ import pandas as pd
 import numpy as np
 import time
 
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.txt"
+MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt"
+REACTOR_NUM = 1 #Green reactor
+
 #Define your workflow! 
 #In this case we have two parameters: 
+def check_input_file(input_file):  
+    # Initial State of your Vials, so the robot can know where to pipet
+    vial_status = pd.read_csv(input_file, sep=",")
+    print(vial_status)
+    input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
+
 def sample_workflow(aspiration_volume, replicates=3):
   
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.txt"
@@ -43,7 +53,7 @@ def sample_workflow(aspiration_volume, replicates=3):
     lash_e.nr_robot.remove_pipet()
 
     #Mix your vessel using vortexing for ~5 seconds
-    lash_e.nr_robot.grab_vial
+    lash_e.nr_robot.grab_vial(target_vial_index)
     lash_e.nr_robot.vortex_vial(target_vial_index,vortex_time=5)
 
     # Move the vial to the photoreactor. Since there are multiple reactors, we are going to reactor 0.
