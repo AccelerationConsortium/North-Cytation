@@ -69,7 +69,6 @@ def analyze_data(source_data_folder, reference_file=None,  reference_index=0, di
     return differences_list,reference_file   
 
 def find_closer_color_match(measurement_file,start_index,volumes):
-
     wells = range(start_index,6+start_index)
     #active_vials = range(1,5)
 
@@ -78,7 +77,7 @@ def find_closer_color_match(measurement_file,start_index,volumes):
 
     lash_e.nr_robot.dispense_from_vials_into_wellplate(volumes,active_vials)
     mix_wells(wells)
-    lash_e.nr_robot.finish_pipetting()
+    lash_e.nr_robot.remove_pipet()
 
     print("Measurement file: ", measurement_file)
     lash_e.measure_wellplate(measurement_file)
@@ -114,13 +113,12 @@ file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
 file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
 #file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
 file_list = [file_1, file_2, file_3,file_4,file_5]
-#file_list=[file_1]
 num_files = len(file_list)
 
 # #Get initial recs
 method = "method_a" #Change this
 random_recs = False #Change this
-seed = 3 #No need to change this
+seed = 12 #No need to change this
 recreate_color_at_end = True #Do we want to make the vial at the end?
 robotics_on = True #Do we want to skip the actuation?
 
@@ -207,14 +205,16 @@ if recreate_color_at_end:
 
     for i in range (0, len(active_vials)):
         color_volume = recreate_vial[i]
-        if color_volume < 1.0:
-            lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume)
-        else:
-            for i in range (0,2):
-                lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume/2)
-        lash_e.nr_robot.remove_pipet()
+        if color_volume > 0:
+            if color_volume < 1.0:
+                lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume)
+            else:
+                for i in range (0,2):
+                    lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume/2)
+            lash_e.nr_robot.remove_pipet()
 
     lash_e.nr_robot.vortex_vial(6,5)
+    lash_e.nr_robot.return_vial_home(6)
     lash_e.nr_robot.move_home()
 
 

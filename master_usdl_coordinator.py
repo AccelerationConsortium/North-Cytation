@@ -3,6 +3,7 @@ import sys
 sys.path.append("../utoronto_demo")
 from North_Safe import North_Robot
 from North_Safe import North_Track
+from North_Safe import North_T8
 from north import NorthC9
 import pandas as pd
 from biotek import Biotek
@@ -15,8 +16,9 @@ class Lash_E:
     nr_track = None
     cytation = None
     photoreactor = None
+    temp_controller = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True):
+    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True,initialize_t8=False):
         c9 = NorthC9("A", network_serial="AU06CNCF")
         if initialize_robot:
             self.nr_robot = North_Robot(c9, vial_file)
@@ -26,6 +28,8 @@ class Lash_E:
             self.cytation = Biotek()
         if initialize_photoreactor:
             self.photoreactor = Photoreactor_Controller()
+        if initialize_t8:
+            self.temp_controller = North_T8(c9)
 
     def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False):
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)
