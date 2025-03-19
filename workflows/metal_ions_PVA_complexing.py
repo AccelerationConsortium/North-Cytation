@@ -25,29 +25,7 @@ def mix_wells(wells, wash_index=5, wash_volume=0.1, repeats=2):
         lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
         for i in range (0, repeats):
             lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
-            lash_e.nr_robot.pipet_from_wellplate(well, wash_volume,aspirate=False,move_to_aspirate=False)
-
-#Define your workflow! Make sure that it has parameters that can be changed!
-def create_initial_colors(measurement_file, initial_guesses, initial_volumes):
-    #lash_e.grab_new_wellplate()
-    
-    well_volume = 0.24
-
-    lash_e.nr_robot.aspirate_from_vial(0,well_volume)
-    lash_e.nr_robot.dispense_into_wellplate([0], [well_volume])
-    lash_e.nr_robot.remove_pipet()
-
-    initial_wells = range(1,1+initial_guesses)
-
-    initial_volumes.index = initial_wells #Set wells
-    print("Initial:\n", initial_volumes)
-
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(initial_volumes,active_vials)
-    mix_wells(initial_wells)
-    lash_e.nr_robot.remove_pipet()
-
-    print("Measurement file: ", measurement_file)
-    lash_e.measure_wellplate(measurement_file)
+            lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
 
 def analyze_data(source_data_folder, reference_file=None,  reference_index=0, dif_type = spec_dif.COMP_METHOD_A):
     
@@ -71,7 +49,6 @@ def analyze_data(source_data_folder, reference_file=None,  reference_index=0, di
 def find_closer_color_match(measurement_file,start_index,volumes):
 
     wells = range(start_index,6+start_index)
-    #active_vials = range(1,5)
 
     volumes.index = wells
     print("New Volumes:\n", volumes)
@@ -85,7 +62,7 @@ def find_closer_color_match(measurement_file,start_index,volumes):
 
 
 #Start program
-input_vial_status_file="../utoronto_demo/status/color_matching_vials.txt"
+input_vial_status_file="../utoronto_demo/status/metal_ion_PVA_vials.txt"
 vial_status = pd.read_csv(input_vial_status_file, sep=",")
 print(vial_status)
 active_vials = vial_status['vial_index'].values[1:5]
@@ -112,17 +89,15 @@ file_4=r"C:\Protocols\Color_Matching\Sweep_C1C6.prt"
 file_5=r"C:\Protocols\Color_Matching\Sweep_C7C12.prt"
 file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
 file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
-#file_list = [file_1, file_2, file_3,file_4,file_5,file_6,file_7]
+
 file_list = [file_1, file_2, file_3,file_4,file_5]
-#file_list=[file_1]
 num_files = len(file_list)
 
 # #Get initial recs
 method = "method_a" #Change this
-random_recs = False #Change this
+random_recs = True #Change this
 seed = 3 #No need to change this
-recreate_color_at_end = True #Do we want to make the vial at the end?
-robotics_on = True #Do we want to skip the actuation?
+robotics_on = False #Do we want to skip the actuation?
 
 if method == "method_a":
     upper_bound = 50
@@ -137,7 +112,7 @@ campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
 print(recommendations/1000)
 print(f"Model method: {method}, random: {random_recs}, seed #: {seed}")
 
-#print("Searchspace Size: ", searchspace)
+print("Searchspace Size: ", searchspace)
 
 #input("Pausing to wait for enter...")
 
@@ -198,25 +173,6 @@ except Exception as e:
 best_result_index = np.argmin(campaign_data['output'].values)
 print("Best result index: ", best_result_index)
 best_composition=campaign_data.iloc[best_result_index].tolist()
-
-
-#Recreate the color in a vial at the end
-if recreate_color_at_end:
-    recreate_volume = 2.0
-    recreate_vial = np.array(best_composition)*recreate_volume/240
-
-    for i in range (0, len(active_vials)):
-        color_volume = recreate_vial[i]
-        if color_volume < 1.0:
-            lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume)
-        else:
-            for i in range (0,2):
-                lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume/2)
-        lash_e.nr_robot.remove_pipet()
-
-    lash_e.nr_robot.vortex_vial(6,5)
-    lash_e.nr_robot.move_home()
-
 
 
 
