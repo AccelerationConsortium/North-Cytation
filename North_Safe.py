@@ -30,7 +30,7 @@ class North_Track:
     
     #Release into cytation
     CYT_TRAY_Y_RELEASE = 5500
-    CYT_TRAY_Y_GRAB = 7500
+    CYT_TRAY_Y_GRAB = 8500
     CYT_TRAY_X = 68608
 
     QUARTZ_WP_OFFSET = 1300

@@ -170,7 +170,7 @@ for i in range (0,num_files):
      if robotics_on:
         find_closer_color_match(file_list[i],6*(i+1),recommendations/1000)
      
-     results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file,dif_type=spec_dif.COMP_METHOD_B)
+     results,ref_file = analyze_data(SOURCE_DATA_FOLDER,ref_file,dif_type=analysis_type)
      print("Results: ", results)
      recommendations['output']=results
      campaign_data = pd.concat([campaign_data, recommendations], ignore_index=True)
