@@ -5,10 +5,8 @@ from North_Safe import North_Robot
 from North_Safe import North_Track
 from North_Safe import North_T8
 from north import NorthC9
-import pandas as pd
-from biotek import Biotek
+from biotek_new import Biotek_Wrapper
 from photoreactor_controller import Photoreactor_Controller
-import time
 
 class Lash_E:
 
@@ -25,7 +23,7 @@ class Lash_E:
         if initialize_track:
             self.nr_track = North_Track(c9)
         if initialize_biotek:
-            self.cytation = Biotek()
+            self.cytation = Biotek_Wrapper()
         if initialize_photoreactor:
             self.photoreactor = Photoreactor_Controller()
         if initialize_t8:
@@ -44,19 +42,13 @@ class Lash_E:
         self.cytation.CarrierIn()
         self.nr_track.return_well_plate_to_nr(wellplate_index,quartz_wp=quartz)  
 
-    def run_cytation_program(self,protocol_file_path):
-        plate = self.cytation.load_protocol(protocol_file_path)
-        run = self.cytation.run_protocol(plate)
-        while self.cytation.protocol_in_progress(run):
-            print("Read in progress...")
-            time.sleep(10)
-
-    def measure_wellplate(self,protocol_file_path,wellplate_index=0,quartz=False):
+    def measure_wellplate(self,protocol_file_path,wells_to_measure=None,wellplate_index=0,quartz=False):
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index,quartz=quartz)
-        self.run_cytation_program(protocol_file_path)
+        data = self.cytation.run_protocol(protocol_file_path,wells_to_measure)
         self.move_wellplate_back_from_cytation(wellplate_index,quartz=quartz)
         self.nr_track.origin()
+        return data
 
     def run_photoreactor(self,vial_index,target_rpm,intensity,duration,reactor_num):
         self.nr_robot.move_vial_to_location(vial_index,'photoreactor_array',reactor_num)

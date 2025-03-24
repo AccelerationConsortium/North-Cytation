@@ -2,6 +2,7 @@ from biotek_driver.biotek import Biotek
 from biotek_driver.xml_builders.partial_plate_builder import build_bti_partial_plate_xml
 import time
 import string
+import pandas as pd
 import xml.etree.ElementTree as ET
 
 class Biotek_Wrapper:
@@ -14,82 +15,93 @@ class Biotek_Wrapper:
         self.biotek.carrier_in()
     def CarrierOut(self):
         self.biotek.carrier_out()
+    
+    def monitor_plate_read(self, plate):
+        # Start an actual read
+        monitor = plate.start_read()
+        if not monitor:
+            print("Failed to start read.")
+        else:
+            print("Read started. Waiting for completion...")
+
+            while True:
+                rstatus = plate.read_status
+                if rstatus == 5:
+                    print("Plate read completed.")
+                    break
+                elif rstatus == 2:
+                    print("Plate read was aborted.")
+                    break
+                elif rstatus == 3:
+                    print("Plate read is paused (waiting).")
+                    # You could decide to continue waiting or handle differently
+                elif rstatus == 4:
+                    print("Plate read error encountered.")
+                    break
+
+                time.sleep(2)
+
+    def get_wavelengths_from_plate(self,plate):
+        current_procedure = plate.get_procedure()
+        root = ET.fromstring( current_procedure )
+
+        # Extract wavelength values
+        start_nm = int(root.find(".//WavelengthStartnm").text)
+        stop_nm = int(root.find(".//WavelengthStopnm").text)
+        step_nm = int(root.find(".//WavelengthStepnm").text)
+
+        # Generate list of wavelengths
+        wavelengths = list(range(start_nm, stop_nm + 1, step_nm))
+        return wavelengths
+
+    def run_plate(self,plate,wells):
+        
+        plate_data = pd.DataFrame()
+        plate.keep_plate_in_after_read()
+        if not plate:
+            print("Failed to add a plate. Possibly a multi-plate assay.")
+        else:
+            wavelengths = self.get_wavelengths_from_plate(plate)
+            plate_data['Wavelengths']=wavelengths
+
+            # 2) Define a partial plate (random wells) and set it
+            random_well_xml = build_bti_partial_plate_xml(single_block=False,wells=wells)
+            plate.set_partial_plate(random_well_xml)
+
+            #3) Monitor the plate while it runs
+            self.monitor_plate_read(plate)
+
+            #Add the data to the dataframe
+            for well in wells:
+                results = plate.get_raw_data()
+                plate_data[well]=(results[1]['value']) 
+
+            return plate_data
+        return None    
+    
     def run_protocol(self,protocol_path, wells=None):
         self.biotek.app.data_export_enabled = True
         experiment = self.biotek.new_experiment(protocol_path)
+        protocol_data = pd.DataFrame()
+        
         if experiment:
             print("Experiment created successfully.")
             print(f"Experiment Protocol Type: {experiment.protocol_type}")
-        
             plates = experiment.plates
             
-            for group in grouped_wells:
+            if wells is not None:
+                grouped_wells = self.group_wells(wells)
+            for well_group in grouped_wells:
                 plate = plates.add()
-                plate.keep_plate_in_after_read()
-                if not plate:
-                    print("Failed to add a plate. Possibly a multi-plate assay.")
+                data_group = self.run_plate(plate,well_group)
+                if protocol_data.empty:
+                    protocol_data = data_group
                 else:
-                    current_procedure = plate.get_procedure()
-                    root = ET.fromstring( current_procedure )
-
-                    # Extract wavelength values
-                    start_nm = int(root.find(".//WavelengthStartnm").text)
-                    stop_nm = int(root.find(".//WavelengthStopnm").text)
-                    step_nm = int(root.find(".//WavelengthStepnm").text)
-
-                    # Generate list of wavelengths
-                    wavelengths = list(range(start_nm, stop_nm + 1, step_nm))
-
-                    print(wavelengths)  # Output: [400, 420, 440]
-
-                    # 2) Define a partial plate (random wells) and set it
-                    random_well_xml = build_bti_partial_plate_xml(single_block=False,wells=group)
-                    plate.set_partial_plate(random_well_xml)
-
-                    # Start an actual read
-                    monitor = plate.start_read()
-
-
-                    if not monitor:
-                        print("Failed to start read.")
-                    else:
-                        print("Read started. Waiting for completion...")
-
-                        # Wait until read completes or errors out
-                        # read_status can be:
-                        #   0 => Not Started
-                        #   1 => In Progress
-                        #   2 => Aborted
-                        #   3 => Paused
-                        #   4 => Error
-                        #   5 => Completed
-                        while True:
-                            rstatus = plate.read_status
-                            if rstatus == 5:
-                                print("Plate read completed.")
-                                break
-                            elif rstatus == 2:
-                                print("Plate read was aborted.")
-                                break
-                            elif rstatus == 3:
-                                print("Plate read is paused (waiting).")
-                                # You could decide to continue waiting or handle differently
-                            elif rstatus == 4:
-                                print("Plate read error encountered.")
-                                break
-
-                            time.sleep(2)
-
-                        result_len = 1
-                        while result_len > 0:
-                            results = plate.get_raw_data()
-                            result_len = len(results[1]['value'])
-                            if result_len > 0:
-                                print(results[1]['value'])                  
-            else:
-                print("Experiment creation failed.")
+                    protocol_data = protocol_data.merge(data_group, on ="Wavelengths", how='outer')           
         else:
-            print("Failed to establish USB connection. Please check the device.")
+            print("Experiment creation failed.")
+
+        return protocol_data
 
     def well_index_to_label(self,index):
         row = string.ascii_uppercase[index // 12]  # Get row letter (A-H)
