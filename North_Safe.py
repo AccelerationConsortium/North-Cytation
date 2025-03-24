@@ -555,6 +555,21 @@ class North_Robot:
 
         self.pipet_from_location(volume, aspirate_speed, height, aspirate = aspirate, initial_move=move_to_aspirate)
 
+    #Mix the well
+    def mix_well_in_wellplate(self,wp_index,volume,repeats=3):
+        self.pipet_from_wellplate(wp_index,volume)
+        self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False)
+        for i in range (1, repeats):
+            self.pipet_from_wellplate(wp_index,volume,move_to_aspirate=False)
+            self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False)
+
+    #Mix in a vial
+    def mix_vial(self,vial_index,volume,repeats=3):
+        self.aspirate_from_vial(vial_index,volume)
+        self.dispense_into_vial(vial_index,volume,initial_move=False)
+        for i in range (1,repeats):
+            self.dispense_from_vial_into_vial(vial_index,vial_index,volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
+
     #Dispense an amount into a vial
     def dispense_into_vial(self, dest_vial_num,amount_mL,initial_move=True,dispense_speed=11,measure_weight=False):     
         

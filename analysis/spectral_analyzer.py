@@ -28,6 +28,25 @@ def get_absolute_spectral_difference(wavelengths_ref, spectra_ref, wavelengths_t
         result = None
     return result
 
+#Get the absolute wavelength difference
+def get_absolute_peak_wavelength_difference(wavelengths_ref, spectra_ref, wavelengths_target, spectra_target):
+    if np.all(wavelengths_ref == wavelengths_target):
+        # Find the index of the maximum value in each spectrum
+        max_index_ref = np.argmax(spectra_ref)
+        max_index_target = np.argmax(spectra_target)
+        
+        # Get the corresponding wavelengths
+        peak_wavelength_ref = wavelengths_ref[max_index_ref]
+        peak_wavelength_target = wavelengths_target[max_index_target]
+        
+        # Compute the absolute difference
+        result = abs(peak_wavelength_ref - peak_wavelength_target)
+    else:
+        print("Issue getting difference: Wavelength arrays do not match")
+        result = None
+    
+    return result
+
 #Get the SS difference at a set of specified wavelengths
 def get_sum_squares_discrete_difference(wavelengths_ref, spectra_ref, wavelengths_target, spectra_target, peak_wavelengths):
     result = 0

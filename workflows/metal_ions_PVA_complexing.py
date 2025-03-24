@@ -6,60 +6,34 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 import numpy as np
 import analysis.spectral_difference as spec_dif
-import recommenders.color_matching_optimizer as recommender
-import random
+import recommenders.metal_ion_PVA_optimizer as recommender
 from datetime import datetime
 import north_gui
 import os
 import slack_agent
 import itertools
 
-def mix_wells(wells, wash_index=5, wash_volume=0.1, repeats=2):
-    for well in wells:
-        lash_e.nr_robot.aspirate_from_vial(wash_index,wash_volume)
-        lash_e.nr_robot.dispense_into_vial(wash_index,wash_volume,initial_move=False)
-        for i in range (0,repeats):
-            lash_e.nr_robot.dispense_from_vial_into_vial(wash_index,wash_index,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
-        
-        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume)
-        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
-        for i in range (0, repeats):
-            lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
-            lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
+def analyze_data(reference_df, target_df):
+    #Take the reference data, target data, return the wavelengths
+    spec_dif.get_absolute_peak_wavelength_difference()
+    return None
 
-def analyze_data(source_data_folder, reference_file=None,  reference_index=0, dif_type = spec_dif.COMP_METHOD_A):
-    
-    #Step 1: Look in folder for most recent file
-    comparison_file = spec_dif.get_most_recent_file(source_data_folder)
+#Create some reference samples to draw the color from
+def get_reference_solutions(reference_solution,replicates):
+    reference_df = pd.DataFrame({reference_solution: [METAL_ION_VOLUME_PER_WELL ], 'water': [TOTAL_VOLUME_PER_WELL-METAL_ION_VOLUME_PER_WELL]})
+    reference_df  = reference_df.loc[reference_df.index.repeat(replicates)].reset_index(drop=True)
+    new_index = range(wells_created,replicates)
+    reference_df = reference_df.set_index(pd.Index(new_index))
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(reference_df,[reference_solution,'water'])
+    wells_created += replicates
 
-    print("Newest file:", comparison_file.split('\\')[-1])
-
-    if reference_file is None:
-        reference_file = comparison_file
-        comparison_index_list = list(range(1, 6)) #Make more robust
-    else:
-        comparison_index_list = list(range(0, 6)) #Make more robust
-
-    print(comparison_index_list)
-
-    differences_list = spec_dif.get_differences(reference_file, reference_index, comparison_file, comparison_index_list,plotter=plotter,difference_type=dif_type,color=graph_color)
-
-    return differences_list,reference_file   
-
-def find_closer_color_match(measurement_file,start_index,volumes):
-
-    wells = range(start_index,6+start_index)
-
-    volumes.index = wells
-    print("New Volumes:\n", volumes)
-
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(volumes,active_vials)
-    mix_wells(wells)
-    lash_e.nr_robot.finish_pipetting()
-
-    print("Measurement file: ", measurement_file)
-    lash_e.measure_wellplate(measurement_file)
-
+def mix_PVA_ion_solutions(reference_solution,suggested_data,replicates):
+    duplicated_df = pd.concat([suggested_data]*replicates, axis=1, ignore_index=True)
+    duplicated_df[reference_solution]=METAL_ION_VOLUME_PER_WELL
+    new_index = range(wells_created,duplicated_df.shape[0]+wells_created)
+    reference_df = reference_df.set_index(pd.Index(new_index))
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(reference_df,[reference_solution,'Water', 'PVA_1', 'PVA_2', 'PVA_3', 'HCl', 'NaOH'])
+    wells_created += replicates
 
 #Start program
 input_vial_status_file="../utoronto_demo/status/metal_ion_PVA_vials.txt"
@@ -67,50 +41,30 @@ vial_status = pd.read_csv(input_vial_status_file, sep=",")
 print(vial_status)
 active_vials = vial_status['vial_index'].values[1:5]
 print("Active vials: ", active_vials) #Should be 1,2,3,4 which is only their ID not their location
-input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
-
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(input_vial_status_file)
+input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
-# Create the full path and the folder
-# Get current date and time as a string
-SOURCE_DATA_FOLDER = "C://Users//Imaging Controller//Desktop//Color_Matching"
-timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-folder_path = os.path.join(SOURCE_DATA_FOLDER, timestamp)
-os.makedirs(folder_path, exist_ok=True)
-print(f"Folder created at: {folder_path}")
-
-#List of measurement files for Cytation. Unfortunately inflexible
-file_0=r"C:\Protocols\Color_Matching\Sweep_A1A6.prt"
-file_1=r"C:\Protocols\Color_Matching\Sweep_A7A12.prt"
-file_2=r"C:\Protocols\Color_Matching\Sweep_B1B6.prt"
-file_3=r"C:\Protocols\Color_Matching\Sweep_B7B12.prt"
-file_4=r"C:\Protocols\Color_Matching\Sweep_C1C6.prt"
-file_5=r"C:\Protocols\Color_Matching\Sweep_C7C12.prt"
-file_6=r"C:\Protocols\Color_Matching\Sweep_D1D6.prt"
-file_7=r"C:\Protocols\Color_Matching\Sweep_D7D12.prt"
-
-file_list = [file_1, file_2, file_3,file_4,file_5]
-num_files = len(file_list)
-
-# #Get initial recs
-method = "method_a" #Change this
-random_recs = True #Change this
+#List of input parameters for the experiment
+PROTOCOL_FILE=r"C:\Protocols\Color_Matching\Sweep_A1A6.prt"
+random_recs = False #Change this
 seed = 3 #No need to change this
 robotics_on = False #Do we want to skip the actuation?
+upper_bound = 100
+starting_samples = 5
+number_cycles = 5
+samples_per_cycle = 6
+replicates = 2
+METAL_ION_VOLUME_PER_WELL = 0.08
+TOTAL_VOLUME_PER_WELL = 0.24
+wells_created = 0
 
-if method == "method_a":
-    upper_bound = 50
-    analysis_type = spec_dif.COMP_METHOD_A 
-elif method == "method_b":   
-    upper_bound = 5
-    analysis_type = spec_dif.COMP_METHOD_B 
-
+# #Get initial recs
 campaign,searchspace = recommender.initialize_campaign(upper_bound,seed,random_recs=random_recs) 
 
-campaign,recommendations = recommender.get_initial_recommendations(campaign,5)
+campaign,recommendations = recommender.get_initial_recommendations(campaign,starting_samples)
 print(recommendations/1000)
-print(f"Model method: {method}, random: {random_recs}, seed #: {seed}")
+print(f"Random: {random_recs}, seed #: {seed}")
 
 print("Searchspace Size: ", searchspace)
 
@@ -118,7 +72,7 @@ print("Searchspace Size: ", searchspace)
 
 #Experimental workflow and data gathering
 if robotics_on:
-    create_initial_colors(file_0,5,recommendations/1000)
+    get_reference_solution(replicates)
 
 #Start the GUI
 plotter = north_gui.RealTimePlot(num_subplots=3, 
@@ -130,7 +84,7 @@ colors = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
 graph_color = next(colors)
 
 # # #Get analysis
-results,ref_file = analyze_data(SOURCE_DATA_FOLDER, dif_type=analysis_type)
+results,ref_file = analyze_data(SOURCE_DATA_FOLDER)
 print("Results: ", results)
 recommendations['output']=results
 campaign_data = recommendations
@@ -170,9 +124,6 @@ try:
 except Exception as e:
     print ("Issue saving figure", e)
 
-best_result_index = np.argmin(campaign_data['output'].values)
-print("Best result index: ", best_result_index)
-best_composition=campaign_data.iloc[best_result_index].tolist()
 
 
 

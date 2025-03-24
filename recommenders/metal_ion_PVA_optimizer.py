@@ -17,7 +17,7 @@ def initialize_campaign(upper_bound, random_seed, random_recs=False):
 
     target = NumericalTarget(
         name = 'output',
-        mode = TargetMode.MIN,
+        mode = TargetMode.MAX,
         bounds=(0, upper_bound),
     )
 
@@ -30,34 +30,34 @@ def initialize_campaign(upper_bound, random_seed, random_recs=False):
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
-            name = 'PVA',
+            name = 'PVA_1',
             values = np.array(range(0, 240, 10))
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
-            name = 'FeCl3',
-            values = np.array(range(0, 240, 10)),
+            name = 'PVA_2',
+            values= np.array(range(0, 240, 10)),
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
-            name = 'CuSO4',
+            name = 'PVA_3',
             values= np.array(range(0, 240, 10)),
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
             name = 'HCl',
-            values= np.array(range(0, 240, 10)),
+            values= np.array(range(0, 40, 10)),
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
             name = 'NaOH',
-            values= np.array(range(0, 240, 10)),
+            values= np.array(range(0, 40, 10)),
             #encoding = 'INT'
             ),    
     ]
 
     constraints = [DiscreteSumConstraint(
-            parameters=["Water", "PVA", "FeCl3", "CuSO4", "HCl", "NaOH"],  # these parameters must exist in the search space
+            parameters=["Water", "PVA_1", "PVA_2", "PVA_3", "HCl", "NaOH"],  # these parameters must exist in the search space
             condition=ThresholdCondition(  # set condition that should apply to the sum
             threshold=240,
             operator="="))]
