@@ -4,6 +4,7 @@ sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 import pandas as pd
 import numpy as np
+import time
 
 VIAL_FILE = "../utoronto_demo/status/sample_capped_vial.txt"  # Vials used
 
@@ -15,6 +16,8 @@ def sample_workflow(input_vial_status_file, target_vial):
 
     lash_e.photoreactor.turn_on_reactor_led(reactor_num=1,intensity=100)
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
+
+    time.sleep(5)
 
     lash_e.photoreactor.turn_off_reactor_led(1)
     lash_e.photoreactor.turn_off_reactor_led(1)

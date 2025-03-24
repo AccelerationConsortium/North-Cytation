@@ -30,7 +30,7 @@ class North_Track:
     
     #Release into cytation
     CYT_TRAY_Y_RELEASE = 5500
-    CYT_TRAY_Y_GRAB = 7500
+    CYT_TRAY_Y_GRAB = 8500
     CYT_TRAY_X = 68608
 
     QUARTZ_WP_OFFSET = 1300
@@ -678,6 +678,9 @@ class North_Robot:
             vial = vial_indices[i]
             volume_needed = vols_required[i]
             volume = self.get_vial_info(vial,'vial_volume')
+            print(vial)
+            print(volume_needed)
+            print(volume)
             if volume < volume_needed:
                 self.pause_after_error(f"Dispensing from Vials to Wellplate, not enough of solution: {vial}",True)
 
@@ -1080,6 +1083,8 @@ class North_Robot:
                     location=photo_reactor_1
            elif location_name=='clamp':
                 location = vial_clamp 
+           elif location_name=='heater':
+               location = heater_grid[location_index]
         return location
     
     def global_exception_handler(self,exc_type, exc_value, exc_traceback):

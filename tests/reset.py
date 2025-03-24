@@ -15,7 +15,6 @@ def sample_workflow(input_vial_status_file):
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=1)
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=0)
 
-    lash_e.nr_robot.reset_robot()
     lash_e.nr_track.origin()
     lash_e.nr_robot.c9.move_z(292)
 
