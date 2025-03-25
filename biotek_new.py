@@ -134,9 +134,3 @@ class Biotek_Wrapper:
         
         return grouped
 
-#Example usage:
-biotek_i = Biotek_Wrapper()
-indices = [0, 1, 2, 9, 10, 11, 12]
-protocol_path = r"C:\Protocols\Spectral_Automation.prt"
-data = biotek_i.run_protocol(protocol_path,indices)
-print(data)
