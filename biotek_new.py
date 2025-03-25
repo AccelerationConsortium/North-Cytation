@@ -11,6 +11,11 @@ class Biotek_Wrapper:
         self.biotek = Biotek(reader_name="Cytation5",communication="serial",com_port=ComPort)
         status = self.biotek.get_reader_status()
         print(f"Current reader status: {status}")
+        if status == 0:
+            print('Cytation is connected')
+        else:
+            input("Cytation not connected... May need to restart")
+            
     def CarrierIn(self):
         self.biotek.carrier_in()
     def CarrierOut(self):
@@ -132,10 +137,6 @@ class Biotek_Wrapper:
 #Example usage:
 biotek_i = Biotek_Wrapper()
 indices = [0, 1, 2, 9, 10, 11, 12]
-grouped_wells = biotek_i.group_wells(indices)
-print(grouped_wells)  # Output: [['A1', 'A2', 'A3'], ['A10', 'A11', 'A12'], ['B1']]
 protocol_path = r"C:\Protocols\Spectral_Automation.prt"
-biotek_i.CarrierOut()
-biotek_i.CarrierIn()
-biotek_i.run_protocol(protocol_path,grouped_wells)
-
+data = biotek_i.run_protocol(protocol_path,indices)
+print(data)
