@@ -668,7 +668,7 @@ class North_Robot:
     #This is a custom method that takes a "well_plate_df" as an array of destinations and some "vial_indices" which are the different dispensed liquids
     #This method will use both the large and small tips, with a specified low_volume_cutoff between the two
     #This method does use multiple dispenses per aspiration for efficiency
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02, dispense_speed=11):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
         well_plate_dispense_2d_array=well_plate_df.values
@@ -761,17 +761,17 @@ class North_Robot:
 
                     #Let's get our solution and any extra we need
                     print(f"Aspirating solution {vial_index}: {dispense_vol+extra_aspirate_vol} uL")
-                    self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index)
+                    self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index,aspirate_speed=dispense_speed)
                     
                     #Put back the extra if there is any
                     if sacrificial_dispense_vol > 0:
-                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,initial_move=False)
+                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,initial_move=False,dispense_speed=dispense_speed)
   
                     print("Indices to dipense:", well_plate_array)
                     print("Dispense volumes:", dispense_array)
                     print("Dispense sum", np.sum(dispense_array))
 
-                    self.dispense_into_wellplate(well_plate_array,dispense_array) #Dispense into the wellplate
+                    self.dispense_into_wellplate(well_plate_array,dispense_array,dispense_speed=dispense_speed) #Dispense into the wellplate
 
                     vol_dispensed += dispense_vol #Track how much we've dispensed so far
                     print(f"Solution Dispensed {vial_index}: {vol_dispensed} uL")     
@@ -779,7 +779,7 @@ class North_Robot:
                 print("Vol remaining, returning to vial: ", vol_remaining)
                 
                 if vol_needed>0 and vol_remaining>0: #Put back the buffer if there is any
-                    self.dispense_into_vial(vial_index,vol_remaining)
+                    self.dispense_into_vial(vial_index,vol_remaining,dispense_speed=dispense_speed)
                 if vol_needed>0:
                     self.remove_pipet()
 

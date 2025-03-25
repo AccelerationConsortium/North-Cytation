@@ -129,13 +129,3 @@ class Biotek_Wrapper:
         
         return grouped
 
-#Example usage:
-biotek_i = Biotek_Wrapper()
-indices = [0, 1, 2, 9, 10, 11, 12]
-grouped_wells = biotek_i.group_wells(indices)
-print(grouped_wells)  # Output: [['A1', 'A2', 'A3'], ['A10', 'A11', 'A12'], ['B1']]
-protocol_path = r"C:\Protocols\Spectral_Automation.prt"
-biotek_i.CarrierOut()
-biotek_i.CarrierIn()
-biotek_i.run_protocol(protocol_path,grouped_wells)
-
