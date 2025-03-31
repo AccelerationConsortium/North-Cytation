@@ -12,11 +12,13 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
 
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,well_volume=0.2):
-    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates,track_height=False)
+    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates)
     wells = range(first_well_index,first_well_index+replicates)
     lash_e.nr_robot.dispense_into_wellplate(wells, [well_volume]*replicates)
     lash_e.nr_robot.remove_pipet()
-    lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
+    data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
+    output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
+    data_out.to_csv(output_file, sep=',')
 
 def mix_current_sample(lash_e, sample_index, new_pipet=False,repeats=3, volume=0.25):
     if new_pipet:
@@ -31,7 +33,7 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
   
     # Initial State of your Vials, so the robot can know where to pipet
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay.txt"
-    MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_peroxide.prt"
+    MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
 
     # Initial State of your Vials, so the robot can know where to pipet. pd DataFrame created from input txt file.
     vial_status = pd.read_csv(INPUT_VIAL_STATUS_FILE, sep=",")
@@ -62,12 +64,13 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
    # time.sleep(reagent_incubation_time)
    # print("Incubation finished...!")
 
-    # # -> Start from here! 
-    # Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
-    for i in sample_indices: 
+    # -> Start from here! 
+    #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
+    for i in sample_indices[2:]:
         lash_e.nr_robot.dispense_from_vial_into_vial(water_index,i,volume=0.950)
+    lash_e.nr_robot.remove_pipet()
 
-    #Step 3: Add 150 µL "Working Reagent(reagent A+B)" (vial_index 44) to 950 µL deionized water (vial_index 0-5) to dilute the Working Reagent.
+    # #Step 3: Add 150 µL "Working Reagent(reagent A+B)" (vial_index 44) to 950 µL deionized water (vial_index 0-5) to dilute the Working Reagent.
     for i in sample_indices: 
         lash_e.nr_robot.dispense_from_vial_into_vial(reagent_AB_index,i,volume=0.150)
         mix_current_sample(lash_e,i,new_pipet=True,volume=0.8)
@@ -125,6 +128,8 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
             time_increment=time_increment+60
         
         time.sleep(1)
+
+    transfer_samples_into_wellplate_and_characterize(lash_e,8,6,MEASUREMENT_PROTOCOL_FILE,3)
 
     lash_e.nr_robot.return_vial_home(reaction_mixture_index)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)

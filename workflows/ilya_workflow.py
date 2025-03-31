@@ -1,6 +1,6 @@
 import sys
 sys.path.append("../utoronto_demo")
-#from master_usdl_coordinator import Lash_E
+from master_usdl_coordinator import Lash_E
 import pandas as pd
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/ilya_input_vials.txt"
@@ -11,14 +11,19 @@ INSTRUCTIONS_FILE = "../utoronto_demo/status/ilya_input.csv"
 def sample_workflow():
   
     # Initial State of your Vials, so the robot can know where to pipet
-    input_data = pd.read_csv(INSTRUCTIONS_FILE, sep=',')
+    input_data = pd.read_csv(INSTRUCTIONS_FILE, sep=',',index_col="Well")/1000
     vial_status = pd.read_csv(INPUT_VIAL_STATUS_FILE, sep=",")
     print(vial_status)
 
-    input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
+    print(input_data)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
+
+    lash_e.cytation.CarrierOut()
+    lash_e.cytation.CarrierIn()
+
+    input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
     #The vial indices are numbers that are used to track the vials. For the sake of clarity, these are stored in the input vial file but accessed here
     ethanol_index = lash_e.nr_robot.get_vial_index_from_name('ethanol') 
@@ -31,16 +36,16 @@ def sample_workflow():
     input_indices = [water_dye_index,water_index,glycerol_dye_index,glycerol_index,ethanol_dye_index,ethanol_index]
 
     for i in range (0, 3):
-        lash_e.nr_robot.dispense_from_vials_into_wellplate(input_data,input_indices)
+        #lash_e.nr_robot.dispense_from_vials_into_wellplate(input_data,input_indices)
 
         if i==1:
             wells = range(48,96) 
         else:
             wells = range(0,48)
 
-        input_data['Well'] = wells
+        input_data.index = wells
         #Transfer the well plate to the cytation and measure
-        data_output = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=wells)
+        data_output = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=wells,meas_type="read")
 
         save_file = 'output_data_'+str(i)+'.txt'
         data_output.to_csv(save_file, sep=',')

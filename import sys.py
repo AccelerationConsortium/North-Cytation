@@ -11,8 +11,7 @@ def sample_workflow(input_vial_status_file):
     print(vial_status)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(input_vial_status_file)
-    lash_e.nr_track.return_well_plate_to_nr(0)
-    lash_e.measure_wellplate('random')
+    lash_e = Lash_E(input_vial_status_file,initialize_biotek=False)
+    lash_e.nr_track.grab_well_plate_from_nr(0)
 
 sample_workflow("../utoronto_demo/status/sample_input_vials.txt")

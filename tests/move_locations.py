@@ -3,6 +3,7 @@ sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 import pandas as pd
 import numpy as np
+import time
 from Locator import *
 
 #Define your workflow! Make sure that it has parameters that can be changed!
@@ -10,19 +11,15 @@ def sample_workflow(input_vial_status_file, source_vials, aspirate_volumes, dest
   
     # Initial State of your Vials, so the robot can know where to pipet
     vial_status = pd.read_csv(input_vial_status_file, sep=r"\t", engine="python")
-    print(vial_status)
-    input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(input_vial_status_file)
 
     #lash_e.nr_robot.get_pipet()
 
-    lash_e.nr_robot.c9.goto_safe(PR_PIP_1)
-
-    input()
-
-    lash_e.nr_robot.c9.goto_safe(PR_PIP_1)
+    for i in range (0, 12):
+        lash_e.nr_robot.c9.goto(well_plate_new_grid[i])
+        time.sleep(1)
 
 
 
