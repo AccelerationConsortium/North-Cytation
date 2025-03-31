@@ -687,7 +687,7 @@ class North_Robot:
         #Split the dispenses based on the tip-styles available
         well_plate_df_low = well_plate_df.where(well_plate_df<low_volume_cutoff).fillna(0) # Create a new DataFrame with values below the cutoff
         well_plate_df_high = well_plate_df.mask(well_plate_df < low_volume_cutoff, 0) #Create a dataframe where the values are above the cutoff
-        well_plate_instructions = [[well_plate_df_high,1.0,self.LOWER_PIPET_ARRAY_INDEX],[well_plate_df_low,0.25,self.HIGHER_PIPET_ARRAY_INDEX]] #Magic numbers for now
+        well_plate_instructions = [[well_plate_df_low,0.25,self.HIGHER_PIPET_ARRAY_INDEX],[well_plate_df_high,1.0,self.LOWER_PIPET_ARRAY_INDEX]] #Magic numbers for now
 
         #For each pipet tip type. Could potentially do this differently
         for well_plate_instruction in well_plate_instructions:

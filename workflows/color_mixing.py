@@ -73,11 +73,6 @@ def sample_workflow(number_samples=12,replicates=1,colors=4,resolution_vol=10,we
     print(data_pd)
 
     lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index])
-    
-    #Transfer the well plate to the cytation and measure
-    #lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE)
-    
+      
 #Execute the sample workflow.
-#Specify that we are going to aspirate 0.6 from our two sample vials. We could also set the number of replicates to some other number than 3
-#e.g. sample_workflow(aspiration_volume=0.6,replicates=5)
 sample_workflow()

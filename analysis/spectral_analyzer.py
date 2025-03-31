@@ -18,6 +18,24 @@ def remove_overflow(data):
             last_valid_value = value  # Update the last valid value
     return processed_data
 
+def average_spectra(data, replicates):
+    num_cols = data.shape[1]
+    
+    # Ensure the column count is divisible by n
+    if num_cols % replicates != 0:
+        raise ValueError(f"Number of columns ({num_cols}) must be divisible by n ({replicates}).")
+
+    # Compute the new column names
+    new_col_names = [f"Avg_{i+1}" for i in range(num_cols // replicates)]
+
+    # Compute the mean across every `n` columns
+    averaged_df = pd.DataFrame(
+        np.mean(data.values.reshape(data.shape[0], -1, replicates), axis=2),
+        columns=new_col_names
+    )
+
+    return averaged_df
+
 #Get the absolute spectral difference between two spectra
 def get_absolute_spectral_difference(wavelengths_ref, spectra_ref, wavelengths_target, spectra_target):
     result = 0
@@ -29,7 +47,7 @@ def get_absolute_spectral_difference(wavelengths_ref, spectra_ref, wavelengths_t
     return result
 
 #Get the absolute wavelength difference
-def get_absolute_peak_wavelength_difference(wavelengths_ref, spectra_ref, wavelengths_target, spectra_target):
+def get_peak_wavelength_difference(wavelengths_ref, spectra_ref, wavelengths_target, spectra_target):
     if np.all(wavelengths_ref == wavelengths_target):
         # Find the index of the maximum value in each spectrum
         max_index_ref = np.argmax(spectra_ref)
@@ -40,7 +58,7 @@ def get_absolute_peak_wavelength_difference(wavelengths_ref, spectra_ref, wavele
         peak_wavelength_target = wavelengths_target[max_index_target]
         
         # Compute the absolute difference
-        result = abs(peak_wavelength_ref - peak_wavelength_target)
+        result = (peak_wavelength_ref - peak_wavelength_target)
     else:
         print("Issue getting difference: Wavelength arrays do not match")
         result = None
