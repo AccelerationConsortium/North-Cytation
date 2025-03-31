@@ -48,6 +48,11 @@ class Biotek_Wrapper:
 
     def get_wavelengths_from_plate(self,plate):
         current_procedure = plate.get_procedure()
+
+        #print(current_procedure)
+
+        #input()
+
         root = ET.fromstring( current_procedure )
 
         # Extract wavelength values
@@ -57,17 +62,19 @@ class Biotek_Wrapper:
 
         # Generate list of wavelengths
         wavelengths = list(range(start_nm, stop_nm + 1, step_nm))
+
         return wavelengths
 
-    def run_plate(self,plate,wells):
+    def run_plate(self,plate,wells,prot_type="spectra"):
         
         plate_data = pd.DataFrame()
         plate.keep_plate_in_after_read()
         if not plate:
             print("Failed to add a plate. Possibly a multi-plate assay.")
         else:
-            wavelengths = self.get_wavelengths_from_plate(plate)
-            plate_data['Wavelengths']=wavelengths
+            if prot_type=="spectra":
+                wavelengths = self.get_wavelengths_from_plate(plate)
+                plate_data['Wavelengths']=wavelengths
 
             # 2) Define a partial plate (random wells) and set it
             random_well_xml = build_bti_partial_plate_xml(single_block=False,wells=wells)
@@ -77,14 +84,20 @@ class Biotek_Wrapper:
             self.monitor_plate_read(plate)
 
             #Add the data to the dataframe
-            for well in wells:
+            if prot_type == "spectra":
+                for well in wells:
+                    results = plate.get_raw_data()
+                    plate_data[well]=(results[1]['value']) 
+            elif prot_type == "read":
+                i = 0
                 results = plate.get_raw_data()
-                plate_data[well]=(results[1]['value']) 
-
+                for well in wells:
+                    plate_data.at[well,"Intensity"]=(list(results[1]['value'])[i])
+                    i=i+1
             return plate_data
         return None    
     
-    def run_protocol(self,protocol_path, wells=None):
+    def run_protocol(self,protocol_path, wells=None,prot_type="spectra"):
         self.biotek.app.data_export_enabled = True
         experiment = self.biotek.new_experiment(protocol_path)
         protocol_data = pd.DataFrame()
@@ -98,11 +111,13 @@ class Biotek_Wrapper:
                 grouped_wells = self.group_wells(wells)
             for well_group in grouped_wells:
                 plate = plates.add()
-                data_group = self.run_plate(plate,well_group)
+                data_group = self.run_plate(plate,well_group,prot_type=prot_type)
                 if protocol_data.empty:
                     protocol_data = data_group
-                else:
-                    protocol_data = protocol_data.merge(data_group, on ="Wavelengths", how='outer')           
+                elif prot_type=="spectra":
+                    protocol_data = protocol_data.merge(data_group, on ="Wavelengths", how='outer')     
+                elif prot_type=="read":
+                    protocol_data = pd.concat([protocol_data,data_group])      
         else:
             print("Experiment creation failed.")
 
@@ -133,4 +148,3 @@ class Biotek_Wrapper:
             grouped.append([self.well_index_to_label(idx) for idx in current_group])
         
         return grouped
-

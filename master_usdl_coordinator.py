@@ -42,10 +42,10 @@ class Lash_E:
         self.cytation.CarrierIn()
         self.nr_track.return_well_plate_to_nr(wellplate_index,quartz_wp=quartz)  
 
-    def measure_wellplate(self,protocol_file_path,wells_to_measure=None,wellplate_index=0,quartz=False):
+    def measure_wellplate(self,protocol_file_path,wells_to_measure=None,meas_type="spectra",wellplate_index=0,quartz=False):
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index,quartz=quartz)
-        data = self.cytation.run_protocol(protocol_file_path,wells_to_measure)
+        data = self.cytation.run_protocol(protocol_file_path,wells_to_measure,prot_type=meas_type)
         self.move_wellplate_back_from_cytation(wellplate_index,quartz=quartz)
         self.nr_track.origin()
         return data

@@ -6,7 +6,6 @@ import numpy as np
 import time
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/color_mixing_vials.txt"
-MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt"
 
 #Define your workflow! 
 #In this case we have two parameters: 
@@ -46,7 +45,23 @@ def generate_random_matrix(rows, cols, row_sum, divisible_by):
     
     return matrix
 
-def sample_workflow(number_samples=12,replicates=1,colors=4,resolution_vol=10,well_volume=250):
+def mix_wells(lash_e, wells, wash_index=4, wash_volume=0.150, repeats=1,replicates=6):
+    for well in wells:
+        stay_low=True
+        if well%replicates==0:
+            lash_e.nr_robot.aspirate_from_vial(wash_index,wash_volume)
+            lash_e.nr_robot.dispense_into_vial(wash_index,wash_volume,initial_move=False)
+            stay_low=False
+        #for i in range (0,repeats):
+        #    lash_e.nr_robot.dispense_from_vial_into_vial(wash_index,wash_index,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
+
+        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,stay_low=stay_low)
+        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
+        for i in range (0, repeats):
+            lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
+            lash_e.nr_robot.pipet_from_wellplate(well, wash_volume,aspirate=False,move_to_aspirate=False)
+
+def sample_workflow(number_samples=16,replicates=6,colors=4,resolution_vol=10,well_volume=240):
   
     # Initial State of your Vials, so the robot can know where to pipet
     check_input_file(INPUT_VIAL_STATUS_FILE)
@@ -62,6 +77,10 @@ def sample_workflow(number_samples=12,replicates=1,colors=4,resolution_vol=10,we
 
     data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
 
+    data_pd_save = data_colors_uL*1000
+    data_pd_save = pd.DataFrame(data=data_pd_save,columns=['water','red','blue','yellow'])
+    data_pd_save.to_csv("../utoronto_demo/output/color_mixing_composition.txt",sep=',')
+
     print("Row sums:", np.sum(data_colors_uL * 1000, axis=1))  # Should all equal 250
 
     data_colors_uL = np.repeat(data_colors_uL, replicates, axis=0)
@@ -72,12 +91,27 @@ def sample_workflow(number_samples=12,replicates=1,colors=4,resolution_vol=10,we
     data_pd = pd.DataFrame(data=data_colors_uL,columns=['water','red','blue','yellow'])
     print(data_pd)
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index])
+    num_wells = data_colors_uL.shape[0]
+    print("Number samples: ", num_wells)
+    wells = range(0, num_wells)
+
+    input("Waiting...")
+
+    start_time = time.perf_counter()
+
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index],low_volume_cutoff=0.250)
+    mix_wells(lash_e, wells,replicates=replicates)
+
+    end_time = time.perf_counter()
+
+    print("Time to complete: ", end_time - start_time)
     
     #Transfer the well plate to the cytation and measure
-    #lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE)
+    #results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(0,96))
+
+    #print(results)
+
+    #results.to_csv('save_data.txt', sep=',')
     
 #Execute the sample workflow.
-#Specify that we are going to aspirate 0.6 from our two sample vials. We could also set the number of replicates to some other number than 3
-#e.g. sample_workflow(aspiration_volume=0.6,replicates=5)
 sample_workflow()

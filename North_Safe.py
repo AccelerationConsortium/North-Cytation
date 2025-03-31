@@ -21,7 +21,7 @@ class North_Track:
 
     #Well plate active areas
     NR_WELL_PLATE_X = [131854,105860,81178]
-    NR_WELL_PLATE_Y = [88396, 86965, 89155]
+    NR_WELL_PLATE_Y = [88750, 86965, 89155]
     #NR_WELL_PLATE_Y_RELEASE = 86000
     
     #Transit constants
@@ -543,15 +543,19 @@ class North_Robot:
             self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=move_to_dispense)
 
     #TODO add error checks and safeguards
-    def pipet_from_wellplate(self,wp_index,volume,aspirate_speed=10,aspirate=True,move_to_aspirate=True):
+    def pipet_from_wellplate(self,wp_index,volume,aspirate_speed=10,aspirate=True,move_to_aspirate=True,stay_low=False):
         location = well_plate_new_grid[wp_index]
         height = self.c9.counts_to_mm(3, location[3])
         height = self.adjust_height_based_on_pipet_held(height) 
         if aspirate:
-            height = height - 12 #Go to the bottom of the well
+            height = height - 18 #Go to the bottom of the well
 
         if move_to_aspirate:
-                self.c9.goto_xy_safe(location, vel=15)
+                if not stay_low:
+                    self.c9.goto_xy_safe(location, vel=15)
+                else:
+                    self.move_rel_z(18)
+                    self.c9.goto(location, vel=15)
 
         self.pipet_from_location(volume, aspirate_speed, height, aspirate = aspirate, initial_move=move_to_aspirate)
 
@@ -678,9 +682,6 @@ class North_Robot:
             vial = vial_indices[i]
             volume_needed = vols_required[i]
             volume = self.get_vial_info(vial,'vial_volume')
-            print(vial)
-            print(volume_needed)
-            print(volume)
             if volume < volume_needed:
                 self.pause_after_error(f"Dispensing from Vials to Wellplate, not enough of solution: {vial}",True)
 
@@ -695,6 +696,9 @@ class North_Robot:
             well_plate_df = well_plate_instruction[0] #List of target dispenses
             max_volume = well_plate_instruction[1] #What's the maximum we should aspirate to?
             pipet_index = well_plate_instruction[2] #What pipet are we using?
+
+            if well_plate_df.empty:
+                continue
             
             well_plate_dispense_2d_array = well_plate_df.values
             well_plate_indices = well_plate_df.index.tolist() #This is the list of wells that are being dispensed to
@@ -1030,7 +1034,7 @@ class North_Robot:
         VIAL_RACK_BASE_HEIGHT = 67.25
         PR_BASE_HEIGHT = 85 #Need to fine tune this
         LARGE_VIAL_BASE_HEIGHT = 55    
-        SMALL_VIAL_BASE_HEIGHT = 97
+        SMALL_VIAL_BASE_HEIGHT = 98
     
         if location_name=='main_8mL_rack':
             min_height = VIAL_RACK_BASE_HEIGHT 
