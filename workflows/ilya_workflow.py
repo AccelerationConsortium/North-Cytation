@@ -20,9 +20,6 @@ def sample_workflow():
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
 
-    lash_e.cytation.CarrierOut()
-    lash_e.cytation.CarrierIn()
-
     input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
     #The vial indices are numbers that are used to track the vials. For the sake of clarity, these are stored in the input vial file but accessed here
@@ -36,14 +33,32 @@ def sample_workflow():
     input_indices = [water_dye_index,water_index,glycerol_dye_index,glycerol_index,ethanol_dye_index,ethanol_index]
 
     for i in range (0, 3):
-        #lash_e.nr_robot.dispense_from_vials_into_wellplate(input_data,input_indices)
+        
 
         if i==1:
-            wells = range(48,96) 
+            wells = range(48,96)
         else:
             wells = range(0,48)
 
         input_data.index = wells
+
+        water_df = input_data[(input_data['water'] > 0) | (input_data['water_dye'] > 0)]
+        glycerol_df = input_data[(input_data['glycerol'] > 0) | (input_data['glycerol_dye'] > 0)]
+        ethanol_df = input_data[(input_data['ethanol'] > 0) | (input_data['ethanol_dye'] > 0)]
+
+        # Display the resulting dataframes
+        print("Water DataFrame:")
+        print(water_df)
+        print("\nGlycerol DataFrame:")
+        print(glycerol_df)
+        print("\nEthanol DataFrame:")
+        print(ethanol_df)
+
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(water_df,input_indices)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(glycerol_df,input_indices,dispense_speed=30,wait_time=5)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(ethanol_df,input_indices,asp_cycles=2)
+
+
         #Transfer the well plate to the cytation and measure
         data_output = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=wells,meas_type="read")
 

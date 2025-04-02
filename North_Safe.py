@@ -429,7 +429,7 @@ class North_Robot:
     #Pipet from a vial into another vial
     #Use calibration (not implemented) is if you want to adjust the volume based off a known calibration
     #Aspirate conditioning is an alternate way to aspirate (up and down some number of cycles)
-    def aspirate_from_vial(self, source_vial_num, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,vial_wait_time=0,aspirate_speed=11,asp_disp_cycles=0):
+    def aspirate_from_vial(self, source_vial_num, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,wait_time=0,aspirate_speed=11,asp_disp_cycles=0):
         
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.is_vial_pipetable(source_vial_num), True, "Can't pipet from vial. Vial may be marked as closed."])
@@ -491,8 +491,9 @@ class North_Robot:
         
         #If you want to have extra aspirate and dispense steps. TODO: This isn't going to work right now as is. 
         for i in range (0, asp_disp_cycles):
-            self.pipet_from_location(amount_mL, aspirate_speed, height, True)
-            self.pipet_from_location(amount_mL, aspirate_speed, height, False)
+            self.pipet_from_location(amount_mL, aspirate_speed, height, True,initial_move=move_to_aspirate)
+            self.pipet_from_location(amount_mL, aspirate_speed, height, False,initial_move=False)
+            move_to_aspirate = False
         
         #Main aspiration
         self.pipet_from_location(amount_mL, aspirate_speed, height, True, initial_move=move_to_aspirate)
@@ -500,10 +501,9 @@ class North_Robot:
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
 
-        #Move to a safe height and wait if required. TODO: 160 is a magic number and should be replaced with a SAFE_HEIGHT or some constant
-        if vial_wait_time > 0:
-            self.c9.move_z(160, vel=15) 
-            time.sleep(vial_wait_time)
+        #Wait if required
+        if wait_time > 0:
+            time.sleep(wait_time)
         
         #Update the new volume in memory
         self.PIPET_FLUID_VIAL_INDEX = int(source_vial_num)
@@ -672,7 +672,7 @@ class North_Robot:
     #This is a custom method that takes a "well_plate_df" as an array of destinations and some "vial_indices" which are the different dispensed liquids
     #This method will use both the large and small tips, with a specified low_volume_cutoff between the two
     #This method does use multiple dispenses per aspiration for efficiency
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02, dispense_speed=11):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02, dispense_speed=11, wait_time=1,asp_cycles=0):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
         well_plate_dispense_2d_array=well_plate_df.values
@@ -765,17 +765,17 @@ class North_Robot:
 
                     #Let's get our solution and any extra we need
                     print(f"Aspirating solution {vial_index}: {dispense_vol+extra_aspirate_vol} uL")
-                    self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index,aspirate_speed=dispense_speed)
+                    self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index,aspirate_speed=dispense_speed,wait_time=wait_time,asp_disp_cycles=asp_cycles)
                     
                     #Put back the extra if there is any
                     if sacrificial_dispense_vol > 0:
-                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,initial_move=False,dispense_speed=dispense_speed)
+                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,initial_move=False,dispense_speed=dispense_speed,wait_time=wait_time)
   
                     print("Indices to dipense:", well_plate_array)
                     print("Dispense volumes:", dispense_array)
                     print("Dispense sum", np.sum(dispense_array))
 
-                    self.dispense_into_wellplate(well_plate_array,dispense_array,dispense_speed=dispense_speed) #Dispense into the wellplate
+                    self.dispense_into_wellplate(well_plate_array,dispense_array,dispense_speed=dispense_speed,wait_time=wait_time) #Dispense into the wellplate
 
                     vol_dispensed += dispense_vol #Track how much we've dispensed so far
                     print(f"Solution Dispensed {vial_index}: {vol_dispensed} uL")     
@@ -783,7 +783,7 @@ class North_Robot:
                 print("Vol remaining, returning to vial: ", vol_remaining)
                 
                 if vol_needed>0 and vol_remaining>0: #Put back the buffer if there is any
-                    self.dispense_into_vial(vial_index,vol_remaining,dispense_speed=dispense_speed)
+                    self.dispense_into_vial(vial_index,vol_remaining,dispense_speed=dispense_speed,wait_time=wait_time)
                 if vol_needed>0:
                     self.remove_pipet()
 
