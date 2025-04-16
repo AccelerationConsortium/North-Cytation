@@ -4,7 +4,7 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_input.csv"
-MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt" #Will need to create a measurement protocol
+MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence.prt" #Will need to create a measurement protocol
 LAST_WP_INDEX = 0
 
 #Define your workflow! 
@@ -30,8 +30,7 @@ def create_wellplate_samples(surfactant_mixture_index, surfactant_mixture_volume
     df = pd.DataFrame(data)
     df.index = well_indices
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df,dispense_indices)
-
-
+    LAST_WP_INDEX+=replicates
 
 def sample_workflow():
     #Check the input to confirm that it's OK!
