@@ -50,12 +50,13 @@ def sample_workflow():
     surfactant_index_list = [surfactant_1_index, surfactant_2_index, water_index]
     surfactant_volumes = [0.2,0.3,0.5]
     DMSO_VOLUME = 0.10
+    replicates=3
 
     mix_surfactants(surfactant_index_list,surfactant_volumes,surfactant_mixture_index)
-    create_wellplate_samples(surfactant_mixture_index,DMSO_VOLUME,pyrene_DMSO_index,replicates=3,last_wp_index=LAST_WP_INDEX)
+    create_wellplate_samples(surfactant_mixture_index,DMSO_VOLUME,pyrene_DMSO_index,replicates=replicates,last_wp_index=LAST_WP_INDEX)
 
     #Transfer the well plate to the cytation and measure
-    lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE)
+    lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(LAST_WP_INDEX,LAST_WP_INDEX+replicates))
     
 #Execute the sample workflow.
 sample_workflow()
