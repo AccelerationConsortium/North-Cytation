@@ -200,7 +200,7 @@ class North_Robot:
     VIAL_FILE = None #File that we save the vial data in 
     
     #All of this data doesn't seem to need to be tracked here. TODO: Compartmentalize and place appropriately. 
-    DEFAULT_SMALL_TIP_DELTA_Z = -20 #This is the height difference between the bottom of the small pipet tip and the large tip
+    DEFAULT_SMALL_TIP_DELTA_Z = -21 #This is the height difference between the bottom of the small pipet tip and the large tip
     LOWER_PIPET_ARRAY_INDEX = 0 #Label representing the lower rack at the back with 1000 uL tips
     HIGHER_PIPET_ARRAY_INDEX = 1 #Label representing the upper rack at the back with 250 uL tips
 
@@ -575,7 +575,7 @@ class North_Robot:
             self.dispense_from_vial_into_vial(vial_index,vial_index,volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
 
     #Dispense an amount into a vial
-    def dispense_into_vial(self, dest_vial_num,amount_mL,initial_move=True,dispense_speed=11,measure_weight=False):     
+    def dispense_into_vial(self, dest_vial_num,amount_mL,initial_move=True,dispense_speed=11,measure_weight=False,wait_time=0):     
         
         measured_mass = None
         error_check_list = [] #List of specific errors for this method
@@ -604,6 +604,9 @@ class North_Robot:
         
         #Pipet into the vial
         self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
+
+        if wait_time > 0:
+            time.sleep(wait_time)
 
         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
@@ -645,7 +648,7 @@ class North_Robot:
             if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
                 height -= 5 #goes 5mm lower when dispensing
 
-            if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX:
+            if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX and dispense_speed == 11: #Adjust this later
                 dispense_speed = 13 #Use lower dispense speed for smaller tip
 
             print("Transferring", amount_mL, "mL into well #" + str(dest_wp_num_array[i]))
@@ -672,7 +675,7 @@ class North_Robot:
     #This is a custom method that takes a "well_plate_df" as an array of destinations and some "vial_indices" which are the different dispensed liquids
     #This method will use both the large and small tips, with a specified low_volume_cutoff between the two
     #This method does use multiple dispenses per aspiration for efficiency
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02, dispense_speed=11, wait_time=1,asp_cycles=0):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02, dispense_speed=11, wait_time=1,asp_cycles=0,track_height=True):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
         well_plate_dispense_2d_array=well_plate_df.values
@@ -765,7 +768,7 @@ class North_Robot:
 
                     #Let's get our solution and any extra we need
                     print(f"Aspirating solution {vial_index}: {dispense_vol+extra_aspirate_vol} uL")
-                    self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index,aspirate_speed=dispense_speed,wait_time=wait_time,asp_disp_cycles=asp_cycles)
+                    self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index,aspirate_speed=dispense_speed,wait_time=wait_time,asp_disp_cycles=asp_cycles,track_height=track_height)
                     
                     #Put back the extra if there is any
                     if sacrificial_dispense_vol > 0:
@@ -1031,7 +1034,7 @@ class North_Robot:
 
         #These constants should be considered properties that we can take in from files later
         CLAMP_BASE_HEIGHT = 114.5
-        VIAL_RACK_BASE_HEIGHT = 67.25
+        VIAL_RACK_BASE_HEIGHT = 68.5
         PR_BASE_HEIGHT = 85 #Need to fine tune this
         LARGE_VIAL_BASE_HEIGHT = 55    
         SMALL_VIAL_BASE_HEIGHT = 98
@@ -1046,6 +1049,8 @@ class North_Robot:
             min_height = PR_BASE_HEIGHT
         elif location_name=='clamp':
             min_height = CLAMP_BASE_HEIGHT
+        elif location_name == '12_well_ilya':
+            min_height = 72.00
 
         return min_height
 
@@ -1073,6 +1078,8 @@ class North_Robot:
                     location=PR_PIP_1
             elif location_name=='clamp':
                 location = vial_clamp_pip
+            elif location_name == '12_well_ilya':
+                location = ilya_wellplate[location_index]
         else: #For the gripper
            if location_name=='main_8mL_rack':
                 location = rack[location_index]

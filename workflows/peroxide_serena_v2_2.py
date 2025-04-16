@@ -10,9 +10,11 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
     mix_current_sample(lash_e,sample_index,volume=0.8)
     lash_e.nr_robot.remove_pipet()
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
+    lash_e.nr_robot.move_home()
+    lash_e.nr_robot.c9.home_robot()
 
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,well_volume=0.2):
-    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates)
+    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates,track_height=False)
     wells = range(first_well_index,first_well_index+replicates)
     lash_e.nr_robot.dispense_into_wellplate(wells, [well_volume]*replicates)
     lash_e.nr_robot.remove_pipet()
@@ -32,7 +34,7 @@ def mix_current_sample(lash_e, sample_index, new_pipet=False,repeats=3, volume=0
 def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60,interval=5*60,replicates=3): #Reagent incubation time=20 mins; sample incubation time is 18 mins; sample platereading interval is 5 mins.
   
     # Initial State of your Vials, so the robot can know where to pipet
-    INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay.txt"
+    INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay.csv"
     MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
 
     # Initial State of your Vials, so the robot can know where to pipet. pd DataFrame created from input txt file.
@@ -64,9 +66,9 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
    # time.sleep(reagent_incubation_time)
    # print("Incubation finished...!")
 
-    # -> Start from here! 
+    #-> Start from here! 
     #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
-    for i in sample_indices[2:]:
+    for i in sample_indices:
         lash_e.nr_robot.dispense_from_vial_into_vial(water_index,i,volume=0.950)
     lash_e.nr_robot.remove_pipet()
 
@@ -96,7 +98,6 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     
     start_time = time.time()
     print("Starting timed portion at: ", start_time)
- 
     #Let's complete the items one at a time
     items_completed = 0
     starting_well_index = 0
@@ -128,8 +129,6 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
             time_increment=time_increment+60
         
         time.sleep(1)
-
-    transfer_samples_into_wellplate_and_characterize(lash_e,8,6,MEASUREMENT_PROTOCOL_FILE,3)
 
     lash_e.nr_robot.return_vial_home(reaction_mixture_index)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)

@@ -18,7 +18,7 @@ def sample_workflow():
     print(input_data)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_biotek=False)
 
     input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
@@ -32,13 +32,13 @@ def sample_workflow():
     
     input_indices = [water_dye_index,water_index,glycerol_dye_index,glycerol_index,ethanol_dye_index,ethanol_index]
 
-    for i in range (0, 3):
+    for i in range (0, 1):
         
-
-        if i==1:
-            wells = range(48,96)
-        else:
-            wells = range(0,48)
+        wells = range(48,96)
+        # if i==1:
+        #     wells = range(48,96)
+        # else:
+        #     wells = range(0,48)
 
         input_data.index = wells
 
@@ -54,16 +54,9 @@ def sample_workflow():
         print("\nEthanol DataFrame:")
         print(ethanol_df)
 
-        lash_e.nr_robot.dispense_from_vials_into_wellplate(water_df,input_indices)
-        lash_e.nr_robot.dispense_from_vials_into_wellplate(glycerol_df,input_indices,dispense_speed=30,wait_time=5)
-        lash_e.nr_robot.dispense_from_vials_into_wellplate(ethanol_df,input_indices,asp_cycles=2)
-
-
-        #Transfer the well plate to the cytation and measure
-        data_output = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=wells,meas_type="read")
-
-        save_file = 'output_data_'+str(i)+'.txt'
-        data_output.to_csv(save_file, sep=',')
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(water_df,input_indices,low_volume_cutoff=0.25,dispense_speed=13,track_height=False)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(glycerol_df,input_indices,dispense_speed=30,wait_time=15,low_volume_cutoff=0.25,track_height=False)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(ethanol_df,input_indices,asp_cycles=2,low_volume_cutoff=0.25,dispense_speed=13,track_height=False)
 
         input("Pause waiting for next round... If second round finished please add new well-plate")
     
