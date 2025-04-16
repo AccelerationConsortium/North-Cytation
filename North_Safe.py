@@ -6,8 +6,8 @@ import pandas as pd
 import sys
 import slack_agent
 import yaml
-sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
-sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
+#sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
+#sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
 
 class North_Track:
 
