@@ -89,8 +89,8 @@ pyrene_DMSO_index = lash_e.nr_robot.get_vial_index_from_name('pyrene_DMSO')
 water_index = lash_e.nr_robot.get_vial_index_from_name('water')
 
 #These surfactants and ratios should be decided by something
-surfactants = ['SDS', None, None]
-ratios = [1, 0, 0]
+surfactants = ['SDS', 'SLS', None]
+ratios = [0.3, 0.7, 0]
 
 surfactant_index_list = []
 for surfactant in surfactants:

@@ -3,11 +3,9 @@ import numpy as np
 import time
 import math
 import pandas as pd
-import sys
 import slack_agent
 import yaml
-#sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
-#sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
+from unittest.mock import MagicMock
 
 class North_Track:
 
@@ -421,7 +419,7 @@ class North_Robot:
     #Integrating error messages and deliberate pauses
     def pause_after_error(self,err_message,send_slack=True):
         print(err_message)
-        if send_slack:
+        if send_slack and not isinstance(self.c9, MagicMock):
             slack_agent.send_slack_message(err_message)
         input("Waiting for user to press enter or quit after error...")
 
