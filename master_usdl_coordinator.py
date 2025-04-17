@@ -29,24 +29,24 @@ class Lash_E:
         if initialize_t8:
             self.temp_controller = North_T8(c9)
 
-    def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False):
+    def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)
         self.nr_track.move_gripper_to_cytation()
         self.cytation.CarrierOut()
         self.nr_track.release_well_plate_in_cytation(quartz_wp=quartz)
-        self.cytation.CarrierIn()
+        self.cytation.CarrierIn(plate_type=plate_type)
 
-    def move_wellplate_back_from_cytation(self,wellplate_index=0,quartz=False):
+    def move_wellplate_back_from_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         self.cytation.CarrierOut()
         self.nr_track.grab_well_plate_from_cytation(quartz_wp=quartz)
-        self.cytation.CarrierIn()
+        self.cytation.CarrierIn(plate_type=plate_type)
         self.nr_track.return_well_plate_to_nr(wellplate_index,quartz_wp=quartz)  
 
-    def measure_wellplate(self,protocol_file_path,wells_to_measure=None,meas_type="spectra",wellplate_index=0,quartz=False):
+    def measure_wellplate(self,protocol_file_path,wells_to_measure=None,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         self.nr_robot.move_home()
-        self.move_wellplate_to_cytation(wellplate_index,quartz=quartz)
-        data = self.cytation.run_protocol(protocol_file_path,wells_to_measure,prot_type=meas_type)
-        self.move_wellplate_back_from_cytation(wellplate_index,quartz=quartz)
+        self.move_wellplate_to_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
+        data = self.cytation.run_protocol(protocol_file_path,wells_to_measure)
+        self.move_wellplate_back_from_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
         self.nr_track.origin()
         return data
 

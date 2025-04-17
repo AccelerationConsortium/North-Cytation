@@ -8,11 +8,11 @@ def sample_workflow(input_vial_status_file):
   
     # Initial State of your Vials, so the robot can know where to pipet
     vial_status = pd.read_csv(input_vial_status_file, sep=",")
-    print(vial_status)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(input_vial_status_file)
-    lash_e.nr_track.return_well_plate_to_nr(0)
-    lash_e.measure_wellplate('random')
-
+    data = lash_e.measure_wellplate(r"C:\Protocols\CMC_Fluorescence.prt",[0,1,2],plate_type="48 WELL PLATE")
+    #data = lash_e.cytation.run_protocol(r"C:\Protocols\CMC_Fluorescence.prt",[0,1,2,3])
+    print (data)
+    #lash_e.nr_track.origin()
 sample_workflow("../utoronto_demo/status/sample_input_vials.txt")
