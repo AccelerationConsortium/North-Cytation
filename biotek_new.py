@@ -21,8 +21,8 @@ class Biotek_Wrapper:
         elif not simulate:
             input("Cytation not connected... May need to restart")
             
-    def CarrierIn(self):
-        self.biotek.carrier_in()
+    def CarrierIn(self,plate_type="96 WELL PLATE"):
+        self.biotek.carrier_in(plate_type_name=plate_type)
     def CarrierOut(self):
         self.biotek.carrier_out()
     
@@ -51,6 +51,17 @@ class Biotek_Wrapper:
 
                 time.sleep(2)
 
+    def get_num_reads(self,plate):
+        current_procedure = plate.get_procedure()
+        root = ET.fromstring( current_procedure )
+            # Find all Measurement elements
+        measurement_elements = root.findall(".//Measurement")
+
+        # Collect unique index values
+        unique_indexes = {m.attrib['Index'] for m in measurement_elements}
+
+        return unique_indexes
+
     def get_wavelengths_from_plate(self,plate):
         current_procedure = plate.get_procedure()
 
@@ -70,7 +81,7 @@ class Biotek_Wrapper:
 
         return wavelengths
 
-    def run_plate(self,plate,wells,prot_type="spectra"):
+    def run_plate(self,plate,wells,prot_type):
         
         plate_data = pd.DataFrame()
         plate.keep_plate_in_after_read()
@@ -94,19 +105,43 @@ class Biotek_Wrapper:
                     results = plate.get_raw_data()
                     plate_data[well]=(results[1]['value']) 
             elif prot_type == "read":
-                i = 0
-                results = plate.get_raw_data()
-                for well in wells:
-                    plate_data.at[well,"Intensity"]=(list(results[1]['value'])[i])
-                    i=i+1
+                num_reads = self.get_num_reads(plate)
+                print("Measurement types: ", num_reads)
+                for measurement_type in num_reads:
+                    results = plate.get_raw_data()
+                    i = 0
+                    for well in wells:
+                        plate_data.at[well,measurement_type]=(list(results[1]['value'])[i])
+                        i=i+1
             return plate_data
         return None    
     
-    def run_protocol(self,protocol_path, wells=None,prot_type="spectra"):
+    def determine_read_type(self, plate):
+        current_procedure = plate.get_procedure()
+        root = ET.fromstring(current_procedure)
+
+        # Find the <ReadStep> element
+        read_step = root.find(".//ReadStep")
+        if read_step is None:
+            return "Unknown"
+
+        # Get detection and read type
+        detection = read_step.findtext("Detection")
+        read_type = read_step.findtext("ReadType")
+
+        # Determine based on known logic
+        if read_type == "Spectrum":
+            return "spectra"
+        elif read_type == "EndPoint":
+            return "read"
+        else:
+            return "Unknown"
+
+    def run_protocol(self,protocol_path, wells=None):
         self.biotek.app.data_export_enabled = True
         experiment = self.biotek.new_experiment(protocol_path)
         protocol_data = pd.DataFrame()
-        
+
         if experiment:
             print("Experiment created successfully.")
             print(f"Experiment Protocol Type: {experiment.protocol_type}")
@@ -116,6 +151,7 @@ class Biotek_Wrapper:
                 grouped_wells = self.group_wells(wells)
             for well_group in grouped_wells:
                 plate = plates.add()
+                prot_type=self.determine_read_type(plate)
                 data_group = self.run_plate(plate,well_group,prot_type=prot_type)
                 if protocol_data.empty:
                     protocol_data = data_group
