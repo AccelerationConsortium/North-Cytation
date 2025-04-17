@@ -39,21 +39,22 @@ def mix_surfactants(lash_e, surfactant_index_list, sub_stock_vols, target_vial_i
         print("\nCombining surfactants:")
         surfactant_index = surfactant_index_list[i]
         surfactant_volume = list(sub_stock_vols.values())[i]/1000
-        #Split the volumes into pipetable chunks
-        volumes = split_volume(surfactant_volume)
-        print(f"Pipetable volumes: ", volumes)
-        for volume in volumes:
-            lash_e.nr_robot.dispense_from_vial_into_vial(surfactant_index,target_vial_index,volume)
-        print("Mixing samples...")
-        lash_e.nr_robot.mix_vial(target_vial_index,min(surfactant_volume*mix_ratio, 1.0))
-        lash_e.nr_robot.remove_pipet()
+        if surfactant_volume > 0:
+            #Split the volumes into pipetable chunks
+            volumes = split_volume(surfactant_volume)
+            print(f"Pipetable volumes: ", volumes)
+            for volume in volumes:
+                lash_e.nr_robot.dispense_from_vial_into_vial(surfactant_index,target_vial_index,volume)
+            print("Mixing samples...")
+            lash_e.nr_robot.mix_vial(target_vial_index,min(surfactant_volume*mix_ratio, 1.0))
+            lash_e.nr_robot.remove_pipet()
 
 def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_pyrene_index,water_index,last_wp_index): #Add the DMSO_pyrene and surfactant mixture to well plates
     print("\n Dispensing into Wellplate")
     samples_per_assay = wellplate_data.shape[0]
     well_indices = range (last_wp_index,last_wp_index+samples_per_assay)
     dispense_indices = [substock_vial_index,water_index,DMSO_pyrene_index]
-    dispense_data = wellplate_data[['surfactant volume', 'water volume','probe volume']]
+    dispense_data = wellplate_data[['surfactant volume', 'water volume','probe volume']]/1000 #Convert to uL
     dispense_data.index = well_indices
     print(dispense_data)
 
@@ -88,8 +89,8 @@ pyrene_DMSO_index = lash_e.nr_robot.get_vial_index_from_name('pyrene_DMSO')
 water_index = lash_e.nr_robot.get_vial_index_from_name('water')
 
 #These surfactants and ratios should be decided by something
-surfactants = ['SDS', 'SLS', 'NaC']
-ratios = [0.1, 0.2, 0.7]
+surfactants = ['SDS', None, None]
+ratios = [1, 0, 0]
 
 surfactant_index_list = []
 for surfactant in surfactants:
@@ -99,7 +100,7 @@ surfactant_index_list.append(water_index)
 experiment,small_exp = experimental_planner.generate_exp(surfactants, ratios)
 
 sub_stock_vols = experiment['surfactant_sub_stock_vols']
-wellplate_data = experiment['df']/1000
+wellplate_data = experiment['df']
 samples_per_assay = wellplate_data.shape[0]
 
 starting_wp_index = 0

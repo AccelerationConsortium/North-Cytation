@@ -525,6 +525,9 @@ class North_Robot:
         elif volume >= 0.2 and volume <= 1.00:
             tip_type = self.LOWER_PIPET_ARRAY_INDEX
             max_volume = 1.00
+        elif volume == 0:
+            print("Cannot dispense 0 mL")
+            return
         else:
             self.pause_after_error(f"Cannot accurately aspirate: {volume} mL under specified conditions.")
         
