@@ -4,26 +4,31 @@ sys.path.append("../utoronto_demo")
 from North_Safe import North_Robot
 from North_Safe import North_Track
 from North_Safe import North_T8
-from north import NorthC9
 from biotek_new import Biotek_Wrapper
 from photoreactor_controller import Photoreactor_Controller
 
 class Lash_E:
-
     nr_robot = None
     nr_track = None
     cytation = None
     photoreactor = None
     temp_controller = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True,initialize_t8=False):
-        c9 = NorthC9("A", network_serial="AU06CNCF")
+    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True,initialize_t8=False,simulate=False):
+        if not simulate:
+            from north import NorthC9
+            c9 = NorthC9("A", network_serial="AU06CNCF")
+        else:
+            from unittest.mock import MagicMock
+            c9 = MagicMock()
+
+        print(simulate)
         if initialize_robot:
             self.nr_robot = North_Robot(c9, vial_file)
         if initialize_track:
             self.nr_track = North_Track(c9)
         if initialize_biotek:
-            self.cytation = Biotek_Wrapper()
+            self.cytation = Biotek_Wrapper(simulate=simulate)
         if initialize_photoreactor:
             self.photoreactor = Photoreactor_Controller()
         if initialize_t8:

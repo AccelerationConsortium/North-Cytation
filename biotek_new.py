@@ -1,5 +1,4 @@
-from biotek_driver.biotek import Biotek
-from biotek_driver.xml_builders.partial_plate_builder import build_bti_partial_plate_xml
+
 import time
 import string
 import pandas as pd
@@ -7,13 +6,19 @@ import xml.etree.ElementTree as ET
 
 class Biotek_Wrapper:
     biotek = None
-    def __init__(self, ComPort=4):
-        self.biotek = Biotek(reader_name="Cytation5",communication="serial",com_port=ComPort)
+    def __init__(self, ComPort=4,simulate=False):
+        if not simulate:
+            from biotek_driver.biotek import Biotek
+            from biotek_driver.xml_builders.partial_plate_builder import build_bti_partial_plate_xml
+            self.biotek = Biotek(reader_name="Cytation5",communication="serial",com_port=ComPort)
+        else:
+            from unittest.mock import MagicMock
+            self.biotek = MagicMock()
         status = self.biotek.get_reader_status()
         print(f"Current reader status: {status}")
         if status == 0:
             print('Cytation is connected')
-        else:
+        elif not simulate:
             input("Cytation not connected... May need to restart")
             
     def CarrierIn(self,plate_type="96 WELL PLATE"):
