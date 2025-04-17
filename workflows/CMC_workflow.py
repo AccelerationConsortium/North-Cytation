@@ -33,6 +33,8 @@ def split_volume(volume, max_volume=1.0):
     return [part_volume] * n_parts
 
 def mix_surfactants(lash_e, surfactant_index_list, sub_stock_vols, target_vial_index, mix_ratio=0.75): #Mix the different surfactants + water into a new vial
+    print("\n Combining Surfactants: ")
+    print("Stock solution composition: ", sub_stock_vols)
     for i in range (0, len(surfactant_index_list)):
         print("\nCombining surfactants:")
         surfactant_index = surfactant_index_list[i]
@@ -53,6 +55,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     dispense_indices = [substock_vial_index,water_index,DMSO_pyrene_index]
     dispense_data = wellplate_data[['surfactant volume', 'water volume','probe volume']]
     dispense_data.index = well_indices
+    print(dispense_data)
 
     lash_e.nr_robot.dispense_from_vials_into_wellplate(dispense_data,dispense_indices)
     
@@ -98,9 +101,6 @@ experiment,small_exp = experimental_planner.generate_exp(surfactants, ratios)
 sub_stock_vols = experiment['surfactant_sub_stock_vols']
 wellplate_data = experiment['df']/1000
 samples_per_assay = wellplate_data.shape[0]
-
-
-print(sub_stock_vols)
 
 starting_wp_index = 0
 
