@@ -18,7 +18,7 @@ class Biotek_Wrapper:
         print(f"Current reader status: {status}")
         if status == 0:
             print('Cytation is connected')
-        else:
+        elif not simulate:
             input("Cytation not connected... May need to restart")
             
     def CarrierIn(self):
