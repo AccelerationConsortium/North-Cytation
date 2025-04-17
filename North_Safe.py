@@ -542,9 +542,20 @@ class North_Robot:
         if extra_aspirate > 0:
             self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=move_to_dispense)
 
+    def select_wellplate_grid(self,well_plate_type):
+        if well_plate_type == "96 WELL PLATE":
+            location = well_plate_new_grid
+        elif well_plate_type == "48 WELL PLATE":
+            location = grid_48
+        else:
+            print("Unknown well plate type")
+            location = None
+        return location
+
     #TODO add error checks and safeguards
-    def pipet_from_wellplate(self,wp_index,volume,aspirate_speed=10,aspirate=True,move_to_aspirate=True,stay_low=False):
-        location = well_plate_new_grid[wp_index]
+    def pipet_from_wellplate(self,wp_index,volume,aspirate_speed=10,aspirate=True,move_to_aspirate=True,stay_low=False,well_plate_type="96 WELL PLATE"):
+        location = self.select_wellplate_grid(well_plate_type)[wp_index]
+        
         height = self.c9.counts_to_mm(3, location[3])
         height = self.adjust_height_based_on_pipet_held(height) 
         if aspirate:
@@ -560,12 +571,12 @@ class North_Robot:
         self.pipet_from_location(volume, aspirate_speed, height, aspirate = aspirate, initial_move=move_to_aspirate)
 
     #Mix the well
-    def mix_well_in_wellplate(self,wp_index,volume,repeats=3):
-        self.pipet_from_wellplate(wp_index,volume)
-        self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False)
+    def mix_well_in_wellplate(self,wp_index,volume,repeats=3,well_plate_type="96 WELL PLATE"):
+        self.pipet_from_wellplate(wp_index,volume,well_plate_type=well_plate_type)
+        self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False,well_plate_type=well_plate_type)
         for i in range (1, repeats):
-            self.pipet_from_wellplate(wp_index,volume,move_to_aspirate=False)
-            self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False)
+            self.pipet_from_wellplate(wp_index,volume,move_to_aspirate=False,well_plate_type=well_plate_type)
+            self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False,well_plate_type=well_plate_type)
 
     #Mix in a vial
     def mix_vial(self,vial_index,volume,repeats=3):
@@ -621,14 +632,15 @@ class North_Robot:
         return measured_mass
 
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=11,wait_time=1):
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=11,wait_time=1,well_plate_type="96 WELL PLATE"):
         #Dispense at wellplate
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
             try:
-                location = well_plate_new_grid[dest_wp_num_array[i]] #Where are we dispensing
+                location = self.select_wellplate_grid(well_plate_type)[dest_wp_num_array[i]]
             except:
-                location = well_plate_new_grid[self.convert_well_into_index(dest_wp_num_array[i])]
+                #location = well_plate_new_grid[self.convert_well_into_index(dest_wp_num_array[i])]
+                self.pause_after_error("Can't parse wellplate wells in non-indexed form for now")
 
             amount_mL = amount_mL_array[i] #What amount for this well
 
@@ -675,7 +687,7 @@ class North_Robot:
     #This is a custom method that takes a "well_plate_df" as an array of destinations and some "vial_indices" which are the different dispensed liquids
     #This method will use both the large and small tips, with a specified low_volume_cutoff between the two
     #This method does use multiple dispenses per aspiration for efficiency
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02, dispense_speed=11, wait_time=1,asp_cycles=0,track_height=True):
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02, dispense_speed=11, wait_time=1,asp_cycles=0,track_height=True,well_plate_type="96 WELL PLATE"):
 
         #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
         well_plate_dispense_2d_array=well_plate_df.values
@@ -779,7 +791,7 @@ class North_Robot:
                     print("Dispense volumes:", dispense_array)
                     print(f"Dispense sum: {round(np.sum(dispense_array),3)} mL")
 
-                    self.dispense_into_wellplate(well_plate_array,dispense_array,dispense_speed=dispense_speed,wait_time=wait_time) #Dispense into the wellplate
+                    self.dispense_into_wellplate(well_plate_array,dispense_array,dispense_speed=dispense_speed,wait_time=wait_time,well_plate_type=well_plate_type) #Dispense into the wellplate
 
                     vol_dispensed += dispense_vol #Track how much we've dispensed so far
                     print(f"Solution Dispensed {vial_index}: {round(vol_dispensed,3)} mL")     

@@ -58,7 +58,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     dispense_data.index = well_indices
     print(dispense_data)
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(dispense_data,dispense_indices)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(dispense_data,dispense_indices,well_plate_type="48 WELL PLATE")
     
 
 def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_vial_index,water_index,pyrene_DMSO_index,wellplate_data):
@@ -72,13 +72,19 @@ def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,subst
     create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,pyrene_DMSO_index,water_index,starting_wp_index)
     
     #Step 3: Transfer the well plate to the cytation and measure
-    #resulting_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(LAST_WP_INDEX,LAST_WP_INDEX+replicates))
+    samples_per_assay = wellplate_data.shape[0]
+    resulting_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(starting_wp_index,starting_wp_index+samples_per_assay),plate_type="48 WELL PLATE")
+    resulting_data['ratio'] = resulting_data['1']/resulting_data['2']
+    
 
     #Step 4: Analyze the results
     #Take the resulting_data and analyze it to determine the CMC
     concentrations = wellplate_data['concentration']
-    ratio_data = None #This is determined from the resulting_data
-    #CMC,r2 = analyzer.CMC_plot(ratio_data,concentrations)
+    ratio_data = resulting_data['ratio'].values #This is determined from the resulting_data
+    CMC,r2 = analyzer.CMC_plot(ratio_data,concentrations)
+
+    print("CMC (mMol): ", CMC)
+    print("R-squared: ", r2)
     
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True)
