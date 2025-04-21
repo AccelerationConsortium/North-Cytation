@@ -90,27 +90,29 @@ def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,subst
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True)
 
 #The vial indices are numbers that are used to track the vials. I will be implementing a dictionary system so this won't be needed
-substock_mixture_index = lash_e.nr_robot.get_vial_index_from_name('substock_1')
 pyrene_DMSO_index = lash_e.nr_robot.get_vial_index_from_name('pyrene_DMSO')
 water_index = lash_e.nr_robot.get_vial_index_from_name('water')
 
-#These surfactants and ratios should be decided by something
-surfactants = ['SDS', 'SLS', None]
-ratios = [0.3, 0.7, 0]
+starting_wp_index = 0
 
+#These surfactants and ratios should be decided by something
+surfactants = ['SDS', 'T20', None]
 surfactant_index_list = []
 for surfactant in surfactants:
     surfactant_index_list.append(lash_e.nr_robot.get_vial_index_from_name(surfactant))
 surfactant_index_list.append(water_index)
+ratios = [[1, 0, 0],[0,1,0],[0.5,0.5,0]]
+substock_name_list = ['substock_1', 'substock_2', 'substock_3']
 
-experiment,small_exp = experimental_planner.generate_exp(surfactants, ratios)
 
-sub_stock_vols = experiment['surfactant_sub_stock_vols']
-wellplate_data = experiment['df']
-samples_per_assay = wellplate_data.shape[0]
+for i in range (0, len(ratios)):
+    ratio = ratios[i]
+    substock_mixture_index = lash_e.nr_robot.get_vial_index_from_name(substock_name_list[i])
+    experiment,small_exp = experimental_planner.generate_exp(surfactants, ratio)
+    sub_stock_vols = experiment['surfactant_sub_stock_vols']
+    wellplate_data = experiment['df']
+    samples_per_assay = wellplate_data.shape[0]
 
-starting_wp_index = 0
-
-#Execute the sample workflow.
-sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_mixture_index,water_index,pyrene_DMSO_index,wellplate_data)
-starting_wp_index+=samples_per_assay
+    #Execute the sample workflow.
+    sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_mixture_index,water_index,pyrene_DMSO_index,wellplate_data)
+    starting_wp_index+=samples_per_assay
