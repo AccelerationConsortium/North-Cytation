@@ -32,6 +32,7 @@ def split_volume(volume, max_volume=1.0):
     
     return [part_volume] * n_parts
 
+#Dilute surfactants with water
 def mix_surfactants(lash_e, surfactant_index_list, sub_stock_vols, target_vial_index, mix_ratio=0.75): #Mix the different surfactants + water into a new vial
     print("\n Combining Surfactants: ")
     print("Stock solution composition: ", sub_stock_vols)
@@ -49,6 +50,7 @@ def mix_surfactants(lash_e, surfactant_index_list, sub_stock_vols, target_vial_i
             lash_e.nr_robot.mix_vial(target_vial_index,min(surfactant_volume*mix_ratio, 1.0))
             lash_e.nr_robot.remove_pipet()
 
+#Dispense into wellplate
 def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_pyrene_index,water_index,last_wp_index): #Add the DMSO_pyrene and surfactant mixture to well plates
     print("\n Dispensing into Wellplate")
     samples_per_assay = wellplate_data.shape[0]
