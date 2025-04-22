@@ -233,7 +233,7 @@ def calculate_volumes(concentration_list, sub_stock_concentration, probe_volume,
 
     return df
 
-def generate_exp(list_of_surfactants, list_of_ratios, stock_concs=[50, 50, 50], probe_volume = 10, sub_stock_volume = 5000, CMC_sample_volume=1000):
+def generate_exp(list_of_surfactants, list_of_ratios, stock_concs=[50, 50, 50], probe_volume = 10, sub_stock_volume = 6000, CMC_sample_volume=1000):
 
         # Validations
     if len(list_of_surfactants) != 3 or len(list_of_ratios) != 3 or len(stock_concs) != 3:
@@ -277,4 +277,8 @@ def generate_exp(list_of_surfactants, list_of_ratios, stock_concs=[50, 50, 50], 
 
     return exp, small_exp
 
+list_of_surfactants = ['SDS', 'T20', None]
+list_of_ratios = [0.5, 0.5, 0]
 
+exp, small_exp = generate_exp(list_of_surfactants, list_of_ratios)
+print(small_exp)

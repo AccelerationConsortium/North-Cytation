@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import analysis.cmc_data_analysis as analyzer
 import analysis.cmc_exp as experimental_planner
+import time
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_input.csv"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence.prt" #Will need to create a measurement protocol
 
@@ -47,7 +48,7 @@ def mix_surfactants(lash_e, surfactant_index_list, sub_stock_vols, target_vial_i
                 lash_e.nr_robot.dispense_from_vial_into_vial(surfactant_index,target_vial_index,volume)
             print("Mixing samples...")
             lash_e.nr_robot.remove_pipet()
-    lash_e.nr_robot.mix_vial(target_vial_index,min(surfactant_volume*mix_ratio, 1.0))
+    lash_e.nr_robot.mix_vial(target_vial_index,min(surfactant_volume*mix_ratio, 0.9))
     lash_e.nr_robot.remove_pipet()
 
 def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_pyrene_index,water_index,last_wp_index): #Add the DMSO_pyrene and surfactant mixture to well plates
@@ -62,34 +63,47 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     lash_e.nr_robot.dispense_from_vials_into_wellplate(dispense_data,dispense_indices,well_plate_type="48 WELL PLATE")
     
 
-def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_vial_index,water_index,pyrene_DMSO_index,wellplate_data):
+def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_vial_index,water_index,pyrene_DMSO_index,wellplate_data,timing):
     #Step 1: Mix the surfactants and Dilute with Water
-    mix_surfactants(lash_e, surfactant_index_list,sub_stock_vols,substock_vial_index)
+    #mix_surfactants(lash_e, surfactant_index_list,sub_stock_vols,substock_vial_index)
 
     #Step 2: Perform the assay dilutions with water and the surfactant and the dye
-    create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,pyrene_DMSO_index,water_index,starting_wp_index)
-    
-    #Step 3: Transfer the well plate to the cytation and measure
+    #create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,pyrene_DMSO_index,water_index,starting_wp_index)
     samples_per_assay = wellplate_data.shape[0]
-    resulting_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(starting_wp_index,starting_wp_index+samples_per_assay),plate_type="48 WELL PLATE")
-    resulting_data['ratio'] = resulting_data['1']/resulting_data['2']
 
-    print(resulting_data)
-    
+    start_time = time.time()
+    items_completed = 0
+    while items_completed < len(timing):
+        current_time = time.time()
 
-    #Step 4: Analyze the results
-    #Take the resulting_data and analyze it to determine the CMC
-    concentrations = wellplate_data['concentration']
-    ratio_data = resulting_data['ratio'].values #This is determined from the resulting_data
-    CMC,r2 = analyzer.CMC_plot(ratio_data,concentrations)
+        #Step 3: Transfer the well plate to the cytation and measure
 
-    wellplate_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/wellplate_data_{substock_vial_index}.csv', index=False)
-    resulting_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/output_data_{substock_vial_index}.csv', index=False)
-    with open(f'C:/Users/Imaging Controller/Desktop/CMC/wellplate_data_results_{substock_vial_index}.txt', "w") as f:
-        f.write(f"CMC: {CMC}, r2: {r2}")
+        if current_time - start_time > timing[items_completed]*60:
 
-    print("CMC (mMol): ", CMC)
-    print("R-squared: ", r2)
+            print("Time reached: ", timing[items_completed])
+
+            resulting_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(starting_wp_index,starting_wp_index+samples_per_assay),plate_type="48 WELL PLATE")
+            resulting_data['ratio'] = resulting_data['1']/resulting_data['2']
+
+            print(resulting_data)
+
+            #Step 4: Analyze the results
+            #Take the resulting_data and analyze it to determine the CMC
+            concentrations = wellplate_data['concentration']
+            ratio_data = resulting_data['ratio'].values #This is determined from the resulting_data
+            CMC,r2 = analyzer.CMC_plot(ratio_data,concentrations)
+
+            wellplate_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/wellplate_data_{timing[items_completed]}.csv', index=False)
+            resulting_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/output_data_{timing[items_completed]}.csv', index=False)
+            with open(f'C:/Users/Imaging Controller/Desktop/CMC/wellplate_data_results_{timing[items_completed]}.txt', "w") as f:
+                f.write(f"CMC: {CMC}, r2: {r2}")
+
+            print("CMC (mMol): ", CMC)
+            print("R-squared: ", r2)
+
+            items_completed+=1
+
+        time.sleep(1)
 
 #Step 0: Check the input to confirm that it's OK!
 check_input_file(INPUT_VIAL_STATUS_FILE)
@@ -101,29 +115,25 @@ lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
 pyrene_DMSO_index = lash_e.nr_robot.get_vial_index_from_name('pyrene_DMSO')
 water_index = lash_e.nr_robot.get_vial_index_from_name('water')
 
-starting_wp_index = 12
+starting_wp_index = 24
 
 #These surfactants and ratios should be decided by something
-surfactants = ['SDS', 'T20', None]
+surfactants = ['SDS', None, None]
 surfactant_index_list = []
 for surfactant in surfactants:
     surfactant_index_list.append(lash_e.nr_robot.get_vial_index_from_name(surfactant))
 surfactant_index_list.append(water_index)
-ratios = [[1, 0, 0],[0,1,0],[0.5,0.5,0]]
-substock_name_list = ['substock_1', 'substock_2', 'substock_3']
+ratio = [1,0,0]
+substock_name = 'substock_4'
 
 
-for i in range (1, len(ratios)):
-    ratio = ratios[i]
-    substock_mixture_index = lash_e.nr_robot.get_vial_index_from_name(substock_name_list[i])
-    experiment,small_exp = experimental_planner.generate_exp(surfactants, ratio)
-    sub_stock_vols = experiment['surfactant_sub_stock_vols']
-    wellplate_data = experiment['df']
-    samples_per_assay = wellplate_data.shape[0]
+timing = [0,2,5,10,30]
 
-    #Execute the sample workflow.
-    sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_mixture_index,water_index,pyrene_DMSO_index,wellplate_data)
-    starting_wp_index+=samples_per_assay
+substock_mixture_index = lash_e.nr_robot.get_vial_index_from_name(substock_name)
+experiment,small_exp = experimental_planner.generate_exp(surfactants, ratio)
+sub_stock_vols = experiment['surfactant_sub_stock_vols']
+wellplate_data = experiment['df']
+samples_per_assay = wellplate_data.shape[0]
 
-    input("Please refill water then press enter...")
-    lash_e.nr_robot.VIAL_DF.at[water_index, 'volume']=18 
+#Execute the sample workflow.
+sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_mixture_index,water_index,pyrene_DMSO_index,wellplate_data,timing)

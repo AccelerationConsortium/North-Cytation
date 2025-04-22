@@ -3,6 +3,8 @@ import time
 import string
 import pandas as pd
 import xml.etree.ElementTree as ET
+from biotek_driver.biotek import Biotek
+from biotek_driver.xml_builders.partial_plate_builder import build_bti_partial_plate_xml
 
 class Biotek_Wrapper:
     biotek = None
@@ -137,7 +139,7 @@ class Biotek_Wrapper:
         else:
             return "Unknown"
 
-    def run_protocol(self,protocol_path, wells=None):
+    def run_protocol(self,protocol_path, wells=None, plate_type="96 WELL PLATE"):
         self.biotek.app.data_export_enabled = True
         experiment = self.biotek.new_experiment(protocol_path)
         protocol_data = pd.DataFrame()
@@ -146,9 +148,8 @@ class Biotek_Wrapper:
             print("Experiment created successfully.")
             print(f"Experiment Protocol Type: {experiment.protocol_type}")
             plates = experiment.plates
-            
             if wells is not None:
-                grouped_wells = self.group_wells(wells)
+                grouped_wells = self.group_wells(wells, plate_type)
             for well_group in grouped_wells:
                 plate = plates.add()
                 prot_type=self.determine_read_type(plate)
@@ -164,28 +165,36 @@ class Biotek_Wrapper:
 
         return protocol_data
 
-    def well_index_to_label(self,index):
-        row = string.ascii_uppercase[index // 12]  # Get row letter (A-H)
-        col = (index % 12) + 1  # Get column number (1-12)
+    def well_index_to_label(self,index,nums_per_letter):
+        row = string.ascii_uppercase[index // nums_per_letter]  # Get row letter (A-H)
+        col = (index % nums_per_letter) + 1  # Get column number (1-12)
         return f"{row}{col}"
 
-    def group_wells(self,indices):
+    def group_wells(self,indices,plate_type):
         indices = sorted(indices)  # Ensure sorted order
         grouped = []
         current_group = []
+
+        print(plate_type)
+        if plate_type == "96 WELL PLATE":
+            nums_per_letter = 12
+        elif plate_type == "48 WELL PLATE":
+            nums_per_letter = 8
+        else:
+            print("Wellplate conversion issue")
         
         for i in range(len(indices)):
             if not current_group:
                 current_group.append(indices[i])
             else:
                 prev = current_group[-1]
-                if indices[i] == prev + 1 and (indices[i] % 12 != 0):  # Check continuity and row overflow
+                if indices[i] == prev + 1 and (indices[i] % nums_per_letter != 0):  # Check continuity and row overflow
                     current_group.append(indices[i])
                 else:
-                    grouped.append([self.well_index_to_label(idx) for idx in current_group])
+                    grouped.append([self.well_index_to_label(idx,nums_per_letter) for idx in current_group])
                     current_group = [indices[i]]
         
         if current_group:
-            grouped.append([self.well_index_to_label(idx) for idx in current_group])
+            grouped.append([self.well_index_to_label(idx,nums_per_letter) for idx in current_group])
         
         return grouped

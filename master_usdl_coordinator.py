@@ -50,7 +50,7 @@ class Lash_E:
     def measure_wellplate(self,protocol_file_path,wells_to_measure=None,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
-        data = self.cytation.run_protocol(protocol_file_path,wells_to_measure)
+        data = self.cytation.run_protocol(protocol_file_path,wells_to_measure,plate_type = plate_type)
         self.move_wellplate_back_from_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
         self.nr_track.origin()
         return data
