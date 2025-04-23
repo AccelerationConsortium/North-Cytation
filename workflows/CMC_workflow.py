@@ -57,7 +57,6 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     print("\n Dispensing into Wellplate")
     samples_per_assay = wellplate_data.shape[0]
     well_indices = range (last_wp_index,last_wp_index+samples_per_assay)
-    dispense_indices = [substock_vial_index,water_index,DMSO_pyrene_index]
     dispense_data = wellplate_data[['surfactant volume', 'water volume','probe volume']]/1000 #Convert to uL
     dispense_data.index = well_indices
     print(dispense_data)
@@ -65,9 +64,9 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     df_surfactant = dispense_data[['surfactant volume']] 
     df_water = dispense_data[['water volume']]
     df_dmso = dispense_data[['probe volume']]  
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,dispense_indices,well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1)
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,dispense_indices,well_plate_type="48 WELL PLATE",dispense_speed=15)
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,dispense_indices,well_plate_type="48 WELL PLATE",dispense_speed=11)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,[DMSO_pyrene_index],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,[water_index],well_plate_type="48 WELL PLATE",dispense_speed=11)
 
     for well in well_indices:
         lash_e.nr_robot.mix_well_in_wellplate(well,volume=0.9)
@@ -124,7 +123,7 @@ ratios = [[1, 0, 0],[0,1,0],[0.5,0.5,0]]
 substock_name_list = ['substock_1', 'substock_2', 'substock_3']
 
 
-for i in range (1, len(ratios)):
+for i in range (0, len(ratios)):
     ratio = ratios[i]
     substock_mixture_index = lash_e.nr_robot.get_vial_index_from_name(substock_name_list[i])
     experiment,small_exp = experimental_planner.generate_exp(surfactants, ratio)
