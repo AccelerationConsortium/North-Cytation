@@ -464,6 +464,8 @@ class North_Robot:
             height_volume_constant=6
         elif vial_type=='20_mL':
             height_volume_constant=2
+        else:
+            height_volume_constant=0
 
         #Adjust height based on the amount that is in the vial
         if track_height:
@@ -516,8 +518,8 @@ class North_Robot:
         return height
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
-    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0.02):
-        if volume < 0.2 and volume >= 0.02:
+    def dispense_from_vial_into_vial(self,source_vial_index,dest_vial_index,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0.02,track_height=True):
+        if volume < 0.2 and volume >= 0.01:
             tip_type = self.HIGHER_PIPET_ARRAY_INDEX
             max_volume = 0.25
         elif volume >= 0.2 and volume <= 1.00:
@@ -533,7 +535,7 @@ class North_Robot:
         if max_volume-volume >= 2*buffer_vol:
             extra_aspirate = 2*buffer_vol
         
-        self.aspirate_from_vial(source_vial_index,round(volume+extra_aspirate,3),move_to_aspirate=move_to_aspirate,specified_tip=tip_type)
+        self.aspirate_from_vial(source_vial_index,round(volume+extra_aspirate,3),move_to_aspirate=move_to_aspirate,specified_tip=tip_type,track_height=track_height)
         if extra_aspirate > 0:
             self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=False)
         
@@ -838,7 +840,12 @@ class North_Robot:
         self.save_robot_status() #Update in memory
 
     def grab_vial(self,vial_num):
+        print("Grabbing vial")
         initial_location = self.get_vial_location(vial_num, False)
+        loc = self.get_vial_info(vial_num,'location')
+
+        if loc == 'clamp' and self.GRIPPER_STATUS == "Cap":
+            self.recap_clamp_vial()
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS is None, True, "Cannot move vial to destination, gripper full"])

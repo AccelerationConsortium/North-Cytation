@@ -61,7 +61,7 @@ def mix_wells(lash_e, wells, wash_index=4, wash_volume=0.150, repeats=1,replicat
             lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
             lash_e.nr_robot.pipet_from_wellplate(well, wash_volume,aspirate=False,move_to_aspirate=False)
 
-def sample_workflow(number_samples=16,replicates=6,colors=4,resolution_vol=10,well_volume=240):
+def sample_workflow(number_samples=6,replicates=2,colors=4,resolution_vol=10,well_volume=240):
   
     # Initial State of your Vials, so the robot can know where to pipet
     check_input_file(INPUT_VIAL_STATUS_FILE)
@@ -79,7 +79,7 @@ def sample_workflow(number_samples=16,replicates=6,colors=4,resolution_vol=10,we
 
     data_pd_save = data_colors_uL*1000
     data_pd_save = pd.DataFrame(data=data_pd_save,columns=['water','red','blue','yellow'])
-    data_pd_save.to_csv("../utoronto_demo/output/color_mixing_composition.txt",sep=',')
+    data_pd_save.to_csv("../utoronto_demo/output/color_mixing_composition.csv",sep=',')
 
     print("Row sums:", np.sum(data_colors_uL * 1000, axis=1))  # Should all equal 250
 
@@ -100,7 +100,7 @@ def sample_workflow(number_samples=16,replicates=6,colors=4,resolution_vol=10,we
     start_time = time.perf_counter()
 
     lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index],low_volume_cutoff=0.250)
-    mix_wells(lash_e, wells,replicates=replicates)
+    #mix_wells(lash_e, wells,replicates=replicates)
 
     end_time = time.perf_counter()
 

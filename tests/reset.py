@@ -18,4 +18,4 @@ def sample_workflow(input_vial_status_file):
     lash_e.nr_track.origin()
     lash_e.nr_robot.c9.move_z(292)
 
-sample_workflow("../utoronto_demo/status/sample_input_vials.txt")
+sample_workflow("../utoronto_demo/status/sample_input_vials.csv")
