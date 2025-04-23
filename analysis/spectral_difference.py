@@ -8,7 +8,7 @@ import math
 #whole and key_wavelengths
 COMP_METHOD_A = 0 #Absolute spectral difference
 COMP_METHOD_B = 1 #Discrete SS Difference
-PEAK_WAVELENGTHS = [430,520,630]
+PEAK_WAVELENGTHS = [410,515,630]
 
 def remove_overflow(data):
     processed_data = []

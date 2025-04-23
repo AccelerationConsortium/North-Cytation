@@ -1,5 +1,6 @@
 from operator import sub
 import sys
+from turtle import delay
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 import pandas as pd
@@ -61,7 +62,16 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     dispense_data.index = well_indices
     print(dispense_data)
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(dispense_data,dispense_indices,well_plate_type="48 WELL PLATE")
+    df_surfactant = dispense_data[['surfactant volume']] 
+    df_water = dispense_data[['water volume']]
+    df_dmso = dispense_data[['probe volume']]  
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,dispense_indices,well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,dispense_indices,well_plate_type="48 WELL PLATE",dispense_speed=15)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,dispense_indices,well_plate_type="48 WELL PLATE",dispense_speed=11)
+
+    for well in well_indices:
+        lash_e.nr_robot.mix_well_in_wellplate(well,volume=0.9)
+    lash_e.nr_robot.remove_pipet()
     
 
 def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_vial_index,water_index,pyrene_DMSO_index,wellplate_data):
@@ -77,7 +87,6 @@ def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,subst
     resulting_data['ratio'] = resulting_data['1']/resulting_data['2']
 
     print(resulting_data)
-    
 
     #Step 4: Analyze the results
     #Take the resulting_data and analyze it to determine the CMC
@@ -97,7 +106,7 @@ def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,subst
 check_input_file(INPUT_VIAL_STATUS_FILE)
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True,initialize_biotek=False)
 
 #The vial indices are numbers that are used to track the vials. I will be implementing a dictionary system so this won't be needed
 pyrene_DMSO_index = lash_e.nr_robot.get_vial_index_from_name('pyrene_DMSO')
@@ -128,4 +137,4 @@ for i in range (1, len(ratios)):
     starting_wp_index+=samples_per_assay
 
     input("Please refill water then press enter...")
-    lash_e.nr_robot.VIAL_DF.at[water_index, 'volume']=18 
+    lash_e.nr_robot.VIAL_DF.at[water_index, 'vial_volume']=18 

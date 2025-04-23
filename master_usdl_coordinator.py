@@ -4,7 +4,6 @@ sys.path.append("../utoronto_demo")
 from North_Safe import North_Robot
 from North_Safe import North_Track
 from North_Safe import North_T8
-from biotek_new import Biotek_Wrapper
 from photoreactor_controller import Photoreactor_Controller
 
 class Lash_E:
@@ -17,6 +16,7 @@ class Lash_E:
     def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True,initialize_t8=False,simulate=False):
         if not simulate:
             from north import NorthC9
+            from biotek_new import Biotek_Wrapper
             c9 = NorthC9("A", network_serial="AU06CNCF")
         else:
             from unittest.mock import MagicMock
