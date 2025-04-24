@@ -560,14 +560,20 @@ class North_Robot:
         
         height = self.c9.counts_to_mm(3, location[3])
         height = self.adjust_height_based_on_pipet_held(height) 
+
+        if well_plate_type == "96 WELL PLATE":
+            height_adjust = 18
+        elif well_plate_type == "48 WELL PLATE":
+            height_adjust = 19
+
         if aspirate:
-            height = height - 18 #Go to the bottom of the well
+            height = height - height_adjust #Go to the bottom of the well
 
         if move_to_aspirate:
                 if not stay_low:
                     self.c9.goto_xy_safe(location, vel=15)
                 else:
-                    self.move_rel_z(18)
+                    self.move_rel_z(height_adjust)
                     self.c9.goto(location, vel=15)
 
         self.pipet_from_location(volume, aspirate_speed, height, aspirate = aspirate, initial_move=move_to_aspirate)

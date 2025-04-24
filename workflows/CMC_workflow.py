@@ -49,7 +49,7 @@ def mix_surfactants(lash_e, surfactant_index_list, sub_stock_vols, target_vial_i
                 lash_e.nr_robot.dispense_from_vial_into_vial(surfactant_index,target_vial_index,volume)
             print("Mixing samples...")
             lash_e.nr_robot.remove_pipet()
-    lash_e.nr_robot.mix_vial(target_vial_index,min(surfactant_volume*mix_ratio, 1.0))
+    lash_e.nr_robot.mix_vial(target_vial_index,min(surfactant_volume*mix_ratio, 0.9))
     lash_e.nr_robot.remove_pipet()
 
 #Dispense into wellplate
@@ -61,21 +61,22 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     dispense_data.index = well_indices
     print(dispense_data)
 
-    df_surfactant = dispense_data[['surfactant volume']] 
-    df_water = dispense_data[['water volume']]
-    df_dmso = dispense_data[['probe volume']]  
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,[DMSO_pyrene_index],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1)
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,[water_index],well_plate_type="48 WELL PLATE",dispense_speed=11)
+    # df_surfactant = dispense_data[['surfactant volume']] 
+    # df_water = dispense_data[['water volume']]
+    # df_dmso = dispense_data[['probe volume']]  
+    # lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,[DMSO_pyrene_index],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1,track_height=False)
+    # lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
+    # lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,[water_index],well_plate_type="48 WELL PLATE",dispense_speed=11)
 
+    lash_e.nr_robot.get_pipet(0)
     for well in well_indices:
-        lash_e.nr_robot.mix_well_in_wellplate(well,volume=0.9)
+        lash_e.nr_robot.mix_well_in_wellplate(well,volume=0.7,well_plate_type="48 WELL PLATE")
     lash_e.nr_robot.remove_pipet()
     
 
 def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_vial_index,water_index,pyrene_DMSO_index,wellplate_data):
     #Step 1: Mix the surfactants and Dilute with Water
-    mix_surfactants(lash_e, surfactant_index_list,sub_stock_vols,substock_vial_index)
+    #mix_surfactants(lash_e, surfactant_index_list,sub_stock_vols,substock_vial_index)
 
     #Step 2: Perform the assay dilutions with water and the surfactant and the dye
     create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,pyrene_DMSO_index,water_index,starting_wp_index)
@@ -93,6 +94,8 @@ def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,subst
     ratio_data = resulting_data['ratio'].values #This is determined from the resulting_data
     CMC,r2 = analyzer.CMC_plot(ratio_data,concentrations)
 
+    #TODO: The substock_vial_index here could be a timestamp
+
     wellplate_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/wellplate_data_{substock_vial_index}.csv', index=False)
     resulting_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/output_data_{substock_vial_index}.csv', index=False)
     with open(f'C:/Users/Imaging Controller/Desktop/CMC/wellplate_data_results_{substock_vial_index}.txt', "w") as f:
@@ -105,22 +108,22 @@ def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,subst
 check_input_file(INPUT_VIAL_STATUS_FILE)
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True,initialize_biotek=False)
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
 
 #The vial indices are numbers that are used to track the vials. I will be implementing a dictionary system so this won't be needed
 pyrene_DMSO_index = lash_e.nr_robot.get_vial_index_from_name('pyrene_DMSO')
 water_index = lash_e.nr_robot.get_vial_index_from_name('water')
 
-starting_wp_index = 12
+starting_wp_index = 0 #CHANGE THIS AS NEEDED!!!
 
 #These surfactants and ratios should be decided by something
-surfactants = ['SDS', 'T20', None]
+surfactants = ['SDS', None, None]
 surfactant_index_list = []
 for surfactant in surfactants:
     surfactant_index_list.append(lash_e.nr_robot.get_vial_index_from_name(surfactant))
 surfactant_index_list.append(water_index)
-ratios = [[1, 0, 0],[0,1,0],[0.5,0.5,0]]
-substock_name_list = ['substock_1', 'substock_2', 'substock_3']
+ratios = [[1, 0, 0],[1,0,0],[0.5,0.5,0]] #Must total 1
+substock_name_list = ['substock_1','substock_2','substock_3'] #For each set of surfactants
 
 
 for i in range (0, len(ratios)):
