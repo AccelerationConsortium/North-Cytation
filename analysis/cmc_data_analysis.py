@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+from datetime import datetime
 
 
 # Define the Boltzmann sigmoid function
@@ -51,7 +52,12 @@ def CMC_plot(i1_i3_ratio, conc):
     plt.title('CMC Determination using Boltzmann Fit')
     plt.legend()
     plt.grid()
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    plt.savefig(f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}_CMCplot.png')
+
     plt.show()
+    
 
 
 
