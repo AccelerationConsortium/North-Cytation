@@ -178,7 +178,7 @@ def surfactant_substock(cmc_concs, list_of_surfactants, list_of_ratios,
     result = {}
     total_surfactant_volume = 0
 
-    for i in range(3):
+    for i in range(4):
         surf = list_of_surfactants[i]
         ratio = list_of_ratios[i]
         stock = stock_concs[i]
@@ -233,10 +233,12 @@ def calculate_volumes(concentration_list, sub_stock_concentration, probe_volume,
 
     return df
 
-def generate_exp(list_of_surfactants, list_of_ratios, stock_concs=[50, 50, 50], probe_volume = 10, sub_stock_volume = 6000, CMC_sample_volume=1000):
+def generate_exp(list_of_surfactants, list_of_ratios, stock_concs=[50, 50, 50, 50], probe_volume = 10, sub_stock_volume = 6000, CMC_sample_volume=1000):
+    print(list_of_surfactants)
+    print(list_of_ratios)
 
         # Validations
-    if len(list_of_surfactants) != 3 or len(list_of_ratios) != 3 or len(stock_concs) != 3:
+    if len(list_of_surfactants) != 4 or len(list_of_ratios) != 4 or len(stock_concs) != 4:
         raise ValueError("Inputs must all have 3 elements.")
     if sum(list_of_ratios) != 1:
         raise ValueError("Sum of surfactant ratios must be == 1")
@@ -277,8 +279,8 @@ def generate_exp(list_of_surfactants, list_of_ratios, stock_concs=[50, 50, 50], 
 
     return exp, small_exp
 
-list_of_surfactants = ['SDS', 'T20', None]
-list_of_ratios = [0.5, 0.5, 0]
+# list_of_surfactants = ['SDS', 'T20', None]
+# list_of_ratios = [0.5, 0.5, 0]
 
-exp, small_exp = generate_exp(list_of_surfactants, list_of_ratios)
-print(small_exp)
+# exp, small_exp = generate_exp(list_of_surfactants, list_of_ratios)
+# print(small_exp)
