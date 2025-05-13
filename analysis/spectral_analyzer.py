@@ -40,7 +40,7 @@ def average_spectra(data, replicates):
 def get_absolute_spectral_difference(wavelengths_ref, spectra_ref, wavelengths_target, spectra_target):
     result = 0
     if np.all(wavelengths_ref == wavelengths_target):
-        result = float(np.sum(np.abs(np.array(spectra_ref,)-np.array(spectra_target))))
+        result = float(np.sum(np.abs(np.array(spectra_ref)-np.array(spectra_target))))
     else:
         print("Issue getting Sum Squares Discrete Differences")
         result = None
@@ -86,7 +86,7 @@ def get_spectral_data_from_most_recent_file(folder_path):
 #Get a specific spectra from a data set using the index (typically the wavelength)
 def get_spectra_from_df_using_index(spec_df, index,offset_columns=1):
     spectra = spec_df.iloc[:, index+offset_columns].values
-    spectra = remove_overflow(spec_df)
+    spectra = remove_overflow(spectra)
     return spectra
 
 #Get the wavelengths from a data set (typically the first column)
