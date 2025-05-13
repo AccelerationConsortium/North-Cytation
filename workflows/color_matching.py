@@ -1,5 +1,6 @@
 from re import search
 import sys
+import wave
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 import pandas as pd
@@ -12,17 +13,18 @@ import os
 import itertools
 
 def mix_wells(wells, wash_index=5, wash_volume=0.1, repeats=2):
+    lash_e.nr_robot.get_pipet(1)
     for well in wells:
-        lash_e.nr_robot.aspirate_from_vial(wash_index,wash_volume)
-        lash_e.nr_robot.dispense_into_vial(wash_index,wash_volume,initial_move=False)
-        for i in range (0,repeats):
-            lash_e.nr_robot.dispense_from_vial_into_vial(wash_index,wash_index,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
-        
         lash_e.nr_robot.pipet_from_wellplate(well,wash_volume)
         lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
         for i in range (0, repeats):
             lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
             lash_e.nr_robot.pipet_from_wellplate(well, wash_volume,aspirate=False,move_to_aspirate=False)
+        
+        lash_e.nr_robot.aspirate_from_vial(wash_index,wash_volume)
+        lash_e.nr_robot.dispense_into_vial(wash_index,wash_volume,initial_move=False)
+        for i in range (0,repeats):
+            lash_e.nr_robot.dispense_from_vial_into_vial(wash_index,wash_index,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
 
 #Define your workflow! Make sure that it has parameters that can be changed!
 def create_initial_colors(measurement_file, initial_guesses, initial_volumes):
@@ -53,13 +55,13 @@ def analyze_data(data, dif_type, reference_spectra=None,plotter=None):
     differences_list = []
 
     if reference_spectra is None:
-        comparison_index_list = list(range(1, 6)) #Make more robust
+        comparison_index_list = list(range(1, 1+initial_recs)) #Make more robust
         reference_spectra = analyzer.get_spectra_from_df_using_index(data,0)
+        print(reference_spectra)
         if plotter is not None:
             plotter.add_data(0,wavelengths,reference_spectra,color=graph_color)
-    
     else:
-        comparison_index_list = list(range(0, 6)) #Make more robust
+        comparison_index_list = list(range(0, recs_per_cycle)) #Make more robust
 
     for i in comparison_index_list:
         spectra = analyzer.get_spectra_from_df_using_index(data,i)
@@ -73,10 +75,7 @@ def analyze_data(data, dif_type, reference_spectra=None,plotter=None):
 
     return differences_list,reference_spectra 
 
-def find_closer_color_match(measurement_file,start_index,volumes):
-    wells = range(start_index,6+start_index)
-    #active_vials = range(1,5)
-
+def find_closer_color_match(measurement_file,wells,volumes):
     volumes.index = wells
     print("New Volumes:\n", volumes)
 
@@ -99,6 +98,7 @@ input("Only hit enter if the status of the vials (including open/close) is corre
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(input_vial_status_file)
+lash_e.nr_robot.c9.home_robot()
 
 # Create the full path and the folder
 # Get current date and time as a string
@@ -117,9 +117,9 @@ random_recs = False #Change this
 seed = 12 #No need to change this
 recreate_color_at_end = True #Do we want to make the vial at the end?
 robotics_on = True #Do we want to skip the actuation?
-num_cycles = 2
+num_cycles = 2 #6
 initial_recs = 5
-recs_per_cycle = 3
+recs_per_cycle = 3 
 
 if method == "method_a":
     upper_bound = 50
@@ -141,6 +141,10 @@ print(f"Model method: {method}, random: {random_recs}, seed #: {seed}")
 #Experimental workflow and data gathering
 if robotics_on:
     data = create_initial_colors(measurement_file,initial_recs,recommendations/1000)
+    data.to_csv(folder_path+"/initial_spectra.csv",index=False)
+else:
+    data = pd.read_csv('C:\\Users\\Imaging Controller\\Desktop\\Color_Matching\\2025-04-24_12-17-08\\initial_spectra.csv',sep=',',index_col=False)
+    input()
 
 #Start the GUI
 plotter = north_gui.RealTimePlot(num_subplots=3, 
@@ -152,13 +156,16 @@ colors = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
 graph_color = next(colors)
 
 # # #Get analysis
-results,reference_spectra= analyze_data(data, analysis_type,plotter)
+results,reference_spectra= analyze_data(data, analysis_type,plotter=plotter)
 print("Results: ", results)
 recommendations['output']=results
 campaign_data = recommendations
 
 #Add data to GUI
 plotter.add_data(2,[1]*initial_recs,results,plot_type='o',color=graph_color)
+
+lash_e.nr_robot.move_home()
+lash_e.nr_robot.c9.home_robot()
 
 #Subsequent measurements
 for i in range (0,num_cycles):
@@ -167,13 +174,19 @@ for i in range (0,num_cycles):
 
      print("New Recs: ", recommendations/1000)
      if robotics_on:
-        data = find_closer_color_match(measurement_file,recs_per_cycle*(i+1),recommendations/1000)
+        wells = range(initial_recs+1+recs_per_cycle*i,initial_recs+1+recs_per_cycle*(i+1))
+        print("New wells, ", wells)
+        data = find_closer_color_match(measurement_file,wells,recommendations/1000)
+        data.to_csv(folder_path+f"/spectra_cycle_{i}.csv",index=False)
      
      results,reference_spectra = analyze_data(data,analysis_type,reference_spectra,plotter)
      print("Results: ", results)
      recommendations['output']=results
      campaign_data = pd.concat([campaign_data, recommendations], ignore_index=True)
      plotter.add_data(2,[i+2]*recs_per_cycle,results,plot_type='o',color=graph_color)
+
+     lash_e.nr_robot.move_home()
+     lash_e.nr_robot.c9.home_robot()
 
 print("Final data:\n", campaign_data)
 # Get current date and time
@@ -208,7 +221,7 @@ if recreate_color_at_end:
             if color_volume < 1.0:
                 lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume)
             else:
-                for i in range (0,2):
+                for j in range (0,2):
                     lash_e.nr_robot.dispense_from_vial_into_vial(active_vials[i],6,color_volume/2)
             lash_e.nr_robot.remove_pipet()
 

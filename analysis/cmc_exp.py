@@ -131,19 +131,33 @@ surfactant_library = {
 
 
 # function to estimate the CMC of signle/mixed surfactants
+# def CMC_estimate(list_of_surfactants, list_of_ratios):
+
+#     cmc_inverse_sum = 0.0
+
+#     for surfactant, ratio in zip(list_of_surfactants, list_of_ratios):
+#         if surfactant is not None:
+#             cmc = surfactant_library[surfactant]['CMC']
+#             cmc_inverse_sum += ratio / cmc
+
+#     if cmc_inverse_sum == 0:
+#         return None
+#     else:
+#         return 1 / cmc_inverse_sum
+
 def CMC_estimate(list_of_surfactants, list_of_ratios):
 
-    cmc_inverse_sum = 0.0
+    cmc_sum = 0.0
 
     for surfactant, ratio in zip(list_of_surfactants, list_of_ratios):
         if surfactant is not None:
             cmc = surfactant_library[surfactant]['CMC']
-            cmc_inverse_sum += ratio / cmc
+            cmc_sum += ratio * cmc
 
-    if cmc_inverse_sum == 0:
+    if cmc_sum == 0:
         return None
     else:
-        return 1 / cmc_inverse_sum
+        return cmc_sum
 
 
 # function to generate a series of dilutions around the CMC, with more points closer to the CMC
@@ -233,7 +247,7 @@ def calculate_volumes(concentration_list, sub_stock_concentration, probe_volume,
 
     return df
 
-def generate_exp(list_of_surfactants, list_of_ratios, stock_concs=[50, 50, 50, 50], probe_volume = 10, sub_stock_volume = 6000, CMC_sample_volume=1000):
+def generate_exp(list_of_surfactants, list_of_ratios, stock_concs=[50, 50, 50, 50], probe_volume = 25, sub_stock_volume = 6000, CMC_sample_volume=1000):
     print(list_of_surfactants)
     print(list_of_ratios)
 

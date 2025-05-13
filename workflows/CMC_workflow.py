@@ -51,7 +51,7 @@ def mix_surfactants(lash_e, surfactant_index_list, sub_stock_vols, target_vial_i
             print("Mixing samples...")
             lash_e.nr_robot.remove_pipet()
     #lash_e.nr_robot.mix_vial(target_vial_index,min(surfactant_volume*mix_ratio, 0.9))
-    lash_e.nr_robot.mix_vial(target_vial_index,0.9)
+    lash_e.nr_robot.mix_vial(target_vial_index,0.9, repeats=5)
     lash_e.nr_robot.remove_pipet()
 
 #Dispense into wellplate
@@ -64,9 +64,13 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     print(dispense_data)
 
     df_surfactant = dispense_data[['surfactant volume']] 
+    df_surfactant['surfactant volume'] = df_surfactant['surfactant volume'].round(3) #round to 3 decimal points (had issues where the we couldn't reach the total volume due to rounding)
     df_water = dispense_data[['water volume']]
+    df_water['water volume'] = df_water['water volume'].round(3)
+
     df_dmso = dispense_data[['probe volume']]  
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,[DMSO_pyrene_index],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1,track_height=False)
+
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,[DMSO_pyrene_index],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1,track_height=False, low_volume_cutoff = 0.04, buffer_vol = 0)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,[water_index],well_plate_type="48 WELL PLATE",dispense_speed=11)
 
@@ -83,6 +87,7 @@ def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,subst
 
     #Step 2: Perform the assay dilutions with water and the surfactant and the dye
     create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,pyrene_DMSO_index,water_index,starting_wp_index)
+    
     
     #Step 3: Transfer the well plate to the cytation and measure
     samples_per_assay = wellplate_data.shape[0]
@@ -125,24 +130,30 @@ surfactants = ['SDS', 'DTAB', 'TTAB', 'CAPB']
 surfactant_index_list = []
 for surfactant in surfactants:
     surfactant_index_list.append(lash_e.nr_robot.get_vial_index_from_name(surfactant))
-surfactant_index_list.append(water_index)
-ratios = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]] #Must total 1
+surfactant_index_list.append(water_index) #TODO: make expandable -- can carry more vials of water, not sure how to loop them (what to use as a counter) -- separate the finding the water vial into mix_surfactants?
+ratios = [[0.5, 0, 0, 0.5], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]] #Must total 1
 substock_name_list = ['substock_1','substock_2','substock_3', 'substock_4'] #For each set of surfactants
-water_vials_list = ['water_1', 'water_1','water_2','water_2']
+water_vials_list = ['water_1', 'water_1','water_2','water_3'] #to prevent small tip from crashing into vial
 
 for i in range (0, len(ratios)):
     ratio = ratios[i]
     substock_mixture_index = lash_e.nr_robot.get_vial_index_from_name(substock_name_list[i])
-    experiment,small_exp = experimental_planner.generate_exp(surfactants, ratio)
+    experiment,small_exp = experimental_planner.generate_exp(surfactants, ratio, sub_stock_volume=6000)
     sub_stock_vols = experiment['surfactant_sub_stock_vols']
     wellplate_data = experiment['df']
     samples_per_assay = wellplate_data.shape[0]
-    water_wells_index = lash_e.nr_robot.get_vial_index_from_name(water_vials_list[i]) #"water" is used for mix_surfactants, "water1" and "water2" will be used the wellplate prep
+    water_vial_index = lash_e.nr_robot.get_vial_index_from_name(water_vials_list[i]) #"water" is used for mix_surfactants, "water1" and "water2" will be used the wellplate prep
     surfactant_name = surfactants[i] #probably only works for the current set-up (1 aligns with i)
 
     #Execute the sample workflow.
-    sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_mixture_index,water_wells_index,pyrene_DMSO_index,wellplate_data, surfactant_name=surfactant_name)
+    sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,substock_mixture_index,water_vial_index,pyrene_DMSO_index,wellplate_data, surfactant_name=surfactant_name)
     starting_wp_index+=samples_per_assay
 
-    input("Please refill water then press enter...")
-    lash_e.nr_robot.VIAL_DF.at[water_index, 'vial_volume']=19
+    if lash_e.nr_robot.get_vial_info(water_index, "vial_volume") < 8 and i != len(ratios)-1: #8mL for sub_stock_volume + 2mL buffer (can make variable)
+        water_loc_index = lash_e.nr_robot.get_vial_info(water_index, "home_location_index")
+        water_loc = lash_e.nr_robot.get_vial_info(water_index, "home_location")
+        input(f"Please refill water_substock at slot {water_loc_index} of {water_loc}")
+        lash_e.nr_robot.VIAL_DF.at[water_index, 'vial_volume']=19
+
+
+    input("****Press enter to continue to next surfactant")

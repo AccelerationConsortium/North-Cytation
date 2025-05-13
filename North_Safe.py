@@ -1,3 +1,4 @@
+from tkinter.tix import MAX
 from Locator import *
 import numpy as np
 import time
@@ -37,22 +38,32 @@ class North_Track:
     #Speed vertical
     DEFAULT_Y_SPEED = 50
 
-    #Source wellplate stack constants
-    SOURCE_X = 2950
-    SOURCE_Y = [82800, 76500, 69800, 63400, 57000, 50300, 43800]
+    """New double WP stack"""
+    DOUBLE_SOURCE_X = 50 
+    DOUBLE_WASTE_X = 14550 
+    DOUBLE_TRANSFER_X = 28000 
+    DOUBLE_SOURCE_Y_96 = [83500, 76800, 70700] #first element = height when 1 WP is in stack
+    DOUBLE_WASTE_Y_96 = [83000, 76350, 70200] #first element = height when dropping off 1st WP to waste
+    SOURCE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_SOURCE_Y_96}
+    WASTE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_WASTE_Y_96}
 
-    SAFE_MOVE_SOURCE_X = 22000
-    SAFE_MOVE_SOURCE_Y = 4000 #up before moving to SAFE_MOVE_SOURCE_X
-
-    num_source = 0 #number of wellplates in source stack
+    #num_source = 0 #number of wellplates in source stack 
     well_plate_df = None
 
     #Let's initialize the number of well plates from a file
     def __init__(self, c9):
         self.c9 = c9
-        self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python")
-        self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
+        #self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python") #TODO: not sure if needed anymore?
+        #self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
+
+        self.NUM_SOURCE = 0
+        self.NUM_WASTE = 0
+        self.CURRENT_WP_TYPE = "96 WELL PLATE"
+        self.NR_OCCUPIED = False
+
         #Load yaml data
+        self.TRACK_STATUS_FILE = "../utoronto_demo/status/track_status.yaml"
+        self.get_track_status() #get NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED
         self.reset_after_initialization()
     
     def reset_after_initialization(self):
@@ -131,7 +142,7 @@ class North_Track:
         self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #max_height
         self.c9.move_axis(7, 0, vel=self.DEFAULT_X_SPEED)
     
-    def get_next_WP_from_source(self): 
+    def get_next_WP_from_source(self):  #OLD
         #TODO: change velocities back to default ones
         #TODO: continue adding heights after 7 WP
         #TODO: save the new num_source to external file?
@@ -160,6 +171,97 @@ class North_Track:
             print(f"# of wellplates remaining in source stack: {self.num_source}")
         else:
             print("Cannot get wellplate from empty stack")
+    
+    #Save the status of the robot to memory
+    def save_track_status(self):
+        track_status = {
+            "num_in_source": self.NUM_SOURCE,
+            "num_in_waste": self.NUM_WASTE,
+            "wellplate_type": self.CURRENT_WP_TYPE,
+            "nr_occupied": self.NR_OCCUPIED
+        }
+
+        # Writing to a file
+        with open(self.TRACK_STATUS_FILE, "w") as file:
+            yaml.dump(track_status, file, default_flow_style=False)
+
+    #Update the status of the robot from memory
+    def get_track_status(self):
+        # Get the track status
+        with open(self.TRACK_STATUS_FILE, "r") as file:
+            track_status = yaml.safe_load(file)
+
+        # Convert "None" or "null" strings to actual None. CHATGPT
+        def convert_none(value):
+            if isinstance(value, dict):
+                return {k: convert_none(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [convert_none(v) for v in value]
+            elif value in ["None", "null"]:
+                return None
+            return value
+
+        track_status = convert_none(track_status)
+
+        try:
+            self.NUM_SOURCE = track_status['num_in_source']
+            self.NUM_WASTE = track_status['num_in_waste']
+            self.CURRENT_WP_TYPE = track_status['wellplate_type']
+            self.NR_OCCUPIED = track_status['nr_occupied']
+        except:
+            self.pause_after_error("Issue reading robot status", False)
+
+    def get_new_wellplate(self): #double WP stack 
+        DOUBLE_SOURCE_Y = self.SOURCE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
+        MAX_IN_SOURCE = len(DOUBLE_SOURCE_Y) #the number of valid WPs that can be stored or have been initialized
+
+        if self.NUM_SOURCE > 0 and self.NUM_SOURCE <= MAX_IN_SOURCE:
+            print(f"Getting {self.NUM_SOURCE}th wellplate from source") #replace with the actual track motions
+            
+            self.open_gripper()
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
+            self.c9.move_axis(7, self.DOUBLE_SOURCE_X, vel=20) #above source
+            self.c9.move_axis(6, DOUBLE_SOURCE_Y[self.NUM_SOURCE-1], vel=15) #down to WP height
+            self.close_gripper()
+            
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=15) #up to max height
+            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=10) #to "safe" area
+            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=10) #to transfer area #TODO: See if need to height adjust?
+            
+            self.NUM_SOURCE -= 1
+            self.save_track_status() #update yaml
+
+            #TODO: move to NR wellplate station (existing function?) -> self.NR_OCCUPIED = True, self.save_track_status()
+        
+        else:
+            if self.NUM_SOURCE <= 0:
+                print("Wellplate stack is empty")
+            else: #self.NUM_SOURCE > maximum
+                print("Stack is overfilled / height is not initialized")
+
+       
+    
+    def discard_wellplate(self): #double WP stack
+        DOUBLE_WASTE_Y = self.WASTE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
+        MAX_IN_WASTE = len(DOUBLE_WASTE_Y) #the number of valid WPs that can be stored / have been initialized
+        
+        #TODO: assumes already holding wellplate (at transfer area)
+        
+        if self.NUM_WASTE < MAX_IN_WASTE: 
+            print(f"Discarding wellplate as the {self.NUM_WASTE}th WP in waste stack.")
+
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
+            self.c9.move_axis(7, self.DOUBLE_WASTE_X, vel=15) #above waste stack
+            self.c9.move_axis(6, DOUBLE_WASTE_Y[self.NUM_WASTE], vel=15)
+            self.open_gripper()
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25)
+
+            self.NUM_WASTE += 1
+            self.save_track_status()
+        else:
+            print("Wellplate stack is too full for discarding another well plate.")
+        
+
 
 class North_T8:
 
@@ -562,7 +664,7 @@ class North_Robot:
         height = self.adjust_height_based_on_pipet_held(height) 
 
         if well_plate_type == "96 WELL PLATE":
-            height_adjust = 18
+            height_adjust = 16
         elif well_plate_type == "48 WELL PLATE":
             height_adjust = 19
 
@@ -663,7 +765,7 @@ class North_Robot:
                 first_dispense = False
                 
             else:
-                self.c9.goto_xy_safe(location, vel=5, safe_height=height) #Use safe_height here!
+                self.c9.goto_xy_safe(location, vel=5, accel = 1, safe_height=height) #Use safe_height here!
 
             if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
                 height -= 5 #goes 5mm lower when dispensing
@@ -711,7 +813,7 @@ class North_Robot:
         #Split the dispenses based on the tip-styles available
         well_plate_df_low = well_plate_df.where(well_plate_df<low_volume_cutoff).fillna(0) # Create a new DataFrame with values below the cutoff
         well_plate_df_high = well_plate_df.mask(well_plate_df < low_volume_cutoff, 0) #Create a dataframe where the values are above the cutoff
-        well_plate_instructions = [[well_plate_df_low,0.25,self.HIGHER_PIPET_ARRAY_INDEX],[well_plate_df_high,1.0,self.LOWER_PIPET_ARRAY_INDEX]] #Magic numbers for now
+        well_plate_instructions = [[well_plate_df_low,0.04,self.HIGHER_PIPET_ARRAY_INDEX],[well_plate_df_high,1.0,self.LOWER_PIPET_ARRAY_INDEX]] #Magic numbers for now
 
         #For each pipet tip type. Could potentially do this differently
         for well_plate_instruction in well_plate_instructions:
@@ -750,7 +852,7 @@ class North_Robot:
                 vol_dispensed = 0
                 vol_remaining=0
                 #This loops until we don't need to dispense anymore. The rounding is to make sure the loop ends.
-                while round(vol_dispensed,3) < round(vol_needed,3) and vol_needed>0:
+                while round(vol_dispensed,3) < round(vol_needed,3) and vol_needed>=0.001:
                     dispense_vol=0
                     dispense_array = []
                     well_plate_array = []
@@ -783,9 +885,9 @@ class North_Robot:
                             sacrificial_dispense_vol = extra_aspirate_vol #Just do this if there is enough
                     
                     vol_remaining = vol_remaining+extra_aspirate_vol-sacrificial_dispense_vol #What's leftover?
-                    print(f"Extra Aspiration: {extra_aspirate_vol} mL")
-                    print(f"Sacrificial Dispense: {sacrificial_dispense_vol} mL")
-                    print(f"Remaining volume: {vol_remaining} mL")                  
+                    print(f"Extra Aspiration: {extra_aspirate_vol: .3f} mL") #print to 3 decimal points
+                    print(f"Sacrificial Dispense: {sacrificial_dispense_vol: .3f} mL")
+                    print(f"Remaining volume: {vol_remaining: .3f} mL")                  
 
                     #Let's get our solution and any extra we need
                     print(f"Aspirating solution {vial_index}: {round(dispense_vol+extra_aspirate_vol,3)} mL")
