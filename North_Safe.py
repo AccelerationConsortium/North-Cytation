@@ -444,7 +444,7 @@ class North_Robot:
         active_pipet_num = self.PIPETS_USED[pipet_rack_index] #First available pipet
 
         #This is to pause the program and send a slack message when the pipets are out!
-        MAX_PIPETS=47
+        MAX_PIPETS=47 #This is based off the racks
         if active_pipet_num > MAX_PIPETS:
             self.pause_after_error("The North Robot is out of pipets! Please refill pipets then hit enter on the terminal!")
             self.PIPETS_USED=[0,0]
@@ -466,7 +466,7 @@ class North_Robot:
         base_height = self.c9.counts_to_mm(3, location[3])
         self.c9.move_z(base_height) 
 
-        self.c9.move_z(292,vel=5)
+        self.c9.move_z(292,vel=5) #Move to a safe height (292)
 
         #We have a pipet. What kind of pipet do we have? How many pipets are left in the rack?
         self.HELD_PIPET_INDEX = pipet_rack_index
@@ -797,128 +797,152 @@ class North_Robot:
     #This is a custom method that takes a "well_plate_df" as an array of destinations and some "vial_indices" which are the different dispensed liquids
     #This method will use both the large and small tips, with a specified low_volume_cutoff between the two
     #This method does use multiple dispenses per aspiration for efficiency
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02, dispense_speed=11, wait_time=1,asp_cycles=0,track_height=True,well_plate_type="96 WELL PLATE"):
-
-        #Step 1: Determine which vials correspond to the columns in well_plate_df, make sure that there's enough liquid in each
-        well_plate_dispense_2d_array=well_plate_df.values
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_indices, low_volume_cutoff=0.05, buffer_vol=0.02,
+                                            dispense_speed=11, wait_time=1, asp_cycles=0, track_height=True,
+                                            well_plate_type="96 WELL PLATE", pipet_back_and_forth=False):
+        # Step 1: Check if there's enough liquid in each vial
+        well_plate_dispense_2d_array = well_plate_df.values
         vols_required = np.sum(well_plate_dispense_2d_array, axis=0)
-        print("Total volumes needed (mL): ", vols_required)
-        for i in range (0, len(vial_indices)):
-            vial = vial_indices[i]
+        print("Total volumes needed (mL):", vols_required)
+
+        for i, vial in enumerate(vial_indices):
             volume_needed = vols_required[i]
-            volume = self.get_vial_info(vial,'vial_volume')
-            if volume < volume_needed:
-                self.pause_after_error(f"Dispensing from Vials to Wellplate, not enough of solution: {vial}",True)
+            volume = self.get_vial_info(vial, 'vial_volume')
+            if volume < volume_needed - 1e-6:
+                self.pause_after_error(f"Not enough solution in vial: {vial}", True)
 
-        #Split the dispenses based on the tip-styles available
-        well_plate_df_low = well_plate_df.where(well_plate_df<low_volume_cutoff).fillna(0) # Create a new DataFrame with values below the cutoff
-        well_plate_df_high = well_plate_df.mask(well_plate_df < low_volume_cutoff, 0) #Create a dataframe where the values are above the cutoff
-        well_plate_instructions = [[well_plate_df_low,0.04,self.HIGHER_PIPET_ARRAY_INDEX],[well_plate_df_high,1.0,self.LOWER_PIPET_ARRAY_INDEX]] #Magic numbers for now
+        # Step 2: Split dispenses based on pipette range
+        well_plate_df_low = well_plate_df.where(well_plate_df < low_volume_cutoff).fillna(0)
+        well_plate_df_high = well_plate_df.mask(well_plate_df < low_volume_cutoff, 0)
+        well_plate_instructions = [
+            [well_plate_df_low, 0.25, self.HIGHER_PIPET_ARRAY_INDEX],
+            [well_plate_df_high, 1.0, self.LOWER_PIPET_ARRAY_INDEX]
+        ]
 
-        #For each pipet tip type. Could potentially do this differently
-        for well_plate_instruction in well_plate_instructions:
-            
-            well_plate_df = well_plate_instruction[0] #List of target dispenses
-            max_volume = well_plate_instruction[1] #What's the maximum we should aspirate to?
-            pipet_index = well_plate_instruction[2] #What pipet are we using?
-
+        # Step 3: Process each pipette configuration
+        for well_plate_df, max_volume, pipet_index in well_plate_instructions:
             if well_plate_df.empty:
                 continue
-            
+
             well_plate_dispense_2d_array = well_plate_df.values
-            well_plate_indices = well_plate_df.index.tolist() #This is the list of wells that are being dispensed to
-            print("Well plate indices: ", well_plate_indices)
+            well_plate_indices = well_plate_df.index.tolist()
 
-            #Step 2: Systematically dispense based one liquid at a time
-            for i in range (0, len(vial_indices)):
+            for i, vial_index in enumerate(vial_indices):
+                vol_needed = np.sum(well_plate_dispense_2d_array[:, i])
+                if vol_needed < 1e-6:
+                    continue
 
-                vial_index = vial_indices[i] #This is the vial_index, not the location         
-                vol_needed = np.sum(well_plate_dispense_2d_array[:, i]) #What's the total volume required here?
-                vial_open = self.is_vial_pipetable(vial_index) #Can we pipet from the target vial?
+                print(f"\nAspirating from Vial: {vial_index}")
+                print(f"Total volume needed: {vol_needed:.3f} mL")
 
-                if vol_needed > 0:
-                    print("Aspirating from Vial: ", vial_index)
-                    print(f"Total volume needed: {round(vol_needed,3)} mL")
-
-                #Open the vial at the clamp to pipet if need be
-                return_vial=False
-                if not vial_open:
+                return_vial = False
+                if not self.is_vial_pipetable(vial_index):
                     print(f"Vial {vial_index} not open, moving to clamp")
-                    self.move_vial_to_location(vial_index,location='clamp',location_index=0)
+                    self.move_vial_to_location(vial_index, location='clamp', location_index=0)
                     self.uncap_clamp_vial()
-                    return_vial=True
-                
+                    return_vial = True
+
                 last_index = 0
-                vol_dispensed = 0
-                vol_remaining=0
-                #This loops until we don't need to dispense anymore. The rounding is to make sure the loop ends.
-                while round(vol_dispensed,3) < round(vol_needed,3) and vol_needed>=0.001:
-                    dispense_vol=0
+                vol_dispensed = 0.0
+                vol_remaining = 0.0
+
+                while vol_dispensed < vol_needed - 1e-6:
                     dispense_array = []
                     well_plate_array = []
-                    processing=True
-                    #Determines how to maximize the dispenses in one pipet tip. 
-                    while processing:
-                        try:
-                            volume = round(well_plate_dispense_2d_array[last_index,i],3) #Round to the nearest uL
-                            if dispense_vol+volume<=max_volume:
-                                dispense_vol+=volume
+                    dispense_vol = 0.0
+
+                    # Dispensing logic
+                    if pipet_back_and_forth:
+                        while last_index < len(well_plate_indices):
+                            volume = well_plate_dispense_2d_array[last_index, i]
+                            if volume > 1e-6:
+                                dispense_array = [volume]
+                                well_plate_array = [well_plate_indices[last_index]]
+                                dispense_vol = volume
+                                well_plate_dispense_2d_array[last_index, i] = 0.0
+                                last_index += 1
+                                break
+                            last_index += 1
+                    else:
+                        while last_index < len(well_plate_indices):
+                            volume = well_plate_dispense_2d_array[last_index, i]
+                            if dispense_vol + volume <= max_volume + 1e-6 and volume > 1e-6:
+                                dispense_vol += volume
                                 dispense_array.append(volume)
                                 well_plate_array.append(well_plate_indices[last_index])
-                                last_index+=1
+                                well_plate_dispense_2d_array[last_index, i] = 0.0
+                                last_index += 1
                             else:
-                                processing=False
-                        except:
-                            processing=False
-                    print(f"Amount to Dispense:{round(dispense_vol,3)} mL")
-            
-                    #These steps are to calculate whether or not we should add a buffer, or to aspirate/dispense a bit to improve pipeting accuracy. 
-                    extra_aspirate_vol=0 #Might be nice to aspirate a bit extra if possible, especially for many dispenses
-                    sacrificial_dispense_vol=0 #Amount to dispense back
-                    if vol_dispensed == 0:
-                        extra_aspirate_vol = min(max_volume-dispense_vol,buffer_vol*2) #At the start, get 2x buffer, then dispense back a bit (if possible)
-                        if extra_aspirate_vol == buffer_vol*2:
-                            sacrificial_dispense_vol=buffer_vol
-                    else:
-                        extra_aspirate_vol = min(buffer_vol, max_volume-dispense_vol-vol_remaining) #Either 1x buffer (to put right back), or some negative value (in case we need to go close to max_volume)
-                        if extra_aspirate_vol == buffer_vol:
-                            sacrificial_dispense_vol = extra_aspirate_vol #Just do this if there is enough
-                    
-                    vol_remaining = vol_remaining+extra_aspirate_vol-sacrificial_dispense_vol #What's leftover?
-                    print(f"Extra Aspiration: {extra_aspirate_vol: .3f} mL") #print to 3 decimal points
-                    print(f"Sacrificial Dispense: {sacrificial_dispense_vol: .3f} mL")
-                    print(f"Remaining volume: {vol_remaining: .3f} mL")                  
+                                break
 
-                    #Let's get our solution and any extra we need
-                    print(f"Aspirating solution {vial_index}: {round(dispense_vol+extra_aspirate_vol,3)} mL")
-                    self.aspirate_from_vial(vial_index,dispense_vol+extra_aspirate_vol,specified_tip=pipet_index,aspirate_speed=dispense_speed,wait_time=wait_time,asp_disp_cycles=asp_cycles,track_height=track_height)
-                    
-                    #Put back the extra if there is any
+                    if dispense_vol < 1e-6:
+                        break  # Nothing to dispense
+
+                    # Optional buffer logic
+                    extra_aspirate_vol = 0.0
+                    sacrificial_dispense_vol = 0.0
+                    if not pipet_back_and_forth:
+                        if math.isclose(vol_dispensed, 0.0, abs_tol=1e-6):
+                            extra_aspirate_vol = min(max_volume - dispense_vol, buffer_vol * 2)
+                            if math.isclose(extra_aspirate_vol, buffer_vol * 2, abs_tol=1e-6):
+                                sacrificial_dispense_vol = buffer_vol
+                        else:
+                            extra_aspirate_vol = min(buffer_vol, max_volume - dispense_vol - vol_remaining)
+                            if math.isclose(extra_aspirate_vol, buffer_vol, abs_tol=1e-6):
+                                sacrificial_dispense_vol = buffer_vol
+
+                    vol_remaining += extra_aspirate_vol - sacrificial_dispense_vol
+
+                    total_aspirate = dispense_vol + extra_aspirate_vol
+                    print(f"Aspirating {total_aspirate:.3f} mL from vial {vial_index}")
+                    self.aspirate_from_vial(vial_index, total_aspirate, specified_tip=pipet_index,
+                                            aspirate_speed=dispense_speed, wait_time=wait_time,
+                                            asp_disp_cycles=asp_cycles, track_height=track_height)
+
                     if sacrificial_dispense_vol > 0:
-                        self.dispense_into_vial(vial_index,sacrificial_dispense_vol,initial_move=False,dispense_speed=dispense_speed,wait_time=wait_time)
-  
-                    print("Indices to dipense:", well_plate_array)
+                        self.dispense_into_vial(vial_index, sacrificial_dispense_vol, initial_move=False,
+                                                dispense_speed=dispense_speed, wait_time=wait_time)
+
+                    print("Dispensing to wells:", well_plate_array)
                     print("Dispense volumes:", dispense_array)
-                    print(f"Dispense sum: {round(np.sum(dispense_array),3)} mL")
+                    self.dispense_into_wellplate(well_plate_array, dispense_array,
+                                                dispense_speed=dispense_speed, wait_time=wait_time,
+                                                well_plate_type=well_plate_type)
 
-                    self.dispense_into_wellplate(well_plate_array,dispense_array,dispense_speed=dispense_speed,wait_time=wait_time,well_plate_type=well_plate_type) #Dispense into the wellplate
+                    vol_dispensed += dispense_vol
+                    print(f"Total dispensed so far: {vol_dispensed:.3f} mL")
 
-                    vol_dispensed += dispense_vol #Track how much we've dispensed so far
-                    print(f"Solution Dispensed {vial_index}: {round(vol_dispensed,3)} mL")     
-                
-                if vol_needed > 0:
-                    print(f"Vol remaining, returning to vial: {vol_remaining} mL")
-                
-                if vol_needed>0 and vol_remaining>0: #Put back the buffer if there is any
-                    self.dispense_into_vial(vial_index,vol_remaining,dispense_speed=dispense_speed,wait_time=wait_time)
-                if vol_needed>0:
-                    self.remove_pipet()
+                # Final buffer return
+                if vol_remaining > 1e-6:
+                    print(f"Returning remaining volume: {vol_remaining:.3f} mL to vial {vial_index}")
+                    self.dispense_into_vial(vial_index, vol_remaining,
+                                            dispense_speed=dispense_speed, wait_time=wait_time)
 
-                if return_vial: #If we moved the vial, move it back
+                self.remove_pipet()
+
+                if return_vial:
                     self.recap_clamp_vial()
                     self.return_vial_home(vial_index)
-                print()
+
         return True
+
+    def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume):
+        #Step 1: move the vial to the clamp
+        self.move_vial_to_location(vial_index,'clamp',0)
+        #Step 2: move the carousel
+        self.c9.move_carousel(0,0) #This will take some work
+        #Step 3: aspirate and dispense from the reservoir
+        # num_dispenses = math.ceil(volume)
+        # dispense_vol = volume/num_dispenses
+        # for i in range (0, num_dispenses):        
+        #     self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_RIGHT)
+        #     self.c9.aspirate_ml(reservoir_index,dispense_vol)
+        #     self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_LEFT)
+        #     self.c9.dispense_ml(reservoir_index,dispense_vol)
+
+        #Step 4: Return the vial back to home
+        self.c9.move_carousel(0,0)
+        self.return_vial_home(vial_index)
 
     #Check the original status of the vial in order to send it to its home location
     def return_vial_home(self,vial_num):
