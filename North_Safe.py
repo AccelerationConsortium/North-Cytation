@@ -358,6 +358,7 @@ class North_Robot:
             self.c9.home_carousel() #Home the carousel
             self.c9.home_robot() #Home the robot
             self.c9.home_pump(0) #Home the pump
+            self.c9.home_pump(1) #Home reservoir 1
             for i in range (6,8): #Home the track
                 self.c9.home_axis(i)
             self.reset_after_initialization()
@@ -929,8 +930,10 @@ class North_Robot:
     def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume):
         #Step 1: move the vial to the clamp
         self.move_vial_to_location(vial_index,'clamp',0)
+        self.uncap_clamp_vial()
+        self.move_home()
         #Step 2: move the carousel
-        self.c9.move_carousel(0,0) #This will take some work
+        self.c9.move_carousel(45,70) #This will take some work. Note that for now I'm just doing for position 0
         #Step 3: aspirate and dispense from the reservoir
         # num_dispenses = math.ceil(volume)
         # dispense_vol = volume/num_dispenses
@@ -939,9 +942,11 @@ class North_Robot:
         #     self.c9.aspirate_ml(reservoir_index,dispense_vol)
         #     self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_LEFT)
         #     self.c9.dispense_ml(reservoir_index,dispense_vol)
+        time.sleep(5)
 
         #Step 4: Return the vial back to home
         self.c9.move_carousel(0,0)
+        self.recap_clamp_vial()
         self.return_vial_home(vial_index)
 
     #Check the original status of the vial in order to send it to its home location
