@@ -1,15 +1,12 @@
 import sys
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo")
 sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
-# print(sys.path)
 import North_Safe
 from Locator import *
 from north import NorthC9
 import pandas as pd
 import time
 
-#VIAL_FILE = "../utoronto_demo/status/vials_color.txt"  # Vials used
-#PIPET_FILE = "../utoronto_demo/status/pipets.txt"
 
 
 c9 = NorthC9('A', network_serial='AU06CNCF')
