@@ -1,9 +1,8 @@
-import re
+#Test dispensing into a vial from a reservoir on the carousel 
+
 import sys
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
-import pandas as pd
-import numpy as np
 
 VIAL_FILE = "../utoronto_demo/status/sample_capped_vial.txt"  # Vials used
 

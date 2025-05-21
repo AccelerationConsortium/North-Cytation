@@ -1,3 +1,5 @@
+#Reset the workstation to a known state
+
 import sys
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E

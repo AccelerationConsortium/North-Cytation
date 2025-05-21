@@ -1,9 +1,8 @@
-import re
+#Turn on and off the photoreactor LED and fan
+
 import sys
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
-import pandas as pd
-import numpy as np
 import time
 
 VIAL_FILE = "../utoronto_demo/status/sample_capped_vial.txt"  # Vials used

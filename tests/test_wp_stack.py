@@ -4,10 +4,6 @@ sys.path.append("C:\\Users\\Imaging Controller\\Desktop\\utoronto_demo\\status")
 import North_Safe
 from Locator import *
 from north import NorthC9
-import pandas as pd
-import time
-
-
 
 c9 = NorthC9('A', network_serial='AU06CNCF')
 nr_track = North_Safe.North_Track(c9)
