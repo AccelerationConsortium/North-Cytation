@@ -12,6 +12,7 @@ class Lash_E:
     cytation = None
     photoreactor = None
     temp_controller = None
+    simulate = None
 
     def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True,initialize_t8=False,simulate=False):
         if not simulate:
@@ -20,14 +21,15 @@ class Lash_E:
         else:
             from unittest.mock import MagicMock
             c9 = MagicMock()
-        from biotek_new import Biotek_Wrapper
 
-        print(simulate)
+        self.simulate = simulate
+
         if initialize_robot:
-            self.nr_robot = North_Robot(c9, vial_file)
+            self.nr_robot = North_Robot(c9, vial_file,simulate=simulate)
         if initialize_track:
             self.nr_track = North_Track(c9)
         if initialize_biotek:
+            from biotek_new import Biotek_Wrapper
             self.cytation = Biotek_Wrapper(simulate=simulate)
         if initialize_photoreactor:
             self.photoreactor = Photoreactor_Controller()
@@ -37,20 +39,27 @@ class Lash_E:
     def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)
         self.nr_track.move_gripper_to_cytation()
-        self.cytation.CarrierOut()
+        if not self.simulate:
+            self.cytation.CarrierOut()
         self.nr_track.release_well_plate_in_cytation(quartz_wp=quartz)
-        self.cytation.CarrierIn(plate_type=plate_type)
+        if not self.simulate:
+            self.cytation.CarrierIn(plate_type=plate_type)
 
     def move_wellplate_back_from_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
-        self.cytation.CarrierOut()
+        if not self.simulate:
+            self.cytation.CarrierOut()
         self.nr_track.grab_well_plate_from_cytation(quartz_wp=quartz)
-        self.cytation.CarrierIn(plate_type=plate_type)
+        if not self.simulate:
+            self.cytation.CarrierIn(plate_type=plate_type)
         self.nr_track.return_well_plate_to_nr(wellplate_index,quartz_wp=quartz)  
 
     def measure_wellplate(self,protocol_file_path,wells_to_measure=None,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
-        data = self.cytation.run_protocol(protocol_file_path,wells_to_measure,plate_type = plate_type)
+        if not self.simulate:
+            data = self.cytation.run_protocol(protocol_file_path,wells_to_measure,plate_type = plate_type)
+        else:
+            data = None
         self.move_wellplate_back_from_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
         self.nr_track.origin()
         return data

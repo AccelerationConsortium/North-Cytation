@@ -313,14 +313,16 @@ class North_Robot:
 
     #Controller
     c9 = None
+    simulate = False
    
     #Initialize the status of the robot. 
-    def __init__(self,c9,vial_file=None):
+    def __init__(self,c9,vial_file=None,simulate=False):
         print("Initializing North Robot...")
         self.c9 = c9
         self.VIAL_FILE = vial_file
         self.get_robot_status() #Update the status of the robot from memory
         self.reset_after_initialization() #Reset everything that may not be as desired, eg return to "Home"
+        self.simulate = simulate
         #sys.excepthook = self.global_exception_handler
 
     #Reset positions and get rid of any pipet tips
@@ -368,8 +370,6 @@ class North_Robot:
 
     #Save the status of the robot to memory
     def save_robot_status(self):
-        self.VIAL_DF.to_csv(self.VIAL_FILE, index=False,sep=',') #Save the status of the vial dataframe
-
         # Robot status data
         robot_status = {
             "gripper_status": self.GRIPPER_STATUS,
@@ -380,9 +380,11 @@ class North_Robot:
             "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME)
         }
 
-        # Writing to a file
-        with open(self.ROBOT_STATUS_FILE, "w") as file:
-            yaml.dump(robot_status, file, default_flow_style=False)
+        if not self.simulate: 
+            # Writing to a file
+            self.VIAL_DF.to_csv(self.VIAL_FILE, index=False,sep=',') #Save the status of the vial dataframe
+            with open(self.ROBOT_STATUS_FILE, "w") as file:
+                yaml.dump(robot_status, file, default_flow_style=False)
 
     #Update the status of the robot from memory
     def get_robot_status(self):
@@ -928,6 +930,7 @@ class North_Robot:
         return True
 
     def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume):
+        print(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume} mL")
         #Step 1: move the vial to the clamp
         self.move_vial_to_location(vial_index,'clamp',0)
         self.uncap_clamp_vial()
@@ -942,7 +945,10 @@ class North_Robot:
         #     self.c9.aspirate_ml(reservoir_index,dispense_vol)
         #     self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_LEFT)
         #     self.c9.dispense_ml(reservoir_index,dispense_vol)
-        time.sleep(5)
+        time.sleep(1)
+        vial_volume = self.get_vial_info(vial_index,'vial_volume')
+        self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
+        self.save_robot_status()
 
         #Step 4: Return the vial back to home
         self.c9.move_carousel(0,0)
@@ -1073,6 +1079,8 @@ class North_Robot:
 
     #Measurement for how far two points are
     def get_location_distance(self, loc_1, loc_2):
+        if self.simulate:
+            return 0
         difference = np.sum(np.absolute(np.array(loc_2)[1:4] - np.array(loc_1)[1:4]))
         return difference
     
