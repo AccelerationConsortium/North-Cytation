@@ -322,7 +322,13 @@ class North_Robot:
         self.get_robot_status() #Update the status of the robot from memory
         self.reset_after_initialization() #Reset everything that may not be as desired, eg return to "Home"
         self.simulate = simulate
+        self.load_pumps() #Load the pumps
         #sys.excepthook = self.global_exception_handler
+
+    #Load the pumps and set volumes
+    def load_pumps(self):
+        self.c9.pumps[0]['volume'] = 1
+        self.c9.pumps[1]['volume'] = 2.5
 
     #Check the status of the input vial file
     def check_input_file(self,pause_after_check=True):
@@ -991,13 +997,15 @@ class North_Robot:
         #Step 2: move the carousel
         self.c9.move_carousel(45,70) #This will take some work. Note that for now I'm just doing for position 0
         #Step 3: aspirate and dispense from the reservoir
-        # num_dispenses = math.ceil(volume)
-        # dispense_vol = volume/num_dispenses
-        # for i in range (0, num_dispenses):        
-        #     self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_RIGHT)
-        #     self.c9.aspirate_ml(reservoir_index,dispense_vol)
-        #     self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_LEFT)
-        #     self.c9.dispense_ml(reservoir_index,dispense_vol)
+        max_volume = self.c9.pumps[reservoir_index]['volume']
+        num_dispenses = math.ceil(volume/max_volume)
+        dispense_vol = volume/num_dispenses
+        print(f"Dispensing {dispense_vol} mL {num_dispenses} times")
+        for i in range (0, num_dispenses):        
+             self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_LEFT)
+             self.c9.aspirate_ml(reservoir_index,dispense_vol)
+             self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_RIGHT)
+             self.c9.dispense_ml(reservoir_index,dispense_vol)
         time.sleep(1)
         vial_volume = self.get_vial_info(vial_index,'vial_volume')
         self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
