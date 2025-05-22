@@ -15,4 +15,4 @@ def sample_workflow(input_vial_status_file, target_vial,reservoir_index,volume):
     lash_e.nr_robot.dispense_into_vial_from_reservoir(reservoir_index,target_vial,volume)
     lash_e.nr_robot.move_home()
 
-sample_workflow(VIAL_FILE,0,1,6)
+sample_workflow(VIAL_FILE,'Sample',1,0.5)
