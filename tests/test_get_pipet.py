@@ -1,13 +1,9 @@
 import sys
-
 sys.path.append("../utoronto_demo")
-
 import North_Safe
 from Locator import *
 from north import NorthC9
-import time
 import pandas as pd
-import numpy as np
 
 input_vial_status_file="../utoronto_demo/status/color_matching_vials.txt"
 vial_status = pd.read_csv(input_vial_status_file, sep=",")
