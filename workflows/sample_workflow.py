@@ -93,7 +93,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     REACTOR_NUM = 1  # Green reactor
     lash_e.nr_robot.move_vial_to_location('target_vial', location='photoreactor_array', location_index=0) #Move the target vial to the photoreactor
     lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM, intensity=100)
-    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=REACTOR_NUM, rpm=600)
+    lash_e.photoreactor.stir_reactor(reactor_num=REACTOR_NUM, rpm=600)
     lash_e.nr_robot.move_home() # Move the robot to home position
     time.sleep(1) # Wait for 1 second
 
@@ -106,7 +106,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
         - volume: Volume (in mL) to aspirate, here we use half of the aspiration volume
     """
     total_volume_for_wells = aspiration_volume * 0.5
-    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=REACTOR_NUM)
+    lash_e.photoreactor.turn_off_stirring(reactor_num=REACTOR_NUM)
     lash_e.nr_robot.aspirate_from_vial('target_vial', total_volume_for_wells)
 
     # 9. Dispense into the wellplate, then remove the pipet

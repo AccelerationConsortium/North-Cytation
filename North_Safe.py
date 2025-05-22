@@ -260,8 +260,6 @@ class North_Track:
         else:
             print("Wellplate stack is too full for discarding another well plate.")
         
-
-
 class North_T8:
 
     t8 = None
@@ -303,7 +301,7 @@ class North_Robot:
     HIGHER_PIPET_ARRAY_INDEX = 1 #Label representing the upper rack at the back with 250 uL tips
 
     HELD_PIPET_INDEX = None #What kind of pipet do we have  
-    PIPETS_USED = [0,0] #Tracker for each rack. TODO: This isn't very extensible or innately clear. 
+    PIPETS_USED = [0,0] #Tracker for each rack. TODO: This isn't very extensible
     PIPET_FLUID_VIAL_INDEX = None #What vial was the fluid aspirated from?
     PIPET_FLUID_VOLUME = 0 #What is the held volume in the pipet?
 
@@ -329,6 +327,7 @@ class North_Robot:
     def load_pumps(self):
         self.c9.pumps[0]['volume'] = 1
         self.c9.pumps[1]['volume'] = 2.5
+        self.c9.set_pump_speed(1, 20)
 
     #Check the status of the input vial file
     def check_input_file(self,pause_after_check=True):
@@ -960,11 +959,17 @@ class North_Robot:
 
         return True
 
+    #Prime the line from the reservoir to the vial. In theory this could happen automatically. Probably good to do it if you are using a reservoir. 
+    def prime_reservoir_line(self, reservoir_index, overflow_vial, volume=0.5):
+        overflow_vial = self.normalize_vial_index(overflow_vial) #Convert to int if needed
+        print(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume} mL")
+        self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
+
     def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume):
         
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
-
         print(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume} mL")
+
         #Step 1: move the vial to the clamp
         self.move_vial_to_location(vial_index,'clamp',0)
         self.uncap_clamp_vial()
@@ -1199,9 +1204,6 @@ class North_Robot:
             return base_height
   
     def dispense_solid_into_vial(target_vial_index, dispense_mass): #Can work on this
-        return None
-    
-    def set_heater_temperature(target_temperature): #Can work on this
         return None
 
     #Translate in the x direction

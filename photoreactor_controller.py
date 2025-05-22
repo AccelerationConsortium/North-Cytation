@@ -36,6 +36,12 @@ class Photoreactor_Controller:
         command = f"import reactor_test; reactor_test.turn_off_reactor_led({reactor_num})"
         self.run_command(command)
     
+    def stir_reactor(self,reactor_num, rpm):
+        self.turn_on_reactor_fan(reactor_num, rpm)
+
+    def turn_off_stirring(self,reactor_num):
+        self.turn_off_reactor_fan(reactor_num)
+
     def turn_on_reactor_fan(self,reactor_num, rpm):
         command = f"import reactor_test; reactor_test.turn_on_reactor_fan({reactor_num},{rpm})"
         self.run_command(command)
