@@ -55,7 +55,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
         - location: Description of the location to move to (e.g., 'clamp', 'photoreactor_array', 'main_8mL_rack', 'heater')
         - location_index: Index of the location to move to (e.g., 0 for the first position, 1 for the second position, etc.)
     """
-    lash_e.nr_robot.move_vial_to_location('target_vial', location='clamp', location_index=0)
+    lash_e.nr_robot.move_vial_to_location(vial_index='target_vial', location='clamp', location_index=0)
     lash_e.nr_robot.uncap_clamp_vial() # Instruct the robot to uncap the vial in the clamp
 
     # 4. Transfer liquid from source_vial_a to target_vial, then remove the pipet
