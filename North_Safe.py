@@ -984,8 +984,8 @@ class North_Robot:
         self.return_vial_home(vial_index)
 
     #Check the original status of the vial in order to send it to its home location
-    def return_vial_home(self,vial_index):
-        vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
+    def return_vial_home(self,vial_name):
+        vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         
         home_location = self.get_vial_info(vial_index,'home_location')
         home_location_index = self.get_vial_info(vial_index,'home_location_index')
@@ -997,9 +997,8 @@ class North_Robot:
         self.save_robot_status()
 
     #Drop off a vial at a location that you already have
-    def drop_off_vial(self, vial_index, location, location_index):
-
-        vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
+    def drop_off_vial(self, vial_name, location, location_index):
+        vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
         destination = self.get_location(False,location,location_index)
         occupying_vial = self.get_vial_in_location(location,location_index)
@@ -1018,7 +1017,6 @@ class North_Robot:
         self.save_robot_status() #Update in memory
 
     def grab_vial(self,vial_index):
-        
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
         
         print("Grabbing vial")
@@ -1045,7 +1043,12 @@ class North_Robot:
 
     #Send the vial to a specified location
     def move_vial_to_location(self,vial_index,location,location_index):
-
+        """
+        move_vial_to_location(vial_name: str, location: str, location_index: int)
+        - vial_name: Name of the vial to move
+        - location: Description of the location to move to (e.g., 'clamp', 'photoreactor_array', 'main_8mL_rack', 'heater')
+        - location_index: Index of the location to move to (e.g., 0 for the first position, 1 for the second position, etc.)
+        """    
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
 
         print("Moving vial " + self.get_vial_info(vial_index,'vial_name') + " to " + location + ": " + str(location_index))
