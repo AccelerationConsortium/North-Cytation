@@ -29,17 +29,38 @@ class Photoreactor_Controller:
         self.run_command(command)
     
     def turn_on_reactor_led(self,reactor_num, intensity):
+        """
+        Turn on the LED of the specified reactor with a given intensity.
+        Args:
+            `reactor_num` (int): Number of the reactor to turn on (e.g., 1 for the first reactor)
+            `intensity` (int): Intensity of the LED (0-100)
+        """
         command = f"import reactor_test; reactor_test.turn_on_reactor_led({reactor_num},{intensity})"
         self.run_command(command)
     
     def turn_off_reactor_led(self,reactor_num):
+        """
+        Turn off the LED of the specified reactor.
+        Args:
+            `reactor_num` (int): Number of the reactor to turn off (e.g., 1 for the first reactor)
+        """
         command = f"import reactor_test; reactor_test.turn_off_reactor_led({reactor_num})"
         self.run_command(command)
     
     def turn_on_reactor_fan(self,reactor_num, rpm):
+        """ Turn on the fan of the specified reactor with a given RPM.
+        Args:
+            `reactor_num` (int): Number of the reactor to turn on (e.g., 1 for the first reactor)
+            `rpm` (int): Target RPM of the fan (e.g., 600)
+        """
         command = f"import reactor_test; reactor_test.turn_on_reactor_fan({reactor_num},{rpm})"
         self.run_command(command)
     
     def turn_off_reactor_fan(self,reactor_num):
+        """
+        Turn off the fan of the specified reactor.
+        Args:
+            `reactor_num` (int): Number of the reactor to turn off (e.g., 1 for the first reactor)
+        """
         command = f"import reactor_test; reactor_test.turn_off_reactor_fan({reactor_num})"
         self.run_command(command)
