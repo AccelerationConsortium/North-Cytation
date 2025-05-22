@@ -40,7 +40,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     See the example file  ../utoronto_demo/status/sample_input_vials.csv
     """
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True) # Initialize the Lash_E class with the input vial status file
 
     # 2. Check the status of the input vials (user must confirm in terminal that everything looks ok)
     lash_e.nr_robot.check_input_file()
@@ -140,6 +140,12 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt"
     lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices)
 
-if __name__ == "__main__":
-    # Change these parameters as needed
-    sample_workflow(aspiration_volume=0.6)
+if __name__ == "__main__": #This is the main function that runs when the script is executed
+    """
+    Run the sample workflow with a 0.6 mL aspiration volume
+    Edit the aspiration volume here to change the amount of liquid transferred; eg by writing sample_workflow(aspiration_volume=0.8) for 0.8 mL    
+    You can also change the number of replicates here; eg by writing sample_workflow(aspiration_volume=0.6, replicates=4) for 4 replicates
+    The default number of replicates is 3, if you don't specify it
+    Note that by setting parameters you can quickly and easily change the workflow without having to edit the code (except here)
+    """
+    sample_workflow(aspiration_volume=0.6) 
