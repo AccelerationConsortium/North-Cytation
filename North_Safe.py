@@ -1,5 +1,3 @@
-from signal import pause
-from tkinter.tix import MAX
 from Locator import *
 import numpy as np
 import time
@@ -1004,7 +1002,9 @@ class North_Robot:
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
 
         destination = self.get_location(False,location,location_index)
-        destination_empty = self.get_vial_in_location(location,location_index) is None
+        occupying_vial = self.get_vial_in_location(location,location_index)
+        # Allow drop-off if the location is empty or occupied by the same vial
+        destination_empty = (occupying_vial is None) or (occupying_vial == vial_index)
 
         self.check_for_errors([[destination_empty, True, "Cannot move vial to destination, destination full"]],True)
 

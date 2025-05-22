@@ -4,7 +4,6 @@ sys.path.append("../utoronto_demo")
 from North_Safe import North_Robot
 from North_Safe import North_Track
 from North_Safe import North_T8
-from photoreactor_controller import Photoreactor_Controller
 
 class Lash_E:
     nr_robot = None
@@ -31,8 +30,17 @@ class Lash_E:
         if initialize_biotek:
             from biotek_new import Biotek_Wrapper
             self.cytation = Biotek_Wrapper(simulate=simulate)
-        if initialize_photoreactor:
+        else:
+            self.cytation = None  # Or a mock object if you want to simulate calls
+
+        # Photoreactor initialization
+        if not self.simulate:
+            from photoreactor_controller import Photoreactor_Controller
             self.photoreactor = Photoreactor_Controller()
+        else:
+            from unittest.mock import MagicMock
+            self.photoreactor = MagicMock()
+
         if initialize_t8:
             self.temp_controller = North_T8(c9)
 

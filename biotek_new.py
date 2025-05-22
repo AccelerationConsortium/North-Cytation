@@ -1,10 +1,7 @@
-
 import time
 import string
 import pandas as pd
 import xml.etree.ElementTree as ET
-from biotek_driver.biotek import Biotek
-from biotek_driver.xml_builders.partial_plate_builder import build_bti_partial_plate_xml
 
 class Biotek_Wrapper:
     biotek = None
@@ -13,9 +10,11 @@ class Biotek_Wrapper:
             from biotek_driver.biotek import Biotek
             from biotek_driver.xml_builders.partial_plate_builder import build_bti_partial_plate_xml
             self.biotek = Biotek(reader_name="Cytation5",communication="serial",com_port=ComPort)
+            self.build_bti_partial_plate_xml = build_bti_partial_plate_xml
         else:
             from unittest.mock import MagicMock
             self.biotek = MagicMock()
+            self.build_bti_partial_plate_xml = None
         status = self.biotek.get_reader_status()
         print(f"Current reader status: {status}")
         if status == 0:
@@ -95,7 +94,8 @@ class Biotek_Wrapper:
                 plate_data['Wavelengths']=wavelengths
 
             # 2) Define a partial plate (random wells) and set it
-            random_well_xml = build_bti_partial_plate_xml(single_block=False,wells=wells)
+            # random_well_xml = build_bti_partial_plate_xml(single_block=False,wells=wells)
+            random_well_xml = self.build_bti_partial_plate_xml(single_block=False,wells=wells)
             plate.set_partial_plate(random_well_xml)
 
             #3) Monitor the plate while it runs

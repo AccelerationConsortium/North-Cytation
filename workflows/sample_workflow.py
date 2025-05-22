@@ -3,9 +3,10 @@ Sample workflow for North Robotics automation.
 This script demonstrates a typical liquid handling and measurement sequence.
 Edit the parameters at the bottom to change the workflow.
 """
-
-from master_usdl_coordinator import Lash_E #This is the main class that coordinates the workflow
-import time # Import time so that we can use time.sleep() to wait for a certain amount of time
+import sys
+sys.path.append("../utoronto_demo") #Add the parent folder to the system path
+import time #For pauses
+from master_usdl_coordinator import Lash_E # This is the main class that coordinates the robot, photoreactor, and cytation
 
 def sample_workflow(aspiration_volume: float, replicates: int = 3):
     """
@@ -38,6 +39,8 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
         - source_vial_b: Name of the second source vial
         - target_vial: Name of the target vial
     See the example file  ../utoronto_demo/status/sample_input_vials.csv
+    Note: You should create your own csv file with the vials you want to use in your workflow. 
+    Note: If you set simulate=True, you can run your code without the robot, photoreactor, or cytation to see if there are any errors.
     """
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True) # Initialize the Lash_E class with the input vial status file
@@ -75,6 +78,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
         - vial_name: Name of the vial to vortex
         - vortex_time: Time (in seconds) to vortex
     """
+    lash_e.nr_robot.recap_clamp_vial() # Instruct the robot to recap the vial in the clamp
     lash_e.nr_robot.vortex_vial('target_vial', vortex_time=2)
 
     # 7. Move the vial to the photoreactor and then turn on the fan to mix the stir bar
@@ -148,4 +152,4 @@ if __name__ == "__main__": #This is the main function that runs when the script 
     The default number of replicates is 3, if you don't specify it
     Note that by setting parameters you can quickly and easily change the workflow without having to edit the code (except here)
     """
-    sample_workflow(aspiration_volume=0.6) 
+    sample_workflow(aspiration_volume=0.6)
