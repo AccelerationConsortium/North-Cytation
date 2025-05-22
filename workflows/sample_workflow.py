@@ -22,18 +22,18 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     3. Prepare the target vial to receive liquids
     4. Transfer liquid from source_vial_a to target_vial
     5. Transfer liquid from source_vial_b to target_vial
-    6. Mix the target vial
+    6. Vortex the target vial
     7. Move the vial to the photoreactor and start the reaction
     8. Aspirate from the target vial after reaction
     9. Dispense into the wellplate
     10. Turn off the photoreactor
     11. Return the target vial to its home position
-    12. Measure the wellplate
+    12. Move the wellplate into the plate reader for measurements
     """
 
     # 1. Initialize the workstation (robot for pipetting, track for moving the wellplate, cytation for measuring the wellplate, photoreactors)
     """ 
-    The argument here is the path to file that tracks what vials are used in the workflow.
+    The argument here (INPUT_VIAL_STATUS_FILE) is the path to a file that tracks what vials are used in the workflow.
     The file should be a CSV with the following vial_names:
         - source_vial_a: Name of the first source vial 
         - source_vial_b: Name of the second source vial
@@ -45,104 +45,54 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True) # Initialize the Lash_E class with the input vial status file
 
-    # 2. Check the status of the input vials (user must confirm in terminal that everything looks ok)
-    lash_e.nr_robot.check_input_file()
+    # 2. Check the status of the input vials 
+    lash_e.nr_robot.check_input_file() #outputs the values in sample_input_vials.csv and user must confirm by typing Enter if everything looks ok to proceed
 
     # 3. Prepare the target vial to receive liquids
-    """
-    move_vial_to_location(vial_name: str, location: str, location_index: int)
-        - vial_name: Name of the vial to move
-        - location: Description of the location to move to (e.g., 'clamp', 'photoreactor_array', 'main_8mL_rack', 'heater')
-        - location_index: Index of the location to move to (e.g., 0 for the first position, 1 for the second position, etc.)
-    """
-    lash_e.nr_robot.move_vial_to_location(vial_index='target_vial', location='clamp', location_index=0)
+    lash_e.nr_robot.move_vial_to_location(vial_name='target_vial', location='clamp', location_index=0) #move target_vial to clamp (location_index = 0 as there is only one clamp)
     lash_e.nr_robot.uncap_clamp_vial() # Instruct the robot to uncap the vial in the clamp
 
-    # 4. Transfer liquid from source_vial_a to target_vial, then remove the pipet
-    """
-    dispense_from_vial_into_vial(source_vial: str, dest_vial: str, volume: float)
-        - source_vial: Name of the source vial to aspirate from
-        - dest_vial: Name of the destination vial to dispense into
-        - volume: Volume (in mL) to transfer
-    """
-    lash_e.nr_robot.dispense_from_vial_into_vial('source_vial_a', 'target_vial', aspiration_volume)
-    lash_e.nr_robot.remove_pipet() #Instruct the robot to remove the pipet it carries
+    # 4. Transfer liquid from source_vial_a to target_vial, then remove the pipet tip
+    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name='source_vial_a', dest_vial_name='target_vial', volume=aspiration_volume) #pipet the amount specified in aspiration_volume from source_vial_a to target_vial
+    lash_e.nr_robot.remove_pipet() #remove the pipet tip it carries
 
     # 5. Transfer liquid from source_vial_b to target_vial, then remove the pipet
-    lash_e.nr_robot.dispense_from_vial_into_vial('source_vial_b', 'target_vial', aspiration_volume)
-    lash_e.nr_robot.remove_pipet() #Instruct the robot to remove the pipet it carries
+    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name='source_vial_b', dest_vial_name='target_vial', volume=aspiration_volume) #pipet the amount specified in aspiration_volume from source_vial_b to target_vial
+    lash_e.nr_robot.remove_pipet() #remove pipet tip
 
     # 6. Mix the target vial
-    """
-    vortex_vial(vial_name: str, vortex_time: float)
-        - vial_name: Name of the vial to vortex
-        - vortex_time: Time (in seconds) to vortex
-    """
-    lash_e.nr_robot.recap_clamp_vial() # Instruct the robot to recap the vial in the clamp
-    lash_e.nr_robot.vortex_vial('target_vial', vortex_time=2)
+    lash_e.nr_robot.recap_clamp_vial() # move the vial to the clamp to recap it
+    lash_e.nr_robot.vortex_vial(vial_name='target_vial', vortex_time=2) # vortex the target_vial for 2 seconds
 
     # 7. Move the vial to the photoreactor and then turn on the fan to mix the stir bar
-    """
-    turn_on_reactor_led(reactor_num: int, intensity: int)
-        - reactor_num: Number of the reactor to turn on (e.g., 1 for the first reactor)
-        - intensity: Intensity of the LED (0-100)
-    turn_on_reactor_fan(reactor_num: int, rpm: int)
-        - reactor_num: Number of the reactor to turn on (e.g., 1 for the first reactor)
-        - rpm: target RPM of the fan (e.g., 600)
-    """
     REACTOR_NUM = 1  # Green reactor
-    lash_e.nr_robot.move_vial_to_location('target_vial', location='photoreactor_array', location_index=0) #Move the target vial to the photoreactor
-    lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM, intensity=100)
-    lash_e.photoreactor.stir_reactor(reactor_num=REACTOR_NUM, rpm=600)
+    lash_e.nr_robot.move_vial_to_location(vial_name='target_vial', location='photoreactor_array', location_index=0) #Move the target vial to the photoreactor
+    lash_e.photoreactor.turn_on_reactor_led(reactor_num=REACTOR_NUM, intensity=100) # Turn on the LED of the green reactor at 100% intensity
+    lash_e.photoreactor.stir_reactor(reactor_num=REACTOR_NUM, rpm=600) # Turn on the fan of the green reactor for stirring at 600 RPM 
     lash_e.nr_robot.move_home() # Move the robot to home position
-    time.sleep(1) # Wait for 1 second
+    time.sleep(1) # Wait for 1 second (while the reactor is on)
 
-    # 8. Aspirate from the target vial, ensuring the stir bar is first turned off
-    """
-    turn_off_reactor_fan(reactor_num: int)
-        - reactor_num: Number of the reactor to turn off (e.g., 1 for the first reactor)
-    aspirate_from_vial(vial_name: str, volume: float)
-        - vial_name: Name of the vial to aspirate from
-        - volume: Volume (in mL) to aspirate, here we use half of the aspiration volume
-    """
-    total_volume_for_wells = aspiration_volume * 0.5
-    lash_e.photoreactor.turn_off_stirring(reactor_num=REACTOR_NUM)
-    lash_e.nr_robot.aspirate_from_vial('target_vial', total_volume_for_wells)
+    # 8. Aspirate from the target vial, ensuring the stirring is first turned off
+    total_volume_for_wells = aspiration_volume * 0.5 
+    lash_e.photoreactor.turn_off_stirring(reactor_num=REACTOR_NUM) # Turn off the stirring
+    lash_e.nr_robot.aspirate_from_vial('target_vial', total_volume_for_wells) # Aspirate half the total volume from the target vial
 
     # 9. Dispense into the wellplate, then remove the pipet
-    """
-    dispense_into_wellplate(well_indices: list or range, volumes: list[float])
-        - well_indices: Indices of the wells to dispense into (e.g., [0, 1, 2])
-        - volumes: Volumes (in mL) to dispense into each well (e.g., [0.1, 0.1, 0.1])
-    """
     well_dispense_amount = total_volume_for_wells / replicates #This divides the total volume by the number of replicates
     well_indices = range(0, replicates) #This creates a list of indices from 0 to replicates-1
-    dispense_volumes = [well_dispense_amount] * replicates #This duplicates the dispense amount for each well
-    lash_e.nr_robot.dispense_into_wellplate(well_indices, dispense_volumes)
-    lash_e.nr_robot.remove_pipet()
+    dispense_volumes = [well_dispense_amount] * replicates #This creates a list which repeats the dispense amount for each well
+    lash_e.nr_robot.dispense_into_wellplate(dest_wp_num_array=well_indices, amount_mL_array=dispense_volumes) #dispense the volumes (specified in dispense_volumes) into the wells (specified in well_indices)
+    lash_e.nr_robot.remove_pipet() #remove pipet tip
 
     # 10. Turn off the photoreactor
-    """
-    turn_off_reactor_led(reactor_num: int)
-        - reactor_num: Number of the reactor to turn off (e.g., 1 for the first reactor)
-    """
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=REACTOR_NUM)
 
     # 11. Return the target vial to its home position
-    """
-    return_vial_home(vial_name: str)
-        - vial_name: Name of the vial to return home
-    """
     lash_e.nr_robot.return_vial_home('target_vial')
 
     # 12. Measure the wellplate
-    """
-    measure_wellplate(protocol_file: str, well_indices: list or range)
-        - protocol_file: Path to the measurement protocol file (e.g., 'path/to/protocol.prt')
-        - well_indices: Indices of the wells to measure (e.g., [0, 1, 2])
-    """
-    MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt"
-    lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices)
+    MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt" #Cytation protocol to run
+    lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices) #Move the wellplate to the cytation, run Quick_Measurement.prt for wells specified in well_indices, and return the wellplate
 
 if __name__ == "__main__": #This is the main function that runs when the script is executed
     """
