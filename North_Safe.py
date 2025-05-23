@@ -69,8 +69,7 @@ class North_Track:
         """
         Prints the well plate status values for user to confirm the initial state of your well plates.
         """
-        #edit: what we want to output (wellplate type -- all of dictionary basically...)
-        print(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n Is the pipetting area occupied: {self.NR_OCCUPIED}")
+        print(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n NR Pipetting area occupied: {self.NR_OCCUPIED}")
 
         if pause_after_check:
             input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
@@ -97,16 +96,23 @@ class North_Track:
         self.c9.delay(2)
 
     def grab_well_plate_from_nr(self, well_plate_num, grab_lid=False,quartz_wp=False):
+        """
+        Grab a well plate from the designated wellplate stand. Currently directly moves horizontally, then down to the wellplate stand, grabs wp and ends by moving up slightly to WELL_PLATE_TRANSFER_Y.
+        """
         move_up = 0
         if grab_lid:
             move_up = self.LID_DISTANCE_Y 
         if quartz_wp:
             move_up = -self.QUARTZ_WP_OFFSET #
-        self.open_gripper()
+        self.open_gripper() #TODO: move up to safe height first?
         self.c9.move_axis(7, self.NR_WELL_PLATE_X[well_plate_num], vel=self.DEFAULT_X_SPEED) #left to WP
         self.c9.move_axis(6, self.NR_WELL_PLATE_Y[well_plate_num]-move_up, vel=self.DEFAULT_Y_SPEED) #down
         self.close_gripper()
         self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=self.DEFAULT_Y_SPEED) #up slightly
+
+        #save status
+        self.NR_OCCUPIED = False
+        self.save_track_status() #update yaml
 
     def move_gripper_to_cytation(self):
         self.c9.move_axis(7, self.CYT_SAFE_X, vel=self.DEFAULT_X_SPEED) #past Cytation loading
@@ -153,6 +159,9 @@ class North_Track:
         self.c9.move_axis(6, self.NR_WELL_PLATE_Y[well_plate_num]-self.RELEASE_DISTANCE_Y-move_up, vel=50) #down
         self.open_gripper()
         self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=self.DEFAULT_Y_SPEED) #up slightly
+
+        self.NR_OCCUPIED = True
+        self.save_track_status() #update yaml
     
     def origin(self):
         self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #max_height
@@ -233,7 +242,7 @@ class North_Track:
         DOUBLE_SOURCE_Y = self.SOURCE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
         MAX_IN_SOURCE = len(DOUBLE_SOURCE_Y) #the number of valid WPs that can be stored or have been initialized
 
-        if self.NUM_SOURCE > 0 and self.NUM_SOURCE <= MAX_IN_SOURCE:
+        if self.NUM_SOURCE > 0 and self.NUM_SOURCE <= MAX_IN_SOURCE and self.NR_OCCUPIED == False: #still have well plates in stack & pipetting area is empty
             print(f"Getting {self.NUM_SOURCE}th wellplate from source")
             
             #move to source stack and grab wellplate
@@ -257,19 +266,34 @@ class North_Track:
         else:
             if self.NUM_SOURCE <= 0:
                 print("Wellplate stack is empty")
-            else: #self.NUM_SOURCE > maximum
+            elif self.NUM_SOURCE > MAX_IN_SOURCE:
                 print("Stack is overfilled / height is not initialized")
+            if self.NR_OCCUPIED == True:
+                print("Cannot get wellplate, NR pipetting area is occupied")
 
     
-    def discard_wellplate(self): #double WP stack
+    def discard_wellplate(self, wellplate_num=0): #double WP stack
+        """Grabs a wellplate (from desginated wellplate stack) and discards it into the waste stack (in the double stack holder)
+        
+        Args:
+            `wellplate_num`(int): The number identifying which wellplate stand to discard a wellplate from (0 for the pipetting one) 
+        """
         DOUBLE_WASTE_Y = self.WASTE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
         MAX_IN_WASTE = len(DOUBLE_WASTE_Y) #the number of valid WPs that can be stored / have been initialized
         
-        #TODO: assumes already holding wellplate (at transfer area)
         
-        if self.NUM_WASTE < MAX_IN_WASTE: 
-            print(f"Discarding wellplate as the {self.NUM_WASTE}th WP in waste stack.")
+        if self.NUM_WASTE < MAX_IN_WASTE and self.NR_OCCUPIED == True: #can still hold an additional wellplate & pipetting area is occupied
+            print(f"Discarding wellplate as the {self.NUM_WASTE+1}th WP in waste stack.")
+            
+            #move up to max height, then to NR area to grab wellplate
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=10) #up to max height
+            self.grab_well_plate_from_nr(wellplate_num) #move to wellplate area to grab wellplate
 
+            #cross the cytation -- move down to transfer_Y
+            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=10) #to transfer area #TODO: See if need to height adjust?
+            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=10) #to "safe" area
+
+            #move up to waste stack and go down to drop off wp
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
             self.c9.move_axis(7, self.DOUBLE_WASTE_X, vel=15) #above waste stack
             self.c9.move_axis(6, DOUBLE_WASTE_Y[self.NUM_WASTE], vel=15)
@@ -279,7 +303,10 @@ class North_Track:
             self.NUM_WASTE += 1
             self.save_track_status()
         else:
-            print("Wellplate stack is too full for discarding another well plate.")
+            if self.NUM_WASTE >= MAX_IN_WASTE:
+                print("Wellplate stack is too full for discarding another well plate.")
+            if self.NR_OCCUPIED == False:
+                print("Cannot discard wellplate, designated wellplate stand is empty.")
         
 class North_T8:
 
