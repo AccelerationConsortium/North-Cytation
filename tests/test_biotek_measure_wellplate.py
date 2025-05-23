@@ -8,7 +8,8 @@ def test_measure_wellplate(input_vial_status_file, wells=range(0,3)): #tests tra
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(input_vial_status_file)
 
-    lash_e.measure_wellplate(r"C:\Protocols\Quick_Measurement.prt", wells_to_measure=wells) 
+    #lash_e.measure_wellplate(r"C:\Protocols\Quick_Measurement.prt", wells_to_measure=wells) 
+    lash_e.nr_track.return_well_plate_to_nr(0)
     
 
 

@@ -375,7 +375,7 @@ class North_Robot:
     def load_pumps(self):
         self.c9.pumps[0]['volume'] = 1
         self.c9.pumps[1]['volume'] = 2.5
-        self.c9.set_pump_speed(1, 20)
+        self.c9.set_pump_speed(1, 15)
 
     #Check the status of the input vial file
     def check_input_file(self,pause_after_check=True):
@@ -1050,7 +1050,10 @@ class North_Robot:
         #Step 2: move the carousel
         self.c9.move_carousel(45,70) #This will take some work. Note that for now I'm just doing for position 0
         #Step 3: aspirate and dispense from the reservoir
-        max_volume = self.c9.pumps[reservoir_index]['volume']
+        if not self.simulate:
+            max_volume = self.c9.pumps[reservoir_index]['volume']
+        else:
+            max_volume = 2.5
         num_dispenses = math.ceil(volume/max_volume)
         dispense_vol = volume/num_dispenses
         print(f"Dispensing {dispense_vol} mL {num_dispenses} times")
