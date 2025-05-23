@@ -136,6 +136,13 @@ class North_Track:
         #CLOSE CYTATION TRAY
         
     def return_well_plate_to_nr(self, well_plate_num, grab_lid=False,quartz_wp=False):
+        """Return the well plate to the NR station. Assumes already holding a wellplate, will move down to WELL_PLATE_TRANSFER_Y directly when called.
+        
+        Args:
+            `well_plate_num`(int): The number identifying which wp stand to return to (0 for the pipetting one)
+            `grab_lid`(bool): if grabbing lid (default = False)
+            `quartz_wp`(bool): if the wellplate is quartz (default = False)
+        """
         move_up = 0
         if grab_lid:
             move_up = self.LID_DISTANCE_Y 
@@ -196,6 +203,7 @@ class North_Track:
 
     #Update the status of the robot from yaml file
     def get_track_status(self):
+        """Get the track status from the yaml file."""
         # Get the track status
         with open(self.TRACK_STATUS_FILE, "r") as file:
             track_status = yaml.safe_load(file)
@@ -221,18 +229,21 @@ class North_Track:
             self.pause_after_error("Issue reading robot status", False)
 
     def get_new_wellplate(self): #double WP stack 
+        """Get a new wellplate from the source stack (in the double stack holder) and move to north robot pipetting area"""
         DOUBLE_SOURCE_Y = self.SOURCE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
         MAX_IN_SOURCE = len(DOUBLE_SOURCE_Y) #the number of valid WPs that can be stored or have been initialized
 
         if self.NUM_SOURCE > 0 and self.NUM_SOURCE <= MAX_IN_SOURCE:
             print(f"Getting {self.NUM_SOURCE}th wellplate from source")
             
+            #move to source stack and grab wellplate
             self.open_gripper()
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
             self.c9.move_axis(7, self.DOUBLE_SOURCE_X, vel=20) #above source
             self.c9.move_axis(6, DOUBLE_SOURCE_Y[self.NUM_SOURCE-1], vel=15) #down to WP height
             self.close_gripper()
             
+            #move up from source stack to "safe" area and move down
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=15) #up to max height
             self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=10) #to "safe" area
             self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=10) #to transfer area #TODO: See if need to height adjust?
@@ -240,6 +251,7 @@ class North_Track:
             self.NUM_SOURCE -= 1
             self.save_track_status() #update yaml
 
+            self.return_well_plate_to_nr(0)
             #TODO: move to NR wellplate station (existing function?) -> self.NR_OCCUPIED = True, self.save_track_status()
         
         else:
@@ -248,7 +260,6 @@ class North_Track:
             else: #self.NUM_SOURCE > maximum
                 print("Stack is overfilled / height is not initialized")
 
-       
     
     def discard_wellplate(self): #double WP stack
         DOUBLE_WASTE_Y = self.WASTE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
