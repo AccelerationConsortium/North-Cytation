@@ -38,13 +38,16 @@ class North_Track:
     DEFAULT_Y_SPEED = 50
 
     """New double WP stack"""
-    DOUBLE_SOURCE_X = 50 
+    DOUBLE_SOURCE_X = 175 #50 with old holder (but scratches WP) 
     DOUBLE_WASTE_X = 14550 
     DOUBLE_TRANSFER_X = 28000 
     DOUBLE_SOURCE_Y_96 = [83500, 76800, 70700] #first element = height when 1 WP is in stack
     DOUBLE_WASTE_Y_96 = [83000, 76350, 70200] #first element = height when dropping off 1st WP to waste
-    SOURCE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_SOURCE_Y_96}
-    WASTE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_WASTE_Y_96}
+    DOUBLE_SOURCE_Y_48 =  [83500, 74000, 64500]
+    DOUBLE_WASTE_Y_48 = [83000, 73500, 64000]
+
+    SOURCE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_SOURCE_Y_96, "48 WELL PLATE": DOUBLE_SOURCE_Y_48}
+    WASTE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_WASTE_Y_96, "48 WELL PLATE": DOUBLE_WASTE_Y_48}
 
     #num_source = 0 #number of wellplates in source stack 
     well_plate_df = None
@@ -261,7 +264,6 @@ class North_Track:
             self.save_track_status() #update yaml
 
             self.return_well_plate_to_nr(0)
-            #TODO: move to NR wellplate station (existing function?) -> self.NR_OCCUPIED = True, self.save_track_status()
         
         else:
             if self.NUM_SOURCE <= 0:
@@ -286,12 +288,12 @@ class North_Track:
             print(f"Discarding wellplate as the {self.NUM_WASTE+1}th WP in waste stack.")
             
             #move up to max height, then to NR area to grab wellplate
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=10) #up to max height
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
             self.grab_well_plate_from_nr(wellplate_num) #move to wellplate area to grab wellplate
 
             #cross the cytation -- move down to transfer_Y
-            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=10) #to transfer area #TODO: See if need to height adjust?
-            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=10) #to "safe" area
+            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=15) #to transfer area 
+            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=15) #to "safe" area
 
             #move up to waste stack and go down to drop off wp
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
