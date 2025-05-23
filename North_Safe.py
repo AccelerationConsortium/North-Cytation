@@ -62,9 +62,19 @@ class North_Track:
 
         #Load yaml data
         self.TRACK_STATUS_FILE = "../utoronto_demo/status/track_status.yaml"
-        self.get_track_status() #get NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED
+        self.get_track_status() #set NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED from yaml file
         self.reset_after_initialization()
     
+    def check_input_file(self, pause_after_check=True):
+        """
+        Prints the well plate status values for user to confirm the initial state of your well plates.
+        """
+        #edit: what we want to output (wellplate type -- all of dictionary basically...)
+        print(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n Is the pipetting area occupied: {self.NR_OCCUPIED}")
+
+        if pause_after_check:
+            input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
+
     def reset_after_initialization(self):
         None
         #Return well plate if well-plate in gripper
@@ -184,7 +194,7 @@ class North_Track:
         with open(self.TRACK_STATUS_FILE, "w") as file:
             yaml.dump(track_status, file, default_flow_style=False)
 
-    #Update the status of the robot from memory
+    #Update the status of the robot from yaml file
     def get_track_status(self):
         # Get the track status
         with open(self.TRACK_STATUS_FILE, "r") as file:
@@ -215,7 +225,7 @@ class North_Track:
         MAX_IN_SOURCE = len(DOUBLE_SOURCE_Y) #the number of valid WPs that can be stored or have been initialized
 
         if self.NUM_SOURCE > 0 and self.NUM_SOURCE <= MAX_IN_SOURCE:
-            print(f"Getting {self.NUM_SOURCE}th wellplate from source") #replace with the actual track motions
+            print(f"Getting {self.NUM_SOURCE}th wellplate from source")
             
             self.open_gripper()
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
