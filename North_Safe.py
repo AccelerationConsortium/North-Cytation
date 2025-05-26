@@ -43,9 +43,7 @@ class North_Track:
     DOUBLE_TRANSFER_X = 28000 
     DOUBLE_SOURCE_Y_96 = [83500, 76800, 70700] #first element = height when 1 WP is in stack
     DOUBLE_WASTE_Y_96 = [83000, 76350, 70200] #first element = height when dropping off 1st WP to waste
-    DOUBLE_SOURCE_Y_48 =  [835
-    
-    00, 74000, 64500]
+    DOUBLE_SOURCE_Y_48 =  [83500, 74000, 64500]
     DOUBLE_WASTE_Y_48 = [83000, 73500, 64000]
 
     SOURCE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_SOURCE_Y_96, "48 WELL PLATE": DOUBLE_SOURCE_Y_48}
