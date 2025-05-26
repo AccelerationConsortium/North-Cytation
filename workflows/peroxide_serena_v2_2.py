@@ -14,6 +14,8 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
     lash_e.nr_robot.move_home()
     lash_e.nr_robot.c9.home_robot()
+    #for i in range (6,8):
+       # lash_e.nr_robot.home_axis(i) #Home the track
     print()
 
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,well_volume=0.2,simulate=False):
