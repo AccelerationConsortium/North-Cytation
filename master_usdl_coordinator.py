@@ -4,7 +4,6 @@ sys.path.append("../utoronto_demo")
 from North_Safe import North_Robot
 from North_Safe import North_Track
 from North_Safe import North_T8
-from photoreactor_controller import Photoreactor_Controller
 
 class Lash_E:
     nr_robot = None
@@ -31,8 +30,17 @@ class Lash_E:
         if initialize_biotek:
             from biotek_new import Biotek_Wrapper
             self.cytation = Biotek_Wrapper(simulate=simulate)
-        if initialize_photoreactor:
+        else:
+            self.cytation = None  # Or a mock object if you want to simulate calls
+
+        # Photoreactor initialization
+        if not self.simulate:
+            from photoreactor_controller import Photoreactor_Controller
             self.photoreactor = Photoreactor_Controller()
+        else:
+            from unittest.mock import MagicMock
+            self.photoreactor = MagicMock()
+
         if initialize_t8:
             self.temp_controller = North_T8(c9)
 
@@ -54,6 +62,16 @@ class Lash_E:
         self.nr_track.return_well_plate_to_nr(wellplate_index,quartz_wp=quartz)  
 
     def measure_wellplate(self,protocol_file_path,wells_to_measure=None,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
+        """
+        Move wellplate to the Cytation for plate reader measurements.
+        
+        Args:
+            `protocol_file_path` (str): Path to the measurement protocol file.
+            `wells_to_measure` (list or range): Indices of the wells to measure.
+            `wellplate_index` (int): Index of where the wellplate is stored.
+            `quartz` (bool): Whether the wellplate is a quartz plate.
+            `plate_type` (str): Type of the plate (e.g., "96 WELL PLATE").
+        """
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
         if not self.simulate:

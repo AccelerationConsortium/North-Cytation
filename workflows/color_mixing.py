@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import time
 
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/color_mixing_vials.txt"
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/color_mixing_vials.csv"
 
 #Define your workflow! 
 #In this case we have two parameters: 
@@ -99,7 +99,7 @@ def sample_workflow(number_samples=6,replicates=2,colors=4,resolution_vol=10,wel
 
     start_time = time.perf_counter()
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index],low_volume_cutoff=0.250)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index],low_volume_cutoff=0.250,pipet_back_and_forth=True)
     #mix_wells(lash_e, wells,replicates=replicates)
 
     end_time = time.perf_counter()
