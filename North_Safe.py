@@ -1065,9 +1065,7 @@ class North_Robot:
         self.move_home()
 
         if measure_weight: #weigh before dispense (if measure_weight = True)
-            self.c9.open_clamp() #Open the clamp to measure weight
             initial_mass = self.c9.read_steady_scale()
-            self.c9.close_clamp() #Close the clamp to dispense into the vial
 
         #Step 2: move the carousel
         self.c9.move_carousel(45,70) #This will take some work. Note that for now I'm just doing for position 0
@@ -1093,7 +1091,6 @@ class North_Robot:
         self.c9.move_carousel(0,0)
 
         if measure_weight: #weigh after dispense (if measure_weight = True)
-            self.c9.open_clamp() #Open the clamp to measure weight
             final_mass = self.c9.read_steady_scale()
             measured_mass = final_mass - initial_mass
 
