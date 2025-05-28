@@ -27,7 +27,7 @@ try:
             curr_vial_index += 1
         elif curr_volume + volume*REPLICATES > 8.0 and curr_vial_index == len(VIAL_INDICES) - 1:
             print("Not enough volume in the current vial to dispense the required volume. Please empty vials")
-            break
+            break #TODO: potentially better error handling (ex. let user empty vial and continue)
 
         for replicate in range(REPLICATES): #loop through number of replicates
             mass = lash_e.nr_robot.dispense_into_vial_from_reservoir(WATER_RESERVOIR_INDEX, curr_vial_index, volume, measure_weight=True)
