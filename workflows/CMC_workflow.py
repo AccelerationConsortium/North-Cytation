@@ -137,10 +137,12 @@ def sample_workflow(starting_wp_index,surfactant_index_list,sub_stock_vols,subst
 #Step 0: Check the input to confirm that it's OK!
 check_input_file(INPUT_VIAL_STATUS_FILE)
 
-simulate = False
+simulate = True
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
+lash_e.nr_track.check_input_file()
+lash_e.nr_track.get_new_wellplate() #Get a new well plate #get wellplate from stack
 
 #The vial indices are numbers that are used to track the vials. I will be implementing a dictionary system so this won't be needed
 pyrene_DMSO_index = lash_e.nr_robot.get_vial_index_from_name('pyrene_DMSO')
@@ -171,8 +173,14 @@ for i in range (0, len(ratios)):
 
     #Check to see if we need a new well_plate
     if starting_wp_index >= 48:
-        None
+        lash_e.nr_track.discard_wellplate()
+        starting_wp_index -= 48
+        lash_e.nr_track.get_new_wellplate()
         #Return the wellplate to the disposal
         #Grab a new wellplate
 
     input("****Press enter to continue to next surfactant")
+
+if lash_e.nr_track.NR_OCCUPIED == True:
+    lash_e.nr_track.discard_wellplate() #Discard the wellplate if it is occupied
+    print("Workflow complete and wellplate discarded")
