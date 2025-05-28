@@ -61,7 +61,7 @@ class Lash_E:
             self.cytation.CarrierIn(plate_type=plate_type)
         self.nr_track.return_well_plate_to_nr(wellplate_index,quartz_wp=quartz)  
 
-    def measure_wellplate(self,protocol_file_path,wells_to_measure=None,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
+    def measure_wellplate(self,protocol_file_path=None,wells_to_measure=None,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         """
         Move wellplate to the Cytation for plate reader measurements.
         
@@ -74,7 +74,7 @@ class Lash_E:
         """
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
-        if not self.simulate:
+        if not self.simulate and protocol_file_path is not None:
             data = self.cytation.run_protocol(protocol_file_path,wells_to_measure,plate_type = plate_type)
         else:
             data = None
