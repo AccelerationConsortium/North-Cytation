@@ -3,7 +3,7 @@ import sys
 sys.path.append("../utoronto_demo")
 from North_Safe import North_Robot
 from North_Safe import North_Track
-from North_Safe import North_T8
+from North_Safe import North_Temp
 
 class Lash_E:
     nr_robot = None
@@ -42,7 +42,7 @@ class Lash_E:
             self.photoreactor = MagicMock()
 
         if initialize_t8:
-            self.temp_controller = North_T8(c9)
+            self.temp_controller = North_Temp(c9)
 
     def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)

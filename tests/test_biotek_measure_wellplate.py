@@ -8,11 +8,8 @@ def test_measure_wellplate(input_vial_status_file): #tests track movement of wel
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(input_vial_status_file)
 
-    for i in range (0, 100):
+    for i in range (0, 5):
         print("Run: ", i)
         lash_e.measure_wellplate() 
-    #lash_e.nr_track.return_well_plate_to_nr(0)
-    
-
-
+ 
 test_measure_wellplate("../utoronto_demo/status/sample_input_vials.csv")
