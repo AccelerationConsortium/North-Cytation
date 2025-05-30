@@ -61,13 +61,13 @@ def mix_wells(lash_e, wells, wash_index=4, wash_volume=0.150, repeats=1,replicat
             lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
             lash_e.nr_robot.pipet_from_wellplate(well, wash_volume,aspirate=False,move_to_aspirate=False)
 
-def sample_workflow(number_samples=6,replicates=2,colors=4,resolution_vol=10,well_volume=240):
+def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,well_volume=240):
   
     # Initial State of your Vials, so the robot can know where to pipet
     check_input_file(INPUT_VIAL_STATUS_FILE)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True)
 
     #The vial indices are numbers that are used to track the vials. For the sake of clarity, these are stored in the input vial file but accessed here
     water_index = lash_e.nr_robot.get_vial_index_from_name('water') #Get the ID of our target reactor
@@ -75,11 +75,14 @@ def sample_workflow(number_samples=6,replicates=2,colors=4,resolution_vol=10,wel
     blue_index = lash_e.nr_robot.get_vial_index_from_name('blue')
     yellow_index = lash_e.nr_robot.get_vial_index_from_name('yellow')
 
-    data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
+    #data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
+    data_colors_uL = pd.read_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition.txt", sep=',',index_col=0)/1000
 
-    data_pd_save = data_colors_uL*1000
-    data_pd_save = pd.DataFrame(data=data_pd_save,columns=['water','red','blue','yellow'])
-    data_pd_save.to_csv("../utoronto_demo/output/color_mixing_composition.csv",sep=',')
+    print(data_colors_uL)
+
+    #data_pd_save = data_colors_uL*1000
+    #data_pd_save = pd.DataFrame(data=data_pd_save,columns=['water','red','blue','yellow'])
+    #data_pd_save.to_csv("../utoronto_demo/output/color_mixing_composition.csv",sep=',')
 
     print("Row sums:", np.sum(data_colors_uL * 1000, axis=1))  # Should all equal 250
 
@@ -99,7 +102,7 @@ def sample_workflow(number_samples=6,replicates=2,colors=4,resolution_vol=10,wel
 
     start_time = time.perf_counter()
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index],low_volume_cutoff=0.250,pipet_back_and_forth=True)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index],low_volume_cutoff=0.100,pipet_back_and_forth=True)
     #mix_wells(lash_e, wells,replicates=replicates)
 
     end_time = time.perf_counter()
@@ -107,11 +110,11 @@ def sample_workflow(number_samples=6,replicates=2,colors=4,resolution_vol=10,wel
     print("Time to complete: ", end_time - start_time)
     
     #Transfer the well plate to the cytation and measure
-    #results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(0,96))
+    results = lash_e.measure_wellplate(r"C:\\Protocols\\Econ_Mixing.prt",wells_to_measure=range(0,96))
 
-    #print(results)
+    print(results)
 
-    #results.to_csv('save_data.txt', sep=',')
+    results.to_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition.txt", sep=',')
     
 #Execute the sample workflow.
 sample_workflow()

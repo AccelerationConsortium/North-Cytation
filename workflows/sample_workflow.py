@@ -92,7 +92,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
 
     # 12. Measure the wellplate
     MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt" #Cytation protocol to run
-    lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices) #Move the wellplate to the cytation, run Quick_Measurement.prt for wells specified in well_indices, and return the wellplate
+    data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices) #Move the wellplate to the cytation, run Quick_Measurement.prt for wells specified in well_indices, and return the wellplate
 
 if __name__ == "__main__": #This is the main function that runs when the script is executed
     """

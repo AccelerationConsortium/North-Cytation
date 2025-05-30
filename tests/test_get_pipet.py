@@ -5,6 +5,8 @@ from Locator import *
 from north import NorthC9
 import pandas as pd
 
+#NOte update to new syntax
+
 input_vial_status_file="../utoronto_demo/status/color_matching_vials.txt"
 vial_status = pd.read_csv(input_vial_status_file, sep=",")
 

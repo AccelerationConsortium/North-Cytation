@@ -17,7 +17,8 @@ class North_Track:
 
     #Well plate active areas
     NR_WELL_PLATE_X = [131854,105860,81178]
-    NR_WELL_PLATE_Y = [88750, 86965, 89155]
+    #NR_WELL_PLATE_Y = [88750, 86965, 89155]
+    NR_WELL_PLATE_Y = [88750, 88000, 89155]
     #NR_WELL_PLATE_Y_RELEASE = 86000
     
     #Transit constants
@@ -38,13 +39,16 @@ class North_Track:
     DEFAULT_Y_SPEED = 50
 
     """New double WP stack"""
-    DOUBLE_SOURCE_X = 50 
+    DOUBLE_SOURCE_X = 175 #50 with old holder (but scratches WP) 
     DOUBLE_WASTE_X = 14550 
     DOUBLE_TRANSFER_X = 28000 
     DOUBLE_SOURCE_Y_96 = [83500, 76800, 70700] #first element = height when 1 WP is in stack
     DOUBLE_WASTE_Y_96 = [83000, 76350, 70200] #first element = height when dropping off 1st WP to waste
-    SOURCE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_SOURCE_Y_96}
-    WASTE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_WASTE_Y_96}
+    DOUBLE_SOURCE_Y_48 =  [83500, 74000, 64500]
+    DOUBLE_WASTE_Y_48 = [83000, 73500, 64000]
+
+    SOURCE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_SOURCE_Y_96, "48 WELL PLATE": DOUBLE_SOURCE_Y_48}
+    WASTE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_WASTE_Y_96, "48 WELL PLATE": DOUBLE_WASTE_Y_48}
 
     #num_source = 0 #number of wellplates in source stack 
     well_plate_df = None
@@ -237,7 +241,7 @@ class North_Track:
         except:
             self.pause_after_error("Issue reading robot status", False)
 
-    def get_new_wellplate(self): #double WP stack 
+    def get_new_wellplate(self, move_home_afterwards = True): #double WP stack 
         """Get a new wellplate from the source stack (in the double stack holder) and move to north robot pipetting area"""
         DOUBLE_SOURCE_Y = self.SOURCE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
         MAX_IN_SOURCE = len(DOUBLE_SOURCE_Y) #the number of valid WPs that can be stored or have been initialized
@@ -261,18 +265,20 @@ class North_Track:
             self.save_track_status() #update yaml
 
             self.return_well_plate_to_nr(0)
-            #TODO: move to NR wellplate station (existing function?) -> self.NR_OCCUPIED = True, self.save_track_status()
+
+            if move_home_afterwards:
+                self.origin()
         
         else:
             if self.NUM_SOURCE <= 0:
-                print("Wellplate stack is empty")
+                self.pause_after_error("Wellplate stack is empty")
             elif self.NUM_SOURCE > MAX_IN_SOURCE:
-                print("Stack is overfilled / height is not initialized")
+                self.pause_after_error("Stack is overfilled / height is not initialized")
             if self.NR_OCCUPIED == True:
-                print("Cannot get wellplate, NR pipetting area is occupied")
+                self.pause_after_error("Cannot get wellplate, NR pipetting area is occupied")
 
     
-    def discard_wellplate(self, wellplate_num=0): #double WP stack
+    def discard_wellplate(self, wellplate_num=0, move_home_afterwards = True): #double WP stack
         """Grabs a wellplate (from desginated wellplate stack) and discards it into the waste stack (in the double stack holder)
         
         Args:
@@ -281,17 +287,16 @@ class North_Track:
         DOUBLE_WASTE_Y = self.WASTE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
         MAX_IN_WASTE = len(DOUBLE_WASTE_Y) #the number of valid WPs that can be stored / have been initialized
         
-        
         if self.NUM_WASTE < MAX_IN_WASTE and self.NR_OCCUPIED == True: #can still hold an additional wellplate & pipetting area is occupied
             print(f"Discarding wellplate as the {self.NUM_WASTE+1}th WP in waste stack.")
             
             #move up to max height, then to NR area to grab wellplate
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=10) #up to max height
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
             self.grab_well_plate_from_nr(wellplate_num) #move to wellplate area to grab wellplate
 
             #cross the cytation -- move down to transfer_Y
-            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=10) #to transfer area #TODO: See if need to height adjust?
-            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=10) #to "safe" area
+            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=15) #to transfer area 
+            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=15) #to "safe" area
 
             #move up to waste stack and go down to drop off wp
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
@@ -302,13 +307,56 @@ class North_Track:
 
             self.NUM_WASTE += 1
             self.save_track_status()
+
+            if move_home_afterwards: #home after dropping off wellplate into waste stack
+                self.origin()
         else:
             if self.NUM_WASTE >= MAX_IN_WASTE:
-                print("Wellplate stack is too full for discarding another well plate.")
+                self.pause_after_error("Wellplate stack is too full for discarding another well plate.")
             if self.NR_OCCUPIED == False:
-                print("Cannot discard wellplate, designated wellplate stand is empty.")
+                self.pause_after_error("Cannot discard wellplate, designated wellplate stand is empty.")
         
-class North_T8:
+        #Integrating error messages and deliberate pauses
+    def pause_after_error(self,err_message,send_slack=True):
+        print(err_message)
+        if send_slack and not isinstance(self.c9, MagicMock):
+            slack_agent.send_slack_message(err_message)
+        input("Waiting for user to press enter or quit after error...")
+
+class North_Powder:
+
+    p2 = None
+    c9 = None
+
+    def __init__(self, c9):
+        from north import NorthC9
+        self.c9 = c9
+        self.p2 = NorthC9('C', network=c9.network)
+        self.p2.get_info()
+
+    def activate_powder_channel(self, channel=0):
+        self.p2.activate_powder_channel(channel)
+        self.p2.home_OL_stepper(0, 300)
+
+    # shake the cartridge for t ms, with frequency f [40, 180] hz, amplitude [60, 100] %
+    def shake(self,t, f=80, a=80, wait=True):
+        return self.p2.amc_pwm(int(f), int(t), int(a), wait=wait)
+    
+    def dispense_powder(self, channel, time):
+        self.activate_powder_channel(channel)
+        self.c9.move_carousel(66.5,70)
+        self.p2.move_axis(0, 45*(1000/360.0))
+        initial_mass = self.c9.read_steady_scale()
+        self.shake(time)
+        self.p2.move_axis(0, 0*(1000/360.0))
+        final_mass = self.c9.read_steady_scale()
+        dispensed_mass = final_mass - initial_mass
+        print("Mass dispensed: ", dispensed_mass)
+        self.c9.move_carousel(0,0)
+
+
+
+class North_Temp:
 
     t8 = None
 
@@ -375,7 +423,7 @@ class North_Robot:
     def load_pumps(self):
         self.c9.pumps[0]['volume'] = 1
         self.c9.pumps[1]['volume'] = 2.5
-        self.c9.set_pump_speed(1, 20)
+        self.c9.set_pump_speed(1, 15)
 
     #Check the status of the input vial file
     def check_input_file(self,pause_after_check=True):
@@ -509,7 +557,7 @@ class North_Robot:
         active_pipet_num = self.PIPETS_USED[pipet_rack_index] #First available pipet
 
         #This is to pause the program and send a slack message when the pipets are out!
-        MAX_PIPETS=47 #This is based off the racks
+        MAX_PIPETS=47 # This is based off the racks
         if active_pipet_num > MAX_PIPETS:
             self.pause_after_error("The North Robot is out of pipets! Please refill pipets then hit enter on the terminal!")
             self.PIPETS_USED=[0,0]
@@ -685,7 +733,8 @@ class North_Robot:
 
         #Wait if required
         if wait_time > 0:
-            time.sleep(wait_time)
+            if not self.simulate:
+                time.sleep(wait_time)
         
         #Update the new volume in memory
         self.PIPET_FLUID_VIAL_INDEX = int(source_vial_num)
@@ -826,7 +875,8 @@ class North_Robot:
         self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
 
         if wait_time > 0:
-            time.sleep(wait_time)
+            if not self.simulate:
+                time.sleep(wait_time)
 
         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
@@ -881,17 +931,19 @@ class North_Robot:
 
             #Dispense and then wait
             self.pipet_from_location(amount_mL, dispense_speed, height, False)
-            time.sleep(wait_time)
+            if not self.simulate:
+                time.sleep(wait_time)
 
             #OAM Notes: Different techniques. drop and slow could both be just longer wait_time              
             if dispense_type.lower() == "drop-touch":
                 self.move_rel_x(-1.75) #-1.75 for quartz WP, -3 for PS
-                time.sleep(0.2)
+                if not self.simulate:
+                    time.sleep(0.2)
                 self.move_rel_z(5) #move back up before moving to next well
-            
             elif dispense_type.lower() == "touch":
                 self.move_rel_x(2.5) #1.75 for quartz WP, 3 for PS
-                time.sleep(0.2)
+                if not self.simulate:
+                    time.sleep(0.2)
                 self.move_rel_z(10)           
 
         self.PIPET_FLUID_VOLUME -= np.sum(amount_mL_array)  # <-- Add this line back
@@ -1038,19 +1090,27 @@ class North_Robot:
         print(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume} mL")
         self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
 
-    def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume):
+    def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume, measure_weight = False):
         
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
         print(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume} mL")
+        measured_mass = None
 
         #Step 1: move the vial to the clamp
         self.move_vial_to_location(vial_index,'clamp',0)
         self.uncap_clamp_vial()
         self.move_home()
+
+        if measure_weight: #weigh before dispense (if measure_weight = True)
+            initial_mass = self.c9.read_steady_scale()
+
         #Step 2: move the carousel
         self.c9.move_carousel(45,70) #This will take some work. Note that for now I'm just doing for position 0
         #Step 3: aspirate and dispense from the reservoir
-        max_volume = self.c9.pumps[reservoir_index]['volume']
+        if not self.simulate:
+            max_volume = self.c9.pumps[reservoir_index]['volume']
+        else:
+            max_volume = 2.5
         num_dispenses = math.ceil(volume/max_volume)
         dispense_vol = volume/num_dispenses
         print(f"Dispensing {dispense_vol} mL {num_dispenses} times")
@@ -1059,15 +1119,22 @@ class North_Robot:
              self.c9.aspirate_ml(reservoir_index,dispense_vol)
              self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_RIGHT)
              self.c9.dispense_ml(reservoir_index,dispense_vol)
-        time.sleep(1)
+        if not self.simulate:
+            time.sleep(1)
         vial_volume = self.get_vial_info(vial_index,'vial_volume')
         self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
         self.save_robot_status()
 
         #Step 4: Return the vial back to home
         self.c9.move_carousel(0,0)
+
+        if measure_weight: #weigh after dispense (if measure_weight = True)
+            final_mass = self.c9.read_steady_scale()
+            measured_mass = final_mass - initial_mass
+
         self.recap_clamp_vial()
         self.return_vial_home(vial_index)
+        return measured_mass
 
     #Check the original status of the vial in order to send it to its home location
     def return_vial_home(self,vial_name):
