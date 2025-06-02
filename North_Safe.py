@@ -342,19 +342,107 @@ class North_Powder:
     def shake(self,t, f=80, a=80, wait=True):
         return self.p2.amc_pwm(int(f), int(t), int(a), wait=wait)
     
-    def dispense_powder(self, channel, time):
+    def set_opening(self, channel, deg):
+        self.p2.move_axis(channel, deg*(1000/360.0))
+
+    def dispense_powder_time(self, channel, time):
         self.activate_powder_channel(channel)
         self.c9.move_carousel(66.5,70)
-        self.p2.move_axis(0, 45*(1000/360.0))
+        
         initial_mass = self.c9.read_steady_scale()
+        self.set_opening(channel,45)
         self.shake(time)
-        self.p2.move_axis(0, 0*(1000/360.0))
+        self.set_opening(channel,0)
         final_mass = self.c9.read_steady_scale()
         dispensed_mass = final_mass - initial_mass
         print("Mass dispensed: ", dispensed_mass)
+        
         self.c9.move_carousel(0,0)
 
+    def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=False):
+        import settings.powder_settings as settings
+        start_t = time.perf_counter()
+        mg_togo = mg_target
 
+        if protocol is None:
+            protocol = settings.default_ps
+        ps = protocol.fast_settings
+        if mg_togo < protocol.slow_settings.thresh:
+            ps = protocol.slow_settings
+        elif mg_togo < protocol.med_settings.thresh:
+            ps = protocol.med_settings
+
+        # intialize
+        self.set_opening(channel,0)  # make sure everything starts closed
+        prev_mass = 0
+        delta_mass = 0
+        shake_t = ps.min_shake_t
+
+        if zero_scale:
+            self.c9.zero_scale()
+            self.c9.delay(protocol.scale_delay)
+        tare = self.c9.read_steady_scale() * 1000
+
+        meas_mass = 0
+        count = 0
+        while mg_togo > protocol.tol:
+            count += 1
+
+            self.set_opening(channel,ps.opening_deg)
+            self.shake(shake_t, ps.freq, ps.amplitude)
+            if ps.shut_valve:
+                self.set_opening(channel,0)
+            self.c9.delay(0.5)
+            self.c9.read_steady_scale()  # dummy read to wait for steady
+            self.c9.delay(protocol.scale_delay)  # delay after steady to allow for more settling time
+            meas_mass = self.c9.read_steady_scale() * 1000 - tare
+
+            mg_togo = mg_target - meas_mass
+            delta_mass = meas_mass - prev_mass
+            prev_mass = meas_mass
+
+            if mg_togo < protocol.slow_settings.thresh:
+                ps = protocol.slow_settings
+            elif mg_togo < protocol.med_settings.thresh:
+                ps = protocol.med_settings
+
+            iter_target = (ps.percent_target * mg_togo)
+            max_new_t = ps.max_growth * shake_t
+            if delta_mass <= 0:
+                shake_t = max_new_t
+            else:
+                shake_t *= (iter_target / delta_mass)
+            shake_t = min(max_new_t, shake_t)  # no larger than max growth allows
+            shake_t = max(ps.min_shake_t, shake_t)  # no shorter than min time
+            shake_t = min(ps.max_shake_t, shake_t)  # no longer than max time
+
+            print(f'Iteration {count}:')
+            print(f'\tJust dispensed:  {delta_mass:.1f} mg')
+            print(f'\tRemaining:       {mg_togo:.1f} mg')
+            print(f'\tNext target:     {iter_target:.1f} mg')
+            print(f'\tNext time:       {int(shake_t)} ms')
+            print('')
+
+            self.set_opening(0)
+
+            print(f'Result:')
+            print(f'\tLast iter:  {delta_mass:.1f} mg')
+            print(f'\tDispensed: {meas_mass:.1f} mg')
+            print(f'\tRemaining: {mg_togo:.1f} mg')
+            print(f'\tTime:      {int(time.perf_counter() - start_t)} s')
+            print('')
+
+        return meas_mass
+
+    def dispense_powder_mg(self, channel, mass_mg):
+        
+        self.activate_powder_channel(channel)
+        self.c9.move_carousel(66.5,70)
+        #Dispense protocol
+        mass_dispensed = self.cl_pow_dispense(mass_mg, channel)
+
+        self.c9.move_carousel(0,0)
+        return mass_dispensed
 
 class North_Temp:
 

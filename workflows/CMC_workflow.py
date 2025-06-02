@@ -178,6 +178,7 @@ for i in range (0, len(ratios)):
         lash_e.nr_track.get_new_wellplate()
         #Return the wellplate to the disposal
         #Grab a new wellplate
+        starting_wp_index = 0
 
     input("****Press enter to continue to next surfactant")
 

@@ -4,6 +4,8 @@ sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
 import slack_agent
+import os
+from pathlib import Path
 
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2):
     print("\nDispensing from photoreactor into sample: ", sample_index)
@@ -18,7 +20,7 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
        # lash_e.nr_robot.home_axis(i) #Home the track
     print()
 
-def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,well_volume=0.2,simulate=False):
+def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,well_volume=0.2,simulate=False):
     print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
     lash_e.nr_robot.move_vial_to_location(sample_index, location="main_8mL_rack", location_index=44) #Move sample to safe pipetting position
     lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates,track_height=True)
@@ -27,7 +29,8 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
     lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.return_vial_home(sample_index) #Return sample to home position
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
-    output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
+    output_file = output_dir / f'output_{first_well_index}.txt'
+    # output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
     if not simulate:
         data_out.to_csv(output_file, sep=',')
     print()
@@ -81,7 +84,11 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
 
     input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")    
 
+    #create file name for the output data
     exp_name = input("Experiment name: ")
+    output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / exp_name #appends exp_name to the output directory
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print("Output directory created at:", output_dir)
 
     slack_agent.send_slack_message("Peroxide workflow started!")
     #Create new folder in .../SQ/exp_name/
@@ -146,7 +153,7 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
                 dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2)
                 items_completed+=1
             elif action_required=="measure_samples":
-                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,starting_well_index,MEASUREMENT_PROTOCOL_FILE,replicates,simulate=SIMULATE)
+                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,starting_well_index,MEASUREMENT_PROTOCOL_FILE,replicates, output_dir,simulate=SIMULATE)
                 starting_well_index += replicates
                 items_completed+=1
                 measured_items+=1
