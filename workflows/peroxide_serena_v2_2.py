@@ -92,13 +92,13 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
 
     slack_agent.send_slack_message("Peroxide workflow started!")
 
-    #-> Start from here! 
-    #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
+    # #-> Start from here! 
+    # #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
     for i in sample_indices:
         lash_e.nr_robot.dispense_from_vial_into_vial(water_index,i,volume=0.950)
     lash_e.nr_robot.remove_pipet()
 
-    # #Step 3: Add 150 µL "Working Reagent(reagent A+B)" (vial_index 44) to 950 µL deionized water (vial_index 0-5) to dilute the Working Reagent.
+    # # #Step 3: Add 150 µL "Working Reagent(reagent A+B)" (vial_index 44) to 950 µL deionized water (vial_index 0-5) to dilute the Working Reagent.
     for i in sample_indices: 
         lash_e.nr_robot.dispense_from_vial_into_vial(reagent_AB_index,i,volume=0.150)
         mix_current_sample(lash_e,i,new_pipet=True,volume=0.8)
