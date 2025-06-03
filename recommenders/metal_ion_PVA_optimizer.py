@@ -26,40 +26,50 @@ def initialize_campaign(upper_bound, random_seed, random_recs=False):
     parameters = [
         NumericalDiscreteParameter(
             name = 'Water',
-            values = np.array(range(0, 240, 10))
+            values = np.array(range(0, 140, 20))
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
             name = 'PVA_1',
-            values = np.array(range(0, 240, 10))
+            values = np.array(range(0, 100, 20))
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
             name = 'PVA_2',
-            values= np.array(range(0, 240, 10)),
+            values= np.array(range(0, 100, 20)),
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
             name = 'PVA_3',
-            values= np.array(range(0, 240, 10)),
+            values= np.array(range(0, 100, 20)),
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
             name = 'HCl',
-            values= np.array(range(0, 40, 10)),
+            values= np.array(range(0, 60, 20)),
+            #encoding = 'INT'
+            ),
+        NumericalDiscreteParameter(
+            name = 'Acid_2',
+            values= np.array(range(0, 60, 20)),
+            #encoding = 'INT'
+            ),
+        NumericalDiscreteParameter(
+            name = 'Acid_3',
+            values= np.array(range(0, 60, 20)),
             #encoding = 'INT'
             ),
         NumericalDiscreteParameter(
             name = 'NaOH',
-            values= np.array(range(0, 40, 10)),
+            values= np.array(range(0, 60, 20)),
             #encoding = 'INT'
             ),    
     ]
 
     constraints = [DiscreteSumConstraint(
-            parameters=["Water", "PVA_1", "PVA_2", "PVA_3", "HCl", "NaOH"],  # these parameters must exist in the search space
+            parameters=["Water", "PVA_1", "PVA_2", "PVA_3", "HCl", "Acid_2", "Acid_3", "NaOH"],  # these parameters must exist in the search space
             condition=ThresholdCondition(  # set condition that should apply to the sum
-            threshold=240,
+            threshold=120,
             operator="="))]
 
     searchspace = SearchSpace.from_product(parameters=parameters, constraints=constraints)
