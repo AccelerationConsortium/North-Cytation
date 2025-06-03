@@ -4,6 +4,7 @@ sys.path.append("../utoronto_demo")
 from North_Safe import North_Robot
 from North_Safe import North_Track
 from North_Safe import North_Temp
+from North_Safe import North_Powder
 
 class Lash_E:
     nr_robot = None
@@ -11,9 +12,11 @@ class Lash_E:
     cytation = None
     photoreactor = None
     temp_controller = None
+    powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True,initialize_t8=False,simulate=False):
+    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True,initialize_t8=False,initialize_p2=False,simulate=False):
+        
         if not simulate:
             from north import NorthC9
             c9 = NorthC9("A", network_serial="AU06CNCF")
@@ -23,6 +26,8 @@ class Lash_E:
 
         self.simulate = simulate
 
+        if initialize_p2:
+            self.powder_dispenser = North_Powder(c9)
         if initialize_robot:
             self.nr_robot = North_Robot(c9, vial_file,simulate=simulate)
         if initialize_track:
@@ -30,8 +35,6 @@ class Lash_E:
         if initialize_biotek:
             from biotek_new import Biotek_Wrapper
             self.cytation = Biotek_Wrapper(simulate=simulate)
-        else:
-            self.cytation = None  # Or a mock object if you want to simulate calls
 
         # Photoreactor initialization
         if not self.simulate:

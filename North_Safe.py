@@ -332,7 +332,7 @@ class North_Powder:
         from north import NorthC9
         self.c9 = c9
         self.p2 = NorthC9('C', network=c9.network)
-        self.p2.get_info()
+        #self.p2.get_info()
 
     def activate_powder_channel(self, channel=0):
         self.p2.activate_powder_channel(channel)
@@ -434,7 +434,7 @@ class North_Powder:
 
         return meas_mass
 
-    def dispense_powder_mg(self, channel, mass_mg):
+    def dispense_powder_mg(self, mass_mg, channel=0):
         
         self.activate_powder_channel(channel)
         self.c9.move_carousel(66.5,70)
@@ -453,20 +453,20 @@ class North_Temp:
         self.t8 = NorthC9('B', network=c9.network)
         self.t8.get_info()
     
-    def autotune(self,channel, target_temp):
+    def autotune(self,target_temp,channel=0):
         self.t8.disable_channel(channel)
         self.t8.set_temp(channel, target_temp)
         self.t8.enable_channel(channel)
         self.t8.temp_autotune(channel, True)
 
-    def set_temp(self,channel,target_temp):
+    def set_temp(self,target_temp,channel=0):
         self.t8.set_temp(channel, target_temp)
         self.t8.enable_channel(channel)
     
-    def get_temp(self,channel):
+    def get_temp(self,channel=0):
         return self.t8.get_temp(channel)
 
-    def turn_off_heating(self,channel):
+    def turn_off_heating(self,channel=0):
         self.t8.disable_channel(channel)
 
 class North_Robot:
