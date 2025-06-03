@@ -7,7 +7,7 @@ import slack_agent
 import os
 from pathlib import Path
 
-def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2):
+def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.02):
     print("\nDispensing from photoreactor into sample: ", sample_index)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
     lash_e.nr_robot.dispense_from_vial_into_vial(reaction_mixture_index,sample_index,volume=volume)
@@ -90,75 +90,11 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     output_dir.mkdir(parents=True, exist_ok=True)
     print("Output directory created at:", output_dir)
 
-    slack_agent.send_slack_message("Peroxide workflow started!")
-
-    # #-> Start from here! 
-    # #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
-    for i in sample_indices:
-        lash_e.nr_robot.dispense_from_vial_into_vial(water_index,i,volume=0.950)
-    lash_e.nr_robot.remove_pipet()
-
-    # # #Step 3: Add 150 µL "Working Reagent(reagent A+B)" (vial_index 44) to 950 µL deionized water (vial_index 0-5) to dilute the Working Reagent.
-    for i in sample_indices: 
-        lash_e.nr_robot.dispense_from_vial_into_vial(reagent_AB_index,i,volume=0.150)
-        mix_current_sample(lash_e,i,new_pipet=True,volume=0.8)
-    
-    #Step 4: Move the reaction mixture vial (vial_index 43) to the photoreactor to start the reaction.
-    lash_e.nr_robot.move_vial_to_location(reaction_mixture_index, location="photoreactor_array", location_index=0)
-    #Turn on photoreactor
-    lash_e.photoreactor.turn_on_reactor_led(reactor_num=1,intensity=100)
-    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
-
-    #Step 5: Add 200 µL "reaction mixture" (vial in the photoreactor) to "Diluted Working Reagent" (vial_index 0-5). 
-    # Six aliquots added at 0, 5, 10, 15, 20, 25 min time marks for incubation (incubation=18 min).
-    
-    SCHEDULE_FILE = r"C:\Users\Imaging Controller\Desktop\SQ\schedule.csv"
-    schedule = pd.read_csv(SCHEDULE_FILE, sep=",") #Read the schedule file
-
-    schedule = schedule.sort_values(by='start_time') #sort in ascending time order
-    print("Schedule: ", schedule)
-
-    start_time = current_time = get_time(SIMULATE)
-    print("Starting timed portion at: ", start_time)
-    #Let's complete the items one at a time
-    items_completed = 0
-    starting_well_index = 0
-    time_increment = 60
-    while items_completed < schedule.shape[0]: #While we still have items to complete in our schedule
-        active_item = schedule.iloc[items_completed]
-        time_required = active_item['start_time']
-        action_required = active_item['action']
-        sample_index = active_item['sample_index']
-        current_time = get_time(SIMULATE,current_time)
-        measured_items = 0
-
-        #If we reach the triggered item's required time:
-        if current_time - start_time > time_required:
-            print("\nEvent triggered: " + action_required + f" from sample {sample_index}")
-            print(f"Current Elapsed Time: {(current_time - start_time)/60} minutes")
-            print(f"Intended Elapsed Time: {(time_required)/60} minutes")
-
-            if action_required=="dispense_from_reactor":
-                dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2)
-                items_completed+=1
-            elif action_required=="measure_samples":
-                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,starting_well_index,MEASUREMENT_PROTOCOL_FILE,replicates, output_dir,simulate=SIMULATE)
-                starting_well_index += replicates
-                items_completed+=1
-                measured_items+=1
-        elif current_time - start_time > time_increment:
-            print(f"I'm Alive! Current Elapsed Time: {(current_time - start_time)/60} minutes")
-            time_increment=time_increment+60
-        
-        if not SIMULATE:
-            time.sleep(1)
-    lash_e.nr_robot.move_home()   
-
     lash_e.nr_robot.return_vial_home(reaction_mixture_index)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=1)
     lash_e.nr_robot.move_home()   
-    slack_agent.send_slack_message("Peroxide workflow completed!")
+    #slack_agent.send_slack_message("Peroxide workflow completed!")
 
 peroxide_workflow() #Run your workflow
 

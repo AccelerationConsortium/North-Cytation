@@ -667,7 +667,11 @@ class North_Robot:
         base_height = self.c9.counts_to_mm(3, location[3])
         self.c9.move_z(base_height) 
 
-        self.c9.move_z(292,vel=5) #Move to a safe height (292)
+        if pipet_rack_index == self.LOWER_PIPET_ARRAY_INDEX:
+            location = p_capture_up[num]
+            self.c9.goto(location, vel=5) #Move to the pipet tip
+        else:
+            self.c9.move_z(292,vel=5) #Move to a safe height (292)
 
         #We have a pipet. What kind of pipet do we have? How many pipets are left in the rack?
         self.HELD_PIPET_INDEX = pipet_rack_index
