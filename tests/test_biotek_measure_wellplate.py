@@ -10,6 +10,6 @@ def test_measure_wellplate(input_vial_status_file): #tests track movement of wel
 
     for i in range (0, 5):
         print("Run: ", i)
-        lash_e.measure_wellplate() 
+        lash_e.measure_wellplate(quartz=True) 
  
 test_measure_wellplate("../utoronto_demo/status/sample_input_vials.csv")
