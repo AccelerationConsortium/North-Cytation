@@ -30,7 +30,8 @@ class North_Track:
     CYT_TRAY_Y_GRAB = 8500
     CYT_TRAY_X = 68608
 
-    QUARTZ_WP_OFFSET = 1300
+    #QUARTZ_WP_OFFSET = 1300
+    QUARTZ_WP_OFFSET = 3000
 
     #Speed horizontal
     DEFAULT_X_SPEED = 50
@@ -329,17 +330,19 @@ class North_Powder:
     c9 = None
 
     def __init__(self, c9):
+        print("Initializing powder dispenser...")
         from north import NorthC9
         self.c9 = c9
         self.p2 = NorthC9('C', network=c9.network)
-        #self.p2.get_info()
 
     def activate_powder_channel(self, channel=0):
+        print(f"Activating powder channel: {channel}")
         self.p2.activate_powder_channel(channel)
         self.p2.home_OL_stepper(0, 300)
 
     # shake the cartridge for t ms, with frequency f [40, 180] hz, amplitude [60, 100] %
     def shake(self,t, f=80, a=80, wait=True):
+        #print("Shaking dispenser cartridge...")
         return self.p2.amc_pwm(int(f), int(t), int(a), wait=wait)
     
     def set_opening(self, channel, deg):
@@ -347,7 +350,7 @@ class North_Powder:
 
     def dispense_powder_time(self, channel, time):
         self.activate_powder_channel(channel)
-        self.c9.move_carousel(66.5,70)
+        self.c9.move_carousel(70,70)
         
         initial_mass = self.c9.read_steady_scale()
         self.set_opening(channel,45)
@@ -423,7 +426,7 @@ class North_Powder:
             print(f'\tNext time:       {int(shake_t)} ms')
             print('')
 
-            self.set_opening(0)
+            self.set_opening(channel, 0)
 
             print(f'Result:')
             print(f'\tLast iter:  {delta_mass:.1f} mg')
@@ -447,11 +450,12 @@ class North_Powder:
 class North_Temp:
 
     t8 = None
+    c8 = None
 
     def __init__(self,c9):
         from north import NorthC9
         self.t8 = NorthC9('B', network=c9.network)
-        self.t8.get_info()
+        self.c8 = NorthC9('D', network=c9.network)
     
     def autotune(self,target_temp,channel=0):
         self.t8.disable_channel(channel)
@@ -468,6 +472,12 @@ class North_Temp:
 
     def turn_off_heating(self,channel=0):
         self.t8.disable_channel(channel)
+
+    def turn_on_stirring(self,speed=10000):
+        self.c8.spin_axis(0, speed)
+
+    def turn_off_stirring(self):
+        self.c8.spin_axis(0,0)
 
 class North_Robot:
     ROBOT_STATUS_FILE = "../utoronto_demo/status/robot_status.yaml" #Store the state of the robot. Update this after every method that alters the state. 
@@ -1182,15 +1192,17 @@ class North_Robot:
         print(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume} mL")
         self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
 
-    def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume, measure_weight = False):
+    def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume, measure_weight = False, return_home=True):
         
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
         print(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume} mL")
         measured_mass = None
 
         #Step 1: move the vial to the clamp
-        self.move_vial_to_location(vial_index,'clamp',0)
-        self.uncap_clamp_vial()
+        if not self.get_vial_info(vial_index,'location')=='clamp':
+            self.move_vial_to_location(vial_index,'clamp',0)
+        if not self.is_vial_pipetable(vial_index):
+            self.uncap_clamp_vial()
         self.move_home()
 
         if measure_weight: #weigh before dispense (if measure_weight = True)
@@ -1224,8 +1236,10 @@ class North_Robot:
             final_mass = self.c9.read_steady_scale()
             measured_mass = final_mass - initial_mass
 
-        self.recap_clamp_vial()
-        self.return_vial_home(vial_index)
+        if not self.get_vial_info(vial_index,'capped'):
+            self.recap_clamp_vial()
+        if return_home:
+            self.return_vial_home(vial_index)
         return measured_mass
 
     #Check the original status of the vial in order to send it to its home location
@@ -1488,6 +1502,7 @@ class North_Robot:
     def move_home(self):
         print("Moving robot to home position")
         self.c9.goto_safe(home)
+        self.c9.move_carousel(0,0)
 
     #Get some piece of information about a vial
     #vial_index,vial_name,location,location_index,vial_volume,capped,cap_type,vial_type
@@ -1537,6 +1552,8 @@ class North_Robot:
             min_height = CLAMP_BASE_HEIGHT
         elif location_name == '12_well_ilya':
             min_height = 72.00
+        elif location_name == 'heater':
+            min_height = 144
 
         return min_height
 
@@ -1567,6 +1584,8 @@ class North_Robot:
                 location = vial_clamp_pip
             elif location_name == '12_well_ilya':
                 location = ilya_wellplate[location_index]
+            elif location_name == 'heater':
+                location = heater_grid_pip[location_index]
         else: #For the gripper
            if location_name=='main_8mL_rack':
                 location = rack[location_index]

@@ -43,7 +43,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     Note: If you set simulate=True, you can run your code without the robot, photoreactor, or cytation to see if there are any errors.
     """
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True) # Initialize the Lash_E class with the input vial status file
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_t8=True,initialize_p2=True,simulate=False) # Initialize the Lash_E class with the input vial status file
 
     # 2. Check the status of the input vials 
     lash_e.nr_robot.check_input_file() #outputs the values in sample_input_vials.csv and user must confirm by typing Enter if everything looks ok to proceed
@@ -51,10 +51,11 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     lash_e.temp_controller.set_temp(40) # Set the temperature of the heater to 40 degrees Celsius
 
     # 3. Prepare Source Vial A by adding solid and liquid (Note that in theory priming for the reservoir dispense is needed, but this is not done here)
-    lash_e.powder_dispenser.dispense_pow_mg(mass_mg=50) #Dispense 50 mg of solid into source_vial_a
-    lash_e.nr_robot.dispense_into_vial_from_reservoir(reservoir_index=0, vial_name = 'source_vial_a', volume=5.0) #Dispense 5 mL of water into source_vial_a from reservoir 0
+    lash_e.mass_dispense_into_vial('source_vial_a', 20, return_home=False)
+    lash_e.nr_robot.dispense_into_vial_from_reservoir(reservoir_index=1, vial_index = 'source_vial_a', volume=5.0) #Dispense 5 mL of water into source_vial_a from reservoir 0
     lash_e.nr_robot.vortex_vial(vial_name='source_vial_a', vortex_time=5) #Vortex source_vial_a for 5 seconds to mix the solid and liquid
     lash_e.nr_robot.move_vial_to_location(vial_name='source_vial_a', location='heater', location_index=0) #Move source_vial_a to the heater
+    lash_e.temp_controller.turn_on_stirring()
 
     # 4. Transfer liquid from source_vial_a to target_vial, then remove the pipet tip
     lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name='source_vial_b', dest_vial_name='target_vial', volume=aspiration_volume) #pipet the amount specified in aspiration_volume from source_vial_a to target_vial
@@ -65,7 +66,6 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     lash_e.nr_robot.remove_pipet() #remove pipet tip
 
     # 6. Mix the target vial
-    lash_e.nr_robot.recap_clamp_vial() # move the vial to the clamp to recap it
     lash_e.nr_robot.vortex_vial(vial_name='target_vial', vortex_time=2) # vortex the target_vial for 2 seconds
 
     # 7. Move the vial to the photoreactor and then turn on the fan to mix the stir bar
@@ -90,7 +90,8 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
 
     # 10. Turn off the photoreactor & heater
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=REACTOR_NUM)
-    lash_e.temp_controller.turn_off_heater() #Turn off the heater
+    lash_e.temp_controller.turn_off_heating() #Turn off the heater
+    lash_e.temp_controller.turn_off_stirring()
 
     # 11. Return the target vial to its home position
     lash_e.nr_robot.return_vial_home('source_vial_a')

@@ -15,23 +15,19 @@ class Lash_E:
     powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_photoreactor=True,initialize_t8=False,initialize_p2=False,simulate=False):
+    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False):
         
+        self.simulate = simulate
         if not simulate:
             from north import NorthC9
             c9 = NorthC9("A", network_serial="AU06CNCF")
         else:
             from unittest.mock import MagicMock
-            c9 = MagicMock()
+            c9 = MagicMock() 
 
-        self.simulate = simulate
-
-        if initialize_p2:
-            self.powder_dispenser = North_Powder(c9)
         if initialize_robot:
             self.nr_robot = North_Robot(c9, vial_file,simulate=simulate)
-        if initialize_track:
-            self.nr_track = North_Track(c9)
+
         if initialize_biotek:
             from biotek_new import Biotek_Wrapper
             self.cytation = Biotek_Wrapper(simulate=simulate)
@@ -40,12 +36,27 @@ class Lash_E:
         if not self.simulate:
             from photoreactor_controller import Photoreactor_Controller
             self.photoreactor = Photoreactor_Controller()
+
+            if initialize_p2:
+                self.powder_dispenser = North_Powder(c9)
+            if initialize_t8:
+                self.temp_controller = North_Temp(c9)
+            if initialize_track:
+                self.nr_track = North_Track(c9)
+
         else:
             from unittest.mock import MagicMock
             self.photoreactor = MagicMock()
+            self.powder_dispenser = MagicMock()
+            self.temp_controller = MagicMock()
+            self.nr_track = MagicMock()
 
-        if initialize_t8:
-            self.temp_controller = North_Temp(c9)
+    def mass_dispense_into_vial(self,vial,mass_mg,channel=0, return_home=True):
+        self.nr_robot.move_vial_to_location(vial,'clamp',0)
+        self.nr_robot.move_home()
+        self.powder_dispenser.dispense_powder_mg(mass_mg=mass_mg,channel=channel) #Dispense 50 mg of solid into source_vial_a  
+        if return_home:
+            self.nr_robot.return_vial_home(vial) 
 
     def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)

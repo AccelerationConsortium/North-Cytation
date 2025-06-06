@@ -14,7 +14,7 @@ def sample_workflow():
     c9 = NorthC9("A", network_serial="AU06CNCF")
     powder_disp = North_Powder(c9)
     #powder_disp.activate_powder_channel(0)
-    powder_disp.dispense_powder(0,1000)
+    powder_disp.dispense_powder_mg(30)
 
 #Execute the sample workflow.
 #Specify that we are going to aspirate 0.6 from our two sample vials. We could also set the number of replicates to some other number than 3
