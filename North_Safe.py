@@ -55,7 +55,7 @@ class North_Track:
     well_plate_df = None
 
     #Let's initialize the number of well plates from a file
-    def __init__(self, c9):
+    def __init__(self, c9, simulate = False):
         self.c9 = c9
         #self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python") #TODO: not sure if needed anymore?
         #self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
@@ -64,6 +64,7 @@ class North_Track:
         self.NUM_WASTE = 0
         self.CURRENT_WP_TYPE = "96 WELL PLATE"
         self.NR_OCCUPIED = False
+        self.simulate = simulate
 
         #Load yaml data
         self.TRACK_STATUS_FILE = "../utoronto_demo/status/track_status.yaml"
@@ -171,6 +172,7 @@ class North_Track:
     def origin(self):
         self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #max_height
         self.c9.move_axis(7, 0, vel=self.DEFAULT_X_SPEED)
+        print("Moving North Track to home position")
     
     def get_next_WP_from_source(self):  #OLD
         #TODO: change velocities back to default ones
@@ -211,9 +213,10 @@ class North_Track:
             "nr_occupied": self.NR_OCCUPIED
         }
 
-        # Writing to a file
-        with open(self.TRACK_STATUS_FILE, "w") as file:
-            yaml.dump(track_status, file, default_flow_style=False)
+        if not self.simulate: #not simulating
+            # Writing to a file
+            with open(self.TRACK_STATUS_FILE, "w") as file:
+                yaml.dump(track_status, file, default_flow_style=False)
 
     #Update the status of the robot from yaml file
     def get_track_status(self):
@@ -248,19 +251,19 @@ class North_Track:
         MAX_IN_SOURCE = len(DOUBLE_SOURCE_Y) #the number of valid WPs that can be stored or have been initialized
 
         if self.NUM_SOURCE > 0 and self.NUM_SOURCE <= MAX_IN_SOURCE and self.NR_OCCUPIED == False: #still have well plates in stack & pipetting area is empty
-            print(f"Getting {self.NUM_SOURCE}th wellplate from source")
+            print(f"Getting {self.get_ordinal(self.NUM_SOURCE)} wellplate from source")
             
             #move to source stack and grab wellplate
             self.open_gripper()
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
-            self.c9.move_axis(7, self.DOUBLE_SOURCE_X, vel=20) #above source
-            self.c9.move_axis(6, DOUBLE_SOURCE_Y[self.NUM_SOURCE-1], vel=15) #down to WP height
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel= self.DEFAULT_Y_SPEED) #up to max height
+            self.c9.move_axis(7, self.DOUBLE_SOURCE_X, vel=self.DEFAULT_X_SPEED) #above source
+            self.c9.move_axis(6, DOUBLE_SOURCE_Y[self.NUM_SOURCE-1], vel=20) #down to WP height (slowed)
             self.close_gripper()
             
             #move up from source stack to "safe" area and move down
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=15) #up to max height
-            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=10) #to "safe" area
-            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=10) #to transfer area #TODO: See if need to height adjust?
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #up to max height
+            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=self.DEFAULT_X_SPEED) #to "safe" area
+            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=20) #to transfer area (slowed)
             
             self.NUM_SOURCE -= 1
             self.save_track_status() #update yaml
@@ -280,7 +283,7 @@ class North_Track:
 
     
     def discard_wellplate(self, wellplate_num=0, move_home_afterwards = True): #double WP stack
-        """Grabs a wellplate (from desginated wellplate stack) and discards it into the waste stack (in the double stack holder)
+        """Grabs a wellplate (from desginated wellplate stack) and discards it into the waste stack (in the double stack holder). ENSURE North Robot is homed!!!
         
         Args:
             `wellplate_num`(int): The number identifying which wellplate stand to discard a wellplate from (0 for the pipetting one) 
@@ -289,22 +292,22 @@ class North_Track:
         MAX_IN_WASTE = len(DOUBLE_WASTE_Y) #the number of valid WPs that can be stored / have been initialized
         
         if self.NUM_WASTE < MAX_IN_WASTE and self.NR_OCCUPIED == True: #can still hold an additional wellplate & pipetting area is occupied
-            print(f"Discarding wellplate as the {self.NUM_WASTE+1}th WP in waste stack.")
+            print(f"Discarding wellplate as the {self.get_ordinal(self.NUM_WASTE+1)} WP in waste stack.")
             
             #move up to max height, then to NR area to grab wellplate
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #up to max height
             self.grab_well_plate_from_nr(wellplate_num) #move to wellplate area to grab wellplate
 
             #cross the cytation -- move down to transfer_Y
-            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=15) #to transfer area 
-            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=15) #to "safe" area
+            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=self.DEFAULT_Y_SPEED) #down to height for passing cytation
+            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=self.DEFAULT_X_SPEED) #to "safe" area
 
             #move up to waste stack and go down to drop off wp
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25) #up to max height
-            self.c9.move_axis(7, self.DOUBLE_WASTE_X, vel=15) #above waste stack
-            self.c9.move_axis(6, DOUBLE_WASTE_Y[self.NUM_WASTE], vel=15)
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #up to max height
+            self.c9.move_axis(7, self.DOUBLE_WASTE_X, vel=self.DEFAULT_X_SPEED) #above waste stack
+            self.c9.move_axis(6, DOUBLE_WASTE_Y[self.NUM_WASTE], vel=20) #down to drop off wellplate (slowed)
             self.open_gripper()
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=25)
+            self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #move back up to max height
 
             self.NUM_WASTE += 1
             self.save_track_status()
@@ -323,6 +326,13 @@ class North_Track:
         if send_slack and not isinstance(self.c9, MagicMock):
             slack_agent.send_slack_message(err_message)
         input("Waiting for user to press enter or quit after error...")
+    
+    def get_ordinal(self,n): #convert n into an ordinal number (ex. 1st, 2nd, 4th)  -- from chatgpt
+        if 10 <= n % 100 <= 20:
+            suffix = 'th'
+        else:
+            suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+        return f"{n}{suffix}"
 
 class North_Powder:
 
@@ -1029,7 +1039,7 @@ class North_Robot:
             if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX and dispense_speed == 11: #Adjust this later
                 dispense_speed = 13 #Use lower dispense speed for smaller tip
 
-            print("Transferring", amount_mL, "mL into well #" + str(dest_wp_num_array[i]))
+            print("Transferring", amount_mL, "mL into well #" + str(dest_wp_num_array[i]) + "of " + well_plate_type)
 
             #Dispense and then wait
             self.pipet_from_location(amount_mL, dispense_speed, height, False)

@@ -1,4 +1,5 @@
 #The purpose of this file is to combine multiple pieces of equipment into intuitive tools
+from shutil import move
 import sys
 sys.path.append("../utoronto_demo")
 from North_Safe import North_Robot
@@ -23,7 +24,7 @@ class Lash_E:
             c9 = NorthC9("A", network_serial="AU06CNCF")
         else:
             from unittest.mock import MagicMock
-            c9 = MagicMock() 
+            c9 = MagicMock()
 
         if initialize_robot:
             self.nr_robot = North_Robot(c9, vial_file,simulate=simulate)
@@ -31,6 +32,10 @@ class Lash_E:
         if initialize_biotek:
             from biotek_new import Biotek_Wrapper
             self.cytation = Biotek_Wrapper(simulate=simulate)
+        
+        if initialize_track:
+            self.nr_track = North_Track(c9, simulate=simulate)
+        
 
         # Photoreactor initialization
         if not self.simulate:
@@ -49,7 +54,7 @@ class Lash_E:
             self.photoreactor = MagicMock()
             self.powder_dispenser = MagicMock()
             self.temp_controller = MagicMock()
-            self.nr_track = MagicMock()
+            #self.nr_track = MagicMock(c9)
 
     def mass_dispense_into_vial(self,vial,mass_mg,channel=0, return_home=True):
         self.nr_robot.move_vial_to_location(vial,'clamp',0)
@@ -101,7 +106,10 @@ class Lash_E:
         self.photoreactor.run_photoreactor(target_rpm,duration,intensity,reactor_num)
         self.nr_robot.return_vial_home(vial_index)
 
-    def grab_new_wellplate(self,dest_wp_position=0):
-        self.nr_track.get_next_WP_from_source()
-        self.nr_track.return_well_plate_to_nr(dest_wp_position)
-        self.nr_track.origin()
+    def grab_new_wellplate(self):
+        self.nr_robot.move_home()
+        self.nr_track.get_new_wellplate(move_home_afterwards=True)
+    
+    def discard_used_wellplate(self):
+        self.nr_robot.move_home()
+        self.nr_track.discard_wellplate(move_home_afterwards=True)
