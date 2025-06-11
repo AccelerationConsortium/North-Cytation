@@ -7,7 +7,7 @@ from Locator import *
 from north import NorthC9
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
-SIMULATE = True
+SIMULATE = False
 
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, initialize_biotek=False, simulate=SIMULATE)
 
@@ -36,5 +36,5 @@ def test_wp_stack(num_wp): #num_wp = number of wellplates to move
         lash_e.grab_new_wellplate()
         lash_e.discard_used_wellplate()
 
-#test_wp_stack(3) #working!
+test_wp_stack(7) #working!
 #test_wp_transfer_and_pipetting() #working!
