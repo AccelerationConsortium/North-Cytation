@@ -4,7 +4,6 @@ sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
 import slack_agent
-import os
 from pathlib import Path
 
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2):

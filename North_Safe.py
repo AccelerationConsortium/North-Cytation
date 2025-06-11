@@ -362,7 +362,7 @@ class North_Powder:
         
         self.c9.move_carousel(0,0)
 
-    def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=False):
+    def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=False, max_tries=20):
         import settings.powder_settings as settings
         start_t = time.perf_counter()
         mg_togo = mg_target
@@ -388,7 +388,7 @@ class North_Powder:
 
         meas_mass = 0
         count = 0
-        while mg_togo > protocol.tol:
+        while mg_togo > protocol.tol and count < max_tries:
             count += 1
 
             self.set_opening(channel,ps.opening_deg)
@@ -689,13 +689,21 @@ class North_Robot:
 
         #Update the status of the robot in memory
         self.save_robot_status()
-
+ 
     #The only actual method where the pump is called to aspirate or dispense
-    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=15, initial_move=True):
-        if initial_move:
-            self.c9.move_z(height, vel=move_speed)
+    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=5, initial_move=True, before_asp=0, after_asp=0, settling_time=0):
+        
+        curr_height = self.c9.counts_to_mm(3, self.c9.get_axis_position(3))
+
         if pump_speed != self.CURRENT_PUMP_SPEED:
             self.c9.set_pump_speed(0, pump_speed)
+
+        if initial_move:
+            self.c9.move_z(height, vel=move_speed)
+        
+        if before_asp > 0:
+            self.c9.aspirate_ml(0,before_asp)
+        
         if aspirate:
             if amount <= 1:
                 try:
@@ -710,6 +718,13 @@ class North_Robot:
             except: #If there's not enough to dispense
                 print("Dispense exceeded limit: Dispensing all liquid")
                 self.c9.move_pump(0,0)
+
+        time.sleep(settling_time)
+
+        self.c9.move_z(curr_height, vel=move_speed)
+
+        if after_asp > 0:
+            self.c9.aspirate_ml(0,after_asp)       
 
     #Default selection of pipet tip... Make extensible in the future
     def select_pipet_tip(self, volume, specified_tip):
@@ -852,7 +867,7 @@ class North_Robot:
         return height
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
-    def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0.02,track_height=True):
+    def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0.02,track_height=True,measure_mass=False):
         """
         Dispenses a specified volume from source_vial_name to dest_vial_name, with optional buffer transfer for accuracy.
 
@@ -872,7 +887,7 @@ class North_Robot:
             tip_type = self.HIGHER_PIPET_ARRAY_INDEX
             max_volume = 0.25
         elif volume >= 0.2 and volume <= 1.00:
-            tip_type = self.LOWER_PIPET_ARRAY_INDEX
+            tip_type = self.LOWER_PIPET_ARRAY_INDEX 
             max_volume = 1.00
         elif volume == 0:
             print("Cannot dispense 0 mL")
@@ -888,10 +903,12 @@ class North_Robot:
         if extra_aspirate > 0:
             self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=False)
         
-        self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense)
+        mass = self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense,measure_weight=measure_mass)
         
         if extra_aspirate > 0:
             self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=move_to_dispense)
+
+        return mass
 
     def select_wellplate_grid(self,well_plate_type):
         if well_plate_type == "96 WELL PLATE":
