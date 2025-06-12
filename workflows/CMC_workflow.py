@@ -148,9 +148,9 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
     
 
 simulate = True
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_file = open(f"../utoronto_demo/logs/experiment_log_{timestamp}_sim{simulate}.txt", "w")
-sys.stdout = sys.stderr = log_file
+# timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+# log_file = open(f"../utoronto_demo/logs/experiment_log_{timestamp}_sim{simulate}.txt", "w")
+# sys.stdout = sys.stderr = log_file
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
@@ -168,7 +168,7 @@ substock_name_list = [f'substock_{i}' for i in range(1, n + 1)] #refers to subst
 
 
 
-EXPERIMENT = "6_pairings"
+EXPERIMENT = "10_surfactants"
 
 #Experiment 1
 if EXPERIMENT == "10_surfactants":
@@ -232,4 +232,4 @@ if lash_e.nr_track.NR_OCCUPIED == True:
     lash_e.discard_used_wellplate() #Discard the wellplate if it is occupied
     print("Workflow complete and wellplate discarded")
 
-log_file.close()
+#log_file.close()
