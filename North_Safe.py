@@ -285,19 +285,39 @@ class North_Track:
         except:
             self.pause_after_error("Issue reading robot status", False)
 
+    def calculate_wp_stack_height(self, num, wp_type, pickup):
+        wp_parameters = {"96 WELL PLATE": {"y-int": 83500, "slope": -6400}, "48 WELL PLATE": {"y-int": 83500, "slope":-9500}}
+        height = wp_parameters[wp_type]["y-int"] + wp_parameters[wp_type]["slope"]*(num-1) 
+        MAX_HEIGHT = 20000 #TODO: need to confirm (seems close to the top)
+
+        #print(f"HEIGHT = {height}")
+
+        if height >= MAX_HEIGHT and height <= wp_parameters[wp_type]["y-int"]: #beneath max height and higher than the lowest source
+            if pickup == True:
+                return height
+            else: #for dropping off
+                if num == 0:
+                    return height #base height is the same
+                else:
+                    return height-500 #drop of slightly higher than drop off
+        else:
+            return -1 #invalid input
+        
+
+
     def get_new_wellplate(self, move_home_afterwards = True): #double WP stack 
         """Get a new wellplate from the source stack (in the double stack holder) and move to north robot pipetting area"""
-        DOUBLE_SOURCE_Y = self.SOURCE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
-        MAX_IN_SOURCE = len(DOUBLE_SOURCE_Y) #the number of valid WPs that can be stored or have been initialized
+        DOUBLE_SOURCE_Y = self.calculate_wp_stack_height(self.NUM_SOURCE, self.CURRENT_WP_TYPE, pickup=True)
+        
 
-        if self.NUM_SOURCE > 0 and self.NUM_SOURCE <= MAX_IN_SOURCE and self.NR_OCCUPIED == False: #still have well plates in stack & pipetting area is empty
-            print(f"Getting {self.get_ordinal(self.NUM_SOURCE)} wellplate from source")
+        if self.NUM_SOURCE > 0 and DOUBLE_SOURCE_Y != -1 and self.NR_OCCUPIED == False: #still have well plates in stack & pipetting area is empty
+            print(f"Getting {self.get_ordinal(self.NUM_SOURCE)} wellplate from source at {DOUBLE_SOURCE_Y}")
             
             #move to source stack and grab wellplate
             self.open_gripper()
             self.c9.move_axis(6, self.MAX_HEIGHT, vel= self.DEFAULT_Y_SPEED) #up to max height
             self.c9.move_axis(7, self.DOUBLE_SOURCE_X, vel=self.DEFAULT_X_SPEED) #above source
-            self.c9.move_axis(6, DOUBLE_SOURCE_Y[self.NUM_SOURCE-1], vel=20) #down to WP height (slowed)
+            self.c9.move_axis(6, DOUBLE_SOURCE_Y, vel=20) #down to WP height (slowed)
             self.close_gripper()
             
             #move up from source stack to "safe" area and move down
@@ -316,8 +336,8 @@ class North_Track:
         else:
             if self.NUM_SOURCE <= 0:
                 self.pause_after_error("Wellplate stack is empty")
-            elif self.NUM_SOURCE > MAX_IN_SOURCE:
-                self.pause_after_error("Stack is overfilled / height is not initialized")
+            elif DOUBLE_SOURCE_Y == -1:
+                self.pause_after_error("Invalid height calculated (too many wellplates in stack)")
             if self.NR_OCCUPIED == True:
                 self.pause_after_error("Cannot get wellplate, NR pipetting area is occupied")
 
@@ -328,11 +348,10 @@ class North_Track:
         Args:
             `wellplate_num`(int): The number identifying which wellplate stand to discard a wellplate from (0 for the pipetting one) 
         """
-        DOUBLE_WASTE_Y = self.WASTE_HEIGHTS_DICT[self.CURRENT_WP_TYPE] 
-        MAX_IN_WASTE = len(DOUBLE_WASTE_Y) #the number of valid WPs that can be stored / have been initialized
+        DOUBLE_WASTE_Y = self.calculate_wp_stack_height(self.NUM_WASTE+1, self.CURRENT_WP_TYPE, pickup=False)
         
-        if self.NUM_WASTE < MAX_IN_WASTE and self.NR_OCCUPIED == True: #can still hold an additional wellplate & pipetting area is occupied
-            print(f"Discarding wellplate as the {self.get_ordinal(self.NUM_WASTE+1)} WP in waste stack.")
+        if DOUBLE_WASTE_Y != -1 and self.NR_OCCUPIED == True: #can still hold an additional wellplate & pipetting area is occupied
+            print(f"Discarding wellplate as the {self.get_ordinal(self.NUM_WASTE+1)} WP in waste stack at height: {DOUBLE_WASTE_Y}")
             
             #move up to max height, then to NR area to grab wellplate
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #up to max height
@@ -345,7 +364,7 @@ class North_Track:
             #move up to waste stack and go down to drop off wp
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #up to max height
             self.c9.move_axis(7, self.DOUBLE_WASTE_X, vel=self.DEFAULT_X_SPEED) #above waste stack
-            self.c9.move_axis(6, DOUBLE_WASTE_Y[self.NUM_WASTE], vel=20) #down to drop off wellplate (slowed)
+            self.c9.move_axis(6, DOUBLE_WASTE_Y, vel=20) #down to drop off wellplate (slowed)
             self.open_gripper()
             self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #move back up to max height
 
@@ -355,7 +374,7 @@ class North_Track:
             if move_home_afterwards: #home after dropping off wellplate into waste stack
                 self.origin()
         else:
-            if self.NUM_WASTE >= MAX_IN_WASTE:
+            if DOUBLE_WASTE_Y == -1:
                 self.pause_after_error("Wellplate stack is too full for discarding another well plate.")
             if self.NR_OCCUPIED == False:
                 self.pause_after_error("Cannot discard wellplate, designated wellplate stand is empty.")
