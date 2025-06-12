@@ -47,8 +47,11 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
 
     # 2. Check the status of the input vials 
     lash_e.nr_robot.check_input_file() #outputs the values in sample_input_vials.csv and user must confirm by typing Enter if everything looks ok to proceed
+    lash_e.nr_track.check_input_file()
 
     lash_e.temp_controller.set_temp(40) # Set the temperature of the heater to 40 degrees Celsius
+
+    lash_e.grab_new_wellplate() #Grab a wellplate from the source tray
 
     # 3. Prepare Source Vial A by adding solid and liquid (Note that in theory priming for the reservoir dispense is needed, but this is not done here)
     lash_e.mass_dispense_into_vial('source_vial_a', 20, return_home=False)
@@ -100,6 +103,8 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     # 12. Measure the wellplate
     MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt" #Cytation protocol to run
     data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices) #Move the wellplate to the cytation, run Quick_Measurement.prt for wells specified in well_indices, and return the wellplate
+
+    lash_e.discard_used_wellplate() #Grab a wellplate from the source tray
 
 if __name__ == "__main__": #This is the main function that runs when the script is executed
     """
