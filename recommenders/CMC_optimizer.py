@@ -23,51 +23,51 @@ def initialize_campaign(bound, random_seed, random_recs=False):
     parameters = [
         NumericalContinuousParameter( #TODO, redefine these bounds
             name = 'SDS',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
             name = 'NaDC',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
             name = 'NaC',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
             name = 'CTAB',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
             name = 'DTAB',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
             name = 'TTAB',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
-            name = 'P1888',
-            bounds=(0, 100),
+            name = 'P188',
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
             name = 'P407',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
             name = 'CAPB',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
             name = 'CHAPS',
-            bounds=(0, 100),
+            bounds=(0.1, 20),
             ),
     ]
 
-    constraints = ContinuousCardinalityConstraint(
-    parameters=["SDS", "NaDC", "NaC", 'CTAB','DTAB','TTAB','P1888','P407','CAPB','CHAPS']
-    min_cardinality=2,  # defaults to 0
-    max_cardinality=2,  # defaults to the number of affected parameters (here: 3)
-)
+    constraints = [ContinuousCardinalityConstraint(
+    parameters=['SDS', 'NaDC', 'NaC', 'CTAB','DTAB','TTAB','P188','P407','CAPB','CHAPS'],
+    min_cardinality=2, 
+    max_cardinality=2,  
+    ) ]
 
     searchspace = SearchSpace.from_product(parameters=parameters, constraints=constraints)
     

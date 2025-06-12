@@ -6,6 +6,8 @@ import pandas as pd
 import slack_agent
 import yaml
 from unittest.mock import MagicMock
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 class North_Track:
 
@@ -71,11 +73,49 @@ class North_Track:
         self.get_track_status() #set NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED from yaml file
         self.reset_after_initialization()
     
-    def check_input_file(self, pause_after_check=True):
+    def check_input_file(self, pause_after_check=True, visualize=True):
         """
         Prints the well plate status values for user to confirm the initial state of your well plates.
         """
         print(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n NR Pipetting area occupied: {self.NR_OCCUPIED}")
+
+        if visualize:
+            fig, ax = plt.subplots(figsize=(8, 6))
+
+            # Constants for drawing
+            plate_width = 2.5
+            plate_height = 0.4
+            spacing = 0.1
+
+            # Draw source stack
+            for i in range(self.NUM_SOURCE):
+                rect = plt.Rectangle((1, i * (plate_height + spacing)), plate_width, plate_height,
+                                    edgecolor='black', facecolor='lightblue')
+                ax.add_patch(rect)
+                ax.text(1 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
+                        self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
+
+            # Draw waste stack
+            for i in range(self.NUM_WASTE):
+                rect = plt.Rectangle((5, i * (plate_height + spacing)), plate_width, plate_height,
+                                    edgecolor='black', facecolor='lightcoral')
+                ax.add_patch(rect)
+                ax.text(5 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
+                        self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
+
+            # Labels for stacks
+            ax.text(1 + plate_width / 2, self.NUM_SOURCE * (plate_height + spacing) + 0.2, "Source Stack",
+                    ha='center', va='bottom', fontsize=10, weight='bold')
+            ax.text(5 + plate_width / 2, self.NUM_WASTE * (plate_height + spacing) + 0.2, "Waste Stack",
+                    ha='center', va='bottom', fontsize=10, weight='bold')
+
+            # Formatting
+            ax.set_xlim(0, 8)
+            ax.set_ylim(0, max(self.NUM_SOURCE, self.NUM_WASTE) * (plate_height + spacing) + 1)
+            ax.axis('off')
+            ax.set_title("-- Please Confirm Wellplate Status --", fontsize=14, weight='bold')
+            plt.tight_layout()
+            plt.show()
 
         if pause_after_check:
             input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
@@ -534,12 +574,70 @@ class North_Robot:
         self.c9.set_pump_speed(1, 15)
 
     #Check the status of the input vial file
-    def check_input_file(self,pause_after_check=True):
+    def check_input_file(self,pause_after_check=True, visualize=True):
         """
         Prints the vial status dataframe for user to confirm the initial state of your vials.
         """
         vial_status = pd.read_csv(self.VIAL_FILE, sep=",")
         print(vial_status)
+
+        if visualize:
+            print("Visualizing...")
+            rack_data = vial_status[vial_status['location'] == 'main_8mL_rack']
+
+            # Generate a full set of location indices (0 to 47)
+            all_indices = set(range(48))
+            present_indices = set(rack_data['location_index'])
+            missing_indices = all_indices - present_indices
+
+            fig, ax = plt.subplots(figsize=(12, 9))
+            ax.set_xlim(-0.5, 5.5)
+            ax.set_ylim(-0.5, 7.5)
+            ax.set_xticks(range(6))
+            ax.set_yticks(range(8))
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+            ax.grid(True)
+
+            # Draw the vials in the dataset
+            for _, row in rack_data.iterrows():
+                index = row['location_index']
+                col = 5 - index // 8
+                #row_pos = index % 8 if col % 2 == 0 else 7 - (index % 8)
+                row_pos = (index % 8)
+
+                # Determine fill color
+                fill_color = 'lightgreen' if row['vial_volume'] > 0 else 'white'
+                circle = patches.Circle((col, row_pos), 0.45, edgecolor='black', facecolor=fill_color)
+                ax.add_patch(circle)
+
+                # Determine cap status
+                if not row['capped']:
+                    cap_status = "uncapped"
+                elif row['cap_type'] == 'open':
+                    cap_status = "open cap"
+                elif row['cap_type'] == 'closed':
+                    cap_status = "closed cap"
+                else:
+                    cap_status = "unknown cap"
+
+                # Add text
+                text = f"{row['vial_name']}\n{row['vial_volume']:.2f} mL\n{cap_status}"
+                ax.text(col, row_pos, text, ha='center', va='center', fontsize=8)
+
+            # Add dotted-line circles for missing vials
+            for index in missing_indices:
+                col = 5 - index // 8
+                row_pos = index % 8 
+                circle = patches.Circle((col, row_pos), 0.45, edgecolor='black', facecolor='none', linestyle='dotted')
+                ax.add_patch(circle)
+
+            ax.set_title("Please Confirm Main Vial Rack")
+            plt.gca().invert_yaxis()
+            plt.tight_layout()
+            plt.show()
+
+
         if pause_after_check:
             input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
