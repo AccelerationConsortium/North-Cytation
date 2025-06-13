@@ -817,19 +817,21 @@ class North_Robot:
         #Update the status of the robot in memory
         self.save_robot_status()
  
-    #The only actual method where the pump is called to aspirate or dispense
-    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=5, initial_move=True, before_asp=0, after_asp=0, settling_time=0):
-        
-        curr_height = self.c9.counts_to_mm(3, self.c9.get_axis_position(3))
+    def aspirate(self, amount, pump_speed, disp_height, asp_height, retract_speed, before_asp_volume=0, after_asp_volume=0, settling_time=0):
+        None
 
+    def dispense(self, amount, pump_speed, disp_height, settling_time):
+        None
+
+
+    #The only actual method where the pump is called to aspirate or dispense
+    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=5, initial_move=True):
+        
         if pump_speed != self.CURRENT_PUMP_SPEED:
             self.c9.set_pump_speed(0, pump_speed)
 
         if initial_move:
             self.c9.move_z(height, vel=move_speed)
-        
-        if before_asp > 0:
-            self.c9.aspirate_ml(0,before_asp)
         
         if aspirate:
             if amount <= 1:
@@ -846,12 +848,6 @@ class North_Robot:
                 print("Dispense exceeded limit: Dispensing all liquid")
                 self.c9.move_pump(0,0)
 
-        time.sleep(settling_time)
-
-        self.c9.move_z(curr_height, vel=move_speed)
-
-        if after_asp > 0:
-            self.c9.aspirate_ml(0,after_asp)       
 
     #Default selection of pipet tip... Make extensible in the future
     def select_pipet_tip(self, volume, specified_tip):
