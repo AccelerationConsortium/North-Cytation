@@ -147,7 +147,7 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         print("Skipping analysis for simulation")
     
 
-simulate = True
+simulate = False
 # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 # log_file = open(f"../utoronto_demo/logs/experiment_log_{timestamp}_sim{simulate}.txt", "w")
 # sys.stdout = sys.stderr = log_file
