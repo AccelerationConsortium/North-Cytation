@@ -9,10 +9,25 @@ from master_usdl_coordinator import Lash_E
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Ilya_Measurement.prt"
-SIMULATE = False
+SIMULATE = True
 REPLICATES = 5
-VOLUMES = [0.02, 0.05, 0.10, 0.15, 0.20]  # In mL
-ARGS = [] #TODO
+VOLUMES = [0.005, 0.01, 0.02, 0.05]  # In mL
+ARGS = [
+    # {
+    #     "aspirate_speed": 8,
+    #     "dispense_speed": 8,
+    #     "wait_time": 0.5,
+    #     "retract_speed": 3,
+    #     "pre_asp_air_vol": 0.01,
+    #     "post_asp_air_vol": 0.01,
+    #     "blowout_vol": 0.005
+    # },
+    {
+        "blowout_vol": 0.1
+    },
+    {}
+]
+
 DENSITY_LIQUID = 0.997  # g/mL
 EXPECTED_MASSES = [v * DENSITY_LIQUID * 1000 for v in VOLUMES]  # in mg
 EXPECTED_ABS = None  # Placeholder if needed later
@@ -44,49 +59,63 @@ def sample_workflow():
             measurement_results_a = []
             start_time = time.time()
 
-            # Method A: No air gap
             for j in range(REPLICATES):
-                lash_e.nr_robot.aspirate_from_vial('liquid_source', volume)
-                mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', volume, measure_weight=True)
+                # Calculate dispense volume if there is pre/post air volume
+                pre_asp_air = args.get("pre_asp_air_vol", 0)
+                post_asp_air = args.get("post_asp_air_vol", 0)
+                dispense_volume = volume + pre_asp_air + post_asp_air
+
+                # Prepare aspirate kwargs
+                aspirate_kwargs = {
+                    "aspirate_speed": args.get("aspirate_speed", 11),
+                    "wait_time": args.get("wait_time", 0),
+                    "retract_speed": args.get("retract_speed", 5),
+                    "pre_asp_air_vol": pre_asp_air,
+                    "post_asp_air_vol": post_asp_air
+                }
+
+                # Prepare dispense kwargs
+                dispense_kwargs = {
+                    "dispense_speed": args.get("dispense_speed", 11),
+                    "wait_time": args.get("wait_time", 0),
+                    "blowout_vol": args.get("blowout_vol", 0),
+                    "measure_weight": True
+                }
+
+                lash_e.nr_robot.aspirate_from_vial('liquid_source', volume, **aspirate_kwargs)
+                mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', dispense_volume, **dispense_kwargs)
+
                 measurement_results_a.append(mass)
                 raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "A", "measured_mass_mg": mass})
 
-        # Method B: With air gap
-        for j in range(REPLICATES):
-            air_vol = 0.020
-            lash_e.nr_robot.aspirate_from_vial('liquid_source', volume, pre_asp_air_vol=air_vol)
-            mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', volume + air_vol, measure_weight=True)
-            measurement_results_b.append(mass)
-            raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "B", "measured_mass_mg": mass})
+            end_time = time.time()
+            time_elapsed = (end_time - start_time) / REPLICATES
+            time_score = 1 / (1 + np.exp((time_elapsed - EXPECTED_TIME[i])))
 
-        end_time = time.time()
-        time_elapsed = (end_time - start_time) / REPLICATES
-        time_score = 1 / (1 + np.exp((time_elapsed - EXPECTED_TIME[i])))
+            mean_a = np.mean(measurement_results_a)
+            std_a = np.std(measurement_results_a)
+            dev_a = (mean_a - EXPECTED_MASSES[i]) / EXPECTED_MASSES[i] * 100
 
-        mean_a = np.mean(measurement_results_a)
-        std_a = np.std(measurement_results_a)
-        dev_a = (mean_a - EXPECTED_MASSES[i]) / EXPECTED_MASSES[i] * 100
+            # Dummy placeholders for Method B for now
+            mean_b, std_b, dev_b = 0, 0, 0
 
-        mean_b = np.mean(measurement_results_b)
-        std_b = np.std(measurement_results_b)
-        dev_b = (mean_b - EXPECTED_MASSES[i]) / EXPECTED_MASSES[i] * 100
+            results_df.loc[len(results_df)] = [
+                volume, mean_a, std_a, dev_a, mean_b, std_b, dev_b, time_elapsed, time_score
+            ]
 
-        results_df.loc[len(results_df)] = [
-            volume, mean_a, std_a, dev_a, mean_b, std_b, dev_b, time_elapsed, time_score
-        ]
-
-        print(f"Volume deposited: {volume} mL with {REPLICATES} replicates")
-        print(f"Measurement type: {method}")
-        print(f"Method A: Mean={mean_a:.2f}, Std={std_a:.2f}, Deviation={dev_a:.2f}%")
-        print(f"Method B: Mean={mean_b:.2f}, Std={std_b:.2f}, Deviation={dev_b:.2f}%")
-        print(f"Elapsed Time: {time_elapsed:.2f} sec/replicate | Time Score: {time_score:.2f}")
-        print("------------------------------")
+            print(f"Volume deposited: {volume} mL with {REPLICATES} replicates")
+            print(f"Measurement type: {method}")
+            print(f"Method A: Mean={mean_a:.2f}, Std={std_a:.2f}, Deviation={dev_a:.2f}%")
+            print(f"Elapsed Time: {time_elapsed:.2f} sec/replicate | Time Score: {time_score:.2f}")
+            print("------------------------------")
 
         # Save results
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        results_df.to_csv(f"../utoronto_demo/output/{timestamp}_summmary.csv", index=False)
-        raw_df = pd.DataFrame(raw_data)
-        raw_df.to_csv( f"../utoronto_demo/output/{timestamp}_raw_data.csv", index=False)
-        print("Results saved to volume_mass_comparison.csv and raw_mass_measurements.csv")
+        if not SIMULATE:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            results_df.to_csv(f"../utoronto_demo/output/{timestamp}_summary.csv", index=False)
+            raw_df = pd.DataFrame(raw_data)
+            raw_df.to_csv(f"../utoronto_demo/output/{timestamp}_raw_data.csv", index=False)
+            print("Results saved.")
+
 
 sample_workflow()
