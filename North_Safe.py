@@ -825,13 +825,13 @@ class North_Robot:
 
 
     #The only actual method where the pump is called to aspirate or dispense
-    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, move_speed=5, initial_move=True):
+    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, initial_move=True):
         
         if pump_speed != self.CURRENT_PUMP_SPEED:
             self.c9.set_pump_speed(0, pump_speed)
 
         if initial_move:
-            self.c9.move_z(height, vel=move_speed)
+            self.c9.move_z(height)
         
         if aspirate:
             if amount <= 1:
