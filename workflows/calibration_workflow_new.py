@@ -33,28 +33,27 @@ def sample_workflow():
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
     lash_e.nr_robot.check_input_file()
 
+    lash_e.nr_robot.move_vial_to_location('measurement_vial', 'clamp', 0)
+
     for i, volume in enumerate(VOLUMES):
         measurement_results_a = []
         measurement_results_b = []
         start_time = time.time()
 
-        if method == "mass":
-            lash_e.nr_robot.move_vial_to_location('measurement_vial', 'clamp', 0)
+        # Method A: No air gap
+        for j in range(REPLICATES):
+            lash_e.nr_robot.aspirate_from_vial('liquid_source', volume)
+            mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', volume, measure_weight=True)
+            measurement_results_a.append(mass)
+            raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "A", "measured_mass_mg": mass})
 
-            # Method A: No air gap
-            for j in range(REPLICATES):
-                lash_e.nr_robot.aspirate_from_vial('liquid_source', volume)
-                mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', volume, measure_weight=True)
-                measurement_results_a.append(mass)
-                raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "A", "measured_mass_mg": mass})
-
-            # Method B: With air gap
-            for j in range(REPLICATES):
-                air_vol = 0.020
-                lash_e.nr_robot.aspirate_from_vial('liquid_source', volume, pre_asp_air_vol=air_vol)
-                mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', volume + air_vol, measure_weight=True)
-                measurement_results_b.append(mass)
-                raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "B", "measured_mass_mg": mass})
+        # Method B: With air gap
+        for j in range(REPLICATES):
+            air_vol = 0.020
+            lash_e.nr_robot.aspirate_from_vial('liquid_source', volume, pre_asp_air_vol=air_vol)
+            mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', volume + air_vol, measure_weight=True)
+            measurement_results_b.append(mass)
+            raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "B", "measured_mass_mg": mass})
 
         end_time = time.time()
         time_elapsed = (end_time - start_time) / REPLICATES
