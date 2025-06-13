@@ -846,7 +846,7 @@ class North_Robot:
             time.sleep(settling_time) #Wait a bit after aspirating
 
 #New dispense function
-    def pipet_dispense(self, amount, settling_time=0):
+    def pipet_dispense(self, amount, settling_time=0, blowout_vol=0,blowout_speed=8):
         
         print(f"Dispensing {amount} mL then waiting {settling_time} s")
       
@@ -858,6 +858,13 @@ class North_Robot:
 
         if not self.simulate:
             time.sleep(settling_time)
+
+        if blowout_vol > 0:
+            self.adjust_pump_speed(0,blowout_speed)
+            self.c9.set_pump_valve(0,self.c9.PUMP_VALVE_LEFT)
+            self.c9.aspirate_ml(0,blowout_vol)
+            self.c9.set_pump_valve(0,self.c9.PUMP_VALVE_RIGHT)
+            self.c9.dispense_ml(0,blowout_vol)
 
     #Default selection of pipet tip... Make extensible in the future
     def select_pipet_tip(self, volume, specified_tip):
@@ -984,8 +991,8 @@ class North_Robot:
         # self.pipet_from_location(amount_mL, aspirate_speed, height, True, initial_move=move_to_aspirate)
 
         #Step 1: Move to above the site and aspirate air if needed
-        self.c9.move_z(disp_height)
         if pre_asp_air_vol > 0:
+            self.c9.move_z(disp_height)
             self.pipet_aspirate(pre_asp_air_vol) 
         
         #Step 2: Move to inside the site and aspirate liquid
@@ -1115,7 +1122,7 @@ class North_Robot:
             self.dispense_from_vial_into_vial(vial_index,vial_index,volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
 
     #Dispense an amount into a vial
-    def dispense_into_vial(self, dest_vial_name,amount_mL,initial_move=True,dispense_speed=11,measure_weight=False,wait_time=0):     
+    def dispense_into_vial(self, dest_vial_name,amount_mL,initial_move=True,dispense_speed=11,measure_weight=False,wait_time=0,blowout_vol=0):     
         
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
@@ -1149,7 +1156,7 @@ class North_Robot:
         #Pipet into the vial
         #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
         self.c9.move_z(height)
-        self.pipet_dispense(amount_mL,wait_time)
+        self.pipet_dispense(amount_mL,wait_time, blowout_vol)
 
         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
@@ -1164,7 +1171,7 @@ class North_Robot:
         return measured_mass
 
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=11,wait_time=1,well_plate_type="96 WELL PLATE"):
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=11,wait_time=1,well_plate_type="96 WELL PLATE",blowout_vol=0):
         """
         Dispenses specified amounts into a series of wells in a well plate.
         Args:
@@ -1205,7 +1212,7 @@ class North_Robot:
             print("Transferring", amount_mL, "mL into well #" + str(dest_wp_num_array[i]) + " of " + well_plate_type)
 
             #Dispense and then wait
-            self.pipet_dispense(amount_mL,wait_time)
+            self.pipet_dispense(amount_mL,wait_time,blowout_vol)
 
             #OAM Notes: Different techniques. drop and slow could both be just longer wait_time              
             if dispense_type.lower() == "drop-touch":

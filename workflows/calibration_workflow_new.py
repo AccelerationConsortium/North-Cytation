@@ -9,7 +9,7 @@ from master_usdl_coordinator import Lash_E
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Ilya_Measurement.prt"
-SIMULATE = True
+SIMULATE = False
 REPLICATES = 5
 VOLUMES = [0.02, 0.05, 0.10, 0.15, 0.20]  # In mL
 ARGS = [] #TODO
@@ -51,20 +51,36 @@ def sample_workflow():
                 measurement_results_a.append(mass)
                 raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "A", "measured_mass_mg": mass})
 
-            end_time = time.time()
-            time_elapsed = (end_time - start_time) / REPLICATES
+        # Method B: With air gap
+        for j in range(REPLICATES):
+            air_vol = 0.020
+            lash_e.nr_robot.aspirate_from_vial('liquid_source', volume, pre_asp_air_vol=air_vol)
+            mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', volume + air_vol, measure_weight=True)
+            measurement_results_b.append(mass)
+            raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "B", "measured_mass_mg": mass})
 
-            mean_a = np.mean(measurement_results_a)
-            std_a = np.std(measurement_results_a)
-            dev_a = (mean_a - EXPECTED_MASSES[i]) / EXPECTED_MASSES[i] * 100
+        end_time = time.time()
+        time_elapsed = (end_time - start_time) / REPLICATES
+        time_score = 1 / (1 + np.exp((time_elapsed - EXPECTED_TIME[i])))
 
-            results_df.loc[len(results_df)] = [volume, mean_a, std_a, dev_a, time_elapsed]
+        mean_a = np.mean(measurement_results_a)
+        std_a = np.std(measurement_results_a)
+        dev_a = (mean_a - EXPECTED_MASSES[i]) / EXPECTED_MASSES[i] * 100
 
-            print(f"Volume deposited: {volume} mL with {REPLICATES} replicates")
-            print(f"Measurement type: {method}")
-            print(f"Method A: Mean={mean_a:.2f}, Std={std_a:.2f}, Deviation={dev_a:.2f}%")
-            print(f"Elapsed Time: {time_elapsed:.2f} sec/replicate")
-            print("------------------------------")
+        mean_b = np.mean(measurement_results_b)
+        std_b = np.std(measurement_results_b)
+        dev_b = (mean_b - EXPECTED_MASSES[i]) / EXPECTED_MASSES[i] * 100
+
+        results_df.loc[len(results_df)] = [
+            volume, mean_a, std_a, dev_a, mean_b, std_b, dev_b, time_elapsed, time_score
+        ]
+
+        print(f"Volume deposited: {volume} mL with {REPLICATES} replicates")
+        print(f"Measurement type: {method}")
+        print(f"Method A: Mean={mean_a:.2f}, Std={std_a:.2f}, Deviation={dev_a:.2f}%")
+        print(f"Method B: Mean={mean_b:.2f}, Std={std_b:.2f}, Deviation={dev_b:.2f}%")
+        print(f"Elapsed Time: {time_elapsed:.2f} sec/replicate | Time Score: {time_score:.2f}")
+        print("------------------------------")
 
         # Save results
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
