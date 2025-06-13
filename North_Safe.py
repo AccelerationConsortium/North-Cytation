@@ -610,10 +610,10 @@ class North_Robot:
             missing_indices = all_indices - present_indices
 
             fig, ax = plt.subplots(figsize=(12, 9))
-            ax.set_xlim(-0.5, 5.5)
-            ax.set_ylim(-0.5, 7.5)
-            ax.set_xticks(range(6))
-            ax.set_yticks(range(8))
+            ax.set_xlim(-0.5, 7.5) #from 5.5
+            ax.set_ylim(-0.5, 5.5) #edited from 7.5
+            ax.set_xticks(range(8)) 
+            ax.set_yticks(range(6))
             ax.set_xticklabels([])
             ax.set_yticklabels([])
             ax.grid(True)
@@ -621,9 +621,11 @@ class North_Robot:
             # Draw the vials in the dataset
             for _, row in rack_data.iterrows():
                 index = row['location_index']
-                col = 5 - index // 8
+                #col = 5 - index // 8 #old
+                col = index//6
                 #row_pos = index % 8 if col % 2 == 0 else 7 - (index % 8)
-                row_pos = (index % 8)
+                #row_pos = (index % 8)
+                row_pos = index%6
 
                 # Determine fill color
                 fill_color = 'lightgreen' if row['vial_volume'] > 0 else 'white'
@@ -646,12 +648,17 @@ class North_Robot:
 
             # Add dotted-line circles for missing vials
             for index in missing_indices:
-                col = 5 - index // 8
-                row_pos = index % 8 
+                #col = 5 - index // 8
+                #row_pos = index % 8 
+                col = index//6
+                #row_pos = index % 8 if col % 2 == 0 else 7 - (index % 8)
+                #row_pos = (index % 8)
+                row_pos = index%6
                 circle = patches.Circle((col, row_pos), 0.45, edgecolor='black', facecolor='none', linestyle='dotted')
                 ax.add_patch(circle)
 
             ax.set_title("Please Confirm Main Vial Rack")
+            plt.gca().invert_xaxis()
             plt.gca().invert_yaxis()
             plt.tight_layout()
             plt.show()
