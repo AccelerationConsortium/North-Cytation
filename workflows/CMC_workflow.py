@@ -69,8 +69,8 @@ def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
             lash_e.nr_robot.return_vial_home(surfactant)
 
     lash_e.nr_robot.dispense_into_vial_from_reservoir(1, substock_vial, sub_stock_vols['water']/1000)
-    #lash_e.nr_robot.mix_vial(target_vial_index,0.9, repeats=5)
-    lash_e.nr_robot.vortex_vial(substock_vial,10,50) #Mix the surfactants
+    lash_e.nr_robot.mix_vial(substock_vial,0.9, repeats=5)
+    #lash_e.nr_robot.vortex_vial(substock_vial,10,50) #Mix the surfactants
     lash_e.nr_robot.remove_pipet()
 
 def fill_water_vial():
@@ -95,7 +95,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp
 
     lash_e.nr_robot.move_vial_to_location(substock_vial_index,'main_8mL_rack', 43) #Safe location
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,['pyrene_DMSO'],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1,low_volume_cutoff = 0.04, buffer_vol = 0,pipet_back_and_forth=True)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,['pyrene_DMSO'],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=2,asp_cycles=1,low_volume_cutoff = 0.04, buffer_vol = 0,pipet_back_and_forth=True,blowout_vol=0.1)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,['water'],well_plate_type="48 WELL PLATE",dispense_speed=11)
 
@@ -147,7 +147,7 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         print("Skipping analysis for simulation")
     
 
-simulate = False
+simulate = True
 # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 # log_file = open(f"../utoronto_demo/logs/experiment_log_{timestamp}_sim{simulate}.txt", "w")
 # sys.stdout = sys.stderr = log_file

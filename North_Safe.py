@@ -74,20 +74,15 @@ class North_Track:
         self.reset_after_initialization()
     
     def check_input_file(self, pause_after_check=True, visualize=True):
-        """
-        Prints the well plate status values for user to confirm the initial state of your well plates.
-        """
         print(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n NR Pipetting area occupied: {self.NR_OCCUPIED}")
 
         if visualize:
-            fig, ax = plt.subplots(figsize=(8, 6))
+            fig, ax = plt.subplots(figsize=(10, 6))
 
-            # Constants for drawing
             plate_width = 2.5
             plate_height = 0.4
             spacing = 0.1
 
-            # Draw source stack
             for i in range(self.NUM_SOURCE):
                 rect = plt.Rectangle((1, i * (plate_height + spacing)), plate_width, plate_height,
                                     edgecolor='black', facecolor='lightblue')
@@ -95,7 +90,6 @@ class North_Track:
                 ax.text(1 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
                         self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
 
-            # Draw waste stack
             for i in range(self.NUM_WASTE):
                 rect = plt.Rectangle((5, i * (plate_height + spacing)), plate_width, plate_height,
                                     edgecolor='black', facecolor='lightcoral')
@@ -103,14 +97,21 @@ class North_Track:
                 ax.text(5 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
                         self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
 
-            # Labels for stacks
+            if self.NR_OCCUPIED:
+                rect = plt.Rectangle((9, 0), plate_width, plate_height,
+                                    edgecolor='black', facecolor='khaki')
+                ax.add_patch(rect)
+                ax.text(9 + plate_width / 2, plate_height / 2,
+                        "Occupied", ha='center', va='center', fontsize=8)
+                ax.text(9 + plate_width / 2, plate_height + 0.2, "NR Pipette Area",
+                        ha='center', va='bottom', fontsize=10, weight='bold')
+
             ax.text(1 + plate_width / 2, self.NUM_SOURCE * (plate_height + spacing) + 0.2, "Source Stack",
                     ha='center', va='bottom', fontsize=10, weight='bold')
             ax.text(5 + plate_width / 2, self.NUM_WASTE * (plate_height + spacing) + 0.2, "Waste Stack",
                     ha='center', va='bottom', fontsize=10, weight='bold')
 
-            # Formatting
-            ax.set_xlim(0, 8)
+            ax.set_xlim(0, 12)
             ax.set_ylim(0, max(self.NUM_SOURCE, self.NUM_WASTE) * (plate_height + spacing) + 1)
             ax.axis('off')
             ax.set_title("-- Please Confirm Wellplate Status --", fontsize=14, weight='bold')
