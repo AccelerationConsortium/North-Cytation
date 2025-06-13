@@ -3,8 +3,8 @@ _Last updated: Jun 10, 2025_
 
 Necessary files for each workflow:
 1. A vial input `.csv` file (path is inputted by the user)
-2. `robot_status.yaml` -- stores current state of the robot arm and of the deck
-3. `track_status.yaml` -- stores the state of wellplates that are moved by the stack
+2. `robot_status.yaml` -- stores current state of the robot arm and the deck
+3. `track_status.yaml` -- stores the state of wellplates that are moved by the gripper
 
 Many of the issues we have encountered when running workflows were related to poor formatting of status files, so here is a guide for formatting your status files to prevent these errors.
 Although it sounds obvious, remember to **save your files** after updating them before running workflows.
@@ -29,14 +29,18 @@ This file should be formatted with these column names:
 - home_location_index: the index within the home_location to return to
   **the difference between location and home_location is that the location will be updated in real time while the vial is moved, while home_location does not. If the starting location of the vial is already considered the "home_location", ensure both are the same before running the workflow
 
+You can use `North_Robot.check_input_file()` for a display of the inputted values in the terminal and in a GUI to confirm before running the workflow.
+
 ### track_status.yaml
-Please ensure that this file is accurate before starting workflows as the wrong positioning of the track can break wellplates.
+Please ensure that this file is accurate before starting workflows as the wrong movements of the track can break wellplates.
 
 The file contains the following inputs:
 - nr_occupied: True if the wellplate stand for the north robot to pipet into is occupied, False if not
-- num_in_source: the number of wellplates currently in the source wellplate stack
-- num_in_waste: the number of wellplates currently in the waste wellplate stack
+- num_in_source: the number of wellplates in the source wellplate stack
+- num_in_waste: the number of wellplates in the waste wellplate stack
 - wellplate_type: "48 WELL PLATE" or "96 WELL PLATE"
+
+You can use `North_Track.check_input_file()` for a display of the inputted values in the terminal and in a GUI to confirm before running the workflow.
 
 ### robot_status.yaml 
 This file typically does not need to be edited except for when refilling pipet tips (run `refill_tips.py`)
