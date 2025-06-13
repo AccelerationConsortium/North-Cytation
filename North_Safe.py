@@ -1194,7 +1194,7 @@ class North_Robot:
             if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX and dispense_speed == 11: #Adjust this later
                 dispense_speed = 13 #Use lower dispense speed for smaller tip
 
-            print("Transferring", amount_mL, "mL into well #" + str(dest_wp_num_array[i]) + "of " + well_plate_type)
+            print("Transferring", amount_mL, "mL into well #" + str(dest_wp_num_array[i]) + " of " + well_plate_type)
 
             #Dispense and then wait
             self.pipet_dispense(amount_mL,wait_time)
