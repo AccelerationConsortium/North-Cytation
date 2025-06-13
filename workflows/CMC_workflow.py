@@ -95,7 +95,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp
 
     lash_e.nr_robot.move_vial_to_location(substock_vial_index,'main_8mL_rack', 43) #Safe location
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,['pyrene_DMSO'],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=5,asp_cycles=1,low_volume_cutoff = 0.04, buffer_vol = 0,pipet_back_and_forth=True)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,['pyrene_DMSO'],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=1,asp_cycles=1,low_volume_cutoff = 0.04, buffer_vol = 0,pipet_back_and_forth=True)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,['water'],well_plate_type="48 WELL PLATE",dispense_speed=11)
 
@@ -106,7 +106,6 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp
         lash_e.nr_robot.mix_well_in_wellplate(well,volume=0.3,well_plate_type="48 WELL PLATE")
     lash_e.nr_robot.remove_pipet()
     
-
 def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellplate_data):
     
     lash_e.nr_robot.prime_reservoir_line(1,'water',0.5)
@@ -130,7 +129,7 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         #Take the resulting_data and analyze it to determine the CMC
         concentrations = wellplate_data['concentration']
         ratio_data = resulting_data['ratio'].values #This is determined from the resulting_data
-        CMC,r2 = analyzer.CMC_plot(ratio_data,concentrations)
+        A1, A2, x0, dx, r_squared = analyzer.CMC_plot(ratio_data,concentrations)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items()) + ".txt"
@@ -139,10 +138,10 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         wellplate_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}_wellplate_data_{details}.csv', index=False)
         resulting_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}_output_data_{details}.csv', index=False)
         with open(f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}_wellplate_data_results_{details}.txt', "w") as f:
-            f.write(f"CMC: {CMC}, r2: {r2}")
+            f.write(f"CMC: {x0}, r2: {r_squared}")
 
-        print("CMC (mMol): ", CMC)
-        print("R-squared: ", r2)
+        print("CMC (mMol): ", x0)
+        print("R-squared: ", r_squared)
     else:
         print("Skipping analysis for simulation")
     
