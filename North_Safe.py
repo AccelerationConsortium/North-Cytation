@@ -824,37 +824,39 @@ class North_Robot:
         #Update the status of the robot in memory
         self.save_robot_status()
  
-    def aspirate(self, amount, pump_speed, disp_height, asp_height, retract_speed, before_asp_volume=0, after_asp_volume=0, settling_time=0):
-        None
-
-    def dispense(self, amount, pump_speed, disp_height, settling_time):
-        None
-
-
-    #The only actual method where the pump is called to aspirate or dispense
-    def pipet_from_location(self, amount, pump_speed, height, aspirate=True, initial_move=True):
-        
+    def adjust_pump_speed(self, pump, pump_speed):
         if pump_speed != self.CURRENT_PUMP_SPEED:
-            self.c9.set_pump_speed(0, pump_speed)
+            self.c9.set_pump_speed(pump, pump_speed)
 
-        if initial_move:
-            self.c9.move_z(height)
+#New aspirate function
+    def pipet_aspirate(self, amount, settling_time=0):
         
-        if aspirate:
-            if amount <= 1:
-                try:
-                    self.c9.aspirate_ml(0,amount)
-                except:
-                    self.pause_after_error("Cannot aspirate. Likely a pump position issue", True)
-            else:
-                self.pause_after_error("Cannot aspirate more than 1 mL", True)
-        else:
-            try:
-                self.c9.dispense_ml(0,amount)
-            except: #If there's not enough to dispense
-                print("Dispense exceeded limit: Dispensing all liquid")
-                self.c9.move_pump(0,0)
+        print(f"Aspirating {amount} mL then waiting {settling_time} s")
 
+        if amount <= 1:
+            try:
+                self.c9.aspirate_ml(0,amount)
+            except:
+                self.pause_after_error("Cannot aspirate. Likely a pump position issue", True)
+        else:
+            self.pause_after_error("Cannot aspirate more than 1 mL", True)
+
+        if not self.simulate:
+            time.sleep(settling_time) #Wait a bit after aspirating
+
+#New dispense function
+    def pipet_dispense(self, amount, settling_time=0):
+        
+        print(f"Dispensing {amount} mL then waiting {settling_time} s")
+      
+        try:
+            self.c9.dispense_ml(0,amount)
+        except: #If there's not enough to dispense
+            print("Dispense exceeded limit: Dispensing all liquid")
+            self.c9.move_pump(0,0)
+
+        if not self.simulate:
+            time.sleep(settling_time)
 
     #Default selection of pipet tip... Make extensible in the future
     def select_pipet_tip(self, volume, specified_tip):
@@ -894,10 +896,31 @@ class North_Robot:
             return vial_idx
         return vial
 
-    #Pipet from a vial into another vial
-    #Use calibration (not implemented) is if you want to adjust the volume based off a known calibration
-    #Aspirate conditioning is an alternate way to aspirate (up and down some number of cycles)
-    def aspirate_from_vial(self, source_vial_name, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,wait_time=0,aspirate_speed=11,asp_disp_cycles=0):
+    #Get adjust the aspiration height based on how much is there
+    def get_aspirate_height(self, source_vial_num, amount_mL, track_height=True, buffer=1.0):
+
+        #Get required information
+        base_height = self.get_min_pipetting_height(source_vial_num)
+        vial_type = self.get_vial_info(source_vial_num, 'vial_type')
+        source_vial_volume = self.get_vial_info(source_vial_num,'vial_volume')
+
+        #The vial type affects the depth for aspiration. 
+        if vial_type=='8_mL':
+            height_volume_constant=6
+        elif vial_type=='20_mL':
+            height_volume_constant=2
+        else:
+            height_volume_constant=0
+
+        volume_adjusted_height = base_height + (height_volume_constant*(source_vial_volume - amount_mL - buffer)) #How low should we go?
+
+        if track_height and volume_adjusted_height > base_height: #If we are adjusting for height and have a height above the base (can't go lower)
+            return volume_adjusted_height
+        else:
+            return base_height #Default is the lowest position
+
+    #Aspirate from a vial using the pipet tool
+    def aspirate_from_vial(self, source_vial_name, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,wait_time=0,aspirate_speed=11,asp_disp_cycles=0,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0):
         """
         Aspirate amount_ml from a source vial.
         Args:
@@ -923,7 +946,8 @@ class North_Robot:
         #Check for an issue with the pipet and the specified amount, pause and send slack message if so
         self.check_if_aspiration_volume_unacceptable(amount_mL) 
 
-        #Get current volume
+        #Get current volume and vial location
+        location = self.get_vial_location(source_vial_num,True)
         source_vial_volume = self.get_vial_info(source_vial_num,'vial_volume')
 
         #Reject aspiration if the volume is not high enough
@@ -932,48 +956,45 @@ class North_Robot:
 
         print("Pipetting from vial " + self.get_vial_info(source_vial_num,'vial_name') + ", amount: "  + str(round(amount_mL,3)) + " mL")
 
-        #Where are we pipetting from?  
-        location = self.get_vial_location(source_vial_num,True)
-        base_height = self.get_min_pipetting_height(source_vial_num)
-        vial_type = self.get_vial_info(source_vial_num, 'vial_type')
+        #Adjust the height based on the volume, then pipet type
+        if move_to_aspirate:
+            asp_height = self.get_aspirate_height(source_vial_name, amount_mL, track_height)
+            asp_height = self.adjust_height_based_on_pipet_held(asp_height)
 
-        #The vial type affects the depth for aspiration. TODO: There should be a data structure for vial types that holds this. 
-        if vial_type=='8_mL':
-            height_volume_constant=6
-        elif vial_type=='20_mL':
-            height_volume_constant=2
+            #The dispense height is right above the location
+            disp_height = self.c9.counts_to_mm(3, location[3]) 
+            disp_height = self.adjust_height_based_on_pipet_held(disp_height)
         else:
-            height_volume_constant=0
+            asp_height = disp_height = self.c9.counts_to_mm(3, self.c9.get_axis_position(3)) #IF we aren't moving, everything stays the same
 
-        #Adjust height based on the amount that is in the vial
-        if track_height:
-            height = self.get_aspirate_height(source_vial_volume,amount_mL,base_height,height_volume_constant)
-        else:
-            height = base_height #Go to the minimum height
-  
-        #Adjust for different pipet type
-        height = self.adjust_height_based_on_pipet_held(height)
-        #print("Aspirate height: ", height)
+        self.adjust_pump_speed(0,aspirate_speed) #Adjust the pump speed if needed
 
-        #TODO: Check to make sure we aren't going too low for the small pipet tips only. Ideally we wouldn't need this. 
-        if self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX:
-            MIN_SMALLPIP_HEIGHT_VIAL_RACK = 60.70 #At  ~3 mL
-            MIN_SMALLPIP_HEIGHT_VIAL_RACK_LEFT_EDGE = 47.80 #At ~0.5 mL
-            MIN_SMALLPIP_HEIGHT_CLAMP = 92.03 #At ~0 mL
-            MIN_SMALLPIP_HEIGHT_PR = 64.28 #At ~ 2 mL
-
-        #Move to the correct location and pipet
+        #Move to the correct location in xy
         if move_to_aspirate:
             self.c9.goto_xy_safe(location,vel=15)
         
-        #If you want to have extra aspirate and dispense steps. TODO: This isn't going to work right now as is. 
-        for i in range (0, asp_disp_cycles):
-            self.pipet_from_location(amount_mL, aspirate_speed, height, True,initial_move=move_to_aspirate)
-            self.pipet_from_location(amount_mL, aspirate_speed, height, False,initial_move=False)
-            move_to_aspirate = False
+        # #If you want to have extra aspirate and dispense steps. TODO: This isn't going to work right now as is. 
+        # for i in range (0, asp_disp_cycles):
+        #     self.pipet_from_location(amount_mL, aspirate_speed, height, True,initial_move=move_to_aspirate)
+        #     self.pipet_from_location(amount_mL, aspirate_speed, height, False,initial_move=False)
+        #     move_to_aspirate = False
         
         #Main aspiration
-        self.pipet_from_location(amount_mL, aspirate_speed, height, True, initial_move=move_to_aspirate)
+        # self.pipet_from_location(amount_mL, aspirate_speed, height, True, initial_move=move_to_aspirate)
+
+        #Step 1: Move to above the site and aspirate air if needed
+        self.c9.move_z(disp_height)
+        if pre_asp_air_vol > 0:
+            self.pipet_aspirate(pre_asp_air_vol) 
+        
+        #Step 2: Move to inside the site and aspirate liquid
+        self.c9.move_z(asp_height)
+        self.pipet_aspirate(amount_mL,wait_time) #Main aspiration of liquid plus wait
+        
+        #Step 3: Retract and aspirate air if needed
+        self.c9.move_z(disp_height, vel=retract_speed) #Retract with a specific speed
+        if post_asp_air_vol > 0:
+            self.pipet_aspirate(post_asp_air_vol) 
 
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
@@ -997,6 +1018,7 @@ class North_Robot:
         return height
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
+    #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
     def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0.02,track_height=True,measure_mass=False):
         """
         Dispenses a specified volume from source_vial_name to dest_vial_name, with optional buffer transfer for accuracy.
@@ -1051,7 +1073,7 @@ class North_Robot:
         return location
 
     #TODO add error checks and safeguards
-    def pipet_from_wellplate(self,wp_index,volume,aspirate_speed=10,aspirate=True,move_to_aspirate=True,stay_low=False,well_plate_type="96 WELL PLATE"):
+    def pipet_from_wellplate(self,wp_index,volume,aspirate_speed=10,aspirate=True,move_to_aspirate=True,well_plate_type="96 WELL PLATE"):
         location = self.select_wellplate_grid(well_plate_type)[wp_index]
         
         height = self.c9.counts_to_mm(3, location[3])
@@ -1066,13 +1088,14 @@ class North_Robot:
             height = height - height_adjust #Go to the bottom of the well
 
         if move_to_aspirate:
-                if not stay_low:
-                    self.c9.goto_xy_safe(location, vel=15)
-                else:
-                    self.move_rel_z(height_adjust)
-                    self.c9.goto(location, vel=15)
+            self.c9.goto_xy_safe(location, vel=15)
+            self.c9.move_z(height)
 
-        self.pipet_from_location(volume, aspirate_speed, height, aspirate = aspirate, initial_move=move_to_aspirate)
+        self.adjust_pump_speed(0, aspirate_speed)
+        if aspirate:
+            self.pipet_aspirate(volume)
+        else:
+            self.pipet_dispense(volume)
 
     #Mix the well
     def mix_well_in_wellplate(self,wp_index,volume,repeats=3,well_plate_type="96 WELL PLATE"):
@@ -1109,6 +1132,8 @@ class North_Robot:
         if measure_weight and dest_vial_clamped:
             initial_mass = self.c9.read_steady_scale()
 
+        self.adjust_pump_speed(0,dispense_speed) #Adjust pump speed if needed
+
         #Where is the vial?
         location= self.get_vial_location(dest_vial_num,True)
         
@@ -1121,11 +1146,9 @@ class North_Robot:
             self.c9.goto_xy_safe(location, vel=15)   
         
         #Pipet into the vial
-        self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
-
-        if wait_time > 0:
-            if not self.simulate:
-                time.sleep(wait_time)
+        #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
+        self.c9.move_z(height)
+        self.pipet_dispense(amount_mL,wait_time)
 
         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
@@ -1147,6 +1170,7 @@ class North_Robot:
             `dest_wp_num_array` (list or range): Array of well indices to dispense into (e.g., [0, 1, 2])
             `amount_mL_array` (list[float]): Array of amounts (in mL) to dispense into each well (e.g., [0.1, 0.2, 0.3])
         """
+        self.adjust_pump_speed(0,dispense_speed) #Adjust the pump speed if needed
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
             try:
@@ -1165,6 +1189,7 @@ class North_Robot:
 
             if first_dispense:
                 self.c9.goto_xy_safe(location, vel=15)
+                self.c9.move_z(height)
                 first_dispense = False
                 
             else:
@@ -1179,9 +1204,7 @@ class North_Robot:
             print("Transferring", amount_mL, "mL into well #" + str(dest_wp_num_array[i]) + " of " + well_plate_type)
 
             #Dispense and then wait
-            self.pipet_from_location(amount_mL, dispense_speed, height, False)
-            if not self.simulate:
-                time.sleep(wait_time)
+            self.pipet_dispense(amount_mL,wait_time)
 
             #OAM Notes: Different techniques. drop and slow could both be just longer wait_time              
             if dispense_type.lower() == "drop-touch":
@@ -1604,18 +1627,7 @@ class North_Robot:
         pipetable = False
         pipetable = self.get_vial_info(vial_index,'capped') == False or self.get_vial_info(vial_index,'cap_type') == "open"
         return pipetable
-
-    #Get adjust the aspiration height based on how much is there
-    def get_aspirate_height(self, amount_vial, amount_to_withdraw, base_height, height_volume_constant=6, buffer=1.0):      
-        target_height = base_height + (height_volume_constant*(amount_vial - amount_to_withdraw - buffer))
-        if target_height > base_height:
-            return target_height
-        else:
-            return base_height
-  
-    def dispense_solid_into_vial(target_vial_index, dispense_mass): #Can work on this
-        return None
-
+ 
     #Translate in the x direction
     def move_rel_x(self, x_distance:float):
         """
