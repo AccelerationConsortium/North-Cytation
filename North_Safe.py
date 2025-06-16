@@ -929,7 +929,7 @@ class North_Robot:
             return base_height #Default is the lowest position
 
     #Aspirate from a vial using the pipet tool
-    def aspirate_from_vial(self, source_vial_name, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,wait_time=0,aspirate_speed=11,asp_disp_cycles=0,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0):
+    def aspirate_from_vial(self, source_vial_name, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,wait_time=1,aspirate_speed=11,asp_disp_cycles=0,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0):
         """
         Aspirate amount_ml from a source vial.
         Args:
@@ -1008,11 +1008,6 @@ class North_Robot:
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
 
-        #Wait if required
-        if wait_time > 0:
-            if not self.simulate:
-                time.sleep(wait_time)
-        
         #Update the new volume in memory
         self.PIPET_FLUID_VIAL_INDEX = int(source_vial_num)
         self.PIPET_FLUID_VOLUME += amount_mL

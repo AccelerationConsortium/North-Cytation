@@ -1,143 +1,126 @@
 import sys
-import pandas as pd
-import numpy as np
-import time
-from datetime import datetime
-
 sys.path.append("../utoronto_demo")
+import numpy as np
+import pandas as pd
+from datetime import datetime
 from master_usdl_coordinator import Lash_E
+import time
+from ax.core.observation import ObservationFeatures
+import recommenders.pipeting_optimizer_honegumi as recommender  # adjust if needed
 
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
-MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Ilya_Measurement.prt"
+# --- Config ---
+SEED = 5
+NUM_INITIAL_RECS = 4
+NUM_SUGGESTIONS_PER_CYCLE = 2
+NUM_CYCLES = 3
 SIMULATE = True
 REPLICATES = 5
-VOLUMES = [0.005, 0.01, 0.02, 0.05]  # In mL
-ARGS = [
-    # {
-    #     "aspirate_speed": 8,
-    #     "dispense_speed": 8,
-    #     "wait_time": 0.5,
-    #     "retract_speed": 3,
-    #     "pre_asp_air_vol": 0.01,
-    #     "post_asp_air_vol": 0.01,
-    #     "blowout_vol": 0.005
-    # },
-    {
-        "blowout_vol": 0.1
-    },
-    {}
-]
-
+VOLUMES = [0.005, 0.01, 0.02, 0.05]
 DENSITY_LIQUID = 0.997  # g/mL
-EXPECTED_MASSES = [v * DENSITY_LIQUID * 1000 for v in VOLUMES]  # in mg
-EXPECTED_ABS = None  # Placeholder if needed later
-EXPECTED_TIME = [4] * len(VOLUMES)  # Example expected time per replicate in seconds
-method = "mass"
-well_count = 0
+EXPECTED_MASSES = [v * DENSITY_LIQUID * 1000 for v in VOLUMES]
+EXPECTED_TIME = [4] * len(VOLUMES)
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
 
-# Initialize a dataframe to collect results
-results_df = pd.DataFrame(columns=[
-    "volume_mL", "mean_mass_a", "std_mass_a", "deviation_a",
-    "mean_mass_b", "std_mass_b", "deviation_b",
-    "time_per_replicate", "time_score"
-])
+def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
+    # Simulate a short delay to mimic a fast experiment
+    time.sleep(0.2)
 
-raw_data = []  # To store raw measurements
+    # Simulated objective: deviation increases slightly if aspirate_speed is high
+    deviation = np.abs(params["aspirate_speed"] - 15) + np.random.normal(0, 0.5)
 
-def pipet_and_measure(args): #Take a single argument
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
-    lash_e.nr_robot.check_input_file()
-    lash_e.nr_robot.move_vial_to_location('measurement_vial', 'clamp', 0)
+    # Simulated variability: slightly better at moderate wait times
+    variability = np.abs(params["wait_time"] - 30) * 0.1 + np.random.normal(0, 0.3)
 
-    for args in ARGS:
-        print("Conditions: ", args)
+    # Simulated time score: longer wait_time, longer time per replicate
+    time_score = (params["wait_time"] / expected_time - 1) * 100 + np.random.normal(0, 5)
 
-        for i, volume in enumerate(VOLUMES):
-            print("Volume being measured (mL): ", volume)
-
-            measurement_results_a = []
-            start_time = time.time()
-
-            for j in range(REPLICATES):
-                # Calculate dispense volume if there is pre/post air volume
-                pre_asp_air = args.get("pre_asp_air_vol", 0)
-                post_asp_air = args.get("post_asp_air_vol", 0)
-                dispense_volume = volume + pre_asp_air + post_asp_air
-
-                # Prepare aspirate kwargs
-                aspirate_kwargs = {
-                    "aspirate_speed": args.get("aspirate_speed", 11),
-                    "wait_time": args.get("wait_time", 0),
-                    "retract_speed": args.get("retract_speed", 5),
-                    "pre_asp_air_vol": pre_asp_air,
-                    "post_asp_air_vol": post_asp_air
-                }
-
-                # Prepare dispense kwargs
-                dispense_kwargs = {
-                    "dispense_speed": args.get("dispense_speed", 11),
-                    "wait_time": args.get("wait_time", 0),
-                    "blowout_vol": args.get("blowout_vol", 0),
-                    "measure_weight": True
-                }
-
-                lash_e.nr_robot.aspirate_from_vial('liquid_source', volume, **aspirate_kwargs)
-                mass = lash_e.nr_robot.dispense_into_vial('measurement_vial', dispense_volume, **dispense_kwargs)
-
-                measurement_results_a.append(mass)
-                raw_data.append({"volume_mL": volume, "replicate": j+1, "method": "A", "measured_mass_mg": mass})
-
-            end_time = time.time()
-            time_elapsed = (end_time - start_time) / REPLICATES
-            time_score = ( time_elapsed - EXPECTED_TIME[i] ) / EXPECTED_TIME[i] * 100 #May not be the best kind of score
-
-            mean_a = np.mean(measurement_results_a)
-            std_a = np.std(measurement_results_a)
-            dev_a = (mean_a - EXPECTED_MASSES[i]) / EXPECTED_MASSES[i] * 100
-
-            # Dummy placeholders for Method B for now
-            mean_b, std_b, dev_b = 0, 0, 0
-
-            results_df.loc[len(results_df)] = [
-                volume, mean_a, std_a, dev_a, mean_b, std_b, dev_b, time_elapsed, time_score
-            ]
-
-            print(f"Volume deposited: {volume} mL with {REPLICATES} replicates")
-            print(f"Measurement type: {method}")
-            print(f"Method A: Mean={mean_a:.2f}, Std={std_a:.2f}, Deviation={dev_a:.2f}%")
-            print(f"Elapsed Time: {time_elapsed:.2f} sec/replicate | Time Score: {time_score:.2f}")
-            print("------------------------------")
-
-    return results_df
-
-#Create workflow
-NUM_CYCLES = 3
-SEED = 5
-NUM_SUGGESTIONS_PER_CYCLE = 5
-
-#Step 1: Define initial model and suggestions
-model = create_model()
-initial_suggestions = get_initial_suggestions()
-
-#Step 2: Get initial data
-for suggested_parameters in initial_suggestions:
-    results = pipet_and_measure(suggested_parameters)
-    #Add the new results to the model data
-
-#Step 3: Iterate
-for i in range (0, NUM_CYCLES):
-    next_suggestions = get_suggestions()
-
-    for suggested_parameters in next_suggestions:
-        results = pipet_and_measure(suggested_parameters)
-        #Add the new results to the model data
-
-#Step 4: Save Data
-if not SIMULATE:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_df.to_csv(f"../utoronto_demo/output/{timestamp}_summary.csv", index=False)
-    raw_df = pd.DataFrame(raw_data)
-    raw_df.to_csv(f"../utoronto_demo/output/{timestamp}_raw_data.csv", index=False)
-    print("Results saved.")
+    return {
+        "deviation": deviation,
+        "variability": variability,
+        "time": time_score,
+    }
 
 
+def pipet_and_measure(volume, params, expected_mass, expected_time):
+    pre_air = params.get("pre_asp_air_vol", 0)
+    post_air = params.get("post_asp_air_vol", 0)
+    disp_vol = volume + pre_air + post_air
+
+    aspirate_kwargs = {
+        "aspirate_speed": params["aspirate_speed"],
+        "wait_time": params["wait_time"],
+        "retract_speed": params["retract_speed"],
+        "pre_asp_air_vol": pre_air,
+        "post_asp_air_vol": post_air,
+    }
+
+    dispense_kwargs = {
+        "dispense_speed": params["aspirate_speed"],
+        "wait_time": params["wait_time"],
+        "blowout_vol": params["blowout_vol"],
+        "measure_weight": True,
+    }
+
+    masses = []
+    start = datetime.now().timestamp()
+    for _ in range(REPLICATES):
+        lash_e.nr_robot.aspirate_from_vial("liquid_source", volume, **aspirate_kwargs)
+        mass = lash_e.nr_robot.dispense_into_vial("measurement_vial", disp_vol, **dispense_kwargs)
+        masses.append(mass)
+    end = datetime.now().timestamp()
+
+    mean_mass = np.mean(masses)
+    std_mass = np.std(masses)
+    deviation = (mean_mass - expected_mass) / expected_mass * 100
+    time_score = ((end - start) / REPLICATES - expected_time) / expected_time * 100
+
+    return {
+        "deviation": deviation,
+        "variability": std_mass,
+        "time": time_score,
+    }
+
+
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
+lash_e.nr_robot.check_input_file()
+lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
+
+# Run optimization
+ax_client = recommender.create_model(SEED, NUM_INITIAL_RECS, NUM_SUGGESTIONS_PER_CYCLE)
+all_results = []
+
+# Prime each volume with at least 2 Sobol trials
+for volume in VOLUMES:
+    expected_mass = volume * DENSITY_LIQUID * 1000
+    expected_time = 4
+    for _ in range(2):
+        params, trial_index = ax_client.get_next_trial(fixed_features=ObservationFeatures({"volume": volume}))
+        result = pipet_and_measure(volume, params, expected_mass, expected_time)
+        ax_client.complete_trial(trial_index=trial_index, raw_data=result)
+        result.update(params)
+        result["volume"] = volume
+        result["trial_index"] = trial_index
+        all_results.append(result)
+
+# Continue with main optimization loop
+for i, volume in enumerate(VOLUMES):
+    expected_mass = EXPECTED_MASSES[i]
+    expected_time = EXPECTED_TIME[i]
+
+    for _ in range(TRIALS_PER_VOLUME):
+        suggestions = recommender.get_suggestions(ax_client, volume, n=1)
+        for params, trial_index in suggestions:
+            results = pipet_and_measure(volume, params, expected_mass, expected_time)
+            recommender.add_result(ax_client, trial_index, results)
+            results.update(params)
+            results["volume"] = volume
+            results["trial_index"] = trial_index
+            all_results.append(results)
+
+# Save results
+results_df = pd.DataFrame(all_results)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+results_df.to_csv(f"experiment_summary_{timestamp}.csv", index=False)
+print("Saved results to:", f"experiment_summary_{timestamp}.csv")
+
+lash_e.nr_robot.return_vial_home('measurement_vial')
