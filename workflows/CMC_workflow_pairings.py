@@ -142,6 +142,8 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
 
         print("CMC (mMol): ", x0)
         print("R-squared: ", r_squared)
+
+        return x0
     else:
         print("Skipping analysis for simulation")
     
@@ -165,28 +167,50 @@ item_to_index = {item: i for i, item in enumerate(surfactants)}# Create a mappin
 n = len(surfactants)  
 substock_name_list = [f'substock_{i}' for i in range(1, n + 1)] #refers to substock solutions
 
-#Experiment 1
-# Generate one-hot encoded vectors
-one_hot_vectors = []
-for item in surfactants:
-    vector = [0] * len(surfactants)
-    vector[item_to_index[item]] = 1
-    one_hot_vectors.append(vector)
 
-ratios = one_hot_vectors
+pairings_and_ratios = [
+(['SDS', 'NaDC'], [0.7, 0.3]),
+(['SDS', 'NaDC'], [0.3, 0.7]),
+(['NaC', 'CTAB'], [0.6, 0.4]),
+(['NaC', 'CTAB'], [0.4, 0.6]),
+(['P188', 'P407'], [0.5, 0.5]),
+(['DTAB', 'CHAPS'], [0.8, 0.2]),]
+padded_ratio_vectors = []
+pairing_labels = []
+
+for (pair, ratios) in pairings_and_ratios:
+    ratio_vector = [0.0] * len(surfactants)
+    for surf, ratio in zip(pair, ratios):
+        idx = item_to_index[surf]
+        ratio_vector[idx] = ratio
+    padded_ratio_vectors.append(ratio_vector)
+    pairing_labels.append(f"{pair[0]}-{ratios[0]:.1f}_{pair[1]}-{ratios[1]:.1f}")
+
+ratios = padded_ratio_vectors
 
 for i in range (0, len(ratios)):
     ratio = ratios[i]
     substock_mixture_index = substock_name_list[i]
-    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, sub_stock_volume=6000)
 
+    #Rough CMC
+    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, sub_stock_volume=6000,rough_screen=True)
     sub_stock_vols = experiment['surfactant_sub_stock_vols']
     wellplate_data = experiment['df']
     samples_per_assay = wellplate_data.shape[0]
 
     #Execute the sample workflow.
-    sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data)
+    cmc_rough = sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data)
     starting_wp_index+=samples_per_assay
+
+    #Refined CMC
+    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, sub_stock_volume=6000,rough_screen=False,estimated_cmc=cmc_rough)
+    sub_stock_vols = experiment['surfactant_sub_stock_vols']
+    wellplate_data = experiment['df']
+    samples_per_assay = wellplate_data.shape[0]
+
+    cmc_refined = sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data)
+    starting_wp_index+=samples_per_assay
+
 
     #Check to see if we need a new well_plate
     if starting_wp_index >= 48:

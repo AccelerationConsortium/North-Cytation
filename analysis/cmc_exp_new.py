@@ -3,8 +3,28 @@
 import numpy as np
 import pandas as pd
 
-# Flexible versions of surfactant_substock and generate_exp to handle arbitrary number of surfactants
 
+def rough_generate_cmc_concentrations(estimate_cmc, number_of_points=12 ,scale="log"): # low/high in mM
+
+    low = estimate_cmc / (50**0.5)
+    high = estimate_cmc * (50**0.5)
+
+    if scale == "log":
+        exponent_low = np.round(np.log10(low), 3)
+        exponent_high = np.round(np.log10(high), 3)
+        concentrations = np.round(np.logspace(exponent_low, exponent_high, number_of_points), 3)
+    
+    elif scale == "linear":
+        concentrations = np.round(np.linspace(low, high, number_of_points), 3)
+
+    print(f"CMC estimate: ")
+    print(estimate_cmc)
+    print()
+    print(f"Generated concentrations (rough): ")
+    print(concentrations)
+    return concentrations.tolist()
+
+# Flexible versions of surfactant_substock and generate_exp to handle arbitrary number of surfactants
 def surfactant_substock_flexible(cmc_concs, list_of_surfactants, list_of_ratios,
                                  probe_volume, sub_stock_volume, CMC_sample_volume, stock_concs):
     max_cmc_conc = max(cmc_concs)
@@ -82,7 +102,7 @@ def generate_cmc_concentrations(cmc):
 
 
 def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
-                          sub_stock_volume=6000, CMC_sample_volume=1000):
+                          sub_stock_volume=6000, CMC_sample_volume=1000, rough_screen=False, estimated_CMC=None):
 
     surfactant_library = {
         "SDS": {"stock_conc": 50}, "NaDC": {"stock_conc": 25}, "NaC": {"stock_conc": 50},
@@ -99,8 +119,15 @@ def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
         raise ValueError("Sum of surfactant ratios must be 1.")
 
     stock_concs = [surfactant_library[s]['stock_conc'] for s in active_surfactants]
-    estimated_CMC = CMC_estimate(active_surfactants, active_ratios)
-    cmc_concs = generate_cmc_concentrations(estimated_CMC)
+    
+    if estimated_CMC is None:
+        estimated_CMC = CMC_estimate(active_surfactants, active_ratios)
+
+    if not rough_screen:
+        cmc_concs = generate_cmc_concentrations(estimated_CMC)
+    else:
+        cmc_concs = rough_generate_cmc_concentrations(estimated_CMC)
+
 
     sub_stock_concentration, sub_stock_vol = surfactant_substock_flexible(
         cmc_concs=cmc_concs,

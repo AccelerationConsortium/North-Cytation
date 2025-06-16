@@ -44,10 +44,9 @@ results_df = pd.DataFrame(columns=[
 
 raw_data = []  # To store raw measurements
 
-def sample_workflow():
+def pipet_and_measure(args): #Take a single argument
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
     lash_e.nr_robot.check_input_file()
-
     lash_e.nr_robot.move_vial_to_location('measurement_vial', 'clamp', 0)
 
     for args in ARGS:
@@ -109,13 +108,36 @@ def sample_workflow():
             print(f"Elapsed Time: {time_elapsed:.2f} sec/replicate | Time Score: {time_score:.2f}")
             print("------------------------------")
 
-        # Save results
-        if not SIMULATE:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            results_df.to_csv(f"../utoronto_demo/output/{timestamp}_summary.csv", index=False)
-            raw_df = pd.DataFrame(raw_data)
-            raw_df.to_csv(f"../utoronto_demo/output/{timestamp}_raw_data.csv", index=False)
-            print("Results saved.")
+    return results_df
+
+#Create workflow
+NUM_CYCLES = 3
+SEED = 5
+NUM_SUGGESTIONS_PER_CYCLE = 5
+
+#Step 1: Define initial model and suggestions
+model = create_model()
+initial_suggestions = get_initial_suggestions()
+
+#Step 2: Get initial data
+for suggested_parameters in initial_suggestions:
+    results = pipet_and_measure(suggested_parameters)
+    #Add the new results to the model data
+
+#Step 3: Iterate
+for i in range (0, NUM_CYCLES):
+    next_suggestions = get_suggestions()
+
+    for suggested_parameters in next_suggestions:
+        results = pipet_and_measure(suggested_parameters)
+        #Add the new results to the model data
+
+#Step 4: Save Data
+if not SIMULATE:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_df.to_csv(f"../utoronto_demo/output/{timestamp}_summary.csv", index=False)
+    raw_df = pd.DataFrame(raw_data)
+    raw_df.to_csv(f"../utoronto_demo/output/{timestamp}_raw_data.csv", index=False)
+    print("Results saved.")
 
 
-sample_workflow()
