@@ -22,9 +22,6 @@ ARGS = [
     #     "post_asp_air_vol": 0.01,
     #     "blowout_vol": 0.005
     # },
-    {
-        "blowout_vol": 0.05
-    },
     {}
 ]
 
@@ -37,9 +34,8 @@ well_count = 0
 
 # Initialize a dataframe to collect results
 results_df = pd.DataFrame(columns=[
-    "volume_mL", "mean_mass_a", "std_mass_a", "deviation_a",
-    "mean_mass_b", "std_mass_b", "deviation_b",
-    "time_per_replicate", "time_score"
+    "volume_mL", 
+    "time"
 ])
 
 raw_data = []  # To store raw measurements

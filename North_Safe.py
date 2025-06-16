@@ -860,6 +860,7 @@ class North_Robot:
             time.sleep(settling_time)
 
         if blowout_vol > 0:
+            print(f"Blowing out {blowout_vol} mL at speed {blowout_speed}")
             self.adjust_pump_speed(0,blowout_speed)
             self.c9.set_pump_valve(0,self.c9.PUMP_VALVE_LEFT)
             self.c9.aspirate_ml(0,blowout_vol)
@@ -883,7 +884,7 @@ class North_Robot:
     def check_if_aspiration_volume_unacceptable(self,amount_mL):
         error_check_list = []
         error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>0.25,False,"Can't pipet more than 0.25 mL from small pipet"])
-        error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL<0.01,False,"Can't pipet less than 10 uL from small pipet"])
+        #error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL<0.01,False,"Can't pipet less than 10 uL from small pipet"])
         error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL>1.00,False,"Can't pipet more than 1.00 mL from large pipet"])
         error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL<0.025,False,"Can't pipet less than 25 uL from large pipet"])
         return self.check_for_errors(error_check_list,True) #Return True if issue
