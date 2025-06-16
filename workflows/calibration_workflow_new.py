@@ -11,7 +11,7 @@ INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Ilya_Measurement.prt"
 SIMULATE = False
 REPLICATES = 5
-VOLUMES = [0.005, 0.01, 0.02, 0.03, 0.05]  # In mL
+VOLUMES =[0.5, 0.75] #[0.025, 0.05, 0.1, 0.2] #[0.005, 0.01, 0.02, 0.03, 0.05]  # In mL #TODO: run 0.5 and 0.75 in different run & switch to big tip!
 ARGS = [
     # {
     #     "aspirate_speed": 8,
@@ -22,9 +22,9 @@ ARGS = [
     #     "post_asp_air_vol": 0.01,
     #     "blowout_vol": 0.005
     # },
-    {
-        "blowout_vol": 0.05
-    },
+    # {
+    #     "blowout_vol": 0.05
+    # },
     {}
 ]
 
@@ -50,6 +50,8 @@ def sample_workflow():
     lash_e.nr_robot.check_input_file()
 
     lash_e.nr_robot.move_vial_to_location('measurement_vial', 'clamp', 0)
+
+    lash_e.nr_robot.get_pipet(lash_e.nr_robot.LOWER_PIPET_ARRAY_INDEX) #get large pipet tip
 
     for args in ARGS:
         print("Conditions: ", args)
@@ -119,6 +121,7 @@ def sample_workflow():
             print("Results saved.")
     
     lash_e.nr_robot.remove_pipet()
+    lash_e.nr_robot.return_vial_home('measurement_vial')
     lash_e.nr_robot.move_home()
 
 
