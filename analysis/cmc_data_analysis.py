@@ -7,7 +7,7 @@ from scipy.optimize import curve_fit
 def boltzmann(x, A1, A2, x0, dx):
     return A2 + (A1 - A2) / (1 + np.exp((x - x0) / dx))
 
-def CMC_plot(i1_i3_ratio, conc):
+def CMC_plot(i1_i3_ratio, conc, file_name):
     # Initial guess for parameters [A1, A2, x0, dx]
     p0 = [max(i1_i3_ratio), min(i1_i3_ratio), (max(conc) - min(conc))/2, (max(conc) - min(conc)) / 5]
 
@@ -38,7 +38,9 @@ def CMC_plot(i1_i3_ratio, conc):
     plt.title('CMC Determination using Boltzmann Fit')
     plt.legend()
     plt.grid()
-    plt.show()
+    #plt.show()
+    plt.savefig(file_name)
+#TODO: Save the plot or use realtime plot
 
     # Output the computed CMC values and R-squared
     print(f'Estimated CMC: {x0:.2f} mM')

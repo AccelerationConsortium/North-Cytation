@@ -929,7 +929,7 @@ class North_Robot:
             return base_height #Default is the lowest position
 
     #Aspirate from a vial using the pipet tool
-    def aspirate_from_vial(self, source_vial_name, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,wait_time=1,aspirate_speed=11,asp_disp_cycles=0,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0):
+    def aspirate_from_vial(self, source_vial_name, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,wait_time=1,aspirate_speed=11,asp_disp_cycles=0,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0,move_up=True):
         """
         Aspirate amount_ml from a source vial.
         Args:
@@ -1001,7 +1001,8 @@ class North_Robot:
         self.pipet_aspirate(amount_mL,wait_time) #Main aspiration of liquid plus wait
         
         #Step 3: Retract and aspirate air if needed
-        self.c9.move_z(disp_height, vel=retract_speed) #Retract with a specific speed
+        if move_up:
+            self.c9.move_z(disp_height, vel=retract_speed) #Retract with a specific speed
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol) 
 
@@ -1112,7 +1113,7 @@ class North_Robot:
     #Mix in a vial
     def mix_vial(self,vial_name,volume,repeats=3):
         vial_index= self.normalize_vial_index(vial_name)
-        self.aspirate_from_vial(vial_index,volume,3)
+        self.aspirate_from_vial(vial_index,volume,3,move_up=False,track_height=False)
         self.dispense_into_vial(vial_index,volume,initial_move=False)
         for i in range (1,repeats):
             self.dispense_from_vial_into_vial(vial_index,vial_index,volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
@@ -1151,7 +1152,8 @@ class North_Robot:
         
         #Pipet into the vial
         #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
-        self.c9.move_z(height)
+        if initial_move:
+            self.c9.move_z(height)
         self.pipet_dispense(amount_mL,wait_time, blowout_vol)
 
         #Track the added volume in the dataframe
