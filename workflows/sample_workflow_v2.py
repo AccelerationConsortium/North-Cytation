@@ -43,7 +43,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     Note: If you set simulate=True, you can run your code without the robot, photoreactor, or cytation to see if there are any errors.
     """
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_t8=True,initialize_p2=True,simulate=False ) # Initialize the Lash_E class with the input vial status file
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_t8=True,initialize_p2=True,simulate=False) # Initialize the Lash_E class with the input vial status file
 
     # 2. Check the status of the input vials 
     lash_e.nr_robot.check_input_file() #outputs the values in sample_input_vials.csv and user must confirm by typing Enter if everything looks ok to proceed
@@ -51,6 +51,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
 
     lash_e.temp_controller.set_temp(40) # Set the temperature of the heater to 40 degrees Celsius
 
+    time.sleep(15)
     lash_e.grab_new_wellplate() #Grab a wellplate from the source tray
 
     # 3. Prepare Source Vial A by adding solid and liquid (Note that in theory priming for the reservoir dispense is needed, but this is not done here)
