@@ -11,7 +11,7 @@ obj1_name = "deviation"
 obj2_name = "variability"
 obj3_name = "time"
 
-def create_model(seed, num_initial_recs, batch_size):
+def create_model(seed, num_initial_recs, volumes):
 
     gs = GenerationStrategy(
         steps=[
@@ -19,14 +19,14 @@ def create_model(seed, num_initial_recs, batch_size):
                 model=Models.SOBOL,
                 num_trials=num_initial_recs,
                 min_trials_observed=num_initial_recs,
-                max_parallelism=num_initial_recs,
+                max_parallelism=1,
                 model_kwargs={"seed": seed},
                 model_gen_kwargs={"deduplicate": True},
             ),
             GenerationStep(
                 model=Models.BOTORCH_MODULAR,
                 num_trials=-1,
-                max_parallelism=batch_size,
+                max_parallelism=1,
                 model_kwargs={"transforms": Specified_Task_ST_MTGP_trans},
             ),
         ]
@@ -45,10 +45,10 @@ def create_model(seed, num_initial_recs, batch_size):
             {
                 "name": "volume",
                 "type": "choice",
-                "values": [0.005, 0.01, 0.02, 0.05],
+                "values": volumes,
                 "is_ordered": True,
                 "is_task": True,
-                "target_value": 0.005,
+                "target_value":volumes[0],
                 "value_type": "float",
                 "sort_values": True,
             },
@@ -59,7 +59,7 @@ def create_model(seed, num_initial_recs, batch_size):
             obj3_name: ObjectiveProperties(minimize=True, threshold=200),
         },
         parameter_constraints=[
-            "pre_asp_air_vol + post_asp_air_vol <= 0.995"
+            f"pre_asp_air_vol + post_asp_air_vol <= {1.0-max(volumes)}"
         ],
     )
 
@@ -75,4 +75,9 @@ def get_suggestions(ax_client, volume, n=1):
     return suggestions
 
 def add_result(ax_client, trial_index, results):
-    ax_client.complete_trial(trial_index=trial_index, raw_data=results)
+    data = {
+        "deviation": (results["deviation"], None),
+        "variability": (results["variability"], None),
+        "time": (results["time"], None),
+    }
+    ax_client.complete_trial(trial_index=trial_index, raw_data=data)

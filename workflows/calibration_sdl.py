@@ -1,3 +1,5 @@
+# calibration_sdl.py
+
 import sys
 sys.path.append("../utoronto_demo")
 import numpy as np
@@ -7,18 +9,20 @@ from master_usdl_coordinator import Lash_E
 import time
 from ax.core.observation import ObservationFeatures
 import recommenders.pipeting_optimizer_honegumi as recommender  # adjust if needed
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # --- Config ---
 SEED = 5
-NUM_INITIAL_RECS = 4
-NUM_SUGGESTIONS_PER_CYCLE = 2
-NUM_CYCLES = 3
+SOBOL_CYCLES_PER_VOLUME = 2
+BAYES_CYCLES_PER_VOLUME = 1
 SIMULATE = True
 REPLICATES = 5
-VOLUMES = [0.005, 0.01, 0.02, 0.05]
+#VOLUMES = [0.01,0.02,0.05,0.1]
+VOLUMES = [0.01,0.02,0.05]
 DENSITY_LIQUID = 0.997  # g/mL
-EXPECTED_MASSES = [v * DENSITY_LIQUID * 1000 for v in VOLUMES]
-EXPECTED_TIME = [4] * len(VOLUMES)
+EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
+EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
 
 def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
@@ -34,12 +38,15 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     # Simulated time score: longer wait_time, longer time per replicate
     time_score = (params["wait_time"] / expected_time - 1) * 100 + np.random.normal(0, 5)
 
-    return {
+    results = {
         "deviation": deviation,
         "variability": variability,
         "time": time_score,
     }
 
+    print (results)
+
+    return results
 
 def pipet_and_measure(volume, params, expected_mass, expected_time):
     pre_air = params.get("pre_asp_air_vol", 0)
@@ -86,16 +93,21 @@ lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
 
 # Run optimization
-ax_client = recommender.create_model(SEED, NUM_INITIAL_RECS, NUM_SUGGESTIONS_PER_CYCLE)
+ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES)
 all_results = []
 
 # Prime each volume with at least 2 Sobol trials
-for volume in VOLUMES:
-    expected_mass = volume * DENSITY_LIQUID * 1000
-    expected_time = 4
-    for _ in range(2):
+for i,volume in enumerate(VOLUMES):
+    expected_mass = EXPECTED_MASSES[i]
+    expected_time = EXPECTED_TIME[i]
+    for _ in range(SOBOL_CYCLES_PER_VOLUME):
+        print(f"[INFO] Requesting SOBOL trial for volume {volume}...")
         params, trial_index = ax_client.get_next_trial(fixed_features=ObservationFeatures({"volume": volume}))
-        result = pipet_and_measure(volume, params, expected_mass, expected_time)
+        print(f"[TRIAL {trial_index}] Parameters: {params}")
+        if not SIMULATE:
+            result = pipet_and_measure(volume, params, expected_mass, expected_time)
+        else:
+            result = pipet_and_measure_simulated(volume, params, expected_mass, expected_time)
         ax_client.complete_trial(trial_index=trial_index, raw_data=result)
         result.update(params)
         result["volume"] = volume
@@ -107,10 +119,15 @@ for i, volume in enumerate(VOLUMES):
     expected_mass = EXPECTED_MASSES[i]
     expected_time = EXPECTED_TIME[i]
 
-    for _ in range(TRIALS_PER_VOLUME):
+    for _ in range(BAYES_CYCLES_PER_VOLUME):
+        print(f"[INFO] Requesting BAYESIAN trial for volume {volume}...")
         suggestions = recommender.get_suggestions(ax_client, volume, n=1)
         for params, trial_index in suggestions:
-            results = pipet_and_measure(volume, params, expected_mass, expected_time)
+            print(f"[TRIAL {trial_index}] Parameters: {params}")
+            if not SIMULATE:
+                results = pipet_and_measure(volume, params, expected_mass, expected_time)
+            else:
+                results = pipet_and_measure_simulated(volume, params, expected_mass, expected_time)
             recommender.add_result(ax_client, trial_index, results)
             results.update(params)
             results["volume"] = volume
@@ -118,9 +135,42 @@ for i, volume in enumerate(VOLUMES):
             all_results.append(results)
 
 # Save results
+# Clean up any (value, None) tuples in results
+for res in all_results:
+    for key in ["deviation", "variability", "time"]:
+        val = res[key]
+        if isinstance(val, tuple):
+            res[key] = val[0]  # Extract the numeric part
 results_df = pd.DataFrame(all_results)
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-results_df.to_csv(f"experiment_summary_{timestamp}.csv", index=False)
-print("Saved results to:", f"experiment_summary_{timestamp}.csv")
+
+#TODO: Add a proper save path for this data
+
+print(results_df)
+if not SIMULATE:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_df.to_csv(f"experiment_summary_{timestamp}.csv", index=False)
+    print("Saved results to:", f"experiment_summary_{timestamp}.csv")
 
 lash_e.nr_robot.return_vial_home('measurement_vial')
+
+# --- Analysis: Parameter vs Outcome Plots ---
+outcomes = ["deviation", "variability", "time"]
+param_cols = [
+    "aspirate_speed",
+    "wait_time",
+    "retract_speed",
+    "pre_asp_air_vol",
+    "post_asp_air_vol",
+    "blowout_vol",
+]
+
+for outcome in outcomes:
+    for param in param_cols:
+        plt.figure(figsize=(6, 4))
+        sns.scatterplot(data=results_df, x=param, y=outcome, hue="volume", palette="viridis")
+        plt.title(f"{outcome} vs {param}")
+        plt.tight_layout()
+        plt.savefig(f"param_effect_{param}_on_{outcome}.png")
+        plt.close()
+
+print("Saved parameter vs outcome plots.")
