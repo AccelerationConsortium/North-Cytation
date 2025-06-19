@@ -36,7 +36,7 @@ def create_model(seed, num_initial_recs, volumes):
 
     ax_client.create_experiment(
         parameters=[
-            {"name": "aspirate_speed", "type": "range", "bounds": [5.0, 30.0]},
+            {"name": "aspirate_speed", "type": "range", "bounds": [5, 30]},
             {"name": "wait_time", "type": "range", "bounds": [0.5, 30.0]},
             {"name": "retract_speed", "type": "range", "bounds": [1.0, 15.0]},
             {"name": "pre_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
@@ -56,7 +56,7 @@ def create_model(seed, num_initial_recs, volumes):
         objectives={
             obj1_name: ObjectiveProperties(minimize=True, threshold=30),
             obj2_name: ObjectiveProperties(minimize=True, threshold=5),
-            obj3_name: ObjectiveProperties(minimize=True, threshold=200),
+            obj3_name: ObjectiveProperties(minimize=True, threshold=500),
         },
         parameter_constraints=[
             f"pre_asp_air_vol + post_asp_air_vol <= {1.0-max(volumes)}"

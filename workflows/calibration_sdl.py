@@ -16,11 +16,11 @@ import os
 # --- Config ---
 SEED = 5
 SOBOL_CYCLES_PER_VOLUME = 2
-BAYES_CYCLES_PER_VOLUME = 1
-SIMULATE = True
-REPLICATES = 5
+BAYES_CYCLES_PER_VOLUME = 5
+SIMULATE = False
+REPLICATES = 3
 #VOLUMES = [0.01,0.02,0.05,0.1]
-VOLUMES = [0.01,0.02,0.05]
+VOLUMES = [0.10,0.05,0.02,0.01]
 DENSITY_LIQUID = 0.997  # g/mL
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
 EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
@@ -70,17 +70,32 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
     }
 
     masses = []
-    start = datetime.now().timestamp()
-    for _ in range(REPLICATES):
+    start = time.time()
+    for replicate_idx in range(REPLICATES):
+        replicate_start = datetime.now().isoformat()
         lash_e.nr_robot.aspirate_from_vial("liquid_source", volume, **aspirate_kwargs)
         mass = lash_e.nr_robot.dispense_into_vial("measurement_vial", disp_vol, **dispense_kwargs)
+        replicate_end = datetime.now().isoformat()
+        print("Mass measured: ", mass)
         masses.append(mass)
-    end = datetime.now().timestamp()
+
+        raw_entry = {
+            "volume": volume,
+            "replicate": replicate_idx,
+            "mass": mass,
+            "start_time": replicate_start,
+            "end_time": replicate_end,
+            **params,
+        }
+        raw_measurements.append(raw_entry)
+    end = time.time()
 
     if not SIMULATE:
         mean_mass = np.mean(masses)
-        std_mass = np.std(masses)
-        deviation = (mean_mass - expected_mass) / expected_mass * 100
+        print("Average mass: ", mean_mass)
+        print("Average time per replicat (s): ", (end - start) / REPLICATES)
+        std_mass = np.std(masses) * 1000
+        deviation = np.abs((mean_mass - expected_mass) / expected_mass * 100)
         time_score = ((end - start) / REPLICATES - expected_time) / expected_time * 100
 
         return {
@@ -99,6 +114,7 @@ lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
 # Run optimization
 ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES)
 all_results = []
+raw_measurements = [] 
 
 # Prime each volume with at least 2 Sobol trials
 for i,volume in enumerate(VOLUMES):
@@ -113,6 +129,7 @@ for i,volume in enumerate(VOLUMES):
         result.update(params)
         result["volume"] = volume
         result["trial_index"] = trial_index
+        result["strategy"] = "SOBOL"
         all_results.append(result)
 
 # Continue with main optimization loop
@@ -130,6 +147,7 @@ for i, volume in enumerate(VOLUMES):
             results.update(params)
             results["volume"] = volume
             results["trial_index"] = trial_index
+            results["strategy"] = "BAYESIAN"
             all_results.append(results)
 
 # Save results
@@ -143,6 +161,7 @@ results_df = pd.DataFrame(all_results)
 
 lash_e.nr_robot.remove_pipet()
 lash_e.nr_robot.return_vial_home('measurement_vial')
+lash_e.nr_robot.move_home()
 
 print(results_df)
 
@@ -175,3 +194,53 @@ if not SIMULATE:
             plt.close()
 
     print("Saved parameter vs outcome plots.")
+
+    # --- Retrieve and display best parameters per volume ---
+print("\nBest parameters per volume:")
+
+# --- Save Best Parameters Per Volume ---
+best_results = []
+
+for volume in VOLUMES:
+    try:
+        best_parameters, values = ax_client.get_best_parameters(
+            observation_features=ObservationFeatures({"volume": volume})
+        )
+
+        result_entry = {
+            "volume": volume,
+            **best_parameters,
+            **{f"{k}_objective": v for k, v in values.items()},
+        }
+        best_results.append(result_entry)
+
+        print(f"\n📏 Best for volume {volume} mL")
+        for k, v in best_parameters.items():
+            print(f"  {k}: {v}")
+        for obj, val in values.items():
+            print(f"  {obj}: {val}")
+
+    except Exception as e:
+        print(f"❌ Could not get best parameters for volume {volume}: {e}")
+
+if best_results:
+    best_df = pd.DataFrame(best_results)
+    best_csv_path = os.path.join(save_dir, "best_parameters_by_volume.csv")
+    best_txt_path = os.path.join(save_dir, "best_parameters_by_volume.txt")
+    best_df.to_csv(best_csv_path, index=False)
+
+    with open(best_txt_path, "w") as f:
+        for row in best_results:
+            f.write(f"Volume: {row['volume']} mL\n")
+            for k, v in row.items():
+                if k != "volume":
+                    f.write(f"  {k}: {v}\n")
+            f.write("\n")
+
+    print(f"\n✅ Best parameter results saved to:\n - {best_csv_path}\n - {best_txt_path}")
+
+# --- Save raw measurements ---
+raw_df = pd.DataFrame(raw_measurements)
+raw_csv_path = os.path.join(save_dir, "raw_replicate_data.csv")
+raw_df.to_csv(raw_csv_path, index=False)
+print("Saved raw replicate data to:", raw_csv_path)
