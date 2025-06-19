@@ -7,6 +7,7 @@ import analysis.cmc_data_analysis as analyzer
 import analysis.cmc_exp_new as experimental_planner
 import os
 import numpy as np
+import slack_agent
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_input.csv"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence.prt" #Will need to create a measurement protocol
 
@@ -128,11 +129,9 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
             print("Inverting data!")
             resulting_data['ratio'] = resulting_data['2'] / resulting_data['1']
 
-
-
         print(resulting_data)
 
-        details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items()) + ".txt"
+        details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
 
         #Step 4: Analyze the results
         #Take the resulting_data and analyze it to determine the CMC
@@ -148,6 +147,9 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
 
         print("CMC (mMol): ", x0)
         print("R-squared: ", r_squared)
+
+        slack_agent.send_slack_message(f"CMC Workflow complete! CMC={x0}, R-squared={r_squared}")
+        slack_agent.upload_and_post_file(figure_name,'CMC Image')
     else:
         print("Skipping analysis for simulation")
     

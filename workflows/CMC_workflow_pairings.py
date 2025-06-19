@@ -7,6 +7,9 @@ import analysis.cmc_data_analysis as analyzer
 import analysis.cmc_exp_new as experimental_planner
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_input.csv"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence.prt" #Will need to create a measurement protocol
+import numpy as np
+import os
+import slack_agent
 
 #Define your workflow! 
 #In this case we have two parameters: 
@@ -68,8 +71,9 @@ def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
         if volume_mL <= 0.200:
             lash_e.nr_robot.return_vial_home(surfactant)
 
-    lash_e.nr_robot.dispense_into_vial_from_reservoir(1, substock_vial, sub_stock_vols['water']/1000)
-    lash_e.nr_robot.mix_vial(substock_vial,0.9, repeats=5)
+    if sub_stock_vols['water'] > 0:
+        lash_e.nr_robot.dispense_into_vial_from_reservoir(1, substock_vial, sub_stock_vols['water']/1000)
+        lash_e.nr_robot.mix_vial(substock_vial,0.9, repeats=5)
     #lash_e.nr_robot.vortex_vial(substock_vial,10,50) #Mix the surfactants
     lash_e.nr_robot.remove_pipet()
 
@@ -77,8 +81,35 @@ def fill_water_vial():
     vial_max_volume = 8 
     water_reservoir = 1
     current_water_volume = lash_e.nr_robot.get_vial_info('water','vial_volume')
-    print(f"Filling water vial from {current_water_volume} mL to {vial_max_volume} mL")
-    lash_e.nr_robot.dispense_into_vial_from_reservoir(water_reservoir,'water',vial_max_volume - current_water_volume) #Fill up the water vial
+    if current_water_volume < vial_max_volume:
+        print(f"Filling water vial from {current_water_volume} mL to {vial_max_volume} mL")
+        lash_e.nr_robot.dispense_into_vial_from_reservoir(water_reservoir,'water',vial_max_volume - current_water_volume) #Fill up the water vial
+
+def split_water_batches(df_water, max_volume=7.0):
+    batches = []
+    current_batch = []
+    cumulative_vol = 0.0
+
+    for i, row in df_water.iterrows():
+        vol = row['water volume']
+        if cumulative_vol + vol > max_volume:
+            # Commit the current batch
+            if current_batch:
+                batch_df = pd.DataFrame(current_batch)
+                batches.append(batch_df)
+            # Start new batch
+            current_batch = [row]
+            cumulative_vol = vol
+        else:
+            current_batch.append(row)
+            cumulative_vol += vol
+
+    # Add final batch
+    if current_batch:
+        batch_df = pd.DataFrame(current_batch)
+        batches.append(batch_df)
+
+    return batches
 
 #Dispense into wellplate
 def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp_index): #Add the DMSO_pyrene and surfactant mixture to well plates
@@ -93,11 +124,18 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp
     df_water = dispense_data[['water volume']]
     df_dmso = dispense_data[['probe volume']]
 
+    water_batch_df = split_water_batches(df_water)
+
     lash_e.nr_robot.move_vial_to_location(substock_vial_index,'main_8mL_rack', 43) #Safe location
 
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,['pyrene_DMSO'],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=2,asp_cycles=1,low_volume_cutoff = 0.04, buffer_vol = 0,pipet_back_and_forth=True,blowout_vol=0.1)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,['water'],well_plate_type="48 WELL PLATE",dispense_speed=11)
+    
+    for water_batch in water_batch_df:
+        print (water_batch)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(water_batch,['water'],well_plate_type="48 WELL PLATE",dispense_speed=11)
+        fill_water_vial()
+
 
     lash_e.nr_robot.return_vial_home(substock_vial_index) #return home from safe location
 
@@ -106,7 +144,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp
         lash_e.nr_robot.mix_well_in_wellplate(well,volume=0.3,well_plate_type="48 WELL PLATE")
     lash_e.nr_robot.remove_pipet()
     
-def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellplate_data):
+def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellplate_data,folder,save_modifier):
     
     lash_e.nr_robot.prime_reservoir_line(1,'water',0.5)
 
@@ -121,44 +159,62 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
     samples_per_assay = wellplate_data.shape[0]
     if not simulate:
         resulting_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(starting_wp_index,starting_wp_index+samples_per_assay),plate_type="48 WELL PLATE")
+        
+        
         resulting_data['ratio'] = resulting_data['1']/resulting_data['2']
 
+        if np.mean(resulting_data['ratio']) > 1.0:
+            print("Inverting data!")
+            resulting_data['ratio'] = resulting_data['2'] / resulting_data['1']
+
         print(resulting_data)
+
+        details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items()) + '_' + save_modifier
 
         #Step 4: Analyze the results
         #Take the resulting_data and analyze it to determine the CMC
         concentrations = wellplate_data['concentration']
         ratio_data = resulting_data['ratio'].values #This is determined from the resulting_data
-        A1, A2, x0, dx, r_squared = analyzer.CMC_plot(ratio_data,concentrations)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items()) + ".txt"
-
-
-        wellplate_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}_wellplate_data_{details}.csv', index=False)
-        resulting_data.to_csv(f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}_output_data_{details}.csv', index=False)
-        with open(f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}_wellplate_data_results_{details}.txt', "w") as f:
+        figure_name = folder+f'CMC_plot_{details}.png'
+        A1, A2, x0, dx, r_squared = analyzer.CMC_plot(ratio_data,concentrations,figure_name)
+        
+        wellplate_data.to_csv(folder+f'wellplate_data_{details}.csv', index=False)
+        resulting_data.to_csv(folder+f'output_data_{details}.csv',index=False)
+        with open(folder+f'wellplate_data_results_{details}.txt', "w") as f:
             f.write(f"CMC: {x0}, r2: {r_squared}")
 
         print("CMC (mMol): ", x0)
         print("R-squared: ", r_squared)
 
-        return x0
+        slack_agent.send_slack_message(f"CMC Workflow complete! CMC={x0}, R-squared={r_squared}")
+        slack_agent.upload_and_post_file(figure_name,'CMC Image')
+
     else:
         print("Skipping analysis for simulation")
     
 
 simulate = True
-# timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-# log_file = open(f"../utoronto_demo/logs/experiment_log_{timestamp}_sim{simulate}.txt", "w")
-# sys.stdout = sys.stderr = log_file
+logging = True
+
+if logging:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = open(f"../utoronto_demo/logs/experiment_log_{timestamp}_sim{simulate}.txt", "w")
+    sys.stdout = sys.stderr = log_file
 
 #Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
 lash_e.nr_robot.check_input_file()
 lash_e.nr_track.check_input_file()
-lash_e.nr_track.get_new_wellplate() #Get a new well plate #get wellplate from stack
 
+if not simulate:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    folder = f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}/'
+    os.makedirs(folder, exist_ok=True)
+    print(f"Folder created at: {folder}")
+else:
+    folder = None
+
+lash_e.nr_track.get_new_wellplate() #Get a new well plate #get wellplate from stack
 starting_wp_index = 0 #CHANGE THIS AS NEEDED!!!
 
 #These surfactants and ratios should be decided by something
@@ -167,11 +223,11 @@ item_to_index = {item: i for i, item in enumerate(surfactants)}# Create a mappin
 n = len(surfactants)  
 substock_name_list = [f'substock_{i}' for i in range(1, n + 1)] #refers to substock solutions
 
+#pairings_and_ratios = [(['P188'], [1])]
+#pairings_and_ratios = [(['P188'], [1]), (['P407'],[1])]
 
 pairings_and_ratios = [
 (['SDS', 'NaDC'], [0.7, 0.3]),
-(['SDS', 'NaDC'], [0.3, 0.7]),
-(['NaC', 'CTAB'], [0.6, 0.4]),
 (['NaC', 'CTAB'], [0.4, 0.6]),
 (['P188', 'P407'], [0.5, 0.5]),
 (['DTAB', 'CHAPS'], [0.8, 0.2]),]
@@ -184,7 +240,15 @@ for (pair, ratios) in pairings_and_ratios:
         idx = item_to_index[surf]
         ratio_vector[idx] = ratio
     padded_ratio_vectors.append(ratio_vector)
-    pairing_labels.append(f"{pair[0]}-{ratios[0]:.1f}_{pair[1]}-{ratios[1]:.1f}")
+   
+    if len(pair) == 1:
+        label = f"{pair[0]}-{ratios[0]:.1f}"
+    elif len(pair) == 2:
+        label = f"{pair[0]}-{ratios[0]:.1f}_{pair[1]}-{ratios[1]:.1f}"
+    else:
+        raise ValueError("Only 1 or 2 surfactants per pairing are supported.")
+    
+pairing_labels.append(label)
 
 ratios = padded_ratio_vectors
 
@@ -193,22 +257,24 @@ for i in range (0, len(ratios)):
     substock_mixture_index = substock_name_list[i]
 
     #Rough CMC
-    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, sub_stock_volume=6000,rough_screen=True)
+    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=True)
     sub_stock_vols = experiment['surfactant_sub_stock_vols']
     wellplate_data = experiment['df']
     samples_per_assay = wellplate_data.shape[0]
 
     #Execute the sample workflow.
-    cmc_rough = sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data)
+    cmc_rough = sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data,folder,save_modifier='rough')
+    print("Rough CMC: ", cmc_rough)
     starting_wp_index+=samples_per_assay
 
     #Refined CMC
-    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, sub_stock_volume=6000,rough_screen=False,estimated_cmc=cmc_rough)
+    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio,rough_screen=False,estimated_CMC=cmc_rough)
     sub_stock_vols = experiment['surfactant_sub_stock_vols']
     wellplate_data = experiment['df']
     samples_per_assay = wellplate_data.shape[0]
 
-    cmc_refined = sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data)
+    cmc_refined = sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data,folder, save_modifier='fine')
+    print("Refined CMC: ", cmc_refined)
     starting_wp_index+=samples_per_assay
 
 
@@ -227,4 +293,5 @@ if lash_e.nr_track.NR_OCCUPIED == True:
     lash_e.discard_used_wellplate() #Discard the wellplate if it is occupied
     print("Workflow complete and wellplate discarded")
 
-#log_file.close()
+if logging:
+    log_file.close()

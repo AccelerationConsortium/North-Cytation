@@ -4,10 +4,30 @@ import numpy as np
 import pandas as pd
 
 
-def rough_generate_cmc_concentrations(estimate_cmc, number_of_points=12 ,scale="log"): # low/high in mM
+def rough_generate_cmc_concentrations(list_of_surfactants, list_of_ratios, estimate_cmc, number_of_points=12 ,scale="log", max_conc_factor=0.8): # low/high in mM
+
+    surfactant_library = {
+        "SDS": {"stock_conc": 50}, "NaDC": {"stock_conc": 25}, "NaC": {"stock_conc": 50},
+        "CTAB": {"stock_conc": 5}, "DTAB": {"stock_conc": 50}, "TTAB": {"stock_conc": 50},
+        "P188": {"stock_conc": 2}, "P407": {"stock_conc": 2}, "CAPB": {"stock_conc": 50}, "CHAPS": {"stock_conc": 30}
+    }
+
+    max_conc = 0
+
+    max_conc = get_max_total_concentration_joint_limit(
+    list_of_surfactants,
+    list_of_ratios,
+    surfactant_library,
+    CMC_sample_volume=1000,
+    probe_volume=25
+)
 
     low = estimate_cmc / (50**0.5)
     high = estimate_cmc * (50**0.5)
+
+    if high > max_conc:
+        print(f"Warning: High concentration {high} exceeds maximum stock concentration {max_conc}. Adjusting high to max stock concentration.")
+        high = max_conc
 
     if scale == "log":
         exponent_low = np.round(np.log10(low), 3)
@@ -23,6 +43,34 @@ def rough_generate_cmc_concentrations(estimate_cmc, number_of_points=12 ,scale="
     print(f"Generated concentrations (rough): ")
     print(concentrations)
     return concentrations.tolist()
+
+def get_max_total_concentration_joint_limit(
+    list_of_surfactants,
+    list_of_ratios,
+    surfactant_library,
+    CMC_sample_volume=1000,
+    probe_volume=25,
+    safety_factor=0.95
+):
+    usable_volume = CMC_sample_volume - probe_volume
+
+    def total_volume_required(total_conc):
+        return sum(
+            ((total_conc * ratio) * CMC_sample_volume) / surfactant_library[surf]['stock_conc']
+            for surf, ratio in zip(list_of_surfactants, list_of_ratios)
+        )
+
+    # Binary search to find maximum total_conc such that total_volume_required ≤ usable_volume
+    low = 0
+    high = 1000  # arbitrarily high initial guess
+    for _ in range(100):
+        mid = (low + high) / 2
+        if total_volume_required(mid) <= usable_volume:
+            low = mid
+        else:
+            high = mid
+
+    return low * safety_factor  # apply safety margin
 
 # Flexible versions of surfactant_substock and generate_exp to handle arbitrary number of surfactants
 def surfactant_substock_flexible(cmc_concs, list_of_surfactants, list_of_ratios,
@@ -58,8 +106,8 @@ def calculate_volumes(concentration_list, sub_stock_concentration, probe_volume,
         surfactant_volume = (conc * (CMC_sample_volume - probe_volume)) / sub_stock_concentration
         water_volume = CMC_sample_volume - probe_volume - surfactant_volume
 
-        surfactant_volume = round(surfactant_volume, 2)
-        water_volume = round(water_volume, 2)
+        #surfactant_volume = round(surfactant_volume, 2)
+        #water_volume = round(water_volume, 2)
 
         concentrations.append(conc)
         surfactant_volumes.append(surfactant_volume)
@@ -101,6 +149,50 @@ def generate_cmc_concentrations(cmc):
     return np.concatenate([below, around, above]).tolist()
 
 
+def scale_substock_to_required_volume(sub_stock_vol_dict, df, buffer_volume=500):
+    """
+    Scale sub-stock volumes (including water) to match required experimental volume + buffer.
+    
+    Args:
+        sub_stock_vol_dict (dict): Raw volumes from sub-stock prep (includes surfactants + water).
+        df (pd.DataFrame): Output from `calculate_volumes`, used to find how much is needed.
+        buffer_volume (float): Extra volume to ensure pipetting margin (µL).
+    
+    Returns:
+        scaled_volumes (dict): Same keys as input, but scaled down.
+    """
+    required_volume = df["surfactant volume"].sum()
+    total_needed = required_volume + buffer_volume
+    original_total = sum(sub_stock_vol_dict.values())
+
+    scaling_factor = total_needed / original_total
+
+    scaled_volumes = {k: round(v * scaling_factor, 2) for k, v in sub_stock_vol_dict.items()}
+    
+    print(f"\n Scaling sub-stock volumes to total {total_needed:.2f} µL (including {buffer_volume} µL buffer)")
+    print(f"Original total: {original_total:.2f} µL | Scaling factor: {scaling_factor:.3f}")
+    print("Scaled volumes:")
+    for k, v in scaled_volumes.items():
+        print(f"  {k}: {v:.2f} µL")
+
+    return scaled_volumes
+
+
+def verify_concentrations(df, sub_stock_concentration, probe_volume, CMC_sample_volume):
+    dilution_volume = CMC_sample_volume - probe_volume
+    df["actual_concentration"] = (sub_stock_concentration * df["surfactant volume"]) / dilution_volume
+    df["difference"] = df["actual_concentration"] - df["concentration"]
+
+    mismatches = df[np.abs(df["difference"]) > 0.01]
+    if not mismatches.empty:
+        print(" Warning: Some wells do not match intended concentrations:")
+        print(mismatches[["concentration", "actual_concentration", "difference"]])
+    else:
+        print(" All concentrations match within ±0.01 mM")
+
+    return df
+
+
 def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
                           sub_stock_volume=6000, CMC_sample_volume=1000, rough_screen=False, estimated_CMC=None):
 
@@ -126,7 +218,7 @@ def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
     if not rough_screen:
         cmc_concs = generate_cmc_concentrations(estimated_CMC)
     else:
-        cmc_concs = rough_generate_cmc_concentrations(estimated_CMC)
+        cmc_concs = rough_generate_cmc_concentrations(list_of_surfactants, list_of_ratios,  estimated_CMC)
 
 
     sub_stock_concentration, sub_stock_vol = surfactant_substock_flexible(
@@ -140,6 +232,10 @@ def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
     )
 
     df = calculate_volumes(cmc_concs, sub_stock_concentration, probe_volume, CMC_sample_volume)
+
+    sub_stock_vol = scale_substock_to_required_volume(sub_stock_vol,df)
+
+    #df = verify_concentrations(df, sub_stock_concentration, probe_volume, CMC_sample_volume)
 
     exp = {
         "list_of_surfactants": active_surfactants,
@@ -159,3 +255,64 @@ def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
     }
 
     return exp, small_exp
+
+
+# # Track results
+# result = generate_exp_flexible(
+#     list_of_surfactants=['NaC', 'SDS'],
+#     list_of_ratios=[0.8, 0.2],
+#     rough_screen=True  # or False
+# )
+# print(result)
+
+# from itertools import combinations, product
+# import traceback
+
+# # Define the test surfactants and ratios
+# test_surfactants = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'P188',"P407", 'CAPB', 'CHAPS'] 
+# test_ratios = [
+#     (0.5, 0.5),
+#     (0.7, 0.3),
+#     (0.3, 0.7),
+#     (0.8, 0.2),
+#     (0.2, 0.8)
+# ]
+
+# # Track results
+# failures = []
+# counts = 0
+# # Try all 2-surfactant combinations and all ratio splits
+# for (s1, s2) in combinations(test_surfactants, 2):
+#     for (r1, r2) in test_ratios:
+#         try:
+#             exp, small = generate_exp_flexible(
+#                 list_of_surfactants=[s1, s2],
+#                 list_of_ratios=[r1, r2],
+#                 rough_screen=True
+#             )
+
+#             df = exp["df"]
+
+#             if exp['surfactant_sub_stock_vols']['water'] < 0:
+#                 print(f"❌ NEGATIVE WATER: {s1} ({r1}) + {s2} ({r2})")
+#                 failures.append((s1, s2, r1, r2, "Negative water"))
+#             else:
+#                 #print(f"✅ PASS: {s1} ({r1}) + {s2} ({r2})")
+#                 None
+
+#         except Exception as e:
+#             print(f"❌ FAILED: {s1} ({r1}) + {s2} ({r2})")
+#             print(traceback.format_exc(limit=1))
+#             failures.append((s1, s2, r1, r2, str(e)))
+
+#         counts+=1
+
+# # Summary
+# print("\n====== SUMMARY ======")
+# if not failures:
+#     print("✅ All tests passed.")
+# else:
+#     for f in failures:
+#         print(f"❌ {f[0]} ({f[2]}) + {f[1]} ({f[3]}) → {f[4]}")
+#     print("Num failures: ", len(failures))
+#     print("Num successes: ", counts- len(failures))

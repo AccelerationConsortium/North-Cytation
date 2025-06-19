@@ -47,3 +47,4 @@ def CMC_plot(i1_i3_ratio, conc, file_name):
     print(f'Fit Accuracy (R²): {r_squared:.4f}')
 
     return A1, A2, x0, dx, r_squared
+
