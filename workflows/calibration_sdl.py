@@ -11,6 +11,7 @@ from ax.core.observation import ObservationFeatures
 import recommenders.pipeting_optimizer_honegumi as recommender  # adjust if needed
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 
 # --- Config ---
 SEED = 5
@@ -76,16 +77,19 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
         masses.append(mass)
     end = datetime.now().timestamp()
 
-    mean_mass = np.mean(masses)
-    std_mass = np.std(masses)
-    deviation = (mean_mass - expected_mass) / expected_mass * 100
-    time_score = ((end - start) / REPLICATES - expected_time) / expected_time * 100
+    if not SIMULATE:
+        mean_mass = np.mean(masses)
+        std_mass = np.std(masses)
+        deviation = (mean_mass - expected_mass) / expected_mass * 100
+        time_score = ((end - start) / REPLICATES - expected_time) / expected_time * 100
 
-    return {
-        "deviation": deviation,
-        "variability": std_mass,
-        "time": time_score,
-    }
+        return {
+            "deviation": deviation,
+            "variability": std_mass,
+            "time"
+            : time_score,
+        }
+    else: return pipet_and_measure_simulated(volume, params, expected_mass, expected_time)
 
 
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
@@ -104,10 +108,7 @@ for i,volume in enumerate(VOLUMES):
         print(f"[INFO] Requesting SOBOL trial for volume {volume}...")
         params, trial_index = ax_client.get_next_trial(fixed_features=ObservationFeatures({"volume": volume}))
         print(f"[TRIAL {trial_index}] Parameters: {params}")
-        if not SIMULATE:
-            result = pipet_and_measure(volume, params, expected_mass, expected_time)
-        else:
-            result = pipet_and_measure_simulated(volume, params, expected_mass, expected_time)
+        result = pipet_and_measure(volume, params, expected_mass, expected_time)
         ax_client.complete_trial(trial_index=trial_index, raw_data=result)
         result.update(params)
         result["volume"] = volume
@@ -124,10 +125,7 @@ for i, volume in enumerate(VOLUMES):
         suggestions = recommender.get_suggestions(ax_client, volume, n=1)
         for params, trial_index in suggestions:
             print(f"[TRIAL {trial_index}] Parameters: {params}")
-            if not SIMULATE:
-                results = pipet_and_measure(volume, params, expected_mass, expected_time)
-            else:
-                results = pipet_and_measure_simulated(volume, params, expected_mass, expected_time)
+            results = pipet_and_measure(volume, params, expected_mass, expected_time)
             recommender.add_result(ax_client, trial_index, results)
             results.update(params)
             results["volume"] = volume
@@ -143,34 +141,37 @@ for res in all_results:
             res[key] = val[0]  # Extract the numeric part
 results_df = pd.DataFrame(all_results)
 
-#TODO: Add a proper save path for this data
-
-print(results_df)
-if not SIMULATE:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_df.to_csv(f"experiment_summary_{timestamp}.csv", index=False)
-    print("Saved results to:", f"experiment_summary_{timestamp}.csv")
-
+lash_e.nr_robot.remove_pipet()
 lash_e.nr_robot.return_vial_home('measurement_vial')
 
-# --- Analysis: Parameter vs Outcome Plots ---
-outcomes = ["deviation", "variability", "time"]
-param_cols = [
-    "aspirate_speed",
-    "wait_time",
-    "retract_speed",
-    "pre_asp_air_vol",
-    "post_asp_air_vol",
-    "blowout_vol",
-]
+print(results_df)
 
-for outcome in outcomes:
-    for param in param_cols:
-        plt.figure(figsize=(6, 4))
-        sns.scatterplot(data=results_df, x=param, y=outcome, hue="volume", palette="viridis")
-        plt.title(f"{outcome} vs {param}")
-        plt.tight_layout()
-        plt.savefig(f"param_effect_{param}_on_{outcome}.png")
-        plt.close()
+if not SIMULATE:
+    # --- Analysis: Parameter vs Outcome Plots ---
+    outcomes = ["deviation", "variability", "time"]
+    param_cols = [
+        "aspirate_speed",
+        "wait_time",
+        "retract_speed",
+        "pre_asp_air_vol",
+        "post_asp_air_vol",
+        "blowout_vol",
+    ]
 
-print("Saved parameter vs outcome plots.")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    save_dir = os.path.join("output", f"experiment_calibration_{timestamp}")
+    os.makedirs(save_dir, exist_ok=True)
+
+    results_df.to_csv(os.path.join(save_dir, "experiment_summary.csv"), index=False)
+    print("Saved results to:", os.path.join(save_dir, "experiment_summary.csv"))
+
+    for outcome in outcomes:
+        for param in param_cols:
+            plt.figure(figsize=(6, 4))
+            sns.scatterplot(data=results_df, x=param, y=outcome, hue="volume", palette="viridis")
+            plt.title(f"{outcome} vs {param}")
+            plt.tight_layout()
+            plt.savefig(os.path.join(save_dir, f"param_effect_{param}_on_{outcome}.png"))
+            plt.close()
+
+    print("Saved parameter vs outcome plots.")
