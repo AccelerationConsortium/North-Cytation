@@ -194,7 +194,7 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         print("Skipping analysis for simulation")
     
 
-simulate = False
+simulate = True
 logging = False
 
 if logging:
@@ -225,15 +225,15 @@ n = len(surfactants)
 substock_name_list = [f'substock_{i}' for i in range(1, n + 1)] #refers to substock solutions
 
 #pairings_and_ratios = [(['P188'], [1])]
-#pairings_and_ratios = [(['P188'], [1]), (['P407'],[1])]
+pairings_and_ratios = [(['P188'], [1]), (['P407'],[1])]
 
 # pairings_and_ratios = [
 # (['SDS', 'NaDC'], [0.7, 0.3]),
 # (['NaC', 'CTAB'], [0.4, 0.6]),
 # (['P188', 'P407'], [0.5, 0.5]),
 # (['DTAB', 'CHAPS'], [0.8, 0.2]),]
-pairings_and_ratios = [
-(['SDS', 'NaDC'], [0.7, 0.3]),]
+# pairings_and_ratios = [
+# (['SDS', 'NaDC'], [0.7, 0.3]),]
 padded_ratio_vectors = []
 pairing_labels = []
 

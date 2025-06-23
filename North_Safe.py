@@ -1302,7 +1302,7 @@ class North_Robot:
                     else:
                         while last_index < len(well_plate_indices):
                             volume = well_plate_dispense_2d_array[last_index, i]
-                            if dispense_vol + volume <= max_volume + 1e-6 and volume > 1e-6:
+                            if dispense_vol + volume <= max_volume + 1e-6:
                                 dispense_vol += volume
                                 dispense_array.append(volume)
                                 well_plate_array.append(well_plate_indices[last_index])
