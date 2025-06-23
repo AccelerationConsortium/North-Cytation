@@ -19,8 +19,8 @@ SOBOL_CYCLES_PER_VOLUME = 2
 BAYES_CYCLES_PER_VOLUME = 1
 SIMULATE = True
 REPLICATES = 5
-#VOLUMES = [0.01,0.02,0.05,0.1]
-VOLUMES = [0.01,0.02,0.05]
+VOLUMES = [0.01,0.02,0.05,0.1]
+#VOLUMES = [0.01,0.02,0.05]
 DENSITY_LIQUID = 0.997  # g/mL
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
 EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
@@ -49,10 +49,18 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
 
     return results
 
+def empty_vial_if_needed(vial_name, waste_vial_name):
+    volume = lash_e.nr_robot.get_vial_volume(vial_name)
+    if volume > 7.0:
+        disp_volume = volume / np.ceil(volume)
+        for i in range (int(np.ceil(volume))-1):
+            lash_e.nr_robot.dispense_from_vial_into_vial(vial_name, waste_vial_name, disp_volume)
+
 def pipet_and_measure(volume, params, expected_mass, expected_time):
     pre_air = params.get("pre_asp_air_vol", 0)
     post_air = params.get("post_asp_air_vol", 0)
-    disp_vol = volume + pre_air + post_air
+    disp_vol = volume
+    air_vol = pre_air + post_air
 
     aspirate_kwargs = {
         "aspirate_speed": params["aspirate_speed"],
@@ -67,6 +75,7 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
         "wait_time": params["wait_time"],
         "blowout_vol": params["blowout_vol"],
         "measure_weight": True,
+        "air_vol": air_vol,
     }
 
     masses = []
@@ -76,6 +85,7 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
         mass = lash_e.nr_robot.dispense_into_vial("measurement_vial", disp_vol, **dispense_kwargs)
         masses.append(mass)
     end = datetime.now().timestamp()
+    empty_vial_if_needed("measurement_vial", "waste_vial")
 
     if not SIMULATE:
         mean_mass = np.mean(masses)

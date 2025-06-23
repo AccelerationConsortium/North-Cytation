@@ -194,7 +194,7 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
     
 
 simulate = True
-logging = True
+logging = False
 
 if logging:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -251,10 +251,13 @@ for (pair, ratios) in pairings_and_ratios:
 pairing_labels.append(label)
 
 ratios = padded_ratio_vectors
-
+substock_count = 0
 for i in range (0, len(ratios)):
     ratio = ratios[i]
-    substock_mixture_index = substock_name_list[i]
+
+    rough_mixture_index = substock_name_list[substock_count]
+    fine_mixture_index = substock_name_list[substock_count+1]
+    substock_count += 2
 
     #Rough CMC
     experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=True)
@@ -263,7 +266,7 @@ for i in range (0, len(ratios)):
     samples_per_assay = wellplate_data.shape[0]
 
     #Execute the sample workflow.
-    cmc_rough = sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data,folder,save_modifier='rough')
+    cmc_rough = sample_workflow(starting_wp_index,sub_stock_vols,rough_mixture_index,wellplate_data,folder,save_modifier='rough')
     print("Rough CMC: ", cmc_rough)
     starting_wp_index+=samples_per_assay
 
@@ -273,7 +276,7 @@ for i in range (0, len(ratios)):
     wellplate_data = experiment['df']
     samples_per_assay = wellplate_data.shape[0]
 
-    cmc_refined = sample_workflow(starting_wp_index,sub_stock_vols,substock_mixture_index,wellplate_data,folder, save_modifier='fine')
+    cmc_refined = sample_workflow(starting_wp_index,sub_stock_vols,fine_mixture_index,wellplate_data,folder, save_modifier='fine')
     print("Refined CMC: ", cmc_refined)
     starting_wp_index+=samples_per_assay
 

@@ -1119,7 +1119,7 @@ class North_Robot:
             self.dispense_from_vial_into_vial(vial_index,vial_index,volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
 
     #Dispense an amount into a vial
-    def dispense_into_vial(self, dest_vial_name,amount_mL,initial_move=True,dispense_speed=11,measure_weight=False,wait_time=0,blowout_vol=0):     
+    def dispense_into_vial(self, dest_vial_name,amount_mL,initial_move=True,dispense_speed=11,measure_weight=False,wait_time=0,blowout_vol=0, air_vol=0):     
         
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
@@ -1154,7 +1154,7 @@ class North_Robot:
         #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
         if initial_move:
             self.c9.move_z(height)
-        self.pipet_dispense(amount_mL,wait_time, blowout_vol)
+        self.pipet_dispense(amount_mL+air_vol,wait_time, blowout_vol)
 
         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
@@ -1302,7 +1302,7 @@ class North_Robot:
                     else:
                         while last_index < len(well_plate_indices):
                             volume = well_plate_dispense_2d_array[last_index, i]
-                            if dispense_vol + volume <= max_volume + 1e-6 and volume > 1e-6:
+                            if dispense_vol + volume <= max_volume + 1e-6:
                                 dispense_vol += volume
                                 dispense_array.append(volume)
                                 well_plate_array.append(well_plate_indices[last_index])
@@ -1310,6 +1310,7 @@ class North_Robot:
                                 last_index += 1
                             else:
                                 break
+
 
                     if dispense_vol < 1e-6:
                         break  # Nothing to dispense
