@@ -73,7 +73,8 @@ def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
 
     if sub_stock_vols['water'] > 0:
         lash_e.nr_robot.dispense_into_vial_from_reservoir(1, substock_vial, sub_stock_vols['water']/1000)
-        lash_e.nr_robot.mix_vial(substock_vial,0.9, repeats=5)
+        lash_e.nr_robot.move_vial_to_location(substock_vial, 'main_8mL_rack', 43) #move to safe location
+        lash_e.nr_robot.mix_vial(substock_vial,0.9, repeats=10)
     #lash_e.nr_robot.vortex_vial(substock_vial,10,50) #Mix the surfactants
     lash_e.nr_robot.remove_pipet()
 
@@ -193,8 +194,8 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         print("Skipping analysis for simulation")
     
 
-simulate = True
-logging = True
+simulate = False
+logging = False
 
 if logging:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -226,11 +227,13 @@ substock_name_list = [f'substock_{i}' for i in range(1, n + 1)] #refers to subst
 #pairings_and_ratios = [(['P188'], [1])]
 #pairings_and_ratios = [(['P188'], [1]), (['P407'],[1])]
 
+# pairings_and_ratios = [
+# (['SDS', 'NaDC'], [0.7, 0.3]),
+# (['NaC', 'CTAB'], [0.4, 0.6]),
+# (['P188', 'P407'], [0.5, 0.5]),
+# (['DTAB', 'CHAPS'], [0.8, 0.2]),]
 pairings_and_ratios = [
-(['SDS', 'NaDC'], [0.7, 0.3]),
-(['NaC', 'CTAB'], [0.4, 0.6]),
-(['P188', 'P407'], [0.5, 0.5]),
-(['DTAB', 'CHAPS'], [0.8, 0.2]),]
+(['SDS', 'NaDC'], [0.7, 0.3]),]
 padded_ratio_vectors = []
 pairing_labels = []
 
