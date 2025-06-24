@@ -1,6 +1,8 @@
 # calibration_sdl.py
 
 import sys
+
+from torch import fill
 sys.path.append("../utoronto_demo")
 import numpy as np
 import pandas as pd
@@ -14,11 +16,11 @@ import seaborn as sns
 import os
 
 # --- Config ---
-SEED = 5
-SOBOL_CYCLES_PER_VOLUME = 2
-BAYES_CYCLES_PER_VOLUME = 1
-SIMULATE = True
-REPLICATES = 5
+SEED = 7
+SOBOL_CYCLES_PER_VOLUME = 5
+BAYES_CYCLES_PER_VOLUME = 27
+SIMULATE = False
+REPLICATES = 3
 VOLUMES = [0.01,0.02,0.05,0.1]
 #VOLUMES = [0.01,0.02,0.05]
 DENSITY_LIQUID = 0.997  # g/mL
@@ -50,11 +52,22 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     return results
 
 def empty_vial_if_needed(vial_name, waste_vial_name):
-    volume = lash_e.nr_robot.get_vial_volume(vial_name)
+    volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
     if volume > 7.0:
+        lash_e.nr_robot.remove_pipet()
         disp_volume = volume / np.ceil(volume)
         for i in range (int(np.ceil(volume))-1):
             lash_e.nr_robot.dispense_from_vial_into_vial(vial_name, waste_vial_name, disp_volume)
+        lash_e.nr_robot.remove_pipet()
+
+def fill_liquid_if_needed(vial_name, liquid_source_name):
+    volume = lash_e.nr_robot.get_vial_info(liquid_source_name, 'vial_volume')
+    if volume < 4.0:
+        lash_e.nr_robot.remove_pipet()
+        lash_e.nr_robot.return_vial_home(vial_name)
+        lash_e.nr_robot.dispense_into_vial_from_reservoir(1,liquid_source_name, 8 - volume)
+        lash_e.nr_robot.return_vial_home(liquid_source_name)
+        lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
 def pipet_and_measure(volume, params, expected_mass, expected_time):
     pre_air = params.get("pre_asp_air_vol", 0)
@@ -116,7 +129,7 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
     else: return pipet_and_measure_simulated(volume, params, expected_mass, expected_time)
 
 
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_biotek=False)
 lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
 
@@ -133,6 +146,8 @@ for i,volume in enumerate(VOLUMES):
         print(f"[INFO] Requesting SOBOL trial for volume {volume}...")
         params, trial_index = ax_client.get_next_trial(fixed_features=ObservationFeatures({"volume": volume}))
         print(f"[TRIAL {trial_index}] Parameters: {params}")
+        fill_liquid_if_needed("measurement_vial","liquid_source")
+        empty_vial_if_needed("measurement_vial", "waste_vial")
         result = pipet_and_measure(volume, params, expected_mass, expected_time)
         ax_client.complete_trial(trial_index=trial_index, raw_data=result)
         result.update(params)
@@ -151,6 +166,8 @@ for i, volume in enumerate(VOLUMES):
         suggestions = recommender.get_suggestions(ax_client, volume, n=1)
         for params, trial_index in suggestions:
             print(f"[TRIAL {trial_index}] Parameters: {params}")
+            fill_liquid_if_needed("measurement_vial","liquid_source")
+            empty_vial_if_needed("measurement_vial", "waste_vial")
             results = pipet_and_measure(volume, params, expected_mass, expected_time)
             recommender.add_result(ax_client, trial_index, results)
             results.update(params)

@@ -130,7 +130,7 @@ def CMC_estimate(list_of_surfactants, list_of_ratios):
     surfactant_library = {
         "SDS": {"CMC": 8.3}, "NaDC": {"CMC": 8.2}, "NaC": {"CMC": 11},
         "CTAB": {"CMC": 0.93}, "DTAB": {"CMC": 15.85}, "TTAB": {"CMC": 3.77},
-        "P188": {"CMC": 0.325}, "P407": {"CMC": 0.1}, "CAPB": {"CMC": 0.627}, "CHAPS": {"CMC": 8.5}
+        "P188": {"CMC": 0.48}, "P407": {"CMC": 0.1}, "CAPB": {"CMC": 0.627}, "CHAPS": {"CMC": 8.5}
     }
     cmc_inverse_sum = 0.0
     for surfactant, ratio in zip(list_of_surfactants, list_of_ratios):
@@ -217,6 +217,7 @@ def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
 
     if not rough_screen:
         cmc_concs = generate_cmc_concentrations(estimated_CMC)
+        print("Concentrations (refined): ", cmc_concs)
     else:
         cmc_concs = rough_generate_cmc_concentrations(list_of_surfactants, list_of_ratios,  estimated_CMC)
 
