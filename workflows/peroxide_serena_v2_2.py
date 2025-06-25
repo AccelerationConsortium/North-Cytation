@@ -5,6 +5,7 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 import slack_agent
 from pathlib import Path
+import analysis.cof_analyzer as analyzer
 
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2):
     print("\nDispensing from photoreactor into sample: ", sample_index)
@@ -32,6 +33,7 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
     # output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
     if not simulate:
         data_out.to_csv(output_file, sep=',')
+        #Use analyzer to analyze the data
     print()
 
 def mix_current_sample(lash_e, sample_index, new_pipet=False,repeats=3, volume=0.25):
