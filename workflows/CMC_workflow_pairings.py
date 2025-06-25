@@ -11,6 +11,7 @@ import numpy as np
 import os
 import slack_agent
 
+
 #Define your workflow! 
 #In this case we have two parameters: 
 def check_input_file(input_file):  
@@ -212,15 +213,15 @@ starting_wp_index = 0 #CHANGE THIS AS NEEDED!!!
 lash_e.nr_robot.prime_reservoir_line(1,'water',0.5)
 
 #These surfactants and ratios should be decided by something
-surfactants = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'P188',"P407", 'CAPB', 'CHAPS'] #refers to stock solutions
+surfactants = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS'] #refers to stock solutions
 item_to_index = {item: i for i, item in enumerate(surfactants)}# Create a mapping from item to index
-n = len(surfactants)  
+n = len(surfactants)*2  
 substock_name_list = [f'substock_{i}' for i in range(1, n + 1)] #refers to substock solutions
 
 #pairings_and_ratios = [(['P188'], [1])]
 #pairings_and_ratios = [(['P188'], [1]), (['P407'],[1])]
-pairings_and_ratios = [(['SDS', 'DTAB'], [0.5, 0.5])]
-
+#pairings_and_ratios = [(['SDS', 'NaC'], [0.5, 0.5]), (['SDS', 'CAPB'], [0.5, 0.5]), (['CTAB', 'TTAB'], [0.5, 0.5]), (['CAPB', 'CHAPS'], [0.5, 0.5])]
+pairings_and_ratios = [(['SDS', 'CAPB'], [0.5, 0.5]), (['CTAB', 'TTAB'], [0.5, 0.5]), (['CAPB', 'CHAPS'], [0.5, 0.5])]
 
 # pairings_and_ratios = [
 # (['SDS', 'DTAB'], [0.5, 0.5]),

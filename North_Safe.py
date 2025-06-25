@@ -838,7 +838,10 @@ class North_Robot:
             try:
                 self.c9.aspirate_ml(0,amount)
             except:
-                self.pause_after_error("Cannot aspirate. Likely a pump position issue", True)
+                print("Aspirate exceeded limit: Aspirating to maximum")
+                self.c9.move_pump(0,3000)
+                slack_agent.send_slack_message(f"Aspirate was exceeded for {amount} mL. Aspirating to maximum volume of 1 mL.")
+                #self.pause_after_error("Cannot aspirate. Likely a pump position issue", True)
         else:
             self.pause_after_error("Cannot aspirate more than 1 mL", True)
 

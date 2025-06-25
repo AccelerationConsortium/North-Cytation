@@ -1,0 +1,57 @@
+Initializing North Robot...
+Physical initialization of North Robot...
+Moving robot to home position
+Current reader status: <MagicMock name='mock.get_reader_status()' id='2056047175392'>
+    vial_index    vial_name       location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index
+0            0          SDS  main_8mL_rack               0        4.184    True     open      8_mL  main_8mL_rack                    0
+1            1         NaDC  main_8mL_rack               1        8.000    True     open      8_mL  main_8mL_rack                    1
+2            2          NaC  main_8mL_rack               2        8.000    True     open      8_mL  main_8mL_rack                    2
+3            3         CTAB  main_8mL_rack               3        8.000    True     open      8_mL  main_8mL_rack                    3
+4            4         DTAB  main_8mL_rack               4        6.106    True     open      8_mL  main_8mL_rack                    4
+5            5         TTAB  main_8mL_rack               5        8.000    True     open      8_mL  main_8mL_rack                    5
+6            6         P188  main_8mL_rack               6       -0.332    True     open      8_mL  main_8mL_rack                    6
+7            7         P407  main_8mL_rack               7        8.000    True     open      8_mL  main_8mL_rack                    7
+8            8         CAPB  main_8mL_rack               8        8.000    True     open      8_mL  main_8mL_rack                    8
+9            9        CHAPS  main_8mL_rack               9        8.000    True     open      8_mL  main_8mL_rack                    9
+10          10   substock_1  main_8mL_rack              10        0.000    True     open      8_mL  main_8mL_rack                   10
+11          11   substock_2  main_8mL_rack              11        0.000    True     open      8_mL  main_8mL_rack                   11
+12          12   substock_3  main_8mL_rack              12        0.000    True     open      8_mL  main_8mL_rack                   12
+13          13   substock_4  main_8mL_rack              13        0.000    True     open      8_mL  main_8mL_rack                   13
+14          14   substock_5  main_8mL_rack              14        0.000    True     open      8_mL  main_8mL_rack                   14
+15          15   substock_6  main_8mL_rack              15        0.000    True     open      8_mL  main_8mL_rack                   15
+16          16   substock_7  main_8mL_rack              16        0.000    True     open      8_mL  main_8mL_rack                   16
+17          17   substock_8  main_8mL_rack              17        0.000    True     open      8_mL  main_8mL_rack                   17
+18          18   substock_9  main_8mL_rack              18        0.000    True     open      8_mL  main_8mL_rack                   18
+19          19  substock_10  main_8mL_rack              19        0.000    True     open      8_mL  main_8mL_rack                   19
+20          20        water  main_8mL_rack              45        0.000    True     open      8_mL  main_8mL_rack                   45
+21          21  pyrene_DMSO  main_8mL_rack              47        6.100   False     none      8_mL  main_8mL_rack                   47
+Visualizing...
+Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c--Wellplate status-- 
+ Wellplate type: 48 WELL PLATE 
+ Number in source: 3 
+ Number in waste: 0 
+ NR Pipetting area occupied: False
+Only hit enter if the status of the well plates is correct, otherwise hit ctrl-cGetting 3rd wellplate from source at 64500
+Moving North Track to home position
+Priming reservoir 1 line into vial 20: 0.5 mL
+Dispensing into vial 20 from reservoir 1: 0.5 mL
+Moving vial water to clamp: 0
+Grabbing vial
+Moving robot to home position
+Dispensing 0.5 mL 1 times
+Moving vial water to main_8mL_rack: 45
+Grabbing vial
+Traceback (most recent call last):
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\workflows\CMC_workflow_pairings.py", line 261, in <module>
+    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=True)
+  File "C:\Users\Imaging Controller\Desktop\utoronto_demo\../utoronto_demo\analysis\cmc_exp_new.py", line 301, in generate_exp_flexible
+    cmc_concs = rough_generate_cmc_concentrations(list_of_surfactants, list_of_ratios,  estimated_CMC)
+  File "C:\Users\Imaging Controller\Desktop\utoronto_demo\../utoronto_demo\analysis\cmc_exp_new.py", line 96, in rough_generate_cmc_concentrations
+    max_conc = get_max_total_concentration_joint_limit(
+  File "C:\Users\Imaging Controller\Desktop\utoronto_demo\../utoronto_demo\analysis\cmc_exp_new.py", line 147, in get_max_total_concentration_joint_limit
+    if total_volume_required(mid) <= usable_volume:
+  File "C:\Users\Imaging Controller\Desktop\utoronto_demo\../utoronto_demo\analysis\cmc_exp_new.py", line 137, in total_volume_required
+    return sum(
+  File "C:\Users\Imaging Controller\Desktop\utoronto_demo\../utoronto_demo\analysis\cmc_exp_new.py", line 138, in <genexpr>
+    ((total_conc * ratio) * CMC_sample_volume) / surfactant_library[surf]['stock_conc']
+KeyError: 'P188'

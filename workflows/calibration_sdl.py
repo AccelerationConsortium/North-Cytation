@@ -36,10 +36,10 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     deviation = np.abs(params["aspirate_speed"] - 15) + np.random.normal(0, 0.5)
 
     # Simulated variability: slightly better at moderate wait times
-    variability = np.abs(params["wait_time"] - 30) * 0.1 + np.random.normal(0, 0.3)
+    variability = np.abs(params["aspirate_wait_time"] - 30) * 0.1 + np.random.normal(0, 0.3)
 
     # Simulated time score: longer wait_time, longer time per replicate
-    time_score = (params["wait_time"] / expected_time - 1) * 100 + np.random.normal(0, 5)
+    time_score = (params["aspirate_wait_time"] / expected_time - 1) * 100 + np.random.normal(0, 5)
 
     results = {
         "deviation": deviation,
@@ -77,15 +77,15 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
 
     aspirate_kwargs = {
         "aspirate_speed": params["aspirate_speed"],
-        "wait_time": params["wait_time"],
+        "wait_time": params["aspirate_wait_time"],
         "retract_speed": params["retract_speed"],
         "pre_asp_air_vol": pre_air,
         "post_asp_air_vol": post_air,
     }
 
     dispense_kwargs = {
-        "dispense_speed": params["aspirate_speed"],
-        "wait_time": params["wait_time"],
+        "dispense_speed": params["dispense_speed"],
+        "wait_time": params["dispense_wait_time"],
         "blowout_vol": params["blowout_vol"],
         "measure_weight": True,
         "air_vol": air_vol,
@@ -196,7 +196,9 @@ if not SIMULATE:
     outcomes = ["deviation", "variability", "time"]
     param_cols = [
         "aspirate_speed",
-        "wait_time",
+        "dispense_wait_time",
+        "aspirate_wait_time",
+        "dispense_speed",
         "retract_speed",
         "pre_asp_air_vol",
         "post_asp_air_vol",
