@@ -14,11 +14,12 @@ import recommenders.pipeting_optimizer_honegumi as recommender  # adjust if need
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import analysis.calibration_analyzer as analyzer  # adjust if needed
 
 # --- Config ---
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 5
-BAYES_CYCLES_PER_VOLUME = 27
+SOBOL_CYCLES_PER_VOLUME = 40
+BAYES_CYCLES_PER_VOLUME = 160
 SIMULATE = False
 REPLICATES = 3
 VOLUMES = [0.01,0.02,0.05,0.1]
@@ -27,6 +28,7 @@ DENSITY_LIQUID = 0.997  # g/mL
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
 EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
+state = {"waste_vial_index": 0}
 
 def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     # Simulate a short delay to mimic a fast experiment
@@ -51,18 +53,25 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
 
     return results
 
-def empty_vial_if_needed(vial_name, waste_vial_name):
+def empty_vial_if_needed(vial_name, waste_vial_name, state):
     volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
     if volume > 7.0:
+        input("Emptying vial...")
         lash_e.nr_robot.remove_pipet()
         disp_volume = volume / np.ceil(volume)
         for i in range (int(np.ceil(volume))-1):
+            waste_vial_name = f"waste_vial_{state['waste_vial_index']}"
+            if lash_e.nr_robot.get_vial_info(waste_vial_name, 'vial_volume') + disp_volume > 18.0:
+                input("Changing waste..")
+                state['waste_vial_index'] += 1
+                waste_vial_name = f"waste_vial_{state['waste_vial_index']}"
             lash_e.nr_robot.dispense_from_vial_into_vial(vial_name, waste_vial_name, disp_volume)
         lash_e.nr_robot.remove_pipet()
 
 def fill_liquid_if_needed(vial_name, liquid_source_name):
     volume = lash_e.nr_robot.get_vial_info(liquid_source_name, 'vial_volume')
     if volume < 4.0:
+        input("Adding water...")
         lash_e.nr_robot.remove_pipet()
         lash_e.nr_robot.return_vial_home(vial_name)
         lash_e.nr_robot.dispense_into_vial_from_reservoir(1,liquid_source_name, 8 - volume)
@@ -115,17 +124,23 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
     if not SIMULATE:
         mean_mass = np.mean(masses)
         print("Average mass: ", mean_mass)
-        print("Average time per replicat (s): ", (end - start) / REPLICATES)
-        std_mass = np.std(masses) * 1000
-        deviation = np.abs((mean_mass - expected_mass) / expected_mass * 100)
+        print("Average time per replicate (s): ", (end - start) / REPLICATES)
+        
+        std_mass = np.std(masses) * 1000  # Variability in mg
+
+        # Deviation: average absolute percent error across replicates
+        percent_errors = [abs((m - expected_mass) / expected_mass * 100) for m in masses]
+        deviation = np.mean(percent_errors)
+
+        # Time score: relative percent difference from expected time
         time_score = ((end - start) / REPLICATES - expected_time) / expected_time * 100
 
         return {
             "deviation": deviation,
             "variability": std_mass,
-            "time"
-            : time_score,
+            "time": time_score,
         }
+
     else: return pipet_and_measure_simulated(volume, params, expected_mass, expected_time)
 
 
@@ -134,7 +149,7 @@ lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
 
 # Run optimization
-ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES)
+ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES, model_type="explore")
 all_results = []
 raw_measurements = [] 
 
@@ -147,7 +162,7 @@ for i,volume in enumerate(VOLUMES):
         params, trial_index = ax_client.get_next_trial(fixed_features=ObservationFeatures({"volume": volume}))
         print(f"[TRIAL {trial_index}] Parameters: {params}")
         fill_liquid_if_needed("measurement_vial","liquid_source")
-        empty_vial_if_needed("measurement_vial", "waste_vial")
+        empty_vial_if_needed("measurement_vial", "waste_vial", state)
         result = pipet_and_measure(volume, params, expected_mass, expected_time)
         ax_client.complete_trial(trial_index=trial_index, raw_data=result)
         result.update(params)
@@ -167,7 +182,7 @@ for i, volume in enumerate(VOLUMES):
         for params, trial_index in suggestions:
             print(f"[TRIAL {trial_index}] Parameters: {params}")
             fill_liquid_if_needed("measurement_vial","liquid_source")
-            empty_vial_if_needed("measurement_vial", "waste_vial")
+            empty_vial_if_needed("measurement_vial", "waste_vial", state)
             results = pipet_and_measure(volume, params, expected_mass, expected_time)
             recommender.add_result(ax_client, trial_index, results)
             results.update(params)
@@ -212,63 +227,24 @@ if not SIMULATE:
     results_df.to_csv(os.path.join(save_dir, "experiment_summary.csv"), index=False)
     print("Saved results to:", os.path.join(save_dir, "experiment_summary.csv"))
 
-    for outcome in outcomes:
-        for param in param_cols:
-            plt.figure(figsize=(6, 4))
-            sns.scatterplot(data=results_df, x=param, y=outcome, hue="volume", palette="viridis")
-            plt.title(f"{outcome} vs {param}")
-            plt.tight_layout()
-            plt.savefig(os.path.join(save_dir, f"param_effect_{param}_on_{outcome}.png"))
-            plt.close()
+    # --- Save raw measurements ---
+    raw_df = pd.DataFrame(raw_measurements)
+    raw_csv_path = os.path.join(save_dir, "raw_replicate_data.csv")
+    raw_df.to_csv(raw_csv_path, index=False)
+    print("Saved raw replicate data to:", raw_csv_path)
 
-    print("Saved parameter vs outcome plots.")
+    # 1. Run SHAP analysis and save plots
+    analyzer.run_shap_analysis(results_df, save_dir)
 
-    # --- Retrieve and display best parameters per volume ---
-print("\nBest parameters per volume:")
+    # 2. Get top 3 trials per volume based on weighted normalized scores
+    best_trials = analyzer.get_top_trials(
+        results_df,
+        save_dir,
+        weight_time=1.0,
+        weight_deviation=0.5,
+        weight_variability=2.0,
+        top_n=3
+    )
 
-# --- Save Best Parameters Per Volume ---
-best_results = []
-
-for volume in VOLUMES:
-    try:
-        best_parameters, values = ax_client.get_best_parameters(
-            observation_features=ObservationFeatures({"volume": volume})
-        )
-
-        result_entry = {
-            "volume": volume,
-            **best_parameters,
-            **{f"{k}_objective": v for k, v in values.items()},
-        }
-        best_results.append(result_entry)
-
-        print(f"\n📏 Best for volume {volume} mL")
-        for k, v in best_parameters.items():
-            print(f"  {k}: {v}")
-        for obj, val in values.items():
-            print(f"  {obj}: {val}")
-
-    except Exception as e:
-        print(f"❌ Could not get best parameters for volume {volume}: {e}")
-
-if best_results:
-    best_df = pd.DataFrame(best_results)
-    best_csv_path = os.path.join(save_dir, "best_parameters_by_volume.csv")
-    best_txt_path = os.path.join(save_dir, "best_parameters_by_volume.txt")
-    best_df.to_csv(best_csv_path, index=False)
-
-    with open(best_txt_path, "w") as f:
-        for row in best_results:
-            f.write(f"Volume: {row['volume']} mL\n")
-            for k, v in row.items():
-                if k != "volume":
-                    f.write(f"  {k}: {v}\n")
-            f.write("\n")
-
-    print(f"\n✅ Best parameter results saved to:\n - {best_csv_path}\n - {best_txt_path}")
-
-# --- Save raw measurements ---
-raw_df = pd.DataFrame(raw_measurements)
-raw_csv_path = os.path.join(save_dir, "raw_replicate_data.csv")
-raw_df.to_csv(raw_csv_path, index=False)
-print("Saved raw replicate data to:", raw_csv_path)
+    # 3. Plot histograms of parameter distributions for those top trials
+    analyzer.plot_top_trial_histograms(best_trials, save_dir)
