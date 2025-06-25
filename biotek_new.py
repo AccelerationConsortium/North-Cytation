@@ -52,16 +52,27 @@ class Biotek_Wrapper:
 
                 time.sleep(2)
 
-    def get_num_reads(self,plate):
+    def extract_measurement_parameters(self,plate):
         current_procedure = plate.get_procedure()
         root = ET.fromstring( current_procedure )
-            # Find all Measurement elements
-        measurement_elements = root.findall(".//Measurement")
 
-        # Collect unique index values
-        unique_indexes = {m.attrib['Index'] for m in measurement_elements}
+        results = []
 
-        return unique_indexes
+        for measurement in root.findall(".//Measurement"):
+            wavelength = measurement.find("Wavelength")
+            excitation = measurement.find("Excitation")
+            emission = measurement.find("Emission")
+
+            if wavelength is not None:
+                results.append(wavelength.text.strip())
+            elif excitation is not None and emission is not None:
+                # Extract the numeric part before the slash if present
+                ex_val = excitation.text.split('/')[0].strip()
+                em_val = emission.text.split('/')[0].strip()
+                results.append(f"{ex_val}_{em_val}")
+
+        return results
+    
 
     def get_wavelengths_from_plate(self,plate):
         current_procedure = plate.get_procedure()
@@ -107,9 +118,9 @@ class Biotek_Wrapper:
                     results = plate.get_raw_data()
                     plate_data[well]=(results[1]['value']) 
             elif prot_type == "read":
-                num_reads = self.get_num_reads(plate)
-                print("Measurement types: ", num_reads)
-                for measurement_type in num_reads:
+                measurement_params = self.extract_measurement_parameters(plate)
+                print("Measurement types: ", measurement_params)
+                for measurement_type in measurement_params:
                     results = plate.get_raw_data()
                     i = 0
                     for well in wells:

@@ -3,14 +3,93 @@
 import numpy as np
 import pandas as pd
 
+surfactant_library = {
+    "SDS": {
+        "full_name": "Sodium Dodecyl Sulfate",
+        "CAS": "151-21-3",
+        "CMC": 8.5,
+        "Category": "anionic",
+        "MW": 289.39,
+        "stock_conc": 50,  # mM
+    },
+
+
+    "NaDC": {
+        "full_name": "Sodium Docusate",
+        "CAS": "577-11-7",
+        "CMC": 5.3375,
+        "Category": "anionic",
+        "MW": 445.57,
+        "stock_conc": 25,  # mM
+    },
+
+    
+    "NaC": {
+        "full_name": "Sodium Cholate",
+        "CAS": "361-09-1",
+        "CMC": 14,
+        "Category": "anionic",
+        "MW": 431.56,
+        "stock_conc": 50,  # mM
+    },
+
+
+    "CTAB": {
+        "full_name": "Hexadecyltrimethylammonium Bromide",
+        "CAS": "57-09-0",
+        "CMC": 1.07,
+        "Category": "cationic",
+        "MW": 364.45,
+        "stock_conc": 5 # mM
+    },
+
+
+    "DTAB": {
+        "full_name": "Dodecyltrimethylammonium Bromide",
+        "CAS": "1119-94-4",
+        "CMC": 15.85,
+        "Category": "cationic",
+        "MW": 308.34,
+        "stock_conc": 50,  # mM
+    },
+
+
+    "TTAB": {
+        "full_name": "Tetradecyltrimethylammonium Bromide",
+        "CAS": "1119-97-7",
+        "CMC": 3.985,
+        "Category": "cationic",
+        "MW": 336.39,
+        "stock_conc": 50,  # mM
+    },
+
+     "CAPB": {
+        "full_name": "Cocamidopropyl Betaine",
+        "CAS": "61789-40-0",
+        "CMC": 0.627,
+        "Category": "zwitterionic",
+        "MW": 342.52,
+        "stock_conc": 50,  # mM
+    },
+    
+    "CHAPS": {
+        "full_name": "CHAPS",
+        "CAS": "75621-03-3",
+        "CMC": 8,
+        "Category": "zwitterionic",
+        "MW": 614.88,
+        "stock_conc": 30,  # mM
+    }
+}
+
 
 def rough_generate_cmc_concentrations(list_of_surfactants, list_of_ratios, estimate_cmc, number_of_points=12 ,scale="log", max_conc_factor=0.8): # low/high in mM
 
-    surfactant_library = {
-        "SDS": {"stock_conc": 50}, "NaDC": {"stock_conc": 25}, "NaC": {"stock_conc": 50},
-        "CTAB": {"stock_conc": 5}, "DTAB": {"stock_conc": 50}, "TTAB": {"stock_conc": 50},
-        "P188": {"stock_conc": 2}, "P407": {"stock_conc": 2}, "CAPB": {"stock_conc": 50}, "CHAPS": {"stock_conc": 30}
-    }
+    # surfactant_library = {
+    #     "SDS": {"stock_conc": 50}, "NaDC": {"stock_conc": 25}, "NaC": {"stock_conc": 50},
+    #     "CTAB": {"stock_conc": 5}, "DTAB": {"stock_conc": 50}, "TTAB": {"stock_conc": 50},
+    #     "P188": {"stock_conc": 2}, "P407": {"stock_conc": 2}, "CAPB": {"stock_conc": 50}, "CHAPS": {"stock_conc": 30}
+    # }
 
     max_conc = 0
 
@@ -127,11 +206,11 @@ def calculate_volumes(concentration_list, sub_stock_concentration, probe_volume,
 
 
 def CMC_estimate(list_of_surfactants, list_of_ratios):
-    surfactant_library = {
-        "SDS": {"CMC": 8.3}, "NaDC": {"CMC": 8.2}, "NaC": {"CMC": 11},
-        "CTAB": {"CMC": 0.93}, "DTAB": {"CMC": 15.85}, "TTAB": {"CMC": 3.77},
-        "P188": {"CMC": 0.325}, "P407": {"CMC": 0.1}, "CAPB": {"CMC": 0.627}, "CHAPS": {"CMC": 8.5}
-    }
+    # surfactant_library = {
+    #     "SDS": {"CMC": 8.3}, "NaDC": {"CMC": 8.2}, "NaC": {"CMC": 11},
+    #     "CTAB": {"CMC": 0.93}, "DTAB": {"CMC": 15.85}, "TTAB": {"CMC": 3.77},
+    #     "P188": {"CMC": 0.48}, "P407": {"CMC": 0.1}, "CAPB": {"CMC": 0.627}, "CHAPS": {"CMC": 8.5}
+    # }
     cmc_inverse_sum = 0.0
     for surfactant, ratio in zip(list_of_surfactants, list_of_ratios):
         cmc = surfactant_library[surfactant]['CMC']
@@ -196,11 +275,11 @@ def verify_concentrations(df, sub_stock_concentration, probe_volume, CMC_sample_
 def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
                           sub_stock_volume=6000, CMC_sample_volume=1000, rough_screen=False, estimated_CMC=None):
 
-    surfactant_library = {
-        "SDS": {"stock_conc": 50}, "NaDC": {"stock_conc": 25}, "NaC": {"stock_conc": 50},
-        "CTAB": {"stock_conc": 5}, "DTAB": {"stock_conc": 50}, "TTAB": {"stock_conc": 50},
-        "P188": {"stock_conc": 2}, "P407": {"stock_conc": 2}, "CAPB": {"stock_conc": 50}, "CHAPS": {"stock_conc": 30}
-    }
+    # surfactant_library = {
+    #     "SDS": {"stock_conc": 50}, "NaDC": {"stock_conc": 25}, "NaC": {"stock_conc": 50},
+    #     "CTAB": {"stock_conc": 5}, "DTAB": {"stock_conc": 50}, "TTAB": {"stock_conc": 50},
+    #     "P188": {"stock_conc": 2}, "P407": {"stock_conc": 2}, "CAPB": {"stock_conc": 50}, "CHAPS": {"stock_conc": 30}
+    # }
 
     active = [(s, r) for s, r in zip(list_of_surfactants, list_of_ratios) if r > 0]
     if not active:
@@ -217,6 +296,7 @@ def generate_exp_flexible(list_of_surfactants, list_of_ratios, probe_volume=25,
 
     if not rough_screen:
         cmc_concs = generate_cmc_concentrations(estimated_CMC)
+        print("Concentrations (refined): ", cmc_concs)
     else:
         cmc_concs = rough_generate_cmc_concentrations(list_of_surfactants, list_of_ratios,  estimated_CMC)
 

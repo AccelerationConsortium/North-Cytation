@@ -6,10 +6,11 @@ from datetime import datetime
 import analysis.cmc_data_analysis as analyzer
 import analysis.cmc_exp_new as experimental_planner
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_input.csv"
-MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence.prt" #Will need to create a measurement protocol
+MEASUREMENT_PROTOCOL_FILE = [r"C:\Protocols\CMC_Fluorescence.prt", r"C:\Protocols\CMC_Absorbance.prt"]
 import numpy as np
 import os
 import slack_agent
+
 
 #Define your workflow! 
 #In this case we have two parameters: 
@@ -57,24 +58,19 @@ def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
 
         print(f"\nHandling {surfactant}: {volume_mL:.3f} mL")
 
-        if volume_mL <= 0.200:
-            lash_e.nr_robot.move_vial_to_location(surfactant, 'main_8mL_rack', 43)  # Safe location
-
         if volume_mL > 0:
             volumes = split_volume(volume_mL)
             print("Pipetable volumes:", volumes)
+            lash_e.nr_robot.move_vial_to_location(surfactant, 'main_8mL_rack', 43)  # Safe location
             for v in volumes:
                 lash_e.nr_robot.dispense_from_vial_into_vial(surfactant, substock_vial, v)
             print("Mixing samples...")
             lash_e.nr_robot.remove_pipet()
-
-        if volume_mL <= 0.200:
             lash_e.nr_robot.return_vial_home(surfactant)
 
-    if sub_stock_vols['water'] > 0:
-        lash_e.nr_robot.dispense_into_vial_from_reservoir(1, substock_vial, sub_stock_vols['water']/1000)
-        lash_e.nr_robot.move_vial_to_location(substock_vial, 'main_8mL_rack', 43) #move to safe location
-        lash_e.nr_robot.mix_vial(substock_vial,0.9, repeats=10)
+    lash_e.nr_robot.dispense_into_vial_from_reservoir(1, substock_vial, sub_stock_vols['water']/1000)
+    lash_e.nr_robot.move_vial_to_location(substock_vial, 'main_8mL_rack', 43)
+    lash_e.nr_robot.mix_vial(substock_vial,0.9, repeats=10)
     #lash_e.nr_robot.vortex_vial(substock_vial,10,50) #Mix the surfactants
     lash_e.nr_robot.remove_pipet()
 
@@ -127,8 +123,6 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp
 
     water_batch_df = split_water_batches(df_water)
 
-    lash_e.nr_robot.move_vial_to_location(substock_vial_index,'main_8mL_rack', 43) #Safe location
-
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso,['pyrene_DMSO'],well_plate_type="48 WELL PLATE",dispense_speed=20,wait_time=2,asp_cycles=1,low_volume_cutoff = 0.04, buffer_vol = 0,pipet_back_and_forth=True,blowout_vol=0.1)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
     
@@ -146,8 +140,6 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp
     lash_e.nr_robot.remove_pipet()
     
 def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellplate_data,folder,save_modifier):
-    
-    lash_e.nr_robot.prime_reservoir_line(1,'water',0.5)
 
     #Step 1: Mix the surfactants and Dilute with Water
     mix_surfactants(lash_e,sub_stock_vols,substock_vial_index)
@@ -162,11 +154,10 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         resulting_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE,wells_to_measure=range(starting_wp_index,starting_wp_index+samples_per_assay),plate_type="48 WELL PLATE")
         
         
-        resulting_data['ratio'] = resulting_data['1']/resulting_data['2']
+        resulting_data['ratio'] = resulting_data['334_373']/resulting_data['334_384']
 
-        if np.mean(resulting_data['ratio']) > 1.0:
-            print("Inverting data!")
-            resulting_data['ratio'] = resulting_data['2'] / resulting_data['1']
+        if (resulting_data["600"] > 0.1).any():
+            print("⚠️ Warning: Some absorbance (600 nm) values exceed 0.1!")
 
         print(resulting_data)
 
@@ -182,7 +173,7 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         wellplate_data.to_csv(folder+f'wellplate_data_{details}.csv', index=False)
         resulting_data.to_csv(folder+f'output_data_{details}.csv',index=False)
         with open(folder+f'wellplate_data_results_{details}.txt', "w") as f:
-            f.write(f"CMC: {x0}, r2: {r_squared}")
+            f.write(f"CMC: {x0}, r2: {r_squared}, A1: {A1}, A2: {A2}, dx: {dx}")
 
         print("CMC (mMol): ", x0)
         print("R-squared: ", r_squared)
@@ -190,11 +181,13 @@ def sample_workflow(starting_wp_index,sub_stock_vols,substock_vial_index,wellpla
         slack_agent.send_slack_message(f"CMC Workflow complete! CMC={x0}, R-squared={r_squared}")
         slack_agent.upload_and_post_file(figure_name,'CMC Image')
 
+        return x0
+    
     else:
-        print("Skipping analysis for simulation")
+        print("Skipping analysis for simulation")      
     
 
-simulate = True
+simulate = False
 logging = False
 
 if logging:
@@ -217,18 +210,21 @@ else:
 
 lash_e.nr_track.get_new_wellplate() #Get a new well plate #get wellplate from stack
 starting_wp_index = 0 #CHANGE THIS AS NEEDED!!!
+lash_e.nr_robot.prime_reservoir_line(1,'water',0.5)
 
 #These surfactants and ratios should be decided by something
-surfactants = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'P188',"P407", 'CAPB', 'CHAPS'] #refers to stock solutions
+surfactants = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS'] #refers to stock solutions
 item_to_index = {item: i for i, item in enumerate(surfactants)}# Create a mapping from item to index
-n = len(surfactants)  
+n = len(surfactants)*2  
 substock_name_list = [f'substock_{i}' for i in range(1, n + 1)] #refers to substock solutions
 
 #pairings_and_ratios = [(['P188'], [1])]
-pairings_and_ratios = [(['P188'], [1]), (['P407'],[1])]
+#pairings_and_ratios = [(['P188'], [1]), (['P407'],[1])]
+#pairings_and_ratios = [(['SDS', 'NaC'], [0.5, 0.5]), (['SDS', 'CAPB'], [0.5, 0.5]), (['CTAB', 'TTAB'], [0.5, 0.5]), (['CAPB', 'CHAPS'], [0.5, 0.5])]
+pairings_and_ratios = [(['SDS', 'CAPB'], [0.5, 0.5]), (['CTAB', 'TTAB'], [0.5, 0.5]), (['CAPB', 'CHAPS'], [0.5, 0.5])]
 
 # pairings_and_ratios = [
-# (['SDS', 'NaDC'], [0.7, 0.3]),
+# (['SDS', 'DTAB'], [0.5, 0.5]),
 # (['NaC', 'CTAB'], [0.4, 0.6]),
 # (['P188', 'P407'], [0.5, 0.5]),
 # (['DTAB', 'CHAPS'], [0.8, 0.2]),]

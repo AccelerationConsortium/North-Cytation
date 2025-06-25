@@ -6,6 +6,7 @@ from North_Safe import North_Robot
 from North_Safe import North_Track
 from North_Safe import North_Temp
 from North_Safe import North_Powder
+import pandas as pd
 
 class Lash_E:
     nr_robot = None
@@ -94,12 +95,20 @@ class Lash_E:
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
         if not self.simulate and protocol_file_path is not None:
-            data = self.cytation.run_protocol(protocol_file_path,wells_to_measure,plate_type = plate_type)
+            if isinstance(protocol_file_path, list):
+                all_data = []
+                for path in protocol_file_path:
+                    print(f"Running protocol: {path}")
+                    data = self.cytation.run_protocol(path, wells_to_measure, plate_type=plate_type)
+                    all_data.append(data)
+                combined_data = pd.concat(all_data, axis=1)  # assuming same row index, different columns
+            else:
+                combined_data = self.cytation.run_protocol(protocol_file_path, wells_to_measure, plate_type=plate_type)
         else:
-            data = None
+            combined_data = None
         self.move_wellplate_back_from_cytation(wellplate_index,quartz=quartz,plate_type=plate_type)
         self.nr_track.origin()
-        return data
+        return combined_data
 
     def run_photoreactor(self,vial_index,target_rpm,intensity,duration,reactor_num):
         self.nr_robot.move_vial_to_location(vial_index,'photoreactor_array',reactor_num)
