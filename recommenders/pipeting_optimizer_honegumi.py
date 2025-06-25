@@ -6,12 +6,22 @@ from ax.modelbridge.factory import Models
 from ax.modelbridge.generation_strategy import GenerationStep, GenerationStrategy
 from ax.modelbridge.registry import Specified_Task_ST_MTGP_trans
 from ax.core.observation import ObservationFeatures
+from botorch.acquisition import UpperConfidenceBound
 
 obj1_name = "deviation"
 obj2_name = "variability"
 obj3_name = "time"
 
-def create_model(seed, num_initial_recs, volumes):
+def create_model(seed, num_initial_recs, volumes, model_type):
+
+    if model_type == "transforms:":
+        model_kwargs={"transforms": Specified_Task_ST_MTGP_trans},
+    if model_type == "explore":
+        model_kwargs={
+        "transforms": Specified_Task_ST_MTGP_trans,
+        "botorch_acqf_class": UpperConfidenceBound,
+        "acqf_kwargs": {"beta": 2.0},  # Try 1.0–3.0 for exploration
+    },
 
     gs = GenerationStrategy(
         steps=[
@@ -27,7 +37,7 @@ def create_model(seed, num_initial_recs, volumes):
                 model=Models.BOTORCH_MODULAR,
                 num_trials=-1,
                 max_parallelism=1,
-                model_kwargs={"transforms": Specified_Task_ST_MTGP_trans},
+                model_kwargs=model_kwargs,
             ),
         ]
     )
