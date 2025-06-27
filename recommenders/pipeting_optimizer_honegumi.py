@@ -14,14 +14,20 @@ obj3_name = "time"
 
 def create_model(seed, num_initial_recs, volumes, model_type):
 
-    if model_type == "transforms:":
-        model_kwargs={"transforms": Specified_Task_ST_MTGP_trans},
     if model_type == "explore":
-        model_kwargs={
-        "transforms": Specified_Task_ST_MTGP_trans,
-        "botorch_acqf_class": UpperConfidenceBound,
-        "acqf_kwargs": {"beta": 2.0},  # Try 1.0–3.0 for exploration
-    },
+        model_kwargs = {
+            "transforms": Specified_Task_ST_MTGP_trans,
+        }
+        model_gen_kwargs = {
+            "botorch_acqf_class": UpperConfidenceBound,
+            "acqf_kwargs": {"beta": 2.0},
+            "deduplicate": True,
+        }
+    else:
+        model_kwargs = {
+            "transforms": Specified_Task_ST_MTGP_trans,
+        }
+    model_gen_kwargs = {"deduplicate": True}
 
     gs = GenerationStrategy(
         steps=[
@@ -31,7 +37,7 @@ def create_model(seed, num_initial_recs, volumes, model_type):
                 min_trials_observed=num_initial_recs,
                 max_parallelism=1,
                 model_kwargs={"seed": seed},
-                model_gen_kwargs={"deduplicate": True},
+                model_gen_kwargs=model_gen_kwargs,
             ),
             GenerationStep(
                 model=Models.BOTORCH_MODULAR,
