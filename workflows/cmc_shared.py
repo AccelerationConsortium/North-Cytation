@@ -116,4 +116,10 @@ def analyze_and_save_results(folder, details, wellplate_data, resulting_data, an
     slack_agent.send_slack_message(f"CMC Workflow complete! CMC={x0}, R-squared={r_squared}")
     slack_agent.upload_and_post_file(figure_name, 'CMC Image')
 
-    return x0
+    return {
+        "CMC": x0,
+        "r2": r_squared,
+        "A1": A1,
+        "A2": A2,
+        "dx": dx
+    }
