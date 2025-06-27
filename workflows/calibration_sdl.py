@@ -18,8 +18,8 @@ import analysis.calibration_analyzer as analyzer  # adjust if needed
 
 # --- Config ---
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 40
-BAYES_CYCLES_PER_VOLUME = 160
+SOBOL_CYCLES_PER_VOLUME = 30
+BAYES_CYCLES_PER_VOLUME = 120
 SIMULATE = False
 REPLICATES = 3
 VOLUMES = [0.01,0.02,0.05,0.1]
@@ -56,13 +56,13 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
 def empty_vial_if_needed(vial_name, waste_vial_name, state):
     volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
     if volume > 7.0:
-        input("Emptying vial...")
+        #input("Emptying vial...")
         lash_e.nr_robot.remove_pipet()
         disp_volume = volume / np.ceil(volume)
         for i in range (int(np.ceil(volume))-1):
             waste_vial_name = f"waste_vial_{state['waste_vial_index']}"
             if lash_e.nr_robot.get_vial_info(waste_vial_name, 'vial_volume') + disp_volume > 18.0:
-                input("Changing waste..")
+                #input("Changing waste..")
                 state['waste_vial_index'] += 1
                 waste_vial_name = f"waste_vial_{state['waste_vial_index']}"
             lash_e.nr_robot.dispense_from_vial_into_vial(vial_name, waste_vial_name, disp_volume)
@@ -71,7 +71,7 @@ def empty_vial_if_needed(vial_name, waste_vial_name, state):
 def fill_liquid_if_needed(vial_name, liquid_source_name):
     volume = lash_e.nr_robot.get_vial_info(liquid_source_name, 'vial_volume')
     if volume < 4.0:
-        input("Adding water...")
+        #input("Adding water...")
         lash_e.nr_robot.remove_pipet()
         lash_e.nr_robot.return_vial_home(vial_name)
         lash_e.nr_robot.dispense_into_vial_from_reservoir(1,liquid_source_name, 8 - volume)
