@@ -1,0 +1,26 @@
+Concentrations (refined):  [0.34376670162258505, 0.44380090345497536, 0.5729445027043084, 0.644562565542347, 0.7305042409479933, 0.8164459163536395, 0.9023875917592858, 0.9883292671649321, 1.0742709425705783, 1.289125131084694, 1.6642533879561576, 2.1485418851411566]
+
+ Scaling sub-stock volumes to total 5640.81 킠 (including 500 킠 buffer)
+Original total: 6000.00 킠 | Scaling factor: 0.940
+Scaled volumes:
+  DTAB: 70.00 킠
+  CAPB: 178.60 킠
+  water: 5392.21 킠
+
+Combining Surfactants:
+Stock solution composition: {'DTAB': 70.0, 'CAPB': 178.6, 'water': 5392.21}
+
+Handling DTAB: 0.070 mL
+Pipetable volumes: [0.07]
+Moving vial DTAB to main_8mL_rack: 43
+Grabbing vial
+Traceback (most recent call last):
+  File "c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\workflows\CMC_Baybe.py", line 96, in <module>
+    mix_surfactants(lash_e, sub_stock_vols, substock_vial)
+  File "c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\workflows\cmc_shared.py", line 35, in mix_surfactants
+    lash_e.nr_robot.dispense_from_vial_into_vial(surfactant, substock_vial, v)
+  File "C:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\../utoronto_demo\North_Safe.py", line 1045, in dispense_from_vial_into_vial
+    dest_vial_index = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
+  File "C:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\../utoronto_demo\North_Safe.py", line 907, in normalize_vial_index
+    raise ValueError(f"Vial name '{vial}' not found in VIAL_DF.")
+ValueError: Vial name 'substock_0' not found in VIAL_DF.

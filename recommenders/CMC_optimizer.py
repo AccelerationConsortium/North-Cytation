@@ -46,14 +46,6 @@ def initialize_campaign(bound, random_seed, random_recs=False):
             bounds=(0.1, 20),
             ),
         NumericalContinuousParameter(
-            name = 'P188',
-            bounds=(0.1, 20),
-            ),
-        NumericalContinuousParameter(
-            name = 'P407',
-            bounds=(0.1, 20),
-            ),
-        NumericalContinuousParameter(
             name = 'CAPB',
             bounds=(0.1, 20),
             ),
@@ -64,7 +56,7 @@ def initialize_campaign(bound, random_seed, random_recs=False):
     ]
 
     constraints = [ContinuousCardinalityConstraint(
-    parameters=['SDS', 'NaDC', 'NaC', 'CTAB','DTAB','TTAB','P188','P407','CAPB','CHAPS'],
+    parameters=['SDS', 'NaDC', 'NaC', 'CTAB','DTAB','TTAB','CAPB','CHAPS'],
     min_cardinality=2, 
     max_cardinality=2,  
     ) ]
