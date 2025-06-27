@@ -19,7 +19,7 @@ REPEATS_PER_BATCH = 4
 TOTAL_DURATION_MINUTES = 180
 REPEAT_INTERVAL_MINUTES = 30
 
-surf_labels = ['a', 'b', 'c', 'd', 'e', 'f']  # Must match REPEATS_PER_BATCH
+surf_labels = ['a', 'b', 'c', 'd']  # Must match REPEATS_PER_BATCH
 SURFACTANT_NAME = 'SDS'  # Specify single surfactant for the study
 surfactants = [SURFACTANT_NAME]
 ratio_vector = [1]
