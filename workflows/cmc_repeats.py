@@ -16,17 +16,19 @@ LOGGING_FOLDER = "../utoronto_demo/logs/"
 MEASUREMENT_PROTOCOL_FILE = r"C:\\Protocols\\CMC_Fluorescence.prt"
 simulate = False
 enable_logging = False
+repeats = 3  # Number of replicate measurements
 
 REPEATS_PER_BATCH = 4
 #SURFACTANTS_TO_RUN = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS'] #Note that we might just do 4 at a time (each assay takes about 4 hours)
 surf_labels = ['a', 'b', 'c', 'd']  # Must match REPEATS_PER_BATCH
 SURFACTANTS_TO_RUN = ['SDS']
 #delay_minutes = [0, 5, 10, 20, 30]
-delay_minutes = [0, 5, 10]
+delay_minutes = [0, 5]
 
 # Setup
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
 lash_e.nr_robot.check_input_file()
+lash_e.nr_track.check_input_file()
 timestamp_start = datetime.now().strftime("%Y%m%d_%H%M")
 main_folder = f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp_start}/'
 
@@ -39,7 +41,8 @@ if enable_logging:
     log_file = open(log_file_path, "w")
     sys.stdout = sys.stderr = log_file
 
-lash_e.nr_robot.prime_reservoir_line(1, 'water', 0.5)
+#lash_e.nr_robot.prime_reservoir_line(1, 'water', 0.5)
+#lash_e.grab_new_wellplate()
 
 summary_records = []
 substock_counter = 1
@@ -60,9 +63,9 @@ for surfactant in SURFACTANTS_TO_RUN:
         substock_counter += 1
         repeat_label = surf_labels[repeat_index]
 
-        mix_surfactants(lash_e, sub_stock_vols, substock_vial)
-        fill_water_vial(lash_e)
-        create_wellplate_samples(lash_e, wellplate_data, substock_vial, starting_wp_index)
+        #mix_surfactants(lash_e, sub_stock_vols, substock_vial)
+        #fill_water_vial(lash_e)
+        #create_wellplate_samples(lash_e, wellplate_data, substock_vial, starting_wp_index)
 
         assay_start_time = datetime.now()
         sample_indices = range(starting_wp_index, starting_wp_index + samples_per_assay)
@@ -81,36 +84,63 @@ for surfactant in SURFACTANTS_TO_RUN:
                 # Fast-forward simulated time conceptually
                 # No actual wait required
 
-            for rep in range(3):
-                label = f"{surfactant}_{delay}min_{repeat_label}_rep{rep+1}"
-                if not simulate:
-                    results = lash_e.measure_wellplate(
-                        MEASUREMENT_PROTOCOL_FILE,
-                        sample_indices,
-                        plate_type="48 WELL PLATE"
-                    )
-                    details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
+            label_prefix = f"{surfactant}_{delay}min_{repeat_label}"
+            if not simulate:
+                results = lash_e.measure_wellplate(
+                    MEASUREMENT_PROTOCOL_FILE,
+                    wells_to_measure=sample_indices,
+                    plate_type="48 WELL PLATE",
+                    repeats=repeats
+                )
+
+                details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
+
+                # Iterate over replicates inside the result
+                for rep in range(repeats):
+                    rep_label = f"rep{rep+1}"
+
+                    if isinstance(results.columns, pd.MultiIndex):
+                        rep_data = results[rep_label]
+                    else:
+                        # fallback if single rep or simulate edge case
+                        rep_data = results
+
+                    label = f"{label_prefix}_rep{rep+1}"
                     metrics = analyze_and_save_results(
-                        main_folder, details, wellplate_data, results, analyzer, label
+                        main_folder, details, wellplate_data, rep_data, analyzer, label
                     )
-                else:
-                    metrics = {"CMC": 0.01, "r2": 0.95, "A1": 1000, "A2": 1500, "dx": 0.05}
-                    print(f"[Simulate] Measuring wells for {surfactant} {repeat_label} rep {rep+1} at {delay} min")
 
-                summary_records.append({
-                    "Surfactant": surfactant,
-                    "Assay": repeat_label,
-                    "Timing": f"{delay} minutes",
-                    "Replicate": rep + 1,
-                    **metrics
-                })
+                    summary_records.append({
+                        "Surfactant": surfactant,
+                        "Assay": repeat_label,
+                        "Time_min": delay,
+                        "Replicate": rep + 1,
+                        **metrics
+                    })
+else:
+    for rep in range(repeats):
+        print(f"[Simulate] Measuring wells for {surfactant} {repeat_label} rep {rep+1} at {delay} min")
+        metrics = {"CMC": 0.01, "r2": 0.95, "A1": 1000, "A2": 1500, "dx": 0.05}
+        summary_records.append({
+            "Surfactant": surfactant,
+            "Assay": repeat_label,
+            "Time_min": delay,
+            "Replicate": rep + 1,
+            **metrics
+        })
 
-        starting_wp_index += samples_per_assay
+    starting_wp_index += samples_per_assay
 
-        if starting_wp_index >= 48:
-            lash_e.discard_used_wellplate()
+    plate_full = starting_wp_index >= 48
+    last_surfactant = surfactant == SURFACTANTS_TO_RUN[-1]
+    last_repeat = repeat_index == REPEATS_PER_BATCH - 1
+
+    if plate_full:
+        lash_e.discard_used_wellplate()
+        if not (last_surfactant and last_repeat):
             lash_e.grab_new_wellplate()
             starting_wp_index = 0
+
 
     print(f"All assays complete for {surfactant}.")
 
@@ -124,83 +154,120 @@ if enable_logging:
 
 import re
 
-def plot_variation(data, surfactant_name, output_dir):
-    df = data[data["Surfactant"] == surfactant_name].copy()
-
-    # Convert Timing to numeric if possible (e.g., "30 minutes" -> 30)
-    try:
-        df["Timing_num"] = df["Timing"].str.extract(r'(\d+)').astype(float)
-    except Exception:
-        df["Timing_num"] = df["Timing"]
-
+def plot_variation_clean(summary_df, surfactant_name, output_dir):
+    df = summary_df[summary_df["Surfactant"] == surfactant_name].copy()
+    
+    # Extract numeric time
+    #df["Time_min"] = df["Time_min"].str.extract(r'(\d+)').astype(float)
+    
     metrics = ["CMC", "r2", "A1", "A2", "dx"]
-
-    # 1. Variation across replicates
+    
     for metric in metrics:
         plt.figure()
         for assay in sorted(df["Assay"].unique()):
             sub = df[df["Assay"] == assay]
-            plt.plot(sub["Replicate"], sub[metric], 'o-', label=f'Assay {assay}')
-        plt.title(f"{metric} variation across replicates ({surfactant_name})")
-        plt.xlabel("Replicate")
-        plt.ylabel(metric)
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        fname = re.sub(r'[^\w\-_.]', '_', f"{surfactant_name}_{metric}_replicate_variation.png")
-        plt.savefig(os.path.join(output_dir, fname))
-        plt.close()
+            
+            # Scatter plot of replicates
+            plt.scatter(sub["Time_min"], sub[metric], label=f"Trial {assay}", alpha=0.6)
+            
+            # Mean per time point
+            mean_vals = sub.groupby("Time_min")[metric].mean()
+            plt.plot(mean_vals.index, mean_vals.values, linestyle=":", marker='o', label=f"{assay} avg")
 
-    # 2. Variation across assays
-    for metric in metrics:
-        grouped = df.groupby(["Timing", "Assay"])[metric].mean().unstack()
-        fig, ax = plt.subplots()
-        grouped.plot(marker='o', ax=ax)
-        plt.title(f"{metric} variation across assays ({surfactant_name})")
-        plt.xlabel("Timing")
-        plt.ylabel(metric)
-        plt.grid(True)
-        plt.tight_layout()
-        fname = re.sub(r'[^\w\-_.]', '_', f"{surfactant_name}_{metric}_assay_variation.png")
-        plt.savefig(os.path.join(output_dir, fname))
-        plt.close()
-
-    # 3. Variation over time (mean ± std)
-    for metric in metrics:
-        grouped = df.groupby("Timing")[metric].agg(["mean", "std"]).reset_index()
-        try:
-            grouped["Timing_num"] = grouped["Timing"].str.extract(r'(\d+)').astype(float)
-        except Exception:
-            grouped["Timing_num"] = grouped["Timing"]
-        grouped = grouped.sort_values("Timing_num")
-
-        plt.figure()
-        plt.errorbar(grouped["Timing_num"], grouped["mean"], yerr=grouped["std"], fmt='-o', capsize=4)
-        plt.title(f"{metric} variation over time ({surfactant_name})")
+        plt.title(f"{metric} vs Time ({surfactant_name})")
         plt.xlabel("Time (minutes)")
         plt.ylabel(metric)
         plt.grid(True)
+        plt.legend(title="Trial")
         plt.tight_layout()
-        fname = re.sub(r'[^\w\-_.]', '_', f"{surfactant_name}_{metric}_time_variation.png")
+
+        fname = f"{surfactant_name}_{metric}_clean_variation.png".replace(" ", "_")
         plt.savefig(os.path.join(output_dir, fname))
         plt.close()
 
-    # --- Save variation data tables ---
-    replicate_stats = df.groupby(["Timing", "Assay", "Replicate"])[metrics].mean().reset_index()
-    assay_stats = df.groupby(["Timing", "Assay"])[metrics].agg(["mean", "std"]).reset_index()
-    time_stats = df.groupby("Timing")[metrics].agg(["mean", "std"]).reset_index()
-
-    # Flatten multi-index columns
-    assay_stats.columns = ['_'.join(col).strip('_') for col in assay_stats.columns.values]
-    time_stats.columns = ['_'.join(col).strip('_') for col in time_stats.columns.values]
-
-    replicate_stats.to_csv(os.path.join(output_dir, f"{surfactant_name}_replicate_variation.csv"), index=False)
-    assay_stats.to_csv(os.path.join(output_dir, f"{surfactant_name}_assay_variation.csv"), index=False)
-    time_stats.to_csv(os.path.join(output_dir, f"{surfactant_name}_time_variation.csv"), index=False)
 
 
 
 if not simulate:
-    # Run visualization for each surfactant
+    # --- BACKWARD-COMPATIBLE TIME HANDLING ---
+    if "Time_min" not in summary_df.columns and "Timing" in summary_df.columns:
+        summary_df["Time_min"] = summary_df["Timing"].str.extract(r"(\d+)").astype(float)
+    else:
+        summary_df["Time_min"] = pd.to_numeric(summary_df["Time_min"], errors="coerce")
+
+    summary_df["Assay"] = summary_df["Assay"].astype(str)
+
+    # --- PER-SURFACTANT PLOTS (OPTIONAL) ---
     for surf in summary_df["Surfactant"].unique():
-        plot_variation(summary_df, surf, main_folder)
+        df = summary_df[summary_df["Surfactant"] == surf].copy()
+        metrics = ["CMC", "r2", "A1", "A2", "dx"]
+        for metric in metrics:
+            plt.figure()
+            for assay in sorted(df["Assay"].unique()):
+                sub = df[df["Assay"] == assay].sort_values("Time_min")
+                plt.scatter(sub["Time_min"], sub[metric], alpha=0.6, label=f"Trial {assay}")
+                mean_vals = sub.groupby("Time_min")[metric].mean()
+                plt.plot(mean_vals.index, mean_vals.values, linestyle=":", marker='o', label=f"{assay} avg")
+            plt.title(f"{metric} vs Time ({surf})")
+            plt.xlabel("Time (minutes)")
+            plt.ylabel(metric)
+            plt.grid(True)
+            plt.legend(title="Trial")
+            plt.tight_layout()
+            fname = f"{surf}_{metric}_clean_variation.png".replace(" ", "_")
+            plt.savefig(os.path.join(main_folder, fname))
+            plt.close()
+
+    # --- REPLICATE / ASSAY / TIME VARIANCE ANALYSIS ---
+    rep_avg = summary_df.groupby(["Time_min", "Assay"])["CMC"].mean().reset_index()
+
+    replicate_std = summary_df.groupby(["Time_min", "Assay"])["CMC"].std().reset_index()
+    replicate_std.rename(columns={"CMC": "replicate_std"}, inplace=True)
+
+    assay_std = rep_avg.groupby("Time_min")["CMC"].std().reset_index()
+    assay_std.rename(columns={"CMC": "assay_std"}, inplace=True)
+
+    time_std = rep_avg.groupby("Assay")["CMC"].std().reset_index()
+    time_std.rename(columns={"CMC": "time_std"}, inplace=True)
+
+    replicate_std.to_csv(os.path.join(main_folder, "replicate_std.csv"), index=False)
+    assay_std.to_csv(os.path.join(main_folder, "assay_std.csv"), index=False)
+    time_std.to_csv(os.path.join(main_folder, "time_std.csv"), index=False)
+
+    # --- PLOTS FOR VARIANCE COMPONENTS ---
+
+    # Plot 1: Std Dev of Replicates vs Time (per Trial)
+    plt.figure()
+    for assay in replicate_std["Assay"].unique():
+        sub = replicate_std[replicate_std["Assay"] == assay]
+        plt.plot(sub["Time_min"], sub["replicate_std"], marker='o', label=f"Trial {assay}")
+    plt.title("Std Dev of Replicates vs Time (per Trial)")
+    plt.xlabel("Time (min)")
+    plt.ylabel("Std Dev (CMC)")
+    plt.legend(title="Trial")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(main_folder, "plot_replicate_std.png"))
+    plt.close()
+
+    # Plot 2: Std Dev Across Trials vs Time
+    plt.figure()
+    plt.plot(assay_std["Time_min"], assay_std["assay_std"], marker='o')
+    plt.title("Std Dev Across Trials vs Time")
+    plt.xlabel("Time (min)")
+    plt.ylabel("Std Dev (CMC across trial averages)")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(main_folder, "plot_assay_std.png"))
+    plt.close()
+
+    # Plot 3: Std Dev Across Timepoints per Trial
+    plt.figure()
+    plt.bar(time_std["Assay"], time_std["time_std"])
+    plt.title("Std Dev Across Timepoints per Trial")
+    plt.xlabel("Trial")
+    plt.ylabel("Std Dev (CMC over time)")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(main_folder, "plot_time_std.png"))
+    plt.close()
