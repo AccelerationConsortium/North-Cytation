@@ -118,16 +118,17 @@ for surfactant in SURFACTANTS_TO_RUN:
                         **metrics
                     })
 
-    starting_wp_index += samples_per_assay
+        starting_wp_index += samples_per_assay
+        print("Wellplate index: ", starting_wp_index)
 
-    plate_full = starting_wp_index >= 48
     last_surfactant = surfactant == SURFACTANTS_TO_RUN[-1]
 
-    if plate_full:
-        lash_e.discard_used_wellplate()
-        if not (last_surfactant):
-            lash_e.grab_new_wellplate()
-            starting_wp_index = 0
+    lash_e.discard_used_wellplate()
+    starting_wp_index = 0
+    if not (last_surfactant):
+        print("Getting new wellplate...")
+        lash_e.grab_new_wellplate()
+        
 
 
     print(f"All assays complete for {surfactant}.")
