@@ -5,8 +5,18 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 # Replace with your Slack webhook URL
-SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/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"
-SLACK_BOT_TOKEN = "xoxb-1089129130001-8411300097889-QinoradzIThH3GKQ0cmbE6Jl"
+def load_secrets(path="secrets.txt"):
+    secrets = {}
+    with open(path, "r") as f:
+        for line in f:
+            if "=" in line:
+                key, value = line.strip().split("=", 1)
+                secrets[key] = value
+    return secrets
+secrets = load_secrets()
+
+SLACK_BOT_TOKEN = secrets["SLACK_BOT_TOKEN"]
+SLACK_WEBHOOK_URL = secrets["SLACK_WEBHOOK_URL"]
 SLACK_CHANNEL = "C08C38E2GEM" 
 
 # ✅ Setup logging
