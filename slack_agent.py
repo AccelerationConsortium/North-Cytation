@@ -5,8 +5,8 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 # Replace with your Slack webhook URL
-SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/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"
-SLACK_BOT_TOKEN = "xoxb-1089129130001-8411300097889-QinoradzIThH3GKQ0cmbE6Jl"
+SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/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"
+SLACK_BOT_TOKEN = "xoxb-1089129130001-8411300097889-08KD26zK9yoLIRiK2XA8VCq0"
 SLACK_CHANNEL = "C08C38E2GEM" 
 
 # ✅ Setup logging
