@@ -524,6 +524,7 @@ class North_Temp:
 
     def __init__(self,c9):
         from north import NorthC9
+        print("Initializing temperature controller...")
         self.t8 = NorthC9('B', network=c9.network)
         self.c8 = NorthC9('D', network=c9.network)
     

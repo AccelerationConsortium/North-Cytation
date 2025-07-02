@@ -30,11 +30,15 @@ def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
         if volume_mL > 0:
             volumes = split_volume(volume_mL)
             print("Pipetable volumes:", volumes)
-            lash_e.nr_robot.move_vial_to_location(surfactant, 'main_8mL_rack', 43)
+            vial_location = lash_e.nr_robot.get_vial_info(surfactant, 'location')
+            if vial_location == 'main_8mL_rack':
+                lash_e.nr_robot.move_vial_to_location(surfactant, 'main_8mL_rack', 43)
             for v in volumes:
                 lash_e.nr_robot.dispense_from_vial_into_vial(surfactant, substock_vial, v)
             lash_e.nr_robot.remove_pipet()
-            lash_e.nr_robot.return_vial_home(surfactant)
+            if vial_location == 'main_8mL_rack':
+                lash_e.nr_robot.return_vial_home(surfactant)
+            
 
     lash_e.nr_robot.dispense_into_vial_from_reservoir(1, substock_vial, sub_stock_vols['water'] / 1000)
     lash_e.nr_robot.move_vial_to_location(substock_vial, 'main_8mL_rack', 43)
@@ -99,9 +103,15 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_w
 def analyze_and_save_results(folder, details, wellplate_data, resulting_data, analyzer, save_modifier):
     concentrations = wellplate_data['concentration']
 
-    resulting_data['ratio'] = resulting_data['334_373'] / resulting_data['334_384']
-    if (resulting_data['600'] > 0.1).any():
-        print("\u26a0\ufe0f Warning: Some absorbance (600 nm) values exceed 0.1!")
+    try:
+        resulting_data['ratio'] = resulting_data['334_373'] / resulting_data['334_384']
+    except:
+        print("No fluorescence data found")
+    try:
+        if (resulting_data['600'] > 0.1).any():
+            print("\u26a0\ufe0f Warning: Some absorbance (600 nm) values exceed 0.1!")
+    except:
+        print("No absorbance data")
 
     figure_name = folder + f'CMC_plot_{details}_{save_modifier}.png'
     A1, A2, x0, dx, r_squared = analyzer.CMC_plot(resulting_data['ratio'].values, concentrations, figure_name)

@@ -9,17 +9,17 @@ from datetime import datetime, timedelta
 import os
 import time
 
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_input.csv"
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_repeats_input.csv"
 LOGGING_FOLDER = "../utoronto_demo/logs/"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence.prt"
-simulate = True
-enable_logging = True
+simulate = False
+enable_logging = False
 
 REPEATS_PER_BATCH = 4
-TOTAL_DURATION_MINUTES = 180
+TOTAL_DURATION_MINUTES = 120
 REPEAT_INTERVAL_MINUTES = 30
 
-surf_labels = ['a', 'b', 'c', 'd', 'e', 'f']  # Must match REPEATS_PER_BATCH
+surf_labels = ['a', 'b', 'c', 'd']  # Must match REPEATS_PER_BATCH
 SURFACTANT_NAME = 'SDS'  # Specify single surfactant for the study
 surfactants = [SURFACTANT_NAME]
 ratio_vector = [1]
@@ -42,6 +42,7 @@ if enable_logging:
     sys.stdout = sys.stderr = log_file
 
 starting_wp_index = 0
+lash_e.nr_robot.prime_reservoir_line(1,'water',0.5)
 
 # Prepare all REPEATS_PER_BATCH samples
 experiment, _ = experimental_planner.generate_exp_flexible(surfactants, ratio_vector, sub_stock_volume=6000, probe_volume=25)
@@ -49,20 +50,15 @@ sub_stock_vols = experiment['surfactant_sub_stock_vols']
 wellplate_data = experiment['df']
 samples_per_assay = wellplate_data.shape[0]
 
-for repeat_index in range(REPEATS_PER_BATCH):
-    substock_vial = f'substock_{repeat_index+1}'
-    repeat_label = surf_labels[repeat_index]
+# for repeat_index in range(REPEATS_PER_BATCH):
+#     substock_vial = f'substock_{repeat_index+1}'
+#     repeat_label = surf_labels[repeat_index]
 
-    mix_surfactants(lash_e, sub_stock_vols, substock_vial)
-    fill_water_vial(lash_e)
-    create_wellplate_samples(lash_e, wellplate_data, substock_vial, starting_wp_index)
+#     mix_surfactants(lash_e, sub_stock_vols, substock_vial)
+#     fill_water_vial(lash_e)
+#     create_wellplate_samples(lash_e, wellplate_data, substock_vial, starting_wp_index)
 
-    starting_wp_index += samples_per_assay
-
-    if starting_wp_index >= 48:
-        lash_e.discard_used_wellplate()
-        lash_e.grab_new_wellplate()
-        starting_wp_index = 0
+#     starting_wp_index += samples_per_assay
 
 print("Initial sample preparation complete. Beginning timed measurements.")
 
@@ -86,7 +82,7 @@ while (not simulate and datetime.now() <= end_time) or (simulate and simulated_n
         label = f"{timestamp}_{repeat_label}"
 
         if not simulate:
-            results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(wp_index, wp_index + samples_per_assay), "48 WELL PLATE")
+            results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(wp_index, wp_index + samples_per_assay), plate_type="48 WELL PLATE")
             details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items()) + f"_{label}"
             analyze_and_save_results(main_folder, details, wellplate_data, results, analyzer, label)
         else:

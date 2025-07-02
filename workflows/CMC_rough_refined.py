@@ -78,7 +78,7 @@ for i, ratio in enumerate(padded_ratios):
     create_wellplate_samples(lash_e, wellplate_data, rough_vial, starting_wp_index)
 
     if not simulate:
-        results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(starting_wp_index, starting_wp_index + samples_per_assay), "48 WELL PLATE")
+        results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(starting_wp_index, starting_wp_index + samples_per_assay), plate_type="48 WELL PLATE")
         cmc_rough = analyze_and_save_results(folder, label + '_rough', wellplate_data, results, analyzer, 'rough')
         print("Rough CMC:", cmc_rough)
     else:
@@ -97,7 +97,7 @@ for i, ratio in enumerate(padded_ratios):
     create_wellplate_samples(lash_e, wellplate_data, fine_vial, starting_wp_index)
 
     if not simulate:
-        results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(starting_wp_index, starting_wp_index + samples_per_assay), "48 WELL PLATE")
+        results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(starting_wp_index, starting_wp_index + samples_per_assay), plate_type="48 WELL PLATE")
         cmc_fine = analyze_and_save_results(folder, label + '_fine', wellplate_data, results, analyzer, 'fine')
         print("Refined CMC:", cmc_fine)
 
