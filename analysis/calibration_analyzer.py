@@ -9,7 +9,7 @@ import seaborn as sns
 
 input_cols = [
     'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time',
-    'retract_speed', 'pre_asp_air_vol', 'post_asp_air_vol', 'blowout_vol'
+    'retract_speed', 'pre_asp_air_vol', 'post_asp_air_vol', 
 ]
 
 output_targets = ['time', 'deviation', 'variability']
@@ -83,3 +83,132 @@ def plot_top_trial_histograms(best_trials, save_folder):
         plt.tight_layout()
         plt.savefig(os.path.join(save_folder, f'top_trials_histogram_{param}.png'))
         plt.clf()
+
+def plot_time_vs_deviation(results_df, save_folder):
+    """Scatter plot of Time vs. Deviation with variability > 1 marked and volumes color-coded."""
+    plt.figure(figsize=(10, 6))
+    
+    for vol in sorted(results_df['volume'].unique()):
+        df_sub = results_df[results_df['volume'] == vol]
+        label = f"{vol} mL"
+
+        # Normal points
+        plt.scatter(
+            df_sub["time"],
+            df_sub["deviation"],
+            label=label,
+            alpha=0.7,
+            edgecolors="k"
+        )
+
+        # X markers for variability > 1.0
+        high_var = df_sub[df_sub["variability"] > 1.0]
+        plt.scatter(
+            high_var["time"],
+            high_var["deviation"],
+            marker="x",
+            color="black",
+            s=100,
+            label=None
+        )
+
+    plt.xlabel("Time (seconds)")
+    plt.ylabel("Deviation From Target (%)")
+    plt.title("Time vs Deviation with High-Variability Markers")
+    plt.legend(title="Volume")
+    plt.grid(True)
+    plt.tight_layout()
+
+    save_path = os.path.join(save_folder, "time_vs_deviation_scatter.png")
+    plt.savefig(save_path)
+    plt.clf()
+    print("Saved time vs deviation plot to:", save_path)
+
+def plot_boxplots(df, save_folder):
+    for target in ['deviation', 'variability', 'time']:
+        if target in df.columns:
+            plt.figure(figsize=(10, 6))
+            sns.boxplot(data=df, x='volume', y=target)
+            plt.title(f'{target.capitalize()} by Volume')
+            plt.tight_layout()
+            plt.savefig(os.path.join(save_folder, f'boxplot_{target}_by_volume.png'), dpi=300)
+            plt.close()
+
+def plot_pairplot(df, save_folder):
+    key_params = ['deviation', 'time', 'variability', 'aspirate_speed', 'dispense_speed']
+    available = [p for p in key_params if p in df.columns]
+    if len(available) >= 3:
+        sns.pairplot(df[available])
+        plt.savefig(os.path.join(save_folder, 'parameter_pairplot.png'), dpi=300)
+        plt.close()
+
+def plot_learning_curves(df, save_folder):
+    df = df.copy()
+    df['trial_index'] = pd.to_numeric(df['trial_index'], errors='coerce')
+    df = df.dropna(subset=['trial_index']).sort_values(['volume', 'trial_index'])
+
+    metrics = ['deviation', 'time', 'variability']
+    for metric in metrics:
+        if metric not in df.columns:
+            continue
+        volumes = sorted(df['volume'].unique())
+        plt.figure(figsize=(14, 5 * len(volumes)))
+        for i, vol in enumerate(volumes):
+            ax = plt.subplot(len(volumes), 1, i+1)
+            vol_df = df[df['volume'] == vol].sort_values('trial_index')
+            ax.scatter(vol_df['trial_index'], vol_df[metric], alpha=0.6, s=40)
+            if len(vol_df) >= 3:
+                ma = vol_df[metric].rolling(window=3, center=True).mean()
+                ax.plot(vol_df['trial_index'], ma, label='Moving Average', color='orange')
+                z = np.polyfit(vol_df['trial_index'], vol_df[metric], 1)
+                ax.plot(vol_df['trial_index'], np.poly1d(z)(vol_df['trial_index']), 'r--', label='Trend')
+            ax.set_title(f'{metric.capitalize()} Learning Curve - {vol} mL')
+            ax.set_xlabel('Trial Index')
+            ax.set_ylabel(metric.capitalize())
+            ax.legend()
+            ax.grid(True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_folder, f'learning_curves_{metric}.png'), dpi=300)
+        plt.close()
+
+def plot_improvement_summary(df, save_folder):
+    metrics = ['deviation', 'time', 'variability']
+    summary = []
+    for vol in sorted(df['volume'].unique()):
+        sub = df[df['volume'] == vol].sort_values('trial_index')
+        n = len(sub)
+        if n < 4:
+            continue
+        for metric in metrics:
+            if metric not in sub.columns:
+                continue
+            first = sub.iloc[:n//2][metric].mean()
+            second = sub.iloc[n//2:][metric].mean()
+            if first != 0:
+                improvement = (first - second) / first * 100
+            else:
+                improvement = 0
+            summary.append({
+                'volume': vol,
+                'metric': metric,
+                'first_half': first,
+                'second_half': second,
+                'improvement_pct': improvement
+            })
+    if summary:
+        df_summary = pd.DataFrame(summary)
+        df_summary.to_csv(os.path.join(save_folder, 'improvement_summary.csv'), index=False)
+
+        plt.figure(figsize=(12, 8))
+        for i, metric in enumerate(metrics):
+            plt.subplot(3, 1, i+1)
+            sub = df_summary[df_summary['metric'] == metric]
+            plt.bar(sub['volume'].astype(str), sub['improvement_pct'], color='teal')
+            plt.title(f'{metric.capitalize()} Improvement (% reduction)')
+            plt.ylabel('Improvement (%)')
+            plt.xlabel('Volume (mL)')
+            plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_folder, 'improvement_summary.png'), dpi=300)
+        plt.close()
+

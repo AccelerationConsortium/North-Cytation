@@ -14,16 +14,15 @@ import matplotlib.pyplot as plt
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_repeats_input.csv"
 LOGGING_FOLDER = "../utoronto_demo/logs/"
 MEASUREMENT_PROTOCOL_FILE = r"C:\\Protocols\\CMC_Fluorescence.prt"
-simulate = False
-enable_logging = False
+simulate = True
+enable_logging = True
 repeats = 3  # Number of replicate measurements
 
-REPEATS_PER_BATCH = 4
+REPEATS_PER_BATCH = 3
 #SURFACTANTS_TO_RUN = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS'] #Note that we might just do 4 at a time (each assay takes about 4 hours)
-surf_labels = ['a', 'b', 'c', 'd']  # Must match REPEATS_PER_BATCH
-SURFACTANTS_TO_RUN = ['SDS']
-#delay_minutes = [0, 5, 10, 20, 30]
-delay_minutes = [0, 5]
+surf_labels = ['a', 'b', 'c']  # Must match REPEATS_PER_BATCH
+SURFACTANTS_TO_RUN = ['SDS', 'NaDC', 'NaC']  
+delay_minutes = [0, 5, 10, 20, 30]
 
 # Setup
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
@@ -42,7 +41,7 @@ if enable_logging:
     sys.stdout = sys.stderr = log_file
 
 #lash_e.nr_robot.prime_reservoir_line(1, 'water', 0.5)
-#lash_e.grab_new_wellplate()
+lash_e.grab_new_wellplate()
 
 summary_records = []
 substock_counter = 1
@@ -63,9 +62,10 @@ for surfactant in SURFACTANTS_TO_RUN:
         substock_counter += 1
         repeat_label = surf_labels[repeat_index]
 
-        #mix_surfactants(lash_e, sub_stock_vols, substock_vial)
-        #fill_water_vial(lash_e)
-        #create_wellplate_samples(lash_e, wellplate_data, substock_vial, starting_wp_index)
+        lash_e.nr_robot.prime_reservoir_line(1, 'water', 0.5)
+        mix_surfactants(lash_e, sub_stock_vols, substock_vial)
+        fill_water_vial(lash_e)
+        create_wellplate_samples(lash_e, wellplate_data, substock_vial, starting_wp_index)
 
         assay_start_time = datetime.now()
         sample_indices = range(starting_wp_index, starting_wp_index + samples_per_assay)
@@ -122,11 +122,10 @@ for surfactant in SURFACTANTS_TO_RUN:
 
     plate_full = starting_wp_index >= 48
     last_surfactant = surfactant == SURFACTANTS_TO_RUN[-1]
-    last_repeat = repeat_index == REPEATS_PER_BATCH - 1
 
     if plate_full:
         lash_e.discard_used_wellplate()
-        if not (last_surfactant and last_repeat):
+        if not (last_surfactant):
             lash_e.grab_new_wellplate()
             starting_wp_index = 0
 
