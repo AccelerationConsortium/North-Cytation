@@ -117,17 +117,6 @@ for surfactant in SURFACTANTS_TO_RUN:
                         "Replicate": rep + 1,
                         **metrics
                     })
-else:
-    for rep in range(repeats):
-        print(f"[Simulate] Measuring wells for {surfactant} {repeat_label} rep {rep+1} at {delay} min")
-        metrics = {"CMC": 0.01, "r2": 0.95, "A1": 1000, "A2": 1500, "dx": 0.05}
-        summary_records.append({
-            "Surfactant": surfactant,
-            "Assay": repeat_label,
-            "Time_min": delay,
-            "Replicate": rep + 1,
-            **metrics
-        })
 
     starting_wp_index += samples_per_assay
 
@@ -171,8 +160,8 @@ def plot_variation_clean(summary_df, surfactant_name, output_dir):
             plt.scatter(sub["Time_min"], sub[metric], label=f"Trial {assay}", alpha=0.6)
             
             # Mean per time point
-            mean_vals = sub.groupby("Time_min")[metric].mean()
-            plt.plot(mean_vals.index, mean_vals.values, linestyle=":", marker='o', label=f"{assay} avg")
+            #mean_vals = sub.groupby("Time_min")[metric].mean()
+            #plt.plot(mean_vals.index, mean_vals.values, linestyle=":", marker='o', label=f"{assay} avg")
 
         plt.title(f"{metric} vs Time ({surfactant_name})")
         plt.xlabel("Time (minutes)")
