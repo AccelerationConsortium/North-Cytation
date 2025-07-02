@@ -18,10 +18,11 @@ simulate = True
 enable_logging = True
 
 REPEATS_PER_BATCH = 4
-TOTAL_DURATION_MINUTES = 180
-REPEAT_INTERVAL_MINUTES = 30
-SURFACTANTS_TO_RUN = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS']
+#SURFACTANTS_TO_RUN = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS'] #Note that we might just do 4 at a time (each assay takes about 4 hours)
 surf_labels = ['a', 'b', 'c', 'd']  # Must match REPEATS_PER_BATCH
+SURFACTANTS_TO_RUN = ['SDS']
+#delay_minutes = [0, 5, 10, 20, 30]
+delay_minutes = [0, 5, 10]
 
 # Setup
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
@@ -63,23 +64,46 @@ for surfactant in SURFACTANTS_TO_RUN:
         fill_water_vial(lash_e)
         create_wellplate_samples(lash_e, wellplate_data, substock_vial, starting_wp_index)
 
-        for rep in range(3):
-            label = f"{surfactant}_Immediate_{repeat_label}_rep{rep+1}"
-            if not simulate:
-                results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(starting_wp_index, starting_wp_index + samples_per_assay), plate_type="48 WELL PLATE")
-                details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
-                metrics = analyze_and_save_results(main_folder, details, wellplate_data, results, analyzer, label)
-            else:
-                metrics = {"CMC": 0.01, "r2": 0.95, "A1": 1000, "A2": 1500, "dx": 0.05}
-                print(f"[Simulate] Measuring wells (Immediate) for {surfactant} {repeat_label} rep {rep+1}")
+        assay_start_time = datetime.now()
+        sample_indices = range(starting_wp_index, starting_wp_index + samples_per_assay)
 
-            summary_records.append({
-                "Surfactant": surfactant,
-                "Assay": repeat_label,
-                "Timing": "Immediate",
-                "Replicate": rep + 1,
-                **metrics
-            })
+        # Define relative measurement schedule (minutes)
+        
+        for delay in delay_minutes:
+            if not simulate:
+                target_time = assay_start_time + timedelta(minutes=delay)
+                while datetime.now() < target_time:
+                    time_to_wait = (target_time - datetime.now()).total_seconds()
+                    print(f"Waiting {time_to_wait:.1f} seconds for assay {repeat_label}, timepoint {delay} minutes...", flush=True)
+                    time.sleep(min(time_to_wait, 5))
+            else:
+                print(f"[Simulate] Advancing time by {delay} minutes for assay {repeat_label}...", flush=True)
+                # Fast-forward simulated time conceptually
+                # No actual wait required
+
+            for rep in range(3):
+                label = f"{surfactant}_{delay}min_{repeat_label}_rep{rep+1}"
+                if not simulate:
+                    results = lash_e.measure_wellplate(
+                        MEASUREMENT_PROTOCOL_FILE,
+                        sample_indices,
+                        plate_type="48 WELL PLATE"
+                    )
+                    details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
+                    metrics = analyze_and_save_results(
+                        main_folder, details, wellplate_data, results, analyzer, label
+                    )
+                else:
+                    metrics = {"CMC": 0.01, "r2": 0.95, "A1": 1000, "A2": 1500, "dx": 0.05}
+                    print(f"[Simulate] Measuring wells for {surfactant} {repeat_label} rep {rep+1} at {delay} min")
+
+                summary_records.append({
+                    "Surfactant": surfactant,
+                    "Assay": repeat_label,
+                    "Timing": f"{delay} minutes",
+                    "Replicate": rep + 1,
+                    **metrics
+                })
 
         starting_wp_index += samples_per_assay
 
@@ -88,57 +112,12 @@ for surfactant in SURFACTANTS_TO_RUN:
             lash_e.grab_new_wellplate()
             starting_wp_index = 0
 
-    print(f"Initial sample preparation and immediate measurements complete for {surfactant}. Beginning timed measurements.")
-
-    # Timed measurements
-    start_time = datetime.now()
-    end_time = start_time + timedelta(minutes=TOTAL_DURATION_MINUTES)
-    batch_count = 0
-    now = datetime.now()
-    simulated_now = now
-
-    while (not simulate and datetime.now() <= end_time) or (simulate and simulated_now <= end_time):
-        current_time = datetime.now() if not simulate else simulated_now
-        timestamp = current_time.strftime("%H%M")
-        timing_label = f"{batch_count * REPEAT_INTERVAL_MINUTES} minutes"
-        print(f"[{surfactant} - Batch {batch_count}] Starting at {timestamp}")
-
-        wp_index = 0
-        for repeat_index in range(REPEATS_PER_BATCH):
-            repeat_label = surf_labels[repeat_index]
-
-            for rep in range(3):
-                label = f"{surfactant}_{timestamp}_{repeat_label}_rep{rep+1}"
-                if not simulate:
-                    results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(wp_index, wp_index + samples_per_assay), plate_type="48 WELL PLATE")
-                    details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
-                    metrics = analyze_and_save_results(main_folder, details, wellplate_data, results, analyzer, label)
-                else:
-                    metrics = {"CMC": 0.01, "r2": 0.95, "A1": 1000, "A2": 1500, "dx": 0.05}
-                    print(f"[Simulate] Measuring wells for {surfactant} {repeat_label} rep {rep+1} at {timing_label}")
-
-                summary_records.append({
-                    "Surfactant": surfactant,
-                    "Assay": repeat_label,
-                    "Timing": timing_label,
-                    "Replicate": rep + 1,
-                    **metrics
-                })
-
-            wp_index += samples_per_assay
-
-        batch_count += 1
-        if not simulate and datetime.now() < end_time:
-            print(f"Sleeping until next batch in {REPEAT_INTERVAL_MINUTES} minutes...")
-            time.sleep(REPEAT_INTERVAL_MINUTES * 60)
-        elif simulate:
-            simulated_now += timedelta(minutes=REPEAT_INTERVAL_MINUTES)
-
-    print(f"Timed repeat measurements complete for {surfactant}.")
+    print(f"All assays complete for {surfactant}.")
 
 # Save summary
-summary_df = pd.DataFrame(summary_records)
-summary_df.to_csv(os.path.join(main_folder, "CMC_measurement_summary.csv"), index=False)
+if not simulate:
+    summary_df = pd.DataFrame(summary_records)
+    summary_df.to_csv(os.path.join(main_folder, "CMC_measurement_summary.csv"), index=False)
 
 if enable_logging:
     log_file.close()
@@ -221,6 +200,7 @@ def plot_variation(data, surfactant_name, output_dir):
 
 
 
-# Run visualization for each surfactant
-for surf in summary_df["Surfactant"].unique():
-    plot_variation(summary_df, surf, main_folder)
+if not simulate:
+    # Run visualization for each surfactant
+    for surf in summary_df["Surfactant"].unique():
+        plot_variation(summary_df, surf, main_folder)
