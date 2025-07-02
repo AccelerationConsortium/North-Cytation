@@ -46,7 +46,7 @@ def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
     lash_e.nr_robot.remove_pipet()
 
 def fill_water_vial(lash_e):
-    vial_max_volume = 8
+    vial_max_volume = 7.5
     water_reservoir = 1
     current_water_volume = lash_e.nr_robot.get_vial_info('water', 'vial_volume')
     if current_water_volume < vial_max_volume:
