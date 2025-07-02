@@ -34,7 +34,7 @@ if enable_logging:
 
 lash_e.nr_track.get_new_wellplate()
 starting_wp_index = 0
-lash_e.nr_robot.prime_reservoir_line(1,'water',0.5)
+lash_e.nr_robot.prime_reservoir_line(1, 'water', 0.5)
 
 surfactants = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS']
 item_to_index = {item: i for i, item in enumerate(surfactants)}
