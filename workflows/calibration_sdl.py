@@ -1,8 +1,6 @@
 # calibration_sdl.py
 
 import sys
-
-from torch import fill
 sys.path.append("../utoronto_demo")
 import numpy as np
 import pandas as pd
@@ -11,8 +9,6 @@ from master_usdl_coordinator import Lash_E
 import time
 from ax.core.observation import ObservationFeatures
 import recommenders.pipeting_optimizer_honegumi as recommender  # adjust if needed
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
 import analysis.calibration_analyzer as analyzer  # adjust if needed
 
@@ -23,6 +19,7 @@ BAYES_CYCLES_PER_VOLUME = 120
 SIMULATE = False
 REPLICATES = 3
 VOLUMES = [0.01,0.02,0.05,0.1]
+LIQUID = "water" 
 #VOLUMES = [0.01,0.02,0.05]
 DENSITY_LIQUID = 0.997  # g/mL
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
@@ -95,7 +92,7 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
     dispense_kwargs = {
         "dispense_speed": params["dispense_speed"],
         "wait_time": params["dispense_wait_time"],
-        "blowout_vol": params["blowout_vol"],
+ #       "blowout_vol": params["blowout_vol"],
         "measure_weight": True,
         "air_vol": air_vol,
     }
@@ -116,6 +113,7 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
             "mass": mass,
             "start_time": replicate_start,
             "end_time": replicate_end,
+            "liquid": LIQUID,
             **params,
         }
         raw_measurements.append(raw_entry)
@@ -133,7 +131,7 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
         deviation = np.mean(percent_errors)
 
         # Time score: relative percent difference from expected time
-        time_score = ((end - start) / REPLICATES - expected_time) / expected_time * 100
+        time_score = ((end - start) / REPLICATES)
 
         return {
             "deviation": deviation,
@@ -169,6 +167,8 @@ for i,volume in enumerate(VOLUMES):
         result["volume"] = volume
         result["trial_index"] = trial_index
         result["strategy"] = "SOBOL"
+        result["liquid"] = LIQUID
+        result["time_reported"] = datetime.now().isoformat()
         all_results.append(result)
 
 # Continue with main optimization loop
@@ -189,6 +189,8 @@ for i, volume in enumerate(VOLUMES):
             results["volume"] = volume
             results["trial_index"] = trial_index
             results["strategy"] = "BAYESIAN"
+            results["liquid"] = LIQUID
+            results["time_reported"] = datetime.now().isoformat()
             all_results.append(results)
 
 # Save results
@@ -248,3 +250,11 @@ if not SIMULATE:
 
     # 3. Plot histograms of parameter distributions for those top trials
     analyzer.plot_top_trial_histograms(best_trials, save_dir)
+
+    # 4. Time/Deviation/Variability scatter plots
+    analyzer.plot_time_vs_deviation(results_df, save_dir)
+
+    analyzer.plot_boxplots(results_df, save_dir)
+    analyzer.plot_pairplot(results_df, save_dir)
+    analyzer.plot_learning_curves(results_df, save_dir)
+    analyzer.plot_improvement_summary(results_df, save_dir)

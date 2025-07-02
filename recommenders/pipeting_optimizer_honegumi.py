@@ -59,7 +59,7 @@ def create_model(seed, num_initial_recs, volumes, model_type):
             {"name": "retract_speed", "type": "range", "bounds": [1.0, 15.0]},
             {"name": "pre_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
             {"name": "post_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
-            {"name": "blowout_vol", "type": "range", "bounds": [0.0, 0.1]},
+ #           {"name": "blowout_vol", "type": "range", "bounds": [0.0, 0.1]},
             {
                 "name": "volume",
                 "type": "choice",
@@ -74,7 +74,7 @@ def create_model(seed, num_initial_recs, volumes, model_type):
         objectives={
             obj1_name: ObjectiveProperties(minimize=True, threshold=30),
             obj2_name: ObjectiveProperties(minimize=True, threshold=5),
-            obj3_name: ObjectiveProperties(minimize=True, threshold=500),
+            obj3_name: ObjectiveProperties(minimize=True, threshold=90),
         },
         parameter_constraints=[
             f"pre_asp_air_vol + post_asp_air_vol <= {1.0-max(volumes)}"
