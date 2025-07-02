@@ -20,7 +20,6 @@ lash_e.nr_track.check_input_file()
 
 folder = None
 
-
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 folder = f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}/'
 
