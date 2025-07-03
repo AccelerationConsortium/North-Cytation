@@ -39,7 +39,10 @@ def CMC_plot(i1_i3_ratio, conc, file_name):
     plt.legend()
     plt.grid()
     #plt.show()
-    plt.savefig(file_name)
+    try:
+        plt.savefig(file_name)
+    except:
+        print(f"Error saving plot to {file_name}. Check file path and permissions.")
 #TODO: Save the plot or use realtime plot
 
     # Output the computed CMC values and R-squared

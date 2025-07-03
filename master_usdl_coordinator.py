@@ -6,6 +6,8 @@ from North_Safe import North_Track
 from North_Safe import North_Temp
 from North_Safe import North_Powder
 import pandas as pd
+import os
+from datetime import datetime
 
 class Lash_E:
     nr_robot = None
@@ -16,9 +18,22 @@ class Lash_E:
     powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False):
+    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging=False,logging_folder="../utoronto_demo/logs"):
         
         self.simulate = simulate
+        self.log_file = None
+        self.original_stdout = None
+        self.original_stderr = None
+
+        if logging:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            os.makedirs(logging_folder, exist_ok=True)
+            self.log_file_path = os.path.join(logging_folder, f"experiment_log_{timestamp}_sim{simulate}.txt")
+            self.log_file = open(self.log_file_path, "w")
+            self.original_stdout = sys.stdout
+            self.original_stderr = sys.stderr
+            sys.stdout = sys.stderr = self.log_file
+
         if not simulate:
             from north import NorthC9
             c9 = NorthC9("A", network_serial="AU06CNCF")
@@ -55,6 +70,15 @@ class Lash_E:
             self.powder_dispenser = MagicMock()
             self.temp_controller = MagicMock()
             #self.nr_track = MagicMock(c9)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.log_file:
+            sys.stdout = self.original_stdout
+            sys.stderr = self.original_stderr
+            self.log_file.close()
 
     def mass_dispense_into_vial(self,vial,mass_mg,channel=0, return_home=True):
         self.nr_robot.move_vial_to_location(vial,'clamp',0)

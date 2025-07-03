@@ -4,7 +4,7 @@ sys.path.append("../utoronto_demo")
 import math
 import pandas as pd
 import slack_agent
-
+import os
 
 def check_input_file(input_file):
     vial_status = pd.read_csv(input_file, sep=",")
@@ -107,18 +107,26 @@ def analyze_and_save_results(folder, details, wellplate_data, resulting_data, an
         resulting_data['ratio'] = resulting_data['334_373'] / resulting_data['334_384']
     except:
         print("No fluorescence data found")
+
     try:
         if (resulting_data['600'] > 0.1).any():
             print("\u26a0\ufe0f Warning: Some absorbance (600 nm) values exceed 0.1!")
     except:
         print("No absorbance data")
 
-    figure_name = folder + f'CMC_plot_{details}_{save_modifier}.png'
+    # Create graphs/ folder in the parent directory
+    parent_folder = os.path.dirname(folder)
+    graphs_folder = os.path.join(parent_folder, "graphs")
+    os.makedirs(graphs_folder, exist_ok=True)
+
+    # Save plot to graphs/
+    figure_name = os.path.join(graphs_folder, f'CMC_plot_{details}_{save_modifier}.png')
     A1, A2, x0, dx, r_squared = analyzer.CMC_plot(resulting_data['ratio'].values, concentrations, figure_name)
 
-    wellplate_data.to_csv(folder + f'wellplate_data_{details}_{save_modifier}.csv', index=False)
-    resulting_data.to_csv(folder + f'output_data_{details}_{save_modifier}.csv', index=False)
-    with open(folder + f'wellplate_data_results_{details}_{save_modifier}.txt', "w") as f:
+    # Save data outputs to raw_data/ (folder)
+    wellplate_data.to_csv(os.path.join(folder, f'wellplate_data_{details}_{save_modifier}.csv'), index=False)
+    resulting_data.to_csv(os.path.join(folder, f'output_data_{details}_{save_modifier}.csv'), index=False)
+    with open(os.path.join(folder, f'wellplate_data_results_{details}_{save_modifier}.txt'), "w") as f:
         f.write(f"CMC: {x0}, r2: {r_squared}, A1: {A1}, A2: {A2}, dx: {dx}")
 
     print("CMC (mMol): ", x0)
