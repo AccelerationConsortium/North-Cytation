@@ -14,14 +14,15 @@ import analysis.calibration_analyzer as analyzer  # adjust if needed
 
 # --- Config ---
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 30
-BAYES_CYCLES_PER_VOLUME = 120
+SOBOL_CYCLES_PER_VOLUME = 5
+BAYES_CYCLES_PER_VOLUME = 27
 SIMULATE = False
 REPLICATES = 3
 VOLUMES = [0.01,0.02,0.05,0.1]
-LIQUID = "water" 
+LIQUID = "glycerol" 
 #VOLUMES = [0.01,0.02,0.05]
-DENSITY_LIQUID = 0.997  # g/mL
+NEW_PIPET_EACH_TIME_SET = True  # If True, will remove pipet after each replicate
+DENSITY_LIQUID = 1.26  # g/mL
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
 EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
@@ -75,7 +76,7 @@ def fill_liquid_if_needed(vial_name, liquid_source_name):
         lash_e.nr_robot.return_vial_home(liquid_source_name)
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
-def pipet_and_measure(volume, params, expected_mass, expected_time):
+def pipet_and_measure(volume, params, expected_mass, expected_time, new_pipet_each_time=False):
     pre_air = params.get("pre_asp_air_vol", 0)
     post_air = params.get("post_asp_air_vol", 0)
     disp_vol = volume
@@ -103,6 +104,8 @@ def pipet_and_measure(volume, params, expected_mass, expected_time):
         replicate_start = datetime.now().isoformat()
         lash_e.nr_robot.aspirate_from_vial("liquid_source", volume, **aspirate_kwargs)
         mass = lash_e.nr_robot.dispense_into_vial("measurement_vial", disp_vol, **dispense_kwargs)
+        if new_pipet_each_time:
+            lash_e.nr_robot.remove_pipet()
         replicate_end = datetime.now().isoformat()
         print("Mass measured: ", mass)
         masses.append(mass)
@@ -147,7 +150,7 @@ lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
 
 # Run optimization
-ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES, model_type="explore")
+ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES, model_type="exploit")
 all_results = []
 raw_measurements = [] 
 
@@ -161,7 +164,7 @@ for i,volume in enumerate(VOLUMES):
         print(f"[TRIAL {trial_index}] Parameters: {params}")
         fill_liquid_if_needed("measurement_vial","liquid_source")
         empty_vial_if_needed("measurement_vial", "waste_vial", state)
-        result = pipet_and_measure(volume, params, expected_mass, expected_time)
+        result = pipet_and_measure(volume, params, expected_mass, expected_time, NEW_PIPET_EACH_TIME_SET)
         ax_client.complete_trial(trial_index=trial_index, raw_data=result)
         result.update(params)
         result["volume"] = volume
@@ -183,7 +186,7 @@ for i, volume in enumerate(VOLUMES):
             print(f"[TRIAL {trial_index}] Parameters: {params}")
             fill_liquid_if_needed("measurement_vial","liquid_source")
             empty_vial_if_needed("measurement_vial", "waste_vial", state)
-            results = pipet_and_measure(volume, params, expected_mass, expected_time)
+            results = pipet_and_measure(volume, params, expected_mass, expected_time,NEW_PIPET_EACH_TIME_SET)
             recommender.add_result(ax_client, trial_index, results)
             results.update(params)
             results["volume"] = volume
