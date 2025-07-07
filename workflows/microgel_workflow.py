@@ -1,76 +1,167 @@
 # --- cmc_workflow.py ---
 import sys
 sys.path.append("../utoronto_demo")
-from cmc_shared import *
-import analysis.cmc_exp_new as experimental_planner
-import analysis.cmc_data_analysis as analyzer
 from master_usdl_coordinator import Lash_E
 from datetime import datetime
 import os
+import pandas as pd
+import numpy as np
 
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_input.csv"
-MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence.prt"
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/microgel_inputs.csv" #This file contains the status of the vials used for the workflow
+MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence.prt" #This is the measurement protocol developed in the Cytation software
 LOGGING_FOLDER = "../utoronto_demo/logs/"
 simulate = True
 enable_logging = True
 
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
-lash_e.nr_robot.check_input_file()
-lash_e.nr_track.check_input_file()
+def fill_water_vial(lash_e):
+    vial_max_volume = 7.5
+    water_reservoir = 1
+    current_water_volume = lash_e.nr_robot.get_vial_info('water', 'vial_volume')
+    if current_water_volume < vial_max_volume:
+        print(f"Filling water vial from {current_water_volume} mL to {vial_max_volume} mL")
+        lash_e.nr_robot.dispense_into_vial_from_reservoir(water_reservoir, 'water', vial_max_volume - current_water_volume)
 
-folder = None
+def dilute_microgel(lash_e, source_vial_name, target_vial_name, initial_concentration, final_concentration, final_volume_mL):
+    """
+    Dilutes a microgel solution from initial_concentration to final_concentration 
+    in a target vial with total final_volume.
+    
+    Parameters:
+    - source_vial_name: str, name of the source microgel vial
+    - target_vial_name: str, name of the target vial for the diluted solution
+    - initial_concentration: float, mg/mL
+    - final_concentration: float, mg/mL
+    - final_volume_mL: float, desired final volume in mL
+    """
 
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-folder = f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}/'
+    if final_concentration > initial_concentration:
+        raise ValueError("Final concentration cannot be greater than initial concentration.")
 
-if not simulate:
-    os.makedirs(folder, exist_ok=True)
-    print(f"Folder created at: {folder}")
+    # Volume of concentrated microgel needed
+    volume_microgel = (final_concentration / initial_concentration) * final_volume_mL
+    # Volume of water needed to dilute
+    volume_water = final_volume_mL - volume_microgel
 
-if enable_logging:
-    log_file_path = os.path.join(LOGGING_FOLDER, f"experiment_log_{timestamp}_sim{simulate}.txt")
-    log_file = open(log_file_path, "w")
-    sys.stdout = sys.stderr = log_file
+    print(f"Diluting {source_vial_name} ({initial_concentration} mg/mL) into {target_vial_name} "
+          f"to get {final_concentration} mg/mL @ {final_volume_mL} mL:")
+    print(f"--> Add {volume_microgel:.3f} mL microgel")
+    print(f"--> Add {volume_water:.3f} mL water")
 
-lash_e.nr_track.get_new_wellplate()
-starting_wp_index = 0
-lash_e.nr_robot.prime_reservoir_line(1, 'water', 0.5)
+    # Add concentrated microgel from source vial
+    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name=source_vial_name,dest_vial_name=target_vial_name,volume=volume_microgel)
+    lash_e.nr_robot.remove_pipet()  # Remove pipette to avoid contamination
 
-surfactants = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS']
-item_to_index = {item: i for i, item in enumerate(surfactants)}
-substock_name_list = [f'substock_{i}' for i in range(1, len(surfactants) + 1)]
+    # Add water from reservoir 
+    lash_e.nr_robot.dispense_into_vial_from_reservoir(reservoir_index=1, vial_index=target_vial_name, volume=volume_water)
+    lash_e.nr_robot.vortex_vial(vial_name=target_vial_name, vortex_time=5)  # Mix the solution
 
-# One-hot encoded simple screening
-ratios = [[1 if j == i else 0 for j in range(len(surfactants))] for i in range(len(surfactants))]
+def calculate_volumes(total_volume_mL,toluidine_blue_mL,concentration_high_mg_mL,concentration_profile_mg_mL,min_pipette_mL=0.01):
+    
+    available_volume_mL = total_volume_mL - toluidine_blue_mL
 
-for i, ratio in enumerate(ratios):
-    substock_vial = substock_name_list[i]
-    experiment, _ = experimental_planner.generate_exp_flexible(surfactants, ratio, sub_stock_volume=6000, probe_volume=25)
+    fallback_concs = np.linspace(0.5, 0.001, 1000)
+    selected_low_conc = None
 
-    sub_stock_vols = experiment['surfactant_sub_stock_vols']
-    wellplate_data = experiment['df']
-    samples_per_assay = wellplate_data.shape[0]
+    for candidate_low_conc in fallback_concs:
+        valid = True
+        for c in concentration_profile_mg_mL:
+            if c == 0:
+                continue
+            vol_high = (c / concentration_high_mg_mL) * available_volume_mL
+            if vol_high < min_pipette_mL:
+                vol_low = (c / candidate_low_conc) * available_volume_mL
+                if vol_low < min_pipette_mL:
+                    valid = False
+                    break
+        if valid:
+            selected_low_conc = candidate_low_conc
+            break
 
-    # Mix, dispense, measure, analyze
-    mix_surfactants(lash_e, sub_stock_vols, substock_vial)
-    fill_water_vial(lash_e)
-    create_wellplate_samples(lash_e, wellplate_data, substock_vial, starting_wp_index)
+    if selected_low_conc is None:
+        raise ValueError("No suitable fallback concentration allows ≥ min pipette volume for all targets.")
+
+    rows = []
+    for c in concentration_profile_mg_mL:
+        row = {
+            "target_concentration_mg_mL": c,
+            "water": 0.0,
+            "toluidine_blue": toluidine_blue_mL,
+            "microgel_solution_concentrated": 0.0,
+            "microgel_solution_dilute": 0.0,
+        }
+
+        if c == 0:
+            row["water"] = available_volume_mL
+        else:
+            vol_high = (c / concentration_high_mg_mL) * available_volume_mL
+            if vol_high >= min_pipette_mL:
+                row["microgel_solution_concentrated"] = round(vol_high, 3)
+                row["water"] = round(available_volume_mL - vol_high, 3)
+            else:
+                vol_low = (c / selected_low_conc) * available_volume_mL
+                row["microgel_solution_dilute"] = round(vol_low, 3)
+                row["water"] = round(available_volume_mL - vol_low, 3)
+
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+    return df, round(selected_low_conc, 4)
+
+with Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate, logging=enable_logging) as lash_e:
+    
+    lash_e.nr_robot.check_input_file() #Check the status of the input vials
+    lash_e.nr_track.check_input_file() #Check the status of the wellplates (for multiple wellplate assays)
+
+    folder = None
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    folder = f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}/'
 
     if not simulate:
-        resulting_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, wells_to_measure=range(starting_wp_index, starting_wp_index + samples_per_assay), plate_type="48 WELL PLATE")
-        details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
-        analyze_and_save_results(folder, details, wellplate_data, resulting_data, analyzer, save_modifier='')
+        os.makedirs(folder, exist_ok=True) #This is to create a folder for the workflow saves results
+        print(f"Folder created at: {folder}")
 
-    starting_wp_index += samples_per_assay
+    #Prepare the experiment
+    starting_wp_index = 0 #Ensure we start at the first well of the wellplate
+    concentration_profile_mg_mL = [0.12, 0.08, 0.04, 0.02, 0.01, 0.005, 0.0025, 0.001, 0]
+    initial_concentration = 4.0 #Initial concentration of the microgel solution in mg/mL
+    concentration_profile_mg_mL.sort() #Sort lowest to highest
+    wellplate_volumes, dilute_concentration = calculate_volumes(total_volume_mL=1.0,toluidine_blue_mL=0.1,concentration_high_mg_mL=4.0,concentration_profile_mg_mL=concentration_profile_mg_mL)
+    wells = range(starting_wp_index, starting_wp_index + len(concentration_profile_mg_mL))
 
-    if starting_wp_index >= 48:
+    print(f"Dilute concentration for microgel solution: {dilute_concentration} mg/mL")
+    print("To be dispensed (uL):/n", wellplate_volumes)
+
+    '''Preparation for workflow'''
+    #lash_e.nr_track.get_new_wellplate()
+    lash_e.nr_robot.prime_reservoir_line(1, 'water', 0.5) #If we use the water reservoir, priming it helps keeps its dispenses accurate
+    fill_water_vial(lash_e)
+
+    '''Start the workflow'''
+    #1. Create a diluted microgel solution
+    dilute_microgel(lash_e, source_vial_name='microgel_solution_concentrated', target_vial_name='microgel_solution_dilute', initial_concentration=initial_concentration, final_concentration=dilute_concentration, final_volume_mL=8.0)
+
+    #2.Dispense into the wellplate
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(wellplate_volumes, list(wellplate_volumes.columns[2:]), well_plate_type="48 WELL PLATE", pipet_back_and_forth=True, blowout_vol=0.05, buffer_vol=0)
+
+    #Mix the wells using aspirate/dispense
+    for well in wells:
+        lash_e.nr_robot.mix_well_in_wellplate(well, volume=0.5, well_plate_type="48 WELL PLATE")
+    lash_e.nr_robot.remove_pipet()
+
+    #3. Read the wellplate 1x
+    results = lash_e.measure_wellplate(protocol_file_path=MEASUREMENT_PROTOCOL_FILE, wells_to_measure=wells, plate_type="48 WELL PLATE", repeats=1)
+
+    #4. Save the results
+    if not simulate:
+        results_file = os.path.join(folder, "microgel_results.csv")
+        results.to_csv(results_file, index=False)
+        print(f"Results saved to: {results_file}")
+    else:
+        print("[Simulate] Results would be saved here.")
+
+    #5. Analyze the results. Here we would call an analysis function that processes the results and determine the equivalence point
+    
+
+    if lash_e.nr_track.NR_OCCUPIED:
         lash_e.discard_used_wellplate()
-        lash_e.grab_new_wellplate()
-        starting_wp_index = 0
-
-if lash_e.nr_track.NR_OCCUPIED:
-    lash_e.discard_used_wellplate()
-    print("Workflow complete and wellplate discarded")
-
-if enable_logging:
-    log_file.close()
+        print("Workflow complete and wellplate discarded")

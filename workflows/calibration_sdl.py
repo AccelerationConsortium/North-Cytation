@@ -120,6 +120,7 @@ def pipet_and_measure(volume, params, expected_mass, expected_time, new_pipet_ea
             **params,
         }
         raw_measurements.append(raw_entry)
+        pd.DataFrame([raw_entry]).to_csv(autosave_raw_path, mode='a', index=False, header=not os.path.exists(autosave_raw_path))
     end = time.time()
 
     if not SIMULATE:
@@ -149,6 +150,13 @@ lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_biotek=Fal
 lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
 
+if not SIMULATE:
+    autosave_dir = os.path.join("output", "autosave_calibration")
+    os.makedirs(autosave_dir, exist_ok=True)
+
+    autosave_summary_path = os.path.join(autosave_dir, "experiment_summary.csv")
+    autosave_raw_path = os.path.join(autosave_dir, "raw_replicate_data.csv")
+
 # Run optimization
 ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES, model_type="exploit")
 all_results = []
@@ -173,6 +181,10 @@ for i,volume in enumerate(VOLUMES):
         result["liquid"] = LIQUID
         result["time_reported"] = datetime.now().isoformat()
         all_results.append(result)
+        # Autosave summary after each trial
+        if not SIMULATE:
+            pd.DataFrame([result]).to_csv(autosave_summary_path, mode='a', index=False, header=not os.path.exists(autosave_summary_path))
+
 
 # Continue with main optimization loop
 for i, volume in enumerate(VOLUMES):
@@ -195,6 +207,9 @@ for i, volume in enumerate(VOLUMES):
             results["liquid"] = LIQUID
             results["time_reported"] = datetime.now().isoformat()
             all_results.append(results)
+            if not SIMULATE:
+                pd.DataFrame([results]).to_csv(autosave_raw_path, mode='a', index=False, header=not os.path.exists(autosave_raw_path))
+
 
 # Save results
 # Clean up any (value, None) tuples in results
