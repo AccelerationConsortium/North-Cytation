@@ -1028,7 +1028,7 @@ class North_Robot:
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0.02,track_height=True,measure_mass=False):
+    def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0,track_height=True,measure_mass=False, blowout_vol=0):
         """
         Dispenses a specified volume from source_vial_name to dest_vial_name, with optional buffer transfer for accuracy.
 
@@ -1064,7 +1064,7 @@ class North_Robot:
         if extra_aspirate > 0:
             self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=False)
         
-        mass = self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense,measure_weight=measure_mass)
+        mass = self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense,measure_weight=measure_mass,blowout_vol=blowout_vol)
         
         if extra_aspirate > 0:
             self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=move_to_dispense)
