@@ -15,14 +15,14 @@ from analysis.CMC_replicate_analysis import analyze_summary_variation
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_repeats_input.csv"
 LOGGING_FOLDER = "../utoronto_demo/logs/"
 MEASUREMENT_PROTOCOL_FILE = r"C:\\Protocols\\CMC_Fluorescence.prt"
-simulate = True
-enable_logging = True
+simulate = False
+enable_logging = False
 repeats = 3  # Number of replicate measurements
 
 REPEATS_PER_BATCH = 3
 #SURFACTANTS_TO_RUN = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS'] #Note that we might just do 4 at a time (each assay takes about 4 hours)
 surf_labels = ['a', 'b', 'c']  # Must match REPEATS_PER_BATCH
-SURFACTANTS_TO_RUN = ['CTAB', 'DTAB', 'TTAB']  
+SURFACTANTS_TO_RUN = ['CAPB', 'CHAPS']
 delay_minutes = [0, 5, 10, 20, 30]
 
 
