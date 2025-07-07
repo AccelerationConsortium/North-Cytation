@@ -72,12 +72,12 @@ def create_model(seed, num_initial_recs, volumes, model_type):
             },
         ],
         objectives={
-            obj1_name: ObjectiveProperties(minimize=True, threshold=30),
+            obj1_name: ObjectiveProperties(minimize=True, threshold=50),
             obj2_name: ObjectiveProperties(minimize=True, threshold=5),
             obj3_name: ObjectiveProperties(minimize=True, threshold=90),
         },
         parameter_constraints=[
-            f"pre_asp_air_vol + post_asp_air_vol <= {1.0-max(volumes)}"
+            f"pre_asp_air_vol + post_asp_air_vol <= {0.25-max(volumes)}"
         ],
     )
 

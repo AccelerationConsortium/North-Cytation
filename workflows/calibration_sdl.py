@@ -25,7 +25,7 @@ NEW_PIPET_EACH_TIME_SET = True  # If True, will remove pipet after each replicat
 DENSITY_LIQUID = 1.26  # g/mL
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
 EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_glycerol.csv"
 state = {"waste_vial_index": 0}
 
 def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
@@ -170,8 +170,8 @@ for i,volume in enumerate(VOLUMES):
         print(f"[INFO] Requesting SOBOL trial for volume {volume}...")
         params, trial_index = ax_client.get_next_trial(fixed_features=ObservationFeatures({"volume": volume}))
         print(f"[TRIAL {trial_index}] Parameters: {params}")
-        fill_liquid_if_needed("measurement_vial","liquid_source")
-        empty_vial_if_needed("measurement_vial", "waste_vial", state)
+        #fill_liquid_if_needed("measurement_vial","liquid_source")
+        #empty_vial_if_needed("measurement_vial", "waste_vial", state)
         result = pipet_and_measure(volume, params, expected_mass, expected_time, NEW_PIPET_EACH_TIME_SET)
         ax_client.complete_trial(trial_index=trial_index, raw_data=result)
         result.update(params)
@@ -196,8 +196,8 @@ for i, volume in enumerate(VOLUMES):
         suggestions = recommender.get_suggestions(ax_client, volume, n=1)
         for params, trial_index in suggestions:
             print(f"[TRIAL {trial_index}] Parameters: {params}")
-            fill_liquid_if_needed("measurement_vial","liquid_source")
-            empty_vial_if_needed("measurement_vial", "waste_vial", state)
+            #fill_liquid_if_needed("measurement_vial","liquid_source")
+            #empty_vial_if_needed("measurement_vial", "waste_vial", state)
             results = pipet_and_measure(volume, params, expected_mass, expected_time,NEW_PIPET_EACH_TIME_SET)
             recommender.add_result(ax_client, trial_index, results)
             results.update(params)
@@ -241,7 +241,7 @@ if not SIMULATE:
     ]
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    save_dir = os.path.join("output", f"experiment_calibration_{timestamp}")
+    save_dir = os.path.join("output", f"experiment_calibration_{timestamp}_{LIQUID}")
     os.makedirs(save_dir, exist_ok=True)
 
     results_df.to_csv(os.path.join(save_dir, "experiment_summary.csv"), index=False)
