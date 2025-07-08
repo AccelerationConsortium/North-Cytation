@@ -22,7 +22,7 @@ repeats = 3  # Number of replicate measurements
 REPEATS_PER_BATCH = 3
 #SURFACTANTS_TO_RUN = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS'] #Note that we might just do 4 at a time (each assay takes about 4 hours)
 surf_labels = ['a', 'b', 'c']  # Must match REPEATS_PER_BATCH
-SURFACTANTS_TO_RUN = ['CAPB', 'CHAPS']
+SURFACTANTS_TO_RUN = ['CAPB']
 delay_minutes = [0, 5, 10, 20, 30]
 
 
