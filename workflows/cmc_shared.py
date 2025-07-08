@@ -103,16 +103,25 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_w
 def analyze_and_save_results(folder, details, wellplate_data, resulting_data, analyzer, save_modifier):
     concentrations = wellplate_data['concentration']
 
+    if isinstance(resulting_data.columns, pd.MultiIndex):
+        print("Detected replicate measurements. Compiling into long format.")
+        # Collapse into long format
+        resulting_data = pd.concat([
+            resulting_data.xs(rep, level=0, axis=1).assign(replicate=rep)
+            for rep in resulting_data.columns.levels[0]
+        ])
+        resulting_data.reset_index(drop=True, inplace=True)
+
     try:
         resulting_data['ratio'] = resulting_data['334_373'] / resulting_data['334_384']
-    except:
-        print("No fluorescence data found")
+    except KeyError:
+        print("⚠️ No fluorescence data found (missing 334_373 or 334_384)")
 
     try:
         if (resulting_data['600'] > 0.1).any():
-            print("\u26a0\ufe0f Warning: Some absorbance (600 nm) values exceed 0.1!")
-    except:
-        print("No absorbance data")
+            print("⚠️ Warning: Some absorbance (600 nm) values exceed 0.1!")
+    except KeyError:
+        print("⚠️ No absorbance data (missing 600 nm column)")
 
     # Create graphs/ folder in the parent directory
     parent_folder = os.path.dirname(folder)
