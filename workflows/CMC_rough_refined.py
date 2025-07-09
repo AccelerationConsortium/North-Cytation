@@ -19,8 +19,8 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = True
-enable_logging = True
+simulate = False
+enable_logging = False
 run = 2  # This determines which Run group you are running
 
 # Load pairing data from CSV
