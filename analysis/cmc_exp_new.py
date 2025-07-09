@@ -228,33 +228,52 @@ def generate_cmc_concentrations(cmc):
     return np.concatenate([below, around, above]).tolist()
 
 
-def scale_substock_to_required_volume(sub_stock_vol_dict, df, buffer_volume=500):
+def scale_substock_to_required_volume(sub_stock_vol_dict, df, buffer_volume=500, min_volume=10, max_volume=8000):
     """
-    Scale sub-stock volumes (including water) to match required experimental volume + buffer.
-    
+    Scale sub-stock volumes (including water) to match required experimental volume + buffer,
+    ensuring each component is above a minimum volume and below a maximum limit.
+
     Args:
         sub_stock_vol_dict (dict): Raw volumes from sub-stock prep (includes surfactants + water).
         df (pd.DataFrame): Output from `calculate_volumes`, used to find how much is needed.
         buffer_volume (float): Extra volume to ensure pipetting margin (µL).
-    
+        min_volume (float): Minimum volume allowed per component (µL).
+        max_volume (float): Maximum volume allowed per component (µL).
+
     Returns:
-        scaled_volumes (dict): Same keys as input, but scaled down.
+        scaled_volumes (dict): Same keys as input, but scaled appropriately.
     """
     required_volume = df["surfactant volume"].sum()
     total_needed = required_volume + buffer_volume
     original_total = sum(sub_stock_vol_dict.values())
 
+    # Initial scaling
     scaling_factor = total_needed / original_total
+    scaled_volumes = {k: v * scaling_factor for k, v in sub_stock_vol_dict.items()}
 
-    scaled_volumes = {k: round(v * scaling_factor, 2) for k, v in sub_stock_vol_dict.items()}
-    
-    print(f"\n Scaling sub-stock volumes to total {total_needed:.2f} µL (including {buffer_volume} µL buffer)")
-    print(f"Original total: {original_total:.2f} µL | Scaling factor: {scaling_factor:.3f}")
-    print("Scaled volumes:")
+    # Check for volumes below min_volume
+    min_scaled = min(scaled_volumes.values())
+    if min_scaled < min_volume:
+        min_scaling = min_volume / min_scaled
+        scaling_factor *= min_scaling
+        scaled_volumes = {k: v * min_scaling for k, v in scaled_volumes.items()}
+
+    # Round and final check for max_volume
+    rounded_volumes = {}
     for k, v in scaled_volumes.items():
+        v_rounded = round(v, 2)
+        if v_rounded > max_volume:
+            raise ValueError(f"Scaled volume for '{k}' exceeds {max_volume} µL: {v_rounded} µL")
+        rounded_volumes[k] = v_rounded
+
+    final_total = sum(rounded_volumes.values())
+    print(f"\n Scaling sub-stock volumes to total {final_total:.2f} µL (including {buffer_volume} µL buffer)")
+    print(f"Original total: {original_total:.2f} µL | Final scaling factor: {scaling_factor:.3f}")
+    print("Scaled volumes:")
+    for k, v in rounded_volumes.items():
         print(f"  {k}: {v:.2f} µL")
 
-    return scaled_volumes
+    return rounded_volumes
 
 
 def verify_concentrations(df, sub_stock_concentration, probe_volume, CMC_sample_volume):

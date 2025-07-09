@@ -13,15 +13,16 @@ from matplotlib.colors import to_rgb
 import seaborn as sns
 import time
 
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_double_input.csv"
+
 LOGGING_FOLDER = "../utoronto_demo/logs/"
 MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = False
-enable_logging = False
-run = 2  # This determines which Run group you are running
+simulate = True
+enable_logging = True
+run = 8  # This determines which Run group you are running
+INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 # Load pairing data from CSV
 data_in = pd.read_csv("../utoronto_demo/analysis/CMC_trial_assignment_with_runs.csv")  # Add full path if needed
