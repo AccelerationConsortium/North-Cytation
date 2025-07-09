@@ -19,8 +19,8 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = True
-enable_logging = True
+simulate = False
+enable_logging = False
 run = 1  # This determines which Run group you are running
 
 # Load pairing data from CSV
@@ -117,13 +117,15 @@ for i, ratio in enumerate(padded_ratios):
     if not simulate:
         time.sleep(600)
         results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(starting_wp_index, starting_wp_index + samples_per_assay), plate_type="48 WELL PLATE", repeats=3)
-        metrics_rough = analyze_and_save_results(folder, label + '_rough', wellplate_data, results, analyzer, 'rough')
+        results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
+        metrics_rough = analyze_and_save_results(folder, label + '_rough', wellplate_data, results_concat, analyzer, 'rough')
         cmc_rough = metrics_rough["CMC"]
         print("Rough CMC:", cmc_rough)
     else:
         cmc_rough = None
 
     starting_wp_index += samples_per_assay
+    
 
     # Fine search
     fine_exp, _ = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=False, estimated_CMC=cmc_rough)
@@ -138,7 +140,8 @@ for i, ratio in enumerate(padded_ratios):
     if not simulate:
         time.sleep(600)
         results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(starting_wp_index, starting_wp_index + samples_per_assay), plate_type="48 WELL PLATE", repeats=3)
-        metrics_fine = analyze_and_save_results(folder, label + '_fine', wellplate_data, results, analyzer, 'fine')
+        results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
+        metrics_fine = analyze_and_save_results(folder, label + '_fine', wellplate_data, results_concat, analyzer, 'fine')
         cmc_fine = metrics_fine["CMC"]
         print("Refined CMC:", cmc_fine)
 
@@ -163,7 +166,7 @@ for i, ratio in enumerate(padded_ratios):
             ]) + "\n")
         print(f"Saved summary for {pair[0]} + {pair[1]}")
 
-    if starting_wp_index >= 48 and i < len(pairings_and_ratios):
+    if starting_wp_index >= 48 and i < len(padded_ratios) - 1:
         lash_e.discard_used_wellplate()
         lash_e.grab_new_wellplate()
         starting_wp_index = 0
@@ -177,14 +180,14 @@ if not simulate:
     # Generate 8 high-contrast, visually distinct colors using seaborn's color palette
     surf_set = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS']
     solo_cmc = {
-        'SDS':   1.23,  # <-- Replace with actual value
-        'NaDC':  1.23,
-        'NaC':   1.23,
-        'CTAB':  1.23,
-        'DTAB':  1.23,
-        'TTAB':  1.23,
-        'CAPB':  1.23,
-        'CHAPS': 1.23,
+        'SDS':   8.5,  # <-- Replace with actual value
+        'NaDC':  5.34,
+        'NaC':   14,
+        'CTAB':  1.07,
+        'DTAB':  15.85,
+        'TTAB':  3.985,
+        'CAPB':  0.627,
+        'CHAPS': 8,
     }
     pair_indices = {(s1, s2): (surf_set.index(s1), surf_set.index(s2))
                 for s1 in surf_set for s2 in surf_set}

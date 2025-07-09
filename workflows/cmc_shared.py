@@ -5,6 +5,7 @@ import math
 import pandas as pd
 import slack_agent
 import os
+import numpy as np
 
 def check_input_file(input_file):
     vial_status = pd.read_csv(input_file, sep=",")
@@ -88,10 +89,23 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_w
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso, ['pyrene_DMSO'], well_plate_type="48 WELL PLATE", dispense_speed=20, wait_time=2, asp_cycles=1, low_volume_cutoff=0.04, buffer_vol=0, pipet_back_and_forth=True, blowout_vol=0.1)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant, [substock_vial_index], well_plate_type="48 WELL PLATE", dispense_speed=15)
 
-    for water_batch in water_batch_df:
-        print(water_batch)
-        lash_e.nr_robot.dispense_from_vials_into_wellplate(water_batch, ['water'], well_plate_type="48 WELL PLATE", dispense_speed=11)
-        fill_water_vial(lash_e)
+    # for water_batch in water_batch_df:
+    #     print(water_batch)
+    #     lash_e.nr_robot.dispense_from_vials_into_wellplate(water_batch, ['water'], well_plate_type="48 WELL PLATE", dispense_speed=11)
+    #     fill_water_vial(lash_e)
+
+    #Only run the second batch if it exists
+    if len(water_batch_df) >= 2:
+        print(water_batch_df[1])
+        high_volume_df = water_batch_df[1][water_batch_df[1]['water volume'] > 0.05]
+        low_volume_df = water_batch_df[1][water_batch_df[1]['water volume'] <= 0.05]
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(low_volume_df, ['water_large'], well_plate_type="48 WELL PLATE", dispense_speed=11)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(high_volume_df, ['water_large'], well_plate_type="48 WELL PLATE", dispense_speed=11, remove_pipet=False)
+    
+    print(water_batch_df[0])
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(water_batch_df[0], ['water'], well_plate_type="48 WELL PLATE", dispense_speed=11)
+    fill_water_vial(lash_e)
+
 
     lash_e.nr_robot.return_vial_home(substock_vial_index)
 
@@ -102,37 +116,44 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_w
 
 def analyze_and_save_results(folder, details, wellplate_data, resulting_data, analyzer, save_modifier):
     concentrations = wellplate_data['concentration']
+    if len(resulting_data) > len(concentrations):
+        n_reps = len(resulting_data) // len(concentrations)
+    if len(resulting_data) % len(concentrations) != 0:
+        print("⚠️ Warning: replicate count is not an integer — concentration alignment may be wrong.")
+    concentrations = np.tile(concentrations.values, n_reps)
 
-    if isinstance(resulting_data.columns, pd.MultiIndex):
-        print("Detected replicate measurements. Compiling into long format.")
-        # Collapse into long format
-        resulting_data = pd.concat([
-            resulting_data.xs(rep, level=0, axis=1).assign(replicate=rep)
-            for rep in resulting_data.columns.levels[0]
-        ])
-        resulting_data.reset_index(drop=True, inplace=True)
-
+    # --- Calculate fluorescence ratio ---
     try:
-        resulting_data['ratio'] = resulting_data['334_373'] / resulting_data['334_384']
+        if '334_373' in resulting_data.columns and '334_384' in resulting_data.columns:
+            resulting_data['ratio'] = resulting_data['334_373'] / resulting_data['334_384']
+        else:
+            raise KeyError("Missing required columns 334_373 or 334_384")
     except KeyError:
         print("⚠️ No fluorescence data found (missing 334_373 or 334_384)")
+        return None
 
+    # --- Check absorbance ---
     try:
         if (resulting_data['600'] > 0.1).any():
             print("⚠️ Warning: Some absorbance (600 nm) values exceed 0.1!")
     except KeyError:
         print("⚠️ No absorbance data (missing 600 nm column)")
 
-    # Create graphs/ folder in the parent directory
+    # --- Output folder setup ---
     parent_folder = os.path.dirname(folder)
     graphs_folder = os.path.join(parent_folder, "graphs")
     os.makedirs(graphs_folder, exist_ok=True)
 
-    # Save plot to graphs/
+    # --- Run CMC analysis using all ratios ---
     figure_name = os.path.join(graphs_folder, f'CMC_plot_{details}_{save_modifier}.png')
-    A1, A2, x0, dx, r_squared = analyzer.CMC_plot(resulting_data['ratio'].values, concentrations, figure_name)
 
-    # Save data outputs to raw_data/ (folder)
+    try:
+        A1, A2, x0, dx, r_squared = analyzer.CMC_plot(resulting_data['ratio'].values, concentrations, figure_name)
+    except Exception as e:
+        print(f"❌ CMC fit failed: {e}")
+        return None
+
+    # --- Save all relevant data ---
     wellplate_data.to_csv(os.path.join(folder, f'wellplate_data_{details}_{save_modifier}.csv'), index=False)
     resulting_data.to_csv(os.path.join(folder, f'output_data_{details}_{save_modifier}.csv'), index=False)
     with open(os.path.join(folder, f'wellplate_data_results_{details}_{save_modifier}.txt'), "w") as f:
@@ -150,3 +171,50 @@ def analyze_and_save_results(folder, details, wellplate_data, resulting_data, an
         "A2": A2,
         "dx": dx
     }
+def coalesce_replicates_long(df_wide):
+    """
+    Converts wide-format MultiIndex replicate data into long format:
+    Each replicate becomes a new row, retaining all columns.
+    """
+    records = []
+
+    for top_level in df_wide.columns.levels[0]:
+        try:
+            rep_str, protocol = top_level.split('_', 1)
+            replicate = int(rep_str.replace('rep', ''))
+        except Exception as e:
+            print(f"⚠️ Skipping column group {top_level}: {e}")
+            continue
+
+        sub_df = df_wide[top_level].copy()
+        sub_df = sub_df.copy()
+        sub_df['replicate'] = replicate
+        sub_df['protocol'] = protocol
+        sub_df['sample_id'] = sub_df.index
+        records.append(sub_df)
+
+    df_long = pd.concat(records, ignore_index=True)
+    return df_long
+
+def merge_absorbance_and_fluorescence(df_long):
+    """
+    Merge absorbance and fluorescence data on sample_id and replicate.
+    Only retains expected columns to avoid _x/_y duplication.
+    """
+
+    # Filter rows
+    absorb = df_long[df_long['protocol'] == 'CMC_Absorbance'].copy()
+    fluor  = df_long[df_long['protocol'] == 'CMC_Fluorescence'].copy()
+
+    # Sanity check — no overlap in columns except keys
+    print("Absorbance columns:", absorb.columns.tolist())
+    print("Fluorescence columns:", fluor.columns.tolist())
+
+    # Reduce to only necessary columns
+    absorb = absorb[['sample_id', 'replicate', '600']]
+    fluor  = fluor[['sample_id', 'replicate', '334_373', '334_384']]
+
+    # Merge
+    merged = pd.merge(fluor, absorb, on=['sample_id', 'replicate'], how='inner')
+
+    return merged

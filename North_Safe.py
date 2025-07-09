@@ -1237,7 +1237,7 @@ class North_Robot:
     #This method does use multiple dispenses per aspiration for efficiency
     def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names, low_volume_cutoff=0.05, buffer_vol=0.02,
                                             dispense_speed=11, wait_time=1, asp_cycles=0, track_height=True,
-                                            well_plate_type="96 WELL PLATE", pipet_back_and_forth=False, blowout_vol = 0):
+                                            well_plate_type="96 WELL PLATE", pipet_back_and_forth=False, blowout_vol = 0, remove_pipet=True):
         vial_indices = [self.normalize_vial_index(v) for v in vial_names]  # Normalize vial indices
         
         # Step 1: Check if there's enough liquid in each vial
@@ -1358,8 +1358,8 @@ class North_Robot:
                     print(f"Returning remaining volume: {vol_remaining:.3f} mL to vial {vial_index}")
                     self.dispense_into_vial(vial_index, vol_remaining,
                                             dispense_speed=dispense_speed, wait_time=wait_time)
-
-                self.remove_pipet()
+                if remove_pipet:
+                    self.remove_pipet()
 
                 if return_vial:
                     self.recap_clamp_vial()
