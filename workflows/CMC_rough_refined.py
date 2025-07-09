@@ -19,9 +19,9 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = False
-enable_logging = False
-run = 1  # This determines which Run group you are running
+simulate = True
+enable_logging = True
+run = 2  # This determines which Run group you are running
 
 # Load pairing data from CSV
 data_in = pd.read_csv("../utoronto_demo/analysis/CMC_trial_assignment_with_runs.csv")  # Add full path if needed
@@ -44,6 +44,17 @@ lash_e.nr_robot.check_input_file()
 lash_e.nr_track.check_input_file()
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+surfactants_used = set()
+for pair, _ in pairings_and_ratios:
+    surfactants_used.update(pair)
+surfactants_used.update(["water_large", "pyrene_DMSO"])
+initial_volumes = {}
+for surf in surfactants_used:
+    try:
+        initial_volumes[surf] = lash_e.nr_robot.get_vial_info(surf, 'vial_volume')
+    except Exception as e:
+        print(f"Warning: couldn't get initial volume for {surf}: {e}")
 
 
 if not simulate:
@@ -243,7 +254,15 @@ if not simulate:
     fig.savefig(os.path.join(folder, "CMC_pairwise_plot.png"), dpi=300, bbox_inches='tight')
     #plt.show()
 
-
+print("\n--- Volume Usage Summary ---")
+for surf in surfactants_used:
+    try:
+        final_vol = lash_e.nr_robot.get_vial_info(surf, 'vial_volume')
+        initial_vol = initial_volumes.get(surf, final_vol)
+        used_vol = initial_vol - final_vol
+        print(f"{surf}: used {used_vol:.2f} mL (from {initial_vol:.2f} -> {final_vol:.2f})")
+    except Exception as e:
+        print(f"{surf}: Error retrieving final volume — {e}")
 
 if enable_logging:
     log_file.close()

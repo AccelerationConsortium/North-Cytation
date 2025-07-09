@@ -69,7 +69,7 @@ surfactant_library = {
         "CMC": 0.627,
         "Category": "zwitterionic",
         "MW": 342.52,
-        "stock_conc": 5,  # mM (Changed from 50)
+        "stock_conc": 50,  # mM (Changed from 50)
     },
     
     "CHAPS": {
