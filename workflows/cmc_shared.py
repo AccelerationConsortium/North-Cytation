@@ -35,7 +35,7 @@ def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
             if vial_location == 'main_8mL_rack':
                 lash_e.nr_robot.move_vial_to_location(surfactant, 'main_8mL_rack', 43)
             for v in volumes:
-                lash_e.nr_robot.dispense_from_vial_into_vial(surfactant, substock_vial, v)
+                lash_e.nr_robot.dispense_from_vial_into_vial(surfactant, substock_vial, v, blowout_vol=0.1)
             lash_e.nr_robot.remove_pipet()
             if vial_location == 'main_8mL_rack':
                 lash_e.nr_robot.return_vial_home(surfactant)
