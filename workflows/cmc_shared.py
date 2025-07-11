@@ -114,7 +114,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_w
         lash_e.nr_robot.mix_well_in_wellplate(well, volume=0.3, well_plate_type="48 WELL PLATE")
     lash_e.nr_robot.remove_pipet()
 
-def analyze_and_save_results(folder, details, wellplate_data, resulting_data, analyzer, save_modifier):
+def analyze_and_save_results(folder, details, wellplate_data, resulting_data, analyzer, save_modifier, log=False):
     concentrations = wellplate_data['concentration']
     if len(resulting_data) > len(concentrations):
         n_reps = len(resulting_data) // len(concentrations)
@@ -148,7 +148,7 @@ def analyze_and_save_results(folder, details, wellplate_data, resulting_data, an
     figure_name = os.path.join(graphs_folder, f'CMC_plot_{details}_{save_modifier}.png')
 
     try:
-        A1, A2, x0, dx, r_squared = analyzer.CMC_plot(resulting_data['ratio'].values, concentrations, figure_name)
+        A1, A2, x0, dx, r_squared = analyzer.CMC_plot(resulting_data['ratio'].values, concentrations, figure_name, log=log)
     except Exception as e:
         print(f"❌ CMC fit failed: {e}")
         return None
