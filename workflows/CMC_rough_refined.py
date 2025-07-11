@@ -21,7 +21,7 @@ MEASUREMENT_PROTOCOL_FILE = [
 ]
 simulate = True
 enable_logging = True
-run = 8  # This determines which Run group you are running
+run = 3  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 # Load pairing data from CSV
@@ -130,7 +130,7 @@ for i, ratio in enumerate(padded_ratios):
         time.sleep(600)
         results = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, range(starting_wp_index, starting_wp_index + samples_per_assay), plate_type="48 WELL PLATE", repeats=3)
         results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
-        metrics_rough = analyze_and_save_results(folder, label + '_rough', wellplate_data, results_concat, analyzer, 'rough')
+        metrics_rough = analyze_and_save_results(folder, label + '_rough', wellplate_data, results_concat, analyzer, 'rough', log=True)
         cmc_rough = metrics_rough["CMC"]
         print("Rough CMC:", cmc_rough)
     else:
