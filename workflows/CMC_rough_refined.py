@@ -19,9 +19,9 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = True
-enable_logging = True
-run = 8  # This determines which Run group you are running
+simulate = False #Set to False to run with machine
+enable_logging = False #Set to False to run with machine
+run = 5  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 # Load pairing data from CSV
@@ -34,6 +34,7 @@ for _, row in data_in.iterrows():
     pairings_and_ratios.append(
         ([row['Surfactant1'], row['Surfactant2']], [row['Ratio1'], row['Ratio2']])
     )
+
 
 # Show user what’s being run and pause
 print(f"Run {run} — Pairings and Ratios:")
