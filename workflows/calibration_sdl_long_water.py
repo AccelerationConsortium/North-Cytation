@@ -14,15 +14,16 @@ import analysis.calibration_analyzer as analyzer  # adjust if needed
 
 # --- Config ---
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 5
-BAYES_CYCLES_PER_VOLUME = 1
-SIMULATE = True
+SOBOL_CYCLES_PER_VOLUME = 30
+BAYES_CYCLES_PER_VOLUME = 120
+SIMULATE = False
 REPLICATES = 3
 VOLUMES = [0.01,0.02,0.05,0.1]
+
 LIQUID = "water" 
-#VOLUMES = [0.01,0.02,0.05]
+DENSITY_LIQUID = 1.00  # g/mL
+
 NEW_PIPET_EACH_TIME_SET = False  # If True, will remove pipet after each replicate
-DENSITY_LIQUID = 1.26  # g/mL
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
 EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials.csv"
@@ -152,14 +153,16 @@ lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
 
 if not SIMULATE:
-    autosave_dir = os.path.join("output", "autosave_calibration")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S"+ f"_{LIQUID}")  # Only needed if not already defined
+    base_autosave_dir = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration"
+    autosave_dir = os.path.join(base_autosave_dir, timestamp)
     os.makedirs(autosave_dir, exist_ok=True)
 
-    autosave_summary_path = os.path.join(autosave_dir, "experiment_summary.csv")
-    autosave_raw_path = os.path.join(autosave_dir, "raw_replicate_data.csv")
+    autosave_summary_path = os.path.join(autosave_dir, "experiment_summary_autosave.csv")
+    autosave_raw_path = os.path.join(autosave_dir, "raw_replicate_data_autosave.csv")
 
 # Run optimization
-ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES, model_type="exploit")
+ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES, model_type="explore")
 all_results = []
 raw_measurements = [] 
 
@@ -241,9 +244,9 @@ if not SIMULATE:
         "blowout_vol",
     ]
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    save_dir = os.path.join("output", f"experiment_calibration_{timestamp}_{LIQUID}")
-    os.makedirs(save_dir, exist_ok=True)
+    #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    save_dir = autosave_dir
+    #os.makedirs(save_dir, exist_ok=True)
 
     results_df.to_csv(os.path.join(save_dir, "experiment_summary.csv"), index=False)
     print("Saved results to:", os.path.join(save_dir, "experiment_summary.csv"))
