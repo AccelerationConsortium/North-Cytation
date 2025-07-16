@@ -20,11 +20,11 @@ SIMULATE = False
 REPLICATES = 3
 VOLUMES = [0.01,0.02,0.05,0.1]
 
-LIQUID = "glycerol"
-DENSITY_LIQUID = 1.26  # g/mL 
+LIQUID = "water"
+DENSITY_LIQUID = 1.00  # g/mL 
+NEW_PIPET_EACH_TIME_SET = False  # If True, will remove pipet after each replicate
+MODE = "exploit" #or explore
 
-#VOLUMES = [0.01,0.02,0.05]
-NEW_PIPET_EACH_TIME_SET = True  # If True, will remove pipet after each replicate
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
 EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_glycerol.csv"
@@ -160,7 +160,7 @@ if not SIMULATE:
     autosave_raw_path = os.path.join(autosave_dir, "raw_replicate_data.csv")
 
 # Run optimization
-ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES, model_type="exploit")
+ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME*len(VOLUMES),VOLUMES, model_type=MODE)
 all_results = []
 raw_measurements = [] 
 

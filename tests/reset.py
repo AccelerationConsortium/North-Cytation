@@ -15,6 +15,8 @@ def reset(input_vial_status_file):
     lash_e.nr_track.origin()
     lash_e.nr_robot.move_home()
 
+    lash_e.nr_track.open_gripper()
+
     #lash_e.nr_robot.c9.move_pump(1, 0)
 
 reset("../utoronto_demo/status/sample_input_vials.csv")

@@ -212,7 +212,7 @@ for i, volume in enumerate(VOLUMES):
             results["time_reported"] = datetime.now().isoformat()
             all_results.append(results)
             if not SIMULATE:
-                pd.DataFrame([results]).to_csv(autosave_raw_path, mode='a', index=False, header=not os.path.exists(autosave_raw_path))
+                pd.DataFrame([results]).to_csv(autosave_summary_path, mode='a', index=False, header=not os.path.exists(autosave_summary_path))
 
 
 # Save results

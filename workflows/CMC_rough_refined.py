@@ -21,7 +21,7 @@ MEASUREMENT_PROTOCOL_FILE = [
 ]
 simulate = False #Set to False to run with machine
 enable_logging = False #Set to False to run with machine
-run = 5  # This determines which Run group you are running
+run = 8  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 # Load pairing data from CSV
