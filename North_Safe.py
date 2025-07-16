@@ -1139,7 +1139,10 @@ class North_Robot:
 
         #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
         if measure_weight and dest_vial_clamped:
-            initial_mass = self.c9.read_steady_scale()
+            if not self.simulate:
+                initial_mass = self.c9.read_steady_scale()
+            else:
+                initial_mass = 0
 
         self.adjust_pump_speed(0,dispense_speed) #Adjust pump speed if needed
 
@@ -1167,7 +1170,10 @@ class North_Robot:
 
         #If the destination vial is at the clamp and you want the weight, measure after pipetting
         if measure_weight and dest_vial_clamped:
-            final_mass = self.c9.read_steady_scale()
+            if not self.simulate:
+                final_mass = self.c9.read_steady_scale()
+            else:
+                final_mass = 0
             measured_mass = final_mass - initial_mass  
 
         return measured_mass
