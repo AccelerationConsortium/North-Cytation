@@ -102,7 +102,7 @@ def plot_time_vs_deviation(results_df, save_folder):
         )
 
         # X markers for variability > 1.0
-        high_var = df_sub[df_sub["variability"] > 1.0]
+        high_var = df_sub[df_sub["variability"] > 2.0]
         plt.scatter(
             high_var["time"],
             high_var["deviation"],
@@ -160,7 +160,11 @@ def plot_learning_curves(df, save_folder):
             if len(vol_df) >= 3:
                 ma = vol_df[metric].rolling(window=3, center=True).mean()
                 ax.plot(vol_df['trial_index'], ma, label='Moving Average', color='orange')
-                z = np.polyfit(vol_df['trial_index'], vol_df[metric], 1)
+
+                vol_df[metric] = pd.to_numeric(vol_df[metric], errors='coerce')
+                cleaned = vol_df.dropna(subset=['trial_index', metric])
+                z = np.polyfit(cleaned['trial_index'], cleaned[metric], 1)
+
                 ax.plot(vol_df['trial_index'], np.poly1d(z)(vol_df['trial_index']), 'r--', label='Trend')
             ax.set_title(f'{metric.capitalize()} Learning Curve - {vol} mL')
             ax.set_xlabel('Trial Index')

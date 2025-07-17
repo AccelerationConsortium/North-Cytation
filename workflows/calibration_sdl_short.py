@@ -11,7 +11,7 @@ import recommenders.pipeting_optimizer_honegumi as recommender
 # --- Experiment Config ---
 SEED = 7
 SOBOL_CYCLES_PER_VOLUME = 5
-BAYES_CYCLES_PER_VOLUME = 27
+BAYES_CYCLES_PER_VOLUME = 1
 SIMULATE = LOGGING = True
 REPLICATES = 3
 
@@ -77,6 +77,7 @@ for i, volume in enumerate(VOLUMES):
         ax_client.complete_trial(trial_index=trial_index, raw_data=result)
         result.update(params)
         result.update({"volume": volume, "trial_index": trial_index, "strategy": "SOBOL", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
+        result = strip_tuples(result)
         all_results.append(result)
         if not SIMULATE:
             pd.DataFrame([result]).to_csv(autosave_summary_path, mode='a', index=False, header=not os.path.exists(autosave_summary_path))
@@ -92,6 +93,7 @@ for i, volume in enumerate(VOLUMES):
             recommender.add_result(ax_client, trial_index, results)
             results.update(params)
             results.update({"volume": volume, "trial_index": trial_index, "strategy": "BAYESIAN", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
+            results = strip_tuples(results)
             all_results.append(results)
             if not SIMULATE:
                 pd.DataFrame([results]).to_csv(autosave_summary_path, mode='a', index=False, header=not os.path.exists(autosave_summary_path))
