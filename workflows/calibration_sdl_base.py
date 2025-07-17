@@ -81,7 +81,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         masses.append(mass)
     end = time.time()
 
-    std_mass = np.std(masses) * 1000
+    avg_mass = np.mean(masses)
+    std_mass = np.std(masses) / avg_mass * 100  # % relative std
     percent_errors = [abs((m - expected_mass) / expected_mass * 100) for m in masses]
     deviation = np.mean(percent_errors)
     time_score = ((end - start) / replicate_count)
@@ -91,9 +92,18 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
     else:
         return {"deviation": deviation, "variability": std_mass, "time": time_score}
 
+def strip_tuples(d):
+    """Convert any (x, None) → x in a flat dict."""
+    return {k: (v if not (isinstance(v, tuple) and v[1] is None) else v[0]) for k, v in d.items()}
+
 def save_analysis(results_df, raw_df, save_dir):
     results_df.to_csv(os.path.join(save_dir, "experiment_summary.csv"), index=False)
     raw_df.to_csv(os.path.join(save_dir, "raw_replicate_data.csv"), index=False)
+
+    for metric in ['deviation', 'time', 'variability']:
+        if metric in results_df.columns:
+            results_df[metric] = pd.to_numeric(results_df[metric], errors='coerce')
+
     analyzer.run_shap_analysis(results_df, save_dir)
     best_trials = analyzer.get_top_trials(results_df, save_dir, weight_time=1.0, weight_deviation=0.5, weight_variability=2.0, top_n=3)
     analyzer.plot_top_trial_histograms(best_trials, save_dir)
