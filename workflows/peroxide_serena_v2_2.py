@@ -20,7 +20,7 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
        # lash_e.nr_robot.home_axis(i) #Home the track
     print()
 
-def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,well_volume=0.2,simulate=False):
+def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=False,well_volume=0.2):
     print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
     lash_e.nr_robot.move_vial_to_location(sample_index, location="main_8mL_rack", location_index=44) #Move sample to safe pipetting position
     lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates,track_height=True)
@@ -29,9 +29,9 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
     lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.return_vial_home(sample_index) #Return sample to home position
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
-    output_file = output_dir / f'output_{first_well_index}.txt'
     # output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
     if not simulate:
+        output_file = output_dir / f'output_{first_well_index}.txt'
         data_out.to_csv(output_file, sep=',')
         #Use analyzer to analyze the data
     print()
@@ -70,8 +70,8 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     print(vial_status)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    SIMULATE = False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
+    SIMULATE = LOGGING = False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, logging=LOGGING)
 
     #This section is simply to create easier to remember and read indices for the vials
     #vial_numbers = vial_status['vial_index'].values #Gives you the values
@@ -83,15 +83,20 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     #Get the active indices
     sample_indices = vial_status.index.values[3:] #Gets the indices for the samples (3-8 inclusive)
 
-    input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")    
+    # input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")    
+    lash_e.nr_robot.check_input_file()
 
     #create file name for the output data
-    exp_name = input("Experiment name: ")
-    output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / exp_name #appends exp_name to the output directory
-    output_dir.mkdir(parents=True, exist_ok=True)
-    print("Output directory created at:", output_dir)
+    if not SIMULATE:
+        exp_name = input("Experiment name: ")
+        output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / exp_name #appends exp_name to the output directory
+        output_dir.mkdir(parents=True, exist_ok=True)
+        print("Output directory created at:", output_dir)
+        slack_agent.send_slack_message("Peroxide workflow started!")
+    else:
+        output_dir = None
 
-    slack_agent.send_slack_message("Peroxide workflow started!")
+    
 
     # #-> Start from here! 
     # #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
@@ -158,8 +163,10 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     lash_e.nr_robot.return_vial_home(reaction_mixture_index)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=1)
-    lash_e.nr_robot.move_home()   
-    slack_agent.send_slack_message("Peroxide workflow completed!")
+    lash_e.nr_robot.move_home()
+
+    if not SIMULATE:   
+        slack_agent.send_slack_message("Peroxide workflow completed!")
 
 peroxide_workflow() #Run your workflow
 
