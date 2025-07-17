@@ -1,4 +1,5 @@
 # --- cmc_pairings_workflow.py ---
+from gc import enable
 import sys
 sys.path.append("../utoronto_demo")
 from cmc_shared import *
@@ -19,9 +20,8 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = False #Set to False to run with machine
-enable_logging = False #Set to False to run with machine
-run = 8  # This determines which Run group you are running
+simulate = enable_logging = False
+run = 9  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 # Load pairing data from CSV
