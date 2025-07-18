@@ -9,16 +9,17 @@ from master_usdl_coordinator import Lash_E
 import recommenders.pipeting_optimizer_honegumi as recommender
 
 # --- Experiment Config ---
-SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 5
-BAYES_CYCLES_PER_VOLUME = 1
-SIMULATE = LOGGING = True
-REPLICATES = 3
-
-VOLUMES = [0.01, 0.02, 0.05, 0.1]
 LIQUID = "water"  #<------------------- CHANGE THIS!
+SIMULATE = LOGGING = False #<--------- CHANGE THIS!
+
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
+
+SEED = 7
+SOBOL_CYCLES_PER_VOLUME = 5
+BAYES_CYCLES_PER_VOLUME = 27
+REPLICATES = 3
+VOLUMES = [0.01, 0.02, 0.05, 0.1]
 
 MODE = "exploit"
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
