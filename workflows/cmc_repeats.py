@@ -15,8 +15,7 @@ from analysis.CMC_replicate_analysis import analyze_summary_variation
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_repeats_input.csv"
 LOGGING_FOLDER = "../utoronto_demo/logs/"
 MEASUREMENT_PROTOCOL_FILE = r"C:\\Protocols\\CMC_Fluorescence.prt"
-simulate = False
-enable_logging = False
+simulate = enable_logging = True
 repeats = 3  # Number of replicate measurements
 
 REPEATS_PER_BATCH = 3
@@ -51,7 +50,7 @@ with Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate, logging=enable_logging) a
         surfactants = [surfactant]
         ratio_vector = [1]
 
-        experiment, _ = experimental_planner.generate_exp_flexible(surfactants, ratio_vector, sub_stock_volume=6000, probe_volume=25)
+        experiment, _ = experimental_planner.generate_exp_flexible(surfactants, ratio_vector, rough_screen=True)
         sub_stock_vols = experiment['surfactant_sub_stock_vols']
         wellplate_data = experiment['df']
         samples_per_assay = wellplate_data.shape[0]
@@ -106,7 +105,7 @@ with Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate, logging=enable_logging) a
 
                         label = f"{label_prefix}_rep{rep+1}"
                         metrics = analyze_and_save_results(
-                            raw_data_folder, details, wellplate_data, rep_data, analyzer, label
+                            raw_data_folder, details, wellplate_data, rep_data, analyzer, label, log= True
                         )
 
                         summary_records.append({
