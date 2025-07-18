@@ -46,7 +46,7 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
         lash_e.nr_robot.return_vial_home(liquid_source_name)
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
-def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_mass, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time):
+def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, measurement_type="mass"):
     pre_air = params.get("pre_asp_air_vol", 0)
     post_air = params.get("post_asp_air_vol", 0)
     air_vol = pre_air + post_air
@@ -65,32 +65,41 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
     }
     
 
-    masses = []
+    measurements = []
     start = time.time()
     for replicate_idx in range(replicate_count):
         replicate_start = datetime.now().isoformat()
         lash_e.nr_robot.aspirate_from_vial(source_vial, volume, **aspirate_kwargs)
-        mass = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, **dispense_kwargs)
-        if new_pipet_each_time:
-            lash_e.nr_robot.remove_pipet()
-        replicate_end = datetime.now().isoformat()
-        raw_entry = {"volume": volume, "replicate": replicate_idx, "mass": mass, "start_time": replicate_start, "end_time": replicate_end, "liquid": liquid, **params}
-        raw_measurements.append(raw_entry)
+        if measurement_type == "mass":
+            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, **dispense_kwargs)
+            if new_pipet_each_time:
+                lash_e.nr_robot.remove_pipet()
+            replicate_end = datetime.now().isoformat()
+            raw_entry = {"volume": volume, "replicate": replicate_idx, "mass": measurement, "start_time": replicate_start, "end_time": replicate_end, "liquid": liquid, **params}
+            raw_measurements.append(raw_entry)
+        # elif measurement_type == "absorbance":
+        #     lash_e.nr_robot.dispense_into_wellplate([well_num],[volume], **dispense_kwargs)
+        #     if new_pipet_each_time:
+        #         lash_e.nr_robot.remove_pipet()
+        #     replicate_end = datetime.now().isoformat()
+        #     raw_entry = {"volume": volume, "replicate": replicate_idx, "absorbance": measurement, "start_time": replicate_start, "end_time": replicate_end, "liquid": liquid, **params}
+        #     raw_measurements.append(raw_entry)
+        
         if not simulate:
             pd.DataFrame([raw_entry]).to_csv(raw_path, mode='a', index=False, header=not os.path.exists(raw_path))
-        masses.append(mass)
+        measurements.append(measurement)
     end = time.time()
 
-    avg_mass = np.mean(masses)
-    std_mass = np.std(masses) / avg_mass * 100  # % relative std
-    percent_errors = [abs((m - expected_mass) / expected_mass * 100) for m in masses]
+    avg_measurement = np.mean(measurements)
+    std_measurement = np.std(measurements) / avg_measurement * 100  # % relative std
+    percent_errors = [abs((m - expected_measurement) / expected_measurement * 100) for m in measurements]
     deviation = np.mean(percent_errors)
-    time_score = ((end - start) / replicate_count)
+    time = ((end - start) / replicate_count)
 
     if simulate:
-        return pipet_and_measure_simulated(volume, params, expected_mass, expected_time)
+        return pipet_and_measure_simulated(volume, params, expected_measurement, expected_time)
     else:
-        return {"deviation": deviation, "variability": std_mass, "time": time_score}
+        return {"deviation": deviation, "variability": std_measurement , "time": time}
 
 def strip_tuples(d):
     """Convert any (x, None) → x in a flat dict."""
