@@ -15,7 +15,7 @@ from analysis.CMC_replicate_analysis import analyze_summary_variation
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/CMC_workflow_repeats_input.csv"
 LOGGING_FOLDER = "../utoronto_demo/logs/"
 MEASUREMENT_PROTOCOL_FILE = r"C:\\Protocols\\CMC_Fluorescence.prt"
-simulate = enable_logging = True
+simulate = enable_logging = False
 repeats = 3  # Number of replicate measurements
 
 REPEATS_PER_BATCH = 3
