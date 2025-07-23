@@ -91,31 +91,23 @@ with Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate, logging=enable_logging) a
                         plate_type="48 WELL PLATE",
                         repeats=repeats
                     )
+                    results.to_csv(os.path.join(raw_data_folder, f"{label_prefix}_raw_multiindex.csv"))
+
 
                     details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
 
-                    # Iterate over replicates inside the result
-                    for rep in range(repeats):
-                        rep_label = f"rep{rep+1}"
+                    results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
 
-                        if isinstance(results.columns, pd.MultiIndex):
-                            rep_data = results[rep_label]
-                        else:
-                            # fallback if single rep or simulate edge case
-                            rep_data = results
+                    metrics = analyze_and_save_results(
+                        raw_data_folder, details, wellplate_data, results_concat, analyzer, label_prefix, log=True
+                    )
 
-                        label = f"{label_prefix}_rep{rep+1}"
-                        metrics = analyze_and_save_results(
-                            raw_data_folder, details, wellplate_data, rep_data, analyzer, label, log= True
-                        )
-
-                        summary_records.append({
-                            "Surfactant": surfactant,
-                            "Assay": repeat_label,
-                            "Time_min": delay,
-                            "Replicate": rep + 1,
-                            **metrics
-                        })
+                    summary_records.append({
+                        "Surfactant": surfactant,
+                        "Assay": repeat_label,
+                        "Time_min": delay,
+                           **metrics
+                    })
 
             starting_wp_index += samples_per_assay
             print("Wellplate index: ", starting_wp_index)

@@ -139,7 +139,6 @@ class Lash_E:
         self.nr_track.origin()
         return combined_data
 
-
     def run_photoreactor(self,vial_index,target_rpm,intensity,duration,reactor_num):
         self.nr_robot.move_vial_to_location(vial_index,'photoreactor_array',reactor_num)
         self.photoreactor.run_photoreactor(target_rpm,duration,intensity,reactor_num)
