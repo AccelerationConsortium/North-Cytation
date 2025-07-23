@@ -1,0 +1,33 @@
+Initializing North Robot...
+Physical initialization of North Robot...
+Moving robot to home position
+Current reader status: <MagicMock name='mock.get_reader_status()' id='2105786186432'>
+    vial_index        vial_name            location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index
+0            0      Rxn_Mixture  photoreactor_array              24          4.1    True     open      8_mL  main_8mL_rack                   24
+1            1      Reagent_A+B       main_8mL_rack              25          6.8   False     none      8_mL  main_8mL_rack                   25
+2            2            Water       main_8mL_rack              26          8.0   False     none      8_mL  main_8mL_rack                   26
+3            3   0_min_Reaction       main_8mL_rack               0          0.0    True     open      8_mL  main_8mL_rack                    0
+4            4   5_min_Reaction       main_8mL_rack               1          0.0    True     open      8_mL  main_8mL_rack                    1
+5            5  10_min_Reaction       main_8mL_rack               2          0.0    True     open      8_mL  main_8mL_rack                    2
+6            6  15_min_Reaction       main_8mL_rack               3          0.0    True     open      8_mL  main_8mL_rack                    3
+7            7  20_min_Reaction       main_8mL_rack               4          0.0    True     open      8_mL  main_8mL_rack                    4
+8            8  25_min_Reaction       main_8mL_rack               5          0.0    True     open      8_mL  main_8mL_rack                    5
+9            9  45_min_Reaction       main_8mL_rack               6          0.0    True     open      8_mL  main_8mL_rack                    6
+10          10  60_min_Reaction       main_8mL_rack               7          0.0    True     open      8_mL  main_8mL_rack                    7
+Visualizing...
+Traceback (most recent call last):
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\workflows\peroxide_serena_v2_2.py", line 169, in <module>
+    peroxide_workflow() #Run your workflow
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\workflows\peroxide_serena_v2_2.py", line 87, in peroxide_workflow
+    lash_e.nr_robot.check_input_file()
+  File "C:\Users\Imaging Controller\Desktop\utoronto_demo\../utoronto_demo\North_Safe.py", line 666, in check_input_file
+    plt.show()
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\matplotlib\pyplot.py", line 614, in show
+    return _get_backend_mod().show(*args, **kwargs)
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\matplotlib\backend_bases.py", line 3547, in show
+    cls.mainloop()
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\matplotlib\backends\_backend_tk.py", line 544, in start_main_loop
+    first_manager.window.mainloop()
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\tkinter\__init__.py", line 1458, in mainloop
+    self.tk.mainloop(n)
+KeyboardInterrupt

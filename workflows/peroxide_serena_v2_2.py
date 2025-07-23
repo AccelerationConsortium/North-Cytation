@@ -9,11 +9,11 @@ import analysis.cof_analyzer as analyzer
 
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2):
     print("\nDispensing from photoreactor into sample: ", sample_index)
-    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
+    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
     lash_e.nr_robot.dispense_from_vial_into_vial(reaction_mixture_index,sample_index,volume=volume)
     mix_current_sample(lash_e,sample_index,volume=0.8)
     lash_e.nr_robot.remove_pipet()
-    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
+    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
     lash_e.nr_robot.move_home()
     lash_e.nr_robot.c9.home_robot()
     #for i in range (6,8):
@@ -96,15 +96,13 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     else:
         output_dir = None
 
-    
-
-    # #-> Start from here! 
-    # #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
+    #-> Start from here! 
+    #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
     for i in sample_indices:
         lash_e.nr_robot.dispense_from_vial_into_vial(water_index,i,volume=0.950)
     lash_e.nr_robot.remove_pipet()
 
-    # # #Step 3: Add 150 µL "Working Reagent(reagent A+B)" (vial_index 44) to 950 µL deionized water (vial_index 0-5) to dilute the Working Reagent.
+    # # # #Step 3: Add 150 µL "Working Reagent(reagent A+B)" (vial_index 44) to 950 µL deionized water (vial_index 0-5) to dilute the Working Reagent.
     for i in sample_indices: 
         lash_e.nr_robot.dispense_from_vial_into_vial(reagent_AB_index,i,volume=0.150)
         mix_current_sample(lash_e,i,new_pipet=True,volume=0.8)
@@ -112,8 +110,8 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     #Step 4: Move the reaction mixture vial (vial_index 43) to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_location(reaction_mixture_index, location="photoreactor_array", location_index=0)
     #Turn on photoreactor
-    lash_e.photoreactor.turn_on_reactor_led(reactor_num=1,intensity=100)
-    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=1,rpm=600)
+    lash_e.photoreactor.turn_on_reactor_led(reactor_num=0,intensity=100)
+    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
 
     #Step 5: Add 200 µL "reaction mixture" (vial in the photoreactor) to "Diluted Working Reagent" (vial_index 0-5). 
     # Six aliquots added at 0, 5, 10, 15, 20, 25 min time marks for incubation (incubation=18 min).
@@ -161,8 +159,8 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     lash_e.nr_robot.move_home()   
 
     lash_e.nr_robot.return_vial_home(reaction_mixture_index)
-    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
-    lash_e.photoreactor.turn_off_reactor_led(reactor_num=1)
+    lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
+    lash_e.photoreactor.turn_off_reactor_led(reactor_num=0)
     lash_e.nr_robot.move_home()
 
     if not SIMULATE:   
