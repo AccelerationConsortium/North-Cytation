@@ -92,7 +92,6 @@ with Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate, logging=enable_logging) a
                     )
                     results.to_csv(os.path.join(raw_data_folder, f"{label_prefix}_raw_multiindex.csv"))
 
-
                     details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
 
                     results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
