@@ -13,7 +13,7 @@ def sample_workflow(input_vial_status_file, target_vial):
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(input_vial_status_file,initialize_robot=False,initialize_biotek=False,initialize_track=False)
 
-    reactor_num = 1
+    reactor_num = 0
 
     #Is the second reactor reactor_num = 0 or reactor_num = 2?
 
