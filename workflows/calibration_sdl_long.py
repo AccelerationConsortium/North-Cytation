@@ -11,7 +11,7 @@ import recommenders.pipeting_optimizer_honegumi as recommender
 SEED = 7
 SOBOL_CYCLES_PER_VOLUME = 30
 BAYES_CYCLES_PER_VOLUME = 120
-SIMULATE = False
+SIMULATE = LOGGING = False
 REPLICATES = 3
 VOLUMES = [0.01, 0.02, 0.05, 0.1]
 
@@ -26,7 +26,7 @@ EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
 
 # --- Init ---
 state = {"waste_vial_index": 0}
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_biotek=False)
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_biotek=False, logging=LOGGING)
 lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial", "clamp", 0)
 
@@ -37,6 +37,9 @@ if not SIMULATE:
     os.makedirs(autosave_dir, exist_ok=True)
     autosave_summary_path = os.path.join(autosave_dir, "experiment_summary_autosave.csv")
     autosave_raw_path = os.path.join(autosave_dir, "raw_replicate_data_autosave.csv")
+else:
+    autosave_summary_path = None
+    autosave_raw_path = None
 
 # --- Optimization Loop ---
 ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), VOLUMES, model_type=MODE)
