@@ -25,6 +25,8 @@ MODE = "exploit"
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
 EXPECTED_TIME = [v * 10.146 + 9.5813 for v in VOLUMES]
+EXPECTED_ABSORBANCE = []
+
 state = {
     "measurement_vial_index": 0,
     "measurement_vial_name": "measurement_vial_0"

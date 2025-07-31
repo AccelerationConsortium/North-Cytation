@@ -12,7 +12,7 @@ obj1_name = "deviation"
 obj2_name = "variability"
 obj3_name = "time"
 
-def create_model(seed, num_initial_recs, volumes, model_type):
+def create_model(seed, num_initial_recs, volumes, model_type, simulate=False):
 
     if model_type == "explore":
         model_kwargs = {
@@ -27,26 +27,38 @@ def create_model(seed, num_initial_recs, volumes, model_type):
         model_kwargs = {
             "transforms": Specified_Task_ST_MTGP_trans,
         }
-    model_gen_kwargs = {"deduplicate": True}
+        model_gen_kwargs = {"deduplicate": True}
 
-    gs = GenerationStrategy(
-        steps=[
-            GenerationStep(
-                model=Models.SOBOL,
-                num_trials=num_initial_recs,
-                min_trials_observed=num_initial_recs,
-                max_parallelism=1,
-                model_kwargs={"seed": seed},
-                model_gen_kwargs=model_gen_kwargs,
-            ),
-            GenerationStep(
-                model=Models.BOTORCH_MODULAR,
-                num_trials=-1,
-                max_parallelism=1,
-                model_kwargs=model_kwargs,
-            ),
-        ]
-    )
+    
+    if not simulate:
+        gs = GenerationStrategy(
+            steps=[
+                GenerationStep(
+                    model=Models.SOBOL,
+                    num_trials=num_initial_recs,
+                    min_trials_observed=num_initial_recs,
+                    max_parallelism=5,
+                    model_kwargs={"seed": seed},
+                    model_gen_kwargs=model_gen_kwargs,
+                ),
+                GenerationStep(
+                    model=Models.BOTORCH_MODULAR,
+                    num_trials=-1,
+                    max_parallelism=3,
+                    model_kwargs=model_kwargs,
+                ),
+            ]
+        )
+    else:
+        gs = GenerationStrategy(
+            steps=[
+                GenerationStep(
+                    model=Models.SOBOL,
+                    num_trials=-1,
+                    max_parallelism=5,
+                    model_kwargs={"seed": seed},
+                    model_gen_kwargs=model_gen_kwargs,
+                )])
 
     ax_client = AxClient(generation_strategy=gs)
 

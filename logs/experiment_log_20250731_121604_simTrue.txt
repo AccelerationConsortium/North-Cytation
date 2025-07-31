@@ -1,0 +1,26 @@
+Initializing North Robot...
+Physical initialization of North Robot...
+Moving robot to home position
+   vial_index           vial_name         location  location_index  vial_volume  capped cap_type vial_type    home_location  home_location_index
+0           0  measurement_vial_0    main_8mL_rack               0         7.08    True     open      8_mL    main_8mL_rack                    0
+1           1  measurement_vial_1            clamp               0         6.80    True     open      8_mL    main_8mL_rack                    1
+2           2  measurement_vial_2    main_8mL_rack               2         0.00    True     open      8_mL    main_8mL_rack                    2
+3           3       liquid_source  large_vial_rack               2       500.00    True     open     20_mL  large_vial_rack                    2
+Visualizing...
+Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c--Wellplate status-- 
+ Wellplate type: 48 WELL PLATE 
+ Number in source: 4 
+ Number in waste: 0 
+ NR Pipetting area occupied: False
+Only hit enter if the status of the well plates is correct, otherwise hit ctrl-cTraceback (most recent call last):
+  File "c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\workflows\calibration_sdl_short_abs.py", line 55, in <module>
+    ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), VOLUMES, model_type=MODE, simulate=SIMULATE)
+  File "C:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\../utoronto_demo\recommenders\pipeting_optimizer_honegumi.py", line 35, in create_model
+    gs = GenerationStrategy(
+  File "C:\Users\owenm\OneDrive\Desktop\Python\Baybe\.conda\lib\site-packages\ax\modelbridge\generation_strategy.py", line 127, in __init__
+    self._validate_and_set_step_sequence(steps=self._nodes)
+  File "C:\Users\owenm\OneDrive\Desktop\Python\Baybe\.conda\lib\site-packages\ax\modelbridge\generation_strategy.py", line 68, in impl
+    return f(self, *args, **kwargs)
+  File "C:\Users\owenm\OneDrive\Desktop\Python\Baybe\.conda\lib\site-packages\ax\modelbridge\generation_strategy.py", line 565, in _validate_and_set_step_sequence
+    raise UserInputError(
+ax.exceptions.core.UserInputError: Only last step in generation strategy can have `num_trials` set to -1 to indicate that the model in the step should be used to generate new trials indefinitely unless completion criteria present.

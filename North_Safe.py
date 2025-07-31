@@ -1179,7 +1179,7 @@ class North_Robot:
         return measured_mass
 
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=11,wait_time=1,well_plate_type="96 WELL PLATE",blowout_vol=0, air_vol=0):
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=11,wait_time=1,well_plate_type="96 WELL PLATE",blowout_vol=0,air_vol=0):
         """
         Dispenses specified amounts into a series of wells in a well plate.
         Args:
