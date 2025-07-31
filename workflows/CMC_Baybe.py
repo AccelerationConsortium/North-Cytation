@@ -17,13 +17,13 @@ from baybe.constraints import ContinuousLinearConstraint
 # --- Config ---
 initial_batch_size = 1
 random_seed = 42
-CMC_target = 5.0 #What CMC are we trying to achieve?
+CMC_target = 8.0 #What CMC are we trying to achieve?
 CMC_tolerance = 0.5 #Set this later
 surfactants = ['SDS', 'NaDC', 'NaC', 'CTAB', 'DTAB', 'TTAB', 'CAPB', 'CHAPS']
 
 # --- Initialize BayBE ---
 set_random_seed(random_seed)
-target = NumericalTarget(name='CMC_difference', mode=TargetMode.MATCH, bounds=(0, CMC_tolerance))
+target = NumericalTarget(name='CMC_difference', mode=TargetMode.MIN, bounds=(0, CMC_tolerance))
 objective = SingleTargetObjective(target=target)
 
 parameters = [
@@ -38,18 +38,18 @@ constraints = [
     rhs=1.0,
 ),
 ContinuousLinearConstraint(
-    parameters=["SDS"],
+    parameters=["DTAB"],
     operator=">=",
     coefficients=[1.0],
     rhs=0.001,  # Minimum concentration threshold to be considered "present"
 )
-]
+ ]
 
 searchspace = SearchSpace.from_product(parameters, constraints)
 campaign = Campaign(searchspace, objective)
 
 #Read in the data
-df = pd.read_csv("../North-Cytation/analysis/selected_surfactant_combinations.csv")
+df = pd.read_csv(r"C:\Users\owenm\OneDrive\Desktop\CMC\Combined_CMC_Dataset.csv")
 
 #Fill in dummy data
 df["CMC"] = np.random.uniform(0.5, 16, len(df))
@@ -60,11 +60,11 @@ for surf in surfactants:
 
 # Fill in concentrations in the correct surfactant columns [This assumes that we have the form "Surfactant1, Ratio1, Surfactant2, Ratio2, CMC"]
 for i, row in df.iterrows():
-    df.at[i, row["Surfactant1"]] = row["Ratio1"]
-    df.at[i, row["Surfactant2"]] = row["Ratio2"]
+    df.at[i, row["surfactant_1"]] = row["surfactant_1_ratio"]
+    df.at[i, row["surfactant_2"]] = row["surfactant_2_ratio"]
 
 # Compute CMC_difference target for BayBE
-df["CMC_difference"] = (df["CMC"] - CMC_target)
+df["CMC_difference"] = (df["CMC"] - CMC_target).abs()
 
 # Optional: keep only the required BayBE columns
 baybe_input_df = df[surfactants + ["CMC_difference"]]
