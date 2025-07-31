@@ -94,12 +94,12 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
     std_measurement = np.std(measurements) / avg_measurement * 100  # % relative std
     percent_errors = [abs((m - expected_measurement) / expected_measurement * 100) for m in measurements]
     deviation = np.mean(percent_errors)
-    time = ((end - start) / replicate_count)
+    time_score = ((end - start) / replicate_count)
 
     if simulate:
         return pipet_and_measure_simulated(volume, params, expected_measurement, expected_time)
     else:
-        return {"deviation": deviation, "variability": std_measurement , "time": time}
+        return {"deviation": deviation, "variability": std_measurement , "time": time_score}
 
 def strip_tuples(d):
     """Convert any (x, None) → x in a flat dict."""

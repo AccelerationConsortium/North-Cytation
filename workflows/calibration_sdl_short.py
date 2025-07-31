@@ -9,7 +9,7 @@ from master_usdl_coordinator import Lash_E
 import recommenders.pipeting_optimizer_honegumi as recommender
 
 # --- Experiment Config ---
-LIQUID = "water"  #<------------------- CHANGE THIS!
+LIQUID = "ethanol"  #<------------------- CHANGE THIS!
 SIMULATE = LOGGING = False #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]

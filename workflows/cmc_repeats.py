@@ -93,21 +93,23 @@ with Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate, logging=enable_logging) a
                     )
                     results.to_csv(os.path.join(raw_data_folder, f"{label_prefix}_raw_multiindex.csv"))
 
+                    try:
+                        details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
 
-                    details = "_".join(f"{k}{int(v)}" for k, v in sub_stock_vols.items())
+                        results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
 
-                    results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
+                        metrics = analyze_and_save_results(
+                            raw_data_folder, details, wellplate_data, results_concat, analyzer, label_prefix, log=True
+                        )
 
-                    metrics = analyze_and_save_results(
-                        raw_data_folder, details, wellplate_data, results_concat, analyzer, label_prefix, log=True
-                    )
-
-                    summary_records.append({
-                        "Surfactant": surfactant,
-                        "Assay": repeat_label,
-                        "Time_min": delay,
-                           **metrics
-                    })
+                        summary_records.append({
+                            "Surfactant": surfactant,
+                            "Assay": repeat_label,
+                            "Time_min": delay,
+                            **metrics
+                        })
+                    except Exception as e:
+                        print(f"Error analyzing results for {label_prefix}: {e}")
 
             starting_wp_index += samples_per_assay
             print("Wellplate index: ", starting_wp_index)
