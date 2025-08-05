@@ -20,19 +20,19 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = enable_logging = False
-run = 9  # This determines which Run group you are running
+simulate = enable_logging = True
+run = 1  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 # Load pairing data from CSV
-data_in = pd.read_csv("../utoronto_demo/analysis/CMC_trial_assignment_with_runs.csv")  # Add full path if needed
-data_in = data_in[data_in['Run'] == run]
+data_in = pd.read_csv("../utoronto_demo/analysis/greedy_grouped_trials.csv")  # Add full path if needed
+data_in = data_in[data_in['trial'] == run]
 
 # Extract pairings and ratios for this trial
 pairings_and_ratios = []
 for _, row in data_in.iterrows():
     pairings_and_ratios.append(
-        ([row['Surfactant1'], row['Surfactant2']], [row['Ratio1'], row['Ratio2']])
+        ([row['surfactant_1'], row['surfactant_2']], [row['surfactant_1_ratio'], row['surfactant_2_ratio']])
     )
 
 
