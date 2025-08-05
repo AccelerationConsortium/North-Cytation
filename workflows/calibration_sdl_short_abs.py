@@ -15,9 +15,9 @@ DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
 
 calib_data = {
-    "water": {"intercept": 0.073314793, "slope": 0.000822864},
-    "ethanol": {"intercept": 0.070711665, "slope": 0.000615623},
-    "glycerol": {"intercept": 0.078547001, "slope": 0.000506125}
+    "water": {"intercept": 0.081702253157804, "slope": 0.000399821977780455},
+    "ethanol": {"intercept": 0.0772742779640708, "slope": 0.000394283351777735},
+    "glycerol": {"intercept": 0.0822068049753275, "slope": 0.000389037817262831}
 }
 
 SEED = 7
