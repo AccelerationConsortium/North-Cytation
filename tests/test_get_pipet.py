@@ -17,8 +17,12 @@ def test_get_pipet(index_list):
     try:
         for i in index_list:
             nr.get_pipet(i)
+            #nr.remove_pipet()
+            nr.move_home()
+            input("Waiting to move tip...")
             nr.remove_pipet()
     except KeyboardInterrupt:
+        
         c9 = None
 
 test_get_pipet([nr.LOWER_PIPET_ARRAY_INDEX]*48)

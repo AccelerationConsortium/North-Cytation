@@ -1,0 +1,36 @@
+Initializing North Robot...
+Physical initialization of North Robot...
+Moving robot to home position
+   vial_index        vial_name         location  location_index  vial_volume  capped cap_type vial_type    home_location  home_location_index
+0           1  liquid_source_1  large_vial_rack               0           20    True     open     20_mL  large_vial_rack                    0
+1           2  liquid_source_2  large_vial_rack               1           20    True     open     20_mL  large_vial_rack                    1
+2           3  liquid_source_3  large_vial_rack               2           20    True     open     20_mL  large_vial_rack                    2
+Visualizing...
+Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c--Wellplate status-- 
+ Wellplate type: 48 WELL PLATE 
+ Number in source: 4 
+ Number in waste: 0 
+ NR Pipetting area occupied: False
+Only hit enter if the status of the well plates is correct, otherwise hit ctrl-cGetting 4th wellplate from source at 55000
+Moving North Track to home position
+C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\ax\modelbridge\cross_validation.py:463: UserWarning: Encountered exception in computing model fit quality: RandomModelBridge does not support prediction.
+  warn("Encountered exception in computing model fit quality: " + str(e))
+C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\ax\modelbridge\cross_validation.py:463: UserWarning: Encountered exception in computing model fit quality: RandomModelBridge does not support prediction.
+  warn("Encountered exception in computing model fit quality: " + str(e))
+C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\ax\modelbridge\cross_validation.py:463: UserWarning: Encountered exception in computing model fit quality: RandomModelBridge does not support prediction.
+  warn("Encountered exception in computing model fit quality: " + str(e))
+C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\ax\modelbridge\cross_validation.py:463: UserWarning: Encountered exception in computing model fit quality: RandomModelBridge does not support prediction.
+  warn("Encountered exception in computing model fit quality: " + str(e))
+C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\ax\modelbridge\cross_validation.py:463: UserWarning: Encountered exception in computing model fit quality: RandomModelBridge does not support prediction.
+  warn("Encountered exception in computing model fit quality: " + str(e))
+Sobol Trial:  0 Params:  {'aspirate_speed': 18, 'dispense_speed': 12, 'aspirate_wait_time': 19.876943053677678, 'dispense_wait_time': 29.01396408677101, 'retract_speed': 10.522930011153221, 'pre_asp_air_vol': 0.005235508736222983, 'post_asp_air_vol': 0.019898648466914894, 'volume': 0.07}
+Traceback (most recent call last):
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\workflows\calibration_sdl_short_abs.py", line 134, in <module>
+    time_rec = dispense_into_wp(lash_e, 'liquid_source', volume, params, wells, NEW_PIPET_EACH_TIME_SET)
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\workflows\calibration_sdl_short_abs.py", line 78, in dispense_into_wp
+    lash_e.nr_robot.aspirate_from_vial(source_vial, volume, **aspirate_kwargs)
+  File "C:\Users\Imaging Controller\Desktop\utoronto_demo\../utoronto_demo\North_Safe.py", line 962, in aspirate_from_vial
+    source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed
+  File "C:\Users\Imaging Controller\Desktop\utoronto_demo\../utoronto_demo\North_Safe.py", line 926, in normalize_vial_index
+    raise ValueError(f"Vial name '{vial}' not found in VIAL_DF.")
+ValueError: Vial name 'liquid_source+1' not found in VIAL_DF.

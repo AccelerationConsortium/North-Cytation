@@ -9,7 +9,7 @@ import time
 
 # --- Experiment Config ---
 LIQUID = "water"  #<------------------- CHANGE THIS!
-SIMULATE = LOGGING = True #<--------- CHANGE THIS!
+SIMULATE = LOGGING = False #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
@@ -21,11 +21,12 @@ calib_data = {
 }
 
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 5
+SOBOL_CYCLES_PER_VOLUME = 1
 BAYES_CYCLES_PER_VOLUME = 9
 BAYES_CONDITIONS_PER_CYCLE = 3
 REPLICATES = 3
 VOLUMES = [0.07, 0.100, 0.150, 0.200]
+state = {"source_vial_index": 1}
 
 MODE = "exploit"
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short_abs.csv"
@@ -34,11 +35,9 @@ EXPECTED_ABSORBANCE = []
 
 print("Liquid: ", LIQUIDS[LIQUID])
 
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_biotek=False, logging=LOGGING)
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, logging=LOGGING)
 lash_e.nr_robot.check_input_file()
 lash_e.nr_track.check_input_file()
-
-initial_volume = lash_e.nr_robot.get_vial_info('liquid_source', 'vial_volume')
 
 if not SIMULATE:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + f"_{LIQUID}")
@@ -72,6 +71,8 @@ def dispense_into_wp(lash_e, source_vial, volume, params, wells, new_pipet_each_
         "wait_time": params["dispense_wait_time"],
         "air_vol": air_vol,
     }
+    low_volume_threshold_exceeded(lash_e)
+    source_vial = f'liquid_source_{state["source_vial_index"]}'
     start = time.time()
     for well in wells:
         lash_e.nr_robot.aspirate_from_vial(source_vial, volume, **aspirate_kwargs)
@@ -83,10 +84,9 @@ def dispense_into_wp(lash_e, source_vial, volume, params, wells, new_pipet_each_
     return (end - start) / len(wells)
 
 
-def measure_wellplate(lash_e, wells, simulate, raw_path, raw_measurements): #Save the data and return the results
+def measure_wellplate(lash_e, wells, simulate): #Save the data and return the results
     if not simulate:
         measurements = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, wells) 
-        #SAVE THAT DATA
     return measurements
 
 def get_results(measurements_all: pd.DataFrame, times: list, expected_absorbances: list): #May need to play with this with real data
@@ -98,7 +98,7 @@ def get_results(measurements_all: pd.DataFrame, times: list, expected_absorbance
         start = i * num_replicates
         end = (i + 1) * num_replicates
         group = measurements_all.iloc[start:end]
-        values = group['tbd'].values #This depends on the column names in the DataFrame
+        values = group['590'].values #This depends on the column names in the DataFrame
         measurement = np.mean(values)
         variability = np.std(values) / measurement * 100
         deviation = (measurement - expected_absorbances[i]) / expected_absorbances[i] * 100
@@ -112,6 +112,11 @@ def get_results(measurements_all: pd.DataFrame, times: list, expected_absorbance
 
     return pd.DataFrame(results)
 
+
+def low_volume_threshold_exceeded(lash_e, min_volume=3.0):
+    if lash_e.nr_robot.get_vial_info(f"liquid_source_{state['source_vial_index']}", 'vial_volume') < min_volume:
+        print("Low volume threshold exceeded, changing source vial.")
+        state['source_vial_index'] += 1
 
 for volume in VOLUMES:
     well_index = 0
@@ -133,18 +138,22 @@ for volume in VOLUMES:
         trials.append(trial_index)
     
     if not SIMULATE:
-        measurements = measure_wellplate(lash_e, batch_wells, SIMULATE, autosave_raw_path, raw_measurements)
-        results = get_results(measurements, times, expected_absorbances)
+        measurements = measure_wellplate(lash_e, batch_wells, SIMULATE)
+        measurements.to_csv(autosave_raw_path, mode='a', index=False, header=not os.path.exists(autosave_raw_path))
+        results = get_results(flatten_measurements(strip_tuples(measurements)), times, expected_absorbances)
+        
     else:
         results = [pipet_and_measure_simulated(volume, params, expected_absorbances[0], times[0])for _ in range(SOBOL_CYCLES_PER_VOLUME)]
     
     for i in range (0, SOBOL_CYCLES_PER_VOLUME):
+        
         result = results[i]
         print("Result: ", result)
+
         ax_client.complete_trial(trial_index=trials[i], raw_data=result)
         result.update(params)
         result.update({"volume": volume, "trial_index": trials[i], "strategy": "SOBOL", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
-        result = strip_tuples(result)
+        #result = strip_tuples(result)
         all_results.append(result)
 
         if not SIMULATE:
@@ -168,8 +177,9 @@ for volume in VOLUMES:
             expected_absorbances.append(expected_abs)
         
         if not SIMULATE:
-            measurements = measure_wellplate(lash_e, batch_wells, SIMULATE, autosave_raw_path, raw_measurements)
-            results = get_results(measurements, times, expected_absorbances)
+            measurements = measure_wellplate(lash_e, batch_wells, SIMULATE)
+            measurements.to_csv(autosave_raw_path, mode='a', index=False, header=not os.path.exists(autosave_raw_path))
+            results = get_results(flatten_measurements(strip_tuples(measurements)), times, expected_absorbances)
         else:
             results = [pipet_and_measure_simulated(volume, params, expected_absorbances[0], times[0])for _ in range(SOBOL_CYCLES_PER_VOLUME)]
 
@@ -179,7 +189,7 @@ for volume in VOLUMES:
             recommender.add_result(ax_client, trials[i], result)
             result.update(params)
             result.update({"volume": volume, "trial_index": trials[i], "strategy": "BAYESIAN", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
-            result = strip_tuples(result)
+            #result = strip_tuples(result)
             all_results.append(result)
             if not SIMULATE:
                 pd.DataFrame([result]).to_csv(autosave_summary_path, mode='a', index=False, header=not os.path.exists(autosave_summary_path))
@@ -191,8 +201,10 @@ lash_e.nr_robot.remove_pipet()
 lash_e.nr_robot.move_home()
 print(results_df)
 
-final_volume = lash_e.nr_robot.get_vial_info('liquid_source', 'vial_volume')
-total_volume_used = initial_volume - final_volume
+final_volume = 0 
+for i in range (1, 4):
+    final_volume += lash_e.nr_robot.get_vial_info(f'liquid_source_{state["source_vial_index"]}', 'vial_volume')
+total_volume_used = 60 - final_volume
 
 print(f"Total volume used: {total_volume_used} mL")
 
