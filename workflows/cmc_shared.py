@@ -19,6 +19,13 @@ def split_volume(volume, max_volume=1.0):
     part_volume = volume / n_parts
     return [part_volume] * n_parts
 
+def change_stock_solution_vial(lash_e, surfactant_vial, new_surfactant_vial, threshold, sub_stock_vols):
+    volume = lash_e.nr_robot.get_vial_info(surfactant_vial, 'vial_volume')
+    if volume < threshold:
+        print(f"{surfactant_vial} volume low: {volume}, changing vial to {new_surfactant_vial}")
+        sub_stock_vols[new_surfactant_vial] = sub_stock_vols.pop(surfactant_vial)
+    return sub_stock_vols
+
 def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
     print("\nCombining Surfactants:")
     print("Stock solution composition:", sub_stock_vols)

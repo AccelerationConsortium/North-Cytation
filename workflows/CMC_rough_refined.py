@@ -21,7 +21,7 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
 simulate = enable_logging = True
-run = 8  # This determines which Run group you are running
+run = 1  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 # Load pairing data from CSV
@@ -100,6 +100,7 @@ substock_count = 0
 summary_data = []
 if not simulate:
     summary_file = os.path.join(folder, f"CMC_summary_{timestamp}.csv")
+
 summary_columns = [
     "Surfactant_1", "Surfactant_2", "conc_1", "conc_2",
     "cmc_rough", "r2_rough", "A1_rough", "A2_rough", "dx_rough",
@@ -120,6 +121,8 @@ for i, ratio in enumerate(padded_ratios):
     # Rough search
     rough_exp, _ = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=True)
     sub_stock_vols = rough_exp['surfactant_sub_stock_vols']
+    sub_stock_vols = change_stock_solution_vial(lash_e, 'CTAB', 'CTAB_2', 5.0, sub_stock_vols) #Could make this handle a list of changes. 
+
     wellplate_data = rough_exp['df']
     samples_per_assay = wellplate_data.shape[0]
 
@@ -143,6 +146,8 @@ for i, ratio in enumerate(padded_ratios):
     # Fine search
     fine_exp, _ = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=False, estimated_CMC=cmc_rough)
     sub_stock_vols = fine_exp['surfactant_sub_stock_vols']
+    sub_stock_vols = change_stock_solution_vial(lash_e, 'CTAB', 'CTAB_2', 5.0, sub_stock_vols) #Could make this handle a list of changes. 
+    
     wellplate_data = fine_exp['df']
     samples_per_assay = wellplate_data.shape[0]
 
