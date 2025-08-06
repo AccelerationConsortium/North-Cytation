@@ -21,7 +21,7 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     time.sleep(0.2)
     deviation = np.abs(params["aspirate_speed"] - 15) + np.random.normal(0, 0.5)
     variability = np.abs(params["aspirate_wait_time"] - 30) * 0.1 + np.random.normal(0, 0.3)
-    time_score = (params["aspirate_wait_time"] / expected_time - 1) * 100 + np.random.normal(0, 5)
+    time_score = (params["aspirate_wait_time"] - 1) * 100 + np.random.normal(0, 5)
     return {"deviation": deviation, "variability": variability, "time": time_score}
 
 def empty_vial_if_needed(lash_e, vial_name, state):
@@ -112,3 +112,15 @@ def save_analysis(results_df, raw_df, save_dir):
     analyzer.plot_pairplot(results_df, save_dir)
     analyzer.plot_learning_curves(results_df, save_dir)
     analyzer.plot_improvement_summary(results_df, save_dir)
+
+def flatten_measurements(raw_data: dict) -> pd.DataFrame:
+    records = []
+    for (replicate, wavelength), series in raw_data.items():
+        for well, absorbance in series.items():
+            records.append({
+                'replicate': replicate,
+                'well': well,
+                'wavelength': int(wavelength),  # Convert string like '590' to int
+                'absorbance': absorbance
+            })
+    return pd.DataFrame(records)
