@@ -28,7 +28,7 @@ REPLICATES = 3
 VOLUMES = [0.07, 0.100, 0.150, 0.200]
 
 MODE = "exploit"
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short_abs.csv"
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Ilya_Measurement.prt" #<------------------- CHECK THIS
 EXPECTED_ABSORBANCE = []
 
