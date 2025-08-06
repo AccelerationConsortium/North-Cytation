@@ -1,5 +1,4 @@
 # --- cmc_pairings_workflow.py ---
-from gc import enable
 import sys
 sys.path.append("../utoronto_demo")
 from cmc_shared import *
@@ -10,7 +9,6 @@ from datetime import datetime
 import os
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from matplotlib.colors import to_rgb
 import seaborn as sns
 import time
 
@@ -23,6 +21,11 @@ MEASUREMENT_PROTOCOL_FILE = [
 simulate = enable_logging = True
 run = 1  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
+
+#Experiment-1
+replacements = {'CTAB': ['CTAB_2', 5.0]} #Run specific, based on what vials we need to use
+
+
 
 # Load pairing data from CSV
 data_in = pd.read_csv("../utoronto_demo/analysis/greedy_grouped_trials.csv")  # Add full path if needed
@@ -121,7 +124,9 @@ for i, ratio in enumerate(padded_ratios):
     # Rough search
     rough_exp, _ = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=True)
     sub_stock_vols = rough_exp['surfactant_sub_stock_vols']
-    sub_stock_vols = change_stock_solution_vial(lash_e, 'CTAB', 'CTAB_2', 5.0, sub_stock_vols) #Could make this handle a list of changes. 
+    
+    for old_name, (new_name, volume) in replacements.items():
+        sub_stock_vols = change_stock_solution_vial(lash_e, old_name, new_name, volume, sub_stock_vols) 
 
     wellplate_data = rough_exp['df']
     samples_per_assay = wellplate_data.shape[0]
@@ -146,8 +151,10 @@ for i, ratio in enumerate(padded_ratios):
     # Fine search
     fine_exp, _ = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=False, estimated_CMC=cmc_rough)
     sub_stock_vols = fine_exp['surfactant_sub_stock_vols']
-    sub_stock_vols = change_stock_solution_vial(lash_e, 'CTAB', 'CTAB_2', 5.0, sub_stock_vols) #Could make this handle a list of changes. 
-    
+
+    for old_name, (new_name, volume) in replacements.items():
+        sub_stock_vols = change_stock_solution_vial(lash_e, old_name, new_name, volume, sub_stock_vols) 
+
     wellplate_data = fine_exp['df']
     samples_per_assay = wellplate_data.shape[0]
 
