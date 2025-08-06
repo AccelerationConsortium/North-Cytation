@@ -791,22 +791,35 @@ class North_Robot:
         active_pipet_num = self.PIPETS_USED[pipet_rack_index] #First available pipet
 
         #This is to pause the program and send a slack message when the pipets are out!
-        MAX_PIPETS=47 # This is based off the racks
+        MAX_PIPETS=95 # This is based off the racks
         if active_pipet_num > MAX_PIPETS:
             self.pause_after_error("The North Robot is out of pipets! Please refill pipets then hit enter on the terminal!")
             self.PIPETS_USED=[0,0]
             self.save_robot_status()
             active_pipet_num=0
 
-        #This conversion is neccessary to take the tips in the correct order.
-        num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
-        print(f"Getting pipet number: {active_pipet_num} from rack {pipet_rack_index}")
+        horizontal_rack_used = (active_pipet_num <= 47)
+
+        #This conversion is neccessary to take the tips in the correct order. Only for the horizontal rack. 
+        if horizontal_rack_used:
+            num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
+            print(f"Getting pipet number: {active_pipet_num} from rack {pipet_rack_index}")
+        else:
+            num = (active_pipet_num - 48)
+            num = (16 * (math.floor(num/16)+1) - 1) - num%16
+            print("position", num)
 
         #First move to the xy location 
         if pipet_rack_index == self.LOWER_PIPET_ARRAY_INDEX:
-            location = p_capture_grid[num]
+            if horizontal_rack_used:
+                location = p_capture_grid[num]
+            else:
+                location = pgrid_low_2[num]
         elif pipet_rack_index == self.HIGHER_PIPET_ARRAY_INDEX: 
-            location = p_capture_high[num]
+            if horizontal_rack_used:
+                location = p_capture_high[num]
+            else:
+                location = pgrid_high_2[num]
 
         #Move to get the pipet tip
         self.c9.goto_xy_safe(location)
@@ -814,8 +827,13 @@ class North_Robot:
         self.c9.move_z(base_height) 
 
         if pipet_rack_index == self.LOWER_PIPET_ARRAY_INDEX:
-            location = p_capture_up[num]
-            self.c9.goto(location, vel=5) #Move to the pipet tip
+            if horizontal_rack_used:
+                location = p_capture_up[num]
+                self.c9.goto(location, vel=5) #Move to the pipet tip
+            else:
+                self.move_rel_xyz(x_distance = -3, y_distance=3, z_distance=50, vel=5) #Test this out
+                #self.c9.move_z(292,vel=5)
+                   
         else:
             self.c9.move_z(292,vel=5) #Move to a safe height (292)
 
@@ -1645,35 +1663,16 @@ class North_Robot:
         pipetable = self.get_vial_info(vial_index,'capped') == False or self.get_vial_info(vial_index,'cap_type') == "open"
         return pipetable
  
-    #Translate in the x direction
-    def move_rel_x(self, x_distance:float):
-        """
-        Move x_distance (in mm) along the x-axis. Relative position (not absolute). Left is positive, right is negative.
-        """
+    #This method doesn't work
+    def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=15, pipet=True):
         current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(0), self.c9.get_axis_position(1), self.c9.get_axis_position(2))
         #tuple (x (mm), y (mm), theta (mm))
         target_x =  current_loc_mm[0] + x_distance
-        self.c9.move_xy(target_x, current_loc_mm[1])
-    
-    #Translate in the y direction
-    def move_rel_y(self, y_distance:float):
-        """
-        Move y_distance (in mm) along the y-axis. Relative position (not absolute). Forward is positive, backwards is negative.
-        """
-        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(0), self.c9.get_axis_position(1), self.c9.get_axis_position(2))
-        #tuple (x (mm), y (mm), theta (mm))
         target_y =  current_loc_mm[1] + y_distance
-        self.c9.move_xy(current_loc_mm[0], target_y)
-        
-    #Translate in the z direction    
-    def move_rel_z(self, z_distance:float):
-        """
-        Move z_distance (in mm) along z-axis. Positive z_distance = up
-        """
-        curr_z = self.c9.counts_to_mm(3, self.c9.get_axis_position(3))
-        target_z = curr_z + z_distance
-        self.c9.move_z(target_z)
-  
+        target_z =  self.c9.counts_to_mm(3, self.c9.get_axis_position(3)) + z_distance
+
+        self.c9.move_xyz(target_x, target_y, target_z, vel=vel)
+
     #Move the robot to the home position    
     def move_home(self):
         print("Moving robot to home position")
