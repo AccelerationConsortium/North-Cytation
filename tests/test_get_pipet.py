@@ -21,4 +21,4 @@ def test_get_pipet(index_list):
     except KeyboardInterrupt:
         c9 = None
 
-test_get_pipet(range(2)) #TODO: test!
+test_get_pipet([nr.LOWER_PIPET_ARRAY_INDEX]*48)

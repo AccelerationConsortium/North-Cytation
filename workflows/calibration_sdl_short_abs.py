@@ -15,9 +15,9 @@ DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
 
 calib_data = {
-    "water": {"intercept": 0.073314793, "slope": 0.000822864},
-    "ethanol": {"intercept": 0.070711665, "slope": 0.000615623},
-    "glycerol": {"intercept": 0.078547001, "slope": 0.000506125}
+    "water": {"intercept": 0.081702253157804, "slope": 0.000399821977780455},
+    "ethanol": {"intercept": 0.0772742779640708, "slope": 0.000394283351777735},
+    "glycerol": {"intercept": 0.0822068049753275, "slope": 0.000389037817262831}
 }
 
 SEED = 7
@@ -73,11 +73,12 @@ def dispense_into_wp(lash_e, source_vial, volume, params, wells, new_pipet_each_
         "air_vol": air_vol,
     }
     start = time.time()
-    for i in range (0, len(wells)):
+    for well in wells:
         lash_e.nr_robot.aspirate_from_vial(source_vial, volume, **aspirate_kwargs)
-        lash_e.nr_robot.dispense_into_wellplate(wells, [volume] * len(wells), **dispense_kwargs)
+        lash_e.nr_robot.dispense_into_wellplate([well], [volume], **dispense_kwargs)
         if new_pipet_each_time:
             lash_e.nr_robot.remove_pipet()
+
     end = time.time()
     return (end - start) / len(wells)
 

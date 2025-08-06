@@ -10,8 +10,8 @@ import numpy as np
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/microgel_inputs.csv" #This file contains the status of the vials used for the workflow
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\abs_300_800_sweep.prt" #This is the measurement protocol developed in the Cytation software
 LOGGING_FOLDER = "../utoronto_demo/logs/"
-simulate = False
-enable_logging = False
+simulate = True
+enable_logging = True
 
 def fill_water_vial(lash_e):
     vial_max_volume = 8.0
