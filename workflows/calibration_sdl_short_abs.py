@@ -73,11 +73,12 @@ def dispense_into_wp(lash_e, source_vial, volume, params, wells, new_pipet_each_
         "air_vol": air_vol,
     }
     start = time.time()
-    for i in range (0, len(wells)):
+    for well in wells:
         lash_e.nr_robot.aspirate_from_vial(source_vial, volume, **aspirate_kwargs)
-        lash_e.nr_robot.dispense_into_wellplate(wells, [volume] * len(wells), **dispense_kwargs)
+        lash_e.nr_robot.dispense_into_wellplate([well], [volume], **dispense_kwargs)
         if new_pipet_each_time:
             lash_e.nr_robot.remove_pipet()
+
     end = time.time()
     return (end - start) / len(wells)
 
