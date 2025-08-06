@@ -21,7 +21,7 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
 simulate = enable_logging = True
-run = 1  # This determines which Run group you are running
+run = 8  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 # Load pairing data from CSV
