@@ -5,7 +5,9 @@ import xml.etree.ElementTree as ET
 
 class Biotek_Wrapper:
     biotek = None
-    def __init__(self, ComPort=4,simulate=False):
+    def __init__(self, ComPort=4,simulate=False, logger=None):
+        self.logger = logger
+
         if not simulate:
             from biotek_driver.biotek import Biotek
             from biotek_driver.xml_builders.partial_plate_builder import build_bti_partial_plate_xml
@@ -16,11 +18,11 @@ class Biotek_Wrapper:
             self.biotek = MagicMock()
             self.build_bti_partial_plate_xml = None
         status = self.biotek.get_reader_status()
-        print(f"Current reader status: {status}")
+        self.logger.debug(f"Current reader status: {status}")
         if status == 0:
-            print('Cytation is connected')
+            self.logger.info('Cytation is connected')
         elif not simulate:
-            input("Cytation not connected... May need to restart")
+            self.logger.warning("Cytation not connected... May need to restart")
             
     def CarrierIn(self,plate_type="96 WELL PLATE"):
         self.biotek.carrier_in(plate_type_name=plate_type)
@@ -31,28 +33,29 @@ class Biotek_Wrapper:
         # Start an actual read
         monitor = plate.start_read()
         if not monitor:
-            print("Failed to start read.")
+            self.logger.error("Failed to start read.")
         else:
-            print("Read started. Waiting for completion...")
+            self.logger.info("Read started. Waiting for completion...")
 
             while True:
                 rstatus = plate.read_status
                 if rstatus == 5:
-                    print("Plate read completed.")
+                    self.logger.info("Plate read completed.")
                     break
                 elif rstatus == 2:
-                    print("Plate read was aborted.")
+                    self.logger.warning("Plate read was aborted.")
                     break
                 elif rstatus == 3:
-                    print("Plate read is paused (waiting).")
+                    self.logger.warning("Plate read is paused (waiting).")
                     # You could decide to continue waiting or handle differently
                 elif rstatus == 4:
-                    print("Plate read error encountered.")
+                    self.logger.error("Plate read error encountered.")
                     break
 
                 time.sleep(2)
 
     def extract_measurement_parameters(self,plate):
+        self.logger.debug("Extracting measurement parameters from plate procedure.") 
         current_procedure = plate.get_procedure()
         root = ET.fromstring( current_procedure )
 
@@ -94,11 +97,11 @@ class Biotek_Wrapper:
         return wavelengths
 
     def run_plate(self,plate,wells,prot_type):
-        
+        self.logger.info(f"Running plate with wells: {wells} and protocol type: {prot_type}")
         plate_data = pd.DataFrame()
         plate.keep_plate_in_after_read()
         if not plate:
-            print("Failed to add a plate. Possibly a multi-plate assay.")
+            self.logger.error("Failed to add a plate. Possibly a multi-plate assay.")
         else:
             if prot_type=="spectra":
                 wavelengths = self.get_wavelengths_from_plate(plate)
@@ -119,7 +122,7 @@ class Biotek_Wrapper:
                     plate_data[well]=(results[1]['value']) 
             elif prot_type == "read":
                 measurement_params = self.extract_measurement_parameters(plate)
-                print("Measurement types: ", measurement_params)
+                self.logger.debug("Measurement types: ", measurement_params)
                 for measurement_type in measurement_params:
                     results = plate.get_raw_data()
                     i = 0
@@ -156,8 +159,8 @@ class Biotek_Wrapper:
         protocol_data = pd.DataFrame()
 
         if experiment:
-            print("Experiment created successfully.")
-            print(f"Experiment Protocol Type: {experiment.protocol_type}")
+            self.logger.debug("Experiment created successfully.")
+            self.logger.debug(f"Experiment Protocol Type: {experiment.protocol_type}")
             plates = experiment.plates
             if wells is not None:
                 grouped_wells = self.group_wells(wells, plate_type)
@@ -172,7 +175,7 @@ class Biotek_Wrapper:
                 elif prot_type=="read":
                     protocol_data = pd.concat([protocol_data,data_group])      
         else:
-            print("Experiment creation failed.")
+            self.logger.error("Experiment creation failed.")
 
         return protocol_data
 
@@ -186,13 +189,14 @@ class Biotek_Wrapper:
         grouped = []
         current_group = []
 
-        print(plate_type)
+        self.logger.debug(f"Grouping wells for plate type: {plate_type}")
+
         if plate_type == "96 WELL PLATE":
             nums_per_letter = 12
         elif plate_type == "48 WELL PLATE":
             nums_per_letter = 8
         else:
-            print("Wellplate conversion issue")
+            self.logger.error("Wellplate conversion issue")
         
         for i in range(len(indices)):
             if not current_group:

@@ -123,7 +123,7 @@ class North_Track:
             plt.tight_layout()
             plt.show()
 
-        if pause_after_check:
+        if pause_after_check and not self.simulate:
             input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
 
     def reset_after_initialization(self):
@@ -232,7 +232,7 @@ class North_Track:
       
     #Save the status of the robot to memory
     def save_track_status(self):
-        self.logger.debug("Saving track status to file: %s", self.TRACK_STATUS_FILE)
+        #self.logger.debug("Saving track status to file: %s", self.TRACK_STATUS_FILE)
         track_status = {
             "num_in_source": self.NUM_SOURCE,
             "num_in_waste": self.NUM_WASTE,
@@ -1047,7 +1047,8 @@ class North_Robot:
         if source_vial_volume < amount_mL:
             self.pause_after_error("Cannot aspirate more volume than in vial")
 
-        self.logger.info("Pipetting from vial " + self.get_vial_info(source_vial_num,'vial_name') + ", amount: "  + str(round(amount_mL,3)) + " mL")
+        self.logger.info(f"Pipetting from vial {self.get_vial_info(source_vial_num, 'vial_name')}, amount: {round(amount_mL, 3)} mL")
+
 
         #Adjust the height based on the volume, then pipet type
         if move_to_aspirate:
@@ -1217,7 +1218,7 @@ class North_Robot:
         error_check_list.append([self.is_vial_pipetable(dest_vial_num), True, "Can't pipet, at least one vial is capped"])    
         self.check_for_errors(error_check_list,True) #This will cause a pause if there's an issue
 
-        self.logger.info("Pipetting into vial " + self.get_vial_info(dest_vial_num,'vial_name') + ", amount: " + str(round(amount_mL,3)) + " mL")
+        self.logger.info(f"Pipetting into vial {self.get_vial_info(dest_vial_num, 'vial_name')}, amount: {round(amount_mL, 3)} mL")
         
         dest_vial_clamped = self.get_vial_info(dest_vial_num,'location')=='clamp' #Is the destination vial clamped?
         dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
@@ -1302,7 +1303,8 @@ class North_Robot:
             if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX and dispense_speed == 11: #Adjust this later
                 dispense_speed = 13 #Use lower dispense speed for smaller tip
 
-            self.logger.info("Transferring", amount_mL, "mL into well #" + str(dest_wp_num_array[i]) + " of " + well_plate_type)
+            self.logger.info(f"Transferring {amount_mL} mL into well #{dest_wp_num_array[i]} of {well_plate_type}")
+
 
             #Dispense and then wait
             self.pipet_dispense(amount_mL+air_vol,wait_time,blowout_vol)
@@ -1336,7 +1338,7 @@ class North_Robot:
         # Step 1: Check if there's enough liquid in each vial
         well_plate_dispense_2d_array = well_plate_df.values
         vols_required = np.sum(well_plate_dispense_2d_array, axis=0)
-        self.logger.debug("Total volumes needed (mL):", vols_required)
+        self.logger.debug(f"Total volumes needed (mL): {vols_required}")
 
         for i, vial in enumerate(vial_indices):
             volume_needed = vols_required[i]
@@ -1437,8 +1439,8 @@ class North_Robot:
                         self.dispense_into_vial(vial_index, sacrificial_dispense_vol, initial_move=False,
                                                 dispense_speed=dispense_speed, wait_time=wait_time)
 
-                    self.logger.debug("Dispensing to wells:", well_plate_array)
-                    self.logger.debug("Dispense volumes:", dispense_array)
+                    self.logger.debug(f"Dispensing to wells: {well_plate_array}")
+                    self.logger.debug(f"Dispense volumes: {dispense_array}")
                     self.dispense_into_wellplate(well_plate_array, dispense_array,
                                                 dispense_speed=dispense_speed, wait_time=wait_time,
                                                 well_plate_type=well_plate_type, blowout_vol=blowout_vol)
@@ -1598,7 +1600,7 @@ class North_Robot:
         
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
-        self.logger.info("Moving vial " + self.get_vial_info(vial_index,'vial_name') + " to " + location + ": " + str(location_index))
+        self.logger.info(f"Moving vial {self.get_vial_info(vial_index, 'vial_name')} to {location}: {location_index}")
         self.grab_vial(vial_index) #Grab the vial
         self.drop_off_vial(vial_index,location,location_index) #Drop off the vial
 
@@ -1687,7 +1689,7 @@ class North_Robot:
         
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
-        self.logger.info("Vortexing Vial: " + self.get_vial_info(vial_index,'vial_name'))
+        self.logger.info(f"Vortexing Vial: {self.get_vial_info(vial_index,'vial_name')}")
         
         #Check to see if the vial is capped
         if self.GRIPPER_VIAL_INDEX == vial_index  and self.GRIPPER_STATUS == "Cap":

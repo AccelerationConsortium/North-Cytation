@@ -19,42 +19,40 @@ class Lash_E:
     powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging=True,logging_folder="../utoronto_demo/logs"):
+    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs"):
         
         self.simulate = simulate
-        self.logger = logger
 
-        if logging:
-            # Create the logger
-            if not logger.handlers:
-                logger = logging.getLogger("my_logger")
-                logger.setLevel(logging.DEBUG)  # Set lowest level to capture all messages
+        self.logger = logging.getLogger("my_logger")
+        self.logger.setLevel(logging.DEBUG)
 
-            # Create file handler
-            suffix = ""
-            if simulate:
-                suffix = "_simulate"
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            log_filename = f"output_{timestamp}{suffix}.log"
-            log_path = os.path.join(logging_folder, log_filename)
+        # Clear any old handlers to avoid duplication
+        if self.logger.hasHandlers():
+            self.logger.handlers.clear()
 
-            file_handler = logging.FileHandler(log_path)
-            file_handler.setLevel(logging.DEBUG)  # Log everything to file
+        suffix = "_simulate" if simulate else ""
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_filename = f"experiment_log{timestamp}{suffix}.log"
+        log_path = os.path.join(logging_folder, log_filename)
+        os.makedirs(logging_folder, exist_ok=True)
 
-            # Create console handler
-            console_handler = logging.StreamHandler()
-            console_handler.setLevel(logging.INFO)  # Only show INFO+ in terminal
+        # File handler (DEBUG and up)
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setLevel(logging.DEBUG)
 
-            # Formatter (shared by both handlers)
-            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-            file_handler.setFormatter(formatter)
-            console_handler.setFormatter(formatter)
+        # Console handler (INFO and up) → bind to stdout explicitly
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
 
-            # Add handlers
-            logger.addHandler(file_handler)
-            logger.addHandler(console_handler)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
 
-        self.logger.info("Initializing Lash_E, your friendly neighbourhood robot chemist!")
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
+
+        # Make sure messages don't propagate to root logger (which might have its own handlers)
+        self.logger.propagate = False
 
         if not simulate:
             from north import NorthC9
@@ -64,27 +62,25 @@ class Lash_E:
             c9 = MagicMock()
 
         if initialize_robot:
-            self.nr_robot = North_Robot(c9, vial_file,simulate=simulate, logger=logger)
+            self.nr_robot = North_Robot(c9, vial_file,simulate=simulate, logger=self.logger)
 
         if initialize_biotek:
             from biotek_new import Biotek_Wrapper
-            self.cytation = Biotek_Wrapper(simulate=simulate, logger=logger)
+            self.cytation = Biotek_Wrapper(simulate=simulate, logger=self.logger)
         
         if initialize_track:
-            self.nr_track = North_Track(c9, simulate=simulate, logger=logger)
+            self.nr_track = North_Track(c9, simulate=simulate, logger=self.logger)
         
 
         # Photoreactor initialization
         if not self.simulate:
             from photoreactor_controller import Photoreactor_Controller
-            self.photoreactor = Photoreactor_Controller()
+            self.photoreactor = Photoreactor_Controller() #ADd logger
 
             if initialize_p2:
-                self.powder_dispenser = North_Powder(c9, simulate=simulate, logger=logger)
+                self.powder_dispenser = North_Powder(c9, simulate=simulate, logger=self.logger)
             if initialize_t8:
-                self.temp_controller = North_Temp(c9, simulate=simulate, logger=logger)
-            if initialize_track:
-                self.nr_track = North_Track(c9, simulate=simulate, logger=logger)
+                self.temp_controller = North_Temp(c9, simulate=simulate, logger=self.logger)
 
         else:
             from unittest.mock import MagicMock
