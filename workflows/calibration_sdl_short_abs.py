@@ -9,7 +9,7 @@ import time
 
 # --- Experiment Config ---
 LIQUID = "water"  #<------------------- CHANGE THIS!
-SIMULATE = LOGGING = False #<--------- CHANGE THIS!
+SIMULATE = LOGGING = True #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
@@ -21,7 +21,7 @@ calib_data = {
 }
 
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 1
+SOBOL_CYCLES_PER_VOLUME = 5
 BAYES_CYCLES_PER_VOLUME = 9
 BAYES_CONDITIONS_PER_CYCLE = 3
 REPLICATES = 3
