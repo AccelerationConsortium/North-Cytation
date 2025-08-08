@@ -790,6 +790,8 @@ class North_Robot:
             
         active_pipet_num = self.PIPETS_USED[pipet_rack_index] #First available pipet
 
+        print(f"Getting pipet number {active_pipet_num} from rack index: {pipet_rack_index}")
+
         #This is to pause the program and send a slack message when the pipets are out!
         MAX_PIPETS=95 # This is based off the racks
         if active_pipet_num > MAX_PIPETS:
@@ -831,7 +833,7 @@ class North_Robot:
                 location = p_capture_up[num]
                 self.c9.goto(location, vel=5) #Move to the pipet tip
             else:
-                self.move_rel_xyz(x_distance = -3, y_distance=3, z_distance=50, vel=5) #Test this out
+                self.move_rel_xyz(x_distance = -2, y_distance=2, z_distance=50, vel=5) #Test this out
                 #self.c9.move_z(292,vel=5)
                    
         else:
@@ -1712,7 +1714,7 @@ class North_Robot:
         CLAMP_BASE_HEIGHT = 114.5
         VIAL_RACK_BASE_HEIGHT = 68.5
         PR_BASE_HEIGHT = 85 #Need to fine tune this
-        LARGE_VIAL_BASE_HEIGHT = 55    
+        LARGE_VIAL_BASE_HEIGHT = 93    
         SMALL_VIAL_BASE_HEIGHT = 98
     
         if location_name=='main_8mL_rack':

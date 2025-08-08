@@ -18,13 +18,13 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = enable_logging = True
-run = 1  # This determines which Run group you are running
+simulate = enable_logging =False
+run = 6  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 #Experiment-1
-replacements = {'CTAB': ['CTAB_2', 5.0]} #Run specific, based on what vials we need to use
-
+#replacements = {'CTAB': ['CTAB_2', 5.0]} #Run specific, based on what vials we need to use
+replacements = {}
 
 
 # Load pairing data from CSV

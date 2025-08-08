@@ -40,7 +40,7 @@ lash_e.nr_robot.check_input_file()
 lash_e.nr_track.check_input_file()
 
 if not SIMULATE:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + f"_{LIQUID}")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + f"_{LIQUID}" + "_short_abs")
     base_autosave_dir = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration"
     autosave_dir = os.path.join(base_autosave_dir, timestamp)
     os.makedirs(autosave_dir, exist_ok=True)
@@ -93,12 +93,14 @@ def get_results(measurements_all: pd.DataFrame, times: list, expected_absorbance
     results = []
     num_replicates = 3
 
+    print("Measurements: ", measurements_all)
+
     for i in range(len(times)):
         # Get the i-th group of replicates
         start = i * num_replicates
         end = (i + 1) * num_replicates
         group = measurements_all.iloc[start:end]
-        values = group['590'].values #This depends on the column names in the DataFrame
+        values = group['absorbance'].values #This depends on the column names in the DataFrame
         measurement = np.mean(values)
         variability = np.std(values) / measurement * 100
         deviation = (measurement - expected_absorbances[i]) / expected_absorbances[i] * 100
@@ -110,7 +112,9 @@ def get_results(measurements_all: pd.DataFrame, times: list, expected_absorbance
             "time": time_rec
         })
 
-    return pd.DataFrame(results)
+    print("Results: ", results)
+
+    return results
 
 
 def low_volume_threshold_exceeded(lash_e, min_volume=3.0):
