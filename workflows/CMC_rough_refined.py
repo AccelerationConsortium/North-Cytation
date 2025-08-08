@@ -18,7 +18,7 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = enable_logging =False
+simulate = True
 run = 6  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
@@ -68,11 +68,6 @@ if not simulate:
     print(f"Folder created at: {folder}")
 else:
     folder = None
-
-if enable_logging:
-    log_file_path = os.path.join(LOGGING_FOLDER, f"experiment_log_{timestamp}_sim{simulate}.txt")
-    log_file = open(log_file_path, "w")
-    sys.stdout = sys.stderr = log_file
 
 lash_e.nr_track.get_new_wellplate()
 starting_wp_index = 0
@@ -278,5 +273,3 @@ for surf in surfactants_used:
     except Exception as e:
         print(f"{surf}: Error retrieving final volume — {e}")
 
-if enable_logging:
-    log_file.close()

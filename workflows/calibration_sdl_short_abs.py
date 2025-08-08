@@ -9,7 +9,7 @@ import time
 
 # --- Experiment Config ---
 LIQUID = "water"  #<------------------- CHANGE THIS!
-SIMULATE = LOGGING = False #<--------- CHANGE THIS!
+SIMULATE = LOGGING = True #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
