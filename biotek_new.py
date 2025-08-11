@@ -122,7 +122,7 @@ class Biotek_Wrapper:
                     plate_data[well]=(results[1]['value']) 
             elif prot_type == "read":
                 measurement_params = self.extract_measurement_parameters(plate)
-                self.logger.debug("Measurement types: ", measurement_params)
+                self.logger.debug(f"Measurement types: {measurement_params}")
                 for measurement_type in measurement_params:
                     results = plate.get_raw_data()
                     i = 0
