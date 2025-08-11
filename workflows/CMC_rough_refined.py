@@ -23,8 +23,9 @@ run = 6  # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 #Experiment-1
-replacements = {'CTAB': ['CTAB_2', 5.0]} #Run specific, based on what vials we need to use
+#replacements = {'CTAB': ['CTAB_2', 5.0]} #Run specific, based on what vials we need to use
 replacements = {}
+
 
 # Load pairing data from CSV
 data_in = pd.read_csv("../utoronto_demo/analysis/greedy_grouped_trials.csv")  # Add full path if needed
