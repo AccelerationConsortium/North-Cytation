@@ -38,15 +38,14 @@ for _, row in data_in.iterrows():
         ([row['surfactant_1'], row['surfactant_2']], [row['surfactant_1_ratio'], row['surfactant_2_ratio']])
     )
 
-
-# Show user what’s being run and pause
-print(f"Run {run} — Pairings and Ratios:")
-for (sfs, ratios) in pairings_and_ratios:
-    print(f"  {sfs[0]}:{ratios[0]} + {sfs[1]}:{ratios[1]}")
-
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
 lash_e.nr_robot.check_input_file()
 lash_e.nr_track.check_input_file()
+
+# Show user what’s being run and pause
+lash_e.logger.info(f"Run {run} — Pairings and Ratios:")
+for (sfs, ratios) in pairings_and_ratios:
+    lash_e.logger.info(f"  {sfs[0]}:{ratios[0]} + {sfs[1]}:{ratios[1]}")
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -59,13 +58,13 @@ for surf in surfactants_used:
     try:
         initial_volumes[surf] = lash_e.nr_robot.get_vial_info(surf, 'vial_volume')
     except Exception as e:
-        print(f"Warning: couldn't get initial volume for {surf}: {e}")
+        lash_e.logger.warning(f"Warning: couldn't get initial volume for {surf}: {e}")
 
 
 if not simulate:
     folder = f'C:/Users/Imaging Controller/Desktop/CMC/{timestamp}/'
     os.makedirs(folder, exist_ok=True)
-    print(f"Folder created at: {folder}")
+    lash_e.logger.info(f"Folder created at: {folder}")
 else:
     folder = None
 
@@ -136,7 +135,7 @@ for i, ratio in enumerate(padded_ratios):
         results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
         metrics_rough = analyze_and_save_results(folder, label + '_rough', wellplate_data, results_concat, analyzer, 'rough', log=True)
         cmc_rough = metrics_rough["CMC"]
-        print("Rough CMC:", cmc_rough)
+        lash_e.logger.info("Rough CMC:", cmc_rough)
     else:
         cmc_rough = None
 
@@ -163,7 +162,7 @@ for i, ratio in enumerate(padded_ratios):
         results_concat = merge_absorbance_and_fluorescence(coalesce_replicates_long(results))
         metrics_fine = analyze_and_save_results(folder, label + '_fine', wellplate_data, results_concat, analyzer, 'fine')
         cmc_fine = metrics_fine["CMC"]
-        print("Refined CMC:", cmc_fine)
+        lash_e.logger.info("Refined CMC:", cmc_fine)
 
     starting_wp_index += samples_per_assay
 
@@ -184,7 +183,7 @@ for i, ratio in enumerate(padded_ratios):
                 metrics_fine.get("dx"),
                 3  # replicates, make configurable if needed
             ]) + "\n")
-        print(f"Saved summary for {pair[0]} + {pair[1]}")
+        lash_e.logger.info(f"Saved summary for {pair[0]} + {pair[1]}")
 
     if starting_wp_index >= 48 and i < len(padded_ratios) - 1:
         lash_e.discard_used_wellplate()
@@ -193,7 +192,7 @@ for i, ratio in enumerate(padded_ratios):
 
 if lash_e.nr_track.NR_OCCUPIED:
     lash_e.discard_used_wellplate()
-    print("Workflow complete and wellplate discarded")
+    lash_e.logger.info("Workflow complete and wellplate discarded")
 
 if not simulate:
     df = pd.read_csv(summary_file)
@@ -263,13 +262,13 @@ if not simulate:
     fig.savefig(os.path.join(folder, "CMC_pairwise_plot.png"), dpi=300, bbox_inches='tight')
     #plt.show()
 
-print("\n--- Volume Usage Summary ---")
+lash_e.logger.info("\n--- Volume Usage Summary ---")
 for surf in surfactants_used:
     try:
         final_vol = lash_e.nr_robot.get_vial_info(surf, 'vial_volume')
         initial_vol = initial_volumes.get(surf, final_vol)
         used_vol = initial_vol - final_vol
-        print(f"{surf}: used {used_vol:.2f} mL (from {initial_vol:.2f} -> {final_vol:.2f})")
+        lash_e.logger.info(f"{surf}: used {used_vol:.2f} mL (from {initial_vol:.2f} -> {final_vol:.2f})")
     except Exception as e:
-        print(f"{surf}: Error retrieving final volume — {e}")
+        lash_e.logger.info(f"{surf}: Error retrieving final volume — {e}")
 

@@ -90,7 +90,7 @@ class Lash_E:
             #self.nr_track = MagicMock(c9)
 
     def mass_dispense_into_vial(self,vial,mass_mg,channel=0, return_home=True):
-        self.logger.info("Dispensing into vial: %s with mass: %d mg", vial, mass_mg)    
+        self.logger.info(f"Dispensing into vial: {vial} with mass: {mass_mg:.3f} mg") 
         self.nr_robot.move_vial_to_location(vial,'clamp',0)
         self.nr_robot.move_home()
         self.powder_dispenser.dispense_powder_mg(mass_mg=mass_mg,channel=channel) #Dispense 50 mg of solid into source_vial_a  
@@ -98,7 +98,7 @@ class Lash_E:
             self.nr_robot.return_vial_home(vial) 
 
     def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
-        self.logger.info("Moving wellplate %d to Cytation", wellplate_index)
+        self.logger.info(f"Moving wellplate {wellplate_index} to Cytation")
         self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)
         self.nr_track.move_gripper_to_cytation()
         if not self.simulate:
