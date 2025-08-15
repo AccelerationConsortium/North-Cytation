@@ -572,7 +572,7 @@ class North_Robot:
     VIAL_FILE = None #File that we save the vial data in 
     
     #All of this data doesn't seem to need to be tracked here. TODO: Compartmentalize and place appropriately. 
-    DEFAULT_SMALL_TIP_DELTA_Z = -21 #This is the height difference between the bottom of the small pipet tip and the large tip
+    DEFAULT_SMALL_TIP_DELTA_Z = -19 #This is the height difference between the bottom of the small pipet tip and the large tip
     LOWER_PIPET_ARRAY_INDEX = 0 #Label representing the lower rack at the back with 1000 uL tips
     HIGHER_PIPET_ARRAY_INDEX = 1 #Label representing the upper rack at the back with 250 uL tips
 
@@ -638,7 +638,7 @@ class North_Robot:
             rack_name='Second Rack',
             location_filter='large_vial_rack',
             num_cols=2,
-            num_rows=3,
+            num_rows=2,
             filled_color='lightblue',
             offset_x=0.5,
             offset_y=0,
