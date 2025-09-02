@@ -6,29 +6,33 @@ from ax.modelbridge.factory import Models
 from ax.modelbridge.generation_strategy import GenerationStep, GenerationStrategy
 from ax.modelbridge.registry import Specified_Task_ST_MTGP_trans
 from ax.core.observation import ObservationFeatures
-from botorch.acquisition import UpperConfidenceBound
+from botorch.acquisition.logei import qLogExpectedImprovement
+from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
 
 obj1_name = "deviation"
 obj2_name = "variability"
 obj3_name = "time"
 
-def create_model(seed, num_initial_recs, volumes, model_type, simulate=False):
+def create_model(seed, num_initial_recs, bayesian_batch_size, volume, model_type, simulate=False):
 
-    if model_type == "explore":
-        model_kwargs = {
-            "transforms": Specified_Task_ST_MTGP_trans,
-        }
+    if model_type == "qLogEI":
+            # For qLogEI
         model_gen_kwargs = {
-            "botorch_acqf_class": UpperConfidenceBound,
-            "acqf_kwargs": {"beta": 2.0},
+            "botorch_acqf_class": qLogExpectedImprovement,
+            "acqf_kwargs": {"eta": 1e-3},  # often required for numerical stability
             "deduplicate": True,
         }
-    else:
-        model_kwargs = {
-            "transforms": Specified_Task_ST_MTGP_trans,
-        }
-        model_gen_kwargs = {"deduplicate": True}
 
+    elif model_type == "qNEHVI":
+        # For qNEHVI
+        model_gen_kwargs = {
+            "botorch_acqf_class": qNoisyExpectedHypervolumeImprovement,
+            "deduplicate": True,
+            
+        }
+    elif model_type == "qEI":
+        #Default qEI
+        model_gen_kwargs = {"deduplicate": True}
     
     if not simulate:
         gs = GenerationStrategy(
@@ -37,15 +41,15 @@ def create_model(seed, num_initial_recs, volumes, model_type, simulate=False):
                     model=Models.SOBOL,
                     num_trials=num_initial_recs,
                     min_trials_observed=num_initial_recs,
-                    max_parallelism=5,
+                    max_parallelism=num_initial_recs,
                     model_kwargs={"seed": seed},
                     model_gen_kwargs=model_gen_kwargs,
                 ),
                 GenerationStep(
                     model=Models.BOTORCH_MODULAR,
                     num_trials=-1,
-                    max_parallelism=3,
-                    model_kwargs=model_kwargs,
+                    max_parallelism=bayesian_batch_size,
+                    model_gen_kwargs=model_gen_kwargs,
                 ),
             ]
         )
@@ -72,17 +76,6 @@ def create_model(seed, num_initial_recs, volumes, model_type, simulate=False):
             {"name": "pre_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
             {"name": "post_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
             {"name": "overaspirate_vol", "type": "range", "bounds": [0.0, 0.01]},
- #           {"name": "blowout_vol", "type": "range", "bounds": [0.0, 0.1]},
-            {
-                "name": "volume",
-                "type": "choice",
-                "values": volumes,
-                "is_ordered": True,
-                "is_task": True,
-                "target_value":volumes[0],
-                "value_type": "float",
-                "sort_values": True,
-            },
         ],
         objectives={
             obj1_name: ObjectiveProperties(minimize=True, threshold=50),
@@ -90,7 +83,7 @@ def create_model(seed, num_initial_recs, volumes, model_type, simulate=False):
             obj3_name: ObjectiveProperties(minimize=True, threshold=90),
         },
         parameter_constraints=[
-            f"post_asp_air_vol <= {0.25-max(volumes)}"
+            f"post_asp_air_vol + overaspirate_vol <= {0.25-max(volume)}"
         ],
     )
 
@@ -99,9 +92,7 @@ def create_model(seed, num_initial_recs, volumes, model_type, simulate=False):
 def get_suggestions(ax_client, volume, n=1):
     suggestions = []
     for _ in range(n):
-        params, trial_index = ax_client.get_next_trial(
-            fixed_features=ObservationFeatures({"volume": volume})
-        )
+        params, trial_index = ax_client.get_next_trial(        )
         suggestions.append((params, trial_index))
     return suggestions
 
