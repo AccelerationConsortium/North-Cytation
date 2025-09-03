@@ -22,22 +22,22 @@ def split_volume(volume, max_volume=1.0):
 def change_stock_solution_vial(lash_e, surfactant_vial, new_surfactant_vial, threshold, sub_stock_vols):
     volume = lash_e.nr_robot.get_vial_info(surfactant_vial, 'vial_volume')
     if volume < threshold:
-        print(f"{surfactant_vial} volume low: {volume}, changing vial to {new_surfactant_vial}")
+        lash_e.logger.info(f"{surfactant_vial} volume low: {volume}, changing vial to {new_surfactant_vial}")
         sub_stock_vols[new_surfactant_vial] = sub_stock_vols.pop(surfactant_vial)
     return sub_stock_vols
 
 def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
-    print("\nCombining Surfactants:")
-    print("Stock solution composition:", sub_stock_vols)
+    lash_e.logger.info("\nCombining Surfactants:")
+    lash_e.logger.info(f"Stock solution composition: {sub_stock_vols}")
 
     for surfactant, volume_uL in sub_stock_vols.items():
         if surfactant == 'water':
             continue
         volume_mL = volume_uL / 1000
-        print(f"\nHandling {surfactant}: {volume_mL:.3f} mL")
+        lash_e.logger.info(f"\nHandling {surfactant}: {volume_mL:.3f} mL")
         if volume_mL > 0:
             volumes = split_volume(volume_mL)
-            print("Pipetable volumes:", volumes)
+            lash_e.logger.info("Pipetable volumes:", volumes)
             vial_location = lash_e.nr_robot.get_vial_info(surfactant, 'location')
             if vial_location == 'main_8mL_rack':
                 lash_e.nr_robot.move_vial_to_location(surfactant, 'main_8mL_rack', 43)
@@ -58,7 +58,7 @@ def fill_water_vial(lash_e):
     water_reservoir = 1
     current_water_volume = lash_e.nr_robot.get_vial_info('water', 'vial_volume')
     if current_water_volume < vial_max_volume:
-        print(f"Filling water vial from {current_water_volume} mL to {vial_max_volume} mL")
+        lash_e.logger.info(f"Filling water vial from {current_water_volume} mL to {vial_max_volume} mL")
         lash_e.nr_robot.dispense_into_vial_from_reservoir(water_reservoir, 'water', vial_max_volume - current_water_volume)
 
 def split_water_batches(df_water, max_volume=7.0):
@@ -80,12 +80,12 @@ def split_water_batches(df_water, max_volume=7.0):
     return batches
 
 def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_wp_index):
-    print("\n Dispensing into Wellplate")
+    lash_e.logger.info("\n Dispensing into Wellplate")
     samples_per_assay = wellplate_data.shape[0]
     well_indices = range(last_wp_index, last_wp_index + samples_per_assay)
     dispense_data = (wellplate_data[['surfactant volume', 'water volume', 'probe volume']] / 1000).round(3)
     dispense_data.index = well_indices
-    print(dispense_data)
+    lash_e.logger.debug(dispense_data)
 
     df_surfactant = dispense_data[['surfactant volume']]
     df_water = dispense_data[['water volume']]
@@ -103,7 +103,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_w
 
     #Only run the second batch if it exists
     if len(water_batch_df) >= 2:
-        print(water_batch_df[1])
+        lash_e.logger.info(water_batch_df[1])
         high_volume_df = water_batch_df[1][water_batch_df[1]['water volume'] > 0.05]
         low_volume_df = water_batch_df[1][water_batch_df[1]['water volume'] <= 0.05]
         lash_e.nr_robot.dispense_from_vials_into_wellplate(low_volume_df, ['water_large'], well_plate_type="48 WELL PLATE", dispense_speed=11)

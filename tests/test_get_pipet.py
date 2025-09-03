@@ -1,29 +1,21 @@
 import sys
 sys.path.append("../utoronto_demo")
-import North_Safe
-from Locator import *
-from north import NorthC9
-import pandas as pd
+from master_usdl_coordinator import Lash_E
 
 #NOte update to new syntax
 
 input_vial_status_file="../utoronto_demo/status/color_matching_vials.txt"
-vial_status = pd.read_csv(input_vial_status_file, sep=",")
 
-c9 = NorthC9('A', network_serial='AU06CNCF')
-nr = North_Safe.North_Robot(c9, input_vial_status_file)
+lashe = Lash_E(input_vial_status_file, initialize_biotek=False)
+
 
 def test_get_pipet(index_list):
-    try:
-        for i in index_list:
-            nr.get_pipet(i)
-            nr.move_home()
-            nr.remove_pipet()
-            # nr.move_home()
-            # input("Waiting to move tip...")
-            # nr.remove_pipet()
-    except KeyboardInterrupt:
-        
-        c9 = None
+    for i in index_list:
+        lashe.nr_robot.get_pipet(i)
+        lashe.nr_robot.move_home()
+        lashe.nr_robot.remove_pipet()
+        # nr.move_home()
+        # input("Waiting to move tip...")
+        # nr.remove_pipet()
 
-test_get_pipet([nr.LOWER_PIPET_ARRAY_INDEX]*48)
+test_get_pipet([lashe.nr_robot.HIGHER_PIPET_ARRAY_INDEX]*48)
