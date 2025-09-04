@@ -81,15 +81,16 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         measurements.append(measurement)
     end = time.time()
 
-    avg_measurement = np.mean(measurements)
-    std_measurement = np.std(measurements) / avg_measurement * 100  # % relative std
-    percent_errors = [abs((m - expected_measurement) / expected_measurement * 100) for m in measurements]
-    deviation = np.mean(percent_errors)
-    time_score = ((end - start) / replicate_count)
+    
 
     if simulate:
         return pipet_and_measure_simulated(volume, params, expected_measurement, expected_time)
     else:
+        avg_measurement = np.mean(measurements)
+        std_measurement = np.std(measurements) / avg_measurement * 100  # % relative std
+        percent_errors = [abs((m - expected_measurement) / expected_measurement * 100) for m in measurements]
+        deviation = np.mean(percent_errors)
+        time_score = ((end - start) / replicate_count)
         return {"deviation": deviation, "variability": std_measurement , "time": time_score}
 
 def strip_tuples(d):
