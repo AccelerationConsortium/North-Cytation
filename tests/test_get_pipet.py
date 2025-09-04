@@ -18,4 +18,6 @@ def test_get_pipet(index_list):
         # input("Waiting to move tip...")
         # nr.remove_pipet()
 
-test_get_pipet([lashe.nr_robot.HIGHER_PIPET_ARRAY_INDEX]*48)
+# test_get_pipet([lashe.nr_robot.HIGHER_PIPET_ARRAY_INDEX]*48)
+
+test_get_pipet([1])

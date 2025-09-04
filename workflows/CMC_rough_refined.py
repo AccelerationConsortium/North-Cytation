@@ -18,13 +18,13 @@ MEASUREMENT_PROTOCOL_FILE = [
     r"C:\Protocols\CMC_Fluorescence.prt",
     r"C:\Protocols\CMC_Absorbance.prt"
 ]
-simulate = False
-run = 2 # This determines which Run group you are running
+simulate = True
+run = 9 # This determines which Run group you are running
 INPUT_VIAL_STATUS_FILE = f"../utoronto_demo/status/CMC_double_input_{run}.csv"
 
 #Experiment-1
 #replacements = {'CTAB': ['CTAB_2', 5.0]} #Run specific, based on what vials we need to use
-replacements = {'CTAB': ['CTAB_2', 4.0], 'DTAB': ['DTAB_2', 4.0], 'DTAB_2': ['DTAB_3', 5.0]}  # Run specific, based on what vials we need to use
+replacements = {}  # Run specific, based on what vials we need to use
 
 
 # Load pairing data from CSV
@@ -52,7 +52,7 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 surfactants_used = set()
 for pair, _ in pairings_and_ratios:
     surfactants_used.update(pair)
-surfactants_used.update(["water_large", "pyrene_DMSO", "CTAB_2", 'DTAB_2', 'DTAB_3'])
+surfactants_used.update(["water_large", "pyrene_DMSO"])
 initial_volumes = {}
 for surf in surfactants_used:
     try:

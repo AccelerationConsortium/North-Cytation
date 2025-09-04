@@ -555,11 +555,11 @@ class North_Temp:
 
     def turn_on_stirring(self,speed=10000):
         self.logger.debug(f"Turning on stirring at speed {speed}")
-        self.c8.spin_axis(0, speed)
+        self.c8.spin_axis(1, speed)
 
     def turn_off_stirring(self):
         self.logger.debug("Turning off stirring")
-        self.c8.spin_axis(0,0)
+        self.c8.spin_axis(1,0)
 
 class North_Robot:
     ROBOT_STATUS_FILE = "../utoronto_demo/status/robot_status.yaml" #Store the state of the robot. Update this after every method that alters the state. 
@@ -590,12 +590,12 @@ class North_Robot:
         self.c9 = c9
         self.logger = logger
         self.VIAL_FILE = vial_file
+        self.simulate = simulate
 
         self.logger.info("Initializing North Robot...")
 
         self.get_robot_status() #Update the status of the robot from memory
         self.reset_after_initialization() #Reset everything that may not be as desired, eg return to "Home"
-        self.simulate = simulate
         self.load_pumps() #Load the pumps
         #sys.excepthook = self.global_exception_handler
 
