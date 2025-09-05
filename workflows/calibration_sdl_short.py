@@ -21,7 +21,7 @@ SOBOL_CYCLES_PER_VOLUME = 5
 BAYES_CYCLES_PER_VOLUME = 27
 REPLICATES = 3
 BAYESIAN_BATCH_SIZE = 1
-VOLUMES = [0.05]
+VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
 #MODELS = ['qEI', 'qLogEI', 'qNEHVI']
 MODELS = ['qNEHVI'] #Change this!
 

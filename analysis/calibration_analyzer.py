@@ -9,7 +9,7 @@ import seaborn as sns
 
 input_cols = [
     'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time',
-    'retract_speed', 'pre_asp_air_vol', 'post_asp_air_vol', 
+    'retract_speed', 'pre_asp_air_vol', 'post_asp_air_vol', 'overaspirate_vol'
 ]
 
 output_targets = ['time', 'deviation', 'variability']
