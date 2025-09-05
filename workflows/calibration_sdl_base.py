@@ -70,12 +70,12 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
     start = time.time()
     for replicate_idx in range(replicate_count):
         replicate_start = datetime.now().isoformat()
-        lash_e.nr_robot.aspirate_from_vial(source_vial, volume, **aspirate_kwargs)
-        measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, **dispense_kwargs)
+        lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, **aspirate_kwargs)
+        measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, **dispense_kwargs)
         if new_pipet_each_time:
             lash_e.nr_robot.remove_pipet()
         replicate_end = datetime.now().isoformat()
-        raw_entry = {"volume": volume+over_volume, "replicate": replicate_idx, "mass": measurement, "start_time": replicate_start, "end_time": replicate_end, "liquid": liquid, **params}
+        raw_entry = {"volume": volume, "replicate": replicate_idx, "mass": measurement, "start_time": replicate_start, "end_time": replicate_end, "liquid": liquid, **params}
         raw_measurements.append(raw_entry) 
         if not simulate:
             pd.DataFrame([raw_entry]).to_csv(raw_path, mode='a', index=False, header=not os.path.exists(raw_path))

@@ -11,7 +11,7 @@ import recommenders.pipeting_optimizer_v2 as recommender
 
 # --- Experiment Config ---
 LIQUID = "glycerol"  #<------------------- CHANGE THIS!
-SIMULATE = False #<--------- CHANGE THIS!
+SIMULATE = True #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
@@ -23,7 +23,7 @@ REPLICATES = 3
 BAYESIAN_BATCH_SIZE = 1
 VOLUMES = [0.05]
 #MODELS = ['qEI', 'qLogEI', 'qNEHVI']
-MODELS = ['qNEHVI']
+MODELS = ['qNEHVI'] #Change this!
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
