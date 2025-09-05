@@ -1,6 +1,7 @@
 # calibration_sdl_short.py
 
 
+from matplotlib.pylab import f
 from calibration_sdl_base import *
 import sys
 sys.path.append("../utoronto_demo")
@@ -9,8 +10,8 @@ from master_usdl_coordinator import Lash_E
 import recommenders.pipeting_optimizer_v2 as recommender
 
 # --- Experiment Config ---
-LIQUID = "ethanol"  #<------------------- CHANGE THIS!
-SIMULATE = True #<--------- CHANGE THIS!
+LIQUID = "glycerol"  #<------------------- CHANGE THIS!
+SIMULATE = False #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
@@ -21,7 +22,8 @@ BAYES_CYCLES_PER_VOLUME = 27
 REPLICATES = 3
 BAYESIAN_BATCH_SIZE = 1
 VOLUMES = [0.05]
-MODELS = ['qEI', 'qLogEI', 'qNEHVI']
+#MODELS = ['qEI', 'qLogEI', 'qNEHVI']
+MODELS = ['qNEHVI']
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
@@ -43,7 +45,7 @@ lash_e.logger.info("Liquid: ", LIQUIDS[LIQUID])
 
 for model_type in MODELS:
     if not SIMULATE:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + f"_{LIQUID}")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + f"_{LIQUID}"+f"_{model_type}")
         base_autosave_dir = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration"
         autosave_dir = os.path.join(base_autosave_dir, timestamp)
         os.makedirs(autosave_dir, exist_ok=True)
