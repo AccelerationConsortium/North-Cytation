@@ -90,7 +90,7 @@ def create_model(seed, num_initial_recs, volumes, model_type, simulate=False):
             obj3_name: ObjectiveProperties(minimize=True, threshold=90),
         },
         parameter_constraints=[
-            f"post_asp_air_vol <= {0.25-max(volumes)}"
+            f"post_asp_air_vol + overaspirate_vol <= {0.25-max(volumes)}"
         ],
     )
 
