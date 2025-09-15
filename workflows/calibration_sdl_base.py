@@ -22,6 +22,12 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     deviation = np.abs(params["aspirate_speed"] - 15) + np.random.normal(0, 0.5)
     variability = np.abs(params["aspirate_wait_time"] - 30) * 0.1 + np.random.normal(0, 0.3)
     time_score = (params["aspirate_wait_time"] - 1) * 100 + np.random.normal(0, 5)
+    
+    # Ensure no NaN values are returned
+    deviation = np.nan_to_num(deviation, nan=1.0)
+    variability = np.nan_to_num(variability, nan=1.0)
+    time_score = np.nan_to_num(time_score, nan=100.0)
+    
     return {"deviation": deviation, "variability": variability, "time": time_score}
 
 def empty_vial_if_needed(lash_e, vial_name, state):
