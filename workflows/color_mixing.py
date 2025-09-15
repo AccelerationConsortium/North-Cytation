@@ -67,13 +67,7 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
     check_input_file(INPUT_VIAL_STATUS_FILE)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True)
-
-    #The vial indices are numbers that are used to track the vials. For the sake of clarity, these are stored in the input vial file but accessed here
-    water_index = lash_e.nr_robot.get_vial_index_from_name('water') #Get the ID of our target reactor
-    red_index = lash_e.nr_robot.get_vial_index_from_name('red')
-    blue_index = lash_e.nr_robot.get_vial_index_from_name('blue')
-    yellow_index = lash_e.nr_robot.get_vial_index_from_name('yellow')
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=False)
 
     #data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
     data_colors_uL = pd.read_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition.txt", sep=',',index_col=0)/1000
@@ -87,23 +81,31 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
     print("Row sums:", np.sum(data_colors_uL * 1000, axis=1))  # Should all equal 250
 
     data_colors_uL = np.repeat(data_colors_uL, replicates, axis=0)
+    # Convert back to DataFrame to allow column selection by name
+    data_colors_uL = pd.DataFrame(data_colors_uL, columns=['water','red','blue','yellow'])
 
     sum_colors = np.sum(data_colors_uL,0)
     print("Total volume per vial:", sum_colors) #how much of each volume is used
 
-    data_pd = pd.DataFrame(data=data_colors_uL,columns=['water','red','blue','yellow'])
-    print(data_pd)
-
     num_wells = data_colors_uL.shape[0]
     print("Number samples: ", num_wells)
-    wells = range(0, num_wells)
+    wells = range(0, num_wells)  
 
     input("Waiting...")
 
     start_time = time.perf_counter()
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[water_index,red_index,blue_index,yellow_index],low_volume_cutoff=0.100,pipet_back_and_forth=True)
-    #mix_wells(lash_e, wells,replicates=replicates)
+    for color in ['water','red','blue','yellow']:
+        data_pd = data_colors_uL[[color]]
+        print(data_pd)
+
+        lash_e.nr_robot.move_vial_to_location(color, 'main_8mL_rack', 44)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[color],low_volume_cutoff=0.200,pipet_back_and_forth=True)
+
+        lash_e.nr_robot.return_vial_home(color)
+
+    mix_wells(lash_e, wells,replicates=replicates)
+    lash_e.nr_robot.remove_pipet()
 
     end_time = time.perf_counter()
 
@@ -114,7 +116,8 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
 
     print(results)
 
-    results.to_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition.txt", sep=',')
+    if results is not None:
+        results.to_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition.txt", sep=',')
     
 #Execute the sample workflow.
 sample_workflow()

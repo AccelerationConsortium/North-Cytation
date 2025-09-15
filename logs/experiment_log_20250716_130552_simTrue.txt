@@ -1,0 +1,30 @@
+Initializing North Robot...
+Physical initialization of North Robot...
+Moving robot to home position
+   vial_index           vial_name         location  location_index  vial_volume  capped cap_type vial_type    home_location  home_location_index
+0           0  measurement_vial_0    main_8mL_rack               0            0    True     open      8_mL    main_8mL_rack                    0
+1           1  measurement_vial_1    main_8mL_rack               1            0    True     open      8_mL    main_8mL_rack                    1
+2           2  measurement_vial_2    main_8mL_rack               2            0    True     open      8_mL    main_8mL_rack                    2
+3           3       liquid_source  large_vial_rack               0           20    True     open     20_mL  large_vial_rack                    0
+Visualizing...
+Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-cMoving vial measurement_vial_0 to clamp: 0
+Grabbing vial
+C:\Users\owenm\OneDrive\Desktop\Python\Baybe\.conda\lib\site-packages\ax\modelbridge\cross_validation.py:463: UserWarning: Encountered exception in computing model fit quality: RandomModelBridge does not support prediction.
+  warn("Encountered exception in computing model fit quality: " + str(e))
+Getting pipet number: 4 from rack 1
+Pipetting from vial liquid_source, amount: 0.01 mL
+Aspirating 0.07656387686729432 mL then waiting 0 s
+Aspirating 0.01 mL then waiting 22.48070776462555 s
+Aspirating 0.03626673817634583 mL then waiting 0 s
+C:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\../utoronto_demo\North_Safe.py:1014: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value '19.99' has dtype incompatible with int64, please explicitly cast to a compatible dtype first.
+  self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
+Pipetting into vial measurement_vial_0, amount: 0.01 mL
+Dispensing 0.12283061504364014 mL then waiting 5.529413223266602 s
+Traceback (most recent call last):
+  File "c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\workflows\calibration_sdl_short.py", line 73, in <module>
+    result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
+  File "c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\workflows\calibration_sdl_base.py", line 79, in pipet_and_measure
+    pd.DataFrame([raw_entry]).to_csv(raw_path, mode='a', index=False, header=not os.path.exists(raw_path))
+  File "C:\Users\owenm\OneDrive\Desktop\Python\Baybe\.conda\lib\genericpath.py", line 19, in exists
+    os.stat(path)
+TypeError: stat: path should be string, bytes, os.PathLike or integer, not NoneType

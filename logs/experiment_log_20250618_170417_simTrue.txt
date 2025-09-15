@@ -1,0 +1,51 @@
+Initializing North Robot...
+Physical initialization of North Robot...
+Moving robot to home position
+Current reader status: <MagicMock name='mock.get_reader_status()' id='2065334757088'>
+    vial_index    vial_name       location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index
+0            0          SDS  main_8mL_rack               0        8.000    True     open      8_mL  main_8mL_rack                    0
+1            1         NaDC  main_8mL_rack               1        8.000    True     open      8_mL  main_8mL_rack                    1
+2            2          NaC  main_8mL_rack               2        8.000    True     open      8_mL  main_8mL_rack                    2
+3            3         CTAB  main_8mL_rack               3        8.000    True     open      8_mL  main_8mL_rack                    3
+4            4         DTAB  main_8mL_rack               4        8.000    True     open      8_mL  main_8mL_rack                    4
+5            5         TTAB  main_8mL_rack               5        8.000    True     open      8_mL  main_8mL_rack                    5
+6            6         P188  main_8mL_rack               6        8.000    True     open      8_mL  main_8mL_rack                    6
+7            7         P407  main_8mL_rack               7        8.000    True     open      8_mL  main_8mL_rack                    7
+8            8         CAPB  main_8mL_rack               8        8.000    True     open      8_mL  main_8mL_rack                    8
+9            9        CHAPS  main_8mL_rack               9        8.000    True     open      8_mL  main_8mL_rack                    9
+10          10   substock_1  main_8mL_rack              10        0.000    True     open      8_mL  main_8mL_rack                   10
+11          11   substock_2  main_8mL_rack              11        0.000    True     open      8_mL  main_8mL_rack                   11
+12          12   substock_3  main_8mL_rack              12        0.000    True     open      8_mL  main_8mL_rack                   12
+13          13   substock_4  main_8mL_rack              13        0.000    True     open      8_mL  main_8mL_rack                   13
+14          14   substock_5  main_8mL_rack              14        0.000    True     open      8_mL  main_8mL_rack                   14
+15          15   substock_6  main_8mL_rack              15        0.000    True     open      8_mL  main_8mL_rack                   15
+16          16   substock_7  main_8mL_rack              16        0.000    True     open      8_mL  main_8mL_rack                   16
+17          17   substock_8  main_8mL_rack              17        0.000    True     open      8_mL  main_8mL_rack                   17
+18          18   substock_9  main_8mL_rack              18        0.000    True     open      8_mL  main_8mL_rack                   18
+19          19  substock_10  main_8mL_rack              19        0.000    True     open      8_mL  main_8mL_rack                   19
+20          20        water  main_8mL_rack              45        1.462    True     open      8_mL  main_8mL_rack                   45
+21          21  pyrene_DMSO  main_8mL_rack              47        8.000   False     none      8_mL  main_8mL_rack                   47
+Visualizing...
+Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c--Wellplate status-- 
+ Wellplate type: 48 WELL PLATE 
+ Number in source: 3 
+ Number in waste: 0 
+ NR Pipetting area occupied: False
+Only hit enter if the status of the well plates is correct, otherwise hit ctrl-cGetting 3rd wellplate from source at 64500
+Moving North Track to home position
+Warning: High concentration 58.47592652193977 exceeds maximum stock concentration 34.0. Adjusting high to max stock concentration.
+CMC estimate: 
+8.269744835965978
+
+Generated concentrations (rough): 
+[ 1.169  1.589  2.158  2.931  3.981  5.408  7.345  9.977 13.552 18.408
+ 25.003 33.963]
+Traceback (most recent call last):
+  File "c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\workflows\CMC_workflow_pairings.py", line 260, in <module>
+    experiment,small_exp = experimental_planner.generate_exp_flexible(surfactants, ratio, rough_screen=True)
+  File "C:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\../utoronto_demo\analysis\cmc_exp_new.py", line 207, in generate_exp_flexible
+    sub_stock_vol = scale_substock_to_required_volume(sub_stock_vol,df)
+  File "C:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\../utoronto_demo\analysis\cmc_exp_new.py", line 143, in scale_substock_to_required_volume
+      File "C:\Users\owenm\OneDrive\Desktop\Python\Baybe\.conda\lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f4cf' in position 2: character maps to <undefined>
