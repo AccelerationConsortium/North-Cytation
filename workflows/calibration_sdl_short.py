@@ -1,7 +1,4 @@
 # calibration_sdl_short.py
-
-
-from matplotlib.pylab import f
 from calibration_sdl_base import *
 import sys
 sys.path.append("../utoronto_demo")
