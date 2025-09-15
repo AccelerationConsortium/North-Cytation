@@ -3,7 +3,7 @@ import numpy as np
 import yaml
 sys.path.append("../utoronto_demo")
 sys.path.append("..\\utoronto_demo\\status")
-ROBOT_STATUS_FILE = "../utoronto_demo/status/robot_status.yaml"
+ROBOT_STATUS_FILE = "robot_status.yaml"  # Changed from relative path to just filename
 
 # save_data = "0,0"
 
