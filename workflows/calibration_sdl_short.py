@@ -8,14 +8,14 @@ import recommenders.pipeting_optimizer_v2 as recommender
 
 # --- Experiment Config ---
 LIQUID = "glycerol"  #<------------------- CHANGE THIS!
-SIMULATE = False #<--------- CHANGE THIS!
+SIMULATE = True #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
 
 SEED = 7
 SOBOL_CYCLES_PER_VOLUME = 0
-BAYES_CYCLES_PER_VOLUME = 32
+BAYES_CYCLES_PER_VOLUME = 27
 REPLICATES = 3
 BAYESIAN_BATCH_SIZE = 1
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
@@ -56,7 +56,8 @@ for model_type in MODELS:
     ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), bayesian_batch_size=BAYESIAN_BATCH_SIZE, volume=VOLUMES, model_type=model_type)
     
     # ...existing code...
-    base_folder = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\with_overvolume"
+    #base_folder = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\with_overvolume"
+    base_folder = r"C:\Users\owenm\OneDrive\Desktop\Calibration_SDL"
     additional_folders = [folder for folder in os.listdir(base_folder) if "glycerol" in folder.lower() and os.path.isdir(os.path.join(base_folder, folder))]
     # ...existing code...
     for folder in additional_folders:

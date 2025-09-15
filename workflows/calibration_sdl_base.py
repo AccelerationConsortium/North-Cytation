@@ -19,14 +19,24 @@ LIQUIDS = {
 # --- Utility Functions ---
 def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     time.sleep(0.2)
-    deviation = np.abs(params["aspirate_speed"] - 15) + np.random.normal(0, 0.5)
-    variability = np.abs(params["aspirate_wait_time"] - 30) * 0.1 + np.random.normal(0, 0.3)
-    time_score = (params["aspirate_wait_time"] - 1) * 100 + np.random.normal(0, 5)
+    
+    # Generate realistic values within expected ranges
+    # Deviation: 0-30% (lower is better)
+    deviation = np.abs(params["aspirate_speed"] - 15) * 0.5 + np.random.normal(10, 3)
+    deviation = np.clip(deviation, 0, 30)
+    
+    # Variability: 0-10% (lower is better) 
+    variability = np.abs(params["aspirate_wait_time"] - 15) * 0.1 + np.random.normal(2, 1)
+    variability = np.clip(variability, 0, 10)
+    
+    # Time: 0-100 seconds (lower is better)
+    time_score = params["aspirate_wait_time"] + params["dispense_wait_time"] + np.random.normal(20, 5)
+    time_score = np.clip(time_score, 0, 100)
     
     # Ensure no NaN values are returned
-    deviation = np.nan_to_num(deviation, nan=1.0)
-    variability = np.nan_to_num(variability, nan=1.0)
-    time_score = np.nan_to_num(time_score, nan=100.0)
+    deviation = np.nan_to_num(deviation, nan=15.0)
+    variability = np.nan_to_num(variability, nan=5.0)
+    time_score = np.nan_to_num(time_score, nan=50.0)
     
     return {"deviation": deviation, "variability": variability, "time": time_score}
 

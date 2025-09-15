@@ -111,11 +111,26 @@ def get_suggestions(ax_client, volume, n=1):
     return suggestions
 
 def add_result(ax_client, trial_index, results):
+    # Debug: Print the results to check for NaN values
+    print(f"DEBUG: Trial {trial_index} results: {results}")
+    
+    # Check for NaN values in results
+    for key, value in results.items():
+        if pd.isna(value):
+            print(f"WARNING: NaN found in {key}: {value}")
+    
     data = {
-        "deviation": (results["deviation"], None),
-        "variability": (results["variability"], None),
-        "time": (results["time"], None),
+        "deviation": (results["deviation"], 0.0),  # Use 0.0 instead of None for SEM
+        "variability": (results["variability"], 0.0),
+        "time": (results["time"], 0.0),
     }
+    
+    # Additional check for NaN in the data being passed to Ax
+    for metric, (mean, sem) in data.items():
+        if pd.isna(mean) or pd.isna(sem):
+            raise ValueError(f"NaN detected in {metric}: mean={mean}, sem={sem}")
+    
+    print(f"DEBUG: Completing trial {trial_index} with data: {data}")
     ax_client.complete_trial(trial_index=trial_index, raw_data=data)
 
 def load_data(ax_client, file_name):
