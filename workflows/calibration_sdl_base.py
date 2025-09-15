@@ -119,7 +119,7 @@ def flatten_measurements(raw_data: dict) -> pd.DataFrame:
     records = []
     for (replicate, wavelength), series in raw_data.items():
         for well, absorbance in series.items():
-            records.append({
+            records.append({ 
                 'replicate': replicate,
                 'well': well,
                 'wavelength': int(wavelength),  # Convert string like '590' to int

@@ -1,11 +1,9 @@
 # pipeting_optimizer_honegumi.py
 
-import numpy as np
+import pandas as pd
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.modelbridge.factory import Models
 from ax.modelbridge.generation_strategy import GenerationStep, GenerationStrategy
-from ax.modelbridge.registry import Specified_Task_ST_MTGP_trans
-from ax.core.observation import ObservationFeatures
 from botorch.acquisition.logei import qLogExpectedImprovement
 from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
 
@@ -34,25 +32,40 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, model_type
         #Default qEI
         model_gen_kwargs = {"deduplicate": True}
     
+    # ...existing code...
+    
     if not simulate:
-        gs = GenerationStrategy(
-            steps=[
-                GenerationStep(
-                    model=Models.SOBOL,
-                    num_trials=num_initial_recs,
-                    min_trials_observed=num_initial_recs,
-                    max_parallelism=num_initial_recs,
-                    model_kwargs={"seed": seed},
-                    model_gen_kwargs=model_gen_kwargs,
-                ),
-                GenerationStep(
-                    model=Models.BOTORCH_MODULAR,
-                    num_trials=-1,
-                    max_parallelism=bayesian_batch_size,
-                    model_gen_kwargs=model_gen_kwargs,
-                ),
-            ]
-        )
+        if num_initial_recs > 0:
+            gs = GenerationStrategy(
+                steps=[
+                    GenerationStep(
+                        model=Models.SOBOL,
+                        num_trials=num_initial_recs,
+                        min_trials_observed=num_initial_recs,
+                        max_parallelism=num_initial_recs,
+                        model_kwargs={"seed": seed},
+                        model_gen_kwargs=model_gen_kwargs,
+                    ),
+                    GenerationStep(
+                        model=Models.BOTORCH_MODULAR,
+                        num_trials=-1,
+                        max_parallelism=bayesian_batch_size,
+                        model_gen_kwargs=model_gen_kwargs,
+                    ),
+                ]
+            )
+        else:
+            # Skip SOBOL entirely if num_initial_recs is 0
+            gs = GenerationStrategy(
+                steps=[
+                    GenerationStep(
+                        model=Models.BOTORCH_MODULAR,
+                        num_trials=-1,
+                        max_parallelism=bayesian_batch_size,
+                        model_gen_kwargs=model_gen_kwargs,
+                    ),
+                ]
+            )
     else:
         gs = GenerationStrategy(
             steps=[
@@ -63,8 +76,9 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, model_type
                     model_kwargs={"seed": seed},
                     model_gen_kwargs=model_gen_kwargs,
                 )])
+    # ...existing code...
 
-    ax_client = AxClient(generation_strategy=gs)
+    ax_client = AxClient(generation_strategy=gs, verbose_logging=False)
 
     ax_client.create_experiment(
         parameters=[
@@ -103,3 +117,51 @@ def add_result(ax_client, trial_index, results):
         "time": (results["time"], None),
     }
     ax_client.complete_trial(trial_index=trial_index, raw_data=data)
+
+def load_data(ax_client, file_name):
+    """
+    Load existing experimental data from CSV file and add to Ax experiment.
+    
+    Args:
+        file_name (str): Path to CSV file with experimental results
+    """
+    # Load the CSV data
+    df = pd.read_csv(file_name)
+    
+    # Define parameter columns (the 8 columns after the 3 outcome columns)
+    parameter_columns = [
+        'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 
+        'dispense_wait_time', 'retract_speed', 'pre_asp_air_vol', 
+        'post_asp_air_vol', 'overaspirate_vol'
+    ]
+    
+    # Define outcome columns
+    outcome_columns = ['deviation', 'variability', 'time']
+    
+    print(f"Loading {len(df)} existing trials from {file_name}")
+    
+    # Add each row as a completed trial
+    for idx, row in df.iterrows():
+        # Extract parameters - convert to int for speed parameters, float for others
+        parameters = {
+            'aspirate_speed': int(row['aspirate_speed']),
+            'dispense_speed': int(row['dispense_speed']),
+            'aspirate_wait_time': float(row['aspirate_wait_time']),
+            'dispense_wait_time': float(row['dispense_wait_time']),
+            'retract_speed': float(row['retract_speed']),
+            'pre_asp_air_vol': float(row['pre_asp_air_vol']),
+            'post_asp_air_vol': float(row['post_asp_air_vol']),
+            'overaspirate_vol': float(row['overaspirate_vol'])
+        }
+        
+        # Extract outcomes
+        raw_data = {col: (float(row[col]), 0.0) for col in outcome_columns}  # (mean, sem)
+        
+        # Get trial from Ax - attach_trial returns (parameterization, trial_index)
+        parameterization, trial_index = ax_client.attach_trial(parameters)
+        
+        # Complete the trial with the outcomes
+        ax_client.complete_trial(trial_index=trial_index, raw_data=raw_data)
+        
+    print(f"Successfully loaded {len(df)} trials into Ax experiment")
+    return len(df)
