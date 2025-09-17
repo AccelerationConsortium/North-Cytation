@@ -1016,7 +1016,9 @@ class North_Robot:
             return base_height #Default is the lowest position
 
     #Aspirate from a vial using the pipet tool
-    def aspirate_from_vial(self, source_vial_name, amount_mL,move_to_aspirate=True,specified_tip=None,track_height=True,wait_time=1,aspirate_speed=11,asp_disp_cycles=0,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0,move_up=True):
+    def aspirate_from_vial(self, source_vial_name, amount_mL,
+                           move_to_aspirate=True,specified_tip=None,track_height=True,
+                           wait_time=1,aspirate_speed=11,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0,move_up=True):
         """
         Aspirate amount_ml from a source vial.
         Args:
@@ -1024,15 +1026,11 @@ class North_Robot:
             `amount_mL`(float): Amount to aspirate in mL
         """
         
-        source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed
-        error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.is_vial_pipetable(source_vial_num), True, "Can't pipet from vial. Vial may be marked as closed."])
+        source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
 
-        #Move the vial to clamp if needed to aspirate
-        if self.check_for_errors(error_check_list):
-            self.logger.debug("Moving vial to clamp to uncap")
-            self.move_vial_to_location(source_vial_num,location='clamp',location_index=0)
-            self.uncap_clamp_vial()        
+        error_check_list = [] #List of specific errors for this method
+        error_check_list.append([self.is_vial_pipetable(source_vial_num), True, "Can't pipet, at least one vial is capped"])    
+        self.check_for_errors(error_check_list,True) #This will cause a pause if there's an issue 
 
         #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
         if self.HELD_PIPET_INDEX is None:
@@ -1070,15 +1068,6 @@ class North_Robot:
         if move_to_aspirate:
             self.c9.goto_xy_safe(location,vel=15)
         
-        # #If you want to have extra aspirate and dispense steps. TODO: This isn't going to work right now as is. 
-        # for i in range (0, asp_disp_cycles):
-        #     self.pipet_from_location(amount_mL, aspirate_speed, height, True,initial_move=move_to_aspirate)
-        #     self.pipet_from_location(amount_mL, aspirate_speed, height, False,initial_move=False)
-        #     move_to_aspirate = False
-        
-        #Main aspiration
-        # self.pipet_from_location(amount_mL, aspirate_speed, height, True, initial_move=move_to_aspirate)
-
         #Step 1: Move to above the site and aspirate air if needed
         if pre_asp_air_vol > 0:
             self.c9.move_z(disp_height)
@@ -1112,7 +1101,8 @@ class North_Robot:
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,move_to_aspirate=True,move_to_dispense=True,buffer_vol=0,track_height=True,measure_mass=False, blowout_vol=0):
+    def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,
+                                     move_to_aspirate=True,move_to_dispense=True,track_height=True,measure_mass=False,blowout_vol=0, use_safe_location=False):
         """
         Dispenses a specified volume from source_vial_name to dest_vial_name, with optional buffer transfer for accuracy.
 
@@ -1125,34 +1115,60 @@ class North_Robot:
             `buffer_vol` (float): Buffer volume (in mL)
             `track_height` (bool): Whether to track the volume & height to aspirate from, in the source vial.
         """
-        self.logger.info(f"Dispensing {volume} mL from {source_vial_name} to {dest_vial_name} with buffer volume {buffer_vol} mL")
+        self.logger.info(f"Dispensing {volume} mL from {source_vial_name} to {dest_vial_name}")
 
         source_vial_index = self.normalize_vial_index(source_vial_name) #Convert to int if needed
         dest_vial_index = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
+        repeats = 1
+
         if volume < 0.2 and volume >= 0.01:
             tip_type = self.HIGHER_PIPET_ARRAY_INDEX
-            max_volume = 0.25
         elif volume >= 0.2 and volume <= 1.00:
             tip_type = self.LOWER_PIPET_ARRAY_INDEX 
-            max_volume = 1.00
         elif volume == 0:
             self.logger.warning("Cannot dispense 0 mL")
             return
-        else:
+        elif volume > 1.00:
+            tip_type = self.LOWER_PIPET_ARRAY_INDEX
+            repeats = math.ceil(volume)
+            volume = volume / repeats #Split into multiple dispenses
+            self.logger.info(f"Volume too high for single dispense, splitting into {repeats} dispenses of {round(volume,3)} mL each")
+        else: 
             self.pause_after_error(f"Cannot accurately aspirate: {volume} mL under specified conditions.")
+
+        mass = 0
+        for i in range (0, repeats): 
+            last_run = (i == repeats - 1)
+            first_run = (i == 0)       
+            move_dest_vial = not self.is_vial_pipetable(dest_vial_index) and self.is_vial_movable(dest_vial_index)
+            move_source_vial = not self.is_vial_pipetable(source_vial_index) or use_safe_location and self.is_vial_movable(source_vial_index)
+            move_both = move_dest_vial and move_source_vial
+
+            #Move the vial to clamp if needed to aspirate
+            if move_both or (move_source_vial and first_run):
+                self.logger.debug("Moving source vial to clamp to uncap")
+                self.move_vial_to_location(source_vial_index,location='clamp',location_index=0)
+                self.uncap_clamp_vial() 
         
-        extra_aspirate = 0
-        if max_volume-volume >= 2*buffer_vol:
-            extra_aspirate = 2*buffer_vol
-        
-        self.aspirate_from_vial(source_vial_index,round(volume+extra_aspirate,3),move_to_aspirate=move_to_aspirate,specified_tip=tip_type,track_height=track_height)
-        if extra_aspirate > 0:
-            self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=False)
-        
-        mass = self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense,measure_weight=measure_mass,blowout_vol=blowout_vol)
-        
-        if extra_aspirate > 0:
-            self.dispense_into_vial(source_vial_index,buffer_vol,initial_move=move_to_dispense)
+            self.aspirate_from_vial(source_vial_index,round(volume,3),move_to_aspirate=move_to_aspirate,specified_tip=tip_type,track_height=track_height)
+            
+            if move_both or (move_dest_vial and first_run):
+                if move_source_vial:
+                    self.recap_clamp_vial()
+                    self.return_vial_home(source_vial_index)
+                self.logger.debug("Moving destination vial to clamp to uncap")
+                self.move_vial_to_location(dest_vial_index,location='clamp',location_index=0)
+                self.uncap_clamp_vial()
+
+            mass_increment = self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense,measure_weight=measure_mass,blowout_vol=blowout_vol)
+            mass += mass_increment if mass_increment is not None else 0
+
+            if move_both or (move_dest_vial and last_run): #If we moved the dest vial, we need to recap and return it
+                self.recap_clamp_vial()
+                self.return_vial_home(dest_vial_index)
+            elif move_source_vial and last_run: #If we moved the source vial, we need to recap and return it
+                self.recap_clamp_vial()
+                self.return_vial_home(source_vial_index)
 
         return mass
 
@@ -1528,9 +1544,10 @@ class North_Robot:
         Args:
             `vial_name` (str): Name of the vial to return home.
         """
-        self.logger.info(f"Returning vial {vial_name} to home location")
+        
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
+        self.logger.info(f"Returning vial {self.get_vial_info(vial_index, 'vial_name')} to home location")
         
         home_location = self.get_vial_info(vial_index,'home_location')
         home_location_index = self.get_vial_info(vial_index,'home_location_index')
@@ -1577,7 +1594,7 @@ class North_Robot:
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS is None, True, "Cannot move vial to destination, gripper full"])
-        error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Cannot move vial to destination, robot holding pipet"])
+        #error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Cannot move vial to destination, robot holding pipet"])
         error_check_list.append([self.is_vial_movable(vial_index), True, "Can't move vial, vial is uncapped."])  
 
         self.check_for_errors(error_check_list,True) #Check for an error, and pause if there's an issue
@@ -1603,6 +1620,13 @@ class North_Robot:
         
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
+        vial_location = self.get_vial_info(vial_index,'location')
+        vial_location_index = self.get_vial_info(vial_index,'location_index')
+
+        if vial_location == location and vial_location_index == location_index:
+            self.logger.info(f"Vial {vial_name} already at {location} index {location_index}, no move needed")
+            return
+
         self.logger.info(f"Moving vial {self.get_vial_info(vial_index, 'vial_name')} to {location}: {location_index}")
         self.grab_vial(vial_index) #Grab the vial
         self.drop_off_vial(vial_index,location,location_index) #Drop off the vial
@@ -1625,7 +1649,7 @@ class North_Robot:
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS is None, True, "Cannot uncap, gripper full"])
-        error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't uncap vial, holding pipet"])
+        #error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't uncap vial, holding pipet"])
         error_check_list.append([clamp_vial_index is None, False, "Cannot uncap, no vial in clamp"])
         error_check_list.append([self.is_vial_movable(clamp_vial_index), True, "Can't uncap, vial is uncapped already"])
 
@@ -1650,7 +1674,7 @@ class North_Robot:
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS, "Cap", "Cannot recap, no cap in gripper"])
-        error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't recap vial, holding pipet"])
+        #error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't recap vial, holding pipet"])
         error_check_list.append([clamp_vial_index is None, False, "Cannot recap, no vial in clamp"])
         error_check_list.append([self.is_vial_movable(clamp_vial_index), False, "Can't recap, vial is capped already"])
         
