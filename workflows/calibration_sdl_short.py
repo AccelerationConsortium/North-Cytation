@@ -14,13 +14,13 @@ DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
 
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 0
-BAYES_CYCLES_PER_VOLUME = 32
+SOBOL_CYCLES_PER_VOLUME = 5
+BAYES_CYCLES_PER_VOLUME = 27
 REPLICATES = 3
-BAYESIAN_BATCH_SIZE = 1
+BAYESIAN_BATCH_SIZE = 3
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
 #MODELS = ['qEI', 'qLogEI', 'qNEHVI']
-MODELS = ['qNEHVI'] #Change this!
+MODELS = ['qEI'] #Change this!
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
