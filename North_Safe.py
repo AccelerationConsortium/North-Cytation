@@ -1137,37 +1137,44 @@ class North_Robot:
             self.pause_after_error(f"Cannot accurately aspirate: {volume} mL under specified conditions.")
 
         mass = 0
+        move_dest_vial = not self.is_vial_pipetable(dest_vial_index) and self.is_vial_movable(dest_vial_index)
+        move_source_vial = not self.is_vial_pipetable(source_vial_index) or use_safe_location and self.is_vial_movable(source_vial_index)
+        move_both = move_dest_vial and move_source_vial
+        source_pipetable = self.is_vial_pipetable(source_vial_index)
+        dest_pipetable = self.is_vial_pipetable(dest_vial_index)
         for i in range (0, repeats): 
             last_run = (i == repeats - 1)
             first_run = (i == 0)       
-            move_dest_vial = not self.is_vial_pipetable(dest_vial_index) and self.is_vial_movable(dest_vial_index)
-            move_source_vial = not self.is_vial_pipetable(source_vial_index) or use_safe_location and self.is_vial_movable(source_vial_index)
-            move_both = move_dest_vial and move_source_vial
 
             #Move the vial to clamp if needed to aspirate
             if move_both or (move_source_vial and first_run):
                 self.logger.debug("Moving source vial to clamp to uncap")
                 self.move_vial_to_location(source_vial_index,location='clamp',location_index=0)
-                self.uncap_clamp_vial() 
+                if not source_pipetable:
+                    self.uncap_clamp_vial() 
         
             self.aspirate_from_vial(source_vial_index,round(volume,3),move_to_aspirate=move_to_aspirate,specified_tip=tip_type,track_height=track_height)
             
             if move_both or (move_dest_vial and first_run):
                 if move_source_vial:
-                    self.recap_clamp_vial()
+                    if not source_pipetable:
+                        self.recap_clamp_vial()
                     self.return_vial_home(source_vial_index)
                 self.logger.debug("Moving destination vial to clamp to uncap")
                 self.move_vial_to_location(dest_vial_index,location='clamp',location_index=0)
-                self.uncap_clamp_vial()
+                if not dest_pipetable:
+                    self.uncap_clamp_vial()
 
             mass_increment = self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense,measure_weight=measure_mass,blowout_vol=blowout_vol)
             mass += mass_increment if mass_increment is not None else 0
 
             if move_both or (move_dest_vial and last_run): #If we moved the dest vial, we need to recap and return it
-                self.recap_clamp_vial()
+                if not dest_pipetable:
+                    self.recap_clamp_vial()
                 self.return_vial_home(dest_vial_index)
             elif move_source_vial and last_run: #If we moved the source vial, we need to recap and return it
-                self.recap_clamp_vial()
+                if not source_pipetable:
+                    self.recap_clamp_vial()
                 self.return_vial_home(source_vial_index)
 
         return mass
