@@ -20,7 +20,7 @@ REPLICATES = 3
 BAYESIAN_BATCH_SIZE = 1
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
 #MODELS = ['qEI', 'qLogEI', 'qNEHVI']
-MODELS = ['qLogEI'] #Change this!
+MODELS = ['qNEHVI'] #Change this!
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
