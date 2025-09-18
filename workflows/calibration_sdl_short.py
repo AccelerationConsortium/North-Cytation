@@ -9,7 +9,7 @@ import slack_agent
 
 # --- Experiment Config ---
 LIQUID = "glycerol"  #<------------------- CHANGE THIS!
-SIMULATE = False #<--------- CHANGE THIS!
+SIMULATE = True #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
@@ -96,7 +96,7 @@ for model_type in MODELS:
             params, trial_index = ax_client.get_next_trial()
             check_if_measurement_vial_full()
             result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
-            ax_client.complete_trial(trial_index=trial_index, raw_data=result)
+            recommender.add_result(ax_client, trial_index, results)
             result.update(params)
             result.update({"volume": volume, "trial_index": trial_index, "strategy": "SOBOL", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
             result = strip_tuples(result)

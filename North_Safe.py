@@ -1,4 +1,3 @@
-from re import S
 from Locator import *
 import numpy as np
 import time
@@ -1102,7 +1101,8 @@ class North_Robot:
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
     def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,
-                                     move_to_aspirate=True,move_to_dispense=True,track_height=True,measure_mass=False,blowout_vol=0, use_safe_location=False):
+                                     move_to_aspirate=True,move_to_dispense=True,track_height=True,measure_mass=False,blowout_vol=0, use_safe_location=False, 
+                                     aspirate_wait_time=1,aspirate_speed=11,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0):
         """
         Dispenses a specified volume from source_vial_name to dest_vial_name, with optional buffer transfer for accuracy.
 
@@ -1152,9 +1152,10 @@ class North_Robot:
                 self.move_vial_to_location(source_vial_index,location='clamp',location_index=0)
                 if not source_pipetable:
                     self.uncap_clamp_vial() 
-        
-            self.aspirate_from_vial(source_vial_index,round(volume,3),move_to_aspirate=move_to_aspirate,specified_tip=tip_type,track_height=track_height)
-            
+
+            self.aspirate_from_vial(source_vial_index,round(volume,3),move_to_aspirate=move_to_aspirate,specified_tip=tip_type,track_height=track_height,
+                                    wait_time=aspirate_wait_time,aspirate_speed=aspirate_speed,retract_speed=retract_speed,pre_asp_air_vol=pre_asp_air_vol,post_asp_air_vol=post_asp_air_vol)
+
             if move_both or (move_dest_vial and first_run):
                 if move_source_vial:
                     if not source_pipetable:
