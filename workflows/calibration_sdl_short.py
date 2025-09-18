@@ -5,6 +5,7 @@ sys.path.append("../utoronto_demo")
 import os
 from master_usdl_coordinator import Lash_E
 import recommenders.pipeting_optimizer_v2 as recommender
+import slack_agent
 
 # --- Experiment Config ---
 LIQUID = "glycerol"  #<------------------- CHANGE THIS!
@@ -40,7 +41,8 @@ lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
 
 lash_e.logger.info("Liquid: ", LIQUIDS[LIQUID])
-
+if not SIMULATE:
+    slack_agent.send_slack_message(f"Starting new calibration experiment with {LIQUID} and models {MODELS}")
 
 for model_type in MODELS:
     if not SIMULATE:
@@ -126,3 +128,4 @@ for model_type in MODELS:
 
     if not SIMULATE:
         save_analysis(results_df, pd.DataFrame(raw_measurements), autosave_dir)
+        slack_agent.send_slack_message(f"Calibration experiment with {LIQUID} and model {model_type} completed. Results saved to {autosave_dir}")
