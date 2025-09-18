@@ -8,7 +8,7 @@ import recommenders.pipeting_optimizer_v2 as recommender
 
 # --- Experiment Config ---
 LIQUID = "glycerol"  #<------------------- CHANGE THIS!
-SIMULATE = False #<--------- CHANGE THIS!
+SIMULATE = True #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
@@ -17,10 +17,12 @@ SEED = 7
 SOBOL_CYCLES_PER_VOLUME = 5
 BAYES_CYCLES_PER_VOLUME = 27
 REPLICATES = 3
-BAYESIAN_BATCH_SIZE = 3
+BAYESIAN_BATCH_SIZE = 1
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
 #MODELS = ['qEI', 'qLogEI', 'qNEHVI']
 MODELS = ['qEI'] #Change this!
+USE_EXISTING_DATA = False
+EXISTING_DATA_FOLDER = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\no_overvolumes"
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
@@ -53,20 +55,21 @@ for model_type in MODELS:
         autosave_summary_path=None
 
     # --- Optimization Loop ---
-    ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), bayesian_batch_size=BAYESIAN_BATCH_SIZE, volume=VOLUMES, model_type=model_type)
+    ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), bayesian_batch_size=BAYESIAN_BATCH_SIZE, volume=VOLUMES, model_type=model_type, simulate=SIMULATE)
     
     # ...existing code...
-    base_folder = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\no_overvolumes"
-    #base_folder = r"C:\Users\owenm\OneDrive\Desktop\Calibration_SDL"
-    additional_folders = [folder for folder in os.listdir(base_folder) if "glycerol" in folder.lower() and os.path.isdir(os.path.join(base_folder, folder))]
-    # ...existing code...
-    for folder in additional_folders:
-        file_path = os.path.join(base_folder, folder, "experiment_summary.csv")
-        if os.path.exists(file_path):
-            lash_e.logger.info(f"Loading existing data from {file_path}")
-            recommender.load_data(ax_client, file_path)
-        else:
-            lash_e.logger.info(f"No summary file found in {file_path}, skipping.")
+    if USE_EXISTING_DATA:
+        base_folder = EXISTING_DATA_FOLDER
+        #base_folder = r"C:\Users\owenm\OneDrive\Desktop\Calibration_SDL"
+        additional_folders = [folder for folder in os.listdir(base_folder) if "glycerol" in folder.lower() and os.path.isdir(os.path.join(base_folder, folder))]
+        # ...existing code...
+        for folder in additional_folders:
+            file_path = os.path.join(base_folder, folder, "experiment_summary.csv")
+            if os.path.exists(file_path):
+                lash_e.logger.info(f"Loading existing data from {file_path}")
+                recommender.load_data(ax_client, file_path)
+            else:
+                lash_e.logger.info(f"No summary file found in {file_path}, skipping.")
     all_results = []
     raw_measurements = []
 

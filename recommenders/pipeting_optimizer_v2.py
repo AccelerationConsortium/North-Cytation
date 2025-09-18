@@ -82,14 +82,14 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, model_type
 
     ax_client.create_experiment(
         parameters=[
-            {"name": "aspirate_speed", "type": "range", "bounds": [5, 30]},
-            {"name": "dispense_speed", "type": "range", "bounds": [5, 30]},
+            {"name": "aspirate_speed", "type": "range", "bounds": [5, 35]},
+            {"name": "dispense_speed", "type": "range", "bounds": [5, 35]},
             {"name": "aspirate_wait_time", "type": "range", "bounds": [0.0, 30.0]},
             {"name": "dispense_wait_time", "type": "range", "bounds": [0.0, 30.0]},
             {"name": "retract_speed", "type": "range", "bounds": [1.0, 15.0]},
             {"name": "pre_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
             {"name": "post_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
-            {"name": "overaspirate_vol", "type": "range", "bounds": [0.0, 0.01]},
+            {"name": "overaspirate_vol", "type": "range", "bounds": [0.0, max(volume)/2]},
         ],
         objectives={
             obj1_name: ObjectiveProperties(minimize=True, threshold=50),

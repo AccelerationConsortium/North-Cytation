@@ -65,8 +65,8 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
 def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time):
     pre_air = params.get("pre_asp_air_vol", 0)
     post_air = params.get("post_asp_air_vol", 0)
-    #over_volume = params.get("overaspirate_vol", 0)
-    over_volume = 0
+    over_volume = params.get("overaspirate_vol", 0)
+    #over_volume = 0
     air_vol = pre_air + post_air
     aspirate_kwargs = {
         "aspirate_speed": params["aspirate_speed"],
