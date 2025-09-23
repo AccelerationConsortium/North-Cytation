@@ -9,7 +9,7 @@ import slack_agent
 
 # --- Experiment Config ---
 LIQUID = "glycerol"  #<------------------- CHANGE THIS!
-SIMULATE = True #<--------- CHANGE THIS!
+SIMULATE = False #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
@@ -22,8 +22,8 @@ BAYESIAN_BATCH_SIZE = 1
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
 #MODELS = ['qEI', 'qLogEI', 'qNEHVI']
 MODELS = ['qEI'] #Change this!
-USE_EXISTING_DATA = False
-EXISTING_DATA_FOLDER = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\no_overvolumes"
+USE_EXISTING_DATA = True
+EXISTING_DATA_FOLDER = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\0922_8params"
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
@@ -96,7 +96,7 @@ for model_type in MODELS:
             params, trial_index = ax_client.get_next_trial()
             check_if_measurement_vial_full()
             result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
-            recommender.add_result(ax_client, trial_index, results)
+            recommender.add_result(ax_client, trial_index, result)
             result.update(params)
             result.update({"volume": volume, "trial_index": trial_index, "strategy": "SOBOL", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
             result = strip_tuples(result)
