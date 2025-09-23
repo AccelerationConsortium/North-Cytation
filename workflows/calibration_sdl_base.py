@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 import numpy as np
 import pandas as pd
+from pipetting_data.pipetting_parameters import PipettingParameters
 import analysis.calibration_analyzer as analyzer
 
 LIQUIDS = {
@@ -68,27 +69,28 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
     over_volume = params.get("overaspirate_vol", 0)
     #over_volume = 0
     air_vol = pre_air + post_air
-    aspirate_kwargs = {
-        "aspirate_speed": params["aspirate_speed"],
-        "wait_time": params["aspirate_wait_time"],
-        "retract_speed": params["retract_speed"],
-        "pre_asp_air_vol": pre_air,
-        "post_asp_air_vol": post_air,
-    }
-    dispense_kwargs = {
-        "dispense_speed": params["dispense_speed"],
-        "wait_time": params["dispense_wait_time"],
-        "measure_weight": True,
-        "air_vol": air_vol,
-    }
+    
+    # Create PipettingParameters objects instead of kwargs dictionaries
+    aspirate_params = PipettingParameters(
+        aspirate_speed=params["aspirate_speed"],
+        aspirate_wait_time=params["aspirate_wait_time"],
+        retract_speed=params["retract_speed"],
+        pre_asp_air_vol=pre_air,
+        post_asp_air_vol=post_air,
+    )
+    dispense_params = PipettingParameters(
+        dispense_speed=params["dispense_speed"],
+        dispense_wait_time=params["dispense_wait_time"],
+        air_vol=air_vol,
+    )
     
 
     measurements = []
     start = time.time()
     for replicate_idx in range(replicate_count):
         replicate_start = datetime.now().isoformat()
-        lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, **aspirate_kwargs)
-        measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, **dispense_kwargs)
+        lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, parameters=aspirate_params)
+        measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, parameters=dispense_params, measure_weight=True)
         if new_pipet_each_time:
             lash_e.nr_robot.remove_pipet()
         replicate_end = datetime.now().isoformat()

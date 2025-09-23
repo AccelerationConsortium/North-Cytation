@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+from pipetting_data.pipetting_parameters import PipettingParameters
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/microgel_inputs.csv" #This file contains the status of the vials used for the workflow
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\abs_300_800_sweep.prt" #This is the measurement protocol developed in the Cytation software
@@ -52,7 +53,9 @@ def dilute_microgel(lash_e, source_vial_name, target_vial_name, initial_concentr
     # Add concentrated microgel from source vial
     lash_e.nr_robot.vortex_vial(vial_name=source_vial_name, vortex_time=5)  # Ensure microgel is well mixed
     lash_e.nr_robot.move_vial_to_location(source_vial_name, 'main_8mL_rack', 45)  # Move to pipetting position
-    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name=source_vial_name,dest_vial_name=target_vial_name,volume=volume_microgel,blowout_vol=0.10)  # Dispense concentrated microgel
+    # Use new parameter system with blowout volume
+    microgel_params = PipettingParameters(blowout_vol=0.10)
+    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name=source_vial_name, dest_vial_name=target_vial_name, volume=volume_microgel, parameters=microgel_params)  # Dispense concentrated microgel
     lash_e.nr_robot.remove_pipet()  # Remove pipette to avoid contamination
     lash_e.nr_robot.return_vial_home(source_vial_name)  # Return source vial to its home position
 
@@ -114,7 +117,21 @@ def calculate_volumes(total_volume_mL,toluidine_blue_mL,concentration_high_mg_mL
 
 def dispense_into_wellplate(lash_e, wellplate_volumes, liquid_source):
     lash_e.nr_robot.move_vial_to_location(liquid_source, 'main_8mL_rack', 45)
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(wellplate_volumes[[liquid_source]], [liquid_source], well_plate_type="48 WELL PLATE", pipet_back_and_forth=True, blowout_vol=0.10, buffer_vol=0, low_volume_cutoff=0.2)
+    
+    # Create parameters for this dispensing operation
+    from pipetting_data.pipetting_parameters import PipettingParameters
+    params = PipettingParameters(
+        blowout_vol=0.10,
+        # pipet_back_and_forth=True - this was old batching behavior, will use strategy="auto"
+    )
+    
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(
+        wellplate_volumes[[liquid_source]], 
+        parameters=params,
+        strategy="serial",  # Use serial for full parameter support including blowout
+        well_plate_type="48 WELL PLATE", 
+        low_volume_cutoff=0.2
+    )
     lash_e.nr_robot.return_vial_home(liquid_source)
 
 def analyze_spectral_data(filepath, concentrations, output_prefix="output"):
@@ -254,7 +271,7 @@ with Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate, logging=enable_logging) a
         dispense_into_wellplate(lash_e, wellplate_volumes, liquid_source)
 
     #Mix the wells using aspirate/dispense
-    lash_e.nr_robot.get_pipet(0)
+    lash_e.nr_robot.get_pipet("large_tip")
     for well in wells:
         lash_e.nr_robot.mix_well_in_wellplate(well, volume=0.5, well_plate_type="48 WELL PLATE")
     lash_e.nr_robot.remove_pipet()

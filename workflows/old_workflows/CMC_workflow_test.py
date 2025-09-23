@@ -74,7 +74,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,DMSO_py
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant,[substock_vial_index],well_plate_type="48 WELL PLATE",dispense_speed=15)
     lash_e.nr_robot.dispense_from_vials_into_wellplate(df_water,[water_index],well_plate_type="48 WELL PLATE",dispense_speed=11)
 
-    lash_e.nr_robot.get_pipet(0) #get big pipet tip
+    lash_e.nr_robot.get_pipet("large_tip") #get big pipet tip
     for well in well_indices:
         lash_e.nr_robot.mix_well_in_wellplate(well,volume=0.3,well_plate_type="48 WELL PLATE")
     lash_e.nr_robot.remove_pipet()

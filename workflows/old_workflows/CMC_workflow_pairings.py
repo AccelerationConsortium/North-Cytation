@@ -134,7 +134,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index,last_wp
 
     lash_e.nr_robot.return_vial_home(substock_vial_index) #return home from safe location
 
-    lash_e.nr_robot.get_pipet(0) #get big pipet tip
+    lash_e.nr_robot.get_pipet("large_tip") #get big pipet tip
     for well in well_indices:
         lash_e.nr_robot.mix_well_in_wellplate(well,volume=0.3,well_plate_type="48 WELL PLATE")
     lash_e.nr_robot.remove_pipet()

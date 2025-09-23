@@ -1,4 +1,5 @@
-from Locator import *
+from robot_state.Locator import * #Let's try to eliminate this in the future
+import robot_state.Locator as Locator
 import numpy as np
 import time
 import math
@@ -7,77 +8,219 @@ import slack_agent
 import yaml
 from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
+from pipetting_data.pipetting_parameters import PipettingParameters
 import matplotlib.patches as patches
 
-class North_Track:
-
-    #Controller
-    c9 = None
-    MAX_HEIGHT = 0
-    RELEASE_DISTANCE_Y = 2400
-    LID_DISTANCE_Y = 4000
-
-    #Well plate active areas
-    NR_WELL_PLATE_X = [131854,105860,81178]
-    #NR_WELL_PLATE_Y = [88750, 86965, 89155]
-    NR_WELL_PLATE_Y = [88750, 88000, 89155]
-    #NR_WELL_PLATE_Y_RELEASE = 86000
+class North_Base:
+    """Base class for North robot components with shared functionality"""
     
-    #Transit constants
-    WELL_PLATE_TRANSFER_Y = 75000
-    CYT_SAFE_X = 47747
+    def pause_after_error(self, err_message, send_slack=True):
+        """Pause execution after an error with logging and optional Slack notification"""
+        self.logger.error(err_message)
+        if send_slack and not self.simulate:
+            try:
+                slack_agent.send_slack_message(err_message)
+            except Exception as e:
+                self.logger.error(f"Failed to send Slack message: {e}")
+        
+        if not self.simulate:
+            input(f"Error: {err_message}. Press Enter to continue...")
+        else:
+            self.logger.warning(f"SIMULATION MODE: Would pause for error: {err_message}")
     
-    #Release into cytation
-    CYT_TRAY_Y_RELEASE = 5500
-    CYT_TRAY_Y_GRAB = 8500
-    CYT_TRAY_X = 68608
+    def _load_yaml_file(self, file_path, description, required=True, convert_none=False):
+        """
+        Unified YAML file loader with consistent error handling
+        
+        Args:
+            file_path (str): Path to the YAML file
+            description (str): Human-readable description for error messages
+            required (bool): Whether the file is required (default: True)
+            convert_none (bool): Whether to convert "None"/"null" strings to None (default: False)
+            
+        Returns:
+            dict: Loaded YAML data, or None if file not found and not required
+        """
+        try:
+            with open(file_path, 'r') as file:
+                data = yaml.safe_load(file)
+                
+            if convert_none:
+                data = self._convert_none_values(data)
+                
+            self.logger.debug(f"Loaded {description} from {file_path}")
+            return data
+            
+        except FileNotFoundError:
+            if required:
+                self.pause_after_error(f"{description} file not found: {file_path}")
+            else:
+                self.logger.warning(f"{description} file not found: {file_path}")
+            return None
+        except yaml.YAMLError as e:
+            self.pause_after_error(f"Error parsing {description} YAML file: {e}")
+            return None
+        except IOError as e:
+            self.pause_after_error(f"Error reading {description} file: {e}")
+            return None
 
-    #QUARTZ_WP_OFFSET = 1300
-    QUARTZ_WP_OFFSET = 3000
+    def _convert_none_values(self, value):
+        """Convert "None" or "null" strings to actual None values recursively"""
+        if isinstance(value, dict):
+            return {k: self._convert_none_values(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [self._convert_none_values(v) for v in value]
+        elif value in ["None", "null"]:
+            return None
+        return value
+    
+    def _load_wellplate_config(self, file_path="../utoronto_demo/robot_state/wellplates.yaml"):
+        """Load wellplate configuration from YAML file using unified method"""
+        self.WELLPLATES = self._load_yaml_file(
+            file_path, 
+            "wellplate properties configuration", 
+            required=False, 
+            convert_none=True
+        )
+    
+    def get_config_parameter(self, config_name, key, parameter, default=None, error_on_missing=True):
+        """
+        Unified method to safely get parameters from any configuration dictionary
+        
+        Args:
+            config_name (str): Name of the configuration (for error messages)
+            key (str): First-level key in the config (e.g., tip_type, rack_name, location_name)
+            parameter (str): Parameter name to retrieve
+            default: Default value if parameter not found
+            error_on_missing (bool): Whether to pause on missing config (default: True)
+            
+        Returns:
+            Parameter value or default
+        """
+        config_map = {
+            'vial_positions': 'VIAL_POSITIONS',
+            'pipet_tips': 'PIPET_TIPS', 
+            'pipet_racks': 'PIPET_RACKS',
+            'wellplates': 'WELLPLATES',
+            'pumps': 'PUMP_CONFIG',
+            'robot_hardware': 'ROBOT_HARDWARE'
+        }
+        
+        if config_name not in config_map:
+            self.pause_after_error(f"Unknown configuration name: {config_name}")
+            return default
+            
+        config_attr = config_map[config_name]
+        config_dict = getattr(self, config_attr, None)
+        
+        if config_dict is None:
+            if error_on_missing:
+                self.pause_after_error(f"Cannot access {config_name} parameter '{parameter}' - {config_name} configuration not loaded")
+            else:
+                self.logger.warning(f"Cannot access {config_name} parameter '{parameter}' - {config_name} configuration not loaded, using default: {default}")
+            return default
+        
+        # Try both integer and string keys since YAML may parse numeric keys as integers
+        item_config = config_dict.get(key, {})
+        if not item_config:
+            item_config = config_dict.get(str(key), {})
+        
+        return item_config.get(parameter, default)
 
-    #Speed horizontal
-    DEFAULT_X_SPEED = 50
+class North_Track(North_Base):
 
-    #Speed vertical
-    DEFAULT_Y_SPEED = 50
-
-    """New double WP stack"""
-    DOUBLE_SOURCE_X = 175 #50 with old holder (but scratches WP) 
-    DOUBLE_WASTE_X = 14550 
-    DOUBLE_TRANSFER_X = 28000 
-    DOUBLE_SOURCE_Y_96 = [83500, 76800, 70700] #first element = height when 1 WP is in stack
-    DOUBLE_WASTE_Y_96 = [83000, 76350, 70200] #first element = height when dropping off 1st WP to waste
-    DOUBLE_SOURCE_Y_48 =  [83500, 74000, 64500]
-    DOUBLE_WASTE_Y_48 = [83000, 73500, 64000]
-
-    SOURCE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_SOURCE_Y_96, "48 WELL PLATE": DOUBLE_SOURCE_Y_48}
-    WASTE_HEIGHTS_DICT = {"96 WELL PLATE": DOUBLE_WASTE_Y_96, "48 WELL PLATE": DOUBLE_WASTE_Y_48}
-
-    #num_source = 0 #number of wellplates in source stack 
-    well_plate_df = None
-
-    #Let's initialize the number of well plates from a file
+    # === 1. INITIALIZATION & CONFIGURATION ===
     def __init__(self, c9, simulate = False, logger=None):
         self.c9 = c9
         self.logger = logger
         self.logger.info("Initializing North Track...")
-        #self.well_plate_df = pd.read_csv("../utoronto_demo/status/wellplate_storage_status.txt", sep=r",", engine="python") #TODO: not sure if needed anymore?
-        #self.num_source = int(self.well_plate_df.loc[self.well_plate_df['Location']=='Input']['Status'].values)
 
         self.NUM_SOURCE = 0
         self.NUM_WASTE = 0
         self.CURRENT_WP_TYPE = "96 WELL PLATE"
-        self.NR_OCCUPIED = False
+        self.ACTIVE_WELLPLATE_POSITION = None  # null, 'gripper', 'pipetting_area', 'cytation_tray', etc.
         self.simulate = simulate
 
         #Load yaml data
-        self.logger.debug("Loading track status from file: %s", "../utoronto_demo/status/track_status.yaml")
-        self.TRACK_STATUS_FILE = "../utoronto_demo/status/track_status.yaml"
+        self.logger.debug("Loading track status from file: %s", "../utoronto_demo/robot_state/track_status.yaml")
+        self.TRACK_STATUS_FILE = "../utoronto_demo/robot_state/track_status.yaml"
         self.get_track_status() #set NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED from yaml file
+        
+        # Load track positions configuration
+        self.TRACK_POSITIONS_FILE = "../utoronto_demo/robot_state/track_positions.yaml"
+        self._load_track_positions()
+        
+        # Load robot hardware configuration for axis mappings
+        self.ROBOT_HARDWARE_FILE = "../utoronto_demo/robot_state/robot_hardware.yaml"
+        self._load_robot_hardware()
+        
+        # Load wellplate configuration using base class method
+        self._load_wellplate_config()
+
+        #Bias    
         self.reset_after_initialization()
     
+    def _load_track_positions(self):
+        """Load track positioning configuration from YAML file"""
+        self.logger.debug("Loading track positions from: %s", self.TRACK_POSITIONS_FILE)
+        self.TRACK_POSITIONS = self._load_yaml_file(
+            self.TRACK_POSITIONS_FILE, 
+            "track positions configuration", 
+            required=True, 
+            convert_none=False
+        )
+    
+    def _load_robot_hardware(self):
+        """Load robot hardware configuration from YAML file"""
+        self.logger.debug("Loading robot hardware configuration from: %s", self.ROBOT_HARDWARE_FILE)
+        self.ROBOT_HARDWARE = self._load_yaml_file(
+            self.ROBOT_HARDWARE_FILE, 
+            "robot hardware configuration", 
+            required=True, 
+            convert_none=False
+        )
+
+    def get_track_status(self):
+        self.logger.debug("Getting track status from file: %s", self.TRACK_STATUS_FILE)
+        """Get the track status from the yaml file."""
+        
+        # Load track status using unified method from North_Base
+        track_status = self._load_yaml_file(
+            self.TRACK_STATUS_FILE, 
+            "track status", 
+            required=True, 
+            convert_none=True
+        )
+        
+        if track_status is None:
+            return
+
+        try:
+            self.NUM_SOURCE = track_status['num_in_source']
+            self.NUM_WASTE = track_status['num_in_waste']
+            self.CURRENT_WP_TYPE = track_status['wellplate_type']
+            self.ACTIVE_WELLPLATE_POSITION = track_status.get('active_wellplate_position')  # New unified field
+        except KeyError as e:
+            self.pause_after_error(f"Missing required field in track status: {e}", False)
+        except Exception as e:
+            self.pause_after_error(f"Issue processing track status: {e}", False)
+
+    def save_track_status(self):
+        #self.logger.debug("Saving track status to file: %s", self.TRACK_STATUS_FILE)
+        track_status = {
+            "num_in_source": self.NUM_SOURCE,
+            "num_in_waste": self.NUM_WASTE,
+            "wellplate_type": self.CURRENT_WP_TYPE,
+            "active_wellplate_position": self.ACTIVE_WELLPLATE_POSITION
+        }
+
+        if not self.simulate: #not simulating
+            # Writing to a file
+            with open(self.TRACK_STATUS_FILE, "w") as file:
+                yaml.dump(track_status, file, default_flow_style=False)
+
     def check_input_file(self, pause_after_check=True, visualize=True):
-        self.logger.info(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n NR Pipetting area occupied: {self.NR_OCCUPIED}")
+        self.logger.info(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n Active wellplate position: {self.ACTIVE_WELLPLATE_POSITION}")
 
         if visualize:
             self.logger.info("Visualizing wellplate status...")
@@ -101,7 +244,7 @@ class North_Track:
                 ax.text(5 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
                         self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
 
-            if self.NR_OCCUPIED:
+            if self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area':
                 rect = plt.Rectangle((9, 0), plate_width, plate_height,
                                     edgecolor='black', facecolor='khaki')
                 ax.add_patch(rect)
@@ -126,11 +269,89 @@ class North_Track:
             input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
 
     def reset_after_initialization(self):
-        None
-        #Return well plate if well-plate in gripper
-        #Send used well plate to trash
-        #Send unused well plate back to source
+        """Reset robot to known state after initialization"""
+        if self.ACTIVE_WELLPLATE_POSITION == 'gripper':
+            # Discard the wellplate currently in gripper
+            self.discard_wellplate(move_home_afterwards=True)
+     
+    # === 2. CONFIGURATION ACCESS METHODS ===  
+    def get_position(self, position_name):
+        """Get position coordinates by name"""
+        positions = self.TRACK_POSITIONS.get('positions', {})
+        position = positions.get(position_name)
+        if not position:
+            self.logger.error(f"Position '{position_name}' not found in track configuration")
+            return None
+        return position
+    
+    # === WELLPLATE POSITION TRACKING ===
+    def set_wellplate_position(self, position):
+        """Set the current wellplate position (null, 'gripper', 'pipetting_area', 'cytation_tray', etc.)"""
+        self.ACTIVE_WELLPLATE_POSITION = position
+        self.save_track_status()
+    
+    def get_speed(self, speed_name):
+        """Get movement speed by name"""
+        speeds = self.TRACK_POSITIONS.get('speeds', {})
+        speed = speeds.get(speed_name)
+        if speed is None:
+            self.logger.warning(f"Speed '{speed_name}' not found, using default")
+            return 50  # Default fallback speed
+        return speed
+    
+    def get_limit(self, limit_name):
+        """Get movement limit by name"""
+        limits = self.TRACK_POSITIONS.get('limits', {})
+        limit = limits.get(limit_name)
+        if limit is None:
+            self.logger.warning(f"Limit '{limit_name}' not found in track configuration")
+            return 0  # Default fallback
+        return limit
+    
+    def get_timing(self, timing_name):
+        """Get timing parameter by name"""
+        timing = self.TRACK_POSITIONS.get('timing', {})
+        value = timing.get(timing_name)
+        if value is None:
+            self.logger.warning(f"Timing '{timing_name}' not found in track configuration")
+            return 1  # Default fallback
+        return value
+    
+    def get_axis(self, axis_name):
+        """Get hardware axis number by name from robot hardware configuration"""
+        if not hasattr(self, 'ROBOT_HARDWARE') or not self.ROBOT_HARDWARE:
+            self.logger.error("Robot hardware configuration not loaded")
+            # Fallback to legacy hardcoded values for safety
+            fallbacks = {
+                'x_axis': 7,
+                'z_axis': 6, 
+                'gripper_open': 4,
+                'gripper_close': 5
+            }
+            return fallbacks.get(axis_name, 0)
+        
+        # Check track_axes for track-specific axes
+        track_axes = self.ROBOT_HARDWARE.get('track_axes', {})
+        axis = track_axes.get(axis_name)
+        
+        # Check track_pneumatics for pneumatic outputs
+        if axis is None:
+            track_pneumatics = self.ROBOT_HARDWARE.get('track_pneumatics', {})
+            axis = track_pneumatics.get(axis_name)
+        
+        if axis is None:
+            self.logger.error(f"Hardware axis '{axis_name}' not found in robot hardware configuration")
+            # Fallback to legacy hardcoded values for safety
+            fallbacks = {
+                'x_axis': 7,
+                'z_axis': 6, 
+                'gripper_open': 4,
+                'gripper_close': 5
+            }
+            return fallbacks.get(axis_name, 0)
+        return axis
 
+    # === 3. BASIC MOVEMENT & GRIPPER PRIMITIVES ===
     def set_horizontal_speed(self,vel):
         self.logger.debug("Setting horizontal speed to %d", vel)
         self.c9.DEFAULT_X_SPEED = vel
@@ -141,181 +362,190 @@ class North_Track:
 
     def open_gripper(self):
         self.logger.debug("Opening gripper")
-        self.c9.set_output(4, True)  
-        self.c9.set_output(5, False)
-        self.c9.delay(2)
+        self.c9.set_output(self.get_axis('gripper_open'), True)  
+        self.c9.set_output(self.get_axis('gripper_close'), False)
+        self.c9.delay(self.get_timing('gripper_delay'))
     
     def close_gripper(self):
         self.logger.debug("Closing gripper")
-        self.c9.set_output(5, True)  #gripper close
-        self.c9.set_output(4, False)
-        self.c9.delay(2)
+        self.c9.set_output(self.get_axis('gripper_close'), True)  #gripper close
+        self.c9.set_output(self.get_axis('gripper_open'), False)
+        self.c9.delay(self.get_timing('gripper_delay'))
 
-    def grab_well_plate_from_nr(self, well_plate_num, grab_lid=False,quartz_wp=False):
+    def origin(self):
+        self.c9.move_axis(self.get_axis('z_axis'), self.get_limit('max_safe_height'), vel=self.get_speed('default_z')) #max_height
+        self.c9.move_axis(self.get_axis('x_axis'), 0, vel=self.get_speed('default_x'))
+        self.logger.debug("Moving North Track to home position")
+
+    # === 4. WELLPLATE MOVEMENT SEQUENCES ===
+    def transfer_wellplate_via_path(self, destination_x, destination_z, waypoint_locations=None):
         """
-        Grab a well plate from the designated wellplate stand. Currently directly moves horizontally, then down to the wellplate stand, grabs wp and ends by moving up slightly to WELL_PLATE_TRANSFER_Y.
-        """
-        self.logger.info("Grabbing well plate %d from NR", well_plate_num)
-        move_up = 0
-        if grab_lid:
-            move_up = self.LID_DISTANCE_Y 
-        if quartz_wp:
-            move_up = -self.QUARTZ_WP_OFFSET #
-        self.open_gripper() #TODO: move up to safe height first?
-        self.c9.move_axis(7, self.NR_WELL_PLATE_X[well_plate_num], vel=self.DEFAULT_X_SPEED) #left to WP
-        self.c9.move_axis(6, self.NR_WELL_PLATE_Y[well_plate_num]-move_up, vel=self.DEFAULT_Y_SPEED) #down
-        self.close_gripper()
-        self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=self.DEFAULT_Y_SPEED) #up slightly
-
-        #save status
-        self.NR_OCCUPIED = False
-        self.save_track_status() #update yaml
-
-    def move_gripper_to_cytation(self):
-        self.logger.debug("Moving gripper to Cytation")
-        self.c9.move_axis(7, self.CYT_SAFE_X, vel=self.DEFAULT_X_SPEED) #past Cytation loading
-        self.c9.move_axis(6,self.MAX_HEIGHT,vel=self.DEFAULT_Y_SPEED) #up to max height
-    
-    def release_well_plate_in_cytation(self,quartz_wp=False):
-        self.logger.info("Releasing well plate in Cytation")
-        move_up = 0
-        if quartz_wp:
-            move_up = -self.QUARTZ_WP_OFFSET #
-        #OPEN CYTATION TRAY
-        self.c9.move_axis(7, self.CYT_TRAY_X, vel=self.DEFAULT_X_SPEED) #to well plate loading
-        self.c9.move_axis(6, self.CYT_TRAY_Y_RELEASE-move_up,vel=25) #down slightly
-        self.open_gripper()
-        self.c9.move_axis(6,self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #back to max height
-        #CLOSE CYTATION TRAY
-
-    def grab_well_plate_from_cytation(self,quartz_wp=False):
-        #OPEN CYTATION TRAY
-        self.logger.info("Grabbing well plate from Cytation")
-        move_up = 0
-        if quartz_wp:
-            move_up = -self.QUARTZ_WP_OFFSET #
-        self.open_gripper()
-        self.c9.move_axis(6, self.CYT_TRAY_Y_GRAB-move_up,vel=25) #down slightly
-        self.close_gripper()
-        self.c9.move_axis(6,self.MAX_HEIGHT,vel=self.DEFAULT_Y_SPEED) #up to max height
-        self.c9.move_axis(7, self.CYT_SAFE_X, vel=self.DEFAULT_X_SPEED) #past Cytation loading
-        #CLOSE CYTATION TRAY
-        
-    def return_well_plate_to_nr(self, well_plate_num, grab_lid=False,quartz_wp=False):
-        self.logger.info("Returning well plate to NR well plate stand %d", well_plate_num)
-        """Return the well plate to the NR station. Assumes already holding a wellplate, will move down to WELL_PLATE_TRANSFER_Y directly when called.
+        Transfer wellplate using configurable safe routing via specified waypoint locations.
         
         Args:
-            `well_plate_num`(int): The number identifying which wp stand to return to (0 for the pipetting one)
-            `grab_lid`(bool): if grabbing lid (default = False)
-            `quartz_wp`(bool): if the wellplate is quartz (default = False)
+            destination_x (float): Final X position for wellplate placement
+            destination_z (float): Final Z position for wellplate placement
+            waypoint_locations (list): List of location names to visit as waypoints (e.g., ['transfer_stack', 'cytation_safe_area'])
         """
+        
+        if waypoint_locations:
+            # Visit each waypoint location in order
+            for waypoint_name in waypoint_locations:
+                waypoint = self.get_position(waypoint_name)
+                if not waypoint:
+                    self.logger.error(f"Waypoint '{waypoint_name}' not found in configuration")
+                    continue
+                    
+                # Move to waypoint X and Z positions
+                if 'x' in waypoint:
+                    self.c9.move_axis(self.get_axis('x_axis'), waypoint['x'], vel=self.get_speed('default_x'))
+                if 'z' in waypoint:
+                    self.c9.move_axis(self.get_axis('z_axis'), waypoint['z'], vel=self.get_speed('default_z'))
+        
+        # Move to final destination
+        self.c9.move_axis(self.get_axis('z_axis'), destination_z, vel=self.get_speed('default_z'))
+        self.c9.move_axis(self.get_axis('x_axis'), destination_x, vel=self.get_speed('default_x'))
+
+    def grab_wellplate_from_location(self, location_name, wellplate_type="96 WELL PLATE", waypoint_locations=None, z_override=None):
+        """
+        Unified method to grab a wellplate from any configured location.
+        
+        Args:
+            location_name (str): Name of location in track_positions.yaml (e.g., 'pipetting_area', 'cytation_tray')
+            wellplate_type (str): Type of wellplate for height adjustment
+            waypoint_locations (list): Optional list of waypoint location names for safe routing after grabbing
+            z_override (float): Optional Z position override for dynamic stack heights
+        """
+        self.logger.info(f"Grabbing wellplate from location: {location_name}")
+        
+        # Get location position from YAML
+        location_pos = self.get_position(location_name)
+        if not location_pos:
+            self.logger.error(f"Location '{location_name}' not found in configuration")
+            return
+        
+        # Extract position coordinates (handle different location formats)
+        x_pos = location_pos['x']
+        z_transfer = location_pos['z_transfer']
+        
+        if z_override is not None: # Use provided Z override for dynamic positioning (e.g., stack heights)
+            z_grab = z_override
+        elif 'z_grab' in location_pos:  #Defined z_grab
+            z_grab = location_pos['z_grab']
+        else:
+            self.logger.error(f"No Z coordinate found for location '{location_name}' and no z_override provided")
+            return
+        
+        # Calculate vertical offset based on wellplate type
         move_up = 0
-        if grab_lid:
-            move_up = self.LID_DISTANCE_Y 
-        if quartz_wp:
-            move_up = -self.QUARTZ_WP_OFFSET #
-        self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=self.DEFAULT_Y_SPEED) #down
-        self.c9.move_axis(7, self.NR_WELL_PLATE_X[well_plate_num] , vel=self.DEFAULT_X_SPEED) #left to WP
-        self.c9.move_axis(6, self.NR_WELL_PLATE_Y[well_plate_num]-self.RELEASE_DISTANCE_Y-move_up, vel=50) #down
+        move_up += self.get_config_parameter('wellplates', wellplate_type, "gripping_z_offset", error_on_missing=False) or 0
+        z_grab_final = z_grab - move_up
+        
+        self.transfer_wellplate_via_path(x_pos, z_transfer, waypoint_locations)  # Move to transfer height first
+
+        # Execute movement sequence
         self.open_gripper()
-        self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=self.DEFAULT_Y_SPEED) #up slightly
+        self.c9.move_axis(self.get_axis('z_axis'), z_grab_final, vel=self.get_speed('slow_movement')) #Move to grab height
+        self.close_gripper()
+        self.set_wellplate_position('gripper')
+        
+        #Move to transfer height
+        self.c9.move_axis(self.get_axis('z_axis'), z_transfer, vel=self.get_speed('default_z'))
+       
+    def release_wellplate_in_location(self, location_name, wellplate_type="96 WELL PLATE", waypoint_locations=None, z_override=None):
+        """
+        Unified method to release a wellplate at any configured location with optional safe routing.
+        
+        Args:
+            location_name (str): Name of location in track_positions.yaml
+            wellplate_type (str): Type of wellplate for height adjustment  
+            waypoint_locations (list): Optional list of waypoint location names for safe routing (e.g., ['cytation_safe_area'])
+            z_override (float): Optional Z position override for dynamic stack heights
+        """
+        self.logger.info(f"Releasing wellplate at location: {location_name}")
+        
+        # Get location position from YAML
+        location_pos = self.get_position(location_name)
+        if not location_pos:
+            self.logger.error(f"Location '{location_name}' not found in configuration")
+            return
+        
+        # Extract position coordinates (handle different location formats)
+        x_pos = location_pos['x']
+        z_transfer = location_pos['z_transfer']
+        
+        if z_override is not None:
+            # Use provided Z override for dynamic positioning (e.g., stack heights)
+            z_release = z_override
+        elif 'z_release' in location_pos:  # Cytation-style location
+            z_release = location_pos['z_release']
+        else:
+            self.logger.error(f"No Z coordinate found for location '{location_name}' and no z_override provided")
+            return
+        
+        # Calculate vertical offset based on wellplate type
+        move_up = 0
+        move_up += self.get_config_parameter('wellplates', wellplate_type, "gripping_z_offset", error_on_missing=False) or 0
+        
+        # Calculate final Z position
+        final_z_release = z_release - move_up
 
-        self.NR_OCCUPIED = True
-        self.save_track_status() #update yaml
-    
-    def origin(self):
-        self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #max_height
-        self.c9.move_axis(7, 0, vel=self.DEFAULT_X_SPEED)
-        self.logger.debug("Moving North Track to home position")
-      
-    #Save the status of the robot to memory
-    def save_track_status(self):
-        #self.logger.debug("Saving track status to file: %s", self.TRACK_STATUS_FILE)
-        track_status = {
-            "num_in_source": self.NUM_SOURCE,
-            "num_in_waste": self.NUM_WASTE,
-            "wellplate_type": self.CURRENT_WP_TYPE,
-            "nr_occupied": self.NR_OCCUPIED
-        }
+        # Execute movement sequence to get there
+        self.transfer_wellplate_via_path(x_pos, z_transfer, waypoint_locations)  # Move to transfer height first
+        
+        #Move down to release height & Release
+        self.c9.move_axis(self.get_axis('z_axis'), final_z_release, vel=self.get_speed('slow_movement'))
+        self.open_gripper()
+        self.set_wellplate_position(location_name)  # Wellplate released at this location
+        
+        # Return to safe height
+        self.c9.move_axis(self.get_axis('z_axis'), z_transfer, vel=self.get_speed('default_z'))
 
-        if not self.simulate: #not simulating
-            # Writing to a file
-            with open(self.TRACK_STATUS_FILE, "w") as file:
-                yaml.dump(track_status, file, default_flow_style=False)
 
-    #Update the status of the robot from yaml file
-    def get_track_status(self):
-        self.logger.debug("Getting track status from file: %s", self.TRACK_STATUS_FILE)
-        """Get the track status from the yaml file."""
-        # Get the track status
-        with open(self.TRACK_STATUS_FILE, "r") as file:
-            track_status = yaml.safe_load(file)
-
-        # Convert "None" or "null" strings to actual None. CHATGPT
-        def convert_none(value):
-            if isinstance(value, dict):
-                return {k: convert_none(v) for k, v in value.items()}
-            elif isinstance(value, list):
-                return [convert_none(v) for v in value]
-            elif value in ["None", "null"]:
-                return None
-            return value
-
-        track_status = convert_none(track_status)
-
-        try:
-            self.NUM_SOURCE = track_status['num_in_source']
-            self.NUM_WASTE = track_status['num_in_waste']
-            self.CURRENT_WP_TYPE = track_status['wellplate_type']
-            self.NR_OCCUPIED = track_status['nr_occupied']
-        except:
-            self.pause_after_error("Issue reading robot status", False)
-
-    def calculate_wp_stack_height(self, num, wp_type, pickup):
-        self.logger.debug("Calculating well plate stack height for num: %d, wp_type: %s, pickup: %s", num, wp_type, pickup)
-        wp_parameters = {"96 WELL PLATE": {"y-int": 83500, "slope": -6400}, "48 WELL PLATE": {"y-int": 83500, "slope":-9500}}
-        height = wp_parameters[wp_type]["y-int"] + wp_parameters[wp_type]["slope"]*(num-1) 
-        MAX_HEIGHT = 20000 #TODO: need to confirm (seems close to the top)
-
+    # === 6. STACK MANAGEMENT ===
+    def calculate_wp_stack_height(self, num, wp_type, stack_name, operation='grab'):
+        self.logger.debug("Calculating well plate stack height for num: %d, wp_type: %s, stack: %s, operation: %s", num, wp_type, stack_name, operation)
+        thickness = self.get_config_parameter('wellplates', wp_type, "thickness", error_on_missing=False) or 0
+        
+        # Get base height from the specific stack configuration based on operation
+        stack_pos = self.get_position(stack_name)
+        if not stack_pos:
+            self.logger.error(f"Stack '{stack_name}' not found in configuration")
+            return -1
+            
+        # Use operation-specific Z coordinate (like other unified methods)
+        if operation == 'release' and 'z_release' in stack_pos:
+            base_height = stack_pos['z_release']
+        elif operation == 'grab' and 'z_grab' in stack_pos:
+            base_height = stack_pos['z_grab']
+        else:
+            self.logger.error(f"No appropriate Z coordinate found for stack '{stack_name}' operation '{operation}'")
+            return -1
+            
+        height = base_height - thickness * (num - 1)
         #print(f"HEIGHT = {height}")
 
-        if height >= MAX_HEIGHT and height <= wp_parameters[wp_type]["y-int"]: #beneath max height and higher than the lowest source
-            if pickup == True:
-                return height
-            else: #for dropping off
-                if num == 0:
-                    return height #base height is the same
-                else:
-                    return height-500 #drop of slightly higher than drop off
+        if height >= self.get_limit('max_stack_height') and height <= base_height: #beneath max height and higher than the base
+            return height
         else:
             return -1 #invalid input
         
     def get_new_wellplate(self, move_home_afterwards = True): #double WP stack 
         self.logger.info("Getting new wellplate from source stack")
         """Get a new wellplate from the source stack (in the double stack holder) and move to north robot pipetting area"""
-        DOUBLE_SOURCE_Y = self.calculate_wp_stack_height(self.NUM_SOURCE, self.CURRENT_WP_TYPE, pickup=True)
+        DOUBLE_SOURCE_Y = self.calculate_wp_stack_height(self.NUM_SOURCE, self.CURRENT_WP_TYPE, 'source_stack', 'grab')
         
 
-        if self.NUM_SOURCE > 0 and DOUBLE_SOURCE_Y != -1 and self.NR_OCCUPIED == False: #still have well plates in stack & pipetting area is empty
+        if self.NUM_SOURCE > 0 and DOUBLE_SOURCE_Y != -1 and self.ACTIVE_WELLPLATE_POSITION != 'pipetting_area': #still have well plates in stack & pipetting area is empty
             self.logger.debug(f"Getting {self.get_ordinal(self.NUM_SOURCE)} wellplate from source at {DOUBLE_SOURCE_Y}")
-            
-            #move to source stack and grab wellplate
-            self.open_gripper()
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel= self.DEFAULT_Y_SPEED) #up to max height
-            self.c9.move_axis(7, self.DOUBLE_SOURCE_X, vel=self.DEFAULT_X_SPEED) #above source
-            self.c9.move_axis(6, DOUBLE_SOURCE_Y, vel=20) #down to WP height (slowed)
-            self.close_gripper()
-            
-            #move up from source stack to "safe" area and move down
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #up to max height
-            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=self.DEFAULT_X_SPEED) #to "safe" area
-            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=20) #to transfer area (slowed)
+                     
+            # Use unified method with dynamic Z override for wellplate pickup
+            self.grab_wellplate_from_location('source_stack', self.CURRENT_WP_TYPE, z_override=DOUBLE_SOURCE_Y, waypoint_locations=['transfer_stack'])
             
             self.NUM_SOURCE -= 1
             self.save_track_status() #update yaml
 
-            self.return_well_plate_to_nr(0)
+            self.release_wellplate_in_location('pipetting_area', self.CURRENT_WP_TYPE, waypoint_locations=['transfer_stack'])
 
             if move_home_afterwards:
                 self.origin()
@@ -325,34 +555,27 @@ class North_Track:
                 self.pause_after_error("Wellplate stack is empty")
             elif DOUBLE_SOURCE_Y == -1:
                 self.pause_after_error("Invalid height calculated (too many wellplates in stack)")
-            if self.NR_OCCUPIED == True:
+            if self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area':
                 self.pause_after_error("Cannot get wellplate, NR pipetting area is occupied")
     
-    def discard_wellplate(self, wellplate_num=0, move_home_afterwards = True): #double WP stack
+    def discard_wellplate(self, move_home_afterwards = True): #double WP stack
         """Grabs a wellplate (from desginated wellplate stack) and discards it into the waste stack (in the double stack holder). ENSURE North Robot is homed!!!
         
         Args:
             `wellplate_num`(int): The number identifying which wellplate stand to discard a wellplate from (0 for the pipetting one) 
         """
-        DOUBLE_WASTE_Y = self.calculate_wp_stack_height(self.NUM_WASTE+1, self.CURRENT_WP_TYPE, pickup=False)
+        DOUBLE_WASTE_Y = self.calculate_wp_stack_height(self.NUM_WASTE+1, self.CURRENT_WP_TYPE, 'waste_stack', 'release')
         
-        if DOUBLE_WASTE_Y != -1 and self.NR_OCCUPIED == True: #can still hold an additional wellplate & pipetting area is occupied
+        if DOUBLE_WASTE_Y != -1 and self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area': #can still hold an additional wellplate & pipetting area is occupied
             self.logger.info(f"Discarding wellplate as the {self.get_ordinal(self.NUM_WASTE+1)} WP in waste stack at height: {DOUBLE_WASTE_Y}")
             
-            #move up to max height, then to NR area to grab wellplate
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #up to max height
-            self.grab_well_plate_from_nr(wellplate_num) #move to wellplate area to grab wellplate
+            # Move to max height, then grab wellplate from NR
+            self.c9.move_axis(self.get_axis('z_axis'), self.get_limit('max_safe_height'), vel=self.get_speed('default_z'))
+            self.grab_wellplate_from_location('pipetting_area', self.CURRENT_WP_TYPE)
+            self.release_wellplate_in_location('waste_stack', self.CURRENT_WP_TYPE, z_override=DOUBLE_WASTE_Y, waypoint_locations=['transfer_stack'])
 
-            #cross the cytation -- move down to transfer_Y
-            self.c9.move_axis(6, self.WELL_PLATE_TRANSFER_Y, vel=self.DEFAULT_Y_SPEED) #down to height for passing cytation
-            self.c9.move_axis(7, self.DOUBLE_TRANSFER_X, vel=self.DEFAULT_X_SPEED) #to "safe" area
-
-            #move up to waste stack and go down to drop off wp
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #up to max height
-            self.c9.move_axis(7, self.DOUBLE_WASTE_X, vel=self.DEFAULT_X_SPEED) #above waste stack
-            self.c9.move_axis(6, DOUBLE_WASTE_Y, vel=20) #down to drop off wellplate (slowed)
-            self.open_gripper()
-            self.c9.move_axis(6, self.MAX_HEIGHT, vel=self.DEFAULT_Y_SPEED) #move back up to max height
+            # Use unified transfer method to drop off at waste stack
+            self.set_wellplate_position(None)  # Wellplate discarded to waste, no longer tracked
 
             self.NUM_WASTE += 1
             self.save_track_status()
@@ -362,19 +585,10 @@ class North_Track:
         else:
             if DOUBLE_WASTE_Y == -1:
                 self.pause_after_error("Wellplate stack is too full for discarding another well plate.")
-            if self.NR_OCCUPIED == False:
+            if self.ACTIVE_WELLPLATE_POSITION != 'pipetting_area':
                 self.pause_after_error("Cannot discard wellplate, designated wellplate stand is empty.")
-        
 
-        #Integrating error messages and deliberate pauses
-    
-    def pause_after_error(self,err_message,send_slack=True):
-        self.logger.error(err_message)
-        if send_slack and not isinstance(self.c9, MagicMock):
-            slack_agent.send_slack_message(err_message)
-        if not self.simulate:  # not simulating
-            input("Waiting for user to press enter or quit after error...")
-    
+    # === 7. UTILITIES ===        
     def get_ordinal(self,n): #convert n into an ordinal number (ex. 1st, 2nd, 4th)  -- from chatgpt
         if 10 <= n % 100 <= 20:
             suffix = 'th'
@@ -560,50 +774,180 @@ class North_Temp:
         self.logger.debug("Turning off stirring")
         self.c8.spin_axis(1,0)
 
-class North_Robot:
-    ROBOT_STATUS_FILE = "../utoronto_demo/status/robot_status.yaml" #Store the state of the robot. Update this after every method that alters the state. 
-
-    #What's in the robot's gripper
-    GRIPPER_STATUS = None #Could be None, "Cap" or "Open"
-    GRIPPER_VIAL_INDEX = None #Could be None or the index of the vial/cap
+class North_Robot(North_Base):
+    """
+    North Robot Main Class - Coordinates liquid handling, vial management, and wellplate operations
     
-    VIAL_DF = None #Track the status of all vials part of the experiment. 
-    VIAL_FILE = None #File that we save the vial data in 
+    Organization:
+    1. Class Setup & Initialization
+    2. Configuration & Parameter Access  
+    3. Core Robot Operations
+    4. Pipetting & Tip Management
+    5. Liquid Handling Operations
+    6. Wellplate Operations  
+    7. Vial & Container Management
+    8. Reservoir System
+    9. State & Status Management
+    10. Vial Info & Location Utilities
+    11. Validation & Safety Methods
+    12. Utility Methods
+    """
     
-    #All of this data doesn't seem to need to be tracked here. TODO: Compartmentalize and place appropriately. 
-    DEFAULT_SMALL_TIP_DELTA_Z = -19 #This is the height difference between the bottom of the small pipet tip and the large tip
-    LOWER_PIPET_ARRAY_INDEX = 0 #Label representing the lower rack at the back with 1000 uL tips
-    HIGHER_PIPET_ARRAY_INDEX = 1 #Label representing the upper rack at the back with 250 uL tips
-
-    HELD_PIPET_INDEX = None #What kind of pipet do we have  
-    PIPETS_USED = [0,0] #Tracker for each rack. TODO: This isn't very extensible
-    PIPET_FLUID_VIAL_INDEX = None #What vial was the fluid aspirated from?
-    PIPET_FLUID_VOLUME = 0 #What is the held volume in the pipet?
-
-    #Track the pump speed. This seems to help with pump errors. 
-    CURRENT_PUMP_SPEED = 11
-  
+    # ====================================================================
+    # CLASS CONSTANTS & FILE PATHS
+    # ====================================================================
+    
+    ROBOT_STATUS_FILE = "../utoronto_demo/robot_state/robot_status.yaml" #Store the state of the robot. Update this after every method that alters the state. 
+    VIAL_POSITIONS_FILE = "../utoronto_demo/robot_state/vial_positions.yaml" #File that contains the vial positions.
+    WELLPLATE_POSITIONS_FILE = "../utoronto_demo/robot_state/wellplates.yaml" #File that contains the wellplate positions.
+    PIPET_TIP_DEFINITTIONS_FILE = "../utoronto_demo/robot_state/pipet_tips.yaml" #File that contains the pipet tip definitions.
+    PIPET_RACKS_FILE = "../utoronto_demo/robot_state/pipet_racks.yaml" #File that contains the pipet rack configurations.
+    PUMP_CONFIG_FILE = "../utoronto_demo/robot_state/syringe_pumps.yaml" #File that contains the pump configurations.
+    ROBOT_HARDWARE_FILE = "../utoronto_demo/robot_state/robot_hardware.yaml" #File that contains robot hardware axis and pneumatic mappings.
+    
+    # ====================================================================
+    # 1. CLASS SETUP & INITIALIZATION
+    # ====================================================================
+    
     #Initialize the status of the robot. 
     def __init__(self,c9,vial_file=None,simulate=False, logger=None):
 
         self.c9 = c9
         self.logger = logger
-        self.VIAL_FILE = vial_file
+        self.VIAL_FILE = vial_file #File that we save the vial data in 
         self.simulate = simulate
 
         self.logger.info("Initializing North Robot...")
 
-        self.get_robot_status() #Update the status of the robot from memory
-        self.reset_after_initialization() #Reset everything that may not be as desired, eg return to "Home"
+        # Load all configuration files (static config)
+        self._load_configuration_files()
+        
+        # Load all state files (dynamic state)  
+        self._load_state_files()
         self.load_pumps() #Load the pumps
-        #sys.excepthook = self.global_exception_handler
+        self.reset_after_initialization() #Reset everything that may not be as desired, eg return to "Home"
+        
+    def _load_configuration_files(self):
+        """Load all robot configuration YAML files (static config, not state)"""
+        self.logger.debug("Loading robot configuration files...")
+        
+        # Configuration files (required for robot operation)
+        config_files = {
+            'VIAL_POSITIONS': (self.VIAL_POSITIONS_FILE, "vial positions configuration"),
+            'PIPET_TIPS': (self.PIPET_TIP_DEFINITTIONS_FILE, "pipet tips configuration"),
+            'PIPET_RACKS': (self.PIPET_RACKS_FILE, "pipet racks configuration"),
+            'PUMP_CONFIG': (self.PUMP_CONFIG_FILE, "pump configuration"),
+            'ROBOT_HARDWARE': (self.ROBOT_HARDWARE_FILE, "robot hardware configuration"),
+            'WELLPLATES': ("../utoronto_demo/robot_state/wellplates.yaml", "wellplate properties configuration"),
+        }
+        
+        for attr_name, (file_path, description) in config_files.items():
+            # Use convert_none=True for all files, wellplates are optional
+            setattr(self, attr_name, self._load_yaml_file(file_path, description, required=True, convert_none=True))
+        
+        # Initialize pipet usage tracking from loaded rack configuration
+        self.PIPETS_USED = {rack_name: 0 for rack_name in self.PIPET_RACKS.keys()} if self.PIPET_RACKS else {}
 
-    #Load the pumps and set volumes
+    def _load_state_files(self):
+        """Load all robot state YAML files (dynamic state that changes during operation)"""
+        self.logger.debug("Loading robot state files...")
+        
+        # Load vial DataFrame (CSV file)
+        try:
+            self.VIAL_DF = pd.read_csv(self.VIAL_FILE, sep=",")
+            self.VIAL_DF.index = self.VIAL_DF['vial_index'].values
+            self.logger.debug(f"Loaded vial data from {self.VIAL_FILE}")
+        except Exception as e:
+            self.logger.error(f"Issue reading vial status file {self.VIAL_FILE}: {e}")
+            self.pause_after_error("Issue reading vial status", False)
+        
+        # State files (robot status is required, wellplate positions are optional)
+        state_files = {
+            'robot_status': (self.ROBOT_STATUS_FILE, "robot status", True, True),
+            'wellplate_positions': (self.WELLPLATE_POSITIONS_FILE, "wellplate positions", False, True),
+        }
+        
+        loaded_data = {}
+        for key, (file_path, description, required, convert_none) in state_files.items():
+            loaded_data[key] = self._load_yaml_file(file_path, description, required, convert_none)
+        
+        # Handle robot status data
+        if loaded_data['robot_status']:
+            robot_status = loaded_data['robot_status']
+            try:
+                self.GRIPPER_STATUS = robot_status['gripper_status']
+                self.GRIPPER_VIAL_INDEX = robot_status['gripper_vial_index']
+                self.HELD_PIPET_TYPE = robot_status.get('held_pipet_type')
+                
+                # Load pipets used from robot status
+                pipets_used_data = robot_status.get('pipets_used', {})
+                if isinstance(pipets_used_data, dict):
+                    # Load directly from the current format
+                    for rack_name in self.PIPET_RACKS.keys() if self.PIPET_RACKS else []:
+                        self.PIPETS_USED[rack_name] = pipets_used_data.get(rack_name, 0)
+                else:
+                    # Initialize all racks to 0 if invalid format
+                    for rack_name in self.PIPET_RACKS.keys() if self.PIPET_RACKS else []:
+                        self.PIPETS_USED[rack_name] = 0
+                    
+                self.PIPET_FLUID_VOLUME = robot_status['pipet_fluid_volume']
+                self.PIPET_FLUID_VIAL_INDEX = robot_status['pipet_fluid_vial_index']
+            except KeyError as e:
+                self.pause_after_error(f"Missing required field in robot status: {e}")
+            except Exception as e:
+                self.pause_after_error(f"Error processing robot status: {e}")
+        
+        # Handle wellplate positions data (dynamic state, not static config)
+        # Note: This is different from WELLPLATES which contains static wellplate type definitions
+        self.WELLPLATE_POSITIONS = loaded_data['wellplate_positions']
+
+    #Load the pumps and set volumes from YAML configuration
     def load_pumps(self):
-        self.logger.debug("Loading pumps...")
-        self.c9.pumps[0]['volume'] = 1
-        self.c9.pumps[1]['volume'] = 2.5
-        self.c9.set_pump_speed(1, 15)
+        self.logger.debug("Loading pumps from YAML configuration...")
+        
+        if not self.PUMP_CONFIG:
+            self.pause_after_error("Pump configuration not loaded or invalid")
+            return
+        
+        # Initialize current pump speeds dictionary
+        self.CURRENT_PUMP_SPEEDS = {}
+        
+        # Load each pump from configuration (flattened structure)
+        for pump_index_str, pump_config in self.PUMP_CONFIG.items():
+            pump_index = int(pump_index_str)
+            
+            # Set pump volume
+            volume = pump_config.get('volume', 1.0)
+            self.c9.pumps[pump_index]['volume'] = volume
+            
+            # Set pump speed
+            speed = pump_config.get('default_speed', 11)
+            self.c9.set_pump_speed(pump_index, speed)
+            self.CURRENT_PUMP_SPEEDS[pump_index] = speed
+            
+            self.logger.debug(f"Loaded pump {pump_index}: volume={volume}mL, speed={speed}, liquid={pump_config.get('liquid', 'none')}")
+
+    # ====================================================================
+    # 2. CONFIGURATION & PARAMETER ACCESS
+    # ====================================================================
+    
+    def get_speed(self, speed_name):
+        """Get movement speed from robot hardware configuration"""
+        return self.get_config_parameter('robot_hardware', 'movement_speeds', speed_name, error_on_missing=True)
+    
+    def get_safe_height(self):
+        """Get safe height from robot hardware configuration"""
+        return self.get_config_parameter('robot_hardware', 'physical_constants', 'safe_height_z', error_on_missing=True)
+
+    def get_current_height(self):
+        """Get the current Z-axis height in millimeters"""
+        z_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'z_axis', error_on_missing=False) or 3
+        return self.c9.counts_to_mm(z_axis, self.c9.get_axis_position(z_axis))
+    
+    def get_height_at_location(self, location):
+        """Get the Z-axis height in millimeters for a given location coordinate"""
+        z_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'z_axis', error_on_missing=False) or 3
+        return self.c9.counts_to_mm(z_axis, location[3])
 
     def visualize_racks(self, vial_status, fig_size_x=16, fig_size_y=10, xlim=12, ylim=6):
         self.logger.info("Visualizing vial racks...")
@@ -728,57 +1072,153 @@ class North_Robot:
         if pause_after_check and not self.simulate:
             input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
-    #Reset positions and get rid of any pipet tips... .Note that this does not do 100% of what it is intended to
-    def reset_after_initialization(self):
+    # ====================================================================
+    # 3. CORE ROBOT OPERATIONS
+    # ====================================================================
+
+    def home_robot_components(self):
+        """
+        Comprehensive homing of all robot components.
+        This method should be called when the robot needs to be homed due to initialization
+        or error recovery. It homes all components systematically.
+        """
+        if self.simulate:
+            self.logger.debug("Simulating robot component homing...")
+            return
+            
+        self.logger.info("Homing all robot components...")
+        
+        try:
+            # Home carousel first
+            self.logger.debug("Homing carousel...")
+            self.c9.home_carousel()
+            
+            # Home main robot axes  
+            self.logger.debug("Homing robot axes...")
+            self.c9.home_robot()
+            
+            # Home all pumps systematically
+            pump_configs = self.get_config_parameter('pumps', error_on_missing=False) or {}
+            for pump_index in pump_configs.keys():
+                self.logger.debug(f"Homing pump {pump_index}...")
+                self.c9.home_pump(int(pump_index))
+            
+            # Home track axes from configuration
+            self.logger.debug("Homing track axes...")
+            track_axes = self.get_config_parameter('robot_hardware', 'track_axes', '', error_on_missing=False)
+            if track_axes:
+                for axis_name, axis_number in track_axes.items():
+                    self.logger.debug(f"Homing track axis {axis_name} (axis {axis_number})...")
+                    self.c9.home_axis(axis_number)
+            else:
+                self.logger.warning("No track axes configuration found, skipping track axis homing")
+                
+            # Home photoreactor stepper if available
+            if hasattr(self, 'p2') and self.p2 is not None:
+                self.logger.debug("Homing photoreactor stepper...")
+                self.p2.home_OL_stepper(0, 300)
+                
+            self.logger.info("All robot components homed successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to home robot components: {e}")
+            raise
+
+    def reset_after_initialization(self, max_retries=2):
+        """
+        Physical initialization and cleanup of North Robot.
+        Handles liquid disposal, tip removal, and gripper cleanup with proper error recovery.
+        
+        Args:
+            max_retries (int): Maximum number of retry attempts for homing-related errors (default: 2)
+        """
         self.logger.debug("Physical initialization of North Robot...")
-        self.c9.default_vel = 20 #Set the default speed of the robot
+        self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         self.c9.open_clamp()
         
-        try: #Try resetting. If a home is required, some of these actions may fail. 
-            if self.PIPET_FLUID_VIAL_INDEX is not None and self.PIPET_FLUID_VOLUME > 0: #If we still have liquid leftover
-                self.logger.warning("The robot reports having liquid in its tip... Returning that liquid...")
-                vial_index = self.PIPET_FLUID_VIAL_INDEX 
-                volume = self.PIPET_FLUID_VOLUME
-                self.dispense_into_vial(vial_index,volume)
-            
-            if self.HELD_PIPET_INDEX is not None: #If we've got a pipet tip, let's get rid of it
-                self.logger.warning("The robot reports having a tip, removing the tip")
-                self.remove_pipet()
-            
-            if self.GRIPPER_STATUS is not None: #If the gripper is full, let's address that
-                vial_index = self.GRIPPER_VIAL_INDEX
-                if self.GRIPPER_STATUS == "Cap": #If we have the cap, the vial must be in the gripper.
-                    self.logger.warning("The robot reports having a cap in its gripper... Recapping the clamp vial...")
-                    self.recap_clamp_vial()
-                    self.return_vial_home(vial_index)
-                elif self.GRIPPER_STATUS == "Vial": #We need to know where this vial is intended to be!
-                    self.logger.warning("The robot reports having a vial in the gripper... Returning that vial home...")
-                    location = self.get_vial_info(vial_index,'home_location')
-                    location_index = self.get_vial_info(vial_index,'home_location_index')
-                    self.drop_off_vial(vial_index,location=location,location_index=location_index)
-            self.move_home()
-        except Exception as e:
-            self.logger.warning("An error occured during initialization, homing components: ", e)
-            self.c9.home_carousel() #Home the carousel
-            self.c9.home_robot() #Home the robot
-            self.c9.home_pump(0) #Home the pump
-            self.c9.home_pump(1) #Home reservoir 1
-            for i in range (6,8): #Home the track
-                self.c9.home_axis(i)
-            self.reset_after_initialization()
+        # Attempt physical cleanup with retry logic for homing-related errors
+        retry_count = 0
+        homed = False
         
+        while retry_count < max_retries:
+            try:
+                self._perform_physical_cleanup()
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                # Check if this is likely a homing-related error
+                error_msg = str(e).lower()
+                homing_keywords = ['not homed', 'home', 'position unknown', 'axis not initialized']
+                is_homing_error = any(keyword in error_msg for keyword in homing_keywords)
+                
+                if is_homing_error and not homed:
+                    self.logger.warning(f"Detected homing-related error during initialization: {e}")
+                    self.logger.info("Attempting to home all robot components...")
+                    
+                    try:
+                        self.home_robot_components()
+                        homed = True
+                        retry_count += 1
+                        self.logger.info("Homing completed, retrying physical cleanup...")
+                    except Exception as home_error:
+                        self.logger.error(f"Failed to home robot components: {home_error}")
+                        raise
+                else:
+                    # Non-homing error or already attempted homing
+                    self.logger.error(f"Failed to complete physical cleanup: {e}")
+                    if retry_count > 0:
+                        self.logger.error("Physical cleanup failed even after homing")
+                    raise
+        
+        # Final setup
         self.c9.open_gripper()
-        self.c9.home_pump(0)
+ 
+    def _perform_physical_cleanup(self):
+        """
+        Internal method to perform the actual physical cleanup tasks.
+        Separated for cleaner retry logic.
+        """
+        # Handle leftover liquid in pipet tip
+        if self.PIPET_FLUID_VIAL_INDEX is not None and self.PIPET_FLUID_VOLUME > 0:
+            self.logger.warning("The robot reports having liquid in its tip... Returning that liquid...")
+            vial_index = self.PIPET_FLUID_VIAL_INDEX 
+            volume = self.PIPET_FLUID_VOLUME
+            self.dispense_into_vial(vial_index, volume)
+        
+        # Remove pipet tip if present
+        if self.HELD_PIPET_TYPE is not None:
+            self.logger.warning("The robot reports having a tip, removing the tip")
+            self.remove_pipet()
+        
+        # Handle gripper contents
+        if self.GRIPPER_STATUS is not None:
+            vial_index = self.GRIPPER_VIAL_INDEX
+            if self.GRIPPER_STATUS == "Cap":
+                self.logger.warning("The robot reports having a cap in its gripper... Recapping the clamp vial...")
+                self.recap_clamp_vial()
+                self.return_vial_home(vial_index)
+            elif self.GRIPPER_STATUS == "Vial":
+                self.logger.warning("The robot reports having a vial in the gripper... Returning that vial home...")
+                location = self.get_vial_info(vial_index, 'home_location')
+                location_index = self.get_vial_info(vial_index, 'home_location_index')
+                self.drop_off_vial(vial_index, location=location, location_index=location_index)
+        
+        # Move to home position
+        self.move_home()
+
+    # ====================================================================
+    # STATE & STATUS MANAGEMENT
+    # ====================================================================
 
     #Save the status of the robot to memory
     def save_robot_status(self):
-        self.logger.debug("Saving robot status to file: %s", self.ROBOT_STATUS_FILE)
+        #self.logger.debug("Saving robot status to file: %s", self.ROBOT_STATUS_FILE)
         # Robot status data
         robot_status = {
             "gripper_status": self.GRIPPER_STATUS,
             "gripper_vial_index": self.GRIPPER_VIAL_INDEX,
-            "held_pipet_index": self.HELD_PIPET_INDEX,
-            "pipets_used": {"lower_rack_1": self.PIPETS_USED[self.LOWER_PIPET_ARRAY_INDEX], "upper_rack_1": self.PIPETS_USED[self.HIGHER_PIPET_ARRAY_INDEX]},
+            "held_pipet_type": self.HELD_PIPET_TYPE,
+            "pipets_used": self.PIPETS_USED,  # Save all rack usage directly
             "pipet_fluid_vial_index": self.PIPET_FLUID_VIAL_INDEX,
             "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME)
         }
@@ -792,6 +1232,7 @@ class North_Robot:
     #Update the status of the robot from memory
     def get_robot_status(self):
         self.logger.debug("Getting robot status from file: %s", self.ROBOT_STATUS_FILE)
+        
         # Get the vial dataframe
         try:
             self.VIAL_DF = pd.read_csv(self.VIAL_FILE, sep=",")
@@ -799,188 +1240,319 @@ class North_Robot:
         except:
             self.pause_after_error("Issue reading vial status", False)
 
-        # Get the robot status
-        with open(self.ROBOT_STATUS_FILE, "r") as file:
-            robot_status = yaml.safe_load(file)
+        # Load robot state files using unified method
+        self._load_state_files()
 
-        # Convert "None" or "null" strings to actual None. CHATGPT
-        def convert_none(value):
-            if isinstance(value, dict):
-                return {k: convert_none(v) for k, v in value.items()}
-            elif isinstance(value, list):
-                return [convert_none(v) for v in value]
-            elif value in ["None", "null"]:
-                return None
-            return value
-
-        robot_status = convert_none(robot_status)
-
-        try:
-            self.GRIPPER_STATUS = robot_status['gripper_status']
-            self.GRIPPER_VIAL_INDEX = robot_status['gripper_vial_index']
-            self.HELD_PIPET_INDEX = robot_status['held_pipet_index']
-            self.PIPETS_USED[self.LOWER_PIPET_ARRAY_INDEX] = robot_status['pipets_used']['lower_rack_1']
-            self.PIPETS_USED[self.HIGHER_PIPET_ARRAY_INDEX] = robot_status['pipets_used']['upper_rack_1']
-            self.PIPET_FLUID_VOLUME = robot_status['pipet_fluid_volume']
-        except:
-            self.pause_after_error("Issue reading robot status", False)
+    # ====================================================================
+    # 4. PIPETTING & TIP MANAGEMENT
+    # ====================================================================
 
     #Remove the pipet tip
     def remove_pipet(self):
         self.logger.debug("Removing pipet")
-        self.c9.goto_safe(p_remove_approach,vel=30)
-        #Slightly different removal location depending on what type of tip you have
-        if self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX:
-            self.c9.goto(p_remove_cap, vel=5)
-        elif self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX:
-            self.c9.goto(p_remove_small, vel=5)
-        remove_pipet_height = 292 #Constant height to remove the pipet (doesn't change with the pipet type, just moving up)
-        self.c9.move_z(remove_pipet_height, vel=20)
-        self.HELD_PIPET_INDEX = None
+        self.c9.goto_safe(p_remove_approach, vel=self.get_speed('fast_approach'))
+        #Get removal location from YAML config based on tip type
+        if self.HELD_PIPET_TYPE is not None:
+            removal_location_name = self.get_config_parameter('pipet_tips', self.HELD_PIPET_TYPE, 'removal_location', error_on_missing=True)
+            if removal_location_name:
+                removal_location = getattr(Locator, removal_location_name)
+                self.c9.goto(removal_location, vel=self.get_speed('precise_movement'))
+        remove_pipet_height = self.get_safe_height() #Constant height to remove the pipet (doesn't change with the pipet type, just moving up)
+        self.c9.move_z(remove_pipet_height, vel=self.get_speed('default_robot'))
+        self.HELD_PIPET_TYPE = None
         self.PIPET_FLUID_VIAL_INDEX = None
         self.PIPET_FLUID_VOLUME = 0
         self.save_robot_status() #Update in memory
 
     #Take a pipet tip from the active rack with the active pipet tip dimensions 
-    def get_pipet(self, pipet_rack_index):
-        error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't get pipet, already have pipet tip"])
-        self.check_for_errors(error_check_list,True)
+    def get_pipet(self, tip_type):
+        """Get a pipet tip from available racks, prioritizing rack 1 over rack 2 for same tip type"""
+        
+        # Check if already holding a pipet tip
+        if self.HELD_PIPET_TYPE is not None:
+            self.logger.error(f"DEBUG: get_pipet called with tip_type='{tip_type}' but HELD_PIPET_TYPE='{self.HELD_PIPET_TYPE}'")
+            self.pause_after_error("Can't get pipet, already have pipet tip")
+            return  # Early return to prevent getting another pipet
+        
+        # Find available racks for this tip type, prioritizing rack 1 over rack 2
+        available_racks = []
+        for rack_name, rack_config in self.PIPET_RACKS.items():
+            if rack_config.get('tip_type') == tip_type:
+                available_racks.append(rack_name)
+        
+        # Sort racks to prioritize rack 1 over rack 2 for same tip type
+        available_racks.sort()
+        
+        if not available_racks:
+            self.pause_after_error(f"No racks found for tip type: {tip_type}")
+            return
+        
+        # Find first rack with available tips
+        selected_rack = None
+        for rack_name in available_racks:
+            tips_used = self.PIPETS_USED.get(rack_name, 0)
+            max_tips = self.get_config_parameter('pipet_racks', rack_name, 'num_tips', error_on_missing=True)
             
-        active_pipet_num = self.PIPETS_USED[pipet_rack_index] #First available pipet
-
-        print(f"Getting pipet number {active_pipet_num} from rack index: {pipet_rack_index}")
-
-        #This is to pause the program and send a slack message when the pipets are out!
-        MAX_PIPETS=95 # This is based off the racks
-        if active_pipet_num > MAX_PIPETS:
-            self.pause_after_error("The North Robot is out of pipets! Please refill pipets then hit enter on the terminal!")
-            self.PIPETS_USED=[0,0]
+            if max_tips is None:
+                self.pause_after_error(f"No num_tips configured for rack {rack_name}")
+                return
+            
+            if tips_used < max_tips:
+                selected_rack = rack_name
+                break
+        
+        if selected_rack is None:
+            self.pause_after_error(f"All {tip_type} racks are empty! Please refill tips then hit enter on the terminal!")
+            # Reset all racks to 0 tips used
+            self.logger.info("Resetting all pipet rack counters to 0 after refill")
+            self.PIPETS_USED = {rack_name: 0 for rack_name in self.PIPET_RACKS.keys()}
             self.save_robot_status()
-            active_pipet_num=0
+            # Try again with first available rack
+            selected_rack = available_racks[0]
+        
+        # Get rack configuration and current tip count
+        active_pipet_num = self.PIPETS_USED.get(selected_rack, 0)
+        
+        self.logger.info(f"Getting {tip_type} (pipet number {active_pipet_num}) from rack: {selected_rack}")
 
-        horizontal_rack_used = (active_pipet_num <= 47)
+        # Calculate tip position using YAML-configured ordering
+        tip_position = self._calculate_tip_position(selected_rack, active_pipet_num)
+        
+        # Get capture location and move to pipet tip
+        self._move_to_pipet_tip(selected_rack, tip_position)
+        
+        # Perform approach movement based on rack configuration
+        self._perform_pipet_pickup(selected_rack, tip_position)
 
-        self.logger.debug(f"Getting pipet number: {active_pipet_num} from rack {pipet_rack_index}")
-
-        #This conversion is neccessary to take the tips in the correct order. Only for the horizontal rack. 
-        if horizontal_rack_used:
-            num = (active_pipet_num%16)*3+math.floor(active_pipet_num/16)
-            
-        else:
-            num = (active_pipet_num - 48)
-            num = (16 * (math.floor(num/16)+1) - 1) - num%16
-
-        #First move to the xy location 
-        if pipet_rack_index == self.LOWER_PIPET_ARRAY_INDEX:
-            if horizontal_rack_used:
-                location = p_capture_grid[num]
-            else:
-                location = pgrid_low_2[num]
-        elif pipet_rack_index == self.HIGHER_PIPET_ARRAY_INDEX: 
-            if horizontal_rack_used:
-                location = p_capture_high[num]
-            else:
-                location = pgrid_high_2[num]
-
-        #Move to get the pipet tip
-        self.c9.goto_xy_safe(location)
-        base_height = self.c9.counts_to_mm(3, location[3])
-        self.c9.move_z(base_height) 
-
-        if pipet_rack_index == self.LOWER_PIPET_ARRAY_INDEX:
-            if horizontal_rack_used:
-                location = p_capture_up[num]
-                self.c9.goto(location, vel=5) #Move to the pipet tip
-            else:
-                self.move_rel_xyz(x_distance = -2, y_distance=2, z_distance=50, vel=5) #Test this out
-                #self.c9.move_z(292,vel=5)
-                   
-        else:
-            self.c9.move_z(292,vel=5) #Move to a safe height (292)
-
-        #We have a pipet. What kind of pipet do we have? How many pipets are left in the rack?
-        self.HELD_PIPET_INDEX = pipet_rack_index
-        self.PIPETS_USED[pipet_rack_index] += 1
-
-        #Update the status of the robot in memory
+        # Update robot state
+        self.HELD_PIPET_TYPE = tip_type
+        self.PIPETS_USED[selected_rack] += 1
         self.save_robot_status()
+
+    def refill_pipets(self, tip_type=None):
+        """
+        Reset pipet counters for manual refilling
+        
+        Args:
+            tip_type (str, optional): Reset only racks of this tip type ('large_tip' or 'small_tip')
+                                    If None, reset all racks
+        """
+        if tip_type:
+            # Reset only racks of specified tip type
+            for rack_name, rack_config in self.PIPET_RACKS.items():
+                if rack_config.get('tip_type') == tip_type:
+                    self.PIPETS_USED[rack_name] = 0
+                    self.logger.info(f"Reset {rack_name} ({tip_type}) pipet counter to 0")
+        else:
+            # Reset all racks
+            self.PIPETS_USED = {rack_name: 0 for rack_name in self.PIPET_RACKS.keys()}
+            self.logger.info("Reset all pipet counters to 0")
+        
+        self.save_robot_status()
+        self.logger.info("Pipet refill complete - robot status saved")
+
+    def _calculate_tip_position(self, rack_name, active_pipet_num):
+        """Calculate the tip position based on rack ordering configuration"""
+        tip_ordering = self.get_config_parameter('pipet_racks', rack_name, 'tip_ordering', error_on_missing=True)
+        
+        if tip_ordering is None:
+            self.pause_after_error(f"No tip_ordering configured for rack {rack_name}")
+            return 0
+        
+        if tip_ordering == '3x16_standard':
+            # Standard layout: 16 rows, 3 columns
+            return (active_pipet_num % 16) * 3 + math.floor(active_pipet_num / 16)
+        elif tip_ordering == '3x16_reverse':
+            # Reverse layout: 3 columns, 16 rows, reverse ordering (0-47 range)
+            return (16 * (math.floor(active_pipet_num / 16) + 1) - 1) - active_pipet_num % 16
+        else:
+            # Default: simple sequential ordering
+            self.logger.warning(f"Unknown tip_ordering '{tip_ordering}' for rack {rack_name}, using sequential")
+            return active_pipet_num
+
+    def _move_to_pipet_tip(self, rack_name, tip_position):
+        """Move to the pipet tip location based on rack configuration"""
+        capture_location_name = self.get_config_parameter('pipet_racks', rack_name, 'capture_location', error_on_missing=True)
+        if not capture_location_name:
+            self.pause_after_error(f"No capture_location defined for rack {rack_name}")
+            return
+            
+        capture_location = getattr(Locator, capture_location_name, None)
+        if capture_location is None:
+            self.pause_after_error(f"Capture location '{capture_location_name}' not found for rack {rack_name}")
+            return
+            
+        # Move to the specific tip position
+        location = capture_location[tip_position]
+        self.c9.goto_xy_safe(location)
+        
+        # Move to the base height
+        base_height = self.get_height_at_location(location)
+        self.c9.move_z(base_height)
+
+    def _perform_pipet_pickup(self, rack_name, tip_position):
+        """Perform the pickup movement to capture the pipet tip"""
+        pickup_location_name = self.get_config_parameter('pipet_racks', rack_name, 'pickup_location', error_on_missing=True)
+        
+        if pickup_location_name:
+            # Use specific pickup location
+            pickup_location = getattr(Locator, pickup_location_name, None)
+            if pickup_location:
+                location = pickup_location[tip_position]
+                self.c9.goto(location, vel=self.get_speed('precise_movement'))
+                return
+        
+        # Check for relative movement configuration
+        pickup_movement = self.get_config_parameter('pipet_racks', rack_name, 'pickup_movement', error_on_missing=True)
+        if pickup_movement:
+            self.move_rel_xyz(
+                x_distance=pickup_movement.get('x', 0),
+                y_distance=pickup_movement.get('y', 0), 
+                z_distance=pickup_movement.get('z', 0),
+                vel=self.get_speed('precise_movement')
+            )
+            return
+        
+        # Check for safe height movement
+        if self.get_config_parameter('pipet_racks', rack_name, 'safe_height_movement', error_on_missing=False):
+            self.c9.move_z(self.get_safe_height(), vel=self.get_speed('precise_movement'))
+            return
+        
+        # Default: no additional movement
+        pass
  
     def adjust_pump_speed(self, pump, pump_speed):
         self.logger.debug(f"Adjusting pump {pump} speed to {pump_speed}")
-        if pump_speed != self.CURRENT_PUMP_SPEED:
+        
+        # Get current speed for this pump (default to 0 if not tracked)
+        current_speed = self.CURRENT_PUMP_SPEEDS.get(pump, 0)
+        
+        if pump_speed != current_speed:
             self.c9.set_pump_speed(pump, pump_speed)
+            self.CURRENT_PUMP_SPEEDS[pump] = pump_speed
 
 #New aspirate function
-    def pipet_aspirate(self, amount, settling_time=0):
+    def pipet_aspirate(self, amount, wait_time=1.0):
+        """
+        Internal method: Aspirate liquid with a pipet.
         
-        self.logger.debug(f"Aspirating {amount} mL then waiting {settling_time} s")
+        Args:
+            amount (float): Volume to aspirate in mL
+            wait_time (float): Time to wait after aspiration in seconds
+        """
+        self.logger.debug(f"Aspirating {amount:.3f} mL then waiting {wait_time} s")
 
         if amount <= 1:
             try:
-                self.c9.aspirate_ml(0,amount)
+                self.c9.aspirate_ml(0, amount)
             except:
                 self.logger.warning("Aspirate exceeded limit: Aspirating to maximum")
-                self.c9.move_pump(0,3000)
+                max_pump_pos = self.get_config_parameter('pumps', 0, 'max_pump_position', error_on_missing=False) or 3000
+                self.c9.move_pump(0, max_pump_pos)
                 slack_agent.send_slack_message(f"Aspirate was exceeded for {amount} mL. Aspirating to maximum volume of 1 mL.")
-                #self.pause_after_error("Cannot aspirate. Likely a pump position issue", True)
         else:
             self.pause_after_error("Cannot aspirate more than 1 mL", True)
 
         if not self.simulate:
-            time.sleep(settling_time) #Wait a bit after aspirating
+            time.sleep(wait_time)
 
 #New dispense function
-    def pipet_dispense(self, amount, settling_time=0, blowout_vol=0,blowout_speed=8):
+    def pipet_dispense(self, amount, wait_time=0.0, blowout_vol=0.0):
+        """
+        Internal method: Dispense liquid with a pipet.
         
-        self.logger.debug(f"Dispensing {amount} mL then waiting {settling_time} s")
+        Args:
+            amount (float): Volume to dispense in mL
+            wait_time (float): Time to wait after dispensing in seconds
+            blowout_vol (float): Volume for blowout after dispensing in mL
+        """
+        self.logger.debug(f"Dispensing {amount:.3f} mL then waiting {wait_time} s")
       
         try:
-            self.c9.dispense_ml(0,amount)
-        except: #If there's not enough to dispense
+            self.c9.dispense_ml(0, amount)
+        except: # If there's not enough to dispense
             self.logger.warning("Dispense exceeded limit: Dispensing all liquid")
-            self.c9.move_pump(0,0)
+            self.c9.move_pump(0, 0)
 
         if not self.simulate:
-            time.sleep(settling_time)
+            time.sleep(wait_time)
 
         if blowout_vol > 0:
-            self.logger.debug(f"Blowing out {blowout_vol} mL at speed {blowout_speed}")
-            self.adjust_pump_speed(0,blowout_speed)
-            self.c9.set_pump_valve(0,self.c9.PUMP_VALVE_LEFT)
-            self.c9.aspirate_ml(0,blowout_vol)
-            self.c9.set_pump_valve(0,self.c9.PUMP_VALVE_RIGHT)
-            self.c9.dispense_ml(0,blowout_vol)
+            blow_speed = self.get_tip_dependent_aspirate_speed()
+            self.logger.debug(f"Blowing out {blowout_vol:.3f} mL at speed {blow_speed}")
+            self.adjust_pump_speed(0, blow_speed)
+            self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_LEFT)
+            self.c9.aspirate_ml(0, blowout_vol)
+            self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)
+            self.c9.dispense_ml(0, blowout_vol)
 
-    #Default selection of pipet tip... Make extensible in the future
-    def select_pipet_tip(self, volume, specified_tip):
-        if specified_tip is None:
-            if volume <= 0.200:
-                pipet_rack_index=self.HIGHER_PIPET_ARRAY_INDEX
-            elif volume <= 1.0:
-                pipet_rack_index=self.LOWER_PIPET_ARRAY_INDEX
-            else:
-                self.pause_after_error("Cannot get tip automatically as amount is out of range")
-        else:
-            pipet_rack_index=specified_tip
-        return pipet_rack_index
+    #Select appropriate tip type based on volume or use specified tip type
+    def select_pipet_tip(self, volume, specified_tip_type=None):
+        """
+        Select the appropriate tip type based on volume or use the specified tip type
+        
+        Args:
+            volume (float): Volume in mL to determine tip type
+            specified_tip_type (str, optional): Force specific tip type ("small_tip" or "large_tip")
+            
+        Returns:
+            str: Tip type ("small_tip" or "large_tip")
+        """
+        if specified_tip_type is not None:
+            # Use the specified tip type directly (should be "small_tip" or "large_tip")
+            return specified_tip_type
+        
+        # Get all available tip types from configuration
+        available_tips = []
+        for tip_name, tip_config in self.PIPET_TIPS.items():
+            max_volume = tip_config.get('volume', 0)
+            min_volume = tip_config.get('min_suggested_volume', 0)
+            
+            # Check if volume fits within this tip's range
+            if min_volume <= volume <= max_volume:
+                available_tips.append((tip_name, min_volume, max_volume))
+        
+        if not available_tips:
+            self.pause_after_error(f"No suitable pipet tip found for volume {volume} mL")
+            return None
+        
+        # Sort by min_suggested_volume (ascending) to prefer smaller tips for smaller volumes
+        available_tips.sort(key=lambda x: x[1])
+        
+        # Return the most appropriate tip (smallest suitable tip)
+        selected_tip = available_tips[0][0]
+        self.logger.debug(f"Selected {selected_tip} for volume {volume:.3f} mL")
+        return selected_tip
     
-    #Check if the aspiration volume is within limits... Make extensible in the future
-    def check_if_aspiration_volume_unacceptable(self,amount_mL):
+    #Check if the aspiration volume is within limits... Now extensible and configuration-driven
+    def check_if_aspiration_volume_unacceptable(self, amount_mL):
+        if self.HELD_PIPET_TYPE is None:
+            return False  # No tip held, no volume restrictions
+            
+        # Get volume limits from YAML configuration
+        tip_config = self.PIPET_TIPS.get(self.HELD_PIPET_TYPE, {})
+        max_volume = tip_config.get('volume', 0)
+        min_volume = tip_config.get('min_suggested_volume', 0)
+        
         error_check_list = []
-        error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL>0.25,False,"Can't pipet more than 0.25 mL from small pipet"])
-        #error_check_list.append([self.HELD_PIPET_INDEX==self.HIGHER_PIPET_ARRAY_INDEX and amount_mL<0.01,False,"Can't pipet less than 10 uL from small pipet"])
-        error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL>1.00,False,"Can't pipet more than 1.00 mL from large pipet"])
-        error_check_list.append([self.HELD_PIPET_INDEX==self.LOWER_PIPET_ARRAY_INDEX and amount_mL<0.025,False,"Can't pipet less than 25 uL from large pipet"])
-        return self.check_for_errors(error_check_list,True) #Return True if issue
-
-    #Integrating error messages and deliberate pauses
-    def pause_after_error(self,err_message,send_slack=True):
-        self.logger.error(err_message)
-        if send_slack and not isinstance(self.c9, MagicMock):
-            slack_agent.send_slack_message(err_message)
-        if not self.simulate:  # not simulating
-            input("Waiting for user to press enter or quit after error...")
+        
+        # Check maximum volume limit
+        if max_volume > 0:
+            error_check_list.append([
+                amount_mL > max_volume, 
+                False, 
+                f"Can't pipet more than {max_volume} mL from {self.HELD_PIPET_TYPE}"
+            ])
+        
+        # Check minimum volume limit  
+        if min_volume > 0:
+            error_check_list.append([
+                amount_mL < min_volume, 
+                False, 
+                f"Can't pipet less than {min_volume} mL from {self.HELD_PIPET_TYPE}"
+            ])
+        
+        return self.check_for_errors(error_check_list, True)  # Return True if issue
 
     def normalize_vial_index(self, vial):
         """Accepts either a vial index (int) or vial name (str) and returns the vial index (int)."""
@@ -996,16 +1568,11 @@ class North_Robot:
 
         #Get required information
         base_height = self.get_min_pipetting_height(source_vial_num)
-        vial_type = self.get_vial_info(source_vial_num, 'vial_type')
+        vial_location = self.get_vial_info(source_vial_num, 'location')
         source_vial_volume = self.get_vial_info(source_vial_num,'vial_volume')
 
-        #The vial type affects the depth for aspiration. 
-        if vial_type=='8_mL':
-            height_volume_constant=6
-        elif vial_type=='20_mL':
-            height_volume_constant=2
-        else:
-            height_volume_constant=0
+        # Get height_volume_constant from vial position configuration
+        height_volume_constant = self.get_config_parameter('vial_positions', vial_location, 'height_volume_constant', error_on_missing=False) or 0
 
         volume_adjusted_height = base_height + (height_volume_constant*(source_vial_volume - amount_mL - buffer)) #How low should we go?
 
@@ -1014,16 +1581,48 @@ class North_Robot:
         else:
             return base_height #Default is the lowest position
 
+    def get_tip_dependent_aspirate_speed(self):
+        """
+        Get the appropriate aspiration speed based on the currently held pipet tip type.
+        Pauses with error if no tip is held since aspiration requires a tip.
+        
+        Returns:
+            int: Aspiration speed for the current tip type
+        """
+        if self.HELD_PIPET_TYPE is None:
+            self.pause_after_error("Cannot get aspirate speed - no pipet tip is held")
+            return 11  # Fallback to prevent crashes
+            
+        tip_speed = self.get_config_parameter('pipet_tips', self.HELD_PIPET_TYPE, 'default_aspirate_speed', error_on_missing=True)
+        return tip_speed
+
+    # ====================================================================
+    # 5. LIQUID HANDLING OPERATIONS
+    # ====================================================================
+
     #Aspirate from a vial using the pipet tool
-    def aspirate_from_vial(self, source_vial_name, amount_mL,
-                           move_to_aspirate=True,specified_tip=None,track_height=True,
-                           wait_time=1,aspirate_speed=11,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0,move_up=True):
+    def aspirate_from_vial(self, source_vial_name, amount_mL, parameters=None, 
+                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None):
         """
         Aspirate amount_ml from a source vial.
+        
         Args:
-            `source_vial_name`(str): Name of the source vial to aspirate from
-            `amount_mL`(float): Amount to aspirate in mL
+            source_vial_name (str): Name of the source vial to aspirate from
+            amount_mL (float): Amount to aspirate in mL
+            parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
+            move_to_aspirate (bool): Whether to move to aspiration location (default: True)
+            track_height (bool): Whether to track liquid height during aspiration (default: True)
+            move_up (bool): Whether to retract after aspiration (default: True)
+            specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
         """
+        if parameters is None:
+            parameters = PipettingParameters()  # Use all defaults
+        
+        # Extract liquid handling values from parameters
+        asp_disp_cycles = parameters.asp_disp_cycles
+        aspirate_wait_time = parameters.aspirate_wait_time
+        pre_asp_air_vol = parameters.pre_asp_air_vol
+        post_asp_air_vol = parameters.post_asp_air_vol
         
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
 
@@ -1032,12 +1631,23 @@ class North_Robot:
         self.check_for_errors(error_check_list,True) #This will cause a pause if there's an issue 
 
         #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
-        if self.HELD_PIPET_INDEX is None:
-            pipet_rack_index = self.select_pipet_tip(amount_mL,specified_tip)           
-            self.get_pipet(pipet_rack_index)
+        required_tip_type = self.select_pipet_tip(amount_mL, specified_tip)
+        
+        if self.HELD_PIPET_TYPE is None:
+            # No pipet held, get the required one
+            self.get_pipet(required_tip_type)
+        elif self.HELD_PIPET_TYPE != required_tip_type:
+            # Wrong pipet type held, need to switch
+            self.logger.info(f"Switching from {self.HELD_PIPET_TYPE} to {required_tip_type}")
+            self.remove_pipet()
+            self.get_pipet(required_tip_type)
         
         #Check for an issue with the pipet and the specified amount, pause and send slack message if so
         self.check_if_aspiration_volume_unacceptable(amount_mL) 
+        
+        # Now that we have a pipet tip, we can safely determine speeds
+        aspirate_speed = parameters.aspirate_speed or self.get_tip_dependent_aspirate_speed()
+        retract_speed = parameters.retract_speed or self.get_speed('retract')
 
         #Get current volume and vial location
         location = self.get_vial_location(source_vial_num,True)
@@ -1049,38 +1659,40 @@ class North_Robot:
 
         self.logger.info(f"Pipetting from vial {self.get_vial_info(source_vial_num, 'vial_name')}, amount: {round(amount_mL, 3)} mL")
 
-
         #Adjust the height based on the volume, then pipet type
         if move_to_aspirate:
             asp_height = self.get_aspirate_height(source_vial_name, amount_mL, track_height)
             asp_height = self.adjust_height_based_on_pipet_held(asp_height)
 
             #The dispense height is right above the location
-            disp_height = self.c9.counts_to_mm(3, location[3]) 
+            disp_height = self.get_height_at_location(location)
             disp_height = self.adjust_height_based_on_pipet_held(disp_height)
         else:
-            asp_height = disp_height = self.c9.counts_to_mm(3, self.c9.get_axis_position(3)) #IF we aren't moving, everything stays the same
+            asp_height = disp_height = self.get_current_height() #IF we aren't moving, everything stays the same
 
         self.adjust_pump_speed(0,aspirate_speed) #Adjust the pump speed if needed
 
         #Move to the correct location in xy
         if move_to_aspirate:
-            self.c9.goto_xy_safe(location,vel=15)
+            self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))
         
         #Step 1: Move to above the site and aspirate air if needed
         if pre_asp_air_vol > 0:
             self.c9.move_z(disp_height)
-            self.pipet_aspirate(pre_asp_air_vol) 
+            self.pipet_aspirate(pre_asp_air_vol, wait_time=0)
         
         #Step 2: Move to inside the site and aspirate liquid
         self.c9.move_z(asp_height)
-        self.pipet_aspirate(amount_mL,wait_time) #Main aspiration of liquid plus wait
+        for i in range (0, asp_disp_cycles):
+            self.pipet_aspirate(amount_mL, wait_time=0)
+            self.pipet_dispense(amount_mL, wait_time=0)
+        self.pipet_aspirate(amount_mL, wait_time=aspirate_wait_time) #Main aspiration of liquid plus wait
         
         #Step 3: Retract and aspirate air if needed
         if move_up:
             self.c9.move_z(disp_height, vel=retract_speed) #Retract with a specific speed
         if post_asp_air_vol > 0:
-            self.pipet_aspirate(post_asp_air_vol) 
+            self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
 
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
@@ -1090,136 +1702,147 @@ class North_Robot:
         self.PIPET_FLUID_VOLUME += amount_mL
         self.save_robot_status()
     
-    #TODO: I've changed this, so that all that matters is the delta_z. Let's make this extensible to other tips in the future
-    def adjust_height_based_on_pipet_held(self,height):
+    #Adjust height based on the currently held pipet tip - now extensible to all tip types
+    def adjust_height_based_on_pipet_held(self, height):
         height_shift_pipet = 0
-        if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX:
-            height_shift_pipet = self.DEFAULT_SMALL_TIP_DELTA_Z #Adjust height based on difference from default dims
+        
+        if self.HELD_PIPET_TYPE is not None:
+            # Get delta_z_to_tip_bottom for the currently held pipet type
+            height_shift_pipet = self.get_config_parameter('pipet_tips', self.HELD_PIPET_TYPE, 'delta_z_to_tip_bottom', error_on_missing=False) or 0
+            
         height += height_shift_pipet
         return height
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self,source_vial_name,dest_vial_name,volume,
-                                     move_to_aspirate=True,move_to_dispense=True,track_height=True,measure_mass=False,blowout_vol=0, use_safe_location=False, 
-                                     aspirate_wait_time=1,aspirate_speed=11,retract_speed=5,pre_asp_air_vol=0,post_asp_air_vol=0):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, specified_tip=None):
         """
-        Dispenses a specified volume from source_vial_name to dest_vial_name, with optional buffer transfer for accuracy.
+        Transfer liquid from source vial to destination vial.
 
         Args:
-            `source_vial_name` (str): Name of the source vial to aspirate from.
-            `dest_vial_name` (str): Name of the destination vial to dispense into.
-            `volume` (float): Volume (in mL) to transfer.
-            `move_to_aspirate` (bool): Whether to move to the source vial before aspirating.
-            `move_to_dispense` (bool): Whether to move to the destination vial before dispensing.
-            `buffer_vol` (float): Buffer volume (in mL)
-            `track_height` (bool): Whether to track the volume & height to aspirate from, in the source vial.
+            source_vial_name (str): Name of the source vial to aspirate from
+            dest_vial_name (str): Name of the destination vial to dispense into
+            volume (float): Volume (in mL) to transfer
+            parameters (PipettingParameters, optional): Standardized parameters
+            specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
         """
-        self.logger.info(f"Dispensing {volume} mL from {source_vial_name} to {dest_vial_name}")
+        if parameters is None:
+            parameters = PipettingParameters()
 
-        source_vial_index = self.normalize_vial_index(source_vial_name) #Convert to int if needed
-        dest_vial_index = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
-        repeats = 1
+        self.logger.info(f"Dispensing {volume:.3f} mL from {source_vial_name} to {dest_vial_name}")
 
-        if volume < 0.2 and volume >= 0.01:
-            tip_type = self.HIGHER_PIPET_ARRAY_INDEX
-        elif volume >= 0.2 and volume <= 1.00:
-            tip_type = self.LOWER_PIPET_ARRAY_INDEX 
-        elif volume == 0:
-            self.logger.warning("Cannot dispense 0 mL")
+        source_vial_index = self.normalize_vial_index(source_vial_name)
+        dest_vial_index = self.normalize_vial_index(dest_vial_name)
+
+        if volume <= 0:
+            self.logger.warning("Cannot dispense <=0 mL")
             return
-        elif volume > 1.00:
-            tip_type = self.LOWER_PIPET_ARRAY_INDEX
-            repeats = math.ceil(volume)
-            volume = volume / repeats #Split into multiple dispenses
-            self.logger.info(f"Volume too high for single dispense, splitting into {repeats} dispenses of {round(volume,3)} mL each")
-        else: 
-            self.pause_after_error(f"Cannot accurately aspirate: {volume} mL under specified conditions.")
 
-        mass = 0
-        move_dest_vial = not self.is_vial_pipetable(dest_vial_index) and self.is_vial_movable(dest_vial_index)
-        move_source_vial = not self.is_vial_pipetable(source_vial_index) or use_safe_location and self.is_vial_movable(source_vial_index)
-        move_both = move_dest_vial and move_source_vial
+        # Handle large volumes by splitting into multiple transfers
+        max_system_volume = max((tip_config.get('volume', 0) for tip_config in self.PIPET_TIPS.values()), default=1.0)
+        repeats = 1
+        if volume > max_system_volume:
+            repeats = math.ceil(volume / max_system_volume)
+            volume = volume / repeats
+            self.logger.info(f"Volume too high for single transfer, splitting into {repeats} transfers of {round(volume,3)} mL each")
+
+        # Determine which vials need to be moved
         source_pipetable = self.is_vial_pipetable(source_vial_index)
         dest_pipetable = self.is_vial_pipetable(dest_vial_index)
-        for i in range (0, repeats): 
+        move_source_vial = not source_pipetable and self.is_vial_movable(source_vial_index)
+        move_dest_vial = not dest_pipetable and self.is_vial_movable(dest_vial_index)
+
+        total_mass = 0
+        for i in range(repeats):
             last_run = (i == repeats - 1)
-            first_run = (i == 0)       
+            first_run = (i == 0)
 
-            #Move the vial to clamp if needed to aspirate
-            if move_both or (move_source_vial and first_run):
+            # Move and uncap source vial if needed
+            if move_source_vial and first_run:
                 self.logger.debug("Moving source vial to clamp to uncap")
-                self.move_vial_to_location(source_vial_index,location='clamp',location_index=0)
-                if not source_pipetable:
-                    self.uncap_clamp_vial() 
+                self.move_vial_to_location(source_vial_index, location='clamp', location_index=0)
+                self.uncap_clamp_vial()
 
-            self.aspirate_from_vial(source_vial_index,round(volume,3),move_to_aspirate=move_to_aspirate,specified_tip=tip_type,track_height=track_height,
-                                    wait_time=aspirate_wait_time,aspirate_speed=aspirate_speed,retract_speed=retract_speed,pre_asp_air_vol=pre_asp_air_vol,post_asp_air_vol=post_asp_air_vol)
+            # Aspirate from source
+            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, specified_tip=specified_tip)
 
-            if move_both or (move_dest_vial and first_run):
+            # Move and uncap destination vial if needed
+            if move_dest_vial and first_run:
                 if move_source_vial:
-                    if not source_pipetable:
-                        self.recap_clamp_vial()
+                    self.recap_clamp_vial()
                     self.return_vial_home(source_vial_index)
                 self.logger.debug("Moving destination vial to clamp to uncap")
-                self.move_vial_to_location(dest_vial_index,location='clamp',location_index=0)
-                if not dest_pipetable:
-                    self.uncap_clamp_vial()
+                self.move_vial_to_location(dest_vial_index, location='clamp', location_index=0)
+                self.uncap_clamp_vial()
 
-            mass_increment = self.dispense_into_vial(dest_vial_index,volume,initial_move=move_to_dispense,measure_weight=measure_mass,blowout_vol=blowout_vol)
-            mass += mass_increment if mass_increment is not None else 0
+            # Dispense into destination
+            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters)
+            total_mass += mass_increment if mass_increment is not None else 0
 
-            if move_both or (move_dest_vial and last_run): #If we moved the dest vial, we need to recap and return it
-                if not dest_pipetable:
+            # Return vials and remove pipet on last run
+            if last_run:
+                self.remove_pipet()
+                if move_dest_vial:
                     self.recap_clamp_vial()
-                self.return_vial_home(dest_vial_index)
-            elif move_source_vial and last_run: #If we moved the source vial, we need to recap and return it
-                if not source_pipetable:
+                    self.return_vial_home(dest_vial_index)
+                elif move_source_vial:
                     self.recap_clamp_vial()
-                self.return_vial_home(source_vial_index)
+                    self.return_vial_home(source_vial_index)
 
-        return mass
-
-    def select_wellplate_grid(self,well_plate_type):
-        if well_plate_type == "96 WELL PLATE":
-            location = well_plate_new_grid
-        elif well_plate_type == "48 WELL PLATE":
-            location = grid_48
-        else:
-            self.pause_after_error("Unknown well plate type, cannot specify location...")
-            location = None
-        return location
+        return total_mass
 
     #TODO add error checks and safeguards
-    def pipet_from_wellplate(self,wp_index,volume,aspirate_speed=10,aspirate=True,move_to_aspirate=True,well_plate_type="96 WELL PLATE"):
-        self.logger.debug(f"Pipetting {'aspirating' if aspirate else 'dispensing'} {volume} mL from well plate index {wp_index} of type {well_plate_type}")
+    def pipet_from_wellplate(self, wp_index, volume, parameters=None, aspirate=True, move_to_aspirate=True, well_plate_type="96 WELL PLATE"):
+        """
+        Aspirate or dispense from/to a wellplate.
+        
+        Args:
+            wp_index: Well plate index
+            volume: Volume in mL
+            parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
+            aspirate (bool): True for aspirate, False for dispense (default: True)
+            move_to_aspirate (bool): Whether to move to location (default: True)
+            well_plate_type (str): Type of well plate (default: "96 WELL PLATE")
+        """
+        if parameters is None:
+            parameters = PipettingParameters()
+            
+        # Get appropriate speed and wait time based on operation
+        if aspirate:
+            speed = parameters.aspirate_speed or self.get_tip_dependent_aspirate_speed()
+            wait_time = parameters.aspirate_wait_time
+            blowout_vol = 0.0  # No blowout for aspiration
+        else:
+            speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
+            wait_time = parameters.dispense_wait_time
+            blowout_vol = parameters.blowout_vol
+            
+        self.logger.debug(f"Pipetting {'aspirating' if aspirate else 'dispensing'} {volume:.3f} mL from well plate index {wp_index} of type {well_plate_type}")
         
         location = self.select_wellplate_grid(well_plate_type)[wp_index]
         
-        height = self.c9.counts_to_mm(3, location[3])
+        height = self.get_height_at_location(location)
         height = self.adjust_height_based_on_pipet_held(height) 
 
-        if well_plate_type == "96 WELL PLATE":
-            height_adjust = 16
-        elif well_plate_type == "48 WELL PLATE":
-            height_adjust = 19
+        # Get the height adjustment for the well plate type (distance to bottom of well)
+        height_adjust = self.WELLPLATES[well_plate_type]["distance_to_bottom_for_pipet"] if well_plate_type in self.WELLPLATES else 0
 
         if aspirate:
             height = height - height_adjust #Go to the bottom of the well
 
         if move_to_aspirate:
-            self.c9.goto_xy_safe(location, vel=15)
+            self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))
             self.c9.move_z(height)
 
-        self.adjust_pump_speed(0, aspirate_speed)
+        self.adjust_pump_speed(0, speed)
         if aspirate:
-            self.pipet_aspirate(volume)
+            self.pipet_aspirate(volume, wait_time=wait_time)
         else:
-            self.pipet_dispense(volume)
+            self.pipet_dispense(volume, wait_time=wait_time, blowout_vol=blowout_vol)
 
     #Mix the well
     def mix_well_in_wellplate(self,wp_index,volume,repeats=3,well_plate_type="96 WELL PLATE"):
-        self.logger.info(f"Mixing well {wp_index} in well plate of type {well_plate_type} with volume {volume} mL for {repeats} repeats")
+        self.logger.info(f"Mixing well {wp_index} in well plate of type {well_plate_type} with volume {volume:.3f} mL for {repeats} repeats")
         self.pipet_from_wellplate(wp_index,volume,well_plate_type=well_plate_type)
         self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False,well_plate_type=well_plate_type)
         for i in range (1, repeats):
@@ -1228,15 +1851,33 @@ class North_Robot:
 
     #Mix in a vial
     def mix_vial(self,vial_name,volume,repeats=3):
-        self.logger.info(f"Mixing vial {vial_name} with volume {volume} mL for {repeats} repeats")
+        self.logger.info(f"Mixing vial {vial_name} with volume {volume:.3f} mL for {repeats} repeats")
         vial_index= self.normalize_vial_index(vial_name)
-        self.aspirate_from_vial(vial_index,volume,3,move_up=False,track_height=False)
-        self.dispense_into_vial(vial_index,volume,initial_move=False)
+        self.aspirate_from_vial(vial_index, volume, move_up=False, track_height=False)
+        self.dispense_into_vial(vial_index, volume, initial_move=False)
         for i in range (1,repeats):
-            self.dispense_from_vial_into_vial(vial_index,vial_index,volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
+            self.dispense_from_vial_into_vial(vial_index, vial_index, volume)
 
     #Dispense an amount into a vial
-    def dispense_into_vial(self, dest_vial_name,amount_mL,initial_move=True,dispense_speed=11,measure_weight=False,wait_time=0,blowout_vol=0, air_vol=0):     
+    def dispense_into_vial(self, dest_vial_name, amount_mL, parameters=None, 
+                          initial_move=True, measure_weight=False):
+        """
+        Dispense liquid into a vial.
+        
+        Args:
+            dest_vial_name: Name of destination vial
+            amount_mL: Amount to dispense in mL
+            parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
+            initial_move (bool): Whether to perform initial movement (default: True)
+            measure_weight (bool): Whether to measure mass during dispensing (default: False)
+        """
+        if parameters is None:
+            parameters = PipettingParameters()
+        
+        # Extract liquid handling values from parameters
+        wait_time = parameters.dispense_wait_time
+        blowout_vol = parameters.blowout_vol
+        air_vol = parameters.air_vol     
         
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
@@ -1257,24 +1898,27 @@ class North_Robot:
             else:
                 initial_mass = 0
 
+        # Determine dispense speed (can be done safely here since no pipet acquisition needed for dispense)
+        dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
+        
         self.adjust_pump_speed(0,dispense_speed) #Adjust pump speed if needed
 
         #Where is the vial?
         location= self.get_vial_location(dest_vial_num,True)
         
         #What height do we need to go to?
-        height = self.c9.counts_to_mm(3, location[3]) #baseline z-height
+        height = self.get_height_at_location(location) #baseline z-height
         height = self.adjust_height_based_on_pipet_held(height)
 
         #Move to the location if told to (Could change this to an auto-check)
         if initial_move:               
-            self.c9.goto_xy_safe(location, vel=15)   
+            self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))   
         
         #Pipet into the vial
         #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
         if initial_move:
             self.c9.move_z(height)
-        self.pipet_dispense(amount_mL+air_vol,wait_time, blowout_vol)
+        self.pipet_dispense(amount_mL + air_vol, wait_time=wait_time, blowout_vol=blowout_vol)
 
         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
@@ -1291,15 +1935,41 @@ class North_Robot:
 
         return measured_mass
 
+    # ====================================================================
+    # 6. WELLPLATE OPERATIONS
+    # ====================================================================
+
+    def select_wellplate_grid(self, well_plate_type):
+        grid_name = self.WELLPLATES[well_plate_type]["name_in_Locator"]  # Gets "well_plate_new_grid"
+        actual_grid = getattr(Locator, grid_name)  # Gets the actual coordinate array
+        return actual_grid
+
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, dispense_type = "None", dispense_speed=11,wait_time=1,well_plate_type="96 WELL PLATE",blowout_vol=0,air_vol=0):
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, parameters=None, well_plate_type=None):
         """
         Dispenses specified amounts into a series of wells in a well plate.
         Args:
-            `dest_wp_num_array` (list or range): Array of well indices to dispense into (e.g., [0, 1, 2])
-            `amount_mL_array` (list[float]): Array of amounts (in mL) to dispense into each well (e.g., [0.1, 0.2, 0.3])
+            dest_wp_num_array (list or range): Array of well indices to dispense into (e.g., [0, 1, 2])
+            amount_mL_array (list[float]): Array of amounts (in mL) to dispense into each well (e.g., [0.1, 0.2, 0.3])
+            parameters (PipettingParameters, optional): Standardized parameters (uses defaults if None)
+            well_plate_type (str, optional): Type of well plate (defaults to "96 WELL PLATE")
         """
-        self.adjust_pump_speed(0,dispense_speed) #Adjust the pump speed if needed
+        if parameters is None:
+            parameters = PipettingParameters()
+        
+        # Extract values directly from parameters
+        wait_time = parameters.dispense_wait_time
+        blowout_vol = parameters.blowout_vol
+        air_vol = parameters.air_vol
+        
+        # Default well plate type if not specified
+        if well_plate_type is None:
+            well_plate_type = "96 WELL PLATE"
+        
+        # Determine dispense speed (can be done safely here)
+        dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
+            
+        self.adjust_pump_speed(0, dispense_speed) #Adjust the pump speed if needed
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
             try:
@@ -1313,196 +1983,305 @@ class North_Robot:
             if amount_mL == 0: #Skip empty dispenses
                 continue
 
-            height = self.c9.counts_to_mm(3, location[3])
+            height = self.get_height_at_location(location)
             height = self.adjust_height_based_on_pipet_held(height) 
 
             if first_dispense:
-                self.c9.goto_xy_safe(location, vel=15)
+                self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))
                 self.c9.move_z(height)
                 first_dispense = False
                 
             else:
-                self.c9.goto_xy_safe(location, vel=5, accel = 1, safe_height=height) #Use safe_height here!
+                self.c9.goto_xy_safe(location, vel=self.get_speed('precise_movement'), accel=1, safe_height=height) #Use safe_height here!
 
-            if dispense_type.lower() == "drop-touch" or dispense_type.lower() == "touch": #move lower & towards side of well before dispensing
-                height -= 5 #goes 5mm lower when dispensing
-
-            if self.HELD_PIPET_INDEX == self.HIGHER_PIPET_ARRAY_INDEX and dispense_speed == 11: #Adjust this later
-                dispense_speed = 13 #Use lower dispense speed for smaller tip
-
-            self.logger.info(f"Transferring {amount_mL} mL into well #{dest_wp_num_array[i]} of {well_plate_type}")
-
+            self.logger.info(f"Transferring {amount_mL:.3f} mL into well #{dest_wp_num_array[i]} of {well_plate_type}")
 
             #Dispense and then wait
-            self.pipet_dispense(amount_mL+air_vol,wait_time,blowout_vol)
-
-            #OAM Notes: Different techniques. drop and slow could both be just longer wait_time              
-            if dispense_type.lower() == "drop-touch":
-                self.move_rel_x(-1.75) #-1.75 for quartz WP, -3 for PS
-                if not self.simulate:
-                    time.sleep(0.2)
-                self.move_rel_z(5) #move back up before moving to next well
-            elif dispense_type.lower() == "touch":
-                self.move_rel_x(2.5) #1.75 for quartz WP, 3 for PS
-                if not self.simulate:
-                    time.sleep(0.2)
-                self.move_rel_z(10)           
+            self.pipet_dispense(amount_mL + air_vol, wait_time=wait_time, blowout_vol=blowout_vol)     
 
         self.PIPET_FLUID_VOLUME -= np.sum(amount_mL_array)  # <-- Add this line back
         self.save_robot_status()    
         return True
 
-    #This is a custom method that takes a "well_plate_df" as an array of destinations and some "vial_indices" which are the different dispensed liquids
-    #This method will use both the large and small tips, with a specified low_volume_cutoff between the two
-    #This method does use multiple dispenses per aspiration for efficiency
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names, low_volume_cutoff=0.05, buffer_vol=0.02,
-                                            dispense_speed=11, wait_time=1, asp_cycles=0, track_height=True,
-                                            well_plate_type="96 WELL PLATE", pipet_back_and_forth=False, blowout_vol = 0, remove_pipet=True):
-        vial_indices = [self.normalize_vial_index(v) for v in vial_names]  # Normalize vial indices
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, strategy="auto", 
+                                          low_volume_cutoff=0.05, buffer_vol=0.02, well_plate_type="96 WELL PLATE"):
+        """
+        Dispense from multiple vials into wellplate wells using strategy pattern.
         
-        self.logger.info(f"Dispensing from vials {vial_names} into well plate with type {well_plate_type} using automated algorithm")
+        Args:
+            well_plate_df (DataFrame): DataFrame where columns are vial names and rows are well volumes
+            vial_names (list, optional): DEPRECATED - for backwards compatibility only
+            parameters (PipettingParameters, optional): Liquid handling parameters 
+            strategy (str): "serial", "batched", or "auto" (default: auto-select based on parameters)
+            low_volume_cutoff (float): Volume threshold for switching between tip types (mL)
+            buffer_vol (float): Extra volume to aspirate for accuracy, returned to source vial (mL)
+            well_plate_type (str): Type of wellplate for positioning
+            
+        Example:
+            well_plate_df = pd.DataFrame({
+                "vial_A": [0.1, 0.2, 0.0, 0.1],  # volumes for wells 0-3
+                "vial_B": [0.0, 0.1, 0.3, 0.0], 
+                "vial_C": [0.2, 0.0, 0.1, 0.2]
+            })
+        """
+        # Handle backwards compatibility for vial_names
+        if vial_names is not None:
+            self.logger.warning("vial_names parameter is deprecated. Use DataFrame columns for vial names.")
+        
+        if parameters is None:
+            parameters = PipettingParameters()
+        
+        # Extract vial names from DataFrame columns
+        vial_names = well_plate_df.columns.tolist()
+        
+        self.logger.info(f"Dispensing from vials {vial_names} into wellplate using {strategy} strategy")
+        
+        # Auto-select strategy based on parameter complexity
+        if strategy == "auto":
+            needs_precision = (parameters.pre_asp_air_vol > 0 or 
+                              parameters.post_asp_air_vol > 0 or 
+                              parameters.asp_disp_cycles > 0 or
+                              parameters.blowout_vol > 0)
+            strategy = "serial" if needs_precision else "batched"
+            self.logger.debug(f"Auto-selected {strategy} strategy (precision needed: {needs_precision})")
+        
+        # Dispatch to appropriate strategy
+        if strategy == "serial":
+            return self._dispense_wellplate_serial(well_plate_df, parameters, low_volume_cutoff, well_plate_type)
+        elif strategy == "batched":
+            return self._dispense_wellplate_batched(well_plate_df, parameters, low_volume_cutoff, buffer_vol, well_plate_type)
+        else:
+            raise ValueError(f"Unknown strategy: {strategy}. Use 'serial', 'batched', or 'auto'")
 
-        # Step 1: Check if there's enough liquid in each vial
-        well_plate_dispense_2d_array = well_plate_df.values
-        vols_required = np.sum(well_plate_dispense_2d_array, axis=0)
-        self.logger.debug(f"Total volumes needed (mL): {vols_required}")
+    def _dispense_wellplate_serial(self, well_plate_df, parameters, low_volume_cutoff, well_plate_type):
+        """
+        Serial strategy: One aspirate -> one dispense per well, full parameter support.
+        Slower but supports all PipettingParameters features.
+        """
+        self.logger.debug("Using serial dispensing strategy")
+        
+        # Check if there's enough liquid in each vial
+        vols_required = well_plate_df.sum(axis=0)
+        
+        for vial_name, volume_needed in vols_required.items():
+            if volume_needed > 1e-6:  # Only check vials that are actually used
+                vial_index = self.normalize_vial_index(vial_name)
+                vial_volume = self.get_vial_info(vial_index, 'vial_volume')
+                if vial_volume < volume_needed - 1e-6:
+                    self.pause_after_error(f"Not enough solution in vial {vial_name}: need {volume_needed:.3f} mL, have {vial_volume:.3f} mL")
+        
+        # Process each vial with proper tip size grouping
+        for vial_name in well_plate_df.columns:
+            # Collect all volumes for this vial
+            vial_volumes = well_plate_df[vial_name]
+            
+            # Skip vials with no volumes
+            if vial_volumes.sum() < 1e-6:
+                continue
+            
+            self.logger.debug(f"Processing vial {vial_name}")
+            
+            # Split into small and large tip volumes
+            small_volumes = []
+            large_volumes = []
+            
+            for well_idx, volume in vial_volumes.items():
+                if volume > 1e-6:
+                    if volume < low_volume_cutoff:
+                        small_volumes.append((well_idx, volume))
+                    else:
+                        large_volumes.append((well_idx, volume))
+            
+            # Process small tip volumes first (if any)
+            if small_volumes:
+                self.logger.debug(f"Processing {len(small_volumes)} small tip volumes for vial {vial_name}")
+                for well_idx, volume in small_volumes:
+                    self.aspirate_from_vial(vial_name, volume, parameters=parameters, specified_tip="small_tip")
+                    self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, 
+                                               well_plate_type=well_plate_type)
+                self.remove_pipet()
+                self.logger.debug(f"Completed small tip dispensing for vial {vial_name}")
+            
+            # Process large tip volumes (if any)
+            if large_volumes:
+                self.logger.debug(f"Processing {len(large_volumes)} large tip volumes for vial {vial_name}")
+                for well_idx, volume in large_volumes:
+                    self.aspirate_from_vial(vial_name, volume, parameters=parameters, specified_tip="large_tip")
+                    self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, 
+                                               well_plate_type=well_plate_type)
+                self.remove_pipet()
+                self.logger.debug(f"Completed large tip dispensing for vial {vial_name}")
+        
+        self.logger.info("Serial wellplate dispensing completed")
+        return True
 
-        for i, vial in enumerate(vial_indices):
-            volume_needed = vols_required[i]
-            volume = self.get_vial_info(vial, 'vial_volume')
-            if volume < volume_needed - 1e-6:
-                self.pause_after_error(f"Not enough solution in vial: {vial}", True)
-
-        # Step 2: Split dispenses based on pipette range
+    def _dispense_wellplate_batched(self, well_plate_df, parameters, low_volume_cutoff, buffer_vol, well_plate_type):
+        """
+        Batched strategy: Multiple dispenses per aspirate for speed optimization.
+        Faster but limited parameter support (no air volumes, minimal mixing).
+        """
+        self.logger.debug("Using batched dispensing strategy")
+        
+        # Extract basic parameters for batched mode (ignore complex parameters)
+        aspirate_speed = parameters.aspirate_speed or self.get_tip_dependent_aspirate_speed()
+        dispense_speed = parameters.dispense_speed or aspirate_speed
+        wait_time = parameters.aspirate_wait_time or 1.0
+        
+        vial_names = well_plate_df.columns.tolist()
+        vial_indices = [self.normalize_vial_index(v) for v in vial_names]
+        
+        # Check if there's enough liquid in each vial
+        vols_required = well_plate_df.sum(axis=0)
+        for i, vial_index in enumerate(vial_indices):
+            volume_needed = vols_required.iloc[i]
+            if volume_needed > 1e-6:
+                vial_volume = self.get_vial_info(vial_index, 'vial_volume')
+                if vial_volume < volume_needed - 1e-6:
+                    self.pause_after_error(f"Not enough solution in vial {vial_index}: need {volume_needed:.3f} mL, have {vial_volume:.3f} mL")
+        
+        # Split dispenses based on tip type
         well_plate_df_low = well_plate_df.where(well_plate_df < low_volume_cutoff).fillna(0)
         well_plate_df_high = well_plate_df.mask(well_plate_df < low_volume_cutoff, 0)
-        well_plate_instructions = [
-            [well_plate_df_low, 0.25, self.HIGHER_PIPET_ARRAY_INDEX],
-            [well_plate_df_high, 1.0, self.LOWER_PIPET_ARRAY_INDEX]
+        
+        # Get tip capacities from configuration
+        small_tip_volume = self.get_config_parameter('pipet_tips', 'small_tip', 'volume', error_on_missing=True)
+        large_tip_volume = self.get_config_parameter('pipet_tips', 'large_tip', 'volume', error_on_missing=True)
+        
+        tip_configs = [
+            (well_plate_df_low, small_tip_volume, "small_tip"),
+            (well_plate_df_high, large_tip_volume, "large_tip")
         ]
-
-        # Step 3: Process each pipette configuration
-        for well_plate_df, max_volume, pipet_index in well_plate_instructions:
-            if well_plate_df.empty:
+        
+        # Process each tip configuration
+        for df_subset, max_volume, tip_type in tip_configs:
+            if df_subset.empty or df_subset.sum().sum() < 1e-6:
                 continue
-
-            well_plate_dispense_2d_array = well_plate_df.values
-            well_plate_indices = well_plate_df.index.tolist()
-
-            for i, vial_index in enumerate(vial_indices):
-                vol_needed = np.sum(well_plate_dispense_2d_array[:, i])
-                if vol_needed < 1e-6:
+                
+            # Process each vial
+            for vial_idx, vial_name in enumerate(vial_names):
+                vial_index = self.normalize_vial_index(vial_name)
+                vial_volumes = df_subset.iloc[:, vial_idx]
+                total_needed = vial_volumes.sum()
+                
+                if total_needed < 1e-6:
                     continue
-
-                self.logger.debug(f"\nAspirating from Vial: {vial_index}")
-                self.logger.debug(f"Total volume needed: {vol_needed:.3f} mL")
-
-                return_vial = False
-                if not self.is_vial_pipetable(vial_index):
-                    self.logger.debug(f"Vial {vial_index} not open, moving to clamp")
-                    self.move_vial_to_location(vial_index, location='clamp', location_index=0)
-                    self.uncap_clamp_vial()
-                    return_vial = True
-
-                last_index = 0
-                vol_dispensed = 0.0
-                vol_remaining = 0.0
-
-                while vol_dispensed < vol_needed - 1e-6:
-                    dispense_array = []
-                    well_plate_array = []
-                    dispense_vol = 0.0
-
-                    # Dispensing logic
-                    if pipet_back_and_forth:
-                        while last_index < len(well_plate_indices):
-                            volume = well_plate_dispense_2d_array[last_index, i]
-                            if volume > 1e-6:
-                                dispense_array = [volume]
-                                well_plate_array = [well_plate_indices[last_index]]
-                                dispense_vol = volume
-                                well_plate_dispense_2d_array[last_index, i] = 0.0
-                                last_index += 1
-                                break
-                            last_index += 1
-                    else:
-                        while last_index < len(well_plate_indices):
-                            volume = well_plate_dispense_2d_array[last_index, i]
-                            if dispense_vol + volume <= max_volume + 1e-6:
-                                dispense_vol += volume
-                                dispense_array.append(volume)
-                                well_plate_array.append(well_plate_indices[last_index])
-                                well_plate_dispense_2d_array[last_index, i] = 0.0
-                                last_index += 1
-                            else:
-                                break
-
-
-                    if dispense_vol < 1e-6:
-                        break  # Nothing to dispense
-
-                    # Optional buffer logic
-                    extra_aspirate_vol = 0.0
-                    sacrificial_dispense_vol = 0.0
-                    if not pipet_back_and_forth:
-                        if math.isclose(vol_dispensed, 0.0, abs_tol=1e-6):
-                            extra_aspirate_vol = min(max_volume - dispense_vol, buffer_vol * 2)
-                            if math.isclose(extra_aspirate_vol, buffer_vol * 2, abs_tol=1e-6):
-                                sacrificial_dispense_vol = buffer_vol
-                        else:
-                            extra_aspirate_vol = min(buffer_vol, max_volume - dispense_vol - vol_remaining)
-                            if math.isclose(extra_aspirate_vol, buffer_vol, abs_tol=1e-6):
-                                sacrificial_dispense_vol = buffer_vol
-
-                    vol_remaining += extra_aspirate_vol - sacrificial_dispense_vol
-
-                    total_aspirate = dispense_vol + extra_aspirate_vol
-                    self.logger.debug(f"Aspirating {total_aspirate:.3f} mL from vial {vial_index}")
-                    self.aspirate_from_vial(vial_index, total_aspirate, specified_tip=pipet_index,
-                                            aspirate_speed=dispense_speed, wait_time=wait_time,
-                                            asp_disp_cycles=asp_cycles, track_height=track_height)
-
-                    if sacrificial_dispense_vol > 0:
-                        self.dispense_into_vial(vial_index, sacrificial_dispense_vol, initial_move=False,
-                                                dispense_speed=dispense_speed, wait_time=wait_time)
-
-                    self.logger.debug(f"Dispensing to wells: {well_plate_array}")
-                    self.logger.debug(f"Dispense volumes: {dispense_array}")
-                    self.dispense_into_wellplate(well_plate_array, dispense_array,
-                                                dispense_speed=dispense_speed, wait_time=wait_time,
-                                                well_plate_type=well_plate_type, blowout_vol=blowout_vol)
-
-                    vol_dispensed += dispense_vol
-                    self.logger.debug(f"Total dispensed so far: {vol_dispensed:.3f} mL")
-
-                # Final buffer return
-                if vol_remaining > 1e-6:
-                    self.logger.debug(f"Returning remaining volume: {vol_remaining:.3f} mL to vial {vial_index}")
-                    self.dispense_into_vial(vial_index, vol_remaining,
-                                            dispense_speed=dispense_speed, wait_time=wait_time)
-                if remove_pipet:
+                
+                self.logger.debug(f"Batched dispensing from {vial_name}: {total_needed:.3f} mL total")
+                
+                # Process batches for this vial
+                dispensed = 0.0
+                well_idx = 0
+                
+                while well_idx < len(vial_volumes):
+                    # Collect next batch that fits within tip capacity
+                    batch_wells, batch_volumes, next_idx = self._collect_next_batch(vial_volumes, well_idx, max_volume)
+                    
+                    if not batch_wells:  # No more batches
+                        break
+                    
+                    # Execute the batch
+                    batch_total = self._execute_batch(
+                        vial_name, batch_wells, batch_volumes, buffer_vol, max_volume,
+                        aspirate_speed, dispense_speed, wait_time, tip_type, well_plate_type
+                    )
+                    
+                    dispensed += batch_total
+                    well_idx = next_idx
+                    self.logger.debug(f"Batched {len(batch_wells)} wells, total: {batch_total:.3f} mL")
+                
+                # Remove pipet after finishing this vial (if any dispensing occurred)
+                if dispensed > 1e-6:
                     self.remove_pipet()
-
-                if return_vial:
-                    self.recap_clamp_vial()
-                    self.return_vial_home(vial_index)
-
+                    self.logger.debug(f"Completed batched dispensing from vial {vial_name} ({tip_type})")
+        
+        self.logger.info("Batched wellplate dispensing completed")
         return True
+
+    def _collect_next_batch(self, vial_volumes, start_idx, max_volume):
+        """
+        Collect volumes that fit in one batch.
+        
+        Args:
+            vial_volumes: Pandas Series of volumes for wells
+            start_idx: Index to start collecting from
+            max_volume: Maximum volume that fits in tip
+            
+        Returns:
+            tuple: (batch_wells, batch_volumes, next_idx)
+        """
+        batch_wells = []
+        batch_volumes = []
+        batch_total = 0.0
+        current_idx = start_idx
+        
+        for i in range(start_idx, len(vial_volumes)):
+            volume = vial_volumes.iloc[i]
+            if volume > 1e-6 and batch_total + volume <= max_volume:
+                batch_wells.append(vial_volumes.index[i])  # Well index
+                batch_volumes.append(volume)
+                batch_total += volume
+                current_idx = i + 1
+            elif volume > 1e-6:
+                break  # Can't fit this volume, end batch
+            else:
+                current_idx = i + 1  # Skip zero volume, continue
+        
+        return batch_wells, batch_volumes, current_idx
+
+    def _execute_batch(self, vial_name, batch_wells, batch_volumes, buffer_vol, max_volume, 
+                      aspirate_speed, dispense_speed, wait_time, tip_type, well_plate_type):
+        """
+        Execute one complete batch: aspirate with buffer -> dispense -> return buffer.
+        
+        Returns:
+            float: Total volume dispensed (excluding buffer)
+        """
+        batch_total = sum(batch_volumes)
+        
+        # Calculate buffer volume for accuracy
+        extra_aspirate_vol = min(buffer_vol, max_volume - batch_total)
+        total_aspirate = batch_total + extra_aspirate_vol
+        
+        # Create parameters for this batch
+        simple_params = PipettingParameters(
+            aspirate_speed=aspirate_speed,
+            dispense_speed=dispense_speed,
+            aspirate_wait_time=wait_time
+        )
+        
+        # Aspirate with buffer
+        self.aspirate_from_vial(vial_name, total_aspirate, parameters=simple_params, specified_tip=tip_type)
+        
+        # Dispense to wells
+        self.dispense_into_wellplate(batch_wells, batch_volumes, 
+                                   parameters=simple_params, well_plate_type=well_plate_type)
+        
+        # Return buffer volume to source vial if any
+        if extra_aspirate_vol > 1e-6:
+            self.logger.debug(f"Returning buffer volume: {extra_aspirate_vol:.3f} mL to vial {vial_name}")
+            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=simple_params, initial_move=False)
+        
+        return batch_total
+
+    # ====================================================================
+    # RESERVOIR SYSTEM
+    # ====================================================================
 
     #Prime the line from the reservoir to the vial. In theory this could happen automatically. Probably good to do it if you are using a reservoir. 
     def prime_reservoir_line(self, reservoir_index, overflow_vial, volume=0.5):
         overflow_vial = self.normalize_vial_index(overflow_vial) #Convert to int if needed
-        self.logger.info(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume} mL")
+        self.logger.info(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume:.3f} mL")
         self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
 
     def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume, measure_weight = False, return_home=True):
         
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
-        self.logger.info(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume} mL")
+        self.logger.info(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume:.3f} mL")
         measured_mass = None
 
         #Step 1: move the vial to the clamp
         if not self.get_vial_info(vial_index,'location')=='clamp':
+            # Safety is now handled in move_vial_to_location method
             self.move_vial_to_location(vial_index,'clamp',0)
         if not self.is_vial_pipetable(vial_index):
             self.uncap_clamp_vial()
@@ -1511,16 +2290,23 @@ class North_Robot:
         if measure_weight: #weigh before dispense (if measure_weight = True)
             initial_mass = self.c9.read_steady_scale()
 
-        #Step 2: move the carousel
-        self.c9.move_carousel(45,70) #This will take some work. Note that for now I'm just doing for position 0
-        #Step 3: aspirate and dispense from the reservoir
-        if not self.simulate:
-            max_volume = self.c9.pumps[reservoir_index]['volume']
+        #Step 2: move the carousel to reservoir position
+        carousel_angle = self.get_config_parameter('pumps', reservoir_index, 'carousel_angle', error_on_missing=False)
+        carousel_height = self.get_config_parameter('pumps', reservoir_index, 'carousel_height', error_on_missing=False)
+        
+        if carousel_angle is not None and carousel_height is not None:
+            self.c9.move_carousel(carousel_angle, carousel_height)
         else:
-            max_volume = 2.5
+            self.logger.warning(f"No carousel configuration found for pump {reservoir_index}")
+            
+        #Step 3: aspirate and dispense from the reservoir
+
+        max_volume = self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False) or 2.5
+
+        
         num_dispenses = math.ceil(volume/max_volume)
         dispense_vol = volume/num_dispenses
-        self.logger.debug(f"Dispensing {dispense_vol} mL {num_dispenses} times")
+        self.logger.debug(f"Dispensing {dispense_vol:.3f} mL {num_dispenses} times")
         for i in range (0, num_dispenses):        
              self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_LEFT)
              self.c9.aspirate_ml(reservoir_index,dispense_vol)
@@ -1544,6 +2330,10 @@ class North_Robot:
         if return_home:
             self.return_vial_home(vial_index)
         return measured_mass
+
+    # ====================================================================
+    # 7. VIAL & CONTAINER MANAGEMENT
+    # ====================================================================
 
     #Check the original status of the vial in order to send it to its home location
     def return_vial_home(self,vial_name):
@@ -1628,6 +2418,11 @@ class North_Robot:
         
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
+        # Safety check: If holding a pipet, ensure the movement path is safe
+        if self.HELD_PIPET_TYPE is not None:
+            if not self.is_vial_movement_safe_with_pipet(vial_index, location, location_index):
+                self.pause_after_error(f"Cannot move vial {vial_name} while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe")
+
         vial_location = self.get_vial_info(vial_index,'location')
         vial_location_index = self.get_vial_info(vial_index,'location_index')
 
@@ -1650,14 +2445,13 @@ class North_Robot:
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self):
+    def uncap_clamp_vial(self, revs=3):
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS is None, True, "Cannot uncap, gripper full"])
-        #error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't uncap vial, holding pipet"])
         error_check_list.append([clamp_vial_index is None, False, "Cannot uncap, no vial in clamp"])
         error_check_list.append([self.is_vial_movable(clamp_vial_index), True, "Can't uncap, vial is uncapped already"])
 
@@ -1666,7 +2460,7 @@ class North_Robot:
         self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not   
         self.c9.close_clamp() #clamp vial
         self.c9.close_gripper()
-        self.c9.uncap(revs=3)
+        self.c9.uncap(revs=revs)
         self.GRIPPER_STATUS = "Cap"
         self.c9.open_clamp()
 
@@ -1675,14 +2469,13 @@ class North_Robot:
         self.save_robot_status()
 
     #Recap the vial in the clamp
-    def recap_clamp_vial(self):
+    def recap_clamp_vial(self, revs=2.0, torque_thresh = 600):
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS, "Cap", "Cannot recap, no cap in gripper"])
-        #error_check_list.append([self.HELD_PIPET_INDEX is None, True, "Can't recap vial, holding pipet"])
         error_check_list.append([clamp_vial_index is None, False, "Cannot recap, no vial in clamp"])
         error_check_list.append([self.is_vial_movable(clamp_vial_index), False, "Can't recap, vial is capped already"])
         
@@ -1690,7 +2483,7 @@ class North_Robot:
 
         self.goto_location_if_not_there(vial_clamp)
         self.c9.close_clamp() #Make sure vial is clamped
-        self.c9.cap(revs=2.0, torque_thresh = 600) #Cap the vial #Cap the vial
+        self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap
         self.GRIPPER_STATUS = None
         self.c9.open_clamp()
@@ -1703,7 +2496,7 @@ class North_Robot:
     def goto_location_if_not_there(self, location):
         difference_threshold = 550
         if self.get_location_distance(location, self.c9.get_robot_positions()) > difference_threshold:
-            self.c9.goto_safe(location,vel=30)
+            self.c9.goto_safe(location, vel=self.get_speed('fast_approach'))
 
     #Measurement for how far two points are
     def get_location_distance(self, loc_1, loc_2):
@@ -1732,9 +2525,10 @@ class North_Robot:
         self.grab_vial(vial_index)
     
         #Vortex
-        self.c9.move_z(292) #Move to a higher height
-        self.c9.move_axis(self.c9.GRIPPER, 1000*vortex_time*vortex_speed, vel=vortex_speed,accel=10000)
-        self.c9.reduce_axis_position(axis=self.c9.GRIPPER)
+        self.c9.move_z(self.get_safe_height()) #Move to a higher height
+        gripper_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'gripper_axis', error_on_missing=False) or 0
+        self.c9.move_axis(gripper_axis, 1000*vortex_time*vortex_speed, vel=vortex_speed,accel=10000)
+        self.c9.reduce_axis_position(axis=gripper_axis)
 
         location = self.get_vial_info(vial_index,'location')
         location_index = self.get_vial_info(vial_index,'location_index')
@@ -1755,6 +2549,10 @@ class North_Robot:
                     self.pause_after_error(error_check[2])
         return error_occured
 
+    # ====================================================================
+    # 8. VALIDATION & SAFETY METHODS
+    # ====================================================================
+
    #Check to see if we can move the vial         
     def is_vial_movable(self, vial_name):
 
@@ -1772,15 +2570,74 @@ class North_Robot:
         pipetable = False
         pipetable = self.get_vial_info(vial_index,'capped') == False or self.get_vial_info(vial_index,'cap_type') == "open"
         return pipetable
+
+    #Check if a location is safe for vial movement while holding a pipet tip
+    def is_location_safe_for_vial_movement_with_pipet(self, location, location_index):
+        """
+        Check if a specific location is safe for vial movement while holding a pipet tip.
+        Due to height constraints, only certain positions are safe to access with a pipet.
+        
+        Args:
+            location: Location name (e.g., 'main_8mL_rack', 'clamp')
+            location_index: Location index number
+            
+        Returns:
+            bool: True if location is safe with pipet, False otherwise
+        """
+        # Safe positions when holding a pipet:
+        # - main_8mL_rack positions 0-5
+        # - clamp position 0
+        if location == 'main_8mL_rack' and location_index is not None:
+            return location_index <= 5
+        elif location == 'clamp' and location_index is not None:
+            return location_index == 0
+        
+        # All other locations are unsafe when holding a pipet
+        return False
+
+    #Check if a vial movement path is safe while holding a pipet tip
+    def is_vial_movement_safe_with_pipet(self, vial_name, dest_location, dest_location_index):
+        """
+        Check if moving a vial from its current position to a destination is safe while holding a pipet.
+        Checks both the starting position and destination position for safety.
+        
+        Args:
+            vial_name: Vial name or index to check
+            dest_location: Destination location name (e.g., 'clamp', 'main_8mL_rack')
+            dest_location_index: Destination location index
+            
+        Returns:
+            bool: True if both start and end positions are safe with pipet, False otherwise
+        """
+        vial_index = self.normalize_vial_index(vial_name)
+        
+        # Get current vial location information
+        current_location = self.get_vial_info(vial_index, 'location')
+        current_location_index = self.get_vial_info(vial_index, 'location_index')
+        
+        # Check if current position is safe
+        current_position_safe = self.is_location_safe_for_vial_movement_with_pipet(current_location, current_location_index)
+        
+        # Check if destination position is safe
+        dest_position_safe = self.is_location_safe_for_vial_movement_with_pipet(dest_location, dest_location_index)
+        
+        return current_position_safe and dest_position_safe
  
-    #CUrrently working!
-    def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=15, pipet=True):
+    def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None):
+        if vel is None:
+            vel = self.get_speed('standard_xy')
         self.logger.debug(f"Moving robot relative to current position by x: {x_distance}, y: {y_distance}, z: {z_distance} mm, vel: {vel}")
-        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(0), self.c9.get_axis_position(1), self.c9.get_axis_position(2))
-        #tuple (x (mm), y (mm), theta (mm))
+        
+        # Get axis numbers from configuration with fallbacks
+        gripper_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'gripper_axis', error_on_missing=False) or 0
+        elbow_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'elbow_axis', error_on_missing=False) or 1
+        shoulder_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'shoulder_axis', error_on_missing=False) or 2
+        z_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'z_axis', error_on_missing=False) or 3
+        
+        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(gripper_axis), self.c9.get_axis_position(elbow_axis), self.c9.get_axis_position(shoulder_axis))
         target_x =  current_loc_mm[0] + x_distance
         target_y =  current_loc_mm[1] + y_distance
-        target_z =  self.c9.counts_to_mm(3, self.c9.get_axis_position(3)) + z_distance
+        target_z =  self.c9.counts_to_mm(z_axis, self.c9.get_axis_position(z_axis)) + z_distance
 
         self.c9.move_xyz(target_x, target_y, target_z, vel=vel)
 
@@ -1789,6 +2646,10 @@ class North_Robot:
         self.logger.info("Moving robot to home position")
         self.c9.goto_safe(home)
         self.c9.move_carousel(0,0)
+
+    # ====================================================================
+    # 9. VIAL INFO & LOCATION UTILITIES
+    # ====================================================================
 
     #Get some piece of information about a vial
     #vial_index,vial_name,location,location_index,vial_volume,capped,cap_type,vial_type
@@ -1813,33 +2674,13 @@ class North_Robot:
     def get_min_pipetting_height(self,vial_name):
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
-
         #The height at which the pipet touches the ground for the 1 mL pipet
         min_height = None   
-
         location_name = self.get_vial_info(vial_index,'location')
-
-        #These constants should be considered properties that we can take in from files later
-        CLAMP_BASE_HEIGHT = 114.5
-        VIAL_RACK_BASE_HEIGHT = 68.5
-        PR_BASE_HEIGHT = 85 #Need to fine tune this
-        LARGE_VIAL_BASE_HEIGHT = 93    
-        SMALL_VIAL_BASE_HEIGHT = 98
-    
-        if location_name=='main_8mL_rack':
-            min_height = VIAL_RACK_BASE_HEIGHT 
-        elif location_name=='large_vial_rack':
-            min_height = LARGE_VIAL_BASE_HEIGHT
-        elif location_name=='small_vial_rack':
-            min_height = SMALL_VIAL_BASE_HEIGHT
-        elif location_name=='photoreactor_array':
-            min_height = PR_BASE_HEIGHT
-        elif location_name=='clamp':
-            min_height = CLAMP_BASE_HEIGHT
-        elif location_name == '12_well_ilya':
-            min_height = 72.00
-        elif location_name == 'heater':
-            min_height = 144
+        # Get minimum pipetting height from YAML configuration
+        min_height = self.get_config_parameter('vial_positions', location_name, 'min_pipetting_height', error_on_missing=True)
+        if min_height is None:
+            self.pause_after_error(f"No minimum pipetting height defined for location: {location_name}")
 
         return min_height
 
@@ -1851,42 +2692,30 @@ class North_Robot:
         return self.get_location(use_pipet,location_name,location_index)
 
     #Translate the location names and indexes to hard-coded locations for pipets or gripping vials
-    def get_location(self,use_pipet,location_name,location_index):
-        location = None
-        #Perhaps we can streamline this association later
-        if use_pipet: #For the pipet
-            if location_name=='main_8mL_rack':
-                location = rack_pip[location_index]
-            elif location_name=='large_vial_rack':
-                location = large_vial_pip[location_index]
-            elif location_name=='small_vial_rack':
-                location = small_vial_pip[location_index]
-            elif location_name=='photoreactor_array':
-                if location_index==0:
-                    location=PR_PIP_0
-                elif location_index==1:
-                    location=PR_PIP_1
-            elif location_name=='clamp':
-                location = vial_clamp_pip
-            elif location_name == '12_well_ilya':
-                location = ilya_wellplate[location_index]
-            elif location_name == 'heater':
-                location = heater_grid_pip[location_index]
-        else: #For the gripper
-           if location_name=='main_8mL_rack':
-                location = rack[location_index]
-           elif location_name=='large_vial_rack':
-                self.pause_after_error("No defined location")
-           elif location_name=='small_vial_rack':
-               self.pause_after_erro("No defined location")
-           elif location_name=='photoreactor_array':
-                if location_index==0:
-                    location=photo_reactor_0
-                elif location_index==1:
-                    location=photo_reactor_1
-           elif location_name=='clamp':
-                location = vial_clamp 
-           elif location_name=='heater':
-               location = heater_grid[location_index]
-        return location
+    def get_location(self, use_pipet, location_name, location_index):
+        # Get the appropriate position source from YAML configuration
+        param_key = 'pipetting_positions_in_Locator' if use_pipet else 'vial_positions_in_Locator'
+        position_source = self.get_config_parameter('vial_positions', location_name, param_key, error_on_missing=True)
+        
+        if position_source is None:
+            self.pause_after_error(f"No {param_key} defined for location: {location_name}")
+            return None
+        
+        try:
+            location_data = getattr(Locator, position_source)
+            
+            # Check if it's a single position (list of 4 coordinates) or array of positions
+            if len(location_data) == 4 and all(isinstance(coord, (int, float)) for coord in location_data):
+                # Single position - only index 0 is valid
+                if location_index != 0:
+                    self.pause_after_error(f"Location {location_name} only supports index 0 (single position)")
+                    return None
+                return location_data
+            else:
+                # Array of positions - return the specified index
+                return location_data[location_index]
+                
+        except (AttributeError, IndexError) as e:
+            self.pause_after_error(f"Invalid location {location_name}[{location_index}]: {e}")
+            return None
     

@@ -23,7 +23,7 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=False,well_volume=0.2):
     print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
     lash_e.nr_robot.move_vial_to_location(sample_index, location="main_8mL_rack", location_index=44) #Move sample to safe pipetting position
-    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates,track_height=True)
+    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates, track_height=True)
     wells = range(first_well_index,first_well_index+replicates)
     lash_e.nr_robot.dispense_into_wellplate(wells, [well_volume]*replicates)
     lash_e.nr_robot.remove_pipet()
