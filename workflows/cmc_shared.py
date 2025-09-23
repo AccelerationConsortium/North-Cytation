@@ -6,6 +6,7 @@ import pandas as pd
 import slack_agent
 import os
 import numpy as np
+from pipetting_data.pipetting_parameters import PipettingParameters
 
 def check_input_file(input_file):
     vial_status = pd.read_csv(input_file, sep=",")
@@ -42,7 +43,9 @@ def mix_surfactants(lash_e, sub_stock_vols, substock_vial):
             if vial_location == 'main_8mL_rack':
                 lash_e.nr_robot.move_vial_to_location(surfactant, 'main_8mL_rack', 43)
             for v in volumes:
-                lash_e.nr_robot.dispense_from_vial_into_vial(surfactant, substock_vial, v, blowout_vol=0.1)
+                # Use new parameter system with blowout volume
+                params = PipettingParameters(blowout_vol=0.1)
+                lash_e.nr_robot.dispense_from_vial_into_vial(surfactant, substock_vial, v, parameters=params)
             lash_e.nr_robot.remove_pipet()
             if vial_location == 'main_8mL_rack':
                 lash_e.nr_robot.return_vial_home(surfactant)
@@ -90,11 +93,28 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_w
     df_surfactant = dispense_data[['surfactant volume']]
     df_water = dispense_data[['water volume']]
     df_dmso = dispense_data[['probe volume']]
+    
+    # Rename columns for new interface
+    df_dmso.columns = ['pyrene_DMSO']
+    df_surfactant.columns = [substock_vial_index]
 
     water_batch_df = split_water_batches(df_water)
 
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso, ['pyrene_DMSO'], well_plate_type="48 WELL PLATE", dispense_speed=20, wait_time=2, asp_cycles=1, low_volume_cutoff=0.04, buffer_vol=0, pipet_back_and_forth=True, blowout_vol=0.1)
-    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant, [substock_vial_index], well_plate_type="48 WELL PLATE", dispense_speed=15)
+    # Use new interface with proper parameters
+    dmso_params = PipettingParameters(
+        dispense_speed=20,
+        aspirate_wait_time=2,
+        asp_disp_cycles=1,
+        blowout_vol=0.1
+    )
+    
+    surfactant_params = PipettingParameters(dispense_speed=15)
+    
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_dmso, parameters=dmso_params, 
+                                                      strategy="serial", well_plate_type="48 WELL PLATE", 
+                                                      low_volume_cutoff=0.04)
+    lash_e.nr_robot.dispense_from_vials_into_wellplate(df_surfactant, parameters=surfactant_params, 
+                                                      well_plate_type="48 WELL PLATE")
 
     # for water_batch in water_batch_df:
     #     print(water_batch)
@@ -116,7 +136,7 @@ def create_wellplate_samples(lash_e, wellplate_data, substock_vial_index, last_w
 
     lash_e.nr_robot.return_vial_home(substock_vial_index)
 
-    lash_e.nr_robot.get_pipet(0)
+    lash_e.nr_robot.get_pipet("large_tip")
     for well in well_indices:
         lash_e.nr_robot.mix_well_in_wellplate(well, volume=0.3, well_plate_type="48 WELL PLATE")
     lash_e.nr_robot.remove_pipet()

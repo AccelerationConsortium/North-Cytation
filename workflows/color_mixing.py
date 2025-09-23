@@ -47,15 +47,15 @@ def generate_random_matrix(rows, cols, row_sum, divisible_by):
 
 def mix_wells(lash_e, wells, wash_index=4, wash_volume=0.150, repeats=1,replicates=6):
     for well in wells:
-        stay_low=True
+        move_to_wellplate = False  # Default: don't move (stay at current position)
         if well%replicates==0:
             lash_e.nr_robot.aspirate_from_vial(wash_index,wash_volume)
             lash_e.nr_robot.dispense_into_vial(wash_index,wash_volume,initial_move=False)
-            stay_low=False
+            move_to_wellplate = True  # Now DO move for this first well in group
         #for i in range (0,repeats):
         #    lash_e.nr_robot.dispense_from_vial_into_vial(wash_index,wash_index,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
 
-        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,stay_low=stay_low)
+        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=move_to_wellplate)
         lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
         for i in range (0, repeats):
             lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
@@ -67,10 +67,10 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
     check_input_file(INPUT_VIAL_STATUS_FILE)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=False)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True)
 
-    #data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
-    data_colors_uL = pd.read_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition.txt", sep=',',index_col=0)/1000
+    data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
+    #data_colors_uL = pd.read_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition.txt", sep=',',index_col=0)/1000
 
     print(data_colors_uL)
 
@@ -99,8 +99,11 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
         data_pd = data_colors_uL[[color]]
         print(data_pd)
 
+        # Set proper column name for new interface
+        data_pd.columns = [color]
+        
         lash_e.nr_robot.move_vial_to_location(color, 'main_8mL_rack', 44)
-        lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd,[color],low_volume_cutoff=0.200,pipet_back_and_forth=True)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd, strategy="serial", low_volume_cutoff=0.200)
 
         lash_e.nr_robot.return_vial_home(color)
 

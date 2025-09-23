@@ -1,0 +1,21 @@
+# Syringe pump configuration
+# Each pump is identified by its index (0, 1, etc.)
+0:
+  description: "Pipetting pump"
+  volume: 1.0  # Maximum volume in mL
+  default_speed: 11  # Default speed setting
+  liquid: null  # No specific liquid (used for pipetting various solutions)
+  type: "syringe"
+  carousel_angle: null  # No carousel movement needed for pipetting pump
+  carousel_height: null  # No carousel movement needed for pipetting pump
+  max_pump_position: 3000  # Maximum pump position for full aspiration
+  
+1:
+  description: "Water reservoir pump" 
+  volume: 2.5  # Maximum volume in mL
+  default_speed: 15  # Default speed setting
+  liquid: "water"  # Contains water
+  type: "syringe"
+  carousel_angle: 45  # Carousel angle for accessing this reservoir
+  carousel_height: 70  # Carousel height for accessing this reservoir
+  max_pump_position: 3000  # Maximum pump position for full aspiration
