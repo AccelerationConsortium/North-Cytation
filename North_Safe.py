@@ -823,7 +823,7 @@ class North_Robot(North_Base):
         
         # Load all state files (dynamic state)  
         self._load_state_files()
-        self.load_pumps() #Load the pumps
+        # Note: load_pumps() is now called after homing in reset_after_initialization()
         self.reset_after_initialization() #Reset everything that may not be as desired, eg return to "Home"
         
     def _load_configuration_files(self):
@@ -1128,7 +1128,7 @@ class North_Robot(North_Base):
     def reset_after_initialization(self, max_retries=2):
         """
         Physical initialization and cleanup of North Robot.
-        Handles liquid disposal, tip removal, and gripper cleanup with proper error recovery.
+        Handles homing, pump loading, liquid disposal, tip removal, and gripper cleanup.
         
         Args:
             max_retries (int): Maximum number of retry attempts for homing-related errors (default: 2)
@@ -1137,9 +1137,19 @@ class North_Robot(North_Base):
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         self.c9.open_clamp()
         
-        # Attempt physical cleanup with retry logic for homing-related errors
+        # Home all components first before any pump operations
+        self.logger.info("Homing robot components before pump initialization...")
+        try:
+            self.home_robot_components()
+        except Exception as e:
+            self.logger.error(f"Failed to home robot components during initialization: {e}")
+            raise
+        
+        # Now load pumps after homing
+        self.load_pumps()
+        
+        # Attempt physical cleanup with retry logic for remaining errors
         retry_count = 0
-        homed = False
         
         while retry_count < max_retries:
             try:
@@ -1147,28 +1157,12 @@ class North_Robot(North_Base):
                 break  # Success, exit retry loop
                 
             except Exception as e:
-                # Check if this is likely a homing-related error
-                error_msg = str(e).lower()
-                homing_keywords = ['not homed', 'home', 'position unknown', 'axis not initialized']
-                is_homing_error = any(keyword in error_msg for keyword in homing_keywords)
+                # For any remaining errors, just log and retry
+                retry_count += 1
+                self.logger.warning(f"Physical cleanup failed (attempt {retry_count}/{max_retries}): {e}")
                 
-                if is_homing_error and not homed:
-                    self.logger.warning(f"Detected homing-related error during initialization: {e}")
-                    self.logger.info("Attempting to home all robot components...")
-                    
-                    try:
-                        self.home_robot_components()
-                        homed = True
-                        retry_count += 1
-                        self.logger.info("Homing completed, retrying physical cleanup...")
-                    except Exception as home_error:
-                        self.logger.error(f"Failed to home robot components: {home_error}")
-                        raise
-                else:
-                    # Non-homing error or already attempted homing
-                    self.logger.error(f"Failed to complete physical cleanup: {e}")
-                    if retry_count > 0:
-                        self.logger.error("Physical cleanup failed even after homing")
+                if retry_count >= max_retries:
+                    self.logger.error(f"Failed to complete physical cleanup after {max_retries} attempts: {e}")
                     raise
         
         # Final setup
@@ -1250,7 +1244,7 @@ class North_Robot(North_Base):
 
     #Remove the pipet tip
     def remove_pipet(self):
-        self.logger.debug("Removing pipet")
+        self.logger.info("Removing pipet")
         self.c9.goto_safe(p_remove_approach, vel=self.get_speed('fast_approach'))
         #Get removal location from YAML config based on tip type
         if self.HELD_PIPET_TYPE is not None:
@@ -1597,13 +1591,48 @@ class North_Robot(North_Base):
         tip_speed = self.get_config_parameter('pipet_tips', self.HELD_PIPET_TYPE, 'default_aspirate_speed', error_on_missing=True)
         return tip_speed
 
+    def _ensure_vial_accessible_for_pipetting(self, vial_name, use_safe_location=False):
+        """
+        Helper method to ensure a vial is accessible for pipetting by moving it to clamp if needed.
+        
+        Args:
+            vial_name (str or int): Name or index of the vial
+            use_safe_location (bool): Force movement to safe location even if vial is pipetable
+            
+        Returns:
+            bool: True if vial is now accessible, False if operation should be aborted
+        """
+        vial_num = self.normalize_vial_index(vial_name)
+        
+        vial_move_required = use_safe_location or not self.is_vial_pipetable(vial_num)
+        if vial_move_required:
+            self.logger.debug("Vial move required for pipetting")
+            if self.is_vial_movable(vial_num):
+                self.logger.info(f"Moving vial {vial_name} to safe pipetting location")
+
+                # Check if clamp is occupied
+                clamp_vial_index = self.get_vial_in_location('clamp', 0)
+                if clamp_vial_index is not None:
+                    self.logger.debug(f"Clamp occupied by vial {clamp_vial_index}, returning it home first")
+                    self.return_vial_home(clamp_vial_index)
+                
+                # Move vial to clamp and uncap
+                self.move_vial_to_location(vial_num, location='clamp', location_index=0)
+                self.uncap_clamp_vial()
+                
+            else:
+                self.pause_after_error(f"Vial {vial_name} cannot be moved to a safe pipetting location")
+                return False
+                
+        return True
+
     # ====================================================================
     # 5. LIQUID HANDLING OPERATIONS
     # ====================================================================
 
     #Aspirate from a vial using the pipet tool
     def aspirate_from_vial(self, source_vial_name, amount_mL, parameters=None, 
-                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None):
+                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False):
         """
         Aspirate amount_ml from a source vial.
         
@@ -1627,9 +1656,9 @@ class North_Robot(North_Base):
         
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
 
-        error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.is_vial_pipetable(source_vial_num), True, "Can't pipet, at least one vial is capped"])    
-        self.check_for_errors(error_check_list,True) #This will cause a pause if there's an issue 
+        # Ensure vial is accessible for pipetting
+        if not self._ensure_vial_accessible_for_pipetting(source_vial_name, use_safe_location):
+            return
 
         #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
         required_tip_type = self.select_pipet_tip(amount_mL, specified_tip)
@@ -1747,44 +1776,16 @@ class North_Robot(North_Base):
             volume = volume / repeats
             self.logger.info(f"Volume too high for single transfer, splitting into {repeats} transfers of {round(volume,3)} mL each")
 
-        # Determine which vials need to be moved
-        source_pipetable = self.is_vial_pipetable(source_vial_index)
-        dest_pipetable = self.is_vial_pipetable(dest_vial_index)
-        move_source_vial = not source_pipetable and self.is_vial_movable(source_vial_index)
-        move_dest_vial = not dest_pipetable and self.is_vial_movable(dest_vial_index)
-        move_both = move_source_vial and move_dest_vial
-
         total_mass = 0
         for i in range(repeats):
             last_run = (i == repeats - 1)
-            first_run = (i == 0)
-
-            # Move and uncap source vial if needed
-            if move_source_vial and (first_run or move_both):
-                self.logger.debug("Moving source vial to clamp to uncap")
-                self.move_vial_to_location(source_vial_index, location='clamp', location_index=0)
-                self.uncap_clamp_vial()
 
             # Aspirate from source
             self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, specified_tip=specified_tip)
 
-            # Move and uncap destination vial if needed
-            if move_dest_vial and (first_run or move_both):
-                if move_source_vial:
-                    self.recap_clamp_vial()
-                    self.return_vial_home(source_vial_index)
-                self.logger.debug("Moving destination vial to clamp to uncap")
-                self.move_vial_to_location(dest_vial_index, location='clamp', location_index=0)
-                self.uncap_clamp_vial()
-
             # Dispense into destination
             mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters)
             total_mass += mass_increment if mass_increment is not None else 0
-
-            # If both vials were moved, return dest vial first, then source will be handled below
-            if move_both and move_dest_vial:
-                self.recap_clamp_vial()
-                self.return_vial_home(dest_vial_index)
 
             # Return vials and remove pipet on last run
             if last_run:
@@ -1888,10 +1889,11 @@ class North_Robot(North_Base):
         
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
+        # Ensure vial is accessible for pipetting (no use_safe_location for dispense)
+        if not self._ensure_vial_accessible_for_pipetting(dest_vial_name, use_safe_location=False):
+            return
+
         measured_mass = None
-        error_check_list = [] #List of specific errors for this method
-        error_check_list.append([self.is_vial_pipetable(dest_vial_num), True, "Can't pipet, at least one vial is capped"])    
-        self.check_for_errors(error_check_list,True) #This will cause a pause if there's an issue
 
         self.logger.info(f"Pipetting into vial {self.get_vial_info(dest_vial_num, 'vial_name')}, amount: {round(amount_mL, 3)} mL")
         
@@ -2060,7 +2062,7 @@ class North_Robot(North_Base):
         else:
             raise ValueError(f"Unknown strategy: {strategy}. Use 'serial', 'batched', or 'auto'")
 
-    def _dispense_wellplate_serial(self, well_plate_df, parameters, low_volume_cutoff, well_plate_type):
+    def _dispense_wellplate_serial(self, well_plate_df, parameters, well_plate_type):
         """
         Serial strategy: One aspirate -> one dispense per well, full parameter support.
         Slower but supports all PipettingParameters features.
@@ -2088,36 +2090,27 @@ class North_Robot(North_Base):
             
             self.logger.debug(f"Processing vial {vial_name}")
             
-            # Split into small and large tip volumes
-            small_volumes = []
-            large_volumes = []
+            # Sort volumes by size to minimize tip changes (small to large)
+            volume_list = [(well_idx, volume) for well_idx, volume in vial_volumes.items() if volume > 1e-6]
+            volume_list.sort(key=lambda x: x[1])  # Sort by volume (ascending)
             
-            for well_idx, volume in vial_volumes.items():
-                if volume > 1e-6:
-                    if volume < low_volume_cutoff:
-                        small_volumes.append((well_idx, volume))
-                    else:
-                        large_volumes.append((well_idx, volume))
+            self.logger.debug(f"Processing {len(volume_list)} volumes for vial {vial_name} in sorted order")
             
-            # Process small tip volumes first (if any)
-            if small_volumes:
-                self.logger.debug(f"Processing {len(small_volumes)} small tip volumes for vial {vial_name}")
-                for well_idx, volume in small_volumes:
-                    self.aspirate_from_vial(vial_name, volume, parameters=parameters, specified_tip="small_tip")
-                    self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, 
-                                               well_plate_type=well_plate_type)
+            # Process volumes in sorted order - this naturally groups similar volumes
+            for well_idx, volume in volume_list:
+                self.aspirate_from_vial(vial_name, volume, parameters=parameters)  # Automatic tip selection
+                self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, 
+                                           well_plate_type=well_plate_type)
+            
+            # Remove tip after processing all volumes for this vial
+            if self.HELD_PIPET_TYPE is not None:
                 self.remove_pipet()
-                self.logger.debug(f"Completed small tip dispensing for vial {vial_name}")
-            
-            # Process large tip volumes (if any)
-            if large_volumes:
-                self.logger.debug(f"Processing {len(large_volumes)} large tip volumes for vial {vial_name}")
-                for well_idx, volume in large_volumes:
-                    self.aspirate_from_vial(vial_name, volume, parameters=parameters, specified_tip="large_tip")
-                    self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, 
-                                               well_plate_type=well_plate_type)
-                self.remove_pipet()
-                self.logger.debug(f"Completed large tip dispensing for vial {vial_name}")
+        
+        # Clean up any vials left in clamp after all dispensing
+        clamp_vial_index = self.get_vial_in_location('clamp', 0)
+        if clamp_vial_index is not None:
+            self.recap_clamp_vial()
+            self.return_vial_home(clamp_vial_index)
         
         self.logger.info("Serial wellplate dispensing completed")
         return True
@@ -2130,9 +2123,8 @@ class North_Robot(North_Base):
         self.logger.debug("Using batched dispensing strategy")
         
         # Extract basic parameters for batched mode (ignore complex parameters)
-        aspirate_speed = parameters.aspirate_speed or self.get_tip_dependent_aspirate_speed()
-        dispense_speed = parameters.dispense_speed or aspirate_speed
-        wait_time = parameters.aspirate_wait_time or 1.0
+        # Note: aspirate_speed will be determined after tip is acquired
+        base_wait_time = parameters.aspirate_wait_time or 1.0
         
         vial_names = well_plate_df.columns.tolist()
         vial_indices = [self.normalize_vial_index(v) for v in vial_names]
@@ -2189,7 +2181,7 @@ class North_Robot(North_Base):
                     # Execute the batch
                     batch_total = self._execute_batch(
                         vial_name, batch_wells, batch_volumes, buffer_vol, max_volume,
-                        aspirate_speed, dispense_speed, wait_time, tip_type, well_plate_type
+                        parameters, base_wait_time, tip_type, well_plate_type
                     )
                     
                     dispensed += batch_total
@@ -2236,7 +2228,7 @@ class North_Robot(North_Base):
         return batch_wells, batch_volumes, current_idx
 
     def _execute_batch(self, vial_name, batch_wells, batch_volumes, buffer_vol, max_volume, 
-                      aspirate_speed, dispense_speed, wait_time, tip_type, well_plate_type):
+                      parameters, wait_time, tip_type, well_plate_type):
         """
         Execute one complete batch: aspirate with buffer -> dispense -> return buffer.
         
@@ -2249,24 +2241,20 @@ class North_Robot(North_Base):
         extra_aspirate_vol = min(buffer_vol, max_volume - batch_total)
         total_aspirate = batch_total + extra_aspirate_vol
         
-        # Create parameters for this batch
-        simple_params = PipettingParameters(
-            aspirate_speed=aspirate_speed,
-            dispense_speed=dispense_speed,
-            aspirate_wait_time=wait_time
-        )
+        # Determine speeds after tip is acquired (get tip first via aspirate)
+        # Note: aspirate_from_vial will handle tip acquisition and speed setting
         
         # Aspirate with buffer
-        self.aspirate_from_vial(vial_name, total_aspirate, parameters=simple_params, specified_tip=tip_type)
+        self.aspirate_from_vial(vial_name, total_aspirate, parameters=parameters, specified_tip=tip_type)
         
         # Dispense to wells
         self.dispense_into_wellplate(batch_wells, batch_volumes, 
-                                   parameters=simple_params, well_plate_type=well_plate_type)
+                                   parameters=parameters, well_plate_type=well_plate_type)
         
         # Return buffer volume to source vial if any
         if extra_aspirate_vol > 1e-6:
             self.logger.debug(f"Returning buffer volume: {extra_aspirate_vol:.3f} mL to vial {vial_name}")
-            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=simple_params, initial_move=False)
+            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=parameters, initial_move=False)
         
         return batch_total
 

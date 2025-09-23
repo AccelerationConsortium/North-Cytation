@@ -31,6 +31,9 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, model_type
     elif model_type == "qEI":
         #Default qEI
         model_gen_kwargs = {"deduplicate": True}
+    else:
+        # Default for any other model type (like LLM)
+        model_gen_kwargs = {"deduplicate": True}
     
     # ...existing code...
     
