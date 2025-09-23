@@ -540,7 +540,7 @@ class North_Track(North_Base):
             self.logger.debug(f"Getting {self.get_ordinal(self.NUM_SOURCE)} wellplate from source at {DOUBLE_SOURCE_Y}")
                      
             # Use unified method with dynamic Z override for wellplate pickup
-            self.grab_wellplate_from_location('source_stack', self.CURRENT_WP_TYPE, z_override=DOUBLE_SOURCE_Y, waypoint_locations=['transfer_stack'])
+            self.grab_wellplate_from_location('source_stack', self.CURRENT_WP_TYPE, z_override=DOUBLE_SOURCE_Y, waypoint_locations=['max_height'])
             
             self.NUM_SOURCE -= 1
             self.save_track_status() #update yaml
@@ -570,8 +570,7 @@ class North_Track(North_Base):
             self.logger.info(f"Discarding wellplate as the {self.get_ordinal(self.NUM_WASTE+1)} WP in waste stack at height: {DOUBLE_WASTE_Y}")
             
             # Move to max height, then grab wellplate from NR
-            self.c9.move_axis(self.get_axis('z_axis'), self.get_limit('max_safe_height'), vel=self.get_speed('default_z'))
-            self.grab_wellplate_from_location('pipetting_area', self.CURRENT_WP_TYPE)
+            self.grab_wellplate_from_location('pipetting_area', self.CURRENT_WP_TYPE, waypoint_locations=['transfer_stack'])
             self.release_wellplate_in_location('waste_stack', self.CURRENT_WP_TYPE, z_override=DOUBLE_WASTE_Y, waypoint_locations=['transfer_stack'])
 
             # Use unified transfer method to drop off at waste stack
@@ -1098,16 +1097,18 @@ class North_Robot(North_Base):
             self.c9.home_robot()
             
             # Home all pumps systematically
-            pump_configs = self.get_config_parameter('pumps', error_on_missing=False) or {}
+            pump_configs = self.PUMP_CONFIG or {}
             for pump_index in pump_configs.keys():
                 self.logger.debug(f"Homing pump {pump_index}...")
                 self.c9.home_pump(int(pump_index))
             
             # Home track axes from configuration
             self.logger.debug("Homing track axes...")
-            track_axes = self.get_config_parameter('robot_hardware', 'track_axes', '', error_on_missing=False)
+            track_axes = self.ROBOT_HARDWARE.get('track_axes', {}) if hasattr(self, 'ROBOT_HARDWARE') and self.ROBOT_HARDWARE else {}
             if track_axes:
-                for axis_name, axis_number in track_axes.items():
+                # Sort track axes by axis number to ensure consistent homing order (lower numbers first)
+                sorted_track_axes = sorted(track_axes.items(), key=lambda x: x[1])
+                for axis_name, axis_number in sorted_track_axes:
                     self.logger.debug(f"Homing track axis {axis_name} (axis {axis_number})...")
                     self.c9.home_axis(axis_number)
             else:
@@ -1213,13 +1214,13 @@ class North_Robot(North_Base):
     #Save the status of the robot to memory
     def save_robot_status(self):
         #self.logger.debug("Saving robot status to file: %s", self.ROBOT_STATUS_FILE)
-        # Robot status data
+        # Robot status data - ensure all values are Python native types to avoid YAML serialization issues
         robot_status = {
             "gripper_status": self.GRIPPER_STATUS,
-            "gripper_vial_index": self.GRIPPER_VIAL_INDEX,
+            "gripper_vial_index": int(self.GRIPPER_VIAL_INDEX) if self.GRIPPER_VIAL_INDEX is not None else None,
             "held_pipet_type": self.HELD_PIPET_TYPE,
             "pipets_used": self.PIPETS_USED,  # Save all rack usage directly
-            "pipet_fluid_vial_index": self.PIPET_FLUID_VIAL_INDEX,
+            "pipet_fluid_vial_index": int(self.PIPET_FLUID_VIAL_INDEX) if self.PIPET_FLUID_VIAL_INDEX is not None else None,
             "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME)
         }
 
@@ -1715,7 +1716,7 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, specified_tip=None):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, specified_tip=None, remove_tip=True):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -1751,6 +1752,7 @@ class North_Robot(North_Base):
         dest_pipetable = self.is_vial_pipetable(dest_vial_index)
         move_source_vial = not source_pipetable and self.is_vial_movable(source_vial_index)
         move_dest_vial = not dest_pipetable and self.is_vial_movable(dest_vial_index)
+        move_both = move_source_vial and move_dest_vial
 
         total_mass = 0
         for i in range(repeats):
@@ -1758,7 +1760,7 @@ class North_Robot(North_Base):
             first_run = (i == 0)
 
             # Move and uncap source vial if needed
-            if move_source_vial and first_run:
+            if move_source_vial and (first_run or move_both):
                 self.logger.debug("Moving source vial to clamp to uncap")
                 self.move_vial_to_location(source_vial_index, location='clamp', location_index=0)
                 self.uncap_clamp_vial()
@@ -1767,7 +1769,7 @@ class North_Robot(North_Base):
             self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, specified_tip=specified_tip)
 
             # Move and uncap destination vial if needed
-            if move_dest_vial and first_run:
+            if move_dest_vial and (first_run or move_both):
                 if move_source_vial:
                     self.recap_clamp_vial()
                     self.return_vial_home(source_vial_index)
@@ -1779,15 +1781,20 @@ class North_Robot(North_Base):
             mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters)
             total_mass += mass_increment if mass_increment is not None else 0
 
+            # If both vials were moved, return dest vial first, then source will be handled below
+            if move_both and move_dest_vial:
+                self.recap_clamp_vial()
+                self.return_vial_home(dest_vial_index)
+
             # Return vials and remove pipet on last run
             if last_run:
-                self.remove_pipet()
-                if move_dest_vial:
+                if remove_tip:
+                    self.remove_pipet()
+                # Return whatever vial is currently in the clamp (works for all cases)
+                clamp_vial_index = self.get_vial_in_location('clamp', 0)
+                if clamp_vial_index is not None:
                     self.recap_clamp_vial()
-                    self.return_vial_home(dest_vial_index)
-                elif move_source_vial:
-                    self.recap_clamp_vial()
-                    self.return_vial_home(source_vial_index)
+                    self.return_vial_home(clamp_vial_index)
 
         return total_mass
 

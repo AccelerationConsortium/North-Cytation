@@ -6,10 +6,10 @@ from master_usdl_coordinator import Lash_E
 
 input_vial_status_file="../utoronto_demo/status/sample_capped_vials.csv"
 
-lash_e = Lash_E(input_vial_status_file, initialize_biotek=False, simulate=True)
+lash_e = Lash_E(input_vial_status_file, initialize_biotek=False, simulate=False)
 
 lash_e.nr_robot.check_input_file()
 
-lash_e.nr_robot.dispense_from_vial_into_vial('Sample_A','Sample_B', 1.2)
+lash_e.nr_robot.dispense_from_vial_into_vial('Sample_A','Sample_B', 0.1)
 
 lash_e.nr_robot.move_home()
