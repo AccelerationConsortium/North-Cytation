@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 import numpy as np
 import pandas as pd
+from pipetting_data.pipetting_parameters import PipettingParameters
 import analysis.calibration_analyzer as analyzer
 
 LIQUIDS = {
@@ -19,9 +20,25 @@ LIQUIDS = {
 # --- Utility Functions ---
 def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     time.sleep(0.2)
-    deviation = np.abs(params["aspirate_speed"] - 15) + np.random.normal(0, 0.5)
-    variability = np.abs(params["aspirate_wait_time"] - 30) * 0.1 + np.random.normal(0, 0.3)
-    time_score = (params["aspirate_wait_time"] - 1) * 100 + np.random.normal(0, 5)
+    
+    # Generate realistic values within expected ranges
+    # Deviation: 0-30% (lower is better)
+    deviation = np.abs(params["aspirate_speed"] - 15) * 0.5 + np.random.normal(10, 3)
+    deviation = np.clip(deviation, 0, 30)
+    
+    # Variability: 0-10% (lower is better) 
+    variability = np.abs(params["aspirate_wait_time"] - 15) * 0.1 + np.random.normal(2, 1)
+    variability = np.clip(variability, 0, 10)
+    
+    # Time: 0-100 seconds (lower is better)
+    time_score = params["aspirate_wait_time"] + params["dispense_wait_time"] + np.random.normal(20, 5)
+    time_score = np.clip(time_score, 0, 100)
+    
+    # Ensure no NaN values are returned
+    deviation = np.nan_to_num(deviation, nan=15.0)
+    variability = np.nan_to_num(variability, nan=5.0)
+    time_score = np.nan_to_num(time_score, nan=50.0)
+    
     return {"deviation": deviation, "variability": variability, "time": time_score}
 
 def empty_vial_if_needed(lash_e, vial_name, state):
@@ -50,28 +67,30 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
     pre_air = params.get("pre_asp_air_vol", 0)
     post_air = params.get("post_asp_air_vol", 0)
     over_volume = params.get("overaspirate_vol", 0)
+    #over_volume = 0
     air_vol = pre_air + post_air
-    aspirate_kwargs = {
-        "aspirate_speed": params["aspirate_speed"],
-        "wait_time": params["aspirate_wait_time"],
-        "retract_speed": params["retract_speed"],
-        "pre_asp_air_vol": pre_air,
-        "post_asp_air_vol": post_air,
-    }
-    dispense_kwargs = {
-        "dispense_speed": params["dispense_speed"],
-        "wait_time": params["dispense_wait_time"],
-        "measure_weight": True,
-        "air_vol": air_vol,
-    }
+    
+    # Create PipettingParameters objects instead of kwargs dictionaries
+    aspirate_params = PipettingParameters(
+        aspirate_speed=params["aspirate_speed"],
+        aspirate_wait_time=params["aspirate_wait_time"],
+        retract_speed=params["retract_speed"],
+        pre_asp_air_vol=pre_air,
+        post_asp_air_vol=post_air,
+    )
+    dispense_params = PipettingParameters(
+        dispense_speed=params["dispense_speed"],
+        dispense_wait_time=params["dispense_wait_time"],
+        air_vol=air_vol,
+    )
     
 
     measurements = []
     start = time.time()
     for replicate_idx in range(replicate_count):
         replicate_start = datetime.now().isoformat()
-        lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, **aspirate_kwargs)
-        measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, **dispense_kwargs)
+        lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, parameters=aspirate_params)
+        measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, parameters=dispense_params, measure_weight=True)
         if new_pipet_each_time:
             lash_e.nr_robot.remove_pipet()
         replicate_end = datetime.now().isoformat()
@@ -88,7 +107,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         return pipet_and_measure_simulated(volume, params, expected_measurement, expected_time)
     else:
         avg_measurement = np.mean(measurements)
-        std_measurement = np.std(measurements) / avg_measurement * 100  # % relative std
+        #std_measurement = np.std(measurements) / expected_measurement * 100  # % relative std (relative to expected)
+        std_measurement = np.std(measurements) / avg_measurement * 100
         percent_errors = [abs((m - expected_measurement) / expected_measurement * 100) for m in measurements]
         deviation = np.mean(percent_errors)
         time_score = ((end - start) / replicate_count)
@@ -119,7 +139,7 @@ def flatten_measurements(raw_data: dict) -> pd.DataFrame:
     records = []
     for (replicate, wavelength), series in raw_data.items():
         for well, absorbance in series.items():
-            records.append({
+            records.append({ 
                 'replicate': replicate,
                 'well': well,
                 'wavelength': int(wavelength),  # Convert string like '590' to int

@@ -1,13 +1,29 @@
 # calibration_sdl_short.py
-
-
-from matplotlib.pylab import f
 from calibration_sdl_base import *
 import sys
 sys.path.append("../utoronto_demo")
-from ax.core.observation import ObservationFeatures
+import os
+import logging
 from master_usdl_coordinator import Lash_E
 import recommenders.pipeting_optimizer_v2 as recommender
+import slack_agent
+from datetime import datetime
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+try:
+    import recommenders.pipetting_recommender_llm as llm_recommender
+    LLM_AVAILABLE = True
+    logger.info("LLM recommender loaded successfully")
+except ImportError as e:
+    LLM_AVAILABLE = False
+    logger.warning(f"LLM recommender not available: {e}")
+except Exception as e:
+    LLM_AVAILABLE = False
+    logger.error(f"LLM recommender error: {e}")
+
 
 # --- Experiment Config ---
 LIQUID = "glycerol"  #<------------------- CHANGE THIS!
@@ -18,12 +34,14 @@ NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
 
 SEED = 7
 SOBOL_CYCLES_PER_VOLUME = 5
-BAYES_CYCLES_PER_VOLUME = 27
+BAYES_CYCLES_PER_VOLUME = 1
 REPLICATES = 3
 BAYESIAN_BATCH_SIZE = 1
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
-#MODELS = ['qEI', 'qLogEI', 'qNEHVI']
-MODELS = ['qNEHVI'] #Change this!
+#MODELS = ['qEI', 'qLogEI', 'qNEHVI, 'LLM]
+MODELS = ['LLM'] #Change this!
+USE_EXISTING_DATA = False
+EXISTING_DATA_FOLDER = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\p8_newconstraints"
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
@@ -41,7 +59,8 @@ lash_e.nr_robot.check_input_file()
 lash_e.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
 
 lash_e.logger.info("Liquid: ", LIQUIDS[LIQUID])
-
+if not SIMULATE:
+    slack_agent.send_slack_message(f"Starting new calibration experiment with {LIQUID} and models {MODELS}")
 
 for model_type in MODELS:
     if not SIMULATE:
@@ -56,7 +75,21 @@ for model_type in MODELS:
         autosave_summary_path=None
 
     # --- Optimization Loop ---
-    ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), bayesian_batch_size=BAYESIAN_BATCH_SIZE, volume=VOLUMES, model_type=model_type)
+    ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), bayesian_batch_size=BAYESIAN_BATCH_SIZE, volume=VOLUMES, model_type=model_type, simulate=SIMULATE)
+    
+    # ...existing code...
+    if USE_EXISTING_DATA:
+        base_folder = EXISTING_DATA_FOLDER
+        #base_folder = r"C:\Users\owenm\OneDrive\Desktop\Calibration_SDL"
+        additional_folders = [folder for folder in os.listdir(base_folder) if "glycerol" in folder.lower() and os.path.isdir(os.path.join(base_folder, folder))]
+        # ...existing code...
+        for folder in additional_folders:
+            file_path = os.path.join(base_folder, folder, "experiment_summary.csv")
+            if os.path.exists(file_path):
+                lash_e.logger.info(f"Loading existing data from {file_path}")
+                recommender.load_data(ax_client, file_path)
+            else:
+                lash_e.logger.info(f"No summary file found in {file_path}, skipping.")
     all_results = []
     raw_measurements = []
 
@@ -81,7 +114,7 @@ for model_type in MODELS:
             params, trial_index = ax_client.get_next_trial()
             check_if_measurement_vial_full()
             result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
-            ax_client.complete_trial(trial_index=trial_index, raw_data=result)
+            recommender.add_result(ax_client, trial_index, result)
             result.update(params)
             result.update({"volume": volume, "trial_index": trial_index, "strategy": "SOBOL", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
             result = strip_tuples(result)
@@ -93,13 +126,74 @@ for model_type in MODELS:
         expected_mass = EXPECTED_MASSES[i]
         expected_time = EXPECTED_TIME[i]
         for _ in range(BAYES_CYCLES_PER_VOLUME):
-            suggestions = recommender.get_suggestions(ax_client, volume, n=1)
+            if model_type == 'LLM' and LLM_AVAILABLE:
+                # Use LLM to generate parameter suggestions
+                config_path = os.path.abspath("recommenders/calibration_unified_config.json")
+                print(f"🔍 Looking for config at: {config_path}")
+                print(f"🔍 Config file exists: {os.path.exists(config_path)}")
+                
+                # Use existing autosave file for LLM analysis (contains all SOBOL results)
+                if not SIMULATE and os.path.exists(autosave_summary_path):
+                    llm_input_file = autosave_summary_path
+                else:
+                    # For simulation or if autosave doesn't exist, save temp file in output folder
+                    llm_input_file = os.path.join("output", "temp_llm_input.csv")
+                    os.makedirs("output", exist_ok=True)  # Ensure output folder exists
+                    if all_results:
+                        pd.DataFrame(all_results).to_csv(llm_input_file, index=False)
+                
+                # Get LLM recommendations
+                llm_rec = llm_recommender.PipettingRecommenderLLM(config_path=config_path)
+                
+                # Specify output file in the output directory to avoid path issues
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                llm_output_file = os.path.join("output", f"llm_recommendations_{timestamp}.csv")
+                
+                recommendations = llm_rec.get_new_recs(llm_input_file, output_file=llm_output_file)
+                
+                # Extract parameter suggestions from LLM response
+                llm_params_list = recommendations.get('recommendations', [])[:1]  # Take first suggestion
+                llm_summary = recommendations.get('summary', 'No summary provided')
+                
+                logger.info("LLM Optimization Results:")
+                logger.info(f"Strategy Summary: {llm_summary}")
+                
+                # Convert LLM suggestions to ax_client trials
+                suggestions = []
+                for i, llm_params in enumerate(llm_params_list):
+                    if llm_params:  # Make sure we have parameters
+                        # Extract metadata fields
+                        confidence = llm_params.get('confidence', 'unknown')
+                        reasoning = llm_params.get('reasoning', 'No reasoning provided')
+                        expected_improvement = llm_params.get('expected_improvement', 'Not specified')
+                        
+                        # Log LLM rationale and confidence
+                        logger.info(f"LLM Recommendation {i+1}:")
+                        logger.info(f"  Confidence Level: {confidence}")
+                        logger.info(f"  Reasoning: {reasoning}")
+                        logger.info(f"  Expected Improvement: {expected_improvement}")
+                        
+                        # Extract only the parameter values that match the search space
+                        expected_params = set(ax_client.experiment.search_space.parameters.keys())
+                        filtered_params = {k: v for k, v in llm_params.items() if k in expected_params}
+                                              
+                        params, trial_index = ax_client.attach_trial(filtered_params)
+                        suggestions.append((params, trial_index))
+                
+                # Fallback to Bayesian if no LLM suggestions
+                if not suggestions:
+                    suggestions = recommender.get_suggestions(ax_client, volume, n=1)
+            else:
+                # Use existing Bayesian optimization
+                suggestions = recommender.get_suggestions(ax_client, volume, n=1)
+                
             for params, trial_index in suggestions:
                 check_if_measurement_vial_full()
                 results = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
                 recommender.add_result(ax_client, trial_index, results)
                 results.update(params)
-                results.update({"volume": volume, "trial_index": trial_index, "strategy": "BAYESIAN", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
+                strategy_name = "LLM" if model_type == 'LLM' and LLM_AVAILABLE else "BAYESIAN"
+                results.update({"volume": volume, "trial_index": trial_index, "strategy": strategy_name, "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
                 results = strip_tuples(results)
                 all_results.append(results)
                 if not SIMULATE:
@@ -113,3 +207,4 @@ for model_type in MODELS:
 
     if not SIMULATE:
         save_analysis(results_df, pd.DataFrame(raw_measurements), autosave_dir)
+        slack_agent.send_slack_message(f"Calibration experiment with {LIQUID} and model {model_type} completed. Results saved to {autosave_dir}")

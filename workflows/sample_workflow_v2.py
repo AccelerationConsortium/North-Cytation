@@ -6,9 +6,10 @@ Edit the parameters at the bottom to change the workflow.
 import sys
 sys.path.append("../utoronto_demo") #Add the parent folder to the system path
 import time #For pauses
+from pipetting_data.pipetting_parameters import PipettingParameters
 from master_usdl_coordinator import Lash_E # This is the main class that coordinates the robot, photoreactor, and cytation
 
-def sample_workflow(aspiration_volume: float, replicates: int = 3):
+def sample_workflow(aspiration_volume: float, replicates: int = 3, simulate = True):
     """
     Run a sample workflow.
 
@@ -43,7 +44,7 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
     Note: If you set simulate=True, you can run your code without the robot, photoreactor, or cytation to see if there are any errors.
     """
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_t8=True,initialize_p2=True,simulate=False) # Initialize the Lash_E class with the input vial status file
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_t8=True,initialize_p2=True,simulate=simulate) # Initialize the Lash_E class with the input vial status file
 
     # 2. Check the status of the input vials 
     lash_e.nr_robot.check_input_file() #outputs the values in sample_input_vials.csv and user must confirm by typing Enter if everything looks ok to proceed
@@ -51,7 +52,8 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
 
     lash_e.temp_controller.set_temp(40) # Set the temperature of the heater to 40 degrees Celsius
 
-    time.sleep(15)
+    if not simulate:
+        time.sleep(15)
     lash_e.grab_new_wellplate() #Grab a wellplate from the source tray
 
     # 3. Prepare Source Vial A by adding solid and liquid (Note that in theory priming for the reservoir dispense is needed, but this is not done here)
@@ -63,11 +65,9 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3):
 
     # 4. Transfer liquid from source_vial_a to target_vial, then remove the pipet tip
     lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name='source_vial_b', dest_vial_name='target_vial', volume=aspiration_volume) #pipet the amount specified in aspiration_volume from source_vial_a to target_vial
-    lash_e.nr_robot.remove_pipet() #remove the pipet tip it carries
 
     # 5. Transfer liquid from source_vial_b to target_vial, then remove the pipet
     lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name='source_vial_a', dest_vial_name='target_vial', volume=aspiration_volume) #pipet the amount specified in aspiration_volume from source_vial_b to target_vial
-    lash_e.nr_robot.remove_pipet() #remove pipet tip
 
     # 6. Mix the target vial
     lash_e.nr_robot.vortex_vial(vial_name='target_vial', vortex_time=2) # vortex the target_vial for 2 seconds

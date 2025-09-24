@@ -1,0 +1,68 @@
+main_8mL_rack:
+  vial_positions_in_Locator: rack  # Variable name in Locator.py for gripper positions
+  pipetting_positions_in_Locator: rack_pip  # Variable name in Locator.py for pipetting positions
+  rack_size: 48  # Number of positions in the rack
+  vial_volume: 8  # Standard vial volume in mL
+  height_volume_constant: 6
+  vials_movable: true  # Whether vials can be moved (if capped and 8mL type)
+  min_pipetting_height: 68.5  # Base height for pipetting
+
+large_vial_rack:
+  vial_positions_in_Locator: null  # No gripper positions defined - vials not movable
+  pipetting_positions_in_Locator: large_vial_pip  # Variable name in Locator.py for pipetting positions
+  rack_size: 4  # Number of positions in the rack
+  vial_volume: 20  # Standard vial volume in mL
+  height_volume_constant: 2
+  vials_movable: false  # Vials cannot be moved
+  min_pipetting_height: 93  # Base height for pipetting
+
+50mL_vial_rack:
+  vial_positions_in_Locator: null  # No gripper positions defined - vials not movable
+  pipetting_positions_in_Locator: null  # Variable name in Locator.py for pipetting positions
+  rack_size: null  # Number of positions in the rack
+  vial_volume: 50  # Standard vial volume in mL
+  vials_movable: false  # Vials cannot be moved
+  min_pipetting_height: null  # Base height for pipetting
+
+small_vial_rack:
+  vial_positions_in_Locator: null  # No gripper positions defined - vials not movable
+  pipetting_positions_in_Locator: small_vial_pip  # Variable name in Locator.py for pipetting positions  
+  rack_size: 4  # Number of positions in the rack
+  vial_volume: 1  # Standard vial volume in mL
+  vials_movable: false  # Vials cannot be moved
+  min_pipetting_height: 98  # Base height for pipetting
+
+photoreactor_array:
+  vial_positions_in_Locator: photo_reactor_0  # Single photoreactor (could be made into array later if needed)
+  pipetting_positions_in_Locator: PR_PIP_0  # Single pipetting position for photoreactor
+  rack_size: 1  # Currently only one photoreactor in use
+  vial_volume: 8  # Standard vial volume in mL (assuming 8mL vials)
+  height_volume_constant: 6
+  vials_movable: true  # Vials can be moved if capped
+  min_pipetting_height: 85  # Base height for pipetting (needs fine tuning per comment)
+
+clamp:
+  vial_positions_in_Locator: vial_clamp  # Single clamp position for gripper
+  pipetting_positions_in_Locator: vial_clamp_pip  # Single clamp position for pipetting
+  rack_size: 1  # Single position
+  vial_volume: 8  # Variable - depends on vial placed in clamp
+  height_volume_constant: 6
+  vials_movable: true  # Vials can be moved (this is the manipulation station)
+  min_pipetting_height: 114.5  # Base height for pipetting
+
+12_well_ilya:
+  vial_positions_in_Locator: null  # No gripper positions defined for this wellplate
+  pipetting_positions_in_Locator: ilya_wellplate  # Variable name in Locator.py for pipetting positions
+  rack_size: 12  # Number of wells
+  vial_volume: null  # Unknown
+  vials_movable: false  # Wells cannot be moved (part of wellplate)
+  min_pipetting_height: 72.00  # Base height for pipetting
+
+heater:
+  vial_positions_in_Locator: heater_grid  # Variable name in Locator.py for gripper positions
+  pipetting_positions_in_Locator: heater_grid_pip  # Variable name in Locator.py for pipetting positions
+  rack_size: 12  # Number of positions in the heater grid
+  vial_volume: 8  # Variable - depends on vial type placed
+  height_volume_constant: 6
+  vials_movable: true  # Vials can be moved if capped
+  min_pipetting_height: 144  # Base height for pipetting

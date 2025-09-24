@@ -11,7 +11,7 @@ import os
 import itertools
 
 def mix_wells(wells, wash_index=5, wash_volume=0.1, repeats=2):
-    lash_e.nr_robot.get_pipet(1)
+    lash_e.nr_robot.get_pipet("small_tip")
     for well in wells:
         lash_e.nr_robot.pipet_from_wellplate(well,wash_volume)
         lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)

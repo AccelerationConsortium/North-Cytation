@@ -97,27 +97,26 @@ class Lash_E:
         if return_home:
             self.nr_robot.return_vial_home(vial) 
 
-    def move_wellplate_to_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
+    def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE"):
         self.logger.info(f"Moving wellplate {wellplate_index} to Cytation")
-        self.nr_track.grab_well_plate_from_nr(wellplate_index,quartz_wp=quartz)
-        self.nr_track.move_gripper_to_cytation()
+        self.nr_track.grab_wellplate_from_location('pipetting_area', plate_type)
         if not self.simulate:
             self.cytation.CarrierOut()
-        self.nr_track.release_well_plate_in_cytation(quartz_wp=quartz)
+        self.nr_track.release_wellplate_in_location('cytation_tray', plate_type, waypoint_locations=['cytation_safe_area'])
         if not self.simulate:
             self.cytation.CarrierIn(plate_type=plate_type)
 
-    def move_wellplate_back_from_cytation(self,wellplate_index=0,quartz=False,plate_type="96 WELL PLATE"):
+    def move_wellplate_back_from_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE"):
         self.logger.info("Moving wellplate %d back from Cytation", wellplate_index)
         if not self.simulate:
             self.cytation.CarrierOut()
-        self.nr_track.grab_well_plate_from_cytation(quartz_wp=quartz)
+        self.nr_track.grab_wellplate_from_location('cytation_tray', plate_type)
         if not self.simulate:
             self.cytation.CarrierIn(plate_type=plate_type)
-        self.nr_track.return_well_plate_to_nr(wellplate_index,quartz_wp=quartz)  
+        self.nr_track.release_wellplate_in_location('pipetting_area', plate_type, waypoint_locations=['cytation_safe_area'])
 
     #Note from OAM: The data formatting from this can be annoying. Need to think about how to handle it. 
-    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, quartz=False, plate_type="96 WELL PLATE", repeats=1):
+    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1):
         """
         Measure a wellplate on the Cytation reader. Supports multiple protocols and replicate measurements.
         Each replicate includes all protocols, e.g.:
@@ -127,7 +126,7 @@ class Lash_E:
         """
         self.logger.info("Measuring wellplate %d with protocols: %s", wellplate_index, protocol_file_path)
         self.nr_robot.move_home()
-        self.move_wellplate_to_cytation(wellplate_index, quartz=quartz, plate_type=plate_type)
+        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type)
 
         all_data = []
 
@@ -149,7 +148,7 @@ class Lash_E:
         else:
             combined_data = None
 
-        self.move_wellplate_back_from_cytation(wellplate_index, quartz=quartz, plate_type=plate_type)
+        self.move_wellplate_back_from_cytation(wellplate_index, plate_type=plate_type)
         self.nr_track.origin()
         return combined_data
 

@@ -23,7 +23,7 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=False,well_volume=0.2):
     print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
     lash_e.nr_robot.move_vial_to_location(sample_index, location="main_8mL_rack", location_index=44) #Move sample to safe pipetting position
-    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates,track_height=True)
+    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates, track_height=True)
     wells = range(first_well_index,first_well_index+replicates)
     lash_e.nr_robot.dispense_into_wellplate(wells, [well_volume]*replicates)
     lash_e.nr_robot.remove_pipet()
@@ -65,26 +65,15 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status.csv"
     MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
 
-    # Initial State of your Vials, so the robot can know where to pipet. pd DataFrame created from input txt file.
-    vial_status = pd.read_csv(INPUT_VIAL_STATUS_FILE, sep=",")
-    print(vial_status)
-
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    SIMULATE = LOGGING = False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, logging=LOGGING)
-
-    #This section is simply to create easier to remember and read indices for the vials
-    #vial_numbers = vial_status['vial_index'].values #Gives you the values
-    reaction_mixture_index = lash_e.nr_robot.get_vial_index_from_name('Rxn_Mixture') #Get the ID of our target reactor
-    reagent_AB_index = lash_e.nr_robot.get_vial_index_from_name('Reagent_A+B')
-    water_index=lash_e.nr_robot.get_vial_index_from_name('Water')
-    #reagent_B_index = lash_e.nr_robot.get_vial_index_from_name('Reagent_B')
-    
-    #Get the active indices
-    sample_indices = vial_status.index.values[3:] #Gets the indices for the samples (3-8 inclusive)
+    SIMULATE =  False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 
     # input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")    
     lash_e.nr_robot.check_input_file()
+
+    sample_times = [0,5,10,15,20,25,45,60] #in minutes
+    sample_indices = [f"{t}_min_Reaction" for t in sample_times]
 
     #create file name for the output data
     if not SIMULATE:
@@ -99,16 +88,16 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     #-> Start from here! 
     #Step 2.5: Add 950 µL water from water_index (vial_index 45) into vial_index 0-5.
     for i in sample_indices:
-        lash_e.nr_robot.dispense_from_vial_into_vial(water_index,i,volume=0.950)
+        lash_e.nr_robot.dispense_from_vial_into_vial('Water',i,volume=0.950)
     lash_e.nr_robot.remove_pipet()
 
     # # # #Step 3: Add 150 µL "Working Reagent(reagent A+B)" (vial_index 44) to 950 µL deionized water (vial_index 0-5) to dilute the Working Reagent.
     for i in sample_indices: 
-        lash_e.nr_robot.dispense_from_vial_into_vial(reagent_AB_index,i,volume=0.150)
+        lash_e.nr_robot.dispense_from_vial_into_vial('Reagent_A+B',i,volume=0.150)
         mix_current_sample(lash_e,i,new_pipet=True,volume=0.8)
     
     #Step 4: Move the reaction mixture vial (vial_index 43) to the photoreactor to start the reaction.
-    lash_e.nr_robot.move_vial_to_location(reaction_mixture_index, location="photoreactor_array", location_index=0)
+    lash_e.nr_robot.move_vial_to_location('Rxn_Mixture', location="photoreactor_array", location_index=0)
     #Turn on photoreactor
     lash_e.photoreactor.turn_on_reactor_led(reactor_num=0,intensity=100)
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
@@ -143,7 +132,7 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
             print(f"Intended Elapsed Time: {(time_required)/60} minutes")
 
             if action_required=="dispense_from_reactor":
-                dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2)
+                dispense_from_photoreactor_into_sample(lash_e,'Rxn_Mixture',sample_index,volume=0.2)
                 items_completed+=1
             elif action_required=="measure_samples":
                 transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,starting_well_index,MEASUREMENT_PROTOCOL_FILE,replicates, output_dir,simulate=SIMULATE)
@@ -158,7 +147,7 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
             time.sleep(1)
     lash_e.nr_robot.move_home()   
 
-    lash_e.nr_robot.return_vial_home(reaction_mixture_index)
+    lash_e.nr_robot.return_vial_home('Rxn_Mixture')
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=0)
     lash_e.nr_robot.move_home()

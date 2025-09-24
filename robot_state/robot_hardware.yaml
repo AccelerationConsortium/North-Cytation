@@ -1,0 +1,34 @@
+# North Robot hardware configuration
+# Hardware axis and pneumatic mappings for both North_Robot and North_Track systems
+
+# North Robot motion axes (C9 controller)
+# Based on actual hardware mapping: [gripper, elbow, shoulder, z-axis]
+robot_axes:
+  gripper_axis: 0   # Gripper rotation/movement axis
+  elbow_axis: 1     # Elbow joint axis  
+  shoulder_axis: 2  # Shoulder joint axis
+  z_axis: 3         # Z-axis for vertical movement
+  
+# Track system axes (separate from robot axes)
+track_axes:
+  x_axis: 7  # Track X-axis (horizontal movement)
+  z_axis: 6  # Track Z-axis (vertical movement)
+
+# Pneumatic outputs for track gripper
+track_pneumatics:
+  gripper_open: 4   # Pneumatic output for opening track gripper
+  gripper_close: 5  # Pneumatic output for closing track gripper
+
+# Movement speeds (mm/s or units/s)
+movement_speeds:
+  default_robot: 20      # Default velocity for robot initialization
+  fast_approach: 30      # Fast approach movements (pipet removal, general fast moves)
+  standard_xy: 15        # Standard XY positioning speed (goto_xy_safe)
+  precise_movement: 5    # Precise/slow movements (pipet pickup, careful positioning)
+  retract: 5            # Speed when retracting pipet from liquid
+
+# Physical constants
+physical_constants:
+  safe_height_z: 292    # Safe height for general robot movements
+
+
