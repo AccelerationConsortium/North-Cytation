@@ -20,7 +20,7 @@ def measure_absorbance(lash_e,reaction_mixture_index,sample_index,volume=0.2):
        # lash_e.nr_robot.home_axis(i) #Home the track
     print()
 
-def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=False,well_volume=0.2):
+def measure_absorbance(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=False,well_volume=0.2):
     print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
     lash_e.nr_robot.move_vial_to_location(sample_index, location='heater', location_index=2) #only use heater location 2 for safe pipetting
     lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates,track_height=True)
@@ -36,14 +36,15 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
         data_out.to_csv(output_file, sep=',')
     print()
 
-def mix_current_sample(lash_e, sample_index, new_pipet=False,repeats=3, volume=0.25):
-    print("\nMixing sample: ", sample_index)
-    # if new_pipet:
-    #     lash_e.nr_robot.remove_pipet()
-    # lash_e.nr_robot.dispense_from_vial_into_vial(sample_index,sample_index,volume=volume,move_to_dispense=False,buffer_vol=0)
-    # for _ in range (repeats-1):
-    #     lash_e.nr_robot.dispense_from_vial_into_vial(sample_index,sample_index,volume=volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
-    # lash_e.nr_robot.remove_pipet() # This step is for pipetting up and down *3 to simulate mixing.
+def wash_wellplate(lash_e, first_well_index, new_pipet=False,repeats=3, volume=0.3):
+    print("\nWashing well plate: ", first_well_index)
+    if new_pipet:
+        lash_e.nr_robot.remove_pipet()
+    lash_e.nr_robot.dispense_from_vial_into_vial(sample_index,sample_index,volume=volume,move_to_dispense=False,buffer_vol=0)
+    for _ in range (repeats-1):
+        lash_e.nr_robot.aspirate_from_wellplate(sample_index,sample_index,volume=volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
+        lash_e.nr_robot.dispense_from_vial_into_vial(sample_index,sample_index,volume=volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
+    lash_e.nr_robot.remove_pipet() # This step is for pipetting up and down *3 to simulate mixing.
     lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.vortex_vial(sample_index, 5)
     print()
