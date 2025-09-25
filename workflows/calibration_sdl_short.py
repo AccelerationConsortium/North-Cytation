@@ -8,21 +8,8 @@ from master_usdl_coordinator import Lash_E
 import recommenders.pipeting_optimizer_v2 as recommender
 import slack_agent
 from datetime import datetime
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-try:
-    import recommenders.pipetting_recommender_llm as llm_recommender
-    LLM_AVAILABLE = True
-    logger.info("LLM recommender loaded successfully")
-except ImportError as e:
-    LLM_AVAILABLE = False
-    logger.warning(f"LLM recommender not available: {e}")
-except Exception as e:
-    LLM_AVAILABLE = False
-    logger.error(f"LLM recommender error: {e}")
+import recommenders.pipetting_recommender_llm as llm_recommender
+LLM_AVAILABLE = True
 
 
 # --- Experiment Config ---
