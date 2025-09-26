@@ -1,138 +1,151 @@
 {
-  "system_message": "You are an expert optimization consultant specializing in liquid handling and pipetting optimization. Your task is to analyze experimental data from liquid handling experiments and provide specific, actionable recommendations for improving pipetting performance.\n\nKey areas to focus on:\n- Identify parameters that have the most significant impact on pipetting accuracy and precision\n- Suggest optimal ranges or specific values for key parameters\n- Consider trade-offs between accuracy, precision, and speed\n- Provide clear reasoning for each recommendation\n- Suggest experimental designs for validation\n\nBe specific and quantitative in your recommendations where possible. Consider the physical properties of different liquids and their impact on pipetting performance.\n\nOPTIMIZATION PROCESS - Follow these steps for each optimization cycle:\n1. Analyze trends in the observed data - Look for patterns, correlations, and relationships between parameters and performance metrics\n2. Form a hypothesis about important factors - Based on the data analysis, identify which parameters are likely driving performance improvements\n3. Provide explicit reasoning for the next suggestion - Clearly explain why you're recommending specific parameter values based on your analysis and hypothesis\n4. Recommend a batch of suggestions to test - Provide a set of parameter combinations that will test your hypothesis and gather more information",
+  "system_message": [
+    "You are an expert in liquid handling optimization. Analyze experimental pipetting data and recommend parameter improvements based on observed performance patterns.",
+    "",
+    "CRITICAL PARAMETER NOTE: For aspirate and dispense speed parameters (aspirate_speed, dispense_speed), HIGHER VALUES = SLOWER SPEEDS. This is counterintuitive but important for your analysis.",
+    "",
+    "Your analysis should:",
+    "1. EXAMINE THE DATA: Identify which parameter combinations gave best performance (lowest deviation & variability)",
+    "2. IDENTIFY PATTERNS: Find correlations between parameter values and outcomes",
+    "3. CONSIDER TRADE-OFFS: Balance accuracy (deviation), precision (variability), and efficiency (time)",
+    "4. AVOID REPLICATES: Do NOT suggest parameter combinations that already exist in the experimental data",
+    "5. REFERENCE DATA: Cite specific experimental results in your reasoning"
+  ],
   
-  "model": "gpt-4",
-  "temperature": 0.7,
-  "max_tokens": 2000,
-  
-  "optimization_guidelines": {
-    "avoid_infeasible_experiments": true,
-    "minimize_experiment_count": true,
-    "avoid_previous_combinations": true,
-    "consider_physical_meaning": true,
-    "safety_first": true
+  "api_settings": {
+    "model": "gpt-4",
+    "temperature": 0.7,
+    "max_tokens": 2000
   },
   
-  "batch_size": 1,
-  "initial_batch_size": 1,
-  "subsequent_batch_size": 1,
-  "max_batches": 30,
+  "logging": {
+    "log_directory": "LLM_prompts"
+  },
   
-  "optimization_goals": [
-    "maximize_accuracy",
-    "minimize_variability",
-    "minimize_time"
-  ],
+  "data_columns": {
+    "material_column": "liquid"
+  },
   
-  "constraints": [
-    "equipment_limits",
-    "liquid_properties",
-    "safety_limits"
-  ],
+  "experimental_setup": {
+    "target_volume_ul": 100,
+    "device_serial": "P1000_ABC123",
+    "iterations_per_run": 3,
+    "encoding_method": "parameter_sweep"
+  },
   
+  "batch_size": 3,
   "parameters": {
     "aspirate_speed": {
       "type": "integer",
-      "unit": "μL/s",
-      "range": [5, 35],
-      "description": "Speed for liquid aspiration operations",
+      "unit": "uL/s",
+      "range": [
+        5,
+        35
+      ],
+      "description": "Speed for liquid aspiration operations. IMPORTANT: Higher values = SLOWER speed. Lower values = faster speed. Slower speeds (higher values) may improve accuracy but increase time.",
       "safety_limit": 40
     },
     "dispense_speed": {
       "type": "integer",
-      "unit": "μL/s",
-      "range": [5, 35],
-      "description": "Speed for liquid dispensing operations",
+      "unit": "uL/s",
+      "range": [
+        5,
+        35
+      ],
+      "description": "Speed for liquid dispensing operations. IMPORTANT: Higher values = SLOWER speed. Lower values = faster speed. Slower speeds (higher values) may improve accuracy but increase time.",
       "safety_limit": 40
     },
     "aspirate_wait_time": {
-      "type": "continuous",
+      "type": "float",
       "unit": "seconds",
-      "range": [0.0, 30.0],
-      "description": "Wait time after aspiration before tip movement",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "description": "Wait time after aspiration before tip movement. Longer wait times may improve accuracy/reduce deviation by allowing liquid to settle, but increase total time.",
       "safety_limit": 35.0
     },
     "dispense_wait_time": {
-      "type": "continuous",
+      "type": "float",
       "unit": "seconds",
-      "range": [0.0, 30.0],
-      "description": "Wait time after dispensing before tip movement",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "description": "Wait time after dispensing before tip movement. Longer wait times may improve accuracy/reduce deviation by ensuring complete dispensing, but increase total time.",
       "safety_limit": 35.0
     },
     "retract_speed": {
-      "type": "continuous",
-      "unit": "μL/s",
-      "range": [1.0, 15.0],
-      "description": "Speed for retracting tip from liquid surface",
+      "type": "float",
+      "unit": "uL/s",
+      "range": [
+        1.0,
+        15.0
+      ],
+      "description": "Speed for retracting tip from liquid surface. Higher values = faster retraction, lower values = slower retraction. Slower retractions may improve accuracy.",
       "safety_limit": 20.0
     },
     "pre_asp_air_vol": {
-      "type": "continuous",
+      "type": "float",
       "unit": "mL",
-      "range": [0.0, 0.1],
-      "description": "Air volume aspirated before liquid to prevent contamination",
+      "range": [
+        0.0,
+        0.1
+      ],
+      "description": "Air volume aspirated before liquid, allowing liquid stuck in the tip to be expelled. ",
       "safety_limit": 0.15
     },
     "post_asp_air_vol": {
-      "type": "continuous",
+      "type": "float",
       "unit": "mL",
-      "range": [0.0, 0.1],
-      "description": "Air volume aspirated after liquid to prevent dripping",
+      "range": [
+        0.0,
+        0.1
+      ],
+      "description": "Air volume aspirated after liquid to prevent dripping. ",
       "safety_limit": 0.15
     },
     "overaspirate_vol": {
-      "type": "continuous",
+      "type": "float",
       "unit": "mL",
-      "range": [0.0, 0.025],
-      "description": "Extra volume aspirated beyond target to compensate for retention",
-      "safety_limit": 0.10
+      "range": [
+        0.0,
+        0.025
+      ],
+      "description": "Extra volume aspirated beyond target to compensate for retention. Needed when the pipette tip retains some liquid after aspiration.",
+      "safety_limit": 0.1
     }
   },
   
   "metrics": {
     "deviation": {
       "goal": "minimize",
-      "unit": "percentage_error",
-      "range": [0, 100],
-      "target_value": 0,
-      "description": "Accuracy metric - deviation from expected mass"
+      "unit": "percentage_error", 
+      "description": "Accuracy metric - deviation from expected mass",
+      "priority": "high"
     },
     "variability": {
       "goal": "minimize",
       "unit": "percentage_cv",
-      "range": [0, 50],
-      "description": "Precision metric - standard deviation across replicates"
+      "description": "Precision metric - standard deviation across replicates", 
+      "priority": "high"
     },
     "time": {
-      "goal": "minimize",
+      "goal": "minimize", 
       "unit": "seconds",
-      "range": [0, 300],
-      "description": "Efficiency metric - total operation time per pipetting cycle"
+      "description": "Efficiency metric - total operation time per pipetting cycle",
+      "priority": "medium"
     }
   },
   
-  "experimental_design": {
-    "equipment_constraints": {
-      "max_volume": 250,
-      "min_volume": 1,
-      "tip_compatibility": "standard_250μL"
-    }
-  },
-  
-  "liquid_properties_info": {
+  "material_properties": {
     "glycerol": {
-      "viscosity": "high",
-      "density": "1.26 g/cm³",
-      "surface_tension": "high",
-      "volatility": "low",
-      "optimization_notes": "Primary calibration liquid. Use slower flow rates, longer settling times due to high viscosity"
+      "description": "High viscosity liquid with strong hydrogen bonding",
+      "optimization_notes": "Use slower flow rates and longer settling times due to high viscosity. Consider increased air volumes."
     },
     "water": {
-      "viscosity": "low",
-      "density": "1.00 g/cm³",
-      "surface_tension": "medium",
-      "volatility": "low",
-      "optimization_notes": "Reference standard liquid"
+      "description": "Low viscosity reference liquid", 
+      "optimization_notes": "Standard reference for pipetting parameters. Moderate flow rates work well."
     }
   }
 }

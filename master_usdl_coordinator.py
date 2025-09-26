@@ -100,9 +100,10 @@ class Lash_E:
     def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE"):
         self.logger.info(f"Moving wellplate {wellplate_index} to Cytation")
         self.nr_track.grab_wellplate_from_location('pipetting_area', plate_type)
+        self.nr_track.move_through_path(['cytation_safe_area'])
         if not self.simulate:
             self.cytation.CarrierOut()
-        self.nr_track.release_wellplate_in_location('cytation_tray', plate_type, waypoint_locations=['cytation_safe_area'])
+        self.nr_track.release_wellplate_in_location('cytation_tray', plate_type)
         if not self.simulate:
             self.cytation.CarrierIn(plate_type=plate_type)
 
@@ -111,9 +112,10 @@ class Lash_E:
         if not self.simulate:
             self.cytation.CarrierOut()
         self.nr_track.grab_wellplate_from_location('cytation_tray', plate_type)
+        self.nr_track.move_through_path(['cytation_safe_area'])
         if not self.simulate:
             self.cytation.CarrierIn(plate_type=plate_type)
-        self.nr_track.release_wellplate_in_location('pipetting_area', plate_type, waypoint_locations=['cytation_safe_area'])
+        self.nr_track.release_wellplate_in_location('pipetting_area', plate_type)
 
     #Note from OAM: The data formatting from this can be annoying. Need to think about how to handle it. 
     def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1):

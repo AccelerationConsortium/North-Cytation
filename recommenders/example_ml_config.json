@@ -1,0 +1,109 @@
+{
+  "system_message": [
+    "You are an expert in machine learning hyperparameter optimization. Analyze experimental training data and recommend parameter improvements based on observed performance patterns.",
+    "",
+    "Your analysis should:",
+    "1. EXAMINE THE DATA: Identify which parameter combinations gave best performance (highest accuracy, lowest loss)",
+    "2. IDENTIFY PATTERNS: Find correlations between hyperparameter values and model performance",
+    "3. CONSIDER TRADE-OFFS: Balance accuracy, training time, and model complexity",
+    "4. AVOID REPLICATES: Do NOT suggest parameter combinations that already exist in the experimental data",
+    "5. REFERENCE DATA: Cite specific experimental results in your reasoning"
+  ],
+  
+  "api_settings": {
+    "model": "gpt-4",
+    "temperature": 0.7,
+    "max_tokens": 2500
+  },
+  
+  "logging": {
+    "log_directory": "ML_optimization_logs"
+  },
+  
+  "data_columns": {
+    "material_column": "dataset"
+  },
+  
+  "experimental_setup": {
+    "framework": "PyTorch",
+    "gpu_type": "A100",
+    "max_epochs": 100,
+    "validation_split": 0.2
+  },
+  
+  "batch_size": 5,
+  
+  "parameters": {
+    "learning_rate": {
+      "type": "float",
+      "unit": "",
+      "range": [0.0001, 0.1],
+      "description": "Learning rate for gradient descent optimization",
+      "safety_limit": 1.0
+    },
+    "batch_size": {
+      "type": "integer", 
+      "unit": "samples",
+      "range": [16, 512],
+      "description": "Number of samples processed in each training batch",
+      "safety_limit": 1024
+    },
+    "hidden_layers": {
+      "type": "integer",
+      "unit": "layers",
+      "range": [2, 8],
+      "description": "Number of hidden layers in neural network",
+      "safety_limit": 15
+    },
+    "dropout_rate": {
+      "type": "float",
+      "unit": "",
+      "range": [0.0, 0.8],
+      "description": "Dropout probability for regularization",
+      "safety_limit": 0.95
+    },
+    "weight_decay": {
+      "type": "float",
+      "unit": "",
+      "range": [0.0, 0.01],
+      "description": "L2 regularization coefficient",
+      "safety_limit": 0.1
+    }
+  },
+  
+  "metrics": {
+    "accuracy": {
+      "goal": "maximize",
+      "unit": "percentage",
+      "description": "Model accuracy on validation set",
+      "priority": "high"
+    },
+    "loss": {
+      "goal": "minimize", 
+      "unit": "cross_entropy",
+      "description": "Validation loss during training",
+      "priority": "high"
+    },
+    "training_time": {
+      "goal": "minimize",
+      "unit": "minutes", 
+      "description": "Total time to train model to convergence",
+      "priority": "medium"
+    }
+  },
+  
+  "material_properties": {
+    "MNIST": {
+      "description": "Simple handwritten digit dataset with 28x28 grayscale images",
+      "optimization_notes": "Lower learning rates often work better. Simple architectures sufficient."
+    },
+    "CIFAR10": {
+      "description": "Natural images dataset with 32x32 RGB images across 10 classes", 
+      "optimization_notes": "More complex patterns require deeper networks. Higher dropout may help with overfitting."
+    },
+    "ImageNet": {
+      "description": "Large-scale natural image dataset with millions of high-resolution images",
+      "optimization_notes": "Requires very deep networks, careful learning rate scheduling, and strong regularization."
+    }
+  }
+}

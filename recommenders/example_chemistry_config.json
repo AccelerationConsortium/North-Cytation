@@ -1,0 +1,109 @@
+{
+  "system_message": [
+    "You are an expert in catalytic reaction optimization. Analyze experimental reaction data and recommend parameter improvements based on observed performance patterns.",
+    "",
+    "Your analysis should:",
+    "1. EXAMINE THE DATA: Identify which parameter combinations gave best performance (highest yield, selectivity)",
+    "2. IDENTIFY PATTERNS: Find correlations between reaction conditions and outcomes", 
+    "3. CONSIDER TRADE-OFFS: Balance yield, selectivity, reaction time, and cost",
+    "4. AVOID REPLICATES: Do NOT suggest parameter combinations that already exist in the experimental data",
+    "5. REFERENCE DATA: Cite specific experimental results in your reasoning"
+  ],
+  
+  "api_settings": {
+    "model": "gpt-4",
+    "temperature": 0.6,
+    "max_tokens": 2200
+  },
+  
+  "logging": {
+    "log_directory": "Chemistry_optimization_logs"
+  },
+  
+  "data_columns": {
+    "material_column": "catalyst"
+  },
+  
+  "experimental_setup": {
+    "reaction_vessel": "10mL glass vial",
+    "atmosphere": "nitrogen",
+    "stirring_rate": "500 rpm",
+    "analysis_method": "GC-MS"
+  },
+  
+  "batch_size": 4,
+  
+  "parameters": {
+    "temperature": {
+      "type": "integer",
+      "unit": "°C",
+      "range": [50, 150],
+      "description": "Reaction temperature - affects rate and selectivity",
+      "safety_limit": 200
+    },
+    "pressure": {
+      "type": "float",
+      "unit": "bar", 
+      "range": [1.0, 10.0],
+      "description": "Reaction pressure - influences gas solubility and reaction equilibrium",
+      "safety_limit": 15.0
+    },
+    "time": {
+      "type": "float",
+      "unit": "hours",
+      "range": [0.5, 24.0],
+      "description": "Reaction time - longer times may increase conversion but also side reactions",
+      "safety_limit": 48.0
+    },
+    "catalyst_loading": {
+      "type": "float", 
+      "unit": "mol%",
+      "range": [0.1, 5.0],
+      "description": "Catalyst loading relative to substrate - higher loading increases rate but cost",
+      "safety_limit": 10.0
+    },
+    "solvent_ratio": {
+      "type": "float",
+      "unit": "mL/mmol",
+      "range": [1.0, 20.0],
+      "description": "Solvent volume per mmol substrate - affects concentration and mass transfer",
+      "safety_limit": 50.0
+    }
+  },
+  
+  "metrics": {
+    "yield": {
+      "goal": "maximize",
+      "unit": "percentage",
+      "description": "Isolated product yield based on limiting reagent",
+      "priority": "high"
+    },
+    "selectivity": {
+      "goal": "maximize",
+      "unit": "percentage", 
+      "description": "Selectivity for desired product vs side products",
+      "priority": "high"
+    },
+    "productivity": {
+      "goal": "maximize",
+      "unit": "g/L/h",
+      "description": "Space-time yield - product per volume per time", 
+      "priority": "medium"
+    }
+  },
+  
+  "material_properties": {
+    "Pd/C": {
+      "description": "Heterogeneous palladium catalyst on carbon support",
+      "optimization_notes": "Works well for hydrogenation and coupling reactions. Consider lower temperatures to avoid leaching."
+    },
+    "Ru-BINAP": {
+      "description": "Homogeneous ruthenium catalyst with chiral ligand",
+      "optimization_notes": "Excellent for asymmetric hydrogenations. Higher pressures often improve enantioselectivity."
+    },
+    "TiCl4": {
+      "description": "Lewis acid catalyst for electrophilic reactions",
+      "optimization_notes": "Moisture sensitive - requires anhydrous conditions. Lower temperatures favor selectivity."
+    }
+  }
+}
