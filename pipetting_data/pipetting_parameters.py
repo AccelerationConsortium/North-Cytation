@@ -28,12 +28,12 @@ class PipettingParameters:
     
     # === TIMING PARAMETERS ===
     aspirate_wait_time: float = 1.0         # Wait time after aspiration (seconds)
-    dispense_wait_time: float = 0.0         # Wait time after dispensing (seconds)
+    dispense_wait_time: float = 1.0         # Wait time after dispensing (seconds)
     
     # === AIR GAP PARAMETERS ===
     pre_asp_air_vol: float = 0.0            # Air volume to aspirate before liquid (mL)
     post_asp_air_vol: float = 0.0           # Air volume to aspirate after liquid (mL)
-    blowout_vol: float = 0.0                # Volume for blowout after dispensing (mL)
+    blowout_vol: float = 0.05                # Volume for blowout after dispensing (mL)
     air_vol: float = 0.0                    # Extra air volume for dispensing operations (mL)
     
     # === LIQUID HANDLING TECHNIQUES ===

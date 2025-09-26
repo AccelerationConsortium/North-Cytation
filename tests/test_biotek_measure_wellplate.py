@@ -14,7 +14,7 @@ def test_measure_wellplate(input_vial_status_file): #tests track movement of wel
 
     protocol = r"C:\Protocols\Ilya_Measurement.prt"
 
-    data = lash_e.measure_wellplate(protocol, [0,1,2,3,4,5,6,7,8,9,10,11])
+    data = lash_e.measure_wellplate(protocol, [0,1,2], plate_type="48 WELL PLATE")
 
     #data = lash_e.cytation.run_protocol(protocols, wells=range(0,3), plate_type="48 WELL PLATE")
 

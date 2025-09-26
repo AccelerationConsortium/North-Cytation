@@ -570,6 +570,7 @@ class North_Track(North_Base):
             self.logger.info(f"Discarding wellplate as the {self.get_ordinal(self.NUM_WASTE+1)} WP in waste stack at height: {DOUBLE_WASTE_Y}")
             
             # Move to max height, then grab wellplate from NR
+            self.close_gripper()
             self.grab_wellplate_from_location('pipetting_area', self.CURRENT_WP_TYPE, waypoint_locations=['transfer_stack'])
             self.release_wellplate_in_location('waste_stack', self.CURRENT_WP_TYPE, z_override=DOUBLE_WASTE_Y, waypoint_locations=['transfer_stack'])
 
@@ -2108,13 +2109,8 @@ class North_Robot(North_Base):
             # Remove tip after processing all volumes for this vial
             if self.HELD_PIPET_TYPE is not None:
                 self.remove_pipet()
-        
-        # Clean up any vials left in clamp after all dispensing
-        clamp_vial_index = self.get_vial_in_location('clamp', 0)
-        if clamp_vial_index is not None:
-            self.recap_clamp_vial()
-            self.return_vial_home(clamp_vial_index)
-        
+                self.return_vial_home(vial_name)
+              
         self.logger.info("Serial wellplate dispensing completed")
         return True
 
@@ -2194,6 +2190,7 @@ class North_Robot(North_Base):
                 # Remove pipet after finishing this vial (if any dispensing occurred)
                 if dispensed > 1e-6:
                     self.remove_pipet()
+                    self.return_vial_home(vial_index)
                     self.logger.debug(f"Completed batched dispensing from vial {vial_name} ({tip_type})")
         
         self.logger.info("Batched wellplate dispensing completed")
@@ -2257,7 +2254,7 @@ class North_Robot(North_Base):
         # Return buffer volume to source vial if any
         if extra_aspirate_vol > 1e-6:
             self.logger.debug(f"Returning buffer volume: {extra_aspirate_vol:.3f} mL to vial {vial_name}")
-            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=parameters, initial_move=False)
+            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=parameters)
         
         return batch_total
 

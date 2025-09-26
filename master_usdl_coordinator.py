@@ -99,7 +99,8 @@ class Lash_E:
 
     def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE"):
         self.logger.info(f"Moving wellplate {wellplate_index} to Cytation")
-        self.nr_track.grab_wellplate_from_location('pipetting_area', plate_type)
+        self.nr_track.grab_wellplate_from_location('pipetting_area', plate_type, waypoint_locations=['cytation_safe_area'])
+        input()
         if not self.simulate:
             self.cytation.CarrierOut()
         self.nr_track.release_wellplate_in_location('cytation_tray', plate_type, waypoint_locations=['cytation_safe_area'])
