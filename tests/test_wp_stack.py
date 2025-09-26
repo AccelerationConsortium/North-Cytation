@@ -34,5 +34,5 @@ def test_wp_stack(num_wp): #num_wp = number of wellplates to move
         lash_e.grab_new_wellplate()
         lash_e.discard_used_wellplate()
 
-test_wp_stack(3) #working!
+test_wp_stack(1) #working!
 #test_wp_transfer_and_pipetting() #working!
