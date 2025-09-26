@@ -1149,16 +1149,9 @@ class North_Robot(North_Base):
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         self.c9.open_clamp()
         
-        # Home all components first before any pump operations
-        self.logger.info("Homing robot components before pump initialization...")
-        try:
-            self.home_robot_components()
-        except Exception as e:
-            self.logger.error(f"Failed to home robot components during initialization: {e}")
-            raise
+       
         
-        # Now load pumps after homing
-        self.load_pumps()
+        
         
         # Attempt physical cleanup with retry logic for remaining errors
         retry_count = 0
@@ -1173,11 +1166,21 @@ class North_Robot(North_Base):
                 retry_count += 1
                 self.logger.warning(f"Physical cleanup failed (attempt {retry_count}/{max_retries}): {e}")
                 
+                 # Home all components first before any pump operations
+                self.logger.info("Homing robot components before pump initialization...")
+                try:
+                    self.home_robot_components()
+                except Exception as e:
+                    self.logger.error(f"Failed to home robot components during initialization: {e}")
+                    raise
+
                 if retry_count >= max_retries:
                     self.logger.error(f"Failed to complete physical cleanup after {max_retries} attempts: {e}")
                     raise
         
         # Final setup
+        # Now load pumps after homing
+        self.load_pumps()
         self.c9.open_gripper()
  
     def _perform_physical_cleanup(self):
@@ -2068,7 +2071,7 @@ class North_Robot(North_Base):
         
         # Dispatch to appropriate strategy
         if strategy == "serial":
-            return self._dispense_wellplate_serial(well_plate_df, parameters, low_volume_cutoff, well_plate_type)
+            return self._dispense_wellplate_serial(well_plate_df, parameters, well_plate_type)
         elif strategy == "batched":
             return self._dispense_wellplate_batched(well_plate_df, parameters, low_volume_cutoff, buffer_vol, well_plate_type)
         else:
@@ -2193,7 +2196,7 @@ class North_Robot(North_Base):
                     # Execute the batch
                     batch_total = self._execute_batch(
                         vial_name, batch_wells, batch_volumes, buffer_vol, max_volume,
-                        parameters, base_wait_time, tip_type, well_plate_type
+                        parameters, tip_type, well_plate_type
                     )
                     
                     dispensed += batch_total
@@ -2240,7 +2243,7 @@ class North_Robot(North_Base):
         return batch_wells, batch_volumes, current_idx
 
     def _execute_batch(self, vial_name, batch_wells, batch_volumes, buffer_vol, max_volume, 
-                      parameters, wait_time, tip_type, well_plate_type):
+                      parameters, tip_type, well_plate_type):
         """
         Execute one complete batch: aspirate with buffer -> dispense -> return buffer.
         

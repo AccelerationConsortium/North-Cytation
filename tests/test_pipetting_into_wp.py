@@ -18,7 +18,7 @@ def pipet_into_wp():
     #lash_e.discard_used_wellplate()
 
 def test_dispense_from_vials_into_wellplate():
-    lash_e = Lash_E("../utoronto_demo/status/sample_capped_vials.csv", simulate = True, initialize_biotek=False)
+    lash_e = Lash_E("../utoronto_demo/status/sample_capped_vials.csv", simulate = False, initialize_biotek=False)
     
     # Check input files
     #lash_e.nr_robot.check_input_file()
@@ -29,15 +29,16 @@ def test_dispense_from_vials_into_wellplate():
     # Create wellplate DataFrame with Sample_A volumes for different wells
     # Columns are vial names, rows are wells (index corresponds to well number)
     well_plate_df = pd.DataFrame({
-        "Sample_A": [0.1, 0.4, 0.1, 0.0, 0.0, 0.0],  # dispense 0.1 mL into wells 0, 1, 2
+        "Sample_A": [0.05, 0.1, 0.05, 0.0, 0.0, 0.0],  # dispense 0.1 mL into wells 0, 1, 2
         "Sample_B": [0.0, 0.0, 0.0, 0.15, 0.15, 0.0]  # dispense 0.15 mL into wells 3, 4
     })
     
     # Use serial strategy for dispensing
     lash_e.nr_robot.dispense_from_vials_into_wellplate(
         well_plate_df=well_plate_df, 
-        strategy="batched"
+        strategy="serial"
     )
+    lash_e.nr_robot.move_home()
     
     # Remove pipet and discard wellplate
 
