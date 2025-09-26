@@ -7,7 +7,7 @@ from master_usdl_coordinator import Lash_E
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_capped_vials.csv"
 SIMULATE = False
 
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, initialize_biotek=False, simulate=SIMULATE)
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, initialize_biotek=True, simulate=SIMULATE)
 
 def test_wp_transfer_and_pipetting():
     try:
@@ -37,10 +37,12 @@ def test_wp_stack(num_wp): #num_wp = number of wellplates to move
 
 def test_wp_movement(well_plate_type):
     lash_e.nr_track.check_input_file()
-    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type=well_plate_type)
-    lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type=well_plate_type)
+    #lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type=well_plate_type, waypoint_locations=['max_height', 'cytation_safe_area'])
+    #lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type=well_plate_type)
+    lash_e.move_wellplate_to_cytation(plate_type=well_plate_type)
+    lash_e.move_wellplate_back_from_cytation(plate_type=well_plate_type)
 
-#test_wp_movement('quartz') #working!
+test_wp_movement('96 WELL PLATE') #working!
 
-test_wp_stack(3) #working!
+#test_wp_stack(3) #working!
 #test_wp_transfer_and_pipetting() #working!

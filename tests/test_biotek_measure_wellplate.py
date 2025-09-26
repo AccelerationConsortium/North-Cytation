@@ -13,16 +13,17 @@ def test_measure_wellplate(input_vial_status_file): #tests track movement of wel
     lash_e = Lash_E(input_vial_status_file)
 
     protocol = r"C:\Protocols\Ilya_Measurement.prt"
+    protocol = None
 
-    data = lash_e.measure_wellplate(protocol, [0,1,2], plate_type="48 WELL PLATE")
+    data = lash_e.measure_wellplate(protocol, [0,1,2], plate_type="quartz")
 
     #data = lash_e.cytation.run_protocol(protocols, wells=range(0,3), plate_type="48 WELL PLATE")
 
     print (data)
 
-    print(strip_tuples(data))
+    # print(strip_tuples(data))
 
-    data.to_csv("../utoronto_demo/output/test.csv", mode='a', index=False)
+    # data.to_csv("../utoronto_demo/output/test.csv", mode='a', index=False)
  
 
 

@@ -99,22 +99,47 @@ class Lash_E:
 
     def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE"):
         self.logger.info(f"Moving wellplate {wellplate_index} to Cytation")
+        
+        # Get Cytation software's wellplate name from robot's wellplate configuration
+        cytation_plate_type = self.nr_robot.get_config_parameter('wellplates', plate_type, 'name_in_cytation', error_on_missing=True)
+        if not cytation_plate_type:
+            cytation_plate_type = plate_type  # Fallback to original if not found
+            self.logger.warning(f"No 'name_in_cytation' found for plate type '{plate_type}', using '{cytation_plate_type}' for CarrierIn")
+        else:
+            self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}' for CarrierIn")
+        
+        self.nr_track.move_through_path(['cytation_safe_area'])
+        # Use robot's plate_type for robot movements
         self.nr_track.grab_wellplate_from_location('pipetting_area', plate_type)
         self.nr_track.move_through_path(['cytation_safe_area'])
         if not self.simulate:
             self.cytation.CarrierOut()
+        # Use robot's plate_type for robot movements
         self.nr_track.release_wellplate_in_location('cytation_tray', plate_type)
         if not self.simulate:
-            self.cytation.CarrierIn(plate_type=plate_type)
+            # Use cytation_plate_type for Cytation software commands
+            self.cytation.CarrierIn(plate_type=cytation_plate_type)
 
     def move_wellplate_back_from_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE"):
         self.logger.info("Moving wellplate %d back from Cytation", wellplate_index)
+        
+        # Get Cytation software's wellplate name from robot's wellplate configuration
+        cytation_plate_type = self.nr_robot.get_config_parameter('wellplates', plate_type, 'name_in_cytation', error_on_missing=True)
+        if not cytation_plate_type:
+            cytation_plate_type = plate_type  # Fallback to original if not found
+            self.logger.warning(f"No 'name_in_cytation' found for plate type '{plate_type}', using '{cytation_plate_type}' for CarrierIn")
+        else:
+            self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}' for CarrierIn")
+        
         if not self.simulate:
             self.cytation.CarrierOut()
+        # Use robot's plate_type for robot movements
         self.nr_track.grab_wellplate_from_location('cytation_tray', plate_type)
         self.nr_track.move_through_path(['cytation_safe_area'])
         if not self.simulate:
-            self.cytation.CarrierIn(plate_type=plate_type)
+            # Use cytation_plate_type for Cytation software commands
+            self.cytation.CarrierIn(plate_type=cytation_plate_type)
+        # Use robot's plate_type for robot movements
         self.nr_track.release_wellplate_in_location('pipetting_area', plate_type)
 
     #Note from OAM: The data formatting from this can be annoying. Need to think about how to handle it. 
@@ -125,8 +150,20 @@ class Lash_E:
             rep1: fluorescence, absorbance
             rep2: fluorescence, absorbance
             ...
+        
+        Args:
+            plate_type (str): Robot's wellplate type (e.g., "96 WELL PLATE", "quartz") - used for robot movements
         """
         self.logger.info("Measuring wellplate %d with protocols: %s", wellplate_index, protocol_file_path)
+        
+        # Get Cytation software's wellplate name from robot's wellplate configuration
+        cytation_plate_type = self.nr_robot.get_config_parameter('wellplates', plate_type, 'name_in_cytation', error_on_missing=True)
+        if not cytation_plate_type:
+            cytation_plate_type = plate_type  # Fallback to original if not found
+            self.logger.warning(f"No 'name_in_cytation' found for plate type '{plate_type}', using '{cytation_plate_type}'")
+        else:
+            self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}'")
+        
         self.nr_robot.move_home()
         self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type)
 
@@ -139,12 +176,17 @@ class Lash_E:
             for i in range(repeats):
                 for protocol_path in protocol_paths:
                     print(f"Running protocol {protocol_path} (rep {i+1})")
-                    data = self.cytation.run_protocol(protocol_path, wells_to_measure, plate_type=plate_type)
-                    if data is not None:
-                        # Add a MultiIndex: (replicate + protocol name, wavelength/column)
-                        label = f"rep{i+1}_{os.path.splitext(os.path.basename(protocol_path))[0]}"
-                        data.columns = pd.MultiIndex.from_tuples([(label, col) for col in data.columns])
-                        all_data.append(data)
+                    try:
+                        # Use cytation_plate_type for the biotek system, not the robot's plate_type
+                        data = self.cytation.run_protocol(protocol_path, wells_to_measure, plate_type=cytation_plate_type)
+                        if data is not None:
+                            # Add a MultiIndex: (replicate + protocol name, wavelength/column)
+                            label = f"rep{i+1}_{os.path.splitext(os.path.basename(protocol_path))[0]}"
+                            data.columns = pd.MultiIndex.from_tuples([(label, col) for col in data.columns])
+                            all_data.append(data)
+                    except RuntimeError as e:
+                        self.logger.error(f"Plate read failed: {e}")
+                        self.nr_robot.pause_after_error(f"Plate read failed: {e}")
 
             combined_data = pd.concat(all_data, axis=1) if all_data else None
         else:

@@ -34,6 +34,7 @@ class Biotek_Wrapper:
         monitor = plate.start_read()
         if not monitor:
             self.logger.error("Failed to start read.")
+            raise RuntimeError("Failed to start plate read")
         else:
             self.logger.info("Read started. Waiting for completion...")
 
@@ -44,13 +45,13 @@ class Biotek_Wrapper:
                     break
                 elif rstatus == 2:
                     self.logger.warning("Plate read was aborted.")
-                    break
+                    raise RuntimeError("Plate read was aborted")
                 elif rstatus == 3:
                     self.logger.warning("Plate read is paused (waiting).")
                     # You could decide to continue waiting or handle differently
                 elif rstatus == 4:
                     self.logger.error("Plate read error encountered.")
-                    break
+                    raise RuntimeError("Plate read error encountered")
 
                 time.sleep(2)
 

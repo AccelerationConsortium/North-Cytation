@@ -272,7 +272,7 @@ class North_Track(North_Base):
         """Reset robot to known state after initialization"""
         if self.ACTIVE_WELLPLATE_POSITION == 'gripper':
             # Discard the wellplate currently in gripper
-            self.discard_wellplate(move_home_afterwards=True)
+            self.release_wellplate_in_location('pipetting_area', waypoint_locations=['cytation_safe_area'])
      
     # === 2. CONFIGURATION ACCESS METHODS ===  
     def get_position(self, position_name):
