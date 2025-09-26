@@ -24,7 +24,8 @@ def test_dispense_from_vials_into_wellplate():
     #lash_e.nr_robot.check_input_file()
     #lash_e.nr_track.check_input_file()
     
-   
+    lash_e.nr_robot.check_input_file()
+
     # Create wellplate DataFrame with Sample_A volumes for different wells
     # Columns are vial names, rows are wells (index corresponds to well number)
     well_plate_df = pd.DataFrame({
