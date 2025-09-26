@@ -25,7 +25,7 @@ class LLMOptimizer:
                 raise ValueError("OpenAI API key not provided. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
             self.client = OpenAI(api_key=api_key)
     
-    def list_data_files(self, data_folder: str = "../data_analysis/data") -> list:
+    def list_data_files(self, data_folder: str) -> list:
         """
         List available CSV files in the data folder
         
@@ -77,7 +77,13 @@ class LLMOptimizer:
         Returns:
             Formatted prompt string
         """
-        system_message = config.get("system_message", "You are an optimization expert.")
+        system_message_raw = config.get("system_message", "You are an optimization expert.")
+        
+        # Handle system_message as either string or array
+        if isinstance(system_message_raw, list):
+            system_message = "\n".join(system_message_raw)
+        else:
+            system_message = system_message_raw
         
         # Convert DataFrame to string representation
         data_str = df.to_string(index=False)
@@ -142,32 +148,50 @@ class LLMOptimizer:
         # Extract batch size
         batch_size = config.get("batch_size", 3)
         
-        # Extract liquid-specific information if available
-        liquid_info = ""
-        if "liquid_handling_specific" in config:
-            lh_config = config["liquid_handling_specific"]
-            liquid_info = f"\n\nLiquid Handling Configuration:\n"
-            liquid_info += f"- Target volume: {lh_config.get('target_volume_ul', 'not specified')} μL\n"
-            liquid_info += f"- Device: {lh_config.get('device_serial', 'not specified')}\n"
-            liquid_info += f"- Iterations per run: {lh_config.get('iterations_per_run', 'not specified')}\n"
-            liquid_info += f"- Encoding method: {lh_config.get('encoding_method', 'not specified')}\n"
+        # Extract experimental setup information if available
+        setup_info = ""
+        if "experimental_setup" in config:
+            setup_config = config["experimental_setup"]
+            setup_info = f"\n\nExperimental Setup:\n"
+            for key, value in setup_config.items():
+                # Convert key from snake_case to readable format
+                readable_key = key.replace('_', ' ').title()
+                setup_info += f"- {readable_key}: {value}\n"
         
-        # Add liquid type information
-        liquid_type_info = ""
-        if "liquid" in df.columns:
-            liquid_types = df["liquid"].unique().tolist()
-            liquid_type_info = f"\n\nLiquid Type Information:\n"
-            liquid_type_info += f"- Liquid types in data: {liquid_types}\n"
-            liquid_type_info += f"- IMPORTANT: Keep the SAME liquid type as in the input data - do not change the liquid type\n"
-            liquid_type_info += f"- ANALYZE liquid properties and adjust recommendations accordingly:\n"
-            liquid_type_info += f"  * For glycerol_30%: Consider higher viscosity, slower flow rates, longer settling times\n"
-            liquid_type_info += f"  * For water: Standard pipetting parameters, moderate flow rates\n"
-            liquid_type_info += f"  * For ethanol: Consider volatility, moderate flow rates, appropriate air volumes\n"
-            liquid_type_info += f"  * For toluene: Consider density and surface tension effects\n"
-            liquid_type_info += f"  * Use your knowledge of liquid properties to optimize parameters for the specific liquid type\n"
+        # Add material/condition type information from config
+        material_type_info = ""
+        material_col = None
+        
+        # Get material column name from config if specified
+        if config.get("data_columns", {}).get("material_column"):
+            material_col = config["data_columns"]["material_column"]
+        else:
+            # Fallback to detecting common column names
+            for potential_col in ["liquid", "material", "condition", "sample", "treatment"]:
+                if potential_col in df.columns:
+                    material_col = potential_col
+                    break
+                    
+        if material_col and material_col in df.columns:
+            material_types = df[material_col].unique().tolist()
+            material_type_info = f"\n\nMaterial/Condition Information:\n"
+            material_type_info += f"- Types in data: {material_types}\n"
+            material_type_info += f"- IMPORTANT: Keep the SAME {material_col} type as in the input data\n"
+            
+            # Add configurable material properties if available
+            if "material_properties" in config:
+                material_type_info += f"- Consider material-specific properties:\n"
+                for material_name, properties in config["material_properties"].items():
+                    if material_name in material_types:
+                        prop_desc = properties.get("description", "No description")
+                        optimization_notes = properties.get("optimization_notes", "")
+                        material_type_info += f"  * For {material_name}: {prop_desc}"
+                        if optimization_notes:
+                            material_type_info += f" - {optimization_notes}"
+                        material_type_info += "\n"
         
         
-        # Extract liquid properties if available
+        # Legacy liquid properties support (for backward compatibility)
         liquid_properties_info = ""
         if "parameters" in config and "liquid" in config["parameters"]:
             liquid_param = config["parameters"]["liquid"]
@@ -180,108 +204,151 @@ class LLMOptimizer:
                         prop_list.append(f"{prop}={value}")
                     liquid_properties_info += ", ".join(prop_list) + "\n"
         
-        prompt = f"""
-{system_message}
-{parameters_info}{metrics_info}{liquid_info}{liquid_properties_info}{liquid_type_info}{guidelines_info}
+        # Extract material/condition types for the prompt (using configurable column name)
+        material_info = ""
+        if material_col and material_col in df.columns:
+            material_types = ", ".join(df[material_col].unique().tolist())
+            material_info = f"\nMATERIAL TYPE: {material_types} - Consider relevant material properties\n"
+        
+        # Generate dynamic JSON format based on config parameters
+        param_names = list(config["parameters"].keys())
+        json_fields = ',\n            '.join([f'"{param}": value' for param in param_names])
+        
+        # Generate dynamic optimization instructions based on metrics config
+        metrics_instruction = "1. Identify which experiments performed best"
+        if "metrics" in config:
+            metrics_goals = []
+            for metric, details in config["metrics"].items():
+                goal = details.get("goal", "minimize")
+                priority = details.get("priority", "medium")
+                if goal == "minimize":
+                    metrics_goals.append(f"{goal} {metric}")
+                else:
+                    metrics_goals.append(f"{goal} {metric}")
+            
+            if metrics_goals:
+                metrics_instruction = f"1. Identify which experiments performed best ({', '.join(metrics_goals)})"
+            
+        prompt = f"""{system_message}
 
-Current experimental data:
+PARAMETERS (ranges): {', '.join([f"{param} {details['range']} {details.get('unit', '')}" for param, details in config["parameters"].items()])}
+{material_info}
+EXPERIMENTAL DATA TO ANALYZE:
 {data_str}
 
-Please analyze this data and provide optimization recommendations. 
-Consider the parameter definitions, ranges, and safety limits provided above.
-Follow the optimization guidelines strictly.
+INSTRUCTIONS: 
+{metrics_instruction}
+2. Spot patterns: what parameter values correlate with good/bad performance?
+3. Recommend {batch_size} new parameter combinations based on your analysis
+4. Reference specific data points in your reasoning
 
-Return your response in JSON format with the following structure:
+JSON Response Format:
 {{
     "recommendations": [
         {{
-            "aspirate_speed": "recommended_value",
-            "dispense_speed": "recommended_value", 
-            "aspirate_wait_time": "recommended_value",
-            "dispense_wait_time": "recommended_value",
-            "retract_speed": "recommended_value",
-            "pre_asp_air_vol": "recommended_value",
-            "post_asp_air_vol": "recommended_value",
-            "overaspirate_vol": "recommended_value",
+            {json_fields},
             "confidence": "high/medium/low",
-            "reasoning": "explanation for this parameter combination",
-            "expected_improvement": "quantified improvement expected"
+            "reasoning": "data-driven explanation citing specific experimental results",
+            "expected_improvement": "quantified prediction based on observed patterns"
         }}
     ],
-    "summary": "Overall optimization strategy and key insights"
-}}
-
-CRITICAL REQUIREMENTS:
-- You MUST provide exactly {batch_size} complete parameter combinations
-- Each combination must include ALL parameters: aspirate_speed, dispense_speed, aspirate_wait_time, dispense_wait_time, retract_speed, pre_asp_air_vol, post_asp_air_vol, overaspirate_vol
-- Each row in the recommendations array should be a complete parameter set for one experiment
-- Use your general knowledge about liquid handling to optimize the parameters
-- For liquid: Use the EXACT liquid type from the input data - do not change the liquid type
-- Ensure all suggested values are within the defined parameter ranges
-- Avoid suggesting combinations that appear in the current data
-- Consider physical/chemical feasibility of all recommendations
-- Prioritize safety and equipment capabilities
-
-EXAMPLE FORMAT (this is what you must return):
-{{
-    "recommendations": [
-        {{
-            "aspirate_speed": 15,
-            "dispense_speed": 20,
-            "aspirate_wait_time": 2.5,
-            "dispense_wait_time": 1.0,
-            "retract_speed": 8.0,
-            "pre_asp_air_vol": 0.05,
-            "post_asp_air_vol": 0.02,
-            "overaspirate_vol": 0.01,
-            "confidence": "high",
-            "reasoning": "This combination optimizes for speed while maintaining accuracy",
-            "expected_improvement": "20% faster with maintained precision"
-        }}
-    ],
-    "summary": "Optimization strategy focused on balanced speed and accuracy"
-}}
-
-Please provide specific, actionable recommendations based on the data provided and the parameter constraints.
-
-
-OPTIMIZATION GUIDANCE:
-- Focus on balancing accuracy, precision, and speed
-- Consider the trade-offs between different parameters
-- CRITICAL: Analyze the liquid type properties and adjust recommendations accordingly
-- For glycerol: Use slower flow rates, longer settling times due to higher viscosity
-- For water: Use standard pipetting parameters with moderate flow rates
-- For ethanol: Consider volatility effects on air volume settings
-- For toluene: Consider density and surface tension effects on pipetting
-- Use your knowledge of liquid handling principles to optimize the parameters
-- Ensure all recommendations are within the defined safety limits
-"""
+    "summary": "Key data insights and optimization strategy"
+}}"""
         return prompt
     
-    def call_openai(self, prompt: str, model: str = "gpt-3.5-turbo") -> str:
+    def call_openai(self, prompt: str, config: Dict[str, Any] = None, model: str = "gpt-3.5-turbo") -> str:
         """
         Call OpenAI API with the given prompt
         
         Args:
             prompt: The prompt to send to the LLM
+            config: Configuration dictionary (used for logging settings)
             model: OpenAI model to use
             
         Returns:
             Response from the LLM
         """
         try:
+            # Get model and API parameters from config if available
+            api_config = config.get("api_settings", {}) if config else {}
+            temperature = api_config.get("temperature", 0.7)
+            max_tokens = api_config.get("max_tokens", 2000)
+            
             response = self.client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=2000
+                temperature=temperature,
+                max_tokens=max_tokens
             )
-            return response.choices[0].message.content
+            response_content = response.choices[0].message.content
+            
+            # Save prompt and response to timestamped folder
+            self._save_prompt_and_response(prompt, response_content, model, response, config)
+            
+            return response_content
         except Exception as e:
             raise Exception(f"Error calling OpenAI API: {str(e)}")
     
+    def _save_prompt_and_response(self, prompt: str, response_content: str, model: str, full_response, config: Dict[str, Any] = None):
+        """
+        Save the full prompt and response to timestamped files
+        
+        Args:
+            prompt: The prompt sent to the LLM
+            response_content: The response content from the LLM
+            model: Model used
+            full_response: Full API response object
+            config: Configuration dictionary (used for logging settings)
+        """
+        from datetime import datetime
+        import json
+        
+        # Get log directory from config, default to "LLM_prompts"
+        log_base_dir = "LLM_prompts"
+        if config and "logging" in config:
+            log_base_dir = config["logging"].get("log_directory", "LLM_prompts")
+        
+        # Create timestamped folder
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_dir = os.path.join(log_base_dir, f"llm_session_{timestamp}")
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # Save prompt
+        prompt_file = os.path.join(log_dir, "prompt.txt")
+        with open(prompt_file, 'w', encoding='utf-8') as f:
+            f.write(f"Model: {model}\n")
+            f.write(f"Timestamp: {timestamp}\n")
+            f.write("="*50 + "\n")
+            f.write(prompt)
+        
+        # Save response content
+        response_file = os.path.join(log_dir, "response.txt")
+        with open(response_file, 'w', encoding='utf-8') as f:
+            f.write(f"Model: {model}\n")
+            f.write(f"Timestamp: {timestamp}\n")
+            f.write("="*50 + "\n")
+            f.write(response_content)
+        
+        # Save full API response metadata
+        metadata_file = os.path.join(log_dir, "api_metadata.json")
+        metadata = {
+            "model": model,
+            "timestamp": timestamp,
+            "usage": {
+                "prompt_tokens": full_response.usage.prompt_tokens,
+                "completion_tokens": full_response.usage.completion_tokens,
+                "total_tokens": full_response.usage.total_tokens
+            },
+            "response_id": full_response.id,
+            "created": full_response.created
+        }
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2)
+        
+        print(f"📁 Prompt and response saved to: {log_dir}")
+        
     def parse_llm_response(self, response: str) -> Dict[str, Any]:
         """
         Parse the LLM response and extract recommendations
@@ -341,7 +408,7 @@ OPTIMIZATION GUIDANCE:
         df.to_csv(output_path, index=False)
         print(f"Recommendations saved to: {output_path}")
     
-    def optimize(self, data, config, output_path: str, model: str = "gpt-3.5-turbo"):
+    def optimize(self, data, config, output_path: str, model: str = None):
         """
         Main optimization method
         
@@ -349,7 +416,7 @@ OPTIMIZATION GUIDANCE:
             data: DataFrame with input data or path to CSV file
             config: Dictionary with configuration or path to JSON file
             output_path: Path for output CSV file
-            model: OpenAI model to use
+            model: OpenAI model to use (if None, will use config or default)
         """
         print("Loading data and configuration...")
         
@@ -364,7 +431,12 @@ OPTIMIZATION GUIDANCE:
         else:
             config = config
         
+        # Get model from config if not specified
+        if model is None:
+            model = config.get("api_settings", {}).get("model", "gpt-3.5-turbo")
+        
         print(f"Loaded {len(df)} rows of data")
+        print(f"Using model: {model}")
         
         # Create optimization prompt
         prompt = self.create_optimization_prompt(df, config)
@@ -372,7 +444,7 @@ OPTIMIZATION GUIDANCE:
         print("Calling OpenAI API...")
         
         # Call OpenAI API
-        response = self.call_openai(prompt, model)
+        response = self.call_openai(prompt, config, model)
         
         print("Parsing response...")
         

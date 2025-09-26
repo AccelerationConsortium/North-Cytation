@@ -8,7 +8,7 @@ from master_usdl_coordinator import Lash_E
 import recommenders.pipeting_optimizer_v2 as recommender
 import slack_agent
 from datetime import datetime
-import recommenders.pipetting_recommender_llm as llm_recommender
+import recommenders.llm_optimizer as llm_opt
 LLM_AVAILABLE = True
 
 
@@ -23,7 +23,7 @@ SEED = 7
 SOBOL_CYCLES_PER_VOLUME = 5
 BAYES_CYCLES_PER_VOLUME = 1
 REPLICATES = 3
-BAYESIAN_BATCH_SIZE = 1
+BAYESIAN_BATCH_SIZE = 3
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
 #MODELS = ['qEI', 'qLogEI', 'qNEHVI, 'LLM]
 MODELS = ['LLM'] #Change this!
@@ -129,25 +129,30 @@ for model_type in MODELS:
                     if all_results:
                         pd.DataFrame(all_results).to_csv(llm_input_file, index=False)
                 
-                # Get LLM recommendations
-                llm_rec = llm_recommender.PipettingRecommenderLLM(config_path=config_path)
+                # Get LLM recommendations using direct optimizer
+                optimizer = llm_opt.LLMOptimizer()
+                config = optimizer.load_config(config_path)
                 
                 # Specify output file in the output directory to avoid path issues
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 llm_output_file = os.path.join("output", f"llm_recommendations_{timestamp}.csv")
                 
-                recommendations = llm_rec.get_new_recs(llm_input_file, output_file=llm_output_file)
+                result = optimizer.optimize(llm_input_file, config, llm_output_file)
                 
                 # Extract parameter suggestions from LLM response
-                llm_params_list = recommendations.get('recommendations', [])[:1]  # Take first suggestion
-                llm_summary = recommendations.get('summary', 'No summary provided')
+                all_llm_recs = result.get('recommendations', [])
+                print(f"🔍 DEBUG: LLM returned {len(all_llm_recs)} total recommendations")
+                llm_params_list = all_llm_recs[:BAYESIAN_BATCH_SIZE]  # Take up to batch size
+                print(f"🔍 DEBUG: Taking {len(llm_params_list)} recommendations (batch size: {BAYESIAN_BATCH_SIZE})")
+                llm_summary = result.get('summary', 'No summary provided')
                 
-                logger.info("LLM Optimization Results:")
-                logger.info(f"Strategy Summary: {llm_summary}")
-                
+                lash_e.logger.info("LLM Optimization Results:")
+                lash_e.logger.info(f"Strategy Summary: {llm_summary}")
+
                 # Convert LLM suggestions to ax_client trials
                 suggestions = []
                 for i, llm_params in enumerate(llm_params_list):
+                    print(f"🔍 DEBUG: Processing LLM recommendation {i+1}: {list(llm_params.keys()) if llm_params else 'None'}")
                     if llm_params:  # Make sure we have parameters
                         # Extract metadata fields
                         confidence = llm_params.get('confidence', 'unknown')
@@ -155,24 +160,42 @@ for model_type in MODELS:
                         expected_improvement = llm_params.get('expected_improvement', 'Not specified')
                         
                         # Log LLM rationale and confidence
-                        logger.info(f"LLM Recommendation {i+1}:")
-                        logger.info(f"  Confidence Level: {confidence}")
-                        logger.info(f"  Reasoning: {reasoning}")
-                        logger.info(f"  Expected Improvement: {expected_improvement}")
-                        
+                        lash_e.logger.info(f"LLM Recommendation {i+1}:")
+                        lash_e.logger.info(f"  Confidence Level: {confidence}")
+                        lash_e.logger.info(f"  Reasoning: {reasoning}")
+                        lash_e.logger.info(f"  Expected Improvement: {expected_improvement}")
+
                         # Extract only the parameter values that match the search space
                         expected_params = set(ax_client.experiment.search_space.parameters.keys())
                         filtered_params = {k: v for k, v in llm_params.items() if k in expected_params}
+                        
+                        # Convert parameter types to match ax_client expectations
+                        # Float parameters: wait times, retract_speed, air volumes, overaspirate_vol
+                        float_params = {'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 
+                                      'pre_asp_air_vol', 'post_asp_air_vol', 'overaspirate_vol'}
+                        # Integer parameters: speeds
+                        int_params = {'aspirate_speed', 'dispense_speed'}
+                        
+                        for param_name in filtered_params:
+                            if param_name in float_params:
+                                filtered_params[param_name] = float(filtered_params[param_name])
+                            elif param_name in int_params:
+                                filtered_params[param_name] = int(filtered_params[param_name])
+                        
+                        print(f"🔍 DEBUG: Filtered params for trial {i+1}: {filtered_params}")
                                               
                         params, trial_index = ax_client.attach_trial(filtered_params)
                         suggestions.append((params, trial_index))
+                        print(f"🔍 DEBUG: Successfully attached trial {trial_index}")
+                
+                print(f"🔍 DEBUG: Total suggestions created: {len(suggestions)}")
                 
                 # Fallback to Bayesian if no LLM suggestions
                 if not suggestions:
-                    suggestions = recommender.get_suggestions(ax_client, volume, n=1)
+                    suggestions = recommender.get_suggestions(ax_client, volume, n=BAYESIAN_BATCH_SIZE)
             else:
                 # Use existing Bayesian optimization
-                suggestions = recommender.get_suggestions(ax_client, volume, n=1)
+                suggestions = recommender.get_suggestions(ax_client, volume, n=BAYESIAN_BATCH_SIZE)
                 
             for params, trial_index in suggestions:
                 check_if_measurement_vial_full()

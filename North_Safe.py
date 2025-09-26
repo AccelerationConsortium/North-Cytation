@@ -377,6 +377,29 @@ class North_Track(North_Base):
         self.c9.move_axis(self.get_axis('x_axis'), 0, vel=self.get_speed('default_x'))
         self.logger.debug("Moving North Track to home position")
 
+    def move_through_path(self, waypoint_locations):
+        """
+        Move through a series of waypoint locations for safe routing.
+        
+        Args:
+            waypoint_locations (list): List of location names to visit as waypoints
+        """
+        if not waypoint_locations:
+            self.logger.debug("No waypoint locations provided, skipping path movement")
+            return
+        
+        for waypoint_name in waypoint_locations:
+            waypoint = self.get_position(waypoint_name)
+            if not waypoint:
+                self.logger.error(f"Waypoint '{waypoint_name}' not found in configuration")
+                continue
+            
+            # Move to waypoint X and Z positions
+            if 'x' in waypoint:
+                self.c9.move_axis(self.get_axis('x_axis'), waypoint['x'], vel=self.get_speed('default_x'))
+            if 'z' in waypoint:
+                self.c9.move_axis(self.get_axis('z_axis'), waypoint['z'], vel=self.get_speed('default_z'))
+
     # === 4. WELLPLATE MOVEMENT SEQUENCES ===
     def transfer_wellplate_via_path(self, destination_x, destination_z, waypoint_locations=None):
         """
@@ -388,19 +411,7 @@ class North_Track(North_Base):
             waypoint_locations (list): List of location names to visit as waypoints (e.g., ['transfer_stack', 'cytation_safe_area'])
         """
         
-        if waypoint_locations:
-            # Visit each waypoint location in order
-            for waypoint_name in waypoint_locations:
-                waypoint = self.get_position(waypoint_name)
-                if not waypoint:
-                    self.logger.error(f"Waypoint '{waypoint_name}' not found in configuration")
-                    continue
-                    
-                # Move to waypoint X and Z positions
-                if 'x' in waypoint:
-                    self.c9.move_axis(self.get_axis('x_axis'), waypoint['x'], vel=self.get_speed('default_x'))
-                if 'z' in waypoint:
-                    self.c9.move_axis(self.get_axis('z_axis'), waypoint['z'], vel=self.get_speed('default_z'))
+        self.move_through_path(waypoint_locations)  # Move through waypoints first
         
         # Move to final destination
         self.c9.move_axis(self.get_axis('z_axis'), destination_z, vel=self.get_speed('default_z'))
@@ -558,7 +569,7 @@ class North_Track(North_Base):
             if self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area':
                 self.pause_after_error("Cannot get wellplate, NR pipetting area is occupied")
     
-    def discard_wellplate(self, move_home_afterwards = True): #double WP stack
+    def discard_wellplate(self, move_home_afterwards = True, pickup_location='pipetting_area', discard_location='waste_stack'): #double WP stack
         """Grabs a wellplate (from desginated wellplate stack) and discards it into the waste stack (in the double stack holder). ENSURE North Robot is homed!!!
         
         Args:
@@ -566,13 +577,14 @@ class North_Track(North_Base):
         """
         DOUBLE_WASTE_Y = self.calculate_wp_stack_height(self.NUM_WASTE+1, self.CURRENT_WP_TYPE, 'waste_stack', 'release')
         
-        if DOUBLE_WASTE_Y != -1 and self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area': #can still hold an additional wellplate & pipetting area is occupied
+        if DOUBLE_WASTE_Y != -1: #can still hold an additional wellplate & pipetting area is occupied
             self.logger.info(f"Discarding wellplate as the {self.get_ordinal(self.NUM_WASTE+1)} WP in waste stack at height: {DOUBLE_WASTE_Y}")
             
             # Move to max height, then grab wellplate from NR
             self.close_gripper()
-            self.grab_wellplate_from_location('pipetting_area', self.CURRENT_WP_TYPE, waypoint_locations=['transfer_stack'])
-            self.release_wellplate_in_location('waste_stack', self.CURRENT_WP_TYPE, z_override=DOUBLE_WASTE_Y, waypoint_locations=['transfer_stack'])
+            if self.ACTIVE_WELLPLATE_POSITION == pickup_location:
+                self.grab_wellplate_from_location(pickup_location, self.CURRENT_WP_TYPE, waypoint_locations=['transfer_stack'])
+            self.release_wellplate_in_location(discard_location, self.CURRENT_WP_TYPE, z_override=DOUBLE_WASTE_Y, waypoint_locations=['transfer_stack'])
 
             # Use unified transfer method to drop off at waste stack
             self.set_wellplate_position(None)  # Wellplate discarded to waste, no longer tracked
