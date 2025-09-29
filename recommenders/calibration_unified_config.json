@@ -1,15 +1,23 @@
 {
   "system_message": [
-    "You are an expert in liquid handling optimization. Analyze experimental pipetting data and recommend parameter improvements based on observed performance patterns.",
+    "You are an expert in liquid handling optimization using AGGRESSIVE EXPLORATION strategies. Analyze experimental pipetting data and recommend DIVERSE parameter improvements that explore different trade-off regions.",
     "",
     "CRITICAL PARAMETER NOTE: For aspirate and dispense speed parameters (aspirate_speed, dispense_speed), HIGHER VALUES = SLOWER SPEEDS. This is counterintuitive but important for your analysis.",
     "",
+    "EXPLORATION STRATEGY - Provide 3 DIFFERENT approaches:",
+    "1. SPEED-FOCUSED: Test faster cycles (low wait times, fast speeds) - accept some accuracy trade-offs",
+    "2. ACCURACY-FOCUSED: Optimize for lowest deviation/variability - accept some time increase",
+    "3. PARETO FRONT: The most interesting results are along the Pareto front balancing deviation and time - explore this trade-off",
+    "4. UNEXPLORED REGIONS: Test parameter combinations in gaps/corners of the parameter space",
+     "",
     "Your analysis should:",
-    "1. EXAMINE THE DATA: Identify which parameter combinations gave best performance (lowest deviation & variability)",
-    "2. IDENTIFY PATTERNS: Find correlations between parameter values and outcomes",
-    "3. CONSIDER TRADE-OFFS: Balance accuracy (deviation), precision (variability), and efficiency (time)",
-    "4. AVOID REPLICATES: Do NOT suggest parameter combinations that already exist in the experimental data",
-    "5. REFERENCE DATA: Cite specific experimental results in your reasoning"
+    "1. EXAMINE THE DATA: Identify patterns across ALL three metrics (deviation, variability, time)",
+    "2. IDENTIFY GAPS: What parameter regions are UNEXPLORED in your dataset?",
+    "3. EMBRACE TRADE-OFFS: Test different optimization priorities - don't just seek safe middle ground",
+    "4. DIVERSIFY RECOMMENDATIONS: Each of your multiple suggestions should explore different hypotheses/regions",
+    "5. REFERENCE DATA: Cite specific experimental results in your reasoning",
+    "",
+    "REMEMBER: The goal is systematic exploration of the trade-off space, not just incremental improvement!"
   ],
   
   "api_settings": {
@@ -34,6 +42,14 @@
   },
   
   "batch_size": 3,
+  
+  "optimization_strategy": {
+    "exploration_type": "diverse_systematic",
+    "risk_tolerance": "moderate_to_high", 
+    "trade_off_philosophy": "explore_different_priorities_across_recommendations",
+    "boundary_testing": "encouraged_for_unexplored_regions",
+    "parameter_space_coverage": "maximize_diversity_across_trade_off_space"
+  },
   "parameters": {
     "aspirate_speed": {
       "type": "integer",
@@ -122,19 +138,22 @@
       "goal": "minimize",
       "unit": "percentage_error", 
       "description": "Accuracy metric - deviation from expected mass",
-      "priority": "high"
+      "priority": "high",
+      "exploration_note": "In speed-focused recommendations, moderate increases acceptable for significant time reduction"
     },
     "variability": {
       "goal": "minimize",
       "unit": "percentage_cv",
       "description": "Precision metric - standard deviation across replicates", 
-      "priority": "high"
+      "priority": "high",
+      "exploration_note": "In speed-focused recommendations, some precision trade-off acceptable"
     },
     "time": {
       "goal": "minimize", 
       "unit": "seconds",
       "description": "Efficiency metric - total operation time per pipetting cycle",
-      "priority": "medium"
+      "priority": "medium",
+      "exploration_note": "Important for speed-focused recommendations, secondary for accuracy-focused ones"
     }
   },
   
