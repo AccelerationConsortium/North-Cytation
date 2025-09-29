@@ -14,21 +14,21 @@ LLM_AVAILABLE = True
 
 # --- Experiment Config ---
 LIQUID = "glycerol"  #<------------------- CHANGE THIS!
-SIMULATE = True #<--------- CHANGE THIS!
+SIMULATE = False #<--------- CHANGE THIS!
 
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
 
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 5
-BAYES_CYCLES_PER_VOLUME = 1
+SOBOL_CYCLES_PER_VOLUME = 0
+BAYES_CYCLES_PER_VOLUME = 32
 REPLICATES = 3
-BAYESIAN_BATCH_SIZE = 3
+BATCH_SIZE = 1  # Number of suggestions per cycle (unified for both LLM and Bayesian)
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1
 #MODELS = ['qEI', 'qLogEI', 'qNEHVI, 'LLM]
 MODELS = ['LLM'] #Change this!
-USE_EXISTING_DATA = False
-EXISTING_DATA_FOLDER = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\p8_newconstraints"
+USE_EXISTING_DATA = True
+EXISTING_DATA_FOLDER = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\0922_8params"
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 EXPECTED_MASSES = [v * DENSITY_LIQUID for v in VOLUMES]
@@ -62,9 +62,11 @@ for model_type in MODELS:
         autosave_summary_path=None
 
     # --- Optimization Loop ---
-    ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), bayesian_batch_size=BAYESIAN_BATCH_SIZE, volume=VOLUMES, model_type=model_type, simulate=SIMULATE)
+    ax_client = recommender.create_model(SEED, SOBOL_CYCLES_PER_VOLUME * len(VOLUMES), bayesian_batch_size=BATCH_SIZE, volume=VOLUMES, model_type=model_type, simulate=SIMULATE)
     
     # ...existing code...
+    # Store existing data for LLM access
+    existing_data_for_llm = []
     if USE_EXISTING_DATA:
         base_folder = EXISTING_DATA_FOLDER
         #base_folder = r"C:\Users\owenm\OneDrive\Desktop\Calibration_SDL"
@@ -75,6 +77,9 @@ for model_type in MODELS:
             if os.path.exists(file_path):
                 lash_e.logger.info(f"Loading existing data from {file_path}")
                 recommender.load_data(ax_client, file_path)
+                # Also load for LLM access
+                existing_df = pd.read_csv(file_path)
+                existing_data_for_llm.append(existing_df)
             else:
                 lash_e.logger.info(f"No summary file found in {file_path}, skipping.")
     all_results = []
@@ -119,19 +124,41 @@ for model_type in MODELS:
                 print(f"🔍 Looking for config at: {config_path}")
                 print(f"🔍 Config file exists: {os.path.exists(config_path)}")
                 
-                # Use existing autosave file for LLM analysis (contains all SOBOL results)
-                if not SIMULATE and os.path.exists(autosave_summary_path):
-                    llm_input_file = autosave_summary_path
+                # Prepare LLM input file with existing data + current results
+                llm_input_file = os.path.join("output", "temp_llm_input.csv")
+                os.makedirs("output", exist_ok=True)  # Ensure output folder exists
+                
+                # Combine existing data with current results for LLM
+                llm_data_frames = []
+                if existing_data_for_llm:
+                    llm_data_frames.extend(existing_data_for_llm)
+                    print(f"🔍 DEBUG: Including {len(existing_data_for_llm)} existing data files for LLM")
+                if all_results:
+                    llm_data_frames.append(pd.DataFrame(all_results))
+                    print(f"🔍 DEBUG: Including {len(all_results)} current results for LLM")
+                
+                if llm_data_frames:
+                    combined_llm_data = pd.concat(llm_data_frames, ignore_index=True)
+                    
+                    # Limit data size to avoid token limits (keep most recent experiments)
+                    MAX_LLM_EXPERIMENTS = 200  # Reduced for gpt-4's 8K token limit
+                    if len(combined_llm_data) > MAX_LLM_EXPERIMENTS:
+                        combined_llm_data = combined_llm_data.tail(MAX_LLM_EXPERIMENTS)
+                        print(f"🔍 DEBUG: Limited to most recent {MAX_LLM_EXPERIMENTS} experiments for LLM")
+                    
+                    combined_llm_data.to_csv(llm_input_file, index=False)
+                    print(f"🔍 DEBUG: Created LLM input file with {len(combined_llm_data)} total experiments")
                 else:
-                    # For simulation or if autosave doesn't exist, save temp file in output folder
-                    llm_input_file = os.path.join("output", "temp_llm_input.csv")
-                    os.makedirs("output", exist_ok=True)  # Ensure output folder exists
-                    if all_results:
-                        pd.DataFrame(all_results).to_csv(llm_input_file, index=False)
+                    print("🔍 DEBUG: No data available for LLM - creating empty file")
+                    pd.DataFrame().to_csv(llm_input_file, index=False)
                 
                 # Get LLM recommendations using direct optimizer
                 optimizer = llm_opt.LLMOptimizer()
                 config = optimizer.load_config(config_path)
+                
+                # Update config batch_size to match unified BATCH_SIZE
+                config["batch_size"] = BATCH_SIZE
+                print(f"🔍 DEBUG: Updated LLM config batch_size to {BATCH_SIZE}")
                 
                 # Specify output file in the output directory to avoid path issues
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -142,8 +169,8 @@ for model_type in MODELS:
                 # Extract parameter suggestions from LLM response
                 all_llm_recs = result.get('recommendations', [])
                 print(f"🔍 DEBUG: LLM returned {len(all_llm_recs)} total recommendations")
-                llm_params_list = all_llm_recs[:BAYESIAN_BATCH_SIZE]  # Take up to batch size
-                print(f"🔍 DEBUG: Taking {len(llm_params_list)} recommendations (batch size: {BAYESIAN_BATCH_SIZE})")
+                llm_params_list = all_llm_recs[:BATCH_SIZE]  # Take up to batch size
+                print(f"🔍 DEBUG: Taking {len(llm_params_list)} recommendations (batch size: {BATCH_SIZE})")
                 llm_summary = result.get('summary', 'No summary provided')
                 
                 lash_e.logger.info("LLM Optimization Results:")
@@ -192,10 +219,10 @@ for model_type in MODELS:
                 
                 # Fallback to Bayesian if no LLM suggestions
                 if not suggestions:
-                    suggestions = recommender.get_suggestions(ax_client, volume, n=BAYESIAN_BATCH_SIZE)
+                    suggestions = recommender.get_suggestions(ax_client, volume, n=BATCH_SIZE)
             else:
                 # Use existing Bayesian optimization
-                suggestions = recommender.get_suggestions(ax_client, volume, n=BAYESIAN_BATCH_SIZE)
+                suggestions = recommender.get_suggestions(ax_client, volume, n=BATCH_SIZE)
                 
             for params, trial_index in suggestions:
                 check_if_measurement_vial_full()
