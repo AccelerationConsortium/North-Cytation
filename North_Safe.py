@@ -1435,6 +1435,19 @@ class North_Robot(North_Base):
     def adjust_pump_speed(self, pump, pump_speed):
         self.logger.debug(f"Adjusting pump {pump} speed to {pump_speed}")
         
+        # Ensure pump_speed is a native Python int and round if needed
+        if not isinstance(pump_speed, int):
+            original_speed = pump_speed
+            pump_speed = int(round(float(pump_speed)))
+            self.logger.warning(f"Converting pump speed {original_speed} to integer {pump_speed}")
+        
+        # Validate pump speed is within hardware boundaries
+        if not (1 <= pump_speed <= 40):
+            error_msg = f"Pump speed {pump_speed} outside valid range (1-40)."
+            self.pause_after_error(error_msg)
+            return
+            
+        
         # Get current speed for this pump (default to 0 if not tracked)
         current_speed = self.CURRENT_PUMP_SPEEDS.get(pump, 0)
         

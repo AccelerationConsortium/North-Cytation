@@ -20,8 +20,8 @@ DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
 
 SEED = 7
-SOBOL_CYCLES_PER_VOLUME = 0
-BAYES_CYCLES_PER_VOLUME = 11
+SOBOL_CYCLES_PER_VOLUME = 2
+BAYES_CYCLES_PER_VOLUME = 0
 REPLICATES = 3
 BATCH_SIZE = 3  # Number of suggestions per cycle (unified for both LLM and Bayesian)
 VOLUMES = [0.05] #If time try different volumes! Eg 0.01 0.02 0.1

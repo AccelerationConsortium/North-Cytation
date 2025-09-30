@@ -69,6 +69,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
     over_volume = params.get("overaspirate_vol", 0)
     #over_volume = 0
     air_vol = pre_air + post_air
+
+    print(params)
     
     # Create PipettingParameters objects instead of kwargs dictionaries
     aspirate_params = PipettingParameters(
@@ -82,8 +84,7 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         dispense_speed=params["dispense_speed"],
         dispense_wait_time=params["dispense_wait_time"],
         air_vol=air_vol,
-    )
-    
+    )  
 
     measurements = []
     start = time.time()
