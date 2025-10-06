@@ -20,9 +20,12 @@ import pandas as pd
 # --- Experiment Config ---
 LIQUID = "glycerol"  # Change this as needed
 SIMULATE = True  # Change this for real experiments
-REPLICATES = 24  # Number of replicates per condition
+REPLICATES = 12  # Number of replicates per condition
 VOLUME = 0.05  # Single volume to test
-INPUT_CONDITIONS_FILE = "inputs/custom_4_conditions.csv"  # Input conditions CSV
+RANDOMIZE_ORDER = True  # Randomize the order of conditions to reduce systematic bias
+
+# Input conditions - All 7 best conditions from different strategies
+INPUT_CONDITIONS_FILE = "inputs/best_round1_conditions_by_strategy.csv"  # All 7 strategies
 
 # Output folder configuration
 OUTPUT_FOLDER_REAL = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\simple_calibration"  # For real experiments
@@ -83,6 +86,13 @@ print(conditions_df)
 
 # Convert column names to lowercase with underscores (to match expected parameter names)
 conditions_df.columns = [col.lower().replace(' ', '_') for col in conditions_df.columns]
+
+# Randomize condition order if requested
+if RANDOMIZE_ORDER:
+    import random
+    random.seed(42)  # Set seed for reproducibility
+    conditions_df = conditions_df.sample(frac=1).reset_index(drop=True)
+    print(f"🔀 Randomized condition order (seed=42 for reproducibility)")
 
 # --- Helper Functions ---
 def check_if_measurement_vial_full():
@@ -187,6 +197,8 @@ for condition_idx, condition_row in conditions_df.iterrows():
 # --- Final Cleanup and Summary ---
 print(f"\n🎉 Experiment completed!")
 print(f"📊 Tested {len(conditions_df)} conditions with {REPLICATES} replicates each")
+if RANDOMIZE_ORDER:
+    print(f"🔀 Conditions were tested in randomized order (seed=42)")
 
 if not SIMULATE:
     print(f"📄 Raw data saved to: {raw_data_path}")
