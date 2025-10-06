@@ -1,0 +1,84 @@
+version: 0.1
+fetch:
+  min_year: 2015
+  max_per_archetype: 500
+  include_preprints: true
+  exclude_reviews: true
+  background_poll_minutes: 60
+  raw_api_dump_dir: research/literature_search/data/raw_openalex
+  raw_jsonl: research/literature_search/data/papers_raw.jsonl
+  parsed_jsonl: research/literature_search/data/papers_parsed.jsonl
+  scored_csv: research/literature_search/data/scored_candidates.csv
+  test_mode: true
+  test_archetypes: ["photo_polymerization"]
+  test_limit_per_archetype: 5
+
+archetypes:
+  photo_polymerization:
+    tokens_any: ["PET-RAFT", "photoinduced polymerization", "visible-light polymerization"]
+    mandatory_all: ["polymer"]
+    assay_any: ["absorbance", "fluorescence", "conversion", "kinetic"]
+  photocatalyst_screening:
+    tokens_any: ["photocatalyst", "photoredox", "catalyst screening"]
+    mandatory_all: ["catalyst"]
+    assay_any: ["fluorescence", "absorbance", "rate", "turnover"]
+  degradation_kinetics:
+    tokens_any: ["oxidative degradation", "photooxidation", "radical degradation"]
+    mandatory_all: ["degradation"]
+    assay_any: ["absorbance", "turbidity", "kinetic", "half-life"]
+  formulation_stability:
+    tokens_any: ["formulation stability", "turbidity", "phase separation"]
+    mandatory_all: ["formulation"]
+    assay_any: ["turbidity", "absorbance", "clarity"]
+  probe_photostability:
+    tokens_any: ["fluorescence photostability", "probe stability", "bleaching suppression"]
+    mandatory_all: ["fluorescence"]
+    assay_any: ["fluorescence", "decay", "retention"]
+  additive_catalyst_optimization:
+    tokens_any: ["catalyst loading", "initiator ratio", "factorial optimization"]
+    mandatory_all: ["catalyst"]
+    assay_any: ["absorbance", "fluorescence", "conversion"]
+  polymer_functionalization:
+    tokens_any: ["thiol-ene", "aza-Michael", "polymer functionalization"]
+    mandatory_all: ["polymer"]
+    assay_any: ["absorbance", "fluorescence", "modification"]
+
+scoring:
+  weights:
+    capability_fit: 0.25
+    parameter_space: 0.15
+    multi_objective: 0.15
+    impact: 0.20
+    novelty: 0.15
+    constraint_penalty: 0.10
+  novelty_penalties:
+    self_driving_lab: 0.60
+    autonomous_lab: 0.60
+    closed_loop_ai: 0.60
+    robotic_automation_pair: 0.25
+    generic_automation: 0.10
+  constraint_penalties:
+    inert_required: 0.30
+    non_whitelist_solvent: 0.40
+    fast_kinetics_subminute: 0.20
+    hazardous_flag: 0.20
+  impact_normalization:
+    window_years: 10
+    polymer_bonus: 0.10
+    sustainability_bonus: 0.10
+
+extraction:
+  ratio_patterns: ["(\\d+\\s?:\\s?\\d+)"]
+  range_patterns: ["(\\d+(?:\\.\\d+)?\\s?(?:to|–|-|−)\\s?\\d+(?:\\.\\d+)?\\s?(?:mol%|mM|%|°C))"]
+  equiv_patterns: ["(\\d+(?:\\.\\d+)?\\s?(?:eq|equiv|equivalents))"]
+  conc_patterns: ["(\\d+(?:\\.\\d+)?\\s?(?:mM|M|wt%|vol%))"]
+  objective_verbs: ["maximize", "minimize", "optimize", "improve", "enhance", "reduce", "balance"]
+  capability_verbs: ["irradiate", "illuminate", "heat", "stir", "sample", "aliquot", "mix", "vortex", "measure", "absorbance", "fluorescence"]
+
+normalization:
+  parameter_space_log_cap: 6
+  multi_objective_max: 4
+
+paths:
+  working_dir: research/literature_search/data
+  logs: research/literature_search/logs/literature_pipeline.log
