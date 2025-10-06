@@ -118,7 +118,15 @@ for condition_idx, condition_row in conditions_df.iterrows():
     
     # Convert condition to parameter dictionary
     params = condition_row.to_dict()
+    # Convert numpy types to regular Python types and ensure speeds are integers
+    for k, v in params.items():
+        if k in ['aspirate_speed', 'dispense_speed']:
+            params[k] = int(float(v))  # Convert speeds to integers
+        elif isinstance(v, (int, float)):
+            params[k] = float(v)  # Other numeric values stay as floats
     print(f"Parameters: {params}")
+    print(f"🔍 DEBUG: Parameter keys: {list(params.keys())}")
+    print(f"🔍 DEBUG: Expected keys: ['aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'pre_asp_air_vol', 'post_asp_air_vol', 'overaspirate_vol']")
     
     # Check if measurement vial needs to be changed
     check_if_measurement_vial_full()
@@ -131,21 +139,9 @@ for condition_idx, condition_row in conditions_df.iterrows():
         print(f"   Running {REPLICATES} replicates...")
         
         # Use the same pipet_and_measure function from calibration_sdl_base
-        result = pipet_and_measure(
-            lash_e=lash_e,
-            source_vial=source_vial,
-            dest_vial=dest_vial, 
-            volume=VOLUME,
-            params=params,
-            expected_measurement=EXPECTED_MASS,
-            expected_time=EXPECTED_TIME,
-            replicate_count=REPLICATES,
-            simulate=SIMULATE,
-            raw_path=raw_data_path,
-            raw_measurements=all_raw_data,  # This will be populated by the function
-            liquid=LIQUID,
-            new_pipet_each_time=NEW_PIPET_EACH_TIME_SET
-        )
+        
+
+        result = pipet_and_measure(lash_e, source_vial, dest_vial, VOLUME, params, EXPECTED_MASS, EXPECTED_TIME, REPLICATES, SIMULATE, raw_data_path, all_raw_data, LIQUID, NEW_PIPET_EACH_TIME_SET)
         
         # Create summary entry
         summary_entry = {
@@ -175,6 +171,12 @@ for condition_idx, condition_row in conditions_df.iterrows():
         error_msg = f"Error in condition {condition_idx + 1}: {str(e)}"
         print(f"   ❌ {error_msg}")
         lash_e.logger.error(error_msg)
+        
+        # Clean up hardware state after error
+        try:
+            lash_e.nr_robot.remove_pipet()
+        except:
+            pass  # Ignore cleanup errors
         
         # Add error entry to summary
         error_entry = {
