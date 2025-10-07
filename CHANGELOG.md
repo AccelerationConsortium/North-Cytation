@@ -278,3 +278,39 @@ All notable changes to this project will be documented in this file.
 ### Notes
 - No behavior change when flag omitted; performance impact minimal (string slicing only when enabled).
 
+## [0.5.3] - 2025-10-07
+### Added
+- `--limit` and `--shuffle` flags to `llm_label.py` to enable stratified / randomized small-batch labeling.
+- Confidence scale guidance block appended in `prompt_preview.py` to encourage dispersion of confidence values across 0–1.
+- New diagnostics script `label_diagnostics.py` producing failure reason counts, axis means per label, and disagreement buckets (high-rank irrelevants, low-rank positives).
+
+### Rationale
+- Facilitates iterative evaluation of LLM vs heuristic gating without incurring full-batch labeling cost; early disagreement surfacing accelerates calibration planning.
+
+### Notes
+- No change to scoring logic; all additions are tooling and prompt instruction refinements.
+
+## [0.5.4] - 2025-10-07
+### Added
+- Deterministic `prompt_version` hash embedded in each prompt preview line and propagated into LLM label outputs (`llm_label.py`).
+
+### Rationale
+- Enables mixing / filtering of label sets across prompt template changes without confusion or data leakage during calibration.
+
+### Notes
+- Hash derived from core instruction blocks only; axis numerical values and abstracts not included (ensures stability across corpus expansion).
+
+## [0.5.5] - 2025-10-07
+### Added
+- `--resume` flag in `llm_label.py` allowing interrupted labeling runs to be safely continued without re-querying already labeled abstracts (skips IDs present in existing output file and appends new results).
+- `--request-timeout` soft per-request timeout wrapper (thread-based) to convert stalled network calls into retries (prevents indefinite blocking leading to manual interrupts).
+
+### Changed
+- Labeling completion summary now distinguishes new successes vs cumulative when `--resume` is used.
+
+### Rationale
+- Repeated mid-run interruptions previously forced restarts and risk of partial / empty label sets; resume + timeout hardening ensures efficient incremental accumulation of labels for calibration.
+
+### Notes
+- Timeout wrapper is cooperative (does not forcibly cancel underlying HTTP if library call hangs internally) but sufficient for short batches; consider future replacement with client-native timeout if migrating SDK.
+

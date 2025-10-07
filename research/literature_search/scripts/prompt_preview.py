@@ -18,7 +18,7 @@ The baseline prompt matches our high-fidelity design with axis glossary.
 No API calls are performed; this is offline prompt generation for inspection.
 """
 from __future__ import annotations
-import os, csv, json, argparse, textwrap
+import os, csv, json, argparse, textwrap, hashlib
 from typing import List, Dict
 
 try:
@@ -142,12 +142,35 @@ def build_prompt(record: Dict, axis_order: List[str]) -> str:
     return prompt
 
 
+def compute_prompt_version() -> str:
+    """Derive a stable short hash representing the current instruction + schema text.
+
+    This allows downstream labeling outputs to carry a provenance tag so that if the
+    prompt template changes, mixed-version label sets can be separated during analysis.
+    Only the structural instruction blocks are hashed (not the abstract text or axes).
+    """
+    core = "\n".join([
+        BASE_DOMAIN_BRIEF.strip(),
+        CRITERIA_BLOCK.strip(),
+        JSON_SCHEMA_BLOCK.strip(),
+        INSTRUCTION_BLOCK.strip(),
+    ])
+    h = hashlib.sha256(core.encode('utf-8')).hexdigest()[:10]
+    return h
+
+
 def pick_segments(rows: List[Dict], top_n: int, middle_n: int, bottom_n: int):
     n = len(rows)
-    top = rows[:min(top_n, n)]
-    mid_start = max(0, (n // 2) - (middle_n // 2))
-    middle = rows[mid_start: mid_start + middle_n]
-    bottom = rows[-bottom_n:] if bottom_n <= n else rows
+    top = rows[:min(top_n, n)] if top_n > 0 else []
+    if middle_n > 0:
+        mid_start = max(0, (n // 2) - (middle_n // 2))
+        middle = rows[mid_start: mid_start + middle_n]
+    else:
+        middle = []
+    if bottom_n > 0:
+        bottom = rows[-bottom_n:] if bottom_n <= n else rows
+    else:
+        bottom = []
     return top, middle, bottom
 
 
@@ -191,6 +214,7 @@ def main():
     top, middle, bottom = pick_segments(rows, args.top, args.middle, args.bottom)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    prompt_version = compute_prompt_version()
     with open(args.out, 'w', encoding='utf-8') as f:
         def emit(segment_name: str, seg_rows: List[Dict]):
             for idx, r in enumerate(seg_rows, start=1):
@@ -202,6 +226,7 @@ def main():
                     'segment': segment_name,
                     'score_total': r.get('score_total'),
                     'axes': axes_dict,
+                    'prompt_version': prompt_version,
                     'prompt': prompt,
                 }
                 f.write(json.dumps(rec, ensure_ascii=False) + '\n')

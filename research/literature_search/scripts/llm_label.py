@@ -21,7 +21,7 @@ If malformed JSON or missing keys are observed, the script will retry (up to --m
 repair system instruction that echoes the previous raw output for guidance.
 """
 from __future__ import annotations
-import os, json, time, argparse, sys, re
+import os, json, time, argparse, sys, re, threading
 from typing import Dict, Any, Iterable, Optional
 from dataclasses import dataclass
 
@@ -56,6 +56,8 @@ class Args:
     verbose: bool
     limit: int
     shuffle: bool
+    resume: bool
+    request_timeout: float
 
 
 def parse_args() -> Args:
@@ -71,6 +73,8 @@ def parse_args() -> Args:
     ap.add_argument('--verbose', action='store_true', help='Enable detailed per-record logging for debugging.')
     ap.add_argument('--limit', type=int, default=0, help='If >0, only process first N records (after optional shuffle).')
     ap.add_argument('--shuffle', action='store_true', help='Shuffle input order before limiting.')
+    ap.add_argument('--resume', action='store_true', help='If output exists, append new labels skipping IDs already completed.')
+    ap.add_argument('--request-timeout', type=float, default=0.0, help='Per-request timeout seconds (0 = no extra timeout wrapper).')
     return Args(**vars(ap.parse_args()))
 
 
@@ -197,14 +201,48 @@ def label_prompts(args: Args):
         print(f"[DEBUG] Output path: {args.output}; Model: {args.model}; Dry-run: {args.dry_run}")
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    out_f = open(args.output, 'w', encoding='utf-8')
 
-    successes = 0
+    existing_ids = set()
+    resumed_count = 0
+    file_mode = 'w'
+    if args.resume and os.path.exists(args.output):
+        # Load existing IDs to skip already completed records
+        try:
+            with open(args.output, 'r', encoding='utf-8') as rf:
+                for line in rf:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                        rid0 = obj.get('id') or obj.get('model_output', {}).get('id')
+                        if rid0:
+                            existing_ids.add(rid0)
+                    except Exception:
+                        continue
+            resumed_count = len(existing_ids)
+            file_mode = 'a'
+            if args.verbose:
+                print(f"[DEBUG] Resume enabled. Found {resumed_count} existing labeled IDs; will skip them.")
+        except Exception as e:
+            print(f"[WARN] Failed reading existing output for resume: {e}. Starting fresh.")
+            existing_ids.clear()
+            file_mode = 'w'
+
+    out_f = open(args.output, file_mode, encoding='utf-8')
+
+    successes = resumed_count
     for idx, rec in enumerate(inputs, start=1):
         rid = rec.get('id') or f"row_{idx}"
         prompt = rec.get('prompt')
+        prompt_version = rec.get('prompt_version')
         if not prompt:
             print(f"[WARN] Record {rid} missing 'prompt' field; skipping.")
+            continue
+
+        if rid in existing_ids:
+            if args.verbose:
+                print(f"[DEBUG] Skipping already-labeled ID {rid}")
             continue
 
         if args.verbose:
@@ -226,7 +264,10 @@ def label_prompts(args: Args):
                 },
                 'failure_reasons': [],
             }
-            out_f.write(json.dumps({'id': rid, 'model_output': mock}, ensure_ascii=False) + '\n')
+            out_line = {'id': rid, 'model_output': mock}
+            if prompt_version:
+                out_line['prompt_version'] = prompt_version
+            out_f.write(json.dumps(out_line, ensure_ascii=False) + '\n')
             successes += 1
             continue
 
@@ -237,7 +278,33 @@ def label_prompts(args: Args):
         while attempt <= args.max_retries:
             attempt += 1
             try:
-                raw = call_model(client, args.model, prompt, args.temperature)
+                raw: Optional[str] = None
+                if args.request_timeout and args.request_timeout > 0:
+                    # Run model call in a thread to enforce soft timeout
+                    result_holder: Dict[str, Any] = {}
+                    exc_holder: Dict[str, Exception] = {}
+
+                    def _runner():
+                        try:
+                            result_holder['raw'] = call_model(client, args.model, prompt, args.temperature)
+                        except Exception as e:  # pragma: no cover - defensive
+                            exc_holder['e'] = e
+
+                    t = threading.Thread(target=_runner, daemon=True)
+                    t.start()
+                    t.join(args.request_timeout)
+                    if t.is_alive():
+                        last_error = f"Timeout after {args.request_timeout}s"
+                        if args.verbose:
+                            print(f"[DEBUG] {rid} attempt {attempt} timeout.")
+                        # Thread likely still running; we abandon result and retry
+                        # (OpenAI client may still consume resources; acceptable for small batch.)
+                        raise TimeoutError(last_error)
+                    if 'e' in exc_holder:
+                        raise exc_holder['e']
+                    raw = result_holder.get('raw')
+                else:
+                    raw = call_model(client, args.model, prompt, args.temperature)
                 if args.verbose:
                     snippet = (raw[:120] + '...') if raw and len(raw) > 120 else raw
                     print(f"[DEBUG] {rid} attempt {attempt}: raw snippet: {snippet}")
@@ -254,7 +321,10 @@ def label_prompts(args: Args):
             else:
                 err = validate_record(data)
                 if not err:
-                    out_f.write(json.dumps({'id': rid, 'model_output': data}, ensure_ascii=False) + '\n')
+                    out_line = {'id': rid, 'model_output': data}
+                    if prompt_version:
+                        out_line['prompt_version'] = prompt_version
+                    out_f.write(json.dumps(out_line, ensure_ascii=False) + '\n')
                     if args.verbose:
                         print(f"[DEBUG] {rid} success on attempt {attempt}")
                     successes += 1
@@ -270,7 +340,12 @@ def label_prompts(args: Args):
         time.sleep(rate_sleep)
 
     out_f.close()
-    print(f"Completed. Successes: {successes}/{total}. Output -> {args.output}")
+    processed_target = total if not args.resume else (total - resumed_count)
+    new_successes = successes - resumed_count
+    if args.resume:
+        print(f"Completed. New successes: {new_successes}/{processed_target}. Total cumulative successes (including prior): {successes}/{total} (skipped {resumed_count}). Output -> {args.output}")
+    else:
+        print(f"Completed. Successes: {successes}/{total}. Output -> {args.output}")
     if args.verbose and successes < total:
         print("[DEBUG] Some records failed. Inspect above logs for failure reasons.")
 
