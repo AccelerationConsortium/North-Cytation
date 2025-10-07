@@ -318,7 +318,8 @@ def save_analysis(results_df, raw_df, save_dir, include_shap=True, include_scatt
             
         if include_scatter:
             analyzer.plot_time_vs_deviation(results_df, save_dir, optimal_conditions)
-            plots_generated.append("scatter plot")
+            analyzer.plot_measured_volume_over_time(raw_df, save_dir)
+            plots_generated.append("scatter plot + measured volume plot")
             
         if include_boxplots:
             analyzer.plot_boxplots(results_df, save_dir)
