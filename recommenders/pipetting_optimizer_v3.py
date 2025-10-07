@@ -22,9 +22,9 @@ DEFAULT_PARAMETER_BOUNDS = {
     "aspirate_wait_time": {"type": "range", "bounds": [0.0, 30.0]},
     "dispense_wait_time": {"type": "range", "bounds": [0.0, 30.0]},
     "retract_speed": {"type": "range", "bounds": [1.0, 15.0]},
-    "pre_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
+    "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},  # Changed from pre_asp_air_vol, increased range
     "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
-    "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set based on volume
+    "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set based on volume (75% max)
 }
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, 
@@ -126,7 +126,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         
         # Special handling for volume-dependent bounds
         if param_name == "overaspirate_vol":
-            param_config["bounds"] = [0.0, volume/2]
+            param_config["bounds"] = [0.0, volume * 0.75]  # Changed from volume/2 to 75% of volume
         
         parameters.append(param_config)
     

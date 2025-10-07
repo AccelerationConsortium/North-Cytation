@@ -18,7 +18,7 @@ import numpy as np
 try:
     import slack_agent
     SLACK_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     print(f"Warning: Could not import slack_agent: {e}")
     print("Slack notifications will be disabled.")
     slack_agent = None
@@ -74,9 +74,9 @@ MAX_VARIATION_PERCENT = 10  # for precision test
 
 # Selective parameter optimization config
 USE_SELECTIVE_OPTIMIZATION = True  # Enable selective parameter optimization
-VOLUME_DEPENDENT_PARAMS = ["pre_asp_air_vol", "overaspirate_vol"]  # Parameters to optimize for each volume
+VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]  # Parameters to optimize for each volume
 ALL_PARAMS = ["aspirate_speed", "dispense_speed", "aspirate_wait_time", "dispense_wait_time", 
-              "retract_speed", "pre_asp_air_vol", "post_asp_air_vol", "overaspirate_vol"]
+              "retract_speed", "blowout_vol", "post_asp_air_vol", "overaspirate_vol"]
 
 # --- Helper Methods ---
 def initialize_experiment():
@@ -155,7 +155,7 @@ def load_previous_data_into_model(ax_client, all_results):
     # Define parameter columns that ax_client expects
     parameter_columns = [
         'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 
-        'dispense_wait_time', 'retract_speed', 'pre_asp_air_vol', 
+        'dispense_wait_time', 'retract_speed', 'blowout_vol', 
         'post_asp_air_vol', 'overaspirate_vol'
     ]
     
@@ -898,7 +898,7 @@ def main():
     print(f"\n   🧮 WELL COUNT VERIFICATION:")
     print(f"      Optimization trials: {optimization_trials_count} wells")
     print(f"      Precision measurements: {precision_measurements_count} wells")  
-    print(f"      Total: {optimization_trials_count + precision_measurements_count} = {trial_count} wells")
+    print(f"      Total: {optimization_trials_count + precision_measurements_count} wells (should equal {trial_count})")
     
     # Log results without Unicode characters to avoid encoding issues
     try:

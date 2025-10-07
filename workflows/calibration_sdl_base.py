@@ -47,25 +47,25 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     # VOLUME-DEPENDENT PARAMETERS - These are HIGHLY critical for selective optimization!
     # Make these parameters much more volume-sensitive so optimization is forced
     
-    # pre_asp_air_vol (blowout): bounds [0.0, 0.1] - VERY volume dependent
+    # blowout_vol: bounds [0.0, 0.2] - VERY volume dependent
     # Different optimal values for different volumes to force re-optimization
     if volume <= 0.03:  # Small volumes (0.025 mL)
-        optimal_pre_air = 0.015  # Very specific optimal value
+        optimal_blowout = 0.03  # Very specific optimal value
     elif volume <= 0.06:  # Medium-small volumes (0.05 mL)  
-        optimal_pre_air = 0.035  # Different optimal value
+        optimal_blowout = 0.07  # Different optimal value
     elif volume <= 0.15:  # Medium volumes (0.1 mL)
-        optimal_pre_air = 0.055  # Yet another optimal value
+        optimal_blowout = 0.11  # Yet another optimal value
     else:  # Large volumes (0.5 mL)
-        optimal_pre_air = 0.075  # High optimal value
+        optimal_blowout = 0.15  # High optimal value
     
-    # STRICT penalty - if you're more than 0.015 away from optimal, big penalty
-    pre_air_error = np.abs(params["pre_asp_air_vol"] - optimal_pre_air)
-    if pre_air_error > 0.015:  # Sharp penalty threshold
-        mass_error_factor += pre_air_error * 0.4  # Very high penalty
+    # STRICT penalty - if you're more than 0.03 away from optimal, big penalty
+    blowout_error = np.abs(params["blowout_vol"] - optimal_blowout)
+    if blowout_error > 0.03:  # Sharp penalty threshold (adjusted for new range)
+        mass_error_factor += blowout_error * 0.4  # Very high penalty
     else:
-        mass_error_factor += pre_air_error * 0.1  # Small penalty if close
+        mass_error_factor += blowout_error * 0.1  # Small penalty if close
     
-    # overaspirate_vol: Also VERY volume-dependent, bounds [0.0, volume/2]
+    # overaspirate_vol: Also VERY volume-dependent, bounds [0.0, volume*0.75]
     # Different optimal fractions for different volumes
     if volume <= 0.03:  # Small volumes need higher fraction
         optimal_overasp = volume * 0.08  # 8% of volume
@@ -114,7 +114,7 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     
     # Variability: also affected by volume-dependent parameters (but keep it reasonable)
     base_variability = 1.5
-    variability = base_variability + pre_air_error * 0.3 + overasp_error * 0.2
+    variability = base_variability + blowout_error * 0.3 + overasp_error * 0.2
     variability += np.random.normal(0, 0.3)
     variability = np.clip(variability, 0.5, 6)
     
@@ -155,11 +155,11 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
 def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time):
-    pre_air = params.get("pre_asp_air_vol", 0)
+    blowout_vol = params.get("blowout_vol", 0.05)  # Default blowout volume
     post_air = params.get("post_asp_air_vol", 0)
     over_volume = params.get("overaspirate_vol", 0)
     #over_volume = 0
-    air_vol = pre_air + post_air
+    air_vol = post_air  # Only post_asp_air_vol contributes to air_vol now
 
     print(params)
     
@@ -168,8 +168,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         aspirate_speed=params["aspirate_speed"],
         aspirate_wait_time=params["aspirate_wait_time"],
         retract_speed=params["retract_speed"],
-        pre_asp_air_vol=pre_air,
         post_asp_air_vol=post_air,
+        blowout_vol=blowout_vol,  # Use blowout_vol instead of pre_asp_air_vol
     )
     dispense_params = PipettingParameters(
         dispense_speed=params["dispense_speed"],

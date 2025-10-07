@@ -9,14 +9,32 @@ import seaborn as sns
 
 input_cols = [
     'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time',
-    'retract_speed', 'pre_asp_air_vol', 'post_asp_air_vol', 'overaspirate_vol'
+    'retract_speed', 'blowout_vol', 'post_asp_air_vol', 'overaspirate_vol'
 ]
 
 output_targets = ['time', 'deviation', 'variability']
 
 def run_shap_analysis(df, save_folder):
     os.makedirs(save_folder, exist_ok=True)
-    X = df[input_cols]
+    
+    # Handle backward compatibility: if old data has pre_asp_air_vol but not blowout_vol
+    if 'pre_asp_air_vol' in df.columns and 'blowout_vol' not in df.columns:
+        print("Info: Converting pre_asp_air_vol to blowout_vol for backward compatibility")
+        df['blowout_vol'] = df['pre_asp_air_vol']
+    
+    # Filter input columns to only those present in the dataframe
+    available_cols = [col for col in input_cols if col in df.columns]
+    missing_cols = [col for col in input_cols if col not in df.columns]
+    
+    if missing_cols:
+        print(f"Warning: Missing columns for SHAP analysis: {missing_cols}")
+        print(f"Using available columns: {available_cols}")
+    
+    if len(available_cols) < 2:
+        print("Error: Not enough columns for SHAP analysis")
+        return
+    
+    X = df[available_cols]
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     shap_dfs = []
@@ -36,7 +54,7 @@ def run_shap_analysis(df, save_folder):
         plt.clf()
 
         mean_shap = pd.DataFrame({
-            'Feature': input_cols,
+            'Feature': available_cols,
             target: np.abs(shap_values).mean(axis=0)
         }).set_index("Feature")
 

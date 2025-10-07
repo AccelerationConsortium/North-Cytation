@@ -4,7 +4,6 @@ import numpy as np
 import time
 import math
 import pandas as pd
-import slack_agent
 import yaml
 from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
@@ -16,6 +15,9 @@ class North_Base:
     
     def pause_after_error(self, err_message, send_slack=True):
         """Pause execution after an error with logging and optional Slack notification"""
+        if not self.simulate:
+            import slack_agent
+        
         self.logger.error(err_message)
         if send_slack and not self.simulate:
             try:
