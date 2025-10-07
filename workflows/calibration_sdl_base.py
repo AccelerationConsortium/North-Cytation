@@ -168,6 +168,7 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         aspirate_speed=params["aspirate_speed"],
         aspirate_wait_time=params["aspirate_wait_time"],
         retract_speed=params["retract_speed"],
+        pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
         post_asp_air_vol=post_air,
         blowout_vol=blowout_vol,  # Use blowout_vol instead of pre_asp_air_vol
     )
