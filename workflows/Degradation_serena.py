@@ -1,15 +1,13 @@
 import sys
 import time
-from calibration_sdl_short_abs import SIMULATE
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
-import slack_agent
 import os
 from pathlib import Path
 
 # Take aliquot -> Wellplate measurement (1 replicate)-> Put sample back to wellplate
-def measure_absorbance(lash_e,sample_index,first_well_index,cytation_protocol_file_path,output_dir,simulate=SIMULATE,well_volume=0.2):
+def measure_absorbance(lash_e,sample_index,first_well_index,cytation_protocol_file_path,well_volume=0.2):
     print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
     lash_e.temp_controller.turn_off_stirring()
     lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume,track_height=True) # should automatically move vial to clamp for aspiration?
@@ -17,6 +15,9 @@ def measure_absorbance(lash_e,sample_index,first_well_index,cytation_protocol_fi
     lash_e.nr_robot.dispense_into_wellplate(wells, well_volume)
     lash_e.nr_robot.remove_pipet()
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
+    return data_out
+
+def save_data(data_out,output_dir,first_well_index,simulate):
     output_file = output_dir / f'output_{first_well_index}.txt'
     # output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
     if not simulate:
@@ -70,8 +71,8 @@ def degradation_workflow():
     print(samples) # Prints the samples with calculated volumes of stock and solvent to be added
 
     # e. Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    SIMULATE = LOGGING = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, logging=LOGGING)
+    SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 
     #Location indices: vial_numbers = vial_status['vial_index'].values #Gives you the values
     polymer_stock = lash_e.nr_robot.get_vial_index_from_name('polymer_stock') 
@@ -93,6 +94,7 @@ def degradation_workflow():
 
     #create file name for the output data
     if not SIMULATE:
+        import slack_agent
         exp_name = input("Experiment name: ")
         output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / exp_name #appends exp_name to the output directory
         output_dir.mkdir(parents=True, exist_ok=True)
