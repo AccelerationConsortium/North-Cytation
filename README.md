@@ -41,3 +41,45 @@ The sample workflow contained in this video is labelled and contains the program
 
 [![Sample Workflow](https://img.youtube.com/vi/b5xtcwcI-eg/0.jpg)](https://www.youtube.com/watch?v=b5xtcwcI-eg)
 
+## Literature Relevance Labeling (LLM Assisted)
+
+Pipeline components live under `research/literature_search/`:
+
+1. Fetch + extract + score produce `scored_candidates.csv` and parsed JSONL.
+2. Gating selects top percentile candidates; exploration sampling can add mid/low segments.
+3. `prompt_preview.py` (already run) renders offline prompts for inspection.
+4. `llm_label.py` sends prompts to an OpenAI-compatible model and writes JSONL labels.
+
+### .env Setup
+Create a `.env` file at repo root (already git-ignored via `*.env`) with:
+
+```
+OPENAI_API_KEY=sk-...
+# Optional self-host / proxy endpoint:
+# OPENAI_BASE_URL=https://your-proxy.example.com
+```
+
+### Install Dependencies
+Ensure `openai` and `python-dotenv` were installed (added to `requirements.txt`).
+
+### Dry Run (Schema / Flow Check)
+```
+python research/literature_search/scripts/llm_label.py --input research/literature_search/data/prompt_preview_new.jsonl --output research/literature_search/data/llm_labels_dry.jsonl --dry-run
+```
+
+### Real Labeling Run
+```
+python research/literature_search/scripts/llm_label.py --input research/literature_search/data/prompt_preview_new.jsonl --output research/literature_search/data/llm_labels.jsonl --model gpt-4o-mini --rate-limit-per-min 40
+```
+
+`--rate-limit-per-min` is a client-side throttle; adjust per your quota. Output lines contain:
+
+```
+{"id": "...", "model_output": { ... schema ... }}
+```
+
+### Next Steps (Optional)
+- Aggregate labels and fit calibration (logistic) from axis vector -> relevance probability.
+- Consider renaming `device_penalty` axis after initial calibration so all axes share the same directionality (higher=better) before probability fitting.
+
+

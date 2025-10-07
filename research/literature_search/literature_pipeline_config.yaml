@@ -1,7 +1,7 @@
 version: 0.1
 fetch:
   min_year: 2015
-  max_per_archetype: 500
+  max_per_archetype: 300
   include_preprints: true
   exclude_reviews: true
   background_poll_minutes: 60
@@ -9,75 +9,136 @@ fetch:
   raw_jsonl: research/literature_search/data/papers_raw.jsonl
   parsed_jsonl: research/literature_search/data/papers_parsed.jsonl
   scored_csv: research/literature_search/data/scored_candidates.csv
-  test_mode: true
+  test_mode: false
   test_archetypes: ["photo_polymerization"]
   test_limit_per_archetype: 5
+  iterative_union_pages: 3        # pages per token in fallback union mode
+  iterative_union_per_page: 25    # results per page per token (OpenAlex per-page upper bound reasonable ~25)
+  run_tag: polymer_usage_core_v1   # tag appended to new records for differentiation
+  # NOTE: update run_tag after major scoring axis changes to track provenance
+
 
 archetypes:
-  photo_polymerization:
-    tokens_any: ["PET-RAFT", "photoinduced polymerization", "visible-light polymerization"]
-    mandatory_all: ["polymer"]
-    assay_any: ["absorbance", "fluorescence", "conversion", "kinetic"]
-  photocatalyst_screening:
-    tokens_any: ["photocatalyst", "photoredox", "catalyst screening"]
-    mandatory_all: ["catalyst"]
-    assay_any: ["fluorescence", "absorbance", "rate", "turnover"]
-  degradation_kinetics:
-    tokens_any: ["oxidative degradation", "photooxidation", "radical degradation"]
-    mandatory_all: ["degradation"]
-    assay_any: ["absorbance", "turbidity", "kinetic", "half-life"]
-  formulation_stability:
-    tokens_any: ["formulation stability", "turbidity", "phase separation"]
-    mandatory_all: ["formulation"]
-    assay_any: ["turbidity", "absorbance", "clarity"]
-  probe_photostability:
-    tokens_any: ["fluorescence photostability", "probe stability", "bleaching suppression"]
-    mandatory_all: ["fluorescence"]
-    assay_any: ["fluorescence", "decay", "retention"]
-  additive_catalyst_optimization:
-    tokens_any: ["catalyst loading", "initiator ratio", "factorial optimization"]
-    mandatory_all: ["catalyst"]
-    assay_any: ["absorbance", "fluorescence", "conversion"]
-  polymer_functionalization:
-    tokens_any: ["thiol-ene", "aza-Michael", "polymer functionalization"]
-    mandatory_all: ["polymer"]
-    assay_any: ["absorbance", "fluorescence", "modification"]
+  polymer_photochemistry_broad:
+    tokens_any: [
+      "polymer", "polymers", "hydrogel", "hydrogels", "microgel", "microgels",
+      "photopolymerization", "photoinitiated", "photocatalyst", "photoredox",
+      "crosslinking", "thiol-ene", "post-functionalization", "photodegradation"
+    ]
+    union_tokens: [
+      "copolymer", "copolymers", "surfactant", "surfactants", "micelle", "micellar",
+      "amphiphilic", "emulsion", "graft", "grafting", "bottlebrush"
+    ]
+    # Expansion candidates (NOT in core AND list; available for fallback / future archetypes / scoring enrichment):
+    # "RAFT", "PET-RAFT", "ATRP", "radical polymerization", "living polymerization",
+    # "photoactivated", "photoinduced", "photostability", "amphiphile", "amphiphilic",
+    # "surfactant", "surfactants", "micelle", "micellar", "emulsion", "microemulsion",
+    # "bottlebrush", "copolymer", "copolymers", "graft", "grafting"
+    mandatory_all: []
+    assay_any: ["absorbance", "fluorescence", "conversion", "stability", "kinetic", "decay"]
 
 scoring:
   weights:
-    capability_fit: 0.25
-    parameter_space: 0.15
+    capability_fit: 0.30
+    polymer_specificity: 0.25   # new axis emphasizing polymer usage density
+    parameter_space: 0.05       # reintroduce with small weight (10% coverage now)
     multi_objective: 0.15
-    impact: 0.20
-    novelty: 0.15
-    constraint_penalty: 0.10
-  novelty_penalties:
-    self_driving_lab: 0.60
-    autonomous_lab: 0.60
-    closed_loop_ai: 0.60
-    robotic_automation_pair: 0.25
-    generic_automation: 0.10
-  constraint_penalties:
-    inert_required: 0.30
-    non_whitelist_solvent: 0.40
-    fast_kinetics_subminute: 0.20
-    hazardous_flag: 0.20
-  impact_normalization:
+    impact: 0.15                # de-emphasized to avoid citation dominance
+    novelty: 0.0                # remains disabled (no signal)
+    constraint_penalty: 0.10    # retained minimal penalty weight
+    workflow_boost: 0.10        # new positive axis (platform-supported workflow operations)
+    device_penalty: -0.10       # negative weight: demote device-centric abstracts
+  axis_definitions:
+    capability_fit:
+      type: capability_fraction
+      cap: 6
+    parameter_space:
+      type: unique_kind_fraction
+      source_field: numeric_factors
+      kind_key: kind
+      cap: 6
+    multi_objective:
+      type: unique_count_fraction
+      source_field: objective_terms
+      cap: 4
+    impact:
+      type: citation_log_minmax
+    polymer_specificity:
+      type: unique_count_fraction
+      source_field: polymer_term_unique
+      cap: 8
+    workflow_boost:
+      type: unique_count_fraction
+      source_field: workflow_term_unique
+      cap: 4
+    device_penalty:
+      type: unique_count_fraction
+      source_field: device_term_unique
+      cap: 5
+    novelty:
+      type: pattern_penalty
+      mode: sum        # sum | max
+      cap: 1.0
+      patterns:
+        - any: ["self-driving lab", "self driving lab"]
+          value: 0.60
+        - all: ["autonomous", "lab"]
+          value: 0.60
+        - any: ["closed-loop", "closed loop"]
+          value: 0.60
+        - all: ["robotic", "automation"]
+          value: 0.25
+        - any: ["automation"]
+          value: 0.10
+    constraint_penalty:
+      type: constraint_penalty_sum
+      flags_mapping:
+        inert_required: 0.30
+        non_whitelist_solvent: 0.40
+        fast_kinetics_subminute: 0.20
+        hazardous_flag: 0.20
+
+  impact_normalization:   # retained for impact axis (can extend later)
     window_years: 10
     polymer_bonus: 0.10
     sustainability_bonus: 0.10
 
 extraction:
   ratio_patterns: ["(\\d+\\s?:\\s?\\d+)"]
-  range_patterns: ["(\\d+(?:\\.\\d+)?\\s?(?:to|–|-|−)\\s?\\d+(?:\\.\\d+)?\\s?(?:mol%|mM|%|°C))"]
+  range_patterns: [
+    "(\\d+(?:\\.\\d+)?\\s?(?:to|–|-|−)\\s?\\d+(?:\\.\\d+)?\\s?(?:mol%|mM|%|°C|nm|mW/cm2|h|hours|min|minutes))"
+  ]
   equiv_patterns: ["(\\d+(?:\\.\\d+)?\\s?(?:eq|equiv|equivalents))"]
-  conc_patterns: ["(\\d+(?:\\.\\d+)?\\s?(?:mM|M|wt%|vol%))"]
+  conc_patterns: ["(\\d+(?:\\.\\d+)?\\s?(?:mM|M|wt%|vol%|ppm|ppb|mol%))"]
   objective_verbs: ["maximize", "minimize", "optimize", "improve", "enhance", "reduce", "balance"]
-  capability_verbs: ["irradiate", "illuminate", "heat", "stir", "sample", "aliquot", "mix", "vortex", "measure", "absorbance", "fluorescence"]
+  capability_verbs: [
+    "irradiate", "irradiated", "illumination", "illuminate", "photoinitiated", "initiated",
+    "polymerize", "polymerization", "cure", "curing", "crosslink", "crosslinking", "activate", "activation",
+    "measure", "monitor", "heat", "stir", "sample", "aliquot", "mix", "vortex", "absorbance", "fluorescence",
+    "conversion", "stability", "degradation", "quench"
+  ]
+  heuristics_file: research/literature_search/config/heuristics.yaml  # externalized domain vocab & synonyms
+  solvent_patterns: ["\\b(acetonitrile|dmso|dichloromethane|chloroform|toluene|hexane|ethanol|methanol|acetone|water)\\b"]
+  heuristic_term_sets:
+    polymer_terms: polymer_term
+    workflow_terms: workflow_term
+    device_terms: device_term
 
 normalization:
   parameter_space_log_cap: 6
   multi_objective_max: 4
+
+gating:
+  method: percentile        # percentile | top_k | threshold | hybrid
+  percentile: 0.85          # top 15% (approx) of scored abstracts (updated from 0.95 after quantile analysis)
+  top_k: 0                  # ignored unless method=top_k or hybrid fallback
+  min_score: 0.0            # optional absolute floor
+  axis_requirements:
+    capability_fit: 0.10
+    polymer_specificity: 0.20
+  max_recommend: 40         # safety cap (5% of 800 future scale; current ~332 gives ~16 actual)
+  output_csv: research/literature_search/data/recommended_stage1.csv
+  explain: true             # include axis columns in output for quick manual triage
 
 paths:
   working_dir: research/literature_search/data
