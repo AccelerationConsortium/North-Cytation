@@ -281,7 +281,8 @@ def strip_tuples(d):
 
 def save_analysis(results_df, raw_df, save_dir, include_shap=True, include_scatter=True, 
                   include_boxplots=False, include_pairplot=False, include_learning_curves=False, 
-                  include_improvement=False, include_top_trials=False, optimal_conditions=None):
+                  include_improvement=False, include_top_trials=False, optimal_conditions=None,
+                  learning_curve_metrics=None):
     """
     Save analysis results with configurable plot generation.
     
@@ -330,7 +331,7 @@ def save_analysis(results_df, raw_df, save_dir, include_shap=True, include_scatt
             plots_generated.append("pairplot")
             
         if include_learning_curves:
-            analyzer.plot_learning_curves(results_df, save_dir)
+            analyzer.plot_learning_curves(results_df, save_dir, metrics=learning_curve_metrics)
             plots_generated.append("learning curves")
             
         if include_improvement:

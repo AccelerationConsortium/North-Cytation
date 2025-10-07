@@ -300,7 +300,33 @@ All notable changes to this project will be documented in this file.
 ### Notes
 - Hash derived from core instruction blocks only; axis numerical values and abstracts not included (ensures stability across corpus expansion).
 
+## [0.5.6] - 2025-10-07
+### Changed
+- Enhanced final Slack notification in `workflows/calibration_sdl_modular.py` to include:
+  - Explicit list of completed volumes (µL)
+  - Remaining (not-calibrated) volumes
+  - Per-volume performance snapshot (best deviation %, time s) when available
+
+### Rationale
+- Provides at-a-glance operational clarity without opening log or data files; accelerates remote monitoring decisions.
+
+### Notes
+- Falls back gracefully if metrics unavailable (e.g., empty results_df subset) and logs a warning if Slack send fails.
+
 ## [0.5.5] - 2025-10-07
+## [0.5.7] - 2025-10-07
+### Changed
+- `workflows/calibration_sdl_modular.py`: Redirected `BASE_AUTOSAVE_DIR` to a repo-local `output/calibration_runs` directory by default for local/simulation runs.
+
+### Added
+- Environment variable override `CALIBRATION_AUTOSAVE_DIR` to point at production/lab storage without modifying source.
+
+### Rationale
+- Prevents accidental writes to lab workstation path during local development while keeping a single code path; simple env switch restores production destination.
+
+### Usage
+- Set `CALIBRATION_AUTOSAVE_DIR` before running to override: e.g. `set CALIBRATION_AUTOSAVE_DIR=C:\\Users\\Imaging Controller\\Desktop\\Calibration_SDL_Output\\New_Method` (PowerShell: `$env:CALIBRATION_AUTOSAVE_DIR='C:\\Users\\Imaging Controller\\Desktop\\Calibration_SDL_Output\\New_Method'`).
+
 ### Added
 - `--resume` flag in `llm_label.py` allowing interrupted labeling runs to be safely continued without re-querying already labeled abstracts (skips IDs present in existing output file and appends new results).
 - `--request-timeout` soft per-request timeout wrapper (thread-based) to convert stalled network calls into retries (prevents indefinite blocking leading to manual interrupts).
