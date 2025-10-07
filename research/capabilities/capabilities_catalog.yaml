@@ -1,0 +1,148 @@
+# (Moved) Experiment-facing capability definitions for literature matching.
+# Original content preserved from root `capabilities/`.
+
+capabilities:
+  - id: pipetting.volume_transfer
+    category: pipetting
+    description: Transfer liquid between reaction vials or into microplate wells.
+    parameters: [volume_mL, source_type, destination_type]
+    ranges:
+      volume_mL: {min: 0.01, max: 5.0}
+      destination_type: [vial, well]
+    constraints:
+      - Accuracy declines near lower limit; replicate advisable <0.02 mL
+      - Single stroke limited by largest installed tip (≥1 mL assumed)
+    typical_use_cases:
+      - Combinatorial reagent matrices
+      - Catalyst / stoichiometry scans
+      - Serial composition libraries
+    literature_keywords: [aliquot, liquid handling, parallel screening]
+    emphasis: high
+  - id: mixing.vortex
+    category: mixing
+    description: Vortex entire vial for homogenization or initiation.
+    parameters: [time_s, speed_setting]
+    ranges:
+      time_s: {min: 1, max: 120}
+      speed_setting: {qualitative: true}
+    constraints:
+      - Foam risk for surfactant systems
+      - Not suitable for sealed pressure operations
+    typical_use_cases:
+      - Polymerization initiation
+      - Colorimetric / fluorometric activation
+      - Nanoparticle dispersion
+    literature_keywords: [vortex, mix thoroughly]
+    emphasis: high
+  - id: mixing.pipette_cycles
+    category: mixing
+    description: Gentle aspirate/dispense cycles for low-volume mixing in vial or well.
+    parameters: [cycle_count, stroke_volume_mL]
+    ranges:
+      cycle_count: {min: 1, max: 10}
+      stroke_volume_mL: {min: 0.02, max: 0.8}
+    constraints:
+      - Inefficient above ~1 mL total volume
+      - Shear-sensitive species may denature
+    typical_use_cases:
+      - Enzyme / kinetic assay assembly
+      - Low-volume pre-reaction mixing
+    literature_keywords: [pipette-mixed, aspirate dispense cycles]
+    emphasis: medium
+  - id: photochemistry.irradiation_multicolor
+    category: photochemistry
+    description: Visible/near-UV LED irradiation (violet/blue/green/white) with magnetic stirring.
+    parameters: [wavelength_selector, intensity_percent, duration_s, stir_rpm]
+    ranges:
+      intensity_percent: {min: 5, max: 100}
+      duration_s: {min: 10, max: 86400}
+      stir_rpm: {qualitative: true}
+    constraints:
+      - Two parallel reactor positions
+      - Thermal load varies with channel/intensity
+      - No inline spectral monitoring
+    typical_use_cases:
+      - PET-RAFT / photo-initiated polymerizations
+      - Photocatalyst screening
+      - Radical oxidation / degradation
+    literature_keywords: [photopolymerization, visible-light, LED irradiation]
+    emphasis: high
+  - id: photochemistry.timed_sampling
+    category: photochemistry
+    description: Discrete aliquot withdrawal at scheduled timepoints for kinetics.
+    parameters: [schedule_points_min, sample_volume_mL]
+    ranges:
+      sample_volume_mL: {min: 0.05, max: 0.5}
+      schedule_points_min: {min: 1, max: 180}
+    constraints:
+      - Scheduling drift ±(tens of seconds)
+      - Volume removal changes composition
+    typical_use_cases:
+      - Conversion vs time
+      - Catalyst deactivation curves
+      - Degradation half-life
+    literature_keywords: [time-course, kinetic sampling, aliquot at]
+    emphasis: high
+  - id: heating.temperature_control
+    category: thermal
+    description: Reaction vial heating to solvent-stable temperatures with optional stirring.
+    parameters: [setpoint_C, hold_time_s]
+    ranges:
+      setpoint_C: {min: 20, max: 150}
+      hold_time_s: {min: 60, max: 86400}
+    constraints:
+      - Must remain below solvent boiling/decomposition
+      - Exotherms not auto-compensated
+    typical_use_cases:
+      - Thermal polymerizations
+      - Catalyst activation
+      - Solubility screens
+    literature_keywords: [isothermal, heated at, thermally initiated]
+    emphasis: high
+  - id: measurement.plate_absorbance
+    category: measurement
+    description: Endpoint or multi-protocol absorbance read in microplates.
+    parameters: [protocol_file, wells, replicates]
+    ranges:
+      wells: {min: 1, max: 96}
+      replicates: {min: 1, max: 5}
+    constraints:
+      - Pathlength variation at low fill volume
+      - Throughput limited by protocol runtime
+    typical_use_cases:
+      - Colorimetric conversion assays
+      - Turbidity / aggregation
+      - Degradation kinetics
+    literature_keywords: [absorbance assay, plate reader]
+    emphasis: high
+  - id: measurement.plate_fluorescence
+    category: measurement
+    description: Fluorescence detection via predefined plate protocols.
+    parameters: [protocol_file, wells, replicates]
+    ranges:
+      wells: {min: 1, max: 96}
+      replicates: {min: 1, max: 5}
+    constraints:
+      - Inner-filter effects at high concentration
+      - Gain/dynamic range protocol-dependent
+    typical_use_cases:
+      - Photocatalyst turnover
+      - Fluorogenic monomer conversion
+      - Probe stability
+    literature_keywords: [fluorescence assay, plate fluorescence]
+    emphasis: high
+  - id: solid_dosing.milligram_scale
+    category: solids
+    description: Feedback-controlled dosing of free-flowing powders (mg scale).
+    parameters: [target_mass_mg]
+    ranges:
+      target_mass_mg: {min: 3, max: 500}
+    constraints:
+      - Accuracy declines below a few mg
+      - Hygroscopic/electrostatic powders problematic
+      - Can be replaced by stock solutions
+    typical_use_cases:
+      - Initiator/catalyst loading
+      - Additive concentration studies
+    literature_keywords: [solid added, charged with X mg]
+    emphasis: low
