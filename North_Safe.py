@@ -4,7 +4,6 @@ import numpy as np
 import time
 import math
 import pandas as pd
-import slack_agent
 import yaml
 from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
@@ -16,6 +15,9 @@ class North_Base:
     
     def pause_after_error(self, err_message, send_slack=True):
         """Pause execution after an error with logging and optional Slack notification"""
+        if not self.simulate:
+            import slack_agent
+        
         self.logger.error(err_message)
         if send_slack and not self.simulate:
             try:
@@ -74,7 +76,7 @@ class North_Base:
             return None
         return value
     
-    def _load_wellplate_config(self, file_path="../utoronto_demo/robot_state/wellplates.yaml"):
+    def _load_wellplate_config(self, file_path="robot_state/wellplates.yaml"):
         """Load wellplate configuration from YAML file using unified method"""
         self.WELLPLATES = self._load_yaml_file(
             file_path, 
@@ -142,16 +144,16 @@ class North_Track(North_Base):
         self.simulate = simulate
 
         #Load yaml data
-        self.logger.debug("Loading track status from file: %s", "../utoronto_demo/robot_state/track_status.yaml")
-        self.TRACK_STATUS_FILE = "../utoronto_demo/robot_state/track_status.yaml"
+        self.logger.debug("Loading track status from file: %s", "robot_state/track_status.yaml")
+        self.TRACK_STATUS_FILE = "robot_state/track_status.yaml"
         self.get_track_status() #set NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED from yaml file
         
         # Load track positions configuration
-        self.TRACK_POSITIONS_FILE = "../utoronto_demo/robot_state/track_positions.yaml"
+        self.TRACK_POSITIONS_FILE = "robot_state/track_positions.yaml"
         self._load_track_positions()
         
         # Load robot hardware configuration for axis mappings
-        self.ROBOT_HARDWARE_FILE = "../utoronto_demo/robot_state/robot_hardware.yaml"
+        self.ROBOT_HARDWARE_FILE = "robot_state/robot_hardware.yaml"
         self._load_robot_hardware()
         
         # Load wellplate configuration using base class method
@@ -809,13 +811,13 @@ class North_Robot(North_Base):
     # CLASS CONSTANTS & FILE PATHS
     # ====================================================================
     
-    ROBOT_STATUS_FILE = "../utoronto_demo/robot_state/robot_status.yaml" #Store the state of the robot. Update this after every method that alters the state. 
-    VIAL_POSITIONS_FILE = "../utoronto_demo/robot_state/vial_positions.yaml" #File that contains the vial positions.
-    WELLPLATE_POSITIONS_FILE = "../utoronto_demo/robot_state/wellplates.yaml" #File that contains the wellplate positions.
-    PIPET_TIP_DEFINITTIONS_FILE = "../utoronto_demo/robot_state/pipet_tips.yaml" #File that contains the pipet tip definitions.
-    PIPET_RACKS_FILE = "../utoronto_demo/robot_state/pipet_racks.yaml" #File that contains the pipet rack configurations.
-    PUMP_CONFIG_FILE = "../utoronto_demo/robot_state/syringe_pumps.yaml" #File that contains the pump configurations.
-    ROBOT_HARDWARE_FILE = "../utoronto_demo/robot_state/robot_hardware.yaml" #File that contains robot hardware axis and pneumatic mappings.
+    ROBOT_STATUS_FILE = "robot_state/robot_status.yaml" #Store the state of the robot. Update this after every method that alters the state. 
+    VIAL_POSITIONS_FILE = "robot_state/vial_positions.yaml" #File that contains the vial positions.
+    WELLPLATE_POSITIONS_FILE = "robot_state/wellplates.yaml" #File that contains the wellplate positions.
+    PIPET_TIP_DEFINITTIONS_FILE = "robot_state/pipet_tips.yaml" #File that contains the pipet tip definitions.
+    PIPET_RACKS_FILE = "robot_state/pipet_racks.yaml" #File that contains the pipet rack configurations.
+    PUMP_CONFIG_FILE = "robot_state/syringe_pumps.yaml" #File that contains the pump configurations.
+    ROBOT_HARDWARE_FILE = "robot_state/robot_hardware.yaml" #File that contains robot hardware axis and pneumatic mappings.
     
     # ====================================================================
     # 1. CLASS SETUP & INITIALIZATION
@@ -850,7 +852,7 @@ class North_Robot(North_Base):
             'PIPET_RACKS': (self.PIPET_RACKS_FILE, "pipet racks configuration"),
             'PUMP_CONFIG': (self.PUMP_CONFIG_FILE, "pump configuration"),
             'ROBOT_HARDWARE': (self.ROBOT_HARDWARE_FILE, "robot hardware configuration"),
-            'WELLPLATES': ("../utoronto_demo/robot_state/wellplates.yaml", "wellplate properties configuration"),
+            'WELLPLATES': ("robot_state/wellplates.yaml", "wellplate properties configuration"),
         }
         
         for attr_name, (file_path, description) in config_files.items():
@@ -883,10 +885,19 @@ class North_Robot(North_Base):
         for key, (file_path, description, required, convert_none) in state_files.items():
             loaded_data[key] = self._load_yaml_file(file_path, description, required, convert_none)
         
+        # Initialize critical robot status attributes with safe defaults first
+        # This ensures they always exist even if loading fails
+        self.GRIPPER_STATUS = None
+        self.GRIPPER_VIAL_INDEX = None
+        self.HELD_PIPET_TYPE = None
+        self.PIPET_FLUID_VOLUME = 0.0
+        self.PIPET_FLUID_VIAL_INDEX = None
+        
         # Handle robot status data
         if loaded_data['robot_status']:
             robot_status = loaded_data['robot_status']
             try:
+                # Override defaults with loaded values
                 self.GRIPPER_STATUS = robot_status['gripper_status']
                 self.GRIPPER_VIAL_INDEX = robot_status['gripper_vial_index']
                 self.HELD_PIPET_TYPE = robot_status.get('held_pipet_type')
@@ -902,12 +913,14 @@ class North_Robot(North_Base):
                     for rack_name in self.PIPET_RACKS.keys() if self.PIPET_RACKS else []:
                         self.PIPETS_USED[rack_name] = 0
                     
-                self.PIPET_FLUID_VOLUME = robot_status['pipet_fluid_volume']
-                self.PIPET_FLUID_VIAL_INDEX = robot_status['pipet_fluid_vial_index']
+                self.PIPET_FLUID_VOLUME = robot_status.get('pipet_fluid_volume', 0.0) or 0.0
+                self.PIPET_FLUID_VIAL_INDEX = robot_status.get('pipet_fluid_vial_index')
+                
+                self.logger.debug("Robot status loaded successfully")
             except KeyError as e:
-                self.pause_after_error(f"Missing required field in robot status: {e}")
+                self.logger.warning(f"Missing field in robot status, using defaults: {e}")
             except Exception as e:
-                self.pause_after_error(f"Error processing robot status: {e}")
+                self.logger.warning(f"Error processing robot status, using defaults: {e}")
         
         # Handle wellplate positions data (dynamic state, not static config)
         # Note: This is different from WELLPLATES which contains static wellplate type definitions
@@ -1231,7 +1244,7 @@ class North_Robot(North_Base):
             "held_pipet_type": self.HELD_PIPET_TYPE,
             "pipets_used": self.PIPETS_USED,  # Save all rack usage directly
             "pipet_fluid_vial_index": int(self.PIPET_FLUID_VIAL_INDEX) if self.PIPET_FLUID_VIAL_INDEX is not None else None,
-            "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME)
+            "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME) if self.PIPET_FLUID_VOLUME is not None else 0.0
         }
 
         if not self.simulate: 

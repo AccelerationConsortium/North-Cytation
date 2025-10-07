@@ -1,0 +1,59 @@
+# (Moved) constraints.yaml from former root capabilities directory.
+volumes:
+  min_liquid_transfer_mL: 0.01
+  max_reaction_vial_nominal_mL: 8.0
+  recommended_working_volume_window_mL: [0.2, 5.0]
+  min_reliable_sampling_aliquot_mL: 0.05
+
+temperature:
+  setpoint_range_C: [20, 150]
+  notes:
+    - Stay below solvent boiling / decomposition points
+    - Extended high-temp runs depend on solvent stability
+
+photochemistry:
+  led_channels: [violet, blue, green, white]
+  parallel_reactors: 2
+  intensity_percent_range: [5, 100]
+  stirring: magnetic
+  scheduling_precision_comment: "Minute-scale kinetics feasible; sub-minute precision limited."
+
+scheduling:
+  timing_mode: coarse_event_loop
+  typical_timepoint_resolution_s: 30
+  drift_sources: [action_latency, os_jitter]
+  not_suited_for:
+    - sub-minute rapid quench kinetics
+    - fast photophysical transients
+
+mixing:
+  vortex_time_s_range: [1, 120]
+  pipette_cycle_volume_limit_mL: 0.8
+  cautions:
+    - Foam risk in surfactant formulations
+    - Shear-sensitive biopolymers
+
+solid_dosing:
+  practical_lower_limit_mg: 3
+  preferred_use: catalysts_and_initiators
+  alternative: prepare_stock_solutions
+
+measurement:
+  plate_formats_supported: ["96 WELL PLATE"]
+  modalities: [absorbance, fluorescence]
+  replicate_strategy: sequential_protocol_repeats
+  limitations:
+    - No inline reactor spectroscopy
+    - Fill volume affects optical pathlength
+
+in_situ_limitations:
+  - No inline spectral monitoring
+  - No direct viscosity/rheology sensing
+  - No continuous mass monitoring
+
+excluded_from_literature_matching:
+  - tip_inventory_management
+  - plate_logistics
+  - reservoir_plumbing
+  - internal_state_serialization
+  - path_routing

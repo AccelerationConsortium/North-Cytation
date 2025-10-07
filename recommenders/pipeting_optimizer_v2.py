@@ -11,7 +11,7 @@ obj1_name = "deviation"
 obj2_name = "variability"
 obj3_name = "time"
 
-def create_model(seed, num_initial_recs, bayesian_batch_size, volume, model_type, simulate=False):
+def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, simulate=False):
 
     if model_type == "qLogEI":
             # For qLogEI
@@ -92,7 +92,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, model_type
             {"name": "retract_speed", "type": "range", "bounds": [1.0, 15.0]},
             {"name": "pre_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
             {"name": "post_asp_air_vol", "type": "range", "bounds": [0.0, 0.1]},
-            {"name": "overaspirate_vol", "type": "range", "bounds": [0.0, max(volume)/2]},
+            {"name": "overaspirate_vol", "type": "range", "bounds": [0.0, volume/2]},
         ],
         objectives={
             obj1_name: ObjectiveProperties(minimize=True, threshold=50),
@@ -100,7 +100,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, model_type
             obj3_name: ObjectiveProperties(minimize=True, threshold=90),
         },
         parameter_constraints=[
-            f"post_asp_air_vol + overaspirate_vol <= {0.25-max(volume)}"
+            f"post_asp_air_vol + overaspirate_vol <= {tip_volume - volume}"
         ],
     )
 
