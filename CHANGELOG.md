@@ -198,6 +198,15 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Replaced hard-coded `novelty_penalty` handler with fully declarative `pattern_penalty` axis type (config-driven pattern specs: any/all/pair/regex, sum or max aggregation, cap enforcement).
 - Removed all legacy duplicate axis_* functions and second `main()` block from `score.py` (eliminates domain-bound code paths and future drift risk).
+
+## [0.4.9] - 2025-10-07
+### Added
+- Introduced `next_gen_calibration/liquids.yaml` external registry for liquid properties (density) replacing hard-coded mapping in `robot_adapter.py`.
+- Added lazy-loading `liquids.py` helper (get_density, list_liquids, register_liquid) with safe fallback to defaults.
+### Changed
+- `robot_adapter.py` now sources density via liquids module (supports dmso, ethanol by default).
+### Notes
+- Future extensions: viscosity, temperature correction factors, surface tension.
 - Externalized solvent term detection: solvent patterns now configurable via `extraction.solvent_patterns`; legacy inline regex retained only as fallback if none provided.
 - Unified heuristic term extraction in `extract.py` via generic `term_sets` mapping (configurable as `extraction.heuristic_term_sets`) producing `<prefix>_term_hits` / `<prefix>_term_unique` for polymer, workflow, device (extensible without code edits).
 
@@ -349,4 +358,23 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 - Timeout wrapper is cooperative (does not forcibly cancel underlying HTTP if library call hangs internally) but sufficient for short batches; consider future replacement with client-native timeout if migrating SDK.
+
+## [0.6.0] - 2025-10-07
+### Added
+- `next_gen_calibration/` prototype implementation:
+  - `params.yaml`: YAML-driven parameter space, per-volume criteria scaling, simulation & output settings.
+  - `robot_adapter.py`: Robot abstraction + seedable simulation model (density-aware, param-influenced deviation/time generation).
+  - `optimizer.py`: Lightweight placeholder Bayesian-like optimizer (history-based localized random refinement) decoupled from Ax for fast iteration.
+  - `analyzer.py`: Minimal analyzer producing `history.csv` and aggregate `summary.json` (mean deviation, time, variation).
+  - `run.py`: Orchestrator loading YAML, performing multi-volume optimization loop (initial suggestions + refinement), applying scaled criteria, persisting outputs under timestamped run directory.
+
+### Rationale
+- Establishes configuration-first, robot-agnostic calibration core to progressively replace existing `calibration_sdl_*` scripts without entangling with legacy environment assumptions.
+
+### Notes / Next Steps (Not yet implemented)
+- Integrate real optimizer backend (Ax or scikit-optimize) behind strategy interface.
+- Add robot hardware subclass implementing `_hardware_pipetting`.
+- Port tolerance logic & percent-fallback acceptance from legacy modular workflow into configurable policy block.
+- Introduce richer analyzer visuals (scatter & volume-over-time) gated by optional plotting dependency.
+- Add resume capability (persisted optimizer state) and selective volume re-run support.
 

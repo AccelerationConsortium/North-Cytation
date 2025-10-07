@@ -1,0 +1,71 @@
+# Parameter and constraint specification for next-gen calibration
+# Speeds are unitless relative settings; times in seconds; volumes in mL
+liquid: glycerol
+simulate: true
+seed: 7
+volumes: [0.05, 0.025, 0.1]
+precision_replicates: 5
+initial_suggestions: 5
+batch_size: 1
+max_wells: 96
+criteria:
+  base_deviation_ul: 1.0
+  base_time_s: 20
+  base_variation_ul: 2.0
+  deviation_scaling_per_100ul: 0.2
+  time_scaling_per_100ul: 1.0
+  variation_scaling_per_100ul: 0.2
+parameters:
+  aspirate_speed:
+    type: int
+    bounds: [5, 35]
+    default: 17
+  dispense_speed:
+    type: int
+    bounds: [5, 35]
+    default: 17
+  aspirate_wait_time:
+    type: float
+    bounds: [0, 30]
+    default: 12
+  dispense_wait_time:
+    type: float
+    bounds: [0, 30]
+    default: 12
+  retract_speed:
+    type: float
+    bounds: [1, 15]
+    default: 8
+  blowout_vol:
+    type: float
+    bounds: [0.0, 0.2]
+    default: 0.07
+    volume_dependent: true
+  post_asp_air_vol:
+    type: float
+    bounds: [0.0, 0.1]
+    default: 0.05
+  overaspirate_vol:
+    type: float
+    bounds: [0.0, 0.15]
+    default: 0.004
+    volume_dependent: true
+selective_optimization:
+  enable: true
+  volume_dependent_params: [blowout_vol, overaspirate_vol]
+  use_historical: true
+simulation:
+  min_rel_dev: 0.12
+  min_rel_var: 0.15
+  max_percent_deviation: 20
+tolerance_policy:
+  deviation:
+    absolute_ul: 1.5        # absolute deviation threshold in uL
+    percent: 3.0            # percent deviation threshold (% of target volume)
+  variation:
+    stdev_ul: 2.5           # std deviation threshold in uL
+  time:
+    seconds: 25             # average time threshold in seconds
+  logic: any_deviation      # 'any_deviation' -> absolute OR percent passes deviation; 'both' -> require both
+output:
+  base_dir: output/next_gen_runs
