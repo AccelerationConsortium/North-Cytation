@@ -1486,7 +1486,7 @@ class North_Robot(North_Base):
                 self.logger.warning("Aspirate exceeded limit: Aspirating to maximum")
                 max_pump_pos = self.get_config_parameter('pumps', 0, 'max_pump_position', error_on_missing=False) or 3000
                 self.c9.move_pump(0, max_pump_pos)
-                slack_agent.send_slack_message(f"Aspirate was exceeded for {amount} mL. Aspirating to maximum volume of 1 mL.")
+                self.logger.warning(f"Aspirate was exceeded for {amount} mL. Aspirating to maximum volume of 1 mL.")
         else:
             self.pause_after_error("Cannot aspirate more than 1 mL", True)
 
@@ -1515,9 +1515,9 @@ class North_Robot(North_Base):
             time.sleep(wait_time)
 
         if blowout_vol > 0:
-            blow_speed = self.get_tip_dependent_aspirate_speed()
-            self.logger.debug(f"Blowing out {blowout_vol:.3f} mL at speed {blow_speed}")
-            self.adjust_pump_speed(0, blow_speed)
+            #blow_speed = self.get_tip_dependent_aspirate_speed()
+            self.logger.debug(f"Blowing out {blowout_vol:.3f} mL")
+            #self.adjust_pump_speed(0, blow_speed)
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_LEFT)
             self.c9.aspirate_ml(0, blowout_vol)
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)

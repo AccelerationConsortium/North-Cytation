@@ -24,11 +24,11 @@ DEFAULT_PARAMETER_BOUNDS = {
     "retract_speed": {"type": "range", "bounds": [1.0, 15.0]},
     "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},  # Changed from pre_asp_air_vol, increased range
     "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
-    "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set based on volume (75% max)
+    "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set based on volume and max_overvolume_percent
 }
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, 
-                 optimize_params=None, fixed_params=None, simulate=False):
+                 optimize_params=None, fixed_params=None, simulate=False, max_overvolume_percent=0.75):
     """
     Create an Ax client for selective parameter optimization.
     
@@ -42,6 +42,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         optimize_params: List of parameter names to optimize. If None, optimize all parameters.
         fixed_params: Dict of parameter names and values to keep fixed
         simulate: Whether in simulation mode
+        max_overvolume_percent: Maximum overvolume as fraction of target volume (default 0.75 = 75%)
     """
     
     # Default to optimizing all parameters if not specified
@@ -126,7 +127,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         
         # Special handling for volume-dependent bounds
         if param_name == "overaspirate_vol":
-            param_config["bounds"] = [0.0, volume * 0.75]  # Changed from volume/2 to 75% of volume
+            param_config["bounds"] = [0.0, volume * max_overvolume_percent]  # Use configurable max overvolume
         
         parameters.append(param_config)
     

@@ -182,8 +182,12 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         # In simulation mode, generate simulated data directly
         simulated_result = pipet_and_measure_simulated(volume, params, expected_measurement, expected_time)
         
-        # Get liquid density for volume calculation
-        liquid_density = LIQUIDS.get(liquid, {}).get("density", 1.0)
+        # Get liquid density for volume calculation - FAIL if not found
+        if liquid not in LIQUIDS:
+            raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
+        if "density" not in LIQUIDS[liquid]:
+            raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
+        liquid_density = LIQUIDS[liquid]["density"]
         
         for replicate_idx in range(replicate_count):
             # Generate a slightly different mass for each replicate to simulate real variability
@@ -225,8 +229,12 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         measurements = []
         start = time.time()
         
-        # Get liquid density for volume calculation
-        liquid_density = LIQUIDS.get(liquid, {}).get("density", 1.0)
+        # Get liquid density for volume calculation - FAIL if not found
+        if liquid not in LIQUIDS:
+            raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
+        if "density" not in LIQUIDS[liquid]:
+            raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
+        liquid_density = LIQUIDS[liquid]["density"]
         
         for replicate_idx in range(replicate_count):
             replicate_start_time = time.time()
@@ -273,7 +281,7 @@ def strip_tuples(d):
 
 def save_analysis(results_df, raw_df, save_dir, include_shap=True, include_scatter=True, 
                   include_boxplots=False, include_pairplot=False, include_learning_curves=False, 
-                  include_improvement=False, include_top_trials=False):
+                  include_improvement=False, include_top_trials=False, optimal_conditions=None):
     """
     Save analysis results with configurable plot generation.
     
@@ -309,7 +317,7 @@ def save_analysis(results_df, raw_df, save_dir, include_shap=True, include_scatt
             plots_generated.append("SHAP analysis")
             
         if include_scatter:
-            analyzer.plot_time_vs_deviation(results_df, save_dir)
+            analyzer.plot_time_vs_deviation(results_df, save_dir, optimal_conditions)
             plots_generated.append("scatter plot")
             
         if include_boxplots:

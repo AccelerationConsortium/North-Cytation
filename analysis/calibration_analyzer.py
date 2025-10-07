@@ -102,15 +102,15 @@ def plot_top_trial_histograms(best_trials, save_folder):
         plt.savefig(os.path.join(save_folder, f'top_trials_histogram_{param}.png'))
         plt.clf()
 
-def plot_time_vs_deviation(results_df, save_folder):
-    """Scatter plot of Time vs. Deviation with variability > 1 marked and volumes color-coded."""
+def plot_time_vs_deviation(results_df, save_folder, optimal_conditions=None):
+    """Scatter plot of Time vs. Deviation with precision-test winning conditions highlighted."""
     plt.figure(figsize=(10, 6))
     
     for vol in sorted(results_df['volume'].unique()):
         df_sub = results_df[results_df['volume'] == vol]
-        label = f"{vol} mL"
+        label = f"{vol*1000:.0f} μL"
 
-        # Normal points
+        # Normal optimization points
         plt.scatter(
             df_sub["time"],
             df_sub["deviation"],
@@ -119,16 +119,26 @@ def plot_time_vs_deviation(results_df, save_folder):
             edgecolors="k"
         )
 
-        # X markers for variability > 1.0
-        high_var = df_sub[df_sub["variability"] > 2.0]
-        plt.scatter(
-            high_var["time"],
-            high_var["deviation"],
-            marker="x",
-            color="black",
-            s=100,
-            label=None
-        )
+        # Highlight precision-test winning conditions with stars
+        if optimal_conditions:
+            optimal_for_vol = [opt for opt in optimal_conditions if opt.get('target_volume_mL') == vol]
+            for opt in optimal_for_vol:
+                # Find the corresponding trial in results_df
+                matching_trials = df_sub[
+                    (abs(df_sub.get('aspirate_speed', 0) - opt.get('aspirate_speed', -999)) < 0.1) &
+                    (abs(df_sub.get('dispense_speed', 0) - opt.get('dispense_speed', -999)) < 0.1)
+                ]
+                if not matching_trials.empty:
+                    plt.scatter(
+                        matching_trials["time"],
+                        matching_trials["deviation"],
+                        marker="★",
+                        color="gold",
+                        s=200,
+                        edgecolors="black",
+                        linewidth=2,
+                        label="Precision Test Winner" if vol == sorted(results_df['volume'].unique())[0] else None
+                    )
 
     plt.xlabel("Time (seconds)")
     plt.ylabel("Deviation From Target (%)")

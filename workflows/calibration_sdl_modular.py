@@ -35,16 +35,18 @@ except ImportError as e:
     LLM_AVAILABLE = False
 
 # --- Experiment Config ---
-LIQUID = "glycerol"
-SIMULATE = True
+LIQUID = "water"
+SIMULATE = False
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
-PRECISION_REPLICATES = 4
-VOLUMES = [0.05, 0.025, 0.1, 0.5]
+PRECISION_REPLICATES = 5
+VOLUMES = [0.05, 0.025, 0.01, 0.1, 0.2] #Small tip
+#VOLUMES = [0.3, 0.5, 1.0] # Large tip
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
+
 
 # --- LLM Configuration ---
 # Two independent LLM settings for different phases:
@@ -65,20 +67,42 @@ USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
 BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 
 # Output directory configuration
-BASE_AUTOSAVE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "calibration_results")
+BASE_AUTOSAVE_DIR = r'C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\New_Method'
 
-# Criteria (For real life testing)
-MAX_ACCEPTABLE_DEVIATION = 0.10  # 7% deviation
-MAX_ACCEPTABLE_TIME = 60  # seconds
-MAX_VARIATION_PERCENT = 10  # for precision test
+# Criteria (For real life testing) - Base tolerances with volume-dependent scaling
+BASE_DEVIATION_UL = 1.0  # Base ±1 μL absolute deviation for optimization acceptance  
+BASE_TIME_SECONDS = 20  # Base time in seconds
+BASE_VARIATION_UL = 2.0  # Base ±2 μL absolute variation for precision test
+
+max_overvolume_percent = 0.2  # 20% extra volume to account for pipetting error
+
+# Volume scaling factors (per 100 μL above baseline)
+DEVIATION_SCALING_FACTOR = 0.2  # +0.2 μL per 100 μL (1μL->2μL for 500μL)
+TIME_SCALING_FACTOR = 1.0  # +1 second per 100 μL  
+VARIATION_SCALING_FACTOR = 0.2  # +0.2 μL per 100 μL (2μL->3μL for 500μL)
 
 # Selective parameter optimization config
 USE_SELECTIVE_OPTIMIZATION = True  # Enable selective parameter optimization
+USE_HISTORICAL_DATA_FOR_OPTIMIZATION = True  # Load data from previous volumes into optimizer
 VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]  # Parameters to optimize for each volume
 ALL_PARAMS = ["aspirate_speed", "dispense_speed", "aspirate_wait_time", "dispense_wait_time", 
               "retract_speed", "blowout_vol", "post_asp_air_vol", "overaspirate_vol"]
 
 # --- Helper Methods ---
+def get_volume_dependent_tolerances(volume_ml):
+    """Calculate volume-dependent tolerances based on scaling factors."""
+    volume_ul = volume_ml * 1000  # Convert to μL
+    volume_excess_ul = max(0, volume_ul - 100)  # Only scale above 100μL baseline
+    scaling_factor = volume_excess_ul / 100  # Per 100μL scaling
+    
+    tolerances = {
+        'deviation_ul': BASE_DEVIATION_UL + (DEVIATION_SCALING_FACTOR * scaling_factor),
+        'time_seconds': BASE_TIME_SECONDS + (TIME_SCALING_FACTOR * scaling_factor),
+        'variation_ul': BASE_VARIATION_UL + (VARIATION_SCALING_FACTOR * scaling_factor)
+    }
+    
+    return tolerances
+
 def initialize_experiment():
     DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
     NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
@@ -159,8 +183,8 @@ def load_previous_data_into_model(ax_client, all_results):
         'post_asp_air_vol', 'overaspirate_vol'
     ]
     
-    # Define outcome columns
-    outcome_columns = ['deviation', 'variability', 'time']
+    # Define outcome columns (only deviation and time for v3 optimizer)
+    outcome_columns = ['deviation', 'time']
     
     print(f"Loading {len(all_results)} existing trials into new model...")
     
@@ -227,9 +251,13 @@ def get_initial_suggestions(ax_client, method, n, volume, expected_mass, expecte
         check_if_measurement_vial_full(lash_e, state)
         result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set)
         
+        # Get the most recent measurement for display
+        recent_mass = raw_measurements[-1]['mass'] if raw_measurements else expected_mass
+        recent_volume = raw_measurements[-1]['calculated_volume'] if raw_measurements else volume
+        
         # Show result with pass/fail status
         current_trial = len(all_results) + 1
-        print(f"  Initial trial {i+1}/{len(suggestions)} (Trial {current_trial}): deviation={result.get('deviation', 'N/A'):.2f}%, time={result.get('time', 'N/A'):.1f}s")
+        print(f"  Initial trial {i+1}/{len(suggestions)} (Trial {current_trial}): {recent_mass:.4f}g → {recent_volume*1000:.1f}μL, deviation={result.get('deviation', 'N/A'):.2f}%, time={result.get('time', 'N/A'):.1f}s")
         
         get_recommender().add_result(ax_client, trial_index, result)
         result.update(params)
@@ -295,25 +323,26 @@ def check_optimization_criteria(all_results, criteria):
         return False
         
     df = pd.DataFrame(optimization_results)
-    if 'deviation' in df.columns and 'time' in df.columns:
-        # Convert criteria to percentage for comparison (deviation is already in %)
-        max_deviation_pct = criteria['max_deviation'] * 100  # Convert 0.05 to 5%
+    if 'deviation' in df.columns and 'time' in df.columns and 'volume' in df.columns:
+        # Convert percentage deviation to absolute μL deviation for comparison
+        # deviation is stored as %, volume is in mL, criteria is in μL
+        absolute_deviation_ul = (df['deviation'] / 100) * (df['volume'] * 1000)  # Convert to μL
         
         # Find results that meet both criteria
-        meets_criteria = (df['deviation'] <= max_deviation_pct) & (df['time'] <= criteria['max_time'])
+        meets_criteria = (absolute_deviation_ul <= criteria['max_deviation_ul']) & (df['time'] <= criteria['max_time'])
         return meets_criteria.any()
     return False
 
-def run_precision_test(lash_e, state, best_params, volume, expected_mass, expected_time, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set, max_variation_percent, all_results=None):
+def run_precision_test(lash_e, state, best_params, volume, expected_mass, expected_time, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set, max_variation_ul, all_results=None):
     print(f"🎯 PRECISION TEST: Testing best parameters with {PRECISION_REPLICATES} replicates...")
     
-    # Calculate acceptable range around target volume
+    # Calculate acceptable range around target volume using absolute tolerance
     target_volume = volume  # mL
-    variation_range = target_volume * (max_variation_percent / 100)  # mL
+    variation_range = max_variation_ul / 1000  # Convert μL to mL
     min_acceptable = target_volume - variation_range
     max_acceptable = target_volume + variation_range
     
-    print(f"   Target: {target_volume*1000:.0f}μL, Range: {min_acceptable*1000:.0f}μL - {max_acceptable*1000:.0f}μL (±{max_variation_percent}%)")
+    print(f"   Target: {target_volume*1000:.0f}μL, Range: {min_acceptable*1000:.0f}μL - {max_acceptable*1000:.0f}μL (±{max_variation_ul:.0f}μL)")
     
     measurements = []
     deviations = []
@@ -336,12 +365,22 @@ def run_precision_test(lash_e, state, best_params, volume, expected_mass, expect
         # Extract the actual measurement from raw_measurements (last entry)
         if raw_measurements:
             actual_mass = raw_measurements[-1]['mass']
-            # Convert mass to volume using density (this is the real measurement we care about)
-            actual_volume = actual_mass / lash_e.DENSITY_LIQUID if hasattr(lash_e, 'DENSITY_LIQUID') else actual_mass / 1.26  # glycerol density fallback
+            # Convert mass to volume using correct liquid density - FAIL if not found
+            if liquid not in LIQUIDS:
+                raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
+            if "density" not in LIQUIDS[liquid]:
+                raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
+            liquid_density = LIQUIDS[liquid]["density"]
+            actual_volume = actual_mass / liquid_density
             measurements.append(actual_volume)
         else:
-            # Fallback for simulation - convert expected mass to volume
-            actual_volume = expected_mass / 1.26  # glycerol density fallback
+            # Fallback for simulation - convert expected mass to volume using correct density
+            if liquid not in LIQUIDS:
+                raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
+            if "density" not in LIQUIDS[liquid]:
+                raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
+            liquid_density = LIQUIDS[liquid]["density"]
+            actual_volume = expected_mass / liquid_density
             measurements.append(actual_volume)
         
         deviation = result.get('deviation', 0)
@@ -457,7 +496,7 @@ def save_optimal_conditions(optimal_conditions, filepath):
         df.to_csv(filepath, index=False)
         print(f"✅ Saved optimal conditions to: {filepath}")
 
-def save_experiment_config(autosave_dir):
+def save_experiment_config(autosave_dir, new_pipet_each_time_set=None):
     """Save the experiment configuration to a file for reference"""
     config = {
         'experiment_type': 'calibration_sdl_modular',
@@ -471,10 +510,16 @@ def save_experiment_config(autosave_dir):
         'precision_replicates': PRECISION_REPLICATES,
         'volumes': VOLUMES,
         'max_wells': MAX_WELLS,
-        'max_acceptable_deviation': MAX_ACCEPTABLE_DEVIATION,
-        'max_acceptable_time': MAX_ACCEPTABLE_TIME,
-        'max_variation_percent': MAX_VARIATION_PERCENT,
+        'max_overvolume_percent': max_overvolume_percent,
+        'new_pipet_each_time_set': new_pipet_each_time_set,
+        'base_deviation_ul': BASE_DEVIATION_UL,
+        'base_time_seconds': BASE_TIME_SECONDS,
+        'base_variation_ul': BASE_VARIATION_UL,
+        'deviation_scaling_factor': DEVIATION_SCALING_FACTOR,
+        'time_scaling_factor': TIME_SCALING_FACTOR,
+        'variation_scaling_factor': VARIATION_SCALING_FACTOR,
         'use_selective_optimization': USE_SELECTIVE_OPTIMIZATION,
+        'use_historical_data_for_optimization': USE_HISTORICAL_DATA_FOR_OPTIMIZATION,
         'volume_dependent_params': VOLUME_DEPENDENT_PARAMS,
         'all_params': ALL_PARAMS,
         'use_llm_for_screening': USE_LLM_FOR_SCREENING,
@@ -521,11 +566,12 @@ def main():
     raw_measurements = []  # All individual measurements
     optimal_conditions = []  # Final optimal conditions for each volume
     blacklisted_params = []  # Parameters that failed precision tests
-    criteria = {'max_deviation': MAX_ACCEPTABLE_DEVIATION, 'max_time': MAX_ACCEPTABLE_TIME}
+    # Note: criteria will be calculated per volume using get_volume_dependent_tolerances()
     trial_count = 0
     
     # Create single output directory for entire experiment
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + f"_{LIQUID}")
+    simulate_suffix = "_simulate" if SIMULATE else ""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + f"_{LIQUID}{simulate_suffix}")
     autosave_dir = os.path.join(BASE_AUTOSAVE_DIR, timestamp)
     os.makedirs(autosave_dir, exist_ok=True)
     autosave_summary_path = os.path.join(autosave_dir, "experiment_summary_autosave.csv")
@@ -533,12 +579,19 @@ def main():
     optimal_conditions_path = os.path.join(autosave_dir, "optimal_conditions.csv")
     
     # Save experiment configuration
-    save_experiment_config(autosave_dir)
+    save_experiment_config(autosave_dir, NEW_PIPET_EACH_TIME_SET)
     
     for volume_index, volume in enumerate(VOLUMES):
         print(f"\n{'='*60}")
         print(f"🧪 VOLUME: {volume*1000:.0f}μL")
         print(f"{'='*60}")
+        
+        # Calculate volume-dependent tolerances
+        tolerances = get_volume_dependent_tolerances(volume)
+        criteria = {
+            'max_deviation_ul': tolerances['deviation_ul'],
+            'max_time': tolerances['time_seconds']
+        }
         
         # Get optimization configuration for selective parameter optimization
         optimize_params, fixed_params = get_optimization_config(volume_index, completed_volumes, all_results)
@@ -574,7 +627,8 @@ def main():
         # Always create ax_client with the correct selective optimization configuration
         ax_client = get_recommender().create_model(SEED, INITIAL_SUGGESTIONS, bayesian_batch_size=BATCH_SIZE, 
                                            volume=volume, tip_volume=tip_volume, model_type=bayesian_model_type, 
-                                           optimize_params=optimize_params, fixed_params=fixed_params, simulate=SIMULATE)
+                                           optimize_params=optimize_params, fixed_params=fixed_params, simulate=SIMULATE,
+                                           max_overvolume_percent=max_overvolume_percent)
         
         # Step 1: Determine starting candidate
         if len(completed_volumes) > 0:
@@ -618,11 +672,17 @@ def main():
                                          expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, 
                                          raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
                 
-                # Check if this trial meets criteria
-                meets_criteria = (result.get('deviation', float('inf')) <= criteria['max_deviation'] * 100 and 
+                # Get the most recent measurement for display
+                recent_mass = raw_measurements[-1]['mass'] if raw_measurements else expected_mass
+                recent_volume = raw_measurements[-1]['calculated_volume'] if raw_measurements else volume
+                
+                # Check if this trial meets criteria - convert % deviation to absolute μL
+                deviation_pct = result.get('deviation', float('inf'))
+                absolute_deviation_ul = (deviation_pct / 100) * (volume * 1000)  # Convert to μL
+                meets_criteria = (absolute_deviation_ul <= criteria['max_deviation_ul'] and 
                                 result.get('time', float('inf')) <= criteria['max_time'])
                 status = "✅ CANDIDATE" if meets_criteria else "❌ reject"
-                print(f"   Trial {i+1}/{INITIAL_SUGGESTIONS}: {result.get('deviation', 'N/A'):.1f}% dev, {result.get('time', 'N/A'):.0f}s - {status}")
+                print(f"   Trial {i+1}/{INITIAL_SUGGESTIONS}: {recent_mass:.4f}g → {recent_volume*1000:.1f}μL, {result.get('deviation', 'N/A'):.1f}% dev, {result.get('time', 'N/A'):.0f}s - {status}")
                 
                 get_recommender().add_result(ax_client, trial_index, result)
                 result.update(params)
@@ -663,11 +723,20 @@ def main():
             
             # If we don't have a candidate yet, we need to optimize
             if candidate_params is None:
-                print(f"🔍 OPTIMIZATION: Finding acceptable parameters (target: ≤{criteria['max_deviation']*100:.0f}% deviation, ≤{criteria['max_time']:.0f}s)")
+                print(f"🔍 OPTIMIZATION: Finding acceptable parameters (target: ≤{criteria['max_deviation_ul']:.0f}μL deviation, ≤{criteria['max_time']:.0f}s)")
                 
-                # Load previous data into existing ax_client (already created with correct parameters)
-                if all_results:
-                    load_previous_data_into_model(ax_client, all_results)
+                # Only load historical data from OTHER volumes, not current volume data (which is already in ax_client)
+                if all_results and USE_HISTORICAL_DATA_FOR_OPTIMIZATION:
+                    # Filter out results from current volume to avoid double-loading
+                    historical_results = [r for r in all_results if r.get('volume') != volume]
+                    if historical_results:
+                        print(f"Loading {len(historical_results)} trials from previous volumes (excluding {len(all_results) - len(historical_results)} from current volume)")
+                        load_previous_data_into_model(ax_client, historical_results)
+                    else:
+                        print(f"No historical data from other volumes to load")
+                elif all_results and not USE_HISTORICAL_DATA_FOR_OPTIMIZATION:
+                    print(f"Skipping historical data loading (USE_HISTORICAL_DATA_FOR_OPTIMIZATION = False)")
+                    print(f"Each volume will optimize independently without using data from previous volumes")
                 
                 # Get suggestions and test them
                 optimization_found = False
@@ -700,10 +769,17 @@ def main():
                                                  expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, 
                                                  raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
                         
-                        meets_criteria = (result.get('deviation', float('inf')) <= criteria['max_deviation'] * 100 and 
+                        # Get the most recent measurement for display
+                        recent_mass = raw_measurements[-1]['mass'] if raw_measurements else expected_mass
+                        recent_volume = raw_measurements[-1]['calculated_volume'] if raw_measurements else volume
+                        
+                        # Check if this trial meets criteria - convert % deviation to absolute μL
+                        deviation_pct = result.get('deviation', float('inf'))
+                        absolute_deviation_ul = (deviation_pct / 100) * (volume * 1000)  # Convert to μL
+                        meets_criteria = (absolute_deviation_ul <= criteria['max_deviation_ul'] and 
                                         result.get('time', float('inf')) <= criteria['max_time'])
                         status = "✅ CANDIDATE" if meets_criteria else "❌ reject"
-                        print(f"   Optimization trial: {result.get('deviation', 'N/A'):.1f}% dev, {result.get('time', 'N/A'):.0f}s - {status}")
+                        print(f"   Optimization trial: {recent_mass:.4f}g → {recent_volume*1000:.1f}μL, {result.get('deviation', 'N/A'):.1f}% dev, {result.get('time', 'N/A'):.0f}s - {status}")
                         
                         get_recommender().add_result(ax_client, trial_index, result)
                         result.update(params)
@@ -734,7 +810,7 @@ def main():
                 print(f"⚠️ Not enough wells remaining for precision test ({MAX_WELLS - trial_count} left)")
                 break
             
-            passed, precision_measurements, precision_times = run_precision_test(lash_e, state, candidate_params, volume, expected_mass, expected_time, autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET, MAX_VARIATION_PERCENT)
+            passed, precision_measurements, precision_times = run_precision_test(lash_e, state, candidate_params, volume, expected_mass, expected_time, autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET, tolerances['variation_ul'])
             trial_count += len(precision_measurements)
             
             if passed:
@@ -770,7 +846,7 @@ def main():
                 save_optimal_conditions(optimal_conditions, optimal_conditions_path)
                 
                 print(f"\n🎉 VOLUME {volume*1000:.0f}μL: ✅ COMPLETED")
-                print(f"   Precision test PASSED - all {len(precision_measurements)} replicates within ±{MAX_VARIATION_PERCENT}% range")
+                print(f"   Precision test PASSED - all {len(precision_measurements)} replicates within ±{tolerances['variation_ul']:.0f}μL range")
                 volume_completed = True
                 
             else:
@@ -829,6 +905,12 @@ def main():
     # Show detailed results for each volume
     results_df = pd.DataFrame(all_results)
     print(f"\n📊 WHAT ACTUALLY HAPPENED - STEP BY STEP:")
+    print(f"🔍 DEBUG: all_results contains {len(all_results)} trials")
+    if len(all_results) > 0:
+        volumes_in_results = [r.get('volume') for r in all_results]
+        unique_volumes = list(set(volumes_in_results))
+        print(f"🔍 DEBUG: Volumes in all_results: {unique_volumes}")
+        print(f"🔍 DEBUG: Volume counts: {pd.Series(volumes_in_results).value_counts().to_dict()}")
     
     # Count precision measurements from raw data
     precision_measurements_count = len([m for m in raw_measurements if m.get('replicate', -1) in range(PRECISION_REPLICATES)])
@@ -851,7 +933,7 @@ def main():
             
             if volume_completed:
                 print(f"   ✅ PRECISION TEST PHASE:")
-                print(f"      • Precision test: PASSED (all {PRECISION_REPLICATES} measurements within ±{MAX_VARIATION_PERCENT}%)")
+                print(f"      • Precision test: PASSED (all {PRECISION_REPLICATES} measurements within ±{tolerances['variation_ul']:.0f}μL)")
                 print(f"      • Status: ✅ VOLUME COMPLETED & SAVED TO OPTIMAL CONDITIONS")
             else:
                 print(f"   ❌ PRECISION TEST PHASE:")
@@ -868,8 +950,8 @@ def main():
     
     print(f"\n🔍 WHAT THESE TERMS MEAN:")
     print(f"   • 'Optimization trials': Parameter combinations tested to find acceptable conditions")
-    print(f"   • 'Acceptable': Deviation ≤{criteria['max_deviation']*100:.0f}% AND time ≤{criteria['max_time']:.0f}s")
-    print(f"   • 'Precision test': {PRECISION_REPLICATES} replicates using candidate parameters, all must be within ±{MAX_VARIATION_PERCENT}% of target")
+    print(f"   • 'Acceptable': Deviation ≤{criteria['max_deviation_ul']:.0f}μL AND time ≤{criteria['max_time']:.0f}s")
+    print(f"   • 'Precision test': {PRECISION_REPLICATES} replicates using candidate parameters, all must be within tolerance of target")
     print(f"   • 'Blacklisted': Parameters that failed precision test and will never be tried again")
     print(f"   • 'Optimal conditions': Final successful parameters with precision test performance metrics")
     print(f"      - 'deviation': Average difference from target volume (% of target)")
@@ -910,7 +992,7 @@ def main():
     # Save analysis results (both simulation and real data)
     # Only generate scatter plot and SHAP analysis by default
     save_analysis(results_df, pd.DataFrame(raw_measurements), autosave_dir, 
-                  include_shap=True, include_scatter=True)
+                  include_shap=True, include_scatter=True, optimal_conditions=optimal_conditions)
     
     if not SIMULATE and SLACK_AVAILABLE:
         slack_agent.send_slack_message(f"Modular calibration experiment with {LIQUID} completed. Volumes completed: {len(completed_volumes)}/{len(VOLUMES)}")
