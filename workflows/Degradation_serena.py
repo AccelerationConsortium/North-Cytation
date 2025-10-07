@@ -1,41 +1,62 @@
+from doctest import script_from_examples
 import sys
 import time
+from venv import create
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
-import os
 from pathlib import Path
 
 # Take aliquot -> Wellplate measurement (1 replicate)-> Put sample back to wellplate
-def measure_absorbance(lash_e,sample_index,first_well_index,cytation_protocol_file_path,well_volume=0.2):
-    print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
-    lash_e.temp_controller.turn_off_stirring()
-    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume,track_height=True) # should automatically move vial to clamp for aspiration?
-    wells = range(first_well_index)
-    lash_e.nr_robot.dispense_into_wellplate(wells, well_volume)
-    lash_e.nr_robot.remove_pipet()
+
+def create_samples_and_measure(lash_e,output_dir,first_well_index,cytation_protocol_file_path,simulate, solvent_vial, wash_vial, sample_name, replicates=1):
+    create_samples_in_wellplate(lash_e, sample_name=sample_name, first_well_index=first_well_index, well_volume=0.2, replicates=replicates)
+    wells = list(range(first_well_index, first_well_index + replicates))
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
-    return data_out
+    save_data(data_out,output_dir,first_well_index,simulate)
+    wash_wellplate(lash_e,first_well_index,solvent_vial=solvent_vial, wash_vial=wash_vial, solvent_repeats=1, acetone_repeats=2, volume=0.3, replicates=replicates)
+
+def create_samples_in_wellplate(lash_e,sample_name,first_well_index,well_volume=0.2,replicates=1):
+    print(f"\nTransferring sample: {sample_name} to wellplate at wells {first_well_index} to {first_well_index + replicates - 1} ({replicates} replicates)")
+    lash_e.temp_controller.turn_off_stirring()
+    
+    # Aspirate enough volume for all replicates
+    total_volume = well_volume * replicates
+    lash_e.nr_robot.aspirate_from_vial(sample_name, total_volume, track_height=True)
+    
+    # Dispense into multiple wells
+    wells = list(range(first_well_index, first_well_index + replicates))
+    volumes = [well_volume] * replicates  # Create array of volumes, one for each well
+    lash_e.nr_robot.dispense_into_wellplate(wells, volumes)
+    lash_e.nr_robot.remove_pipet()
 
 def save_data(data_out,output_dir,first_well_index,simulate):
-    output_file = output_dir / f'output_{first_well_index}.txt'
-    # output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
-    output_file = output_dir / f'output_{first_well_index}.txt'
-    data_out.to_csv(output_file, sep=',')
-    print("Data saved to:", output_file)
+    if not simulate:
+        output_file = output_dir / f'output_{first_well_index}.txt'
+        data_out.to_csv(output_file, sep=',')
+        print("Data saved to:", output_file)
+    else:
+        print(f"Simulation mode: Would save data for well index {first_well_index}")
 
 # Clean well plate = Solvent wash *1 + Acetone wash *2
-def wash_wellplate(lash_e,first_well_index,solvent_repeats=1, acetone_repeats=2,volume=0.3):
-    print("\nWashing well plate: ", first_well_index)
-    for _ in range (solvent_repeats):
-        lash_e.nr_robot.aspirate_from_vial(solvent_index,volume,track_height=True)
-        lash_e.nr_robot.mix_well_in_wellplate(lash_e,first_well_index,volume=volume,repeats=2,well_plate_type="96 WELL PLATE")
-    lash_e.nr_robot.remove_pipet()
-    for _ in range (acetone_repeats):
-        lash_e.nr_robot.pipet_from_wellplate(lash_e,first_well_index,volume=volume,aspirate=True,move_to_aspirate=False,well_plate_type="96 WELL PLATE")
-        lash_e.nr_robot.aspirate_from_vial(acetone_index,volume,track_height=True)
-        lash_e.nr_robot.mix_well_in_wellplate(lash_e,first_well_index,volume=volume,repeats=2,well_plate_type="96 WELL PLATE")
-    lash_e.nr_robot.remove_pipet()
+def wash_wellplate(lash_e,first_well_index, solvent_vial, wash_vial, solvent_repeats=1, acetone_repeats=2,volume=0.3,replicates=1):
+    wells_to_wash = list(range(first_well_index, first_well_index + replicates))
+    print(f"\nWashing wellplate wells: {wells_to_wash}")
+    
+    # Solvent wash for all wells
+    for _ in range(solvent_repeats):
+        for well in wells_to_wash:
+            lash_e.nr_robot.aspirate_from_vial(solvent_vial,volume,track_height=True)
+            lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
+        lash_e.nr_robot.remove_pipet()
+    
+    # Acetone wash for all wells  
+    for _ in range(acetone_repeats):
+        for well in wells_to_wash:
+            lash_e.nr_robot.pipet_from_wellplate(well,volume,aspirate=True,move_to_aspirate=False,well_plate_type="96 WELL PLATE")
+            lash_e.nr_robot.aspirate_from_vial(wash_vial,volume,track_height=True)
+            lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
+        lash_e.nr_robot.remove_pipet()
     print()
 
 def get_time(simulate,current_time=None):
@@ -59,32 +80,43 @@ def degradation_workflow():
     # c. Time schedule for UV-VIS measurements: 
     SCHEDULE_FILE = r"C:\Users\Imaging Controller\Desktop\SQ\degradation\schedule.csv"
 
+    #Simulate mode True or False
+    SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+    
+    # Number of replicate measurements per timepoint
+    REPLICATES = 3  # Number of wells to use for each measurement (default: 3)
+
     # d. Polymer dilution calculation:
     sample_volume = 3.0 # Total volume of each polymer sample (mL)
     df = pd.read_csv(INPUT_VIAL_STATUS_FILE)
-    stock_conc = df.loc[df['sample'] == 'stock', 'concentration (mg/mL)'].iloc[0] # Selects row [sample==stock]
-    samples = df[df['sample'].str.contains("sample", case=False, na=False)].copy()
-    samples['stock_volume'] = (samples['concentration (mg/mL)'] / stock_conc) * sample_volume
+    sample_col = 'vial_name'  # Use vial_name column from CSV
+    
+    # Get stock concentration
+    stock_conc = df.loc[df[sample_col] == 'polymer_stock', 'concentration'].iloc[0]
+    print(f"Stock concentration: {stock_conc} mg/mL")
+    
+    # Calculate dilution volumes for each sample
+    samples = df[df[sample_col].str.contains("sample", case=False, na=False)].copy()
+    samples['stock_volume'] = (samples['concentration'] / stock_conc) * sample_volume
     samples['solvent_volume'] = sample_volume - samples['stock_volume']
-    print(df) # Prints the vial status & location
-    print(samples) # Prints the samples with calculated volumes of stock and solvent to be added
+    print("Calculated volumes for each sample:")
+    print(samples[[sample_col, 'concentration', 'stock_volume', 'solvent_volume']])
 
     # e. Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 
-    #Location indices: vial_numbers = vial_status['vial_index'].values #Gives you the values
-    polymer_stock = lash_e.nr_robot.get_vial_index_from_name('polymer_stock') 
-    solvent_index = lash_e.nr_robot.get_vial_index_from_name('solvent')
-    acid_index = lash_e.nr_robot.get_vial_index_from_name('acid')
-    acetone_index = lash_e.nr_robot.get_vial_index_from_name('acetone')
+    #Samples
+    sample_solutions = {'sample_' + str(i) for i in range(1,4)} #Set of sample names (sample_1, sample_2, sample_3...)
 
-    #Sample incides: 
-    sample_indices = vial_status.index.values[3:]
-
-    #Variables: 
-    stock_volume = df.loc[df['sample'] == 'stock_volume'].iloc[0]
-    solvent_volume = df.loc[df['sample'] == 'solvent_volume'].iloc[0]
+    # Create a dictionary to look up volumes by sample name
+    volume_lookup = {}
+    for _, row in samples.iterrows():
+        sample_name = row[sample_col]
+        volume_lookup[sample_name] = {
+            'stock_volume': row['stock_volume'],
+            'solvent_volume': row['solvent_volume']
+        }
+    
     acid_volume = 0.05 
 
 
@@ -104,33 +136,41 @@ def degradation_workflow():
 
     # > Workflow starts from here! 
     # 1. Polymer sample preparation: Add stock polymer solution then solvent to each sample vial.
-    for i in sample_indices:
-        lash_e.nr_robot.dispense_from_vial_into_vial(polymer_stock,i,stock_volume)
+    for sample in sample_solutions:
+        stock_vol = volume_lookup[sample]['stock_volume']
+        print(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
+        lash_e.nr_robot.dispense_from_vial_into_vial('polymer_stock',sample,stock_vol)
         lash_e.nr_robot.remove_pipet()
-    for i in sample_indices:
-        print("\npreparing polymer sample: ", i)
-        lash_e.nr_robot.dispense_from_vial_into_vial(solvent,i,solvent_volume)
+    
+    for sample in sample_solutions:
+        solvent_vol = volume_lookup[sample]['solvent_volume']
+        print(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
+        lash_e.nr_robot.dispense_from_vial_into_vial('2MeTHF',sample,solvent_vol)
         lash_e.nr_robot.remove_pipet()
-        lash_e.nr_robot.mix_vial(vial_name=i, vortex_time=5)
+        lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
 
     # 2. Add acid to the polymer samples to initiate degradation and take scheduled UV-VIS measurements.
     t0_map = {} #Dictionary to store the start time for each sample
     first_well_index = 0 #This is the first well index to use for the first sample
 
-    for i in sample_indices: 
-        lash_e.nr_robot.dispense_from_vial_into_vial(acid_index,i,acid_volume)
+    i = 0
+    for sample in sample_solutions:
+        lash_e.nr_robot.dispense_from_vial_into_vial('6M HCl',sample,acid_volume)
         lash_e.nr_robot.remove_pipet()
-        print("\nAdding acid to sample: ", i)
-        t0_map[i] = time.time() #Record the start time for each sample
-        measure_absorbance(lash_e,sample_index,first_well_index,CYTATION_PROTOCOL_FILE, output_dir,simulate=SIMULATE)
+        print("\nAdding acid to sample: ", sample)
+        t0_map[sample] = time.time() #Record the start time for each sample
+        create_samples_and_measure(lash_e,output_dir,first_well_index,CYTATION_PROTOCOL_FILE,SIMULATE, solvent_vial='2MeTHF', wash_vial='acetone', sample_name=sample, replicates=REPLICATES)
         try:
             lash_e.temp_controller.turn_off_stirring()
-            time.sleep(1)
+            if not SIMULATE:
+                time.sleep(1)
         except: 
             print("Stirring was already off.")
         finally:
-            lash_e.nr_robot.move_vial_to_location(vial_name=i,location='heater',location_index=i)
+            lash_e.nr_robot.move_vial_to_location(vial_name=sample,location='heater',location_index=i)
             lash_e.temp_controller.turn_on_stirring()
+        first_well_index += REPLICATES  # Move to next set of wells for next sample
+        i+=1
 
     schedule = pd.read_csv(SCHEDULE_FILE, sep=",") #Read the schedule file
     schedule = schedule.sort_values(by='start_time') #sort in ascending time order
@@ -160,8 +200,8 @@ def degradation_workflow():
             print(f"Intended Elapsed Time: {(time_required)/60} minutes")
 
             if action_required=="measure_samples":
-                measure_absorbance(lash_e,sample_index,starting_well_index,CYTATION_PROTOCOL_FILE, output_dir,simulate=SIMULATE)
-                starting_well_index
+                create_samples_and_measure(lash_e,output_dir,first_well_index,CYTATION_PROTOCOL_FILE,SIMULATE, solvent_vial='2MeTHF', wash_vial='acetone', sample_name=sample_index, replicates=REPLICATES)
+                first_well_index += REPLICATES  # Move to next set of wells
                 items_completed+=1
                 measured_items+=1
         elif current_time - start_time > time_increment:
