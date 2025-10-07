@@ -1,0 +1,70 @@
+# Domain heuristics & vocab modular file
+# Swappable for other experiment families.
+
+capability_verbs:
+  photochemical: [irradiate, irradiated, illumination, illuminate, photoinitiated, initiated, activate, activation]
+  transformation: [polymerize, polymerization, crosslink, crosslinking, cure, curing]
+  processing: [mix, stir, heat, sample, aliquot, vortex]
+  analytical: [measure, monitor, absorbance, fluorescence, conversion, stability, degradation, quench]
+
+objective_verbs:
+  optimization: [maximize, optimize, improve, enhance, increase]
+  minimization: [minimize, reduce, decrease]
+  balance: [balance, trade-off]
+  robustness: [stabilize, maintain]
+
+polymer_terms: [
+  polymer, polymers, polymeric, polymerization, photopolymerization,
+  hydrogel, hydrogels, microgel, microgels,
+  copolymer, copolymers,
+  surfactant, surfactants,
+  micelle, micellar,
+  amphiphilic,
+  crosslink, crosslinking, thiol-ene,
+  post-functionalization, photodegradation,
+  graft, grafting, bottlebrush
+]
+photo_terms: [visible, light, wavelength, nm, irradiation, photochemical, photocatalyst, photoinduced, photoactivated]
+
+# Platform-supported workflow operations / transformation cues (exclude lab steps we cannot automate e.g., dialysis, lyophilization)
+workflow_terms: [
+  crosslink, crosslinking, photopolymerization, polymerization,
+  cure, curing, graft, grafting, thiol-ene, post-functionalization,
+  degradation, quench
+]
+
+# Device / form-factor terms (hardware-focused) for penalty axis (avoid chemistry-specific words)
+device_terms: [
+  "solar cell", photovoltaic, "photovoltaic device", photodetector,
+  sensor, sensors, biosensor, biosensors,
+  transistor, "field-effect transistor", fet,
+  oled, "light-emitting diode", led, "led array",
+  waveguide, "quantum dot device"
+]
+
+synonym_map:
+  activation: activate
+  irradiated: irradiate
+  polymerize: polymerization
+  crosslinking: crosslink
+  curing: cure
+
+numeric_single_value_patterns:
+  - '(\b\d+(?:\.\d+)?\s?(?:mol%|mM|M|wt%|vol%|ppm|ppb|%|°C|nm|mW/cm2|h|hours|min|minutes|s|seconds)\b)'
+
+# Domain hints for classification; order does not imply priority.
+domain_hints:
+  polymer_core: [polymer, polymerization, raft, crosslink]
+  med_pharma: [chemotherapy, nanomedicines, cancer therapy]
+  energy_cat: [hydrogen production, water splitting]
+  inorganic_cat: [nitrogen fixation]
+  org_syn: [borylation, deaminative]
+  perovskite: [perovskite, halide segregation]
+  comm_net: [communication, networking]
+  plant_bio: [phototropin]
+
+# Axes toggles to allow easy enable/disable in scoring phase later.
+axes_flags:
+  polymer_specificity: true
+  capability_category_mix: true
+  recency_adjusted_impact: true
