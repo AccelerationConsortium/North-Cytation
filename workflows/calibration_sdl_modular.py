@@ -1,12 +1,10 @@
 # calibration_sdl_modular.py
 import sys
 import os
-# Add parent directory to path for imports
-#sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 sys.path.append("../North-Cytation")
 
 from calibration_sdl_base import *
-import logging
 from master_usdl_coordinator import Lash_E
 import recommenders.pipeting_optimizer_v2 as recommender_v2
 import recommenders.pipetting_optimizer_v3 as recommender_v3
@@ -42,7 +40,7 @@ INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
 PRECISION_REPLICATES = 5
-VOLUMES = [0.05, 0.025, 0.1, 0.2] #Small tip
+VOLUMES = [0.05, 0.025, 0.1] #Small tip
 #VOLUMES = [0.3, 0.5, 1.0] # Large tip
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
@@ -100,10 +98,25 @@ def get_volume_dependent_tolerances(volume_ml):
     volume_excess_ul = max(0, volume_ul - 100)  # Only scale above 100μL baseline
     scaling_factor = volume_excess_ul / 100  # Per 100μL scaling
     
+    deviation_ul = BASE_DEVIATION_UL + (DEVIATION_SCALING_FACTOR * scaling_factor)
+    variation_ul = BASE_VARIATION_UL + (VARIATION_SCALING_FACTOR * scaling_factor)
+
+    # In simulation we relax tolerances so runs "pass" more often to view plots.
+    # Strategy: enforce a minimum relative window for deviation/variation.
+    if SIMULATE:
+        # Allow environment override for quick tuning without code edits
+        try:
+            min_rel_dev = float(os.environ.get('SIM_MIN_REL_DEV', '0.08'))  # default 8%
+            min_rel_var = float(os.environ.get('SIM_MIN_REL_VAR', '0.10'))  # default 10%
+        except ValueError:
+            min_rel_dev, min_rel_var = 0.8, 0.10
+        deviation_ul = max(deviation_ul, volume_ul * min_rel_dev)
+        variation_ul = max(variation_ul, volume_ul * min_rel_var)
+
     tolerances = {
-        'deviation_ul': BASE_DEVIATION_UL + (DEVIATION_SCALING_FACTOR * scaling_factor),
+        'deviation_ul': deviation_ul,
         'time_seconds': BASE_TIME_SECONDS + (TIME_SCALING_FACTOR * scaling_factor),
-        'variation_ul': BASE_VARIATION_UL + (VARIATION_SCALING_FACTOR * scaling_factor)
+        'variation_ul': variation_ul
     }
     
     return tolerances
@@ -329,12 +342,26 @@ def check_optimization_criteria(all_results, criteria):
         
     df = pd.DataFrame(optimization_results)
     if 'deviation' in df.columns and 'time' in df.columns and 'volume' in df.columns:
-        # Convert percentage deviation to absolute μL deviation for comparison
-        # deviation is stored as %, volume is in mL, criteria is in μL
-        absolute_deviation_ul = (df['deviation'] / 100) * (df['volume'] * 1000)  # Convert to μL
-        
-        # Find results that meet both criteria
-        meets_criteria = (absolute_deviation_ul <= criteria['max_deviation_ul']) & (df['time'] <= criteria['max_time'])
+        # deviation is % already. Compute absolute μL deviation for original logic
+        absolute_deviation_ul = (df['deviation'] / 100) * (df['volume'] * 1000)
+
+        if SIMULATE:
+            # In simulation: allow pass if percent deviation <= dynamic_pct OR absolute deviation <= specified μL
+            # Also relax time constraint to 1.25 * max_time
+            max_pct = 20.0  # default percent threshold
+            try:
+                max_pct = float(os.environ.get('SIM_MAX_DEV_PCT', '20'))
+            except ValueError:
+                pass
+            relaxed_time = criteria['max_time'] * 1.25
+            meets_criteria = ((df['deviation'] <= max_pct) | (absolute_deviation_ul <= criteria['max_deviation_ul'])) & (df['time'] <= relaxed_time)
+        else:
+            meets_criteria = (absolute_deviation_ul <= criteria['max_deviation_ul']) & (df['time'] <= criteria['max_time'])
+
+        if not meets_criteria.any():
+            # Debug first few rows
+            sample = df.head(3)[['volume','deviation','time']].to_dict(orient='records')
+            print(f"[criteria-debug] No trial meets criteria yet. Example rows: {sample} | criteria={criteria} | SIMULATE={SIMULATE}")
         return meets_criteria.any()
     return False
 
