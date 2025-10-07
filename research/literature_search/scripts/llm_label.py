@@ -21,7 +21,7 @@ If malformed JSON or missing keys are observed, the script will retry (up to --m
 repair system instruction that echoes the previous raw output for guidance.
 """
 from __future__ import annotations
-import os, json, time, argparse, sys, re, threading
+import os, json, time, argparse, sys, re, threading, signal
 from typing import Dict, Any, Iterable, Optional
 from dataclasses import dataclass
 
@@ -58,6 +58,8 @@ class Args:
     shuffle: bool
     resume: bool
     request_timeout: float
+    graceful_interrupt: bool
+    heartbeat_secs: float
 
 
 def parse_args() -> Args:
@@ -75,6 +77,8 @@ def parse_args() -> Args:
     ap.add_argument('--shuffle', action='store_true', help='Shuffle input order before limiting.')
     ap.add_argument('--resume', action='store_true', help='If output exists, append new labels skipping IDs already completed.')
     ap.add_argument('--request-timeout', type=float, default=0.0, help='Per-request timeout seconds (0 = no extra timeout wrapper).')
+    ap.add_argument('--graceful-interrupt', action='store_true', help='First Ctrl+C defers until current record completes; second forces immediate exit.')
+    ap.add_argument('--heartbeat-secs', type=float, default=0.0, help='If >0, emit a heartbeat line every N seconds while waiting for model response.')
     return Args(**vars(ap.parse_args()))
 
 
@@ -232,6 +236,23 @@ def label_prompts(args: Args):
     out_f = open(args.output, file_mode, encoding='utf-8')
 
     successes = resumed_count
+    interrupted = {'flag': False, 'hard': False}
+
+    def _sig_handler(signum, frame):  # type: ignore
+        if not args.graceful_interrupt:
+            raise KeyboardInterrupt
+        if interrupted['flag']:
+            interrupted['hard'] = True
+            print("[INTERRUPT] Second interrupt received: hard exit after this record.", file=sys.stderr)
+        else:
+            interrupted['flag'] = True
+            print("[INTERRUPT] Graceful interrupt requested; finishing current record then stopping.", file=sys.stderr)
+
+    if args.graceful_interrupt:
+        try:
+            signal.signal(signal.SIGINT, _sig_handler)
+        except Exception:
+            pass  # On some platforms setting may fail silently
     for idx, rec in enumerate(inputs, start=1):
         rid = rec.get('id') or f"row_{idx}"
         prompt = rec.get('prompt')
@@ -304,7 +325,29 @@ def label_prompts(args: Args):
                         raise exc_holder['e']
                     raw = result_holder.get('raw')
                 else:
-                    raw = call_model(client, args.model, prompt, args.temperature)
+                    # Heartbeat management: spawn a watcher thread if requested
+                    if args.heartbeat_secs and args.heartbeat_secs > 0:
+                        hb_stop = {'stop': False}
+                        def _heartbeat():  # pragma: no cover - side-effect logging
+                            last_emit = 0.0
+                            while not hb_stop['stop']:
+                                now = time.time()
+                                if now - last_emit >= args.heartbeat_secs:
+                                    print(f"[HEARTBEAT] Waiting on model for {rid} attempt {attempt}...", flush=True)
+                                    last_emit = now
+                                time.sleep(0.25)
+                        hb_thread = threading.Thread(target=_heartbeat, daemon=True)
+                        hb_thread.start()
+                    else:
+                        hb_stop = None
+                        hb_thread = None
+                    try:
+                        raw = call_model(client, args.model, prompt, args.temperature)
+                    finally:
+                        if hb_stop is not None:
+                            hb_stop['stop'] = True
+                        if hb_thread is not None:
+                            hb_thread.join(timeout=0.5)
                 if args.verbose:
                     snippet = (raw[:120] + '...') if raw and len(raw) > 120 else raw
                     print(f"[DEBUG] {rid} attempt {attempt}: raw snippet: {snippet}")
@@ -325,6 +368,7 @@ def label_prompts(args: Args):
                     if prompt_version:
                         out_line['prompt_version'] = prompt_version
                     out_f.write(json.dumps(out_line, ensure_ascii=False) + '\n')
+                    out_f.flush()
                     if args.verbose:
                         print(f"[DEBUG] {rid} success on attempt {attempt}")
                     successes += 1
@@ -337,12 +381,19 @@ def label_prompts(args: Args):
             time.sleep(1.0)
         else:
             print(f"[FAIL] {rid} after {args.max_retries} retries: {last_error}")
+        # Early exit if graceful interrupt requested
+        if interrupted['flag']:
+            print("[INTERRUPT] Graceful stop after completing current record.")
+            break
+
         time.sleep(rate_sleep)
 
     out_f.close()
     processed_target = total if not args.resume else (total - resumed_count)
     new_successes = successes - resumed_count
-    if args.resume:
+    if interrupted['flag'] and not interrupted['hard']:
+        print(f"Interrupted (graceful). Partial progress saved. Cumulative successes {successes}/{total}.")
+    elif args.resume:
         print(f"Completed. New successes: {new_successes}/{processed_target}. Total cumulative successes (including prior): {successes}/{total} (skipped {resumed_count}). Output -> {args.output}")
     else:
         print(f"Completed. Successes: {successes}/{total}. Output -> {args.output}")

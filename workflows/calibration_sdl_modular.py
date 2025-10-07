@@ -995,7 +995,34 @@ def main():
                   include_shap=True, include_scatter=True, optimal_conditions=optimal_conditions)
     
     if not SIMULATE and SLACK_AVAILABLE:
-        slack_agent.send_slack_message(f"Modular calibration experiment with {LIQUID} completed. Volumes completed: {len(completed_volumes)}/{len(VOLUMES)}")
+        try:
+            # Build detailed summary of completed volumes
+            completed_list = [f"{int(v*1000)}µL" for v, _ in completed_volumes]
+            remaining_vols = [v for v in VOLUMES if v not in [cv for cv, _ in completed_volumes]]
+            remaining_list = [f"{int(v*1000)}µL" for v in remaining_vols]
+            completed_str = ", ".join(completed_list) if completed_list else "None"
+            remaining_str = ", ".join(remaining_list) if remaining_list else "None"
+
+            # Extract quick performance snapshot for each completed volume (deviation/time if available)
+            performance_lines = []
+            if 'deviation' in results_df.columns and 'time' in results_df.columns and 'volume' in results_df.columns:
+                # For each completed volume, get best (lowest absolute deviation) trial summary
+                for vol, _ in completed_volumes:
+                    sub = results_df[results_df['volume'] == vol]
+                    if not sub.empty and 'deviation' in sub and 'time' in sub:
+                        best_row = sub.iloc[(sub['deviation']).abs().argmin()]
+                        performance_lines.append(f"{int(vol*1000)}µL: dev={best_row['deviation']:.1f}%, time={best_row['time']:.1f}s")
+            perf_block = "; ".join(performance_lines) if performance_lines else "(no trial metrics captured)"
+
+            slack_msg = (
+                f"Modular calibration with {LIQUID} COMPLETE\n"
+                f"Volumes completed: {len(completed_volumes)}/{len(VOLUMES)} -> {completed_str}\n"
+                f"Remaining (not calibrated): {remaining_str}\n"
+                f"Performance snapshot: {perf_block}"
+            )
+            slack_agent.send_slack_message(slack_msg)
+        except Exception as e:
+            print(f"Warning: Failed to send detailed Slack summary: {e}")
     
     print(f"{'='*60}")
 
