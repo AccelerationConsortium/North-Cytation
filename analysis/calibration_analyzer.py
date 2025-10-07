@@ -9,8 +9,10 @@ try:
     import shap
     import xgboost as xgb
     from sklearn.preprocessing import StandardScaler
+    # Test if XGBRegressor is actually available
+    xgb.XGBRegressor()
     SHAP_AVAILABLE = True
-except ImportError as e:
+except (ImportError, AttributeError) as e:
     print(f"SHAP/XGBoost not available: {e}")
     SHAP_AVAILABLE = False
 

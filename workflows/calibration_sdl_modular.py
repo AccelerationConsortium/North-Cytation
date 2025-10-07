@@ -992,7 +992,7 @@ def main():
     # Save analysis results (both simulation and real data)
     # Only generate scatter plot and SHAP analysis by default
     save_analysis(results_df, pd.DataFrame(raw_measurements), autosave_dir, 
-                  include_shap=True, include_scatter=True, optimal_conditions=optimal_conditions)
+                  include_shap=False, include_scatter=True, optimal_conditions=optimal_conditions)
     
     if not SIMULATE and SLACK_AVAILABLE:
         try:
