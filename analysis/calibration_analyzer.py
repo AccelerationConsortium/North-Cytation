@@ -259,12 +259,13 @@ def plot_pairplot(df, save_folder):
         plt.savefig(os.path.join(save_folder, 'parameter_pairplot.png'), dpi=300)
         plt.close()
 
-def plot_learning_curves(df, save_folder):
+def plot_learning_curves(df, save_folder, metrics=None):
     df = df.copy()
     df['trial_index'] = pd.to_numeric(df['trial_index'], errors='coerce')
     df = df.dropna(subset=['trial_index']).sort_values(['volume', 'trial_index'])
-
-    metrics = ['deviation', 'time', 'variability']
+    if metrics is None:
+        metrics = ['deviation', 'time', 'variability']
+    metrics = [m for m in metrics if m in df.columns]
     for metric in metrics:
         if metric not in df.columns:
             continue

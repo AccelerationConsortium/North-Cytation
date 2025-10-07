@@ -35,8 +35,8 @@ except ImportError as e:
     LLM_AVAILABLE = False
 
 # --- Experiment Config ---
-LIQUID = "water"
-SIMULATE = False
+LIQUID = "glycerol"
+SIMULATE = True
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
@@ -66,8 +66,13 @@ USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
 # Options: 'qEI' (Expected Improvement), 'qLogEI' (Log Expected Improvement), 'qNEHVI' (Noisy Expected Hypervolume Improvement)
 BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 
-# Output directory configuration
-BASE_AUTOSAVE_DIR = r'C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\New_Method'
+if SIMULATE:
+    DEFAULT_LOCAL_AUTOSAVE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'output', 'calibration_runs'))
+    os.makedirs(DEFAULT_LOCAL_AUTOSAVE_DIR, exist_ok=True)
+    BASE_AUTOSAVE_DIR = os.environ.get('CALIBRATION_AUTOSAVE_DIR', DEFAULT_LOCAL_AUTOSAVE_DIR)
+    print(f"[info] Using BASE_AUTOSAVE_DIR={BASE_AUTOSAVE_DIR}")
+else:
+    BASE_AUTOSAVE_DIR='C:\\Users\\Imaging Controller\\Desktop\\Calibration_SDL_Output\\New_Method'
 
 # Criteria (For real life testing) - Base tolerances with volume-dependent scaling
 BASE_DEVIATION_UL = 1.0  # Base ±1 μL absolute deviation for optimization acceptance  
@@ -991,8 +996,20 @@ def main():
     
     # Save analysis results (both simulation and real data)
     # Only generate scatter plot and SHAP analysis by default
-    save_analysis(results_df, pd.DataFrame(raw_measurements), autosave_dir, 
-                  include_shap=False, include_scatter=True, optimal_conditions=optimal_conditions)
+    save_analysis(
+        results_df,
+        pd.DataFrame(raw_measurements),
+        autosave_dir,
+        include_shap=False,
+        include_scatter=True,
+        include_boxplots=False,
+        include_pairplot=False,
+        include_learning_curves=True,
+        include_improvement=False,
+        include_top_trials=False,
+        optimal_conditions=optimal_conditions,
+        learning_curve_metrics=['deviation','time']
+    )
     
     if not SIMULATE and SLACK_AVAILABLE:
         try:
