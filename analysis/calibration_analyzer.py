@@ -1,22 +1,51 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import shap
-import xgboost as xgb
-from sklearn.preprocessing import StandardScaler
 import numpy as np
 import os
 import seaborn as sns
 
+# Temporarily skip xgboost/shap imports to avoid version conflict
+try:
+    import shap
+    import xgboost as xgb
+    from sklearn.preprocessing import StandardScaler
+    SHAP_AVAILABLE = True
+except ImportError as e:
+    print(f"SHAP/XGBoost not available: {e}")
+    SHAP_AVAILABLE = False
+
 input_cols = [
     'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time',
-    'retract_speed', 'pre_asp_air_vol', 'post_asp_air_vol', 'overaspirate_vol'
+    'retract_speed', 'blowout_vol', 'post_asp_air_vol', 'overaspirate_vol'
 ]
 
-output_targets = ['time', 'deviation', 'variability']
+output_targets = ['time', 'deviation']  # Removed 'variability' - it doesn't exist
 
 def run_shap_analysis(df, save_folder):
+    if not SHAP_AVAILABLE:
+        print("Skipping SHAP analysis - xgboost/shap not available due to version conflict")
+        return
+    
     os.makedirs(save_folder, exist_ok=True)
-    X = df[input_cols]
+    
+    # Handle backward compatibility: if old data has pre_asp_air_vol but not blowout_vol
+    if 'pre_asp_air_vol' in df.columns and 'blowout_vol' not in df.columns:
+        print("Info: Converting pre_asp_air_vol to blowout_vol for backward compatibility")
+        df['blowout_vol'] = df['pre_asp_air_vol']
+    
+    # Filter input columns to only those present in the dataframe
+    available_cols = [col for col in input_cols if col in df.columns]
+    missing_cols = [col for col in input_cols if col not in df.columns]
+    
+    if missing_cols:
+        print(f"Warning: Missing columns for SHAP analysis: {missing_cols}")
+        print(f"Using available columns: {available_cols}")
+    
+    if len(available_cols) < 2:
+        print("Error: Not enough columns for SHAP analysis")
+        return
+    
+    X = df[available_cols]
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     shap_dfs = []
@@ -36,22 +65,14 @@ def run_shap_analysis(df, save_folder):
         plt.clf()
 
         mean_shap = pd.DataFrame({
-            'Feature': input_cols,
+            'Feature': available_cols,
             target: np.abs(shap_values).mean(axis=0)
         }).set_index("Feature")
 
         shap_dfs.append(mean_shap)
 
-    combined = pd.concat(shap_dfs, axis=1)
-    normalized = combined / combined.max()
-
-    normalized.plot(kind='barh', figsize=(10, 6))
-    plt.xlabel('Normalized Mean SHAP Value (0–1)')
-    plt.title('Normalized Feature Importance Comparison Across Targets')
-    plt.grid(True, axis='x')
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_folder, 'shap_comparison_all_targets_normalized.png'))
-    plt.clf()
+    # Skip normalized feature importance comparison - not needed
+    print("SHAP analysis complete - individual plots saved")
 
 def get_top_trials(df, save_folder, weight_time=1.0, weight_deviation=1.0, weight_variability=1.0, top_n=3):
     top_trials = []
@@ -78,57 +99,150 @@ def get_top_trials(df, save_folder, weight_time=1.0, weight_deviation=1.0, weigh
 def plot_top_trial_histograms(best_trials, save_folder):
     for param in input_cols:
         plt.figure(figsize=(8, 4))
-        sns.histplot(data=best_trials, x=param, hue='volume', multiple='stack', bins=10, palette='tab10')
+        # Use matplotlib instead of seaborn
+        volumes = sorted(best_trials['volume'].unique())
+        colors = plt.cm.tab10(np.linspace(0, 1, len(volumes)))
+        for i, vol in enumerate(volumes):
+            vol_data = best_trials[best_trials['volume'] == vol][param]
+            plt.hist(vol_data, bins=10, alpha=0.7, label=f'{vol*1000:.0f}μL', color=colors[i])
+        plt.legend()
         plt.title(f'Distribution of Top Trials by Volume: {param}')
         plt.tight_layout()
         plt.savefig(os.path.join(save_folder, f'top_trials_histogram_{param}.png'))
         plt.clf()
 
-def plot_time_vs_deviation(results_df, save_folder):
-    """Scatter plot of Time vs. Deviation with variability > 1 marked and volumes color-coded."""
+def plot_measured_volume_over_time(raw_df, save_folder):
+    """Plot measured volume over measurements with target volume dashed lines."""
+    os.makedirs(save_folder, exist_ok=True)
+    
+    if 'mass' not in raw_df.columns:
+        print("Warning: No 'mass' column found - cannot create measured volume plot")
+        return
+    
+    plt.figure(figsize=(12, 8))
+    
+    # Convert mass to volume (assuming water density = 1.0 g/mL)
+    raw_df = raw_df.copy()
+    raw_df['measured_volume_ul'] = raw_df['mass'] * 1000  # Convert g to μL
+    
+    if 'volume' in raw_df.columns:
+        # Plot by target volume
+        volumes = sorted(raw_df['volume'].unique())
+        colors = plt.cm.tab10(np.linspace(0, 1, len(volumes)))
+        
+        for i, vol in enumerate(volumes):
+            vol_data = raw_df[raw_df['volume'] == vol].copy()
+            vol_data = vol_data.reset_index(drop=True)
+            
+            target_ul = vol * 1000  # Convert mL to μL
+            
+            plt.scatter(
+                range(len(vol_data)), 
+                vol_data['measured_volume_ul'],
+                color=colors[i],
+                alpha=0.7,
+                label=f'{target_ul:.0f}μL target',
+                s=50
+            )
+            
+            # Add target volume dashed line
+            plt.axhline(y=target_ul, 
+                       color=colors[i], 
+                       linestyle='--', 
+                       alpha=0.8,
+                       linewidth=2)
+    else:
+        # Plot all measurements
+        plt.scatter(range(len(raw_df)), raw_df['measured_volume_ul'], alpha=0.7, s=50)
+    
+    plt.xlabel('Measurement Number')
+    plt.ylabel('Measured Volume (μL)')
+    plt.title('Measured Volume Over Time with Target Volume Lines')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    save_path = os.path.join(save_folder, 'measured_volume_over_time.png')
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved measured volume plot to: {save_path}")
+
+def plot_time_vs_deviation(results_df, save_folder, optimal_conditions=None):
+    """Scatter plot of Time vs. Deviation with precision-test winning conditions highlighted."""
+    
+    # Check required columns
+    required_cols = ['time', 'deviation', 'volume']
+    missing_cols = [col for col in required_cols if col not in results_df.columns]
+    if missing_cols:
+        print(f"Warning: Cannot create scatter plot - missing columns: {missing_cols}")
+        return
+    
     plt.figure(figsize=(10, 6))
     
-    for vol in sorted(results_df['volume'].unique()):
+    volumes = sorted(results_df['volume'].unique())
+    colors = plt.cm.tab10(np.linspace(0, 1, len(volumes)))
+    
+    print(f"Creating scatter plot for {len(volumes)} volumes: {[v*1000 for v in volumes]} μL")
+    
+    for i, vol in enumerate(volumes):
         df_sub = results_df[results_df['volume'] == vol]
-        label = f"{vol} mL"
+        label = f"{vol*1000:.0f}μL"
+        
+        print(f"  Volume {vol*1000:.0f}μL: {len(df_sub)} points")
 
-        # Normal points
+        # Normal optimization points
         plt.scatter(
             df_sub["time"],
             df_sub["deviation"],
+            color=colors[i],
             label=label,
             alpha=0.7,
-            edgecolors="k"
+            edgecolors="black",
+            linewidth=0.5,
+            s=60
         )
 
-        # X markers for variability > 1.0
-        high_var = df_sub[df_sub["variability"] > 2.0]
-        plt.scatter(
-            high_var["time"],
-            high_var["deviation"],
-            marker="x",
-            color="black",
-            s=100,
-            label=None
-        )
+        # Highlight precision-test winning conditions with stars
+        if optimal_conditions:
+            optimal_for_vol = [opt for opt in optimal_conditions if opt.get('target_volume_mL') == vol]
+            for opt in optimal_for_vol:
+                # Find the corresponding trial in results_df
+                matching_trials = df_sub[
+                    (abs(df_sub.get('aspirate_speed', 0) - opt.get('aspirate_speed', -999)) < 0.1) &
+                    (abs(df_sub.get('dispense_speed', 0) - opt.get('dispense_speed', -999)) < 0.1)
+                ]
+                if not matching_trials.empty:
+                    plt.scatter(
+                        matching_trials["time"],
+                        matching_trials["deviation"],
+                        marker="★",
+                        color="gold",
+                        s=200,
+                        edgecolors="black",
+                        linewidth=2,
+                        label="Precision Test Winner" if i == 0 else None
+                    )
 
     plt.xlabel("Time (seconds)")
-    plt.ylabel("Deviation From Target (%)")
-    plt.title("Time vs Deviation with High-Variability Markers")
+    plt.ylabel("Deviation (μL)")  # Fixed: should be μL not %
+    plt.title("Time vs Deviation Scatter Plot")
     plt.legend(title="Volume")
-    plt.grid(True)
+    plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
     save_path = os.path.join(save_folder, "time_vs_deviation_scatter.png")
-    plt.savefig(save_path)
-    plt.clf()
-    print("Saved time vs deviation plot to:", save_path)
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved scatter plot to: {save_path}")
 
 def plot_boxplots(df, save_folder):
     for target in ['deviation', 'variability', 'time']:
         if target in df.columns:
             plt.figure(figsize=(10, 6))
-            sns.boxplot(data=df, x='volume', y=target)
+            # Use matplotlib boxplot instead
+            volumes = sorted(df['volume'].unique())
+            data_by_volume = [df[df['volume'] == vol][target].dropna() for vol in volumes]
+            plt.boxplot(data_by_volume, labels=[f'{v*1000:.0f}μL' for v in volumes])
             plt.title(f'{target.capitalize()} by Volume')
             plt.tight_layout()
             plt.savefig(os.path.join(save_folder, f'boxplot_{target}_by_volume.png'), dpi=300)
@@ -138,7 +252,8 @@ def plot_pairplot(df, save_folder):
     key_params = ['deviation', 'time', 'variability', 'aspirate_speed', 'dispense_speed']
     available = [p for p in key_params if p in df.columns]
     if len(available) >= 3:
-        sns.pairplot(df[available])
+        # Skip pairplot - requires seaborn, not essential
+        print("Skipping pairplot - seaborn not used")
         plt.savefig(os.path.join(save_folder, 'parameter_pairplot.png'), dpi=300)
         plt.close()
 
