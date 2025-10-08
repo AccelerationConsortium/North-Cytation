@@ -42,20 +42,25 @@ def save_data(data_out,output_dir,first_well_index,simulate):
 def wash_wellplate(lash_e,first_well_index, solvent_vial, wash_vial, solvent_repeats=1, acetone_repeats=2,volume=0.3,replicates=1):
     wells_to_wash = list(range(first_well_index, first_well_index + replicates))
     print(f"\nWashing wellplate wells: {wells_to_wash}")
-    
+
     # Solvent wash for all wells
     for _ in range(solvent_repeats):
         for well in wells_to_wash:
             lash_e.nr_robot.aspirate_from_vial(solvent_vial,volume,track_height=True)
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
+            # pipet wash solution to Waste
+            lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, move_to_aspirate=False, well_plate_type="96 WELL PLATE")
+            lash_e.nr_robot.dispense_from_wellplate_into_vial(well, "Waste", volume)
         lash_e.nr_robot.remove_pipet()
-    
     # Acetone wash for all wells  
     for _ in range(acetone_repeats):
         for well in wells_to_wash:
             lash_e.nr_robot.pipet_from_wellplate(well,volume,aspirate=True,move_to_aspirate=False,well_plate_type="96 WELL PLATE")
             lash_e.nr_robot.aspirate_from_vial(wash_vial,volume,track_height=True)
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
+            # New step: pipet wash solution to Waste
+            lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, move_to_aspirate=False, well_plate_type="96 WELL PLATE")
+            lash_e.nr_robot.dispense_from_wellplate_into_vial(well, "Waste", volume)
         lash_e.nr_robot.remove_pipet()
     print()
 
@@ -78,15 +83,15 @@ def degradation_workflow():
     CYTATION_PROTOCOL_FILE = (r"C:\Protocols\degradation_protocol.prt") 
 
     # c. Time schedule for UV-VIS measurements: 
-    SCHEDULE_FILE = r"C:\Users\Imaging Controller\Desktop\SQ\degradation\schedule.csv"
+    SCHEDULE_FILE = ("degradation_schedule.csv")
 
-    #Simulate mode True or False
+    # d. Simulate mode True or False
     SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
     
-    # Number of replicate measurements per timepoint
+    # e. Number of replicate measurements per timepoint
     REPLICATES = 3  # Number of wells to use for each measurement (default: 3)
 
-    # d. Polymer dilution calculation:
+    # f. Polymer dilution calculation:
     sample_volume = 3.0 # Total volume of each polymer sample (mL)
     df = pd.read_csv(INPUT_VIAL_STATUS_FILE)
     sample_col = 'vial_name'  # Use vial_name column from CSV
