@@ -35,7 +35,7 @@ except ImportError as e:
     LLM_AVAILABLE = False
 
 # --- Experiment Config ---
-LIQUID = "glycerol"
+LIQUID = "water"
 SIMULATE = True
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
@@ -254,7 +254,8 @@ def get_initial_suggestions(ax_client, method, n, volume, expected_mass, expecte
                 break
     for i, (params, trial_index) in enumerate(suggestions):
         check_if_measurement_vial_full(lash_e, state)
-        result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set)
+        liquid_source = get_liquid_source(lash_e)
+        result = pipet_and_measure(lash_e, liquid_source, state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set)
         
         # Get the most recent measurement for display
         recent_mass = raw_measurements[-1]['mass'] if raw_measurements else expected_mass
@@ -306,7 +307,8 @@ def optimization_loop(ax_client, method, batch_size, volume, expected_mass, expe
                 suggestions = []
         for params, trial_index in suggestions:
             check_if_measurement_vial_full(lash_e, state)
-            result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set)
+            liquid_source = get_liquid_source(lash_e)
+            result = pipet_and_measure(lash_e, liquid_source, state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set)
             get_recommender().add_result(ax_client, trial_index, result)
             result.update(params)
             result.update({"volume": volume, "trial_index": trial_index, "strategy": method, "liquid": liquid, "time_reported": datetime.now().isoformat()})
@@ -361,7 +363,8 @@ def run_precision_test(lash_e, state, best_params, volume, expected_mass, expect
         check_if_measurement_vial_full(lash_e, state)
         
         # Get single measurement result
-        result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, best_params, expected_mass, expected_time, 1, SIMULATE, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set)
+        liquid_source = get_liquid_source(lash_e)
+        result = pipet_and_measure(lash_e, liquid_source, state["measurement_vial_name"], volume, best_params, expected_mass, expected_time, 1, SIMULATE, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set)
         
         # Fix the replicate number in the raw_measurements entry that was just added
         if raw_measurements and len(raw_measurements) > precision_start_idx:
@@ -477,6 +480,20 @@ def check_if_measurement_vial_full(lash_e, state):
         state["measurement_vial_name"] = new_vial_name
         lash_e.logger.info(f"[info] Switching to new measurement vial: {new_vial_name}")
         lash_e.nr_robot.move_vial_to_location(new_vial_name, "clamp", 0)
+
+def get_liquid_source(lash_e, minimum_volume=3.0):
+    """Check liquid_source volume and switch to liquid_source_2 if needed"""
+    try:
+        current_vol = lash_e.nr_robot.get_vial_info("liquid_source", "vial_volume")
+        if current_vol <= minimum_volume:
+            lash_e.logger.info(f"[info] liquid_source volume is {current_vol:.1f}mL, switching to liquid_source_2")
+            return "liquid_source_2"
+        else:
+            return "liquid_source"
+    except:
+        # If liquid_source doesn't exist or error, default to liquid_source_2
+        lash_e.logger.info("[info] Using liquid_source_2 as fallback")
+        return "liquid_source_2"
 
 def params_are_blacklisted(params, blacklisted_params, tolerance=1e-6):
     """Check if parameters are in the blacklist (failed precision test)"""
@@ -673,7 +690,8 @@ def main():
                     break
                     
                 check_if_measurement_vial_full(lash_e, state)
-                result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, 
+                liquid_source = get_liquid_source(lash_e)
+                result = pipet_and_measure(lash_e, liquid_source, state["measurement_vial_name"], volume, params, 
                                          expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, 
                                          raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
                 
@@ -770,7 +788,8 @@ def main():
                             continue
                         
                         check_if_measurement_vial_full(lash_e, state)
-                        result = pipet_and_measure(lash_e, 'liquid_source', state["measurement_vial_name"], volume, params, 
+                        liquid_source = get_liquid_source(lash_e)
+                        result = pipet_and_measure(lash_e, liquid_source, state["measurement_vial_name"], volume, params, 
                                                  expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, 
                                                  raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET)
                         
