@@ -118,12 +118,21 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     variability += np.random.normal(0, 0.3)
     variability = np.clip(variability, 0.5, 6)
     
-    # Time: affected by speeds and wait times (keep reasonable)
-    time_score = (params["aspirate_wait_time"] + params["dispense_wait_time"]) * 0.6
-    time_score += (40 - params["aspirate_speed"]) * 0.3  # Slower aspirate = more time
-    time_score += (40 - params["dispense_speed"]) * 0.3  # Slower dispense = more time
-    time_score += np.random.normal(25, 8)
-    time_score = np.clip(time_score, 10, 70)
+    # Time: center around provided expected_time baseline rather than arbitrary constants.
+    # Penalties for slower speeds / higher waits adjust upward; faster settings cannot push below 70% of expected_time.
+    baseline = expected_time if expected_time and expected_time > 0 else 30.0
+    penalty = 0.0
+    # Wait times add linearly (scaled)
+    penalty += (params["aspirate_wait_time"] + params["dispense_wait_time"]) * 0.15
+    # Speed penalties (only when slower than an 'ideal' ~20)
+    ideal_speed = 20
+    penalty += max(0, ideal_speed - params["aspirate_speed"]) * 0.4
+    penalty += max(0, ideal_speed - params["dispense_speed"]) * 0.4
+    # Small random variation (5% of baseline)
+    noise = np.random.normal(0, baseline * 0.05)
+    time_score = baseline + penalty + noise
+    # Enforce lower/upper bounds relative to baseline to avoid extreme rejects in simulation
+    time_score = np.clip(time_score, baseline * 0.7, baseline * 1.6)
     
     # Ensure no NaN values are returned
     deviation = np.nan_to_num(deviation, nan=15.0)
@@ -188,6 +197,10 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         if "density" not in LIQUIDS[liquid]:
             raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
         liquid_density = LIQUIDS[liquid]["density"]
+
+        debug_sim = os.environ.get("CAL_SIM_DEBUG", "1") == "1"
+        if debug_sim:
+            print(f"[sim-debug] target_volume_ul={volume*1000:.2f} expected_mass={expected_measurement:.5f}g density={liquid_density} -> expected_vol_from_mass={(expected_measurement/liquid_density)*1000:.2f}µL")
         
         for replicate_idx in range(replicate_count):
             # Generate a slightly different mass for each replicate to simulate real variability
@@ -197,6 +210,9 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             
             # Calculate volume from mass and density
             calculated_volume = replicate_mass / liquid_density
+
+            if debug_sim and replicate_idx == 0:
+                print(f"[sim-debug] first_replicate_mass={replicate_mass:.5f}g calc_volume_ul={calculated_volume*1000:.2f} deviation_pct={simulated_result['deviation']:.2f}")
             
             # Simulate replicate timing (base time + some variation)
             base_time = simulated_result["time"]

@@ -114,63 +114,73 @@ def plot_top_trial_histograms(best_trials, save_folder):
         plt.clf()
 
 def plot_measured_volume_over_time(raw_df, save_folder):
-    """Plot measured volume over measurements with target volume dashed lines."""
+    """Plot measured volume over time using calculated_volume if available (preferred).
+    Fallback sequence:
+      1. If 'calculated_volume' column exists (mL) -> use *1000.
+      2. Else if 'calculated_volume_ul' exists -> use directly.
+      3. Else if 'mass' exists -> assume density 1.0 g/mL (legacy) and mass*1000.
+      4. Otherwise abort.
+    """
     os.makedirs(save_folder, exist_ok=True)
-    
-    if 'mass' not in raw_df.columns:
-        print("Warning: No 'mass' column found - cannot create measured volume plot")
+
+    if raw_df is None or len(raw_df) == 0:
+        print("Warning: Empty raw_df - skipping measured volume plot")
         return
-    
-    plt.figure(figsize=(12, 8))
-    
-    # Convert mass to volume (assuming water density = 1.0 g/mL)
+
     raw_df = raw_df.copy()
-    raw_df['measured_volume_ul'] = raw_df['mass'] * 1000  # Convert g to μL
-    
+
+    if 'calculated_volume' in raw_df.columns:
+        raw_df['measured_volume_ul'] = raw_df['calculated_volume'] * 1000
+        source = 'calculated_volume'
+    elif 'calculated_volume_ul' in raw_df.columns:
+        raw_df['measured_volume_ul'] = raw_df['calculated_volume_ul']
+        source = 'calculated_volume_ul'
+    elif 'mass' in raw_df.columns:
+        raw_df['measured_volume_ul'] = raw_df['mass'] * 1000
+        source = 'mass (density=1.0 assumption)'
+    else:
+        print("Warning: No volume or mass column available for measured volume plot")
+        return
+
+    plt.figure(figsize=(12, 8))
+
     if 'volume' in raw_df.columns:
-        # Plot by target volume
         volumes = sorted(raw_df['volume'].unique())
         colors = plt.cm.tab10(np.linspace(0, 1, len(volumes)))
-        
         for i, vol in enumerate(volumes):
-            vol_data = raw_df[raw_df['volume'] == vol].copy()
-            vol_data = vol_data.reset_index(drop=True)
-            
-            target_ul = vol * 1000  # Convert mL to μL
-            
+            vol_data = raw_df[raw_df['volume'] == vol].reset_index(drop=True)
+            target_ul = vol * 1000
             plt.scatter(
-                range(len(vol_data)), 
+                range(len(vol_data)),
                 vol_data['measured_volume_ul'],
                 color=colors[i],
                 alpha=0.7,
                 label=f'{target_ul:.0f}μL target',
                 s=50
             )
-            
-            # Add target volume dashed line
-            plt.axhline(y=target_ul, 
-                       color=colors[i], 
-                       linestyle='--', 
-                       alpha=0.8,
-                       linewidth=2)
+            plt.axhline(y=target_ul,
+                        color=colors[i],
+                        linestyle='--',
+                        alpha=0.8,
+                        linewidth=2)
     else:
-        # Plot all measurements
         plt.scatter(range(len(raw_df)), raw_df['measured_volume_ul'], alpha=0.7, s=50)
-    
+
     plt.xlabel('Measurement Number')
     plt.ylabel('Measured Volume (μL)')
-    plt.title('Measured Volume Over Time with Target Volume Lines')
+    plt.title('Measured Volume Over Time (source: {0})'.format(source))
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    
+
     save_path = os.path.join(save_folder, 'measured_volume_over_time.png')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"Saved measured volume plot to: {save_path}")
+    print(f"Saved measured volume plot to: {save_path} (source={source})")
 
-def plot_time_vs_deviation(results_df, save_folder, optimal_conditions=None):
-    """Scatter plot of Time vs. Deviation with precision-test winning conditions highlighted."""
+def plot_time_vs_deviation(results_df, save_folder, optimal_conditions=None, show_absolute=False):
+    """Scatter plot of Time vs. Deviation (% or absolute) color-coded by volume.
+    Precision winner highlighting removed for visual simplicity."""
     
     # Check required columns
     required_cols = ['time', 'deviation', 'volume']
@@ -187,15 +197,19 @@ def plot_time_vs_deviation(results_df, save_folder, optimal_conditions=None):
     print(f"Creating scatter plot for {len(volumes)} volumes: {[v*1000 for v in volumes]} μL")
     
     for i, vol in enumerate(volumes):
-        df_sub = results_df[results_df['volume'] == vol]
+        df_sub = results_df[results_df['volume'] == vol].copy()
+        if show_absolute:
+            # Convert percent deviation to absolute deviation in µL for this volume
+            df_sub['deviation_abs_ul'] = (df_sub['deviation'] / 100.0) * (vol * 1000.0)
         label = f"{vol*1000:.0f}μL"
         
         print(f"  Volume {vol*1000:.0f}μL: {len(df_sub)} points")
 
         # Normal optimization points
+        y_vals = df_sub["deviation_abs_ul"] if show_absolute else df_sub["deviation"]
         plt.scatter(
             df_sub["time"],
-            df_sub["deviation"],
+            y_vals,
             color=colors[i],
             label=label,
             alpha=0.7,
@@ -204,35 +218,16 @@ def plot_time_vs_deviation(results_df, save_folder, optimal_conditions=None):
             s=60
         )
 
-        # Highlight precision-test winning conditions with stars
-        if optimal_conditions:
-            optimal_for_vol = [opt for opt in optimal_conditions if opt.get('target_volume_mL') == vol]
-            for opt in optimal_for_vol:
-                # Find the corresponding trial in results_df
-                matching_trials = df_sub[
-                    (abs(df_sub.get('aspirate_speed', 0) - opt.get('aspirate_speed', -999)) < 0.1) &
-                    (abs(df_sub.get('dispense_speed', 0) - opt.get('dispense_speed', -999)) < 0.1)
-                ]
-                if not matching_trials.empty:
-                    plt.scatter(
-                        matching_trials["time"],
-                        matching_trials["deviation"],
-                        marker="★",
-                        color="gold",
-                        s=200,
-                        edgecolors="black",
-                        linewidth=2,
-                        label="Precision Test Winner" if i == 0 else None
-                    )
+        # (Previously precision winners highlighted; removed per simplification request)
 
     plt.xlabel("Time (seconds)")
-    plt.ylabel("Deviation (μL)")  # Fixed: should be μL not %
-    plt.title("Time vs Deviation Scatter Plot")
+    plt.ylabel("Absolute Deviation (μL)" if show_absolute else "Deviation (%)")
+    plt.title("Time vs Deviation (absolute)" if show_absolute else "Time vs Deviation (%)")
     plt.legend(title="Volume")
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
-    save_path = os.path.join(save_folder, "time_vs_deviation_scatter.png")
+    save_path = os.path.join(save_folder, f"time_vs_deviation_scatter{'_abs' if show_absolute else ''}.png")
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Saved scatter plot to: {save_path}")
