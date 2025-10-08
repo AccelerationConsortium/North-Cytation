@@ -482,6 +482,10 @@ All notable changes to this project will be documented in this file.
 - Introduce richer analyzer visuals (scatter & volume-over-time) gated by optional plotting dependency.
 - Add resume capability (persisted optimizer state) and selective volume re-run support.
 
+## [1.0.1] - 2025-10-08
+### Changed
+- Added step in `wash_wellplate` to pipet wash solution to 'Waste' index after mixing for both solvent and acetone washes in `Degradation_serena.py`.
+
 ### Changed (post-0.6.1 config cleanup)
 - Reworked simulation configuration semantics:
   - `simulation_thresholds` now mirrors the main `thresholds` schema (base_* + scaling_* keys).

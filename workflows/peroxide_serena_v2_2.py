@@ -66,7 +66,7 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    SIMULATE =  False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+    SIMULATE =  True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 
     # input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")    
