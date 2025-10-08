@@ -83,7 +83,7 @@ def degradation_workflow():
     CYTATION_PROTOCOL_FILE = (r"C:\Protocols\degradation_protocol.prt") 
 
     # c. Time schedule for UV-VIS measurements: 
-    SCHEDULE_FILE = ("degradation_schedule.csv")
+    SCHEDULE_FILE = ("degradation_vial_schedule.csv")
 
     # d. Simulate mode True or False
     SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
