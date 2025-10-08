@@ -4,14 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [0.1.0] - 2025-10-06
 ### Added
-- Introduced `capabilities/` directory with:
   - `README.md` explaining literature-focused capability framing
   - `capabilities_catalog.yaml` listing core experimental capabilities
-  - `constraints.yaml` defining cross-cutting operational limits
-  - `solvent_whitelist.yaml` enumerating approved open-air solvents
 
 ### Notes
 - Documentation-only addition; no runtime logic modified.
+### Changed
+- `calibration_protocol_example.py`: Updated default `vial_file` path to `status/calibration_vials_short.csv` to align with existing modular calibration workflows.
+
+### Rationale
+- Ensures consistency with other calibration scripts referencing the short vial status file; reduces confusion when switching between workflows.
+
+### Migration Notes
+- If you previously relied on the older `res/vials_calibration.csv`, edit the protocol file or restore that path locally.
 
 ## [0.1.1] - 2025-10-06
 ### Added
@@ -153,6 +158,90 @@ All notable changes to this project will be documented in this file.
 ### Rationale
 - Polymer specificity axis elevated genuinely polymer-centric modification / usage workflows into early ranking positions, displacing high-citation device abstracts.
 - Percentile gating (vs fixed top_k) future-proofs scaling as corpus expands; exploration sampler enables evidence-driven adjustment (e.g., potential future tightening to 10–12% after adding a workflow_signal axis or penalty refinement).
+
+## [0.5.0] - 2025-10-08
+### Changed
+- `calibration_protocol_example.py` measurement pipeline now uses real mass-based measurement:
+  - Sets `measure_weight=True` when dispensing into the clamped measurement vial.
+  - Converts returned mass (g) to volume (mL) using density (from optional `liquids.yaml`).
+  - Fallback to target volume if hardware returns `None` (e.g., vial not clamped or simulation path).
+- Added lightweight loader for `liquids.yaml` (density + optional `refill_pipets` flag) with environment override `CALIBRATION_LIQUID` (defaults to `water`).
+- Implemented `new_pipet_each_time` (legacy `refill_pipets`) behavior: removes pipet between replicates when flag true.
+
+### Added
+- Extra replicate metadata keys in results: `mass_g`, `density_g_per_ml`, `new_pipet_each_time` for downstream analyzers.
+
+### Rationale
+- Replaces placeholder volume echo with physically meaningful measurement aligned with legacy modular calibration workflows.
+
+### Migration Notes
+- If prior downstream code assumed `volume` equaled target request, adjust to treat it as measured value.
+- Provide a `liquids.yaml` (or set `CALIBRATION_LIQUID`) to ensure accurate density; otherwise default 1.0 g/mL is used.
+
+## [0.6.0] - 2025-10-08
+### Changed
+- Orchestrator (`next_gen_calibration/run.py`) now attempts `initialize(cfg)` first; falls back to `initialize()` for backward compatibility.
+- `calibration_protocol_example.initialize` signature updated to accept optional `cfg` dict and liquid selection now derives from config (`cfg['liquid']` or `cfg['protocol']['liquid']`) instead of environment variables.
+- Template & simulated protocol files updated to accept optional `cfg` parameter for consistent developer ergonomics.
+
+### Removed
+- Environment-based liquid selection in example protocol (previous `CALIBRATION_LIQUID` usage); configuration is now explicit and source-controlled via `params.yaml`.
+
+### Rationale
+- Aligns protocol initialization with reproducible, versioned configuration while preserving zero-argument compatibility for existing scripts.
+
+### Migration Notes
+- To specify a liquid: add top-level `liquid: glycerol` (example) or `protocol: { liquid: glycerol }` in `params.yaml`.
+- Existing third-party protocols without `initialize(cfg)` continue to function unchanged.
+
+## [0.6.1] - 2025-10-08
+### Changed
+- `calibration_protocol_example` now ENFORCES explicit liquid + density specification via config. Removed silent defaults (`water`, density 1.0 g/mL).
+
+### Added
+- Validation errors: missing config, missing liquid key, missing liquids.yaml, unknown liquid, or missing `density_g_per_ml` now raise clear exceptions instead of proceeding with unsafe assumptions.
+
+### Rationale
+- Prevents accidental calibration against incorrect physical assumptions and forces reproducible, explicit experimental specification.
+
+### Migration
+- Ensure `params.yaml` contains either:
+  - `liquid: glycerol` (top-level), or
+  - `protocol: { liquid: glycerol }`
+- Provide a `liquids.yaml` entry: `glycerol: { density_g_per_ml: 1.261, refill_pipets: true }` (example).
+
+## [0.6.2] - 2025-10-08
+### Changed
+- Simplified `calibration_protocol_example` liquids file resolution: removed multi-path search. Now uses single canonical path `next_gen_calibration/liquids.yaml` unless explicitly overridden via `liquids_file` in config.
+
+### Rationale
+- Avoids speculative path assumptions; enforces explicitness and reduces silent divergence between environments.
+
+### Migration
+- If you previously relied on root-level `liquids.yaml`, move it to `next_gen_calibration/liquids.yaml` or set `liquids_file` in `params.yaml`.
+
+## [0.6.3] - 2025-10-08
+### Changed
+- `calibration_protocol_simulated.initialize` now seeds `random` from `cfg['random_seed']` (if present) before falling back to legacy `CAL_SIM_SEED` env variable.
+
+### Rationale
+- Ensures reproducibility is fully governed by versioned config rather than ephemeral environment state.
+
+### Migration
+- Remove any reliance on `CAL_SIM_SEED`; specify `random_seed:` in `params.yaml` instead.
+
+## [0.6.4] - 2025-10-08
+### Added
+- Progress logging in `next_gen_calibration/run.py` for volume start, screening phase, optimization loop, precision test entry, and pass event.
+
+### Changed
+- `Analyzer.write_history_csv` now unions all record keys (dynamic headers) and ignores extras to prevent ValueError on new fields (e.g., added `iteration`).
+
+### Rationale
+- Enhances transparency during long optimization runs and removes brittleness when record schema evolves.
+
+### Migration
+- No action required; downstream CSV consumers should handle potential additional columns.
 
 ### Next (Not in this version)
 - Optional `workflow_signal` positive axis (protocol / transformation verbs: dialyze, casting, swelling, gelation, fractionation) to concentrate workflow precision and unlock lower percentile gating without recall loss.
@@ -373,8 +462,234 @@ All notable changes to this project will be documented in this file.
 
 ### Notes / Next Steps (Not yet implemented)
 - Integrate real optimizer backend (Ax or scikit-optimize) behind strategy interface.
+## [0.6.1] - 2025-10-08
+### Added
+- Phase configuration (`phases` block in `next_gen_calibration/params.yaml`): screening, optimization, accuracy_gate, precision, objective.
+- Pluggable recommender interface (`recommender.py`) with `RandomLocalRecommender` and optional `AxRecommender` (auto-fallback if Ax not installed).
+- Phased run loop in `run.py` executing screening -> optimization -> precision_test per volume with accuracy gating (deviation + time thresholds) prior to precision verification.
+- Precision test logic: replicate run with best params, max deviation band check.
+
+### Changed
+- Simplified scalar objective (deviation + time_weight*time) ignoring std deviation; weights configurable via `objective.time_weight`.
+- History records now include phase tags; precision test result appended when gate achieved.
+
+### Notes
+- Percent-based precision band omitted (absolute band only per updated design clarification).
+- Ax example uses single-objective scalarization; multi-metric gating handled externally for phase transitions.
+- Future: resume capability, best_per_volume artifact, replicate raw export, hardware adapter.
 - Add robot hardware subclass implementing `_hardware_pipetting`.
 - Port tolerance logic & percent-fallback acceptance from legacy modular workflow into configurable policy block.
 - Introduce richer analyzer visuals (scatter & volume-over-time) gated by optional plotting dependency.
 - Add resume capability (persisted optimizer state) and selective volume re-run support.
+
+### Changed (post-0.6.1 config cleanup)
+- Reworked simulation configuration semantics:
+  - `simulation_thresholds` now mirrors the main `thresholds` schema (base_* + scaling_* keys).
+  - When `simulate: true` and this block is present, its values fully override the corresponding base thresholds (no relative floors, no extra rules).
+  - Removed prior relative floor keys (`min_relative_accuracy`, `min_relative_precision`) to eliminate divergent logic between real and simulated runs.
+
+  ### Added (post-0.6.1)
+  - Introduced protocol-based hardware lifecycle hooks replacing static `hardware.yaml`:
+    - `calibration_protocol_example.py` providing reference `initialize / measure / wrapup` implementation using existing `lash_e` robot methods.
+    - `calibration_protocol_template.py` empty scaffold with detailed inline guidance for custom lab adaptations.
+
+  ### Deprecated / Removed
+  - Removed `next_gen_calibration/hardware.yaml` (previous minimal handler schema). Rationale: procedural initialization & measurement sequences are better expressed as Python hooks than YAML DSL; keeps configuration YAML focused on static tunables (thresholds, parameter bounds) while delegating ordered hardware actions to code.
+
+  ### Rationale
+  - Narrower, explicit contract (`initialize`, `measure`, `wrapup`) clarifies robot I/O surface, simplifies customization per lab, and avoids schema drift / speculative fields in YAML.
+  - Facilitates simulation vs real hardware branching by swapping protocol module without touching orchestrator or parameter configuration.
+
+  ### Migration Notes
+  - If you previously relied on `hardware.yaml` handler import, migrate logic into a protocol module and point future orchestrator code to dynamically import it (planned minor refactor in upcoming version to wire selection through main run path).
+  - Goal: identical acceptance logic shape; only numbers differ if explicitly overridden for simulation.
+- Clarified `selective_optimization` semantics in `params.yaml` and changed `use_historical` default to `false`:
+  - enable: once a volume passes precision, fix all non volume-dependent params for later volumes.
+  - use_historical: controls whether optimizer history carries across volumes; when false we now re-instantiate the recommender each volume (while still applying fixed params).
+  
+### Renamed (config clarity)
+- `selective_optimization` -> `volume_dependant_optimization`
+- `seed` -> `random_seed`
+- `max_wells` -> `max_measurements` (note: currently unused in logic; placeholder for future measurement budgeting)
+### Restructured
+- Moved `phases.optimization.max_trials_per_volume` to `phases.max_trials_per_volume` (now clearly applies to all trial types per volume) and set default example to 96 while increasing `optimization.max_iters` to 30.
+### Documentation / Config Clarification
+- Inlined dynamic overaspirate cap: removed `constraints.overvolume_percent`; added `overaspirate_vol.max_fraction_of_target_volume`.
+- Expanded inline commentary across `next_gen_calibration/params.yaml` describing each top-level block and parameter semantics.
+
+## [0.6.3] - 2025-10-08
+### Added
+- `protocol` section in `next_gen_calibration/params.yaml` (`module`, optional `class_name`, `kwargs`) plus env override `CALIBRATION_PROTOCOL_MODULE` for zero-code protocol swapping.
+- Dynamic protocol loader in `next_gen_calibration/run.py` invoking `initialize/measure/wrapup` if present; falls back to legacy `RobotAdapter` when absent or invalid.
+
+### Changed
+- Removed legacy backward-compat extraction helper and any support for `calculated_volume` or `mass` result keys in next‑gen flow (volume-only contract enforced in protocol path).
+- `calibration_protocol_template.py` simplified: no simulation branch, no density references; pure volume return scaffold.
+- `calibration_protocol_example.py` cleaned to volume-only logic (internal conversion comment retained for hardware-specific adaptation).
+- `calibration_protocol_simulated.py` rewritten as self-contained lightweight simulator (no dependency on legacy `calibration_sdl_base` or `LIQUIDS`).
+
+### Removed
+- Reliance on legacy simulation imports (`calibration_sdl_base`, `LIQUIDS`) in simulated protocol.
+- Backward compatibility shims for mass/calculated_volume in orchestrator.
+
+### Rationale
+- Starts clean separation: core orchestrator agnostic to mass or density; protocol implementer bears responsibility for interpreting hardware measurements into volumes.
+- Reduces drift risk by eliminating transitional dual-schema handling and external legacy dependencies.
+
+### Migration Notes
+- Custom protocols must implement volume-centric result dicts (`volume`, `elapsed_s`, `replicate`).
+- Set protocol via YAML: `protocol.module: calibration_protocol_example` (or custom). Override at runtime with `CALIBRATION_PROTOCOL_MODULE` env var for quick switching.
+- If no protocol is specified or import fails, system automatically reverts to existing `RobotAdapter` simulation/hardware abstraction.
+
+### Next (Planned)
+- Best-per-volume artifact (`best_per_volume.json`) and flagging (`is_best_for_volume`).
+- Replicate deviation persistence and percent accuracy convenience fields.
+- Optional explicit source/dest vial configuration in params.
+
+## [0.6.4] - 2025-10-08
+### Changed
+- Simplified protocol interface: generic protocols now use signatures without `lash_e` or vial arguments:
+    initialize(context) -> state
+    measure(state, volume_mL, params, replicates, context) -> list[dict]
+    wrapup(state, context) -> None
+- `calibration_protocol_template.py` rewritten to reflect new minimal interface.
+- `calibration_protocol_simulated.py` decoupled from any hardware object (pure function simulation).
+- `calibration_protocol_example.py` explicitly marked hardware-specific and adds runtime guard enforcing presence of `lash_e.nr_robot`.
+- `params.yaml` protocol block made optional; auto-selection now based on `simulate` flag when module omitted.
+
+### Added
+- Runtime guard in example protocol (`_require_lash_e`) for early, clear error messaging when required hardware context is missing.
+- Comments in `params.yaml` documenting auto-selection logic and dual interface (hardware vs generic).
+
+### Removed
+- Implicit passing of `lash_e` to simulation/template protocols (they no longer accept it).
+
+### Rationale
+- Eliminates leaking hardware abstraction (`lash_e`) into protocols that do not require it, reducing user confusion and making simulation/custom backends trivial to implement.
+- Keeps hardware-specific complexity isolated to a single example module while maintaining backward compatibility for that path.
+
+### Migration Notes
+- Custom protocols created from earlier template versions should drop the `lash_e`, `source_vial`, and `dest_vial` parameters and adapt to the simplified interface.
+- Existing hardware protocol authors can keep the extended signature if desired, but only `calibration_protocol_example` is included by default.
+
+### Next
+- Potential config exposure of source/dest vial naming for hardware protocol; best-per-volume artifact enhancements.
+
+## [0.6.5] - 2025-10-08
+### Added
+- `per_volume_summary.json` artifact with aggregated stats per dispense volume (trial counts, best accuracy/time/precision, precision pass flag, gate achievement).
+
+### Changed
+- Analyzer now uses canonical record keys: `avg_accuracy_ul` (was `avg_dev_ul`) and `std_precision_ul` (was `std_dev_ul`).
+- Summary aggregates renamed to `mean_accuracy_dev_ul`, `mean_time_s`, `mean_precision_std_ul` (legacy `dev_mean`, `time_mean`, `var_mean` retained for backward compatibility).
+- Plot labels updated to reflect new accuracy/precision naming.
+
+### Rationale
+- Align terminology with orchestrator record schema (`avg_accuracy_ul` / `std_precision_ul`) eliminating NaN aggregates when legacy keys absent.
+- Provide quick per-volume inspection without parsing full `history.csv`.
+
+### Migration Notes
+- Downstream consumers relying on `dev_mean` / `var_mean` can continue unchanged; migrate to new names when convenient.
+- If custom tooling still emits legacy keys, analyzer preserves functionality via backward-compatible lookups.
+
+### Next
+- Potential addition of `best_params_per_volume.json` capturing param sets for reproducibility.
+
+## [0.6.6] - 2025-10-08
+### Fixed
+- Plot generation crash when legacy key `avg_dev_ul` absent; analyzer now falls back to `avg_accuracy_ul` and wraps each plot in try/except.
+
+### Added
+- Per-plot error resilience: failures are logged and do not abort remaining plot generation.
+
+### Rationale
+- Ensures forward schema changes (renamed metric keys) do not silently remove all plots.
+
+## [0.6.7] - 2025-10-08
+### Fixed
+- Analyzer plots: filtered out precision-only records (lacking avg_time_s / accuracy metrics) to prevent missing-key skips.
+- Resolved ndarray axes handling in volume small-multiples (previous attribute mismatch causing failure).
+
+### Changed
+- Deviation/Time iteration plots now use only records that contain the relevant metrics (screening + optimization phases), excluding precision test rows.
+
+### Rationale
+- Improves robustness and correctness of visualization when schema includes phase-specific record subsets.
+
+## [0.6.8] - 2025-10-08
+### Added
+- `time_by_volume.png`: small-multiples time plots mirroring deviation-by-volume.
+- `replicate_volume_scatter.png`: consolidated replicate-level measured volume scatter with dashed target lines.
+- `replicate_time_scatter.png`: analogous replicate-level timing scatter.
+
+### Removed
+- Less informative iteration plots (`deviation_over_iterations`, `time_over_iterations`) from default generation list.
+
+### Changed
+- Trial results now include `replicate_vols_ul` and `replicate_times_s` enabling replicate-level visualization.
+
+### Rationale
+- Focuses on actionable cross-volume comparisons and replicate distributions matching user feedback; drops low-signal iteration trend charts.
+
+## [0.6.9] - 2025-10-08
+### Fixed
+- Plot generation failure when a plot function returned None (filtered out before writing `plots.json`).
+
+### Rationale
+- Ensures optional plots that decide to skip (due to missing replicate data) don't abort artifact writing.
+
+## [0.6.10] - 2025-10-08
+### Fixed
+- Missing replicate-level scatter plots (volume/time) due to replicate arrays not being persisted in phase records.
+
+### Changed
+- `run.py` now injects `replicate_vols_ul` and `replicate_times_s` into screening, optimization, and precision_test records.
+
+### Rationale
+- Ensures analyzer has full replicate context for new plots without additional parsing of raw protocol outputs.
+
+## [0.7.0] - 2025-10-08
+### Changed (BREAKING)
+- Unified calibration protocol interface to minimal, argument-light form:
+    initialize() -> state(dict)
+    measure(state, volume_mL, params, replicates) -> list[dict]
+    wrapup(state) -> None
+- Removed `context` parameter from all protocol hooks; protocols now self-manage any external configuration (env vars, file reads, hard-coded defaults) without relying on orchestrator-passed dicts.
+- Eliminated orchestrator injection of `lash_e`, `source_vial`, `dest_vial`; hardware initialization is fully encapsulated within protocol `initialize()` (example hardware protocol now constructs and stores `lash_e` inside returned state).
+- Deleted adaptive signature trimming logic (`_adapt_call`) from `next_gen_calibration/run.py` along with backward hardware signature support.
+- Simplified internal trial helpers to call `measure(state, vol, params, reps)` directly.
+- Refactored `calibration_protocol_example.py` to internally:
+  - Initialize `Lash_E` (using optional env overrides `CAL_VIAL_FILE`, `CAL_SIMULATE`)
+  - Manage measurement vial rotation and source/destination vial selection locally
+  - Expose only the unified hook signatures.
+- Updated template & simulated protocols to match the new signature and removed unused `context` logic and random seed handling via config (now can use `CAL_SIM_SEED`).
+
+### Removed
+- Any reliance on `_context` entries in protocol state; state is now purely protocol-defined.
+- Orchestrator lash_e detection/import path and adaptive positional argument trimming.
+
+### Rationale
+- Reduces cognitive overhead for users authoring custom protocols by presenting a single, stable, minimal contract.
+- Avoids leaking lab-specific abstractions (`lash_e`, vial naming) into generic protocol space while preserving full flexibility inside hardware example.
+- Encourages explicit, user-owned initialization patterns (construction logic lives where it is maintained: in the protocol module itself).
+
+### Migration Notes
+- Existing custom protocols must drop extra parameters (`lash_e`, `context`, `source_vial`, `dest_vial`).
+- Replace earlier `initialize(context)` usage with `initialize()` and move any required config ingestion inside the protocol (read env vars or local files as needed).
+- If prior code depended on orchestrator-provided `run_dir` or `simulate`, replicate that by reading `os.environ` or adding your own detection inside the protocol.
+
+### Future
+- Potential optional helper wrapper for users wanting a typed config object (will remain additive, not replacing minimal core contract).
+
+## [0.7.1] - 2025-10-08
+### Changed
+- `calibration_protocol_example.py`: Removed all environment variable lookups (`CAL_SIMULATE`, `CAL_VIAL_FILE`, `CAL_SOURCE_VIAL`). Replaced with explicit hard-coded values (`simulate = False`, fixed `vial_file`, `source_vial`).
+
+### Rationale
+- Keeps the hardware example fully explicit and easier to understand for new users—no hidden dependency on process environment.
+- Aligns with goal: protocols should not assume any external configuration schema or ambient flags.
+
+### Migration Notes
+- If you previously relied on environment variables to toggle simulation or change vial/source names, edit the example file directly now.
+- To reintroduce dynamic behavior, you can manually add environment checks or CLI argument parsing within your forked protocol module without impacting the core orchestrator.
 
