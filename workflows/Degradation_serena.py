@@ -1,11 +1,10 @@
-from doctest import script_from_examples
 import sys
 import time
-from venv import create
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
 from pathlib import Path
+import math
 
 # Take aliquot -> Wellplate measurement (1 replicate)-> Put sample back to wellplate
 
@@ -15,6 +14,30 @@ def create_samples_and_measure(lash_e,output_dir,first_well_index,cytation_proto
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
     save_data(data_out,output_dir,first_well_index,simulate)
     wash_wellplate(lash_e,first_well_index,solvent_vial=solvent_vial, wash_vial=wash_vial, solvent_repeats=1, acetone_repeats=2, volume=0.3, replicates=replicates)
+
+def safe_pipet(source_vial, dest_vial, volume, lash_e):
+    move_source = lash_e.nr_robot.get_vial_info(source_vial, 'location_index') > 5
+    move_dest = lash_e.nr_robot.get_vial_info(dest_vial, 'location_index') > 5
+
+    repeats = 1
+    if volume > 1: 
+        repeats = math.ceil(volume)
+        volume = volume / repeats
+
+    for _ in range(repeats):
+        if move_source: 
+            lash_e.nr_robot.move_vial_to_location(vial_name=source_vial, location='main_8mL_rack', location_index=5)
+        elif move_dest:
+            lash_e.nr_robot.move_vial_to_location(vial_name=dest_vial, location='main_8mL_rack', location_index=5)
+
+        lash_e.nr_robot.dispense_from_vial_into_vial(source_vial, dest_vial, volume)
+
+        if move_source: 
+            lash_e.nr_robot.return_vial_home(vial_name=source_vial)
+        elif move_dest:
+            lash_e.nr_robot.return_vial_home(vial_name=dest_vial)
+
+
 
 def create_samples_in_wellplate(lash_e,sample_name,first_well_index,well_volume=0.2,replicates=1):
     print(f"\nTransferring sample: {sample_name} to wellplate at wells {first_well_index} to {first_well_index + replicates - 1} ({replicates} replicates)")
@@ -50,7 +73,7 @@ def wash_wellplate(lash_e,first_well_index, solvent_vial, wash_vial, solvent_rep
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
             # pipet wash solution to Waste
             lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, move_to_aspirate=False, well_plate_type="96 WELL PLATE")
-            lash_e.nr_robot.dispense_from_wellplate_into_vial(well, "Waste", volume)
+            lash_e.nr_robot.dispense_into_vial("waste", volume)
         lash_e.nr_robot.remove_pipet()
     # Acetone wash for all wells  
     for _ in range(acetone_repeats):
@@ -60,7 +83,7 @@ def wash_wellplate(lash_e,first_well_index, solvent_vial, wash_vial, solvent_rep
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
             # New step: pipet wash solution to Waste
             lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, move_to_aspirate=False, well_plate_type="96 WELL PLATE")
-            lash_e.nr_robot.dispense_from_wellplate_into_vial(well, "Waste", volume)
+            lash_e.nr_robot.dispense_into_vial("waste", volume)
         lash_e.nr_robot.remove_pipet()
     print()
 
@@ -83,7 +106,7 @@ def degradation_workflow():
     CYTATION_PROTOCOL_FILE = (r"C:\Protocols\degradation_protocol.prt") 
 
     # c. Time schedule for UV-VIS measurements: 
-    SCHEDULE_FILE = ("degradation_vial_schedule.csv")
+    SCHEDULE_FILE = ("../utoronto_demo/status/degradation_vial_schedule.csv")
 
     # d. Simulate mode True or False
     SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
@@ -110,8 +133,10 @@ def degradation_workflow():
     # e. Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 
-    #Samples
-    sample_solutions = {'sample_' + str(i) for i in range(1,4)} #Set of sample names (sample_1, sample_2, sample_3...)
+    # Samples: derive dynamically from status file (any vial_name containing 'sample')
+    sample_solutions = set(samples[sample_col].unique())
+    if not sample_solutions:
+        raise ValueError("No sample vials found (expected vial_name containing 'sample').")
 
     # Create a dictionary to look up volumes by sample name
     volume_lookup = {}
@@ -144,26 +169,27 @@ def degradation_workflow():
     for sample in sample_solutions:
         stock_vol = volume_lookup[sample]['stock_volume']
         print(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
-        lash_e.nr_robot.dispense_from_vial_into_vial('polymer_stock',sample,stock_vol)
+        safe_pipet('polymer_stock',sample,stock_vol, lash_e)
         lash_e.nr_robot.remove_pipet()
     
     for sample in sample_solutions:
         solvent_vol = volume_lookup[sample]['solvent_volume']
         print(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
-        lash_e.nr_robot.dispense_from_vial_into_vial('2MeTHF',sample,solvent_vol)
+        safe_pipet('2MeTHF',sample,solvent_vol, lash_e)
         lash_e.nr_robot.remove_pipet()
         lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
 
     # 2. Add acid to the polymer samples to initiate degradation and take scheduled UV-VIS measurements.
-    t0_map = {} #Dictionary to store the start time for each sample
+    t0_map = {} #Dictionary: sample -> start time (same time basis as start_time/current_time)
     first_well_index = 0 #This is the first well index to use for the first sample
 
     i = 0
     for sample in sample_solutions:
-        lash_e.nr_robot.dispense_from_vial_into_vial('6M HCl',sample,acid_volume)
+        safe_pipet('6M_HCl',sample,acid_volume, lash_e)
         lash_e.nr_robot.remove_pipet()
         print("\nAdding acid to sample: ", sample)
-        t0_map[sample] = time.time() #Record the start time for each sample
+        # Record per-sample start time using consistent basis (simulated clock = 0; real clock = wall time)
+        t0_map[sample] = 0 if SIMULATE else time.time()
         create_samples_and_measure(lash_e,output_dir,first_well_index,CYTATION_PROTOCOL_FILE,SIMULATE, solvent_vial='2MeTHF', wash_vial='acetone', sample_name=sample, replicates=REPLICATES)
         try:
             lash_e.temp_controller.turn_off_stirring()
@@ -181,40 +207,59 @@ def degradation_workflow():
     schedule = schedule.sort_values(by='start_time') #sort in ascending time order
     print("Schedule: ", schedule)
 
-    start_time = current_time = get_time(SIMULATE)
-    print("Starting timed portion at: ", start_time)
+    # Establish timing model.
+    # Simulation: use an integer counter (seconds). Real run: wall clock seconds.
+    start_time = 0 if SIMULATE else time.time()
+    current_time = start_time
+    print("Starting timed portion at (secs): ", start_time)
 
     # complete the items one at a time
     items_completed = 0
-    time_increment = 60
-    while items_completed < schedule.shape[0]: #While we still have items to complete in our schedule
+    time_increment = 60  # Heartbeat every 60s simulated / real elapsed
+    max_schedule_time = schedule['start_time'].max()
+    safety_cutoff = max_schedule_time + 120  # 2 minute buffer beyond last scheduled event
+
+    SIM_TICK_SECONDS = 1  # Advance by 1 simulated second per loop when SIMULATE=True
+
+    while items_completed < schedule.shape[0]: #While we still have items to complete
         active_item = schedule.iloc[items_completed]
         time_required = active_item['start_time']
         action_required = active_item['action']
         sample_index = active_item['sample_index']
-        current_time = get_time(SIMULATE,current_time)
-        measured_items = 0
+        # Advance time
+        if SIMULATE:
+            current_time += SIM_TICK_SECONDS
+        else:
+            current_time = time.time()
 
-        t0 = t0_map.get(sample_index, start_time) 
-        elapsed_time = current_time - t0
+        elapsed_time = current_time - t0_map.get(sample_index, start_time)
+        total_elapsed = current_time - start_time
 
-        #If we reach the triggered item's required time:
-        if elapsed_time > time_required:
-            print("\nEvent triggered: " + action_required + f" from sample {sample_index}")
-            print(f"Current Elapsed Time: {(current_time - start_time)/60} minutes")
-            print(f"Intended Elapsed Time: {(time_required)/60} minutes")
+        # Trigger condition (>= so exact match fires)
+        if elapsed_time >= time_required:
+            print(f"\n[TRIGGER] {action_required} for {sample_index} at elapsed {elapsed_time:.0f}s (target {time_required}s)")
+            if action_required in ("create_samples_and_measure","measure_samples"):
+                create_samples_and_measure(
+                    lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE,
+                    solvent_vial='2MeTHF', wash_vial='acetone', sample_name=sample_index, replicates=REPLICATES
+                )
+                first_well_index += REPLICATES
+            else:
+                print(f"[WARN] Unknown action '{action_required}' – skipping (row {items_completed})")
+            items_completed += 1
+        else:
+            # Heartbeat
+            if total_elapsed >= time_increment:
+                print(f"Heartbeat: total_elapsed={total_elapsed:.0f}s next_event_in={time_required - elapsed_time:.0f}s -> {sample_index}")
+                time_increment += 60
 
-            if action_required=="measure_samples":
-                create_samples_and_measure(lash_e,output_dir,first_well_index,CYTATION_PROTOCOL_FILE,SIMULATE, solvent_vial='2MeTHF', wash_vial='acetone', sample_name=sample_index, replicates=REPLICATES)
-                first_well_index += REPLICATES  # Move to next set of wells
-                items_completed+=1
-                measured_items+=1
-        elif current_time - start_time > time_increment:
-            print(f"I'm Alive! Current Elapsed Time: {(current_time - start_time)/60} minutes")
-            time_increment+=60
-        
+        # Safety cutoff (simulation or real) to avoid runaway
+        if total_elapsed > safety_cutoff:
+            print(f"[SAFETY STOP] Elapsed {total_elapsed:.0f}s exceeded schedule max {max_schedule_time}s + buffer. Breaking loop.")
+            break
+
         if not SIMULATE:
-            time.sleep(1)
+            time.sleep(0.25)
     lash_e.nr_robot.move_home()   
 
     lash_e.nr_robot.return_vial_home(sample_index)
