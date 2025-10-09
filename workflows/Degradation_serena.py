@@ -40,8 +40,6 @@ def safe_pipet(source_vial, dest_vial, volume, lash_e):
         lash_e.nr_robot.VIAL_DF.at[vial_index, 'home_location_index'] = int(dest_home_location_index)
         lash_e.nr_robot.return_vial_home(vial_name=dest_vial)
 
-
-
 def create_samples_in_wellplate(lash_e,sample_name,first_well_index,well_volume=0.2,replicates=1):
     print(f"\nTransferring sample: {sample_name} to wellplate at wells {first_well_index} to {first_well_index + replicates - 1} ({replicates} replicates)")
     lash_e.temp_controller.turn_off_stirring()
@@ -88,8 +86,8 @@ def wash_wellplate(lash_e,first_well_index, solvent_vial, wash_vial, solvent_rep
     for _ in range(acetone_repeats):
         for well in wells_to_wash:
             lash_e.nr_robot.aspirate_from_vial(wash_vial,volume,track_height=True)
-            lash_e.nr_robot.move_vial_to_location(wash_vial, location='main_8mL_rack', location_index=5)#Added by OAM
-            lash_e.nr_robot.dispense_into_wellplate([well],[volume], well_plate_type="96 WELL PLATE") #Added by OAM
+            lash_e.nr_robot.move_vial_to_locationwash_vial, location='main_8mL_rack', location_index=5)#Added by OAM
+            lash_e.nr_robot.dispense_into_wellplat(e([well],[volume], well_plate_type="96 WELL PLATE") #Added by OAM
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
             # pipet wash solution to Waste
             # New step: pipet wash solution to Waste
