@@ -87,7 +87,7 @@ def wash_wellplate(lash_e,first_well_index, solvent_vial, wash_vial, solvent_rep
         for well in wells_to_wash:
             lash_e.nr_robot.aspirate_from_vial(wash_vial,volume,track_height=True)
             lash_e.nr_robot.move_vial_to_locationwash_vial, location='main_8mL_rack', location_index=5)#Added by OAM
-            lash_e.nr_robot.dispense_into_wellplat(e([well],[volume], well_plate_type="96 WELL PLATE") #Added by OAM
+            lash_e.nr_robot.dispense_into_wellplat([well],[volume], well_plate_type="96 WELL PLATE") #Added by OAM
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
             # pipet wash solution to Waste
             # New step: pipet wash solution to Waste
