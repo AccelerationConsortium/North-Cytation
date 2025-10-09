@@ -1514,10 +1514,10 @@ class North_Robot(North_Base):
         if not self.simulate:
             time.sleep(wait_time)
 
-        if blowout_vol > 0:
-            #blow_speed = self.get_tip_dependent_aspirate_speed()
+        if blowout_vol > 0: #Adjust this later into pipetting parameter
+            blow_speed = 5
             self.logger.debug(f"Blowing out {blowout_vol:.3f} mL")
-            #self.adjust_pump_speed(0, blow_speed)
+            self.adjust_pump_speed(0, blow_speed)
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_LEFT)
             self.c9.aspirate_ml(0, blowout_vol)
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)
@@ -1856,6 +1856,19 @@ class North_Robot(North_Base):
         """
         if parameters is None:
             parameters = PipettingParameters()
+
+        if aspirate:
+            #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
+            required_tip_type = self.select_pipet_tip(volume, None)
+            
+            if self.HELD_PIPET_TYPE is None:
+                # No pipet held, get the required one
+                self.get_pipet(required_tip_type)
+            elif self.HELD_PIPET_TYPE != required_tip_type:
+                # Wrong pipet type held, need to switch
+                self.logger.info(f"Switching from {self.HELD_PIPET_TYPE} to {required_tip_type}")
+                self.remove_pipet()
+                self.get_pipet(required_tip_type)
             
         # Get appropriate speed and wait time based on operation
         if aspirate:
@@ -2378,10 +2391,9 @@ class North_Robot(North_Base):
         
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
-        self.logger.info(f"Returning vial {self.get_vial_info(vial_index, 'vial_name')} to home location")
-        
         home_location = self.get_vial_info(vial_index,'home_location')
         home_location_index = self.get_vial_info(vial_index,'home_location_index')
+        self.logger.info(f"Returning vial {self.get_vial_info(vial_index, 'vial_name')} to home location: {home_location} index {home_location_index}")
         
         vial_location = self.get_vial_info(vial_index,'location')
         if vial_location == 'clamp' and self.GRIPPER_STATUS == "Cap":
@@ -2745,7 +2757,14 @@ class North_Robot(North_Base):
                     return None
                 return location_data
             else:
-                # Array of positions - return the specified index
+                # Array of positions - ensure index is an int (avoid numpy.float64 issues)
+                try:
+                    if not isinstance(location_index, (int,)):
+                        # Convert safely (e.g., numpy.float64 -> int)
+                        location_index = int(location_index)
+                except (TypeError, ValueError):
+                    self.pause_after_error(f"Non-integer location index for {location_name}: {location_index}")
+                    return None
                 return location_data[location_index]
                 
         except (AttributeError, IndexError) as e:

@@ -4,7 +4,6 @@ sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
 from pathlib import Path
-import math
 
 # Take aliquot -> Wellplate measurement (1 replicate)-> Put sample back to wellplate
 
@@ -16,28 +15,32 @@ def create_samples_and_measure(lash_e,output_dir,first_well_index,cytation_proto
     wash_wellplate(lash_e,first_well_index,solvent_vial=solvent_vial, wash_vial=wash_vial, solvent_repeats=1, acetone_repeats=2, volume=0.3, replicates=replicates)
 
 def safe_pipet(source_vial, dest_vial, volume, lash_e):
-    move_source = lash_e.nr_robot.get_vial_info(source_vial, 'location_index') > 5
-    move_dest = lash_e.nr_robot.get_vial_info(dest_vial, 'location_index') > 5
+    # Always coerce to plain int so downstream list indexing never sees numpy.float64
+    source_index = int(lash_e.nr_robot.get_vial_info(source_vial, 'location_index'))
+    dest_index = int(lash_e.nr_robot.get_vial_info(dest_vial, 'location_index'))
+    move_source = source_index > 5
+    move_dest = dest_index > 5
 
-    repeats = 1
-    if volume > 1: 
-        repeats = math.ceil(volume)
-        volume = volume / repeats
+    if move_source: 
+        lash_e.nr_robot.move_vial_to_location(vial_name=source_vial, location='main_8mL_rack', location_index=5)
+        # Option 2: correctly update home_location_index via mask (DataFrame still indexed by vial_index)
+        lash_e.nr_robot.VIAL_DF.loc[lash_e.nr_robot.VIAL_DF['vial_name']==source_vial, 'home_location_index'] = 5
+    elif move_dest:
+        lash_e.nr_robot.move_vial_to_location(vial_name=dest_vial, location='main_8mL_rack', location_index=5)
+        lash_e.nr_robot.VIAL_DF.loc[lash_e.nr_robot.VIAL_DF['vial_name']==dest_vial, 'home_location_index'] = 5
 
-    for _ in range(repeats):
-        if move_source: 
-            lash_e.nr_robot.move_vial_to_location(vial_name=source_vial, location='main_8mL_rack', location_index=5)
-        elif move_dest:
-            lash_e.nr_robot.move_vial_to_location(vial_name=dest_vial, location='main_8mL_rack', location_index=5)
+    # Debug one-liner: verify indices are ints
+    print(f"SAFE_PIPET {source_vial}->{dest_vial} src_idx={source_index}({type(source_index).__name__}) dst_idx={dest_index}({type(dest_index).__name__}) move_src={move_source} move_dst={move_dest}")
 
-        lash_e.nr_robot.dispense_from_vial_into_vial(source_vial, dest_vial, volume)
+    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial, dest_vial, volume, remove_tip=True)
 
-        if move_source: 
-            lash_e.nr_robot.return_vial_home(vial_name=source_vial)
-        elif move_dest:
-            lash_e.nr_robot.return_vial_home(vial_name=dest_vial)
-
-
+    if move_source: 
+        # Restore original home index (int) and enforce column int dtype before returning
+        lash_e.nr_robot.VIAL_DF.loc[lash_e.nr_robot.VIAL_DF['vial_name']==source_vial, 'home_location_index'] = int(source_index)
+        lash_e.nr_robot.return_vial_home(vial_name=source_vial)
+    elif move_dest:
+        lash_e.nr_robot.VIAL_DF.loc[lash_e.nr_robot.VIAL_DF['vial_name']==dest_vial, 'home_location_index'] = int(dest_index)
+        lash_e.nr_robot.return_vial_home(vial_name=dest_vial)        
 
 def create_samples_in_wellplate(lash_e,sample_name,first_well_index,well_volume=0.2,replicates=1):
     print(f"\nTransferring sample: {sample_name} to wellplate at wells {first_well_index} to {first_well_index + replicates - 1} ({replicates} replicates)")
@@ -71,6 +74,7 @@ def wash_wellplate(lash_e,first_well_index, solvent_vial, wash_vial, solvent_rep
         for well in wells_to_wash:
             lash_e.nr_robot.aspirate_from_vial(solvent_vial,volume,track_height=True)
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
+            lash_e.nr_robot.remove_pipet()
             # pipet wash solution to Waste
             lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, move_to_aspirate=False, well_plate_type="96 WELL PLATE")
             lash_e.nr_robot.dispense_into_vial("waste", volume)
@@ -81,6 +85,7 @@ def wash_wellplate(lash_e,first_well_index, solvent_vial, wash_vial, solvent_rep
             lash_e.nr_robot.pipet_from_wellplate(well,volume,aspirate=True,move_to_aspirate=False,well_plate_type="96 WELL PLATE")
             lash_e.nr_robot.aspirate_from_vial(wash_vial,volume,track_height=True)
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
+            lash_e.nr_robot.remove_pipet()
             # New step: pipet wash solution to Waste
             lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, move_to_aspirate=False, well_plate_type="96 WELL PLATE")
             lash_e.nr_robot.dispense_into_vial("waste", volume)
