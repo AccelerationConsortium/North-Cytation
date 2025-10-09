@@ -33,15 +33,16 @@ except ImportError as e:
     LLM_AVAILABLE = False
 
 # --- Experiment Config ---
-LIQUID = "water"
-SIMULATE = True
+LIQUID = "glycerol"
+SIMULATE = False
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
 PRECISION_REPLICATES = 5
 VOLUMES = [0.05, 0.025, 0.1] #Small tip
-#VOLUMES = [0.5, 0.3, 1.0] # Large tip
+#VOLUMES = [0.3, 0.5, 1.0] # Large tip
+#VOLUMES = [0.02, 0.01, 0.005] #Very small volumes
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 
@@ -64,6 +65,23 @@ USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
 # Options: 'qEI' (Expected Improvement), 'qLogEI' (Log Expected Improvement), 'qNEHVI' (Noisy Expected Hypervolume Improvement)
 BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 
+# Criteria (For real life testing) - Base tolerances with volume-dependent scaling
+BASE_DEVIATION_UL = 1.0  # Base ±1 μL absolute deviation for optimization acceptance  
+BASE_TIME_SECONDS = 60 # Base time in seconds
+BASE_VARIATION_UL = 2.0  # Base ±2 μL absolute variation for precision test
+# Volume scaling factors (per 100 μL above baseline)
+DEVIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (1μL->2μL for 500μL)
+TIME_SCALING_FACTOR = 1.5  # +1 second per 100 μL  
+VARIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (2μL->3μL for 500μL)
+
+# Selective parameter optimization config
+max_overvolume_percent = 0.2  # 20% extra volume to account for pipetting error
+USE_SELECTIVE_OPTIMIZATION = True  # Enable selective parameter optimization
+USE_HISTORICAL_DATA_FOR_OPTIMIZATION = False  # Load data from previous volumes into optimizer
+VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]  # Parameters to optimize for each volume
+ALL_PARAMS = ["aspirate_speed", "dispense_speed", "aspirate_wait_time", "dispense_wait_time", 
+              "retract_speed", "blowout_vol", "post_asp_air_vol", "overaspirate_vol"]
+
 if SIMULATE:
     DEFAULT_LOCAL_AUTOSAVE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'output', 'calibration_runs'))
     os.makedirs(DEFAULT_LOCAL_AUTOSAVE_DIR, exist_ok=True)
@@ -71,25 +89,6 @@ if SIMULATE:
     print(f"[info] Using BASE_AUTOSAVE_DIR={BASE_AUTOSAVE_DIR}")
 else:
     BASE_AUTOSAVE_DIR='C:\\Users\\Imaging Controller\\Desktop\\Calibration_SDL_Output\\New_Method'
-
-# Criteria (For real life testing) - Base tolerances with volume-dependent scaling
-BASE_DEVIATION_UL = 1.0  # Base ±1 μL absolute deviation for optimization acceptance  
-BASE_TIME_SECONDS = 20  # Base time in seconds
-BASE_VARIATION_UL = 2.0  # Base ±2 μL absolute variation for precision test
-
-max_overvolume_percent = 0.2  # 20% extra volume to account for pipetting error
-
-# Volume scaling factors (per 100 μL above baseline)
-DEVIATION_SCALING_FACTOR = 0.2  # +0.2 μL per 100 μL (1μL->2μL for 500μL)
-TIME_SCALING_FACTOR = 1.0  # +1 second per 100 μL  
-VARIATION_SCALING_FACTOR = 0.2  # +0.2 μL per 100 μL (2μL->3μL for 500μL)
-
-# Selective parameter optimization config
-USE_SELECTIVE_OPTIMIZATION = True  # Enable selective parameter optimization
-USE_HISTORICAL_DATA_FOR_OPTIMIZATION = True  # Load data from previous volumes into optimizer
-VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]  # Parameters to optimize for each volume
-ALL_PARAMS = ["aspirate_speed", "dispense_speed", "aspirate_wait_time", "dispense_wait_time", 
-              "retract_speed", "blowout_vol", "post_asp_air_vol", "overaspirate_vol"]
 
 # --- Helper Methods ---
 def get_volume_dependent_tolerances(volume_ml):
@@ -516,7 +515,7 @@ def check_if_measurement_vial_full(lash_e, state):
         lash_e.logger.info(f"[info] Switching to new measurement vial: {new_vial_name}")
         lash_e.nr_robot.move_vial_to_location(new_vial_name, "clamp", 0)
 
-def get_liquid_source(lash_e, minimum_volume=3.0):
+def get_liquid_source(lash_e, minimum_volume=2.0):
     """Check liquid_source volume and switch to liquid_source_2 if needed"""
     try:
         current_vol = lash_e.nr_robot.get_vial_info("liquid_source", "vial_volume")

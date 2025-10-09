@@ -178,6 +178,69 @@ def plot_measured_volume_over_time(raw_df, save_folder):
     plt.close()
     print(f"Saved measured volume plot to: {save_path} (source={source})")
 
+def plot_measured_time_over_measurements(raw_df, save_folder, optimal_conditions=None):
+    """Plot measured time over measurements with precision test winner time reference."""
+    os.makedirs(save_folder, exist_ok=True)
+    
+    if raw_df is None or len(raw_df) == 0:
+        print("Warning: Empty raw_df - skipping measured time plot")
+        return
+    
+    if 'time' not in raw_df.columns:
+        print("Warning: No 'time' column found - cannot create measured time plot")
+        return
+    
+    plt.figure(figsize=(12, 8))
+    
+    raw_df = raw_df.copy()
+    
+    if 'volume' in raw_df.columns:
+        # Plot by target volume
+        volumes = sorted(raw_df['volume'].unique())
+        colors = plt.cm.tab10(np.linspace(0, 1, len(volumes)))
+        
+        for i, vol in enumerate(volumes):
+            vol_data = raw_df[raw_df['volume'] == vol].reset_index(drop=True)
+            
+            target_ul = vol * 1000  # Convert mL to μL for display
+            
+            plt.scatter(
+                range(len(vol_data)), 
+                vol_data['time'],
+                color=colors[i],
+                alpha=0.7,
+                label=f'{target_ul:.0f}μL target',
+                s=50
+            )
+            
+            # Add precision test winner time line if available
+            if optimal_conditions:
+                optimal_for_vol = [opt for opt in optimal_conditions if opt.get('target_volume_mL') == vol]
+                if optimal_for_vol:
+                    winner_time = optimal_for_vol[0].get('time', None)
+                    if winner_time:
+                        plt.axhline(y=winner_time, 
+                                   color=colors[i], 
+                                   linestyle='--', 
+                                   alpha=0.8,
+                                   linewidth=2,
+                                   label=f'{target_ul:.0f}μL winner time' if i < 3 else "")  # Only label first few to avoid clutter
+    else:
+        # Plot all measurements
+        plt.scatter(range(len(raw_df)), raw_df['time'], alpha=0.7, s=50)
+    
+    plt.xlabel('Measurement Number')
+    plt.ylabel('Measured Time (seconds)')
+    plt.title('Measured Time Over Measurements with Precision Test Winner Times')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    save_path = os.path.join(save_folder, 'measured_time_over_measurements.png')
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved measured time plot to: {save_path}")
+
 def plot_time_vs_deviation(results_df, save_folder, optimal_conditions=None, show_absolute=False):
     """Scatter plot of Time vs. Deviation (% or absolute) color-coded by volume.
     Precision winner highlighting removed for visual simplicity."""
