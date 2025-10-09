@@ -1668,6 +1668,23 @@ class North_Robot(North_Base):
                 
         return True
 
+
+    def get_tip_if_needed(self, required_tip_type):
+        """
+        Ensure the robot is holding an appropriate pipet tip for the specified volume.
+        If no tip is held or the held tip is inappropriate, it will get the correct tip.
+        
+        Args:
+            volume (float): Volume in mL to determine appropriate tip"""
+        if self.HELD_PIPET_TYPE is None:
+            # No pipet held, get the required one
+            self.get_pipet(required_tip_type)
+        elif self.HELD_PIPET_TYPE != required_tip_type:
+            # Wrong pipet type held, need to switch
+            self.logger.info(f"Switching from {self.HELD_PIPET_TYPE} to {required_tip_type}")
+            self.remove_pipet()
+            self.get_pipet(required_tip_type)
+
     # ====================================================================
     # 5. LIQUID HANDLING OPERATIONS
     # ====================================================================
@@ -1704,15 +1721,9 @@ class North_Robot(North_Base):
 
         #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
         required_tip_type = self.select_pipet_tip(amount_mL, specified_tip)
-        
-        if self.HELD_PIPET_TYPE is None:
-            # No pipet held, get the required one
-            self.get_pipet(required_tip_type)
-        elif self.HELD_PIPET_TYPE != required_tip_type:
-            # Wrong pipet type held, need to switch
-            self.logger.info(f"Switching from {self.HELD_PIPET_TYPE} to {required_tip_type}")
-            self.remove_pipet()
-            self.get_pipet(required_tip_type)
+
+        #Get a tip if we need one
+        self.get_tip_if_needed(required_tip_type)
         
         #Check for an issue with the pipet and the specified amount, pause and send slack message if so
         self.check_if_aspiration_volume_unacceptable(amount_mL) 
@@ -1842,7 +1853,7 @@ class North_Robot(North_Base):
         return total_mass
 
     #TODO add error checks and safeguards
-    def pipet_from_wellplate(self, wp_index, volume, parameters=None, aspirate=True, move_to_aspirate=True, well_plate_type="96 WELL PLATE"):
+    def pipet_from_wellplate(self, wp_index, volume, parameters=None, aspirate=True, specified_tip=None, move_to_aspirate=True, well_plate_type="96 WELL PLATE"):
         """
         Aspirate or dispense from/to a wellplate.
         
@@ -1856,7 +1867,14 @@ class North_Robot(North_Base):
         """
         if parameters is None:
             parameters = PipettingParameters()
-            
+
+        #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
+        required_tip_type = self.select_pipet_tip(volume, specified_tip)
+
+        #Get a tip if we need one
+        self.get_tip_if_needed(required_tip_type)
+        
+
         # Get appropriate speed and wait time based on operation
         if aspirate:
             speed = parameters.aspirate_speed or self.get_tip_dependent_aspirate_speed()

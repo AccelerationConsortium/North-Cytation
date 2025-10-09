@@ -1,22 +1,47 @@
-# Parameter and constraint specification for next-gen calibration
-# Speeds are unitless relative settings; times in seconds; volumes in mL
-liquid: glycerol
-simulate: true
-seed: 7
-volumes: [0.05, 0.025, 0.1]
-precision_replicates: 5
-initial_suggestions: 5
-batch_size: 1
-max_wells: 96
-criteria:
-  base_deviation_ul: 1.0
-  base_time_s: 20
-  base_variation_ul: 2.0
-  deviation_scaling_per_100ul: 0.2
+# Parameter specification for next-gen calibration
+# -----------------------------------------------------------------------------
+# Notes:
+# - Speeds are unitless relative settings (higher = faster within safe range)
+# - Times are seconds; volumes listed in mL in `volumes`
+# - Thresholds apply at or below 100 µL target; linear additive scaling above
+# - Simulation overrides (if any) fully replace matching threshold keys
+# - Dynamic per-volume cap for overaspirate volume lives inside that param spec
+# - `max_measurements` currently informational (not enforced yet)
+# - Protocol selection:
+#     Provide both `hardware_module` and `simulated_module`. The orchestrator picks
+#     based on `simulate` flag unless CALIBRATION_PROTOCOL_MODULE override set.
+#     Optionally specify an explicit single `module` to force one for all modes.
+#     Hardware module may use extended signature (lash_e,...); simulated is generic.
+# -----------------------------------------------------------------------------
+liquid: glycerol                      # Liquid identity (affects simulated density if used)
+simulate: true                        # If true use simulation model instead of hardware
+random_seed: 7                        # Seed for reproducibility (optimizer + simulation)
+volumes: [0.05, 0.025, 0.1]          # Target dispense volumes (mL) processed in order
+max_measurements: 96                  # (Reserved) Potential global cap on total replicate measurements
+protocol:
+  hardware_module: calibration_protocol_example     # Used when simulate:false
+  simulated_module: calibration_protocol_simulated  # Used when simulate:true
+  # module: some_custom_module                      # Forces same module for both modes (optional)
+  # class_name: OptionalClass              # If provided, instantiate this class; else use free functions
+  # kwargs: {}                             # Optional constructor kwargs when class_name used
+output:
+  base_dir: output/next_gen_runs      # Root directory for timestamped run folders
+thresholds:                           # Acceptance criteria (absolute µL / seconds)
+  base_accuracy_ul: 1.0               # |avg - target| ≤ this at ≤100 µL
+  base_time_s: 20                     # Mean replicate time ≤ this at ≤100 µL
+  base_precision_ul: 2.0              # Max replicate deviation ≤ this at ≤100 µL
+  accuracy_scaling_per_100ul: 0.2     # Add µL per +100 µL above 100 µL
+  time_scaling_per_100ul: 1.0         # Add seconds per +100 µL above 100 µL
+  precision_scaling_per_100ul: 0.2    # Add µL per +100 µL above 100 µL
+simulation_thresholds:                # Optional overrides when simulate:true
+  base_accuracy_ul: 5.0
+  base_time_s: 60
+  base_precision_ul: 7.0
+  accuracy_scaling_per_100ul: 0.2
   time_scaling_per_100ul: 1.0
-  variation_scaling_per_100ul: 0.2
-parameters:
-  aspirate_speed:
+  precision_scaling_per_100ul: 0.2
+parameters:                           # Tunable parameters
+  aspirate_speed:                     # Relative aspiration speed
     type: int
     bounds: [5, 35]
     default: 17
@@ -50,22 +75,18 @@ parameters:
     bounds: [0.0, 0.15]
     default: 0.004
     volume_dependent: true
-selective_optimization:
-  enable: true
+    max_fraction_of_target_volume: 0.2   # Dynamic cap: effective upper = min(static_high, target_mL * fraction)
+volume_dependant_optimization:         # Cross-volume shrinking of search space
+  enable: true                         # Freeze non-volume-dependent params after first precision pass
   volume_dependent_params: [blowout_vol, overaspirate_vol]
-  use_historical: true
-simulation:
-  min_rel_dev: 0.12
-  min_rel_var: 0.15
-  max_percent_deviation: 20
-tolerance_policy:
-  deviation:
-    absolute_ul: 1.5        # absolute deviation threshold in uL
-    percent: 3.0            # percent deviation threshold (% of target volume)
-  variation:
-    stdev_ul: 2.5           # std deviation threshold in uL
-  time:
-    seconds: 25             # average time threshold in seconds
-  logic: any_deviation      # 'any_deviation' -> absolute OR percent passes deviation; 'both' -> require both
-output:
-  base_dir: output/next_gen_runs
+  use_historical: false                # Carry optimizer history across volumes when true
+phases:                               # Volume workflow: screening -> optimization -> precision loop
+  screening:
+    n_trials: 5                       # Exploratory random/Sobol-like trials
+  optimization:
+    max_iters: 30                     # Max guided iterations (single trial each)
+    replicates: 1                     # Replicates per optimization trial (kept low)
+  precision:
+    replicates: 5                     # Replicates for precision verification
+  max_trials_per_volume: 96           # Hard cap across ALL trial types per volume
+
