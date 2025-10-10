@@ -75,7 +75,7 @@ TIME_SCALING_FACTOR = 1.5  # +1 second per 100 μL
 VARIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (2μL->3μL for 500μL)
 
 # Selective parameter optimization config
-max_overvolume_percent = 0.2  # 20% extra volume to account for pipetting error
+MAX_OVERASPIRATE_UL = 10.0  # Maximum overaspirate volume in microliters (fixed)
 USE_SELECTIVE_OPTIMIZATION = True  # Enable selective parameter optimization
 USE_HISTORICAL_DATA_FOR_OPTIMIZATION = False  # Load data from previous volumes into optimizer
 VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]  # Parameters to optimize for each volume
@@ -566,7 +566,7 @@ def save_experiment_config(autosave_dir, new_pipet_each_time_set=None):
         'precision_replicates': PRECISION_REPLICATES,
         'volumes': VOLUMES,
         'max_wells': MAX_WELLS,
-        'max_overvolume_percent': max_overvolume_percent,
+        'max_overaspirate_ul': MAX_OVERASPIRATE_UL,
         'new_pipet_each_time_set': new_pipet_each_time_set,
         'base_deviation_ul': BASE_DEVIATION_UL,
         'base_time_seconds': BASE_TIME_SECONDS,
@@ -874,7 +874,7 @@ def main():
         ax_client = get_recommender().create_model(SEED, INITIAL_SUGGESTIONS, bayesian_batch_size=BATCH_SIZE, 
                                            volume=volume, tip_volume=tip_volume, model_type=bayesian_model_type, 
                                            optimize_params=optimize_params, fixed_params=fixed_params, simulate=SIMULATE,
-                                           max_overvolume_percent=max_overvolume_percent)
+                                           max_overaspirate_ul=MAX_OVERASPIRATE_UL)
         
         # Step 1: Determine starting candidate
         if len(completed_volumes) > 0:
