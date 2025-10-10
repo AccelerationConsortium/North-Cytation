@@ -75,7 +75,7 @@ TIME_SCALING_FACTOR = 1.5  # +1 second per 100 μL
 VARIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (2μL->3μL for 500μL)
 
 # Selective parameter optimization config
-max_overvolume_percent = 0.2  # 20% extra volume to account for pipetting error
+MAX_OVERASPIRATE_UL = 10.0  # Maximum overaspirate volume in microliters (fixed)
 USE_SELECTIVE_OPTIMIZATION = True  # Enable selective parameter optimization
 USE_HISTORICAL_DATA_FOR_OPTIMIZATION = False  # Load data from previous volumes into optimizer
 VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]  # Parameters to optimize for each volume
@@ -105,8 +105,8 @@ def get_volume_dependent_tolerances(volume_ml):
     if SIMULATE:
         # Allow environment override for quick tuning without code edits
         try:
-            min_rel_dev = float(os.environ.get('SIM_MIN_REL_DEV', '0.08'))  # default 8%
-            min_rel_var = float(os.environ.get('SIM_MIN_REL_VAR', '0.10'))  # default 10%
+            min_rel_dev = float(os.environ.get('SIM_MIN_REL_DEV', '0.06'))  # default 8%
+            min_rel_var = float(os.environ.get('SIM_MIN_REL_VAR', '0.08'))  # default 10%
         except ValueError:
             min_rel_dev, min_rel_var = 0.8, 0.10
         deviation_ul = max(deviation_ul, volume_ul * min_rel_dev)
@@ -229,7 +229,15 @@ def load_previous_data_into_model(ax_client, all_results):
             # Extract outcomes
             raw_data = {}
             for col in outcome_columns:
-                if col in result and result[col] is not None:
+                if col == 'time' and col in result and result[col] is not None:
+                    # Compute time_score for historical data
+                    raw_time = float(result[col])
+                    if raw_time >= BASE_TIME_SECONDS:
+                        time_score = abs(raw_time - BASE_TIME_SECONDS)
+                    else:
+                        time_score = 0.0
+                    raw_data[col] = (time_score, 0.0)  # (mean, sem)
+                elif col in result and result[col] is not None:
                     raw_data[col] = (float(result[col]), 0.0)  # (mean, sem)
             
             # Skip if we don't have all required outcomes
@@ -558,7 +566,7 @@ def save_experiment_config(autosave_dir, new_pipet_each_time_set=None):
         'precision_replicates': PRECISION_REPLICATES,
         'volumes': VOLUMES,
         'max_wells': MAX_WELLS,
-        'max_overvolume_percent': max_overvolume_percent,
+        'max_overaspirate_ul': MAX_OVERASPIRATE_UL,
         'new_pipet_each_time_set': new_pipet_each_time_set,
         'base_deviation_ul': BASE_DEVIATION_UL,
         'base_time_seconds': BASE_TIME_SECONDS,
@@ -585,6 +593,181 @@ def save_experiment_config(autosave_dir, new_pipet_each_time_set=None):
     
     print(f"✅ Saved experiment config to: {config_path}")
     return config_path
+
+def generate_calibration_report(volume_report_data, volumes, completed_volumes):
+    """Generate a comprehensive calibration report with diagnostics and recommendations."""
+    
+    report_lines = []
+    report_lines.append("CALIBRATION REPORT")
+    report_lines.append("=" * 50)
+    report_lines.append("")
+    
+    # Volume-by-volume details
+    for volume in volumes:
+        data = volume_report_data.get(volume, {})
+        volume_ul = int(volume * 1000)
+        
+        report_lines.append(f"Volume_{volume_ul}uL:")
+        
+        # SOBOL trials
+        sobol_count = data.get('sobol_trials', 0)
+        if sobol_count > 0:
+            report_lines.append(f"   {sobol_count} SOBOL TRIALS")
+        
+        # Optimization trials with failure breakdown
+        opt_count = data.get('optimization_trials', 0)
+        time_failures = data.get('time_failures', 0)
+        accuracy_failures = data.get('accuracy_failures', 0)
+        
+        if opt_count > 0:
+            failure_text = ""
+            if time_failures > 0 or accuracy_failures > 0:
+                failure_parts = []
+                if time_failures > 0:
+                    failure_parts.append(f"Time Failures {time_failures}")
+                if accuracy_failures > 0:
+                    failure_parts.append(f"Accuracy Failures {accuracy_failures}")
+                failure_text = f"; {'; '.join(failure_parts)}"
+            
+            report_lines.append(f"   {opt_count} OPTIMIZATION TRIALS{failure_text}")
+        
+        # Precision test results
+        precision_attempted = data.get('precision_trials_attempted', 0)
+        precision_passed = data.get('precision_passed', False)
+        
+        if precision_attempted > 0:
+            status = "PASSED" if precision_passed else "FAILED"
+            report_lines.append(f"   {precision_attempted} PRECISION TRIALS ({status})")
+        
+        # Overall status
+        completed = data.get('completed', False)
+        if completed:
+            report_lines.append("   STATUS: [COMPLETED]")
+        else:
+            candidate_found = data.get('candidate_found', False)
+            if not candidate_found:
+                report_lines.append("   STATUS: [FAILED] NO CANDIDATE FOUND")
+            else:
+                report_lines.append("   STATUS: [FAILED] PRECISION TEST FAILED")
+        
+        report_lines.append("")
+    
+    # Summary section
+    report_lines.append("SUMMARY:")
+    report_lines.append("-" * 20)
+    
+    # Calculate overall statistics
+    total_volumes = len(volumes)
+    completed_count = len(completed_volumes)
+    
+    report_lines.append(f"Volumes Completed: {completed_count}/{total_volumes}")
+    report_lines.append("")
+    
+    # Optimization trial statistics
+    report_lines.append("Optimization Trials:")
+    for volume in volumes:
+        data = volume_report_data.get(volume, {})
+        volume_ul = int(volume * 1000)
+        opt_count = data.get('optimization_trials', 0)
+        time_failures = data.get('time_failures', 0)
+        accuracy_failures = data.get('accuracy_failures', 0)
+        
+        if opt_count > 0:
+            time_pass_rate = ((opt_count - time_failures) / opt_count) * 100
+            accuracy_pass_rate = ((opt_count - accuracy_failures) / opt_count) * 100
+            report_lines.append(f"  {volume_ul}uL: Time passing: {time_pass_rate:.1f}%, Accuracy passing: {accuracy_pass_rate:.1f}%")
+    
+    report_lines.append("")
+    
+    # Precision test statistics
+    report_lines.append("Precision Tests:")
+    for volume in volumes:
+        data = volume_report_data.get(volume, {})
+        volume_ul = int(volume * 1000)
+        precision_attempted = data.get('precision_trials_attempted', 0)
+        precision_passed = data.get('precision_passed', False)
+        
+        if precision_attempted > 0:
+            status = "Passed" if precision_passed else "Failed"
+            report_lines.append(f"  {volume_ul}uL: {status} ({precision_attempted} trials)")
+    
+    report_lines.append("")
+    
+    # Success check and diagnostics
+    all_completed = completed_count == total_volumes
+    if all_completed:
+        report_lines.append("[SUCCESS] CALIBRATION SUCCESSFUL!")
+    else:
+        report_lines.append("[INCOMPLETE] CALIBRATION INCOMPLETE - DIAGNOSTICS:")
+        report_lines.extend(generate_failure_diagnostics(volume_report_data, volumes))
+    
+    return "\n".join(report_lines)
+
+def generate_failure_diagnostics(volume_report_data, volumes):
+    """Generate diagnostic recommendations based on failure patterns."""
+    
+    diagnostics = []
+    
+    if not volumes:
+        return diagnostics
+    
+    first_volume = volumes[0]
+    first_data = volume_report_data.get(first_volume, {})
+    
+    # Check first volume completion
+    first_completed = first_data.get('completed', False)
+    first_candidate_found = first_data.get('candidate_found', False)
+    
+    if not first_completed:
+        if not first_candidate_found:
+            # Failed on optimization for first volume
+            opt_count = first_data.get('optimization_trials', 0)
+            time_failures = first_data.get('time_failures', 0)
+            accuracy_failures = first_data.get('accuracy_failures', 0)
+            
+            if opt_count > 0:
+                time_pass_rate = ((opt_count - time_failures) / opt_count) * 100
+                accuracy_pass_rate = ((opt_count - accuracy_failures) / opt_count) * 100
+                
+                if time_pass_rate < 20:  # Less than 20% passing time
+                    diagnostics.append("- Time restrictions appear too strict for the first volume")
+                    diagnostics.append("  Recommendation: Increase BASE_TIME_SECONDS or TIME_SCALING_FACTOR")
+                
+                if accuracy_pass_rate < 20:  # Less than 20% passing accuracy
+                    diagnostics.append("- Accuracy restrictions appear too strict for the first volume") 
+                    diagnostics.append("  Recommendation: Increase BASE_DEVIATION_UL or DEVIATION_SCALING_FACTOR -or OVERASPIRATE_VOLUME_%")
+            
+            diagnostics.append(f"- First volume failed to find acceptable candidate after {opt_count} trials")
+        
+        else:
+            # Found candidate but precision test failed
+            diagnostics.append("- First volume precision test failed")
+            diagnostics.append("  Recommendation: Increase BASE_VARIATION_UL (precision window too narrow)")
+    
+    else:
+        # First volume completed, check progression to higher volumes
+        failed_volumes = []
+        for volume in volumes[1:]:  # Skip first volume
+            data = volume_report_data.get(volume, {})
+            if not data.get('completed', False):
+                failed_volumes.append(volume)
+        
+        if failed_volumes:
+            diagnostics.append("- First volume completed but later volumes failed")
+            diagnostics.append("  Recommendation: The scaling factors may be too aggressive")
+            diagnostics.append("  Consider increasing DEVIATION_SCALING_FACTOR, TIME_SCALING_FACTOR, or VARIATION_SCALING_FACTOR")
+            
+            # Check if it's mainly precision failures at higher volumes
+            precision_failures = 0
+            for vol in failed_volumes:
+                data = volume_report_data.get(vol, {})
+                if data.get('candidate_found', False) and not data.get('precision_passed', False):
+                    precision_failures += 1
+            
+            if precision_failures > 0:
+                diagnostics.append("  Focus on: VARIATION_SCALING_FACTOR (precision tests failing)")
+    
+    return diagnostics
 
 def main():
     lash_e, DENSITY_LIQUID, NEW_PIPET_EACH_TIME_SET, state = initialize_experiment()
@@ -617,6 +800,9 @@ def main():
     # Note: criteria will be calculated per volume using get_volume_dependent_tolerances()
     trial_count = 0
     
+    # Report data collection - track statistics for each volume
+    volume_report_data = {}  # Dictionary keyed by volume with statistics
+    
     # Create single output directory for entire experiment
     simulate_suffix = "_simulate" if SIMULATE else ""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + f"_{LIQUID}{simulate_suffix}")
@@ -633,6 +819,18 @@ def main():
         print(f"\n{'='*60}")
         print(f"🧪 VOLUME: {volume*1000:.0f}μL")
         print(f"{'='*60}")
+        
+        # Initialize report data for this volume
+        volume_report_data[volume] = {
+            'sobol_trials': 0,
+            'optimization_trials': 0,
+            'time_failures': 0,
+            'accuracy_failures': 0,
+            'precision_trials_attempted': 0,
+            'precision_passed': False,
+            'completed': False,
+            'candidate_found': False
+        }
         
         # Calculate volume-dependent tolerances
         tolerances = get_volume_dependent_tolerances(volume)
@@ -676,7 +874,7 @@ def main():
         ax_client = get_recommender().create_model(SEED, INITIAL_SUGGESTIONS, bayesian_batch_size=BATCH_SIZE, 
                                            volume=volume, tip_volume=tip_volume, model_type=bayesian_model_type, 
                                            optimize_params=optimize_params, fixed_params=fixed_params, simulate=SIMULATE,
-                                           max_overvolume_percent=max_overvolume_percent)
+                                           max_overaspirate_ul=MAX_OVERASPIRATE_UL)
         
         # Step 1: Determine starting candidate
         if len(completed_volumes) > 0:
@@ -715,6 +913,9 @@ def main():
                 if trial_count >= MAX_WELLS - PRECISION_REPLICATES:
                     break
                     
+                # Count this as a SOBOL trial (initial screening)
+                volume_report_data[volume]['sobol_trials'] += 1
+                
                 check_if_measurement_vial_full(lash_e, state)
                 liquid_source = get_liquid_source(lash_e)
                 result = pipet_and_measure(lash_e, liquid_source, state["measurement_vial_name"], volume, params, 
@@ -813,6 +1014,9 @@ def main():
                             print(f"   ⚫ SKIPPING: Parameters blacklisted (failed previous precision test)")
                             continue
                         
+                        # Count this as an optimization trial
+                        volume_report_data[volume]['optimization_trials'] += 1
+                        
                         check_if_measurement_vial_full(lash_e, state)
                         liquid_source = get_liquid_source(lash_e)
                         result = pipet_and_measure(lash_e, liquid_source, state["measurement_vial_name"], volume, params, 
@@ -826,12 +1030,20 @@ def main():
                         # Check if this trial meets criteria - convert % deviation to absolute μL
                         deviation_pct = result.get('deviation', float('inf'))
                         absolute_deviation_ul = (deviation_pct / 100) * (volume * 1000)  # Convert to μL
-                        meets_criteria = (absolute_deviation_ul <= criteria['max_deviation_ul'] and 
-                                        result.get('time', float('inf')) <= criteria['max_time'])
+                        time_fails = result.get('time', float('inf')) > criteria['max_time']
+                        accuracy_fails = absolute_deviation_ul > criteria['max_deviation_ul']
+                        meets_criteria = not (time_fails or accuracy_fails)
+                        
+                        # Track failure reasons
+                        if time_fails:
+                            volume_report_data[volume]['time_failures'] += 1
+                        if accuracy_fails:
+                            volume_report_data[volume]['accuracy_failures'] += 1
+                        
                         status = "✅ CANDIDATE" if meets_criteria else "❌ reject"
                         print(f"   Optimization trial: {recent_mass:.4f}g → {recent_volume*1000:.1f}μL, {result.get('deviation', 'N/A'):.1f}% dev, {result.get('time', 'N/A'):.0f}s - {status}")
                         
-                        get_recommender().add_result(ax_client, trial_index, result)
+                        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS)
                         result.update(params)
                         optimization_strategy = "LLM" if use_llm_for_optimization else "Bayesian"
                         result.update({"volume": volume, "trial_index": trial_index, "strategy": optimization_strategy, "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
@@ -846,6 +1058,7 @@ def main():
                             candidate_params = params
                             candidate_trial_number = trial_count
                             optimization_found = True
+                            volume_report_data[volume]['candidate_found'] = True
                             print(f"   ✅ FOUND ACCEPTABLE CANDIDATE from trial #{trial_count}!")
                             break
                 
@@ -863,9 +1076,14 @@ def main():
             passed, precision_measurements, precision_times = run_precision_test(lash_e, state, candidate_params, volume, expected_mass, expected_time, autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET, tolerances['variation_ul'])
             trial_count += len(precision_measurements)
             
+            # Track precision test results
+            volume_report_data[volume]['precision_trials_attempted'] = len(precision_measurements)
+            volume_report_data[volume]['precision_passed'] = passed
+            
             if passed:
                 # SUCCESS! 
                 completed_volumes.append((volume, candidate_params))
+                volume_report_data[volume]['completed'] = True
                 
                 # Calculate actual performance metrics from precision test measurements
                 avg_obtained_volume = np.mean(precision_measurements) if precision_measurements else volume
@@ -1073,7 +1291,7 @@ def main():
                     sub = results_df[results_df['volume'] == vol]
                     if not sub.empty and 'deviation' in sub and 'time' in sub:
                         best_row = sub.iloc[(sub['deviation']).abs().argmin()]
-                        performance_lines.append(f"{int(vol*1000)}µL: dev={best_row['deviation']:.1f}%, time={best_row['time']:.1f}s")
+                        performance_lines.append(f"{int(vol*1000)}uL: dev={best_row['deviation']:.1f}%, time={best_row['time']:.1f}s")
             perf_block = "; ".join(performance_lines) if performance_lines else "(no trial metrics captured)"
 
             slack_msg = (
@@ -1085,6 +1303,35 @@ def main():
             slack_agent.send_slack_message(slack_msg)
         except Exception as e:
             print(f"Warning: Failed to send detailed Slack summary: {e}")
+    
+    # Generate and save calibration report
+    try:
+        report_content = generate_calibration_report(volume_report_data, VOLUMES, completed_volumes)
+        
+        # Save report to file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"calibration_report_{timestamp}.txt"
+        report_path = os.path.join(autosave_dir, report_filename)
+        
+        with open(report_path, 'w') as f:
+            f.write(report_content)
+        
+        print(f"\n📊 CALIBRATION REPORT SAVED: {report_path}")
+        print(f"{'='*60}")
+        print("REPORT SUMMARY:")
+        print(f"{'='*60}")
+        
+        # Print key summary information
+        completed_count = len(completed_volumes)
+        total_count = len(VOLUMES)
+        if completed_count == total_count:
+            print("[SUCCESS] CALIBRATION SUCCESSFUL!")
+        else:
+            print(f"[INCOMPLETE] CALIBRATION INCOMPLETE: {completed_count}/{total_count} volumes completed")
+            print(f"[REPORT] See full report for diagnostics: {report_filename}")
+        
+    except Exception as e:
+        print(f"Warning: Failed to generate calibration report: {e}")
     
     print(f"{'='*60}")
 

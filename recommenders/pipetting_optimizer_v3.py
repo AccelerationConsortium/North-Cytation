@@ -13,7 +13,7 @@ from botorch.acquisition.logei import qLogExpectedImprovement
 from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
 
 obj1_name = "deviation"
-obj2_name = "time"
+obj2_name = "time"  # Note: This will actually receive time_score values computed from raw time
 
 # Default parameter bounds for all parameters
 DEFAULT_PARAMETER_BOUNDS = {
@@ -24,11 +24,11 @@ DEFAULT_PARAMETER_BOUNDS = {
     "retract_speed": {"type": "range", "bounds": [1.0, 15.0]},
     "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},  # Changed from pre_asp_air_vol, increased range
     "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
-    "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set based on volume and max_overvolume_percent
+    "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set to fixed maximum in create_model()
 }
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, 
-                 optimize_params=None, fixed_params=None, simulate=False, max_overvolume_percent=0.75):
+                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0):
     """
     Create an Ax client for selective parameter optimization.
     
@@ -42,7 +42,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         optimize_params: List of parameter names to optimize. If None, optimize all parameters.
         fixed_params: Dict of parameter names and values to keep fixed
         simulate: Whether in simulation mode
-        max_overvolume_percent: Maximum overvolume as fraction of target volume (default 0.75 = 75%)
+        max_overaspirate_ul: Maximum overaspirate volume in microliters (default 10.0 µL)
     """
     
     # Default to optimizing all parameters if not specified
@@ -127,7 +127,9 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         
         # Special handling for volume-dependent bounds
         if param_name == "overaspirate_vol":
-            param_config["bounds"] = [0.0, volume * max_overvolume_percent]  # Use configurable max overvolume
+            # Convert max_overaspirate_ul (microliters) to mL for consistency with other volumes
+            max_overaspirate_ml = max_overaspirate_ul / 1000.0
+            param_config["bounds"] = [0.0, max_overaspirate_ml]  # Fixed maximum overaspirate volume
         
         parameters.append(param_config)
     
@@ -175,8 +177,15 @@ def get_suggestions(ax_client, volume, n=1):
     
     return suggestions
 
-def add_result(ax_client, trial_index, results):
-    """Add results for only deviation and time (no variability)."""
+def add_result(ax_client, trial_index, results, base_time_seconds=20):
+    """Add results for only deviation and time_score (no variability).
+    
+    Args:
+        ax_client: The Ax client instance
+        trial_index: The trial index
+        results: Dictionary containing 'deviation' and 'time' keys
+        base_time_seconds: Base time threshold for computing time_score
+    """
     
     # Debug: Print the results to check for NaN values
     print(f"DEBUG: Trial {trial_index} results: {results}")
@@ -186,10 +195,19 @@ def add_result(ax_client, trial_index, results):
         if pd.isna(value):
             print(f"WARNING: NaN found in {key}: {value}")
     
-    # Only use deviation and time (ignore variability)
+    # Compute time_score: abs(time - base_time) if time >= base_time, else 0
+    raw_time = results["time"]
+    if raw_time >= base_time_seconds:
+        time_score = abs(raw_time - base_time_seconds)
+    else:
+        time_score = 0.0
+    
+    print(f"DEBUG: Computed time_score={time_score:.2f} from raw_time={raw_time:.2f}, base_time={base_time_seconds}")
+    
+    # Only use deviation and time_score (ignore variability)
     data = {
         "deviation": (results["deviation"], 0.0),
-        "time": (results["time"], 0.0),
+        "time": (time_score, 0.0),
     }
     
     # Additional check for NaN in the data being passed to Ax
