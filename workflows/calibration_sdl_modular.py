@@ -67,10 +67,11 @@ BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 
 # Criteria (For real life testing) - Volume-dependent relative percentage tolerances
 # Based on pipetting accuracy standards: relative bias and CV thresholds
-BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cutoff)... Should probably calculate from viscosity. Eg 20s for water, 60s for glycerol. 
+BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cutoff)... Should probably calculate from viscosity. Eg 20s for water, 60s for glycerol... Can this be automated?
 TIME_SCALING_FACTOR = 2.5  # Default: +2.5 seconds per 100 μL above baseline (will be updated adaptively)
 TIME_BUFFER_FRACTION = 0.1  # Buffer fraction: optimal_time = base_time * (1 - buffer)
 ADAPTIVE_TIME_SCALING = True  # Calculate TIME_SCALING_FACTOR from actual measurements when possible
+TIME_TRANSITION_MODE = "relu"  # Options: "relu" (max(0,x)), "smooth" (log(1+exp(x))), "asymmetric" (gentle penalty for fast times)
 
 # Relative percentage tolerances (applies to both optimization and precision test)
 # Volume ranges defined as (min_volume_ul, max_volume_ul, tolerance_pct)
@@ -323,12 +324,24 @@ def load_previous_data_into_model(ax_client, all_results):
             raw_data = {}
             for col in outcome_columns:
                 if col == 'time' and col in result and result[col] is not None:
-                    # Compute time_score for historical data - only penalize being slower than optimal
+                    # Compute time_score for historical data using same method as current experiment
                     raw_time = float(result[col])
                     result_volume = result.get('volume', 0.1)  # Default to 100μL if not specified
                     volume_tolerances = get_volume_dependent_tolerances(result_volume)
                     scaled_optimal_target = volume_tolerances['time_optimal_target']
-                    time_score = max(0, raw_time - scaled_optimal_target)
+                    
+                    import numpy as np
+                    if TIME_TRANSITION_MODE == "smooth":
+                        time_score = np.log(1 + np.exp(raw_time - scaled_optimal_target))
+                    elif TIME_TRANSITION_MODE == "asymmetric":
+                        if raw_time < scaled_optimal_target:
+                            low_time_penalty_factor = 0.1  # Match optimizer setting
+                            time_score = (scaled_optimal_target - raw_time) * low_time_penalty_factor
+                        else:
+                            time_score = max(0, raw_time - scaled_optimal_target)
+                    else:  # "relu"
+                        time_score = max(0, raw_time - scaled_optimal_target)
+                    
                     raw_data[col] = (time_score, 0.0)  # (mean, sem)
                 elif col in result and result[col] is not None:
                     raw_data[col] = (float(result[col]), 0.0)  # (mean, sem)
@@ -381,7 +394,7 @@ def get_initial_suggestions(ax_client, method, n, volume, expected_mass, expecte
         # Get volume-scaled optimal target for time scoring
         volume_tolerances = get_volume_dependent_tolerances(volume)
         scaled_optimal_target = volume_tolerances['time_optimal_target']
-        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target)
+        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target, TIME_TRANSITION_MODE)
         result.update(params)
         result.update({"volume": volume, "trial_index": trial_index, "strategy": method, "liquid": liquid, "time_reported": datetime.now().isoformat()})
         result = strip_tuples(result)
@@ -428,7 +441,7 @@ def optimization_loop(ax_client, method, batch_size, volume, expected_mass, expe
             # Get volume-scaled optimal target for time scoring
             volume_tolerances = get_volume_dependent_tolerances(volume)
             scaled_optimal_target = volume_tolerances['time_optimal_target']
-            get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target)
+            get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target, TIME_TRANSITION_MODE)
             result.update(params)
             result.update({"volume": volume, "trial_index": trial_index, "strategy": method, "liquid": liquid, "time_reported": datetime.now().isoformat()})
             result = strip_tuples(result)
@@ -671,6 +684,7 @@ def save_experiment_config(autosave_dir, new_pipet_each_time_set=None):
         'time_scaling_factor': TIME_SCALING_FACTOR,
         'time_buffer_fraction': TIME_BUFFER_FRACTION,
         'adaptive_time_scaling': ADAPTIVE_TIME_SCALING,
+        'time_transition_mode': TIME_TRANSITION_MODE,
         'volume_tolerance_ranges': VOLUME_TOLERANCE_RANGES,
         'use_selective_optimization': USE_SELECTIVE_OPTIMIZATION,
         'use_historical_data_for_optimization': USE_HISTORICAL_DATA_FOR_OPTIMIZATION,
@@ -882,6 +896,8 @@ def main():
     print(f"   📊 Initial Screening (first volume): {'LLM' if use_llm_for_screening else 'SOBOL'}")
     print(f"   🔍 Optimization Loops: {'LLM' if use_llm_for_optimization else f'Bayesian ({bayesian_model_type})'}")
     print(f"   🧠 Bayesian Model Type: {bayesian_model_type}")
+    transition_names = {"relu": "ReLU (max)", "smooth": "Smooth (log)", "asymmetric": "Asymmetric (gentle fast penalty)"}
+    print(f"   ⏱️  Time Transition: {transition_names.get(TIME_TRANSITION_MODE, TIME_TRANSITION_MODE)}")
     print(f"   🔧 LLM Available: {LLM_AVAILABLE}")
     if (use_llm_for_screening or use_llm_for_optimization) and not LLM_AVAILABLE:
         print(f"   ⚠️  WARNING: LLM requested but not available - will fallback to traditional methods")
@@ -1037,7 +1053,7 @@ def main():
                 # Get volume-scaled optimal target for time scoring
                 volume_tolerances = get_volume_dependent_tolerances(volume)
                 scaled_optimal_target = volume_tolerances['time_optimal_target']
-                get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target)
+                get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target, TIME_TRANSITION_MODE)
                 result.update(params)
                 result.update({"volume": volume, "trial_index": trial_index, "strategy": screening_method, "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
                 result = strip_tuples(result)
@@ -1149,7 +1165,7 @@ def main():
                         # Get volume-scaled optimal target for time scoring
                         volume_tolerances = get_volume_dependent_tolerances(volume)
                         scaled_optimal_target = volume_tolerances['time_optimal_target']
-                        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target)
+                        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target, TIME_TRANSITION_MODE)
                         result.update(params)
                         optimization_strategy = "LLM" if use_llm_for_optimization else "Bayesian"
                         result.update({"volume": volume, "trial_index": trial_index, "strategy": optimization_strategy, "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
