@@ -164,7 +164,7 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
 def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time):
-    blowout_vol = params.get("blowout_vol", 0.05)  # Default blowout volume
+    blowout_vol = params.get("blowout_vol", 0.0)  # Default blowout volume
     post_air = params.get("post_asp_air_vol", 0)
     over_volume = params.get("overaspirate_vol", 0)
     #over_volume = 0
@@ -179,12 +179,13 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         retract_speed=params["retract_speed"],
         pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
         post_asp_air_vol=post_air,
-        blowout_vol=blowout_vol,  # Use blowout_vol instead of pre_asp_air_vol
+        # Note: blowout_vol removed from aspirate_params since it's only used during dispense
     )
     dispense_params = PipettingParameters(
         dispense_speed=params["dispense_speed"],
         dispense_wait_time=params["dispense_wait_time"],
         air_vol=air_vol,
+        blowout_vol=blowout_vol,  # CRITICAL: Add blowout_vol to dispense_params!
     )  
 
     if simulate:

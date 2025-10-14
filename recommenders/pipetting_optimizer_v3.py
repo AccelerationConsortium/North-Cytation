@@ -28,7 +28,8 @@ DEFAULT_PARAMETER_BOUNDS = {
 }
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, 
-                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0):
+                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0, 
+                 max_wait_time=30.0):
     """
     Create an Ax client for selective parameter optimization.
     
@@ -43,6 +44,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         fixed_params: Dict of parameter names and values to keep fixed
         simulate: Whether in simulation mode
         max_overaspirate_ul: Maximum overaspirate volume in microliters (default 10.0 µL)
+        max_wait_time: Maximum wait time for aspirate_wait_time and dispense_wait_time (default 30.0 s)
     """
     
     # Default to optimizing all parameters if not specified
@@ -130,6 +132,9 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
             # Convert max_overaspirate_ul (microliters) to mL for consistency with other volumes
             max_overaspirate_ml = max_overaspirate_ul / 1000.0
             param_config["bounds"] = [0.0, max_overaspirate_ml]  # Fixed maximum overaspirate volume
+        elif param_name in ["aspirate_wait_time", "dispense_wait_time"]:
+            # Use dynamic max_wait_time instead of hardcoded 30.0
+            param_config["bounds"] = [0.0, max_wait_time]
         
         parameters.append(param_config)
     
@@ -177,14 +182,15 @@ def get_suggestions(ax_client, volume, n=1):
     
     return suggestions
 
-def add_result(ax_client, trial_index, results, base_time_seconds=20):
+def add_result(ax_client, trial_index, results, base_time_seconds=20, time_optimal_target=17):
     """Add results for only deviation and time_score (no variability).
     
     Args:
         ax_client: The Ax client instance
         trial_index: The trial index
         results: Dictionary containing 'deviation' and 'time' keys
-        base_time_seconds: Base time threshold for computing time_score
+        base_time_seconds: Base time threshold (used for other criteria, kept for compatibility)
+        time_optimal_target: Optimal time target in seconds - score = abs(time - target)
     """
     
     # Debug: Print the results to check for NaN values
@@ -195,14 +201,14 @@ def add_result(ax_client, trial_index, results, base_time_seconds=20):
         if pd.isna(value):
             print(f"WARNING: NaN found in {key}: {value}")
     
-    # Compute time_score: abs(time - base_time) if time >= base_time, else 0
+    # Compute time_score - only penalize being slower than optimal:
+    # - 10s, 14s, 17s: score = 0 (fast is good, no penalty)
+    # - 20s: score = 3 (3 seconds slower than optimal 17s)
+    # - 23s: score = 6 (6 seconds slower than optimal 17s)
     raw_time = results["time"]
-    if raw_time >= base_time_seconds:
-        time_score = abs(raw_time - base_time_seconds)
-    else:
-        time_score = 0.0
+    time_score = max(0, raw_time - time_optimal_target)
     
-    print(f"DEBUG: Computed time_score={time_score:.2f} from raw_time={raw_time:.2f}, base_time={base_time_seconds}")
+    print(f"DEBUG: Computed time_score={time_score:.2f} from raw_time={raw_time:.2f}, optimal_target={time_optimal_target}s")
     
     # Only use deviation and time_score (ignore variability)
     data = {
