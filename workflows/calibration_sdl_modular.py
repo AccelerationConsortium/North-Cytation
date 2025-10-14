@@ -34,7 +34,7 @@ except ImportError as e:
 
 # --- Experiment Config ---
 LIQUID = "water"
-SIMULATE = True
+SIMULATE = False
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
