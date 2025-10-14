@@ -65,15 +65,23 @@ USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
 # Options: 'qEI' (Expected Improvement), 'qLogEI' (Log Expected Improvement), 'qNEHVI' (Noisy Expected Hypervolume Improvement)
 BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 
-# Criteria (For real life testing) - Base tolerances with volume-dependent scaling
-BASE_DEVIATION_UL = 1.0  # Base ±1 μL absolute deviation for optimization acceptance  
-BASE_TIME_SECONDS = 20 # Base time in seconds (for other criteria)
-TIME_OPTIMAL_TARGET = 17  # Optimal time target in seconds (score = abs(time - target))
-BASE_VARIATION_UL = 2.0  # Base ±2 μL absolute variation for precision test
-# Volume scaling factors (per 100 μL above baseline)
-DEVIATION_SCALING_FACTOR = 0.35  # +0.2 μL per 100 μL (1μL->2μL for 500μL)
-TIME_SCALING_FACTOR = 2.5  # +1 second per 100 μL (Note this may be higher for glycerol) 
-VARIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (2μL->3μL for 500μL)
+# Criteria (For real life testing) - Volume-dependent relative percentage tolerances
+# Based on pipetting accuracy standards: relative bias and CV thresholds
+BASE_TIME_SECONDS = 60  # Base time in seconds for optimization acceptance
+TIME_SCALING_FACTOR = 1.5  # +1 second per 100 μL above baseline
+
+# Relative percentage tolerances (applies to both optimization and precision test)
+# Volume ranges defined as (min_volume_ul, max_volume_ul, tolerance_pct)
+# Ranges should be ordered from largest to smallest volume for proper lookup
+# If target ≥ 100 µL: pass if |rel_bias| ≤ 1% and CV ≤ 1%
+# Else if 10 ≤ target < 100: pass if |rel_bias| ≤ 3% and CV ≤ 3%  
+# Else if 1 ≤ target < 10: pass if |rel_bias| ≤ 5% and CV ≤ 5%
+VOLUME_TOLERANCE_RANGES = [
+    {'min_ul': 100, 'max_ul': 1000, 'tolerance_pct': 1.0, 'name': 'large_volume'},   # ≥100µL: 1%
+    {'min_ul': 10,  'max_ul': 100,          'tolerance_pct': 3.0, 'name': 'medium_volume'}, # 10-99µL: 3%  
+    {'min_ul': 1,   'max_ul': 10,           'tolerance_pct': 5.0, 'name': 'small_volume'},  # 1-9µL: 5%
+    {'min_ul': 0,   'max_ul': 1,            'tolerance_pct': 10.0, 'name': 'micro_volume'}, # <1µL: 10% (fallback)
+]
 
 # Selective parameter optimization config
 MAX_OVERASPIRATE_UL = 10.0  # Maximum overaspirate volume in microliters (fixed)
@@ -93,31 +101,56 @@ else:
 
 # --- Helper Methods ---
 def get_volume_dependent_tolerances(volume_ml):
-    """Calculate volume-dependent tolerances based on scaling factors."""
+    """Calculate volume-dependent tolerances based on scalable volume ranges."""
     volume_ul = volume_ml * 1000  # Convert to μL
+    
+    # Find the appropriate tolerance range for this volume
+    tolerance_pct = None
+    range_name = 'unknown'
+    
+    for vol_range in VOLUME_TOLERANCE_RANGES:
+        if vol_range['min_ul'] <= volume_ul < vol_range['max_ul']:
+            tolerance_pct = vol_range['tolerance_pct']
+            range_name = vol_range['name']
+            break
+    
+    # Fallback if no range matched (shouldn't happen with properly defined ranges)
+    if tolerance_pct is None:
+        tolerance_pct = 10.0  # Default to 10% for safety
+        range_name = 'fallback'
+    
+    # Convert percentage to absolute μL tolerance (same for both deviation and variation)
+    tolerance_ul = volume_ul * (tolerance_pct / 100.0)
+    
+    # Calculate time scaling (keep existing time logic)
     volume_excess_ul = max(0, volume_ul - 100)  # Only scale above 100μL baseline
     scaling_factor = volume_excess_ul / 100  # Per 100μL scaling
+    time_seconds = BASE_TIME_SECONDS + (TIME_SCALING_FACTOR * scaling_factor)
     
-    deviation_ul = BASE_DEVIATION_UL + (DEVIATION_SCALING_FACTOR * scaling_factor)
-    variation_ul = BASE_VARIATION_UL + (VARIATION_SCALING_FACTOR * scaling_factor)
-
-    # In simulation we relax tolerances so runs "pass" more often to view plots.
-    # Strategy: enforce a minimum relative window for deviation/variation.
+    # In simulation we can relax tolerances if needed
     if SIMULATE:
-        # Allow environment override for quick tuning without code edits
         try:
-            min_rel_dev = float(os.environ.get('SIM_MIN_REL_DEV', '0.06'))  # default 8%
-            min_rel_var = float(os.environ.get('SIM_MIN_REL_VAR', '0.08'))  # default 10%
+            # Allow environment override - use multipliers on the standard tolerances
+            dev_multiplier = float(os.environ.get('SIM_DEV_MULTIPLIER', '2.0'))  # default 2x more lenient
+            var_multiplier = float(os.environ.get('SIM_VAR_MULTIPLIER', '2.0'))  # default 2x more lenient
+            time_multiplier = float(os.environ.get('SIM_TIME_MULTIPLIER', '1.25'))  # default 25% more time
         except ValueError:
-            min_rel_dev, min_rel_var = 0.8, 0.10
-        deviation_ul = max(deviation_ul, volume_ul * min_rel_dev)
-        variation_ul = max(variation_ul, volume_ul * min_rel_var)
+            dev_multiplier, var_multiplier, time_multiplier = 2.0, 2.0, 1.25
+        
+        deviation_ul = tolerance_ul * dev_multiplier
+        variation_ul = tolerance_ul * var_multiplier
+        time_seconds = time_seconds * time_multiplier
+    else:
+        deviation_ul = tolerance_ul
+        variation_ul = tolerance_ul
 
     tolerances = {
         'deviation_ul': deviation_ul,
-        'time_seconds': BASE_TIME_SECONDS + (TIME_SCALING_FACTOR * scaling_factor),
         'time_optimal_target': TIME_OPTIMAL_TARGET + (TIME_SCALING_FACTOR * scaling_factor),
-        'variation_ul': variation_ul
+        'variation_ul': variation_ul,
+        'time_seconds': time_seconds,
+        'tolerance_percent': tolerance_pct,  # For reference/logging
+        'range_name': range_name             # Which range was used
     }
     
     return tolerances
@@ -570,12 +603,9 @@ def save_experiment_config(autosave_dir, new_pipet_each_time_set=None):
         'max_wells': MAX_WELLS,
         'max_overaspirate_ul': MAX_OVERASPIRATE_UL,
         'new_pipet_each_time_set': new_pipet_each_time_set,
-        'base_deviation_ul': BASE_DEVIATION_UL,
         'base_time_seconds': BASE_TIME_SECONDS,
-        'base_variation_ul': BASE_VARIATION_UL,
-        'deviation_scaling_factor': DEVIATION_SCALING_FACTOR,
         'time_scaling_factor': TIME_SCALING_FACTOR,
-        'variation_scaling_factor': VARIATION_SCALING_FACTOR,
+        'volume_tolerance_ranges': VOLUME_TOLERANCE_RANGES,
         'use_selective_optimization': USE_SELECTIVE_OPTIMIZATION,
         'use_historical_data_for_optimization': USE_HISTORICAL_DATA_FOR_OPTIMIZATION,
         'volume_dependent_params': VOLUME_DEPENDENT_PARAMS,
