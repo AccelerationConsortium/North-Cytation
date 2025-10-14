@@ -34,14 +34,14 @@ except ImportError as e:
 
 # --- Experiment Config ---
 LIQUID = "water"
-SIMULATE = True
+SIMULATE = False
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
 PRECISION_REPLICATES = 5
-#VOLUMES = [0.05, 0.025, 0.1] #Small tip
-VOLUMES = [0.3, 0.5, 1.0] # Large tip
+VOLUMES = [0.05, 0.025, 0.1] #Small tip
+#VOLUMES = [0.3, 0.5, 1.0] # Large tip
 #VOLUMES = [0.02, 0.01, 0.005] #Very small volumes
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
