@@ -33,16 +33,16 @@ except ImportError as e:
     LLM_AVAILABLE = False
 
 # --- Experiment Config ---
-LIQUID = "glycerol"
-SIMULATE = True
+LIQUID = "water"
+SIMULATE = False
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
 PRECISION_REPLICATES = 5
-VOLUMES = [0.05, 0.025, 0.1] #Small tip
+#VOLUMES = [0.05, 0.025, 0.1] #Small tip
 #VOLUMES = [0.3, 0.5, 1.0] # Large tip
-#VOLUMES = [0.02, 0.01, 0.005] #Very small volumes
+VOLUMES = [0.02, 0.01, 0.005] #Very small volumes
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 
@@ -146,6 +146,7 @@ def get_volume_dependent_tolerances(volume_ml):
 
     tolerances = {
         'deviation_ul': deviation_ul,
+        'time_optimal_target': TIME_OPTIMAL_TARGET + (TIME_SCALING_FACTOR * scaling_factor),
         'variation_ul': variation_ul,
         'time_seconds': time_seconds,
         'tolerance_percent': tolerance_pct,  # For reference/logging
@@ -264,12 +265,12 @@ def load_previous_data_into_model(ax_client, all_results):
             raw_data = {}
             for col in outcome_columns:
                 if col == 'time' and col in result and result[col] is not None:
-                    # Compute time_score for historical data
+                    # Compute time_score for historical data - only penalize being slower than optimal
                     raw_time = float(result[col])
-                    if raw_time >= BASE_TIME_SECONDS:
-                        time_score = abs(raw_time - BASE_TIME_SECONDS)
-                    else:
-                        time_score = 0.0
+                    result_volume = result.get('volume', 0.1)  # Default to 100μL if not specified
+                    volume_tolerances = get_volume_dependent_tolerances(result_volume)
+                    scaled_optimal_target = volume_tolerances['time_optimal_target']
+                    time_score = max(0, raw_time - scaled_optimal_target)
                     raw_data[col] = (time_score, 0.0)  # (mean, sem)
                 elif col in result and result[col] is not None:
                     raw_data[col] = (float(result[col]), 0.0)  # (mean, sem)
@@ -902,10 +903,12 @@ def main():
         candidate_trial_number = None  # Track which trial the candidate came from
         
         # Always create ax_client with the correct selective optimization configuration
+        # Use half of the time cap as the maximum wait time constraint
+        max_wait_time = criteria['max_time'] / 2.0
         ax_client = get_recommender().create_model(SEED, INITIAL_SUGGESTIONS, bayesian_batch_size=BATCH_SIZE, 
                                            volume=volume, tip_volume=tip_volume, model_type=bayesian_model_type, 
                                            optimize_params=optimize_params, fixed_params=fixed_params, simulate=SIMULATE,
-                                           max_overaspirate_ul=MAX_OVERASPIRATE_UL)
+                                           max_overaspirate_ul=MAX_OVERASPIRATE_UL, max_wait_time=max_wait_time)
         
         # Step 1: Determine starting candidate
         if len(completed_volumes) > 0:
@@ -1074,7 +1077,10 @@ def main():
                         status = "✅ CANDIDATE" if meets_criteria else "❌ reject"
                         print(f"   Optimization trial: {recent_mass:.4f}g → {recent_volume*1000:.1f}μL, {result.get('deviation', 'N/A'):.1f}% dev, {result.get('time', 'N/A'):.0f}s - {status}")
                         
-                        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS)
+                        # Get volume-scaled optimal target for time scoring
+                        volume_tolerances = get_volume_dependent_tolerances(volume)
+                        scaled_optimal_target = volume_tolerances['time_optimal_target']
+                        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target)
                         result.update(params)
                         optimization_strategy = "LLM" if use_llm_for_optimization else "Bayesian"
                         result.update({"volume": volume, "trial_index": trial_index, "strategy": optimization_strategy, "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
