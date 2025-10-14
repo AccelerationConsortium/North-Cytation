@@ -41,8 +41,8 @@ BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
 PRECISION_REPLICATES = 5
 #VOLUMES = [0.05, 0.025, 0.1] #Small tip
-#VOLUMES = [0.3, 0.5, 1.0] # Large tip
-VOLUMES = [0.02, 0.01, 0.005] #Very small volumes
+VOLUMES = [0.3, 0.5, 1.0] # Large tip
+#VOLUMES = [0.02, 0.01, 0.005] #Very small volumes
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 
@@ -71,7 +71,7 @@ BASE_TIME_SECONDS = 20 # Base time in seconds (for other criteria)
 TIME_OPTIMAL_TARGET = 17  # Optimal time target in seconds (score = abs(time - target))
 BASE_VARIATION_UL = 2.0  # Base ±2 μL absolute variation for precision test
 # Volume scaling factors (per 100 μL above baseline)
-DEVIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (1μL->2μL for 500μL)
+DEVIATION_SCALING_FACTOR = 0.35  # +0.2 μL per 100 μL (1μL->2μL for 500μL)
 TIME_SCALING_FACTOR = 2.5  # +1 second per 100 μL (Note this may be higher for glycerol) 
 VARIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (2μL->3μL for 500μL)
 
