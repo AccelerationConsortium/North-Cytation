@@ -201,12 +201,14 @@ def add_result(ax_client, trial_index, results, base_time_seconds=20, time_optim
         if pd.isna(value):
             print(f"WARNING: NaN found in {key}: {value}")
     
-    # Compute time_score - only penalize being slower than optimal:
-    # - 10s, 14s, 17s: score = 0 (fast is good, no penalty)
-    # - 20s: score = 3 (3 seconds slower than optimal 17s)
-    # - 23s: score = 6 (6 seconds slower than optimal 17s)
+    # Compute time_score using smooth transition (soft ReLU):
+    # - Below optimal: Very small penalty (smooth approach to 0)
+    # - At optimal: Small penalty (~0.69)  
+    # - Above optimal: Approximately linear increase
+    # This avoids sharp discontinuity issues with Bayesian optimization
+    import numpy as np
     raw_time = results["time"]
-    time_score = max(0, raw_time - time_optimal_target)
+    time_score = np.log(1 + np.exp(raw_time - time_optimal_target))
     
     print(f"DEBUG: Computed time_score={time_score:.2f} from raw_time={raw_time:.2f}, optimal_target={time_optimal_target}s")
     
