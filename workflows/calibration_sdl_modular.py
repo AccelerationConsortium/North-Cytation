@@ -39,7 +39,7 @@ SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
-PRECISION_REPLICATES = 5
+PRECISION_REPLICATES = 4
 # Volume generation configuration
 MIN_VOLUME_ML = 0.3      # Minimum volume in mL
 MAX_VOLUME_ML = 1.0      # Maximum volume in mL  
@@ -73,7 +73,7 @@ BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cuto
 TIME_SCALING_FACTOR = 2.5  # Default: +2.5 seconds per 100 μL above baseline (will be updated adaptively)
 TIME_BUFFER_FRACTION = 0.1  # Buffer fraction: optimal_time = base_time * (1 - buffer)
 ADAPTIVE_TIME_SCALING = True  # Calculate TIME_SCALING_FACTOR from actual measurements when possible
-TIME_TRANSITION_MODE = "relu"  # Options: "relu" (max(0,x)), "smooth" (log(1+exp(x))), "asymmetric" (gentle penalty for fast times)
+TIME_TRANSITION_MODE = "asymmetric"  # Options: "relu" (max(0,x)), "smooth" (log(1+exp(x))), "asymmetric" (gentle penalty for fast times)
 
 # Relative percentage tolerances (applies to both optimization and precision test)
 # Volume ranges defined as (min_volume_ul, max_volume_ul, tolerance_pct)
