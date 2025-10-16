@@ -1159,10 +1159,10 @@ class North_Robot(North_Base):
         Args:
             max_retries (int): Maximum number of retry attempts for homing-related errors (default: 2)
         """
+        self.load_pumps()
         self.logger.debug("Physical initialization of North Robot...")
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         self.c9.open_clamp()
-        
        
         
         
@@ -1194,7 +1194,7 @@ class North_Robot(North_Base):
         
         # Final setup
         # Now load pumps after homing
-        self.load_pumps()
+        
         self.c9.open_gripper()
  
     def _perform_physical_cleanup(self):
@@ -1203,16 +1203,18 @@ class North_Robot(North_Base):
         Separated for cleaner retry logic.
         """
         # Handle leftover liquid in pipet tip
-        if self.PIPET_FLUID_VIAL_INDEX is not None and self.PIPET_FLUID_VOLUME > 0:
+        if self.PIPET_FLUID_VIAL_INDEX is not None:
             self.logger.warning("The robot reports having liquid in its tip... Returning that liquid...")
             vial_index = self.PIPET_FLUID_VIAL_INDEX 
-            volume = self.PIPET_FLUID_VOLUME
-            self.dispense_into_vial(vial_index, volume)
-        
+            volume_existing = self.get_vial_info(vial_index, 'vial_volume')
+            self.dispense_into_vial(vial_index, 1.0) #Dispense all liquid back into the vial (hopefully no issues here)
+            self.VIAL_DF.loc[self.VIAL_DF['vial_index'] == vial_index, 'vial_volume'] = volume_existing + self.PIPET_FLUID_VOLUME
+
         # Remove pipet tip if present
         if self.HELD_PIPET_TYPE is not None:
             self.logger.warning("The robot reports having a tip, removing the tip")
             self.remove_pipet()
+            self.c9.move_pump(0, 0) 
         
         # Handle gripper contents
         if self.GRIPPER_STATUS is not None:

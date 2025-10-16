@@ -1,7 +1,7 @@
 # calibration_sdl_modular.py
 import sys
 import os
-
+#asd
 sys.path.append("../North-Cytation")
 
 from calibration_sdl_base import *
@@ -33,16 +33,18 @@ except ImportError as e:
     LLM_AVAILABLE = False
 
 # --- Experiment Config ---
-LIQUID = "glycerol"
-SIMULATE = True
+LIQUID = "water"
+SIMULATE = False
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
 PRECISION_REPLICATES = 5
-VOLUMES = [0.05, 0.025, 0.1] #Small tip
-#VOLUMES = [0.3, 0.5, 1.0] # Large tip
-#VOLUMES = [0.02, 0.01, 0.005] #Very small volumes
+# Volume generation configuration
+MIN_VOLUME_ML = 0.3      # Minimum volume in mL
+MAX_VOLUME_ML = 1.0      # Maximum volume in mL  
+NUM_VOLUMES = 3          # Number of volumes to test
+VOLUMES = []             # Will be generated automatically
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 
@@ -65,14 +67,26 @@ USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
 # Options: 'qEI' (Expected Improvement), 'qLogEI' (Log Expected Improvement), 'qNEHVI' (Noisy Expected Hypervolume Improvement)
 BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 
-# Criteria (For real life testing) - Base tolerances with volume-dependent scaling
-BASE_DEVIATION_UL = 1.0  # Base ±1 μL absolute deviation for optimization acceptance  
-BASE_TIME_SECONDS = 60 # Base time in seconds
-BASE_VARIATION_UL = 2.0  # Base ±2 μL absolute variation for precision test
-# Volume scaling factors (per 100 μL above baseline)
-DEVIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (1μL->2μL for 500μL)
-TIME_SCALING_FACTOR = 1.5  # +1 second per 100 μL  
-VARIATION_SCALING_FACTOR = 0.3  # +0.2 μL per 100 μL (2μL->3μL for 500μL)
+# Criteria (For real life testing) - Volume-dependent relative percentage tolerances
+# Based on pipetting accuracy standards: relative bias and CV thresholds
+BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cutoff)... Should probably calculate from viscosity. Eg 20s for water, 60s for glycerol... Can this be automated?
+TIME_SCALING_FACTOR = 2.5  # Default: +2.5 seconds per 100 μL above baseline (will be updated adaptively)
+TIME_BUFFER_FRACTION = 0.1  # Buffer fraction: optimal_time = base_time * (1 - buffer)
+ADAPTIVE_TIME_SCALING = True  # Calculate TIME_SCALING_FACTOR from actual measurements when possible
+TIME_TRANSITION_MODE = "relu"  # Options: "relu" (max(0,x)), "smooth" (log(1+exp(x))), "asymmetric" (gentle penalty for fast times)
+
+# Relative percentage tolerances (applies to both optimization and precision test)
+# Volume ranges defined as (min_volume_ul, max_volume_ul, tolerance_pct)
+# Ranges should be ordered from largest to smallest volume for proper lookup
+# If target ≥ 100 µL: pass if |rel_bias| ≤ 1% and CV ≤ 1%
+# Else if 10 ≤ target < 100: pass if |rel_bias| ≤ 3% and CV ≤ 3%  
+# Else if 1 ≤ target < 10: pass if |rel_bias| ≤ 5% and CV ≤ 5%
+VOLUME_TOLERANCE_RANGES = [
+    {'min_ul': 100, 'max_ul': 1000, 'tolerance_pct': 1.0, 'name': 'large_volume'},   # ≥100µL: 1%
+    {'min_ul': 10,  'max_ul': 100,          'tolerance_pct': 3.0, 'name': 'medium_volume'}, # 10-99µL: 3%  
+    {'min_ul': 1,   'max_ul': 10,           'tolerance_pct': 5.0, 'name': 'small_volume'},  # 1-9µL: 5%
+    {'min_ul': 0,   'max_ul': 1,            'tolerance_pct': 10.0, 'name': 'micro_volume'}, # <1µL: 10% (fallback)
+]
 
 # Selective parameter optimization config
 MAX_OVERASPIRATE_UL = 10.0  # Maximum overaspirate volume in microliters (fixed)
@@ -91,31 +105,167 @@ else:
     BASE_AUTOSAVE_DIR='C:\\Users\\Imaging Controller\\Desktop\\Calibration_SDL_Output\\New_Method'
 
 # --- Helper Methods ---
+def generate_volumes(min_vol_ml, max_vol_ml, num_volumes):
+    """Generate volume sequence with GCD-based rounding and optimal sequencing.
+    
+    Args:
+        min_vol_ml: Minimum volume in mL
+        max_vol_ml: Maximum volume in mL  
+        num_volumes: Number of volumes to generate
+        
+    Returns:
+        list: Volumes in optimal testing sequence (middle → high → remaining)
+    """
+    import math
+    
+    if num_volumes < 2:
+        return [min_vol_ml]
+    if num_volumes == 2:
+        return [max_vol_ml, min_vol_ml]  # Start with harder case
+    
+    # Convert to μL for easier GCD calculation
+    min_vol_ul = int(min_vol_ml * 1000)
+    max_vol_ul = int(max_vol_ml * 1000)
+    
+    # Calculate GCD for common denominator
+    gcd = math.gcd(min_vol_ul, max_vol_ul)
+    
+    # Generate evenly spaced volumes
+    range_ul = max_vol_ul - min_vol_ul
+    spacing_ul = range_ul / (num_volumes - 1)
+    
+    volumes_ul = []
+    for i in range(num_volumes):
+        vol_ul = min_vol_ul + (i * spacing_ul)
+        # Round down to nearest GCD multiple
+        vol_ul_rounded = (int(vol_ul) // gcd) * gcd
+        volumes_ul.append(vol_ul_rounded)
+    
+    # Ensure endpoints are exact
+    volumes_ul[0] = min_vol_ul
+    volumes_ul[-1] = max_vol_ul
+    
+    # Convert back to mL
+    volumes_ml = [vol / 1000.0 for vol in volumes_ul]
+    
+    # Sort by optimal testing sequence: middle → high → low → remaining
+    if len(volumes_ml) >= 3:
+        middle_idx = len(volumes_ml) // 2
+        sequence = [volumes_ml[middle_idx]]  # Start with middle
+        sequence.append(volumes_ml[-1])      # Then highest  
+        sequence.extend([vol for i, vol in enumerate(volumes_ml) if i != middle_idx and i != len(volumes_ml)-1])
+    else:
+        sequence = volumes_ml[::-1]  # Just reverse for 2 volumes
+    
+    return sequence
+
+def calculate_adaptive_time_scaling(completed_volumes, optimal_conditions_data):
+    """Calculate TIME_SCALING_FACTOR from actual measurements when we have data.
+    
+    Formula: 100 * [time(Vol_high) - time(Vol_low)] / (vol_high_uL - vol_low_uL)
+    
+    Args:
+        completed_volumes: List of (volume_mL, params) pairs from successful volumes
+        optimal_conditions_data: List of optimal condition dictionaries with time measurements
+        
+    Returns:
+        float: Calculated scaling factor in seconds per 100μL, or None if insufficient data
+    """
+    if len(completed_volumes) < 2 or len(optimal_conditions_data) < 2:
+        return None
+    
+    # Get the last two successful volumes (most recent data)
+    vol_low_mL, params_low = completed_volumes[-2]
+    vol_high_mL, params_high = completed_volumes[-1]
+    
+    # Only calculate if we're using the same parameters (selective optimization)
+    if not USE_SELECTIVE_OPTIMIZATION:
+        return None
+    
+    # For selective optimization, volume-dependent params may differ, but others should be same
+    non_volume_params_low = {k: v for k, v in params_low.items() if k not in VOLUME_DEPENDENT_PARAMS}
+    non_volume_params_high = {k: v for k, v in params_high.items() if k not in VOLUME_DEPENDENT_PARAMS}
+    
+    # Check if non-volume-dependent parameters are the same
+    for key in non_volume_params_low:
+        if key in non_volume_params_high:
+            if abs(non_volume_params_low[key] - non_volume_params_high[key]) > 1e-6:
+                return None  # Parameters changed too much
+    
+    # Get the actual measured times from optimal_conditions
+    time_low = optimal_conditions_data[-2].get('time_seconds')
+    time_high = optimal_conditions_data[-1].get('time_seconds')
+    
+    if time_low is None or time_high is None:
+        return None
+    
+    # Apply the formula: 100 * [time(Vol_high) - time(Vol_low)] / (vol_high_uL - vol_low_uL)
+    vol_low_ul = vol_low_mL * 1000
+    vol_high_ul = vol_high_mL * 1000
+    
+    if vol_high_ul <= vol_low_ul:
+        return None  # Need increasing volume
+    
+    calculated_scaling = 100 * (time_high - time_low) / (vol_high_ul - vol_low_ul)
+    
+    print(f"📊 ADAPTIVE TIME SCALING: {vol_low_ul:.0f}μL→{vol_high_ul:.0f}μL: {time_low:.1f}s→{time_high:.1f}s = {calculated_scaling:.2f} s/100μL")
+    
+    return calculated_scaling
+
 def get_volume_dependent_tolerances(volume_ml):
-    """Calculate volume-dependent tolerances based on scaling factors."""
+    """Calculate volume-dependent tolerances based on scalable volume ranges."""
     volume_ul = volume_ml * 1000  # Convert to μL
+    
+    # Find the appropriate tolerance range for this volume
+    tolerance_pct = None
+    range_name = 'unknown'
+    
+    for vol_range in VOLUME_TOLERANCE_RANGES:
+        if vol_range['min_ul'] <= volume_ul < vol_range['max_ul']:
+            tolerance_pct = vol_range['tolerance_pct']
+            range_name = vol_range['name']
+            break
+    
+    # Fallback if no range matched (shouldn't happen with properly defined ranges)
+    if tolerance_pct is None:
+        tolerance_pct = 10.0  # Default to 10% for safety
+        range_name = 'fallback'
+    
+    # Convert percentage to absolute μL tolerance (same for both deviation and variation)
+    tolerance_ul = volume_ul * (tolerance_pct / 100.0)
+    
+    # Calculate time scaling (keep existing time logic)
     volume_excess_ul = max(0, volume_ul - 100)  # Only scale above 100μL baseline
     scaling_factor = volume_excess_ul / 100  # Per 100μL scaling
+    time_seconds = BASE_TIME_SECONDS + (TIME_SCALING_FACTOR * scaling_factor)
     
-    deviation_ul = BASE_DEVIATION_UL + (DEVIATION_SCALING_FACTOR * scaling_factor)
-    variation_ul = BASE_VARIATION_UL + (VARIATION_SCALING_FACTOR * scaling_factor)
-
-    # In simulation we relax tolerances so runs "pass" more often to view plots.
-    # Strategy: enforce a minimum relative window for deviation/variation.
+    # In simulation we can relax tolerances if needed
     if SIMULATE:
-        # Allow environment override for quick tuning without code edits
         try:
-            min_rel_dev = float(os.environ.get('SIM_MIN_REL_DEV', '0.06'))  # default 8%
-            min_rel_var = float(os.environ.get('SIM_MIN_REL_VAR', '0.08'))  # default 10%
+            # Allow environment override - use multipliers on the standard tolerances
+            dev_multiplier = float(os.environ.get('SIM_DEV_MULTIPLIER', '2.0'))  # default 2x more lenient
+            var_multiplier = float(os.environ.get('SIM_VAR_MULTIPLIER', '2.0'))  # default 2x more lenient
+            time_multiplier = float(os.environ.get('SIM_TIME_MULTIPLIER', '1.25'))  # default 25% more time
         except ValueError:
-            min_rel_dev, min_rel_var = 0.8, 0.10
-        deviation_ul = max(deviation_ul, volume_ul * min_rel_dev)
-        variation_ul = max(variation_ul, volume_ul * min_rel_var)
+            dev_multiplier, var_multiplier, time_multiplier = 2.0, 2.0, 1.25
+        
+        deviation_ul = tolerance_ul * dev_multiplier
+        variation_ul = tolerance_ul * var_multiplier
+        time_seconds = time_seconds * time_multiplier
+    else:
+        deviation_ul = tolerance_ul
+        variation_ul = tolerance_ul
 
+    # Calculate optimal time as a fraction of the cutoff time (automatic buffer)
+    time_optimal_target = time_seconds * (1 - TIME_BUFFER_FRACTION)
+    
     tolerances = {
         'deviation_ul': deviation_ul,
-        'time_seconds': BASE_TIME_SECONDS + (TIME_SCALING_FACTOR * scaling_factor),
-        'variation_ul': variation_ul
+        'time_optimal_target': time_optimal_target,
+        'variation_ul': variation_ul,
+        'time_seconds': time_seconds,
+        'tolerance_percent': tolerance_pct,  # For reference/logging
+        'range_name': range_name             # Which range was used
     }
     
     return tolerances
@@ -175,11 +325,13 @@ def get_optimization_config(volume_index, completed_volumes, all_results):
     # Once we have ANY successful volume (passed precision test), 
     # we only optimize volume-dependent parameters for all remaining volumes
     if completed_volumes:
-        # Use parameters from the most recent successful volume
-        _, last_successful_params = completed_volumes[-1]
-        fixed_params = {k: v for k, v in last_successful_params.items() 
+        # Use parameters from the FIRST successful volume (most conservative/transferable)
+        _, first_successful_params = completed_volumes[0]
+        fixed_params = {k: v for k, v in first_successful_params.items() 
                       if k not in VOLUME_DEPENDENT_PARAMS}
-        print(f"   Using parameters from successful volume {completed_volumes[-1][0]*1000:.0f}μL")
+        print(f"   Using parameters from FIRST successful volume {completed_volumes[0][0]*1000:.0f}μL (most transferable)")
+        if len(completed_volumes) > 1:
+            print(f"   📊 Strategy: Using conservative baseline instead of latest optimized parameters")
         print(f"   🔒 FIXED: {list(fixed_params.keys())}")
         return VOLUME_DEPENDENT_PARAMS, fixed_params
     
@@ -230,12 +382,24 @@ def load_previous_data_into_model(ax_client, all_results):
             raw_data = {}
             for col in outcome_columns:
                 if col == 'time' and col in result and result[col] is not None:
-                    # Compute time_score for historical data
+                    # Compute time_score for historical data using same method as current experiment
                     raw_time = float(result[col])
-                    if raw_time >= BASE_TIME_SECONDS:
-                        time_score = abs(raw_time - BASE_TIME_SECONDS)
-                    else:
-                        time_score = 0.0
+                    result_volume = result.get('volume', 0.1)  # Default to 100μL if not specified
+                    volume_tolerances = get_volume_dependent_tolerances(result_volume)
+                    scaled_optimal_target = volume_tolerances['time_optimal_target']
+                    
+                    import numpy as np
+                    if TIME_TRANSITION_MODE == "smooth":
+                        time_score = np.log(1 + np.exp(raw_time - scaled_optimal_target))
+                    elif TIME_TRANSITION_MODE == "asymmetric":
+                        if raw_time < scaled_optimal_target:
+                            low_time_penalty_factor = 0.1  # Match optimizer setting
+                            time_score = (scaled_optimal_target - raw_time) * low_time_penalty_factor
+                        else:
+                            time_score = max(0, raw_time - scaled_optimal_target)
+                    else:  # "relu"
+                        time_score = max(0, raw_time - scaled_optimal_target)
+                    
                     raw_data[col] = (time_score, 0.0)  # (mean, sem)
                 elif col in result and result[col] is not None:
                     raw_data[col] = (float(result[col]), 0.0)  # (mean, sem)
@@ -285,7 +449,10 @@ def get_initial_suggestions(ax_client, method, n, volume, expected_mass, expecte
         current_trial = len(all_results) + 1
         print(f"  Initial trial {i+1}/{len(suggestions)} (Trial {current_trial}): {recent_mass:.4f}g → {recent_volume*1000:.1f}μL, deviation={result.get('deviation', 'N/A'):.2f}%, time={result.get('time', 'N/A'):.1f}s")
         
-        get_recommender().add_result(ax_client, trial_index, result)
+        # Get volume-scaled optimal target for time scoring
+        volume_tolerances = get_volume_dependent_tolerances(volume)
+        scaled_optimal_target = volume_tolerances['time_optimal_target']
+        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target, TIME_TRANSITION_MODE)
         result.update(params)
         result.update({"volume": volume, "trial_index": trial_index, "strategy": method, "liquid": liquid, "time_reported": datetime.now().isoformat()})
         result = strip_tuples(result)
@@ -329,7 +496,10 @@ def optimization_loop(ax_client, method, batch_size, volume, expected_mass, expe
             check_if_measurement_vial_full(lash_e, state)
             liquid_source = get_liquid_source(lash_e)
             result = pipet_and_measure(lash_e, liquid_source, state["measurement_vial_name"], volume, params, expected_mass, expected_time, REPLICATES, SIMULATE, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set)
-            get_recommender().add_result(ax_client, trial_index, result)
+            # Get volume-scaled optimal target for time scoring
+            volume_tolerances = get_volume_dependent_tolerances(volume)
+            scaled_optimal_target = volume_tolerances['time_optimal_target']
+            get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target, TIME_TRANSITION_MODE)
             result.update(params)
             result.update({"volume": volume, "trial_index": trial_index, "strategy": method, "liquid": liquid, "time_reported": datetime.now().isoformat()})
             result = strip_tuples(result)
@@ -564,16 +734,19 @@ def save_experiment_config(autosave_dir, new_pipet_each_time_set=None):
         'batch_size': BATCH_SIZE,
         'replicates': REPLICATES,
         'precision_replicates': PRECISION_REPLICATES,
+        'min_volume_ml': MIN_VOLUME_ML,
+        'max_volume_ml': MAX_VOLUME_ML,
+        'num_volumes': NUM_VOLUMES,
         'volumes': VOLUMES,
         'max_wells': MAX_WELLS,
         'max_overaspirate_ul': MAX_OVERASPIRATE_UL,
         'new_pipet_each_time_set': new_pipet_each_time_set,
-        'base_deviation_ul': BASE_DEVIATION_UL,
         'base_time_seconds': BASE_TIME_SECONDS,
-        'base_variation_ul': BASE_VARIATION_UL,
-        'deviation_scaling_factor': DEVIATION_SCALING_FACTOR,
         'time_scaling_factor': TIME_SCALING_FACTOR,
-        'variation_scaling_factor': VARIATION_SCALING_FACTOR,
+        'time_buffer_fraction': TIME_BUFFER_FRACTION,
+        'adaptive_time_scaling': ADAPTIVE_TIME_SCALING,
+        'time_transition_mode': TIME_TRANSITION_MODE,
+        'volume_tolerance_ranges': VOLUME_TOLERANCE_RANGES,
         'use_selective_optimization': USE_SELECTIVE_OPTIMIZATION,
         'use_historical_data_for_optimization': USE_HISTORICAL_DATA_FOR_OPTIMIZATION,
         'volume_dependent_params': VOLUME_DEPENDENT_PARAMS,
@@ -770,6 +943,12 @@ def generate_failure_diagnostics(volume_report_data, volumes):
     return diagnostics
 
 def main():
+    # Generate volumes based on configuration
+    global VOLUMES
+    VOLUMES = generate_volumes(MIN_VOLUME_ML, MAX_VOLUME_ML, NUM_VOLUMES)
+    print(f"\n📋 GENERATED VOLUME SEQUENCE: {[f'{v*1000:.0f}μL' for v in VOLUMES]}")
+    print(f"   Strategy: Start with middle volume, then high, then remaining")
+    
     lash_e, DENSITY_LIQUID, NEW_PIPET_EACH_TIME_SET, state = initialize_experiment()
     
     # LLM Control Variables - Two separate settings for two different phases
@@ -784,6 +963,8 @@ def main():
     print(f"   📊 Initial Screening (first volume): {'LLM' if use_llm_for_screening else 'SOBOL'}")
     print(f"   🔍 Optimization Loops: {'LLM' if use_llm_for_optimization else f'Bayesian ({bayesian_model_type})'}")
     print(f"   🧠 Bayesian Model Type: {bayesian_model_type}")
+    transition_names = {"relu": "ReLU (max)", "smooth": "Smooth (log)", "asymmetric": "Asymmetric (gentle fast penalty)"}
+    print(f"   ⏱️  Time Transition: {transition_names.get(TIME_TRANSITION_MODE, TIME_TRANSITION_MODE)}")
     print(f"   🔧 LLM Available: {LLM_AVAILABLE}")
     if (use_llm_for_screening or use_llm_for_optimization) and not LLM_AVAILABLE:
         print(f"   ⚠️  WARNING: LLM requested but not available - will fallback to traditional methods")
@@ -871,21 +1052,23 @@ def main():
         candidate_trial_number = None  # Track which trial the candidate came from
         
         # Always create ax_client with the correct selective optimization configuration
+        # Use half of the time cap as the maximum wait time constraint
+        max_wait_time = criteria['max_time'] / 2.0
         ax_client = get_recommender().create_model(SEED, INITIAL_SUGGESTIONS, bayesian_batch_size=BATCH_SIZE, 
                                            volume=volume, tip_volume=tip_volume, model_type=bayesian_model_type, 
                                            optimize_params=optimize_params, fixed_params=fixed_params, simulate=SIMULATE,
-                                           max_overaspirate_ul=MAX_OVERASPIRATE_UL)
+                                           max_overaspirate_ul=MAX_OVERASPIRATE_UL, max_wait_time=max_wait_time)
         
         # Step 1: Determine starting candidate
         if len(completed_volumes) > 0:
-            # Use the last successful volume's parameters as starting point
-            last_volume, last_params = completed_volumes[-1]
-            print(f"🔄 TESTING PREVIOUS SUCCESS: Using parameters from {last_volume*1000:.0f}μL volume")
-            candidate_params = last_params
+            # Use the FIRST successful volume's parameters as starting point (most conservative)
+            first_volume, first_params = completed_volumes[0]
+            print(f"🔄 TESTING CONSERVATIVE BASELINE: Using parameters from FIRST successful volume {first_volume*1000:.0f}μL")
+            candidate_params = first_params
             
             # Find the original trial number for these parameters
-            last_optimal = optimal_conditions[-1] if optimal_conditions else {}
-            candidate_trial_number = last_optimal.get('trial_number', 'unknown')
+            first_optimal = optimal_conditions[0] if optimal_conditions else {}
+            candidate_trial_number = first_optimal.get('trial_number', 'unknown')
         else:
             # First volume - need SOBOL/LLM initial exploration
             screening_method = "LLM" if use_llm_for_screening else "SOBOL"
@@ -934,7 +1117,10 @@ def main():
                 status = "✅ CANDIDATE" if meets_criteria else "❌ reject"
                 print(f"   Trial {i+1}/{INITIAL_SUGGESTIONS}: {recent_mass:.4f}g → {recent_volume*1000:.1f}μL, {result.get('deviation', 'N/A'):.1f}% dev, {result.get('time', 'N/A'):.0f}s - {status}")
                 
-                get_recommender().add_result(ax_client, trial_index, result)
+                # Get volume-scaled optimal target for time scoring
+                volume_tolerances = get_volume_dependent_tolerances(volume)
+                scaled_optimal_target = volume_tolerances['time_optimal_target']
+                get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target, TIME_TRANSITION_MODE)
                 result.update(params)
                 result.update({"volume": volume, "trial_index": trial_index, "strategy": screening_method, "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
                 result = strip_tuples(result)
@@ -955,13 +1141,14 @@ def main():
                     }
                     screening_candidates.append(candidate_info)
             
-            # Choose the BEST candidate from acceptable ones
+            # Choose the FIRST acceptable candidate (most conservative/transferable)
             if screening_candidates:
-                # Sort by deviation (lower is better), then by time if tied
-                best_candidate = min(screening_candidates, key=lambda x: (x['deviation'], x['time']))
-                candidate_params = best_candidate['params']
-                candidate_trial_number = best_candidate['trial_number']
-                print(f"   ✅ Selected BEST candidate from trial #{candidate_trial_number}: {best_candidate['deviation']:.1f}% deviation, {best_candidate['time']:.0f}s")
+                # Sort by trial number (chronological order) to get first acceptable solution
+                first_candidate = min(screening_candidates, key=lambda x: x['trial_number'])
+                candidate_params = first_candidate['params']
+                candidate_trial_number = first_candidate['trial_number']
+                print(f"   ✅ Selected FIRST acceptable candidate from trial #{candidate_trial_number}: {first_candidate['deviation']:.1f}% deviation, {first_candidate['time']:.0f}s")
+                print(f"   📊 Strategy: Using first successful solution for better transferability ({len(screening_candidates)} total candidates)")
                 print(f"   📊 {len(screening_candidates)}/{INITIAL_SUGGESTIONS} {screening_method} trials met criteria")
             else:
                 print(f"   ❌ No {screening_method} trials met criteria - will need optimization")
@@ -1043,7 +1230,10 @@ def main():
                         status = "✅ CANDIDATE" if meets_criteria else "❌ reject"
                         print(f"   Optimization trial: {recent_mass:.4f}g → {recent_volume*1000:.1f}μL, {result.get('deviation', 'N/A'):.1f}% dev, {result.get('time', 'N/A'):.0f}s - {status}")
                         
-                        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS)
+                        # Get volume-scaled optimal target for time scoring
+                        volume_tolerances = get_volume_dependent_tolerances(volume)
+                        scaled_optimal_target = volume_tolerances['time_optimal_target']
+                        get_recommender().add_result(ax_client, trial_index, result, BASE_TIME_SECONDS, scaled_optimal_target, TIME_TRANSITION_MODE)
                         result.update(params)
                         optimization_strategy = "LLM" if use_llm_for_optimization else "Bayesian"
                         result.update({"volume": volume, "trial_index": trial_index, "strategy": optimization_strategy, "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
@@ -1112,6 +1302,15 @@ def main():
                 
                 optimal_conditions.append(optimal_condition)
                 save_optimal_conditions(optimal_conditions, optimal_conditions_path)
+                
+                # Calculate adaptive time scaling if we have enough data
+                if ADAPTIVE_TIME_SCALING:
+                    global TIME_SCALING_FACTOR
+                    adaptive_scaling = calculate_adaptive_time_scaling(completed_volumes, optimal_conditions)
+                    if adaptive_scaling is not None:
+                        old_scaling = TIME_SCALING_FACTOR
+                        TIME_SCALING_FACTOR = adaptive_scaling
+                        print(f"🔄 UPDATED TIME_SCALING_FACTOR: {old_scaling:.2f} → {TIME_SCALING_FACTOR:.2f} s/100μL (measured from data)")
                 
                 print(f"\n🎉 VOLUME {volume*1000:.0f}μL: ✅ COMPLETED")
                 print(f"   Precision test PASSED - all {len(precision_measurements)} replicates within ±{tolerances['variation_ul']:.0f}μL range")

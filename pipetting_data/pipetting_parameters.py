@@ -32,7 +32,7 @@ class PipettingParameters:
     
     # === AIR GAP PARAMETERS ===
     pre_asp_air_vol: float = 0.0            # Air volume to aspirate before liquid (mL)
-    post_asp_air_vol: float = 0.0           # Air volume to aspirate after liquid (mL)
+    post_asp_air_vol: float = 0.02           # Air volume to aspirate after liquid (mL)
     blowout_vol: float = 0.05                # Volume for blowout after dispensing (mL)
     air_vol: float = 0.0                    # Extra air volume for dispensing operations (mL)
     
