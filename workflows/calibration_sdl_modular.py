@@ -40,9 +40,11 @@ INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
 PRECISION_REPLICATES = 4
-#VOLUMES = [0.05, 0.025, 0.1] #Small tip
-VOLUMES = [0.5, 0.3, 1.0] # Large tip
-#VOLUMES = [0.02, 0.01, 0.005] #Very small volumes
+# Volume generation configuration
+MIN_VOLUME_ML = 0.3      # Minimum volume in mL
+MAX_VOLUME_ML = 1.0      # Maximum volume in mL  
+NUM_VOLUMES = 3          # Number of volumes to test
+VOLUMES = []             # Will be generated automatically
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 
@@ -103,6 +105,60 @@ else:
     BASE_AUTOSAVE_DIR='C:\\Users\\Imaging Controller\\Desktop\\Calibration_SDL_Output\\New_Method'
 
 # --- Helper Methods ---
+def generate_volumes(min_vol_ml, max_vol_ml, num_volumes):
+    """Generate volume sequence with GCD-based rounding and optimal sequencing.
+    
+    Args:
+        min_vol_ml: Minimum volume in mL
+        max_vol_ml: Maximum volume in mL  
+        num_volumes: Number of volumes to generate
+        
+    Returns:
+        list: Volumes in optimal testing sequence (middle → high → remaining)
+    """
+    import math
+    
+    if num_volumes < 2:
+        return [min_vol_ml]
+    if num_volumes == 2:
+        return [max_vol_ml, min_vol_ml]  # Start with harder case
+    
+    # Convert to μL for easier GCD calculation
+    min_vol_ul = int(min_vol_ml * 1000)
+    max_vol_ul = int(max_vol_ml * 1000)
+    
+    # Calculate GCD for common denominator
+    gcd = math.gcd(min_vol_ul, max_vol_ul)
+    
+    # Generate evenly spaced volumes
+    range_ul = max_vol_ul - min_vol_ul
+    spacing_ul = range_ul / (num_volumes - 1)
+    
+    volumes_ul = []
+    for i in range(num_volumes):
+        vol_ul = min_vol_ul + (i * spacing_ul)
+        # Round down to nearest GCD multiple
+        vol_ul_rounded = (int(vol_ul) // gcd) * gcd
+        volumes_ul.append(vol_ul_rounded)
+    
+    # Ensure endpoints are exact
+    volumes_ul[0] = min_vol_ul
+    volumes_ul[-1] = max_vol_ul
+    
+    # Convert back to mL
+    volumes_ml = [vol / 1000.0 for vol in volumes_ul]
+    
+    # Sort by optimal testing sequence: middle → high → low → remaining
+    if len(volumes_ml) >= 3:
+        middle_idx = len(volumes_ml) // 2
+        sequence = [volumes_ml[middle_idx]]  # Start with middle
+        sequence.append(volumes_ml[-1])      # Then highest  
+        sequence.extend([vol for i, vol in enumerate(volumes_ml) if i != middle_idx and i != len(volumes_ml)-1])
+    else:
+        sequence = volumes_ml[::-1]  # Just reverse for 2 volumes
+    
+    return sequence
+
 def calculate_adaptive_time_scaling(completed_volumes, optimal_conditions_data):
     """Calculate TIME_SCALING_FACTOR from actual measurements when we have data.
     
@@ -269,11 +325,13 @@ def get_optimization_config(volume_index, completed_volumes, all_results):
     # Once we have ANY successful volume (passed precision test), 
     # we only optimize volume-dependent parameters for all remaining volumes
     if completed_volumes:
-        # Use parameters from the most recent successful volume
-        _, last_successful_params = completed_volumes[-1]
-        fixed_params = {k: v for k, v in last_successful_params.items() 
+        # Use parameters from the FIRST successful volume (most conservative/transferable)
+        _, first_successful_params = completed_volumes[0]
+        fixed_params = {k: v for k, v in first_successful_params.items() 
                       if k not in VOLUME_DEPENDENT_PARAMS}
-        print(f"   Using parameters from successful volume {completed_volumes[-1][0]*1000:.0f}μL")
+        print(f"   Using parameters from FIRST successful volume {completed_volumes[0][0]*1000:.0f}μL (most transferable)")
+        if len(completed_volumes) > 1:
+            print(f"   📊 Strategy: Using conservative baseline instead of latest optimized parameters")
         print(f"   🔒 FIXED: {list(fixed_params.keys())}")
         return VOLUME_DEPENDENT_PARAMS, fixed_params
     
@@ -676,6 +734,9 @@ def save_experiment_config(autosave_dir, new_pipet_each_time_set=None):
         'batch_size': BATCH_SIZE,
         'replicates': REPLICATES,
         'precision_replicates': PRECISION_REPLICATES,
+        'min_volume_ml': MIN_VOLUME_ML,
+        'max_volume_ml': MAX_VOLUME_ML,
+        'num_volumes': NUM_VOLUMES,
         'volumes': VOLUMES,
         'max_wells': MAX_WELLS,
         'max_overaspirate_ul': MAX_OVERASPIRATE_UL,
@@ -882,6 +943,12 @@ def generate_failure_diagnostics(volume_report_data, volumes):
     return diagnostics
 
 def main():
+    # Generate volumes based on configuration
+    global VOLUMES
+    VOLUMES = generate_volumes(MIN_VOLUME_ML, MAX_VOLUME_ML, NUM_VOLUMES)
+    print(f"\n📋 GENERATED VOLUME SEQUENCE: {[f'{v*1000:.0f}μL' for v in VOLUMES]}")
+    print(f"   Strategy: Start with middle volume, then high, then remaining")
+    
     lash_e, DENSITY_LIQUID, NEW_PIPET_EACH_TIME_SET, state = initialize_experiment()
     
     # LLM Control Variables - Two separate settings for two different phases
@@ -994,14 +1061,14 @@ def main():
         
         # Step 1: Determine starting candidate
         if len(completed_volumes) > 0:
-            # Use the last successful volume's parameters as starting point
-            last_volume, last_params = completed_volumes[-1]
-            print(f"🔄 TESTING PREVIOUS SUCCESS: Using parameters from {last_volume*1000:.0f}μL volume")
-            candidate_params = last_params
+            # Use the FIRST successful volume's parameters as starting point (most conservative)
+            first_volume, first_params = completed_volumes[0]
+            print(f"🔄 TESTING CONSERVATIVE BASELINE: Using parameters from FIRST successful volume {first_volume*1000:.0f}μL")
+            candidate_params = first_params
             
             # Find the original trial number for these parameters
-            last_optimal = optimal_conditions[-1] if optimal_conditions else {}
-            candidate_trial_number = last_optimal.get('trial_number', 'unknown')
+            first_optimal = optimal_conditions[0] if optimal_conditions else {}
+            candidate_trial_number = first_optimal.get('trial_number', 'unknown')
         else:
             # First volume - need SOBOL/LLM initial exploration
             screening_method = "LLM" if use_llm_for_screening else "SOBOL"
@@ -1074,13 +1141,14 @@ def main():
                     }
                     screening_candidates.append(candidate_info)
             
-            # Choose the BEST candidate from acceptable ones
+            # Choose the FIRST acceptable candidate (most conservative/transferable)
             if screening_candidates:
-                # Sort by deviation (lower is better), then by time if tied
-                best_candidate = min(screening_candidates, key=lambda x: (x['deviation'], x['time']))
-                candidate_params = best_candidate['params']
-                candidate_trial_number = best_candidate['trial_number']
-                print(f"   ✅ Selected BEST candidate from trial #{candidate_trial_number}: {best_candidate['deviation']:.1f}% deviation, {best_candidate['time']:.0f}s")
+                # Sort by trial number (chronological order) to get first acceptable solution
+                first_candidate = min(screening_candidates, key=lambda x: x['trial_number'])
+                candidate_params = first_candidate['params']
+                candidate_trial_number = first_candidate['trial_number']
+                print(f"   ✅ Selected FIRST acceptable candidate from trial #{candidate_trial_number}: {first_candidate['deviation']:.1f}% deviation, {first_candidate['time']:.0f}s")
+                print(f"   📊 Strategy: Using first successful solution for better transferability ({len(screening_candidates)} total candidates)")
                 print(f"   📊 {len(screening_candidates)}/{INITIAL_SUGGESTIONS} {screening_method} trials met criteria")
             else:
                 print(f"   ❌ No {screening_method} trials met criteria - will need optimization")
