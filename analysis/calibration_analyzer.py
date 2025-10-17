@@ -187,7 +187,7 @@ def plot_measured_time_over_measurements(raw_df, save_folder, optimal_conditions
         return
     
     if 'time' not in raw_df.columns:
-        print("Warning: No 'time' column found - cannot create measured time plot")
+        # Silently skip - time column is optional for raw measurements
         return
     
     plt.figure(figsize=(12, 8))

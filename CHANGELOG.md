@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-10-17
+### Fixed
+  - **CRITICAL: Simulation Physics in calibration_sdl_base.py**: Fixed systematic over-delivery bias that was causing unrealistic calibration data
+  - **Overvolume Calibration Algorithm**: Complete rewrite from flawed measured-volume fitting to shortfall-based linear regression
+  - **Simulation Tolerances**: Reduced default multipliers from 10x to 2x for more realistic testing
+  - **Reporting**: Fixed overaspirate recommendations to use correct shortfall-based formula instead of percentage formula
+
+### Changed  
+  - **MAJOR**: Simulation now realistically under-delivers without overaspirate (5-8% shortfall) and slightly over-compensates with overaspirate
+  - Overvolume algorithm now fits line to shortfalls (target - measured) instead of measured volumes
+  - Added 2μL minimum overaspirate safety floor to prevent system crashes
+  - Simulation uses stronger systematic underdelivery bias (-5% - 0.8% per mL) for realistic pipetting physics  
+  - Default simulation tolerance multipliers: DEV=2x, VAR=2x, TIME=1.5x (down from 10x, 10x, 3x)
+
 ## [0.1.0] - 2025-10-06
 ### Added
   - `README.md` explaining literature-focused capability framing

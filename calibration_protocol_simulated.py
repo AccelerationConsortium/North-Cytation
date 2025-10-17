@@ -40,9 +40,14 @@ def _simulate_once(target_vol: float, params: Dict[str, Any]) -> Tuple[float, fl
     asp_wait = params.get("aspirate_wait_time", 5)
     dsp_wait = params.get("dispense_wait_time", 5)
     over = params.get("overaspirate_vol", 0.0)
-    base_bias = 0.002 * (asp - 15)/15 + 0.002 * (dsp - 15)/15
-    over_comp = min(over, target_vol * 0.25) * 0.8
-    measured = max(target_vol + base_bias + over_comp + random.gauss(0, target_vol*0.01), 0)
+    # Base pipetting bias: typically slightly under-delivers due to surface tension, viscosity
+    base_bias = -0.005 * target_vol + 0.002 * (asp - 15)/15 + 0.002 * (dsp - 15)/15  # Negative bias = underdelivery
+    
+    # Overaspirate compensation: partially compensates for underdelivery but not perfectly  
+    over_comp = min(over, target_vol * 0.25) * 0.7  # 70% effectiveness (was 80%)
+    
+    # Measured volume: target + bias - shortfall + compensation + noise
+    measured = max(target_vol + base_bias + over_comp + random.gauss(0, target_vol*0.008), 0)
     speed_factor = (30 / max(asp,1) + 30 / max(dsp,1)) * 0.2
     wait_factor = (asp_wait + dsp_wait) * 0.05
     base_time = 1.2 + speed_factor + wait_factor + (target_vol * 4)

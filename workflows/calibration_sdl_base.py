@@ -91,19 +91,26 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     # Add base random noise
     mass_error_factor += np.random.normal(0, 0.01)
     
-    # IMPROVED: Allow for realistic range of parameter performance
-    # Keep the volume-dependent optimization challenge but allow more variation
+    # REALISTIC SIMULATION: Pipetting typically under-delivers due to surface tension, viscosity
+    # Add systematic underdelivery bias based on volume (stronger bias)
+    underdelivery_bias = -0.05 - (0.008 * volume)  # 5% + 0.8% per mL systematic underdelivery
     
-    # Instead of hard clipping, use a softer approach that preserves parameter sensitivity
-    # but keeps results in a reasonable range for optimization
+    # Overaspirate compensation: partially compensates but not perfectly
+    overasp_compensation = params["overaspirate_vol"] * 0.7 / volume if volume > 0 else 0  # 70% effectiveness
     
-    # Apply non-linear scaling to prevent extreme outliers but maintain differentiation
-    if mass_error_factor > 0:
-        # Positive errors (over-pipetting): softer scaling
-        mass_error_factor = 0.15 * np.tanh(mass_error_factor / 0.15)  # Max ~15% over
+    # Apply realistic scaling - start with the underdelivery bias, then add parameter effects
+    total_error = underdelivery_bias + (mass_error_factor * 0.3) + overasp_compensation
+    
+    # Apply non-linear scaling but bias toward underdelivery
+    if total_error > 0:
+        # Over-pipetting: rare and capped at ~5%
+        final_error = 0.05 * np.tanh(total_error / 0.05)
     else:
-        # Negative errors (under-pipetting): softer scaling  
-        mass_error_factor = -0.12 * np.tanh(-mass_error_factor / 0.12)  # Max ~12% under
+        # Under-pipetting: more common and can be up to ~12%
+        final_error = -0.12 * np.tanh(-total_error / 0.12)
+    
+    # Use the final calculated error
+    mass_error_factor = final_error
     
     # Generate simulated mass with parameter-dependent error
     simulated_mass = expected_mass * (1 + mass_error_factor)

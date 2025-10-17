@@ -206,7 +206,10 @@ def add_result(ax_client, trial_index, results, base_time_seconds=20, time_optim
     import numpy as np
     raw_time = results["time"]
     
-    if time_transition_mode == "smooth":
+    # Handle case where time optimization is disabled (time_optimal_target is None)
+    if time_optimal_target is None:
+        time_score = 0  # No time penalty when time optimization is disabled
+    elif time_transition_mode == "smooth":
         # Smooth transition (soft ReLU): log(1 + exp(x))
         # - Below optimal: Very small score (smooth approach to 0)
         # - At optimal: Small score (~0.69)  
@@ -234,7 +237,7 @@ def add_result(ax_client, trial_index, results, base_time_seconds=20, time_optim
         # Sharp cutoff - the original method that worked well
         time_score = max(0, raw_time - time_optimal_target)
     
-    print(f"DEBUG: Computed time_score={time_score:.2f} from raw_time={raw_time:.2f}, optimal_target={time_optimal_target}s")
+    print(f"DEBUG: Computed time_score={time_score:.2f} from raw_time={raw_time:.2f}, optimal_target={time_optimal_target if time_optimal_target is not None else 'None'}s")
     
     # Only use deviation and time_score (ignore variability)
     data = {
