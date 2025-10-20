@@ -1,6 +1,8 @@
 # calibration_sdl_modular.py
 import sys
 import os
+
+from sympy import false
 #asd
 sys.path.append("../North-Cytation")
 
@@ -45,6 +47,8 @@ PRECISION_REPLICATES = 4
 VOLUMES = [0.05, 0.025, 0.01]  # Manually specified volume list (in mL)
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
+EXPERIMENT_INDEX = 0  # Tracks index in multi-experiment runs; 0 = first
+_CACHED_LASH_E = None  # Reused robot controller across experiments
 
 # Based on pipetting accuracy standards: relative bias and CV thresholds
 BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cutoff)... Should probably calculate from viscosity. Eg 20s for water, 60s for glycerol... Can this be automated?
@@ -243,13 +247,30 @@ def get_volume_dependent_tolerances(volume_ml, is_first_volume=True):
     return tolerances
 
 def initialize_experiment():
+    global _CACHED_LASH_E
     DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
     NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
     state = {"measurement_vial_index": 0, "measurement_vial_name": "measurement_vial_0"}
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_biotek=False)
-    lash_e.nr_robot.check_input_file()
-    lash_e.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
-    return lash_e, DENSITY_LIQUID, NEW_PIPET_EACH_TIME_SET, state
+
+    # Reuse lash_e across experiments to avoid repeated hardware initialization
+    if _CACHED_LASH_E is None:
+        print("[init] Creating new Lash_E controller")
+        _CACHED_LASH_E = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_biotek=False)
+        # Only perform the (potentially slow) input file integrity check on first creation
+        try:
+            _CACHED_LASH_E.nr_robot.check_input_file()
+        except Exception as e:
+            print(f"Warning: initial check_input_file failed: {e}")
+    else:
+        print(f"[reuse] Reusing existing Lash_E controller (_CACHED_LASH_E) for experiment index {EXPERIMENT_INDEX}")
+
+    # Always move a fresh measurement vial into place for each experiment run
+    try:
+        _CACHED_LASH_E.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
+    except Exception as e:
+        print(f"Warning: could not move measurement vial: {e}")
+
+    return _CACHED_LASH_E, DENSITY_LIQUID, NEW_PIPET_EACH_TIME_SET, state
 
 def get_tip_volume_for_volume(lash_e, volume):
     """Get the tip volume capacity for a given pipetting volume"""
@@ -417,7 +438,6 @@ def get_llm_suggestions(ax_client, n, all_results):
             params, trial_index = ax_client.attach_trial(filtered_params)
             suggestions.append((params, trial_index))
     return suggestions
-
 
 def check_optimization_criteria(all_results, criteria):
     # Check if we have results that meet both deviation and time criteria
@@ -634,8 +654,11 @@ def calibrate_overvolume_parameters(screening_candidates, remaining_volumes, las
             point['slope'] = slope  # Store raw slope coefficient
             point['intercept'] = intercept  # Store raw intercept coefficient
         
-        # Generate calibration plot
+        # Generate calibration plot (only for first experiment to avoid pauses)
         try:
+            if EXPERIMENT_INDEX != 0:
+                print(f"   📊 Skipping plot generation for experiment index {EXPERIMENT_INDEX}")
+                return new_base_ul, new_scaling_percent, calibration_data
             # Create the plot
             plt.figure(figsize=(10, 8))
             
@@ -1201,14 +1224,98 @@ def generate_failure_diagnostics(volume_report_data, volumes):
     
     return diagnostics
 
-def main():
-    # Use manually specified volumes instead of auto-generation
-    # Commented out: automatic volume generation
-    # global VOLUMES  
-    # VOLUMES = generate_volumes(MIN_VOLUME_ML, MAX_VOLUME_ML, NUM_VOLUMES)
-    print(f"\n📋 USING MANUAL VOLUME SEQUENCE: {[f'{v*1000:.0f}μL' for v in VOLUMES]}")
-    print(f"   Note: Volumes are manually specified in VOLUMES list")
+def get_default_config():
+    """Get default experiment configuration"""
+    return {
+        'liquid': LIQUID,
+        'simulate': SIMULATE,
+        'seed': SEED,
+        'initial_suggestions': INITIAL_SUGGESTIONS,
+        'batch_size': BATCH_SIZE,
+        'replicates': REPLICATES,
+        'precision_replicates': PRECISION_REPLICATES,
+        'volumes': VOLUMES,
+        'max_wells': MAX_WELLS,
+        'input_vial_status_file': INPUT_VIAL_STATUS_FILE,
+        'base_time_seconds': BASE_TIME_SECONDS,
+        'time_scaling_factor': TIME_SCALING_FACTOR,
+        'time_buffer_fraction': TIME_BUFFER_FRACTION,
+        'time_transition_mode': TIME_TRANSITION_MODE,
+        'use_llm_for_screening': USE_LLM_FOR_SCREENING,
+        'use_llm_for_optimization': USE_LLM_FOR_OPTIMIZATION,
+        'bayesian_model_type': BAYESIAN_MODEL_TYPE,
+        'volume_tolerance_ranges': VOLUME_TOLERANCE_RANGES,
+        'overaspirate_base_ul': OVERASPIRATE_BASE_UL,
+        'overaspirate_scaling_percent': OVERASPIRATE_SCALING_PERCENT,
+        'auto_calibrate_overvolume': AUTO_CALIBRATE_OVERVOLUME,
+        'overvolume_calibration_buffer_ul': OVERVOLUME_CALIBRATION_BUFFER_UL,
+        'overvolume_max_base_ul': OVERVOLUME_MAX_BASE_UL,
+        'overvolume_max_percent': OVERVOLUME_MAX_PERCENT,
+        'use_selective_optimization': USE_SELECTIVE_OPTIMIZATION,
+        'use_historical_data_for_optimization': USE_HISTORICAL_DATA_FOR_OPTIMIZATION,
+        'volume_dependent_params': VOLUME_DEPENDENT_PARAMS,
+        'all_params': ALL_PARAMS,
+        'base_autosave_dir': BASE_AUTOSAVE_DIR,
+    }
+
+def run_single_experiment(config_overrides=None):
+    """Run a single experiment with optional configuration overrides
     
+    Args:
+        config_overrides (dict): Dictionary of configuration values to override defaults
+                                 e.g., {'liquid': 'water', 'volumes': [0.1, 0.05], 'seed': 42}
+    
+    Returns:
+        dict: Experiment results including paths, statistics, and completion status
+    """
+    # Start with default configuration
+    config = get_default_config()
+    
+    # Apply any overrides
+    if config_overrides:
+        config.update(config_overrides)
+        print(f"\n🔧 CONFIGURATION OVERRIDES APPLIED:")
+        for key, value in config_overrides.items():
+            print(f"   {key}: {value}")
+    
+    # Update global variables with the configuration (for backward compatibility)
+    global LIQUID, SIMULATE, SEED, VOLUMES, MAX_WELLS, PRECISION_REPLICATES
+    global BASE_TIME_SECONDS, USE_LLM_FOR_SCREENING, USE_LLM_FOR_OPTIMIZATION
+    global BAYESIAN_MODEL_TYPE, AUTO_CALIBRATE_OVERVOLUME, OVERASPIRATE_BASE_UL
+    global OVERASPIRATE_SCALING_PERCENT
+    
+    LIQUID = config['liquid']
+    SIMULATE = config['simulate'] 
+    SEED = config['seed']
+    VOLUMES = config['volumes']
+    MAX_WELLS = config['max_wells']
+    PRECISION_REPLICATES = config['precision_replicates']
+    BASE_TIME_SECONDS = config['base_time_seconds']
+    USE_LLM_FOR_SCREENING = config['use_llm_for_screening']
+    USE_LLM_FOR_OPTIMIZATION = config['use_llm_for_optimization']
+    BAYESIAN_MODEL_TYPE = config['bayesian_model_type']
+    AUTO_CALIBRATE_OVERVOLUME = config['auto_calibrate_overvolume']
+    OVERASPIRATE_BASE_UL = config['overaspirate_base_ul']
+    OVERASPIRATE_SCALING_PERCENT = config['overaspirate_scaling_percent']
+    
+    print(f"\n📋 EXPERIMENT CONFIGURATION:")
+    print(f"   Liquid: {LIQUID}")
+    print(f"   Simulate: {SIMULATE}")
+    print(f"   Volumes: {[f'{v*1000:.0f}μL' for v in VOLUMES]}")
+    print(f"   Seed: {SEED}")
+    print(f"   Max Wells: {MAX_WELLS}")
+    print(f"   Precision Replicates: {PRECISION_REPLICATES}")
+    
+    # Run the actual experiment logic
+    return run_experiment_logic()
+
+def main(config_overrides=None):
+    """Main experiment function - can be called with configuration overrides"""
+    # Call run_single_experiment which handles the config setup and calls the actual experiment logic
+    return run_single_experiment(config_overrides)
+
+def run_experiment_logic():
+    """Core experiment logic separated from configuration handling"""
     lash_e, DENSITY_LIQUID, NEW_PIPET_EACH_TIME_SET, state = initialize_experiment()
     
     # LLM Control Variables - Two separate settings for two different phases
@@ -1838,8 +1945,138 @@ def main():
         
     except Exception as e:
         print(f"Warning: Failed to generate calibration report: {e}")
+        report_path = None
     
     print(f"{'='*60}")
+    
+    # Return experiment results
+    return {
+        'success': len(completed_volumes) == len(VOLUMES),
+        'completed_volumes': len(completed_volumes),
+        'total_volumes': len(VOLUMES),
+        'volumes': VOLUMES,
+        'liquid': LIQUID,
+        'simulate': SIMULATE,
+        'seed': SEED,
+        'autosave_dir': autosave_dir,
+        'report_path': report_path,
+        'volume_report_data': volume_report_data,
+        'completed_volume_list': completed_volumes,
+        'optimal_conditions': optimal_conditions
+    }
+
+def run_multiple_experiments(experiment_configs):
+    """Run multiple experiments with different configurations
+    
+    Args:
+        experiment_configs (list): List of dictionaries, each containing config overrides for one experiment
+                                  e.g., [
+                                      {'liquid': 'water', 'seed': 1},
+                                      {'liquid': 'glycerol', 'seed': 2}, 
+                                      {'volumes': [0.1, 0.05], 'precision_replicates': 6}
+                                  ]
+    
+    Returns:
+        list: List of experiment results
+    """
+    results = []
+    
+    print(f"\n{'='*80}")
+    print(f"🚀 MULTI-EXPERIMENT BATCH: {len(experiment_configs)} experiments planned")
+    print(f"{'='*80}")
+    
+    for i, config_overrides in enumerate(experiment_configs, 1):
+        print(f"\n{'🧪'*3} EXPERIMENT {i}/{len(experiment_configs)} {'🧪'*3}")
+        # Set global experiment index (0-based)
+        global EXPERIMENT_INDEX
+        EXPERIMENT_INDEX = i - 1
+        print(f"[info] Set EXPERIMENT_INDEX={EXPERIMENT_INDEX}")
+        
+        # Show what's being changed for this experiment
+        if config_overrides:
+            print(f"📝 Configuration changes for this experiment:")
+            for key, value in config_overrides.items():
+                print(f"   • {key}: {value}")
+        else:
+            print(f"📝 Using default configuration (no overrides)")
+        
+        try:
+            result = run_single_experiment(config_overrides)
+            result['experiment_number'] = i
+            result['config_overrides'] = config_overrides
+            results.append(result)
+            
+            print(f"✅ Experiment {i} completed successfully")
+            
+        except Exception as e:
+            error_result = {
+                'experiment_number': i,
+                'config_overrides': config_overrides,
+                'error': str(e),
+                'success': False
+            }
+            results.append(error_result)
+            print(f"❌ Experiment {i} failed: {e}")
+            
+            # Ask if user wants to continue or stop
+            if i < len(experiment_configs):
+                print(f"\n⚠️  Experiment {i} failed. Continue with remaining experiments? (y/n): ", end="")
+                choice = input().strip().lower()
+                if choice != 'y':
+                    print("🛑 Stopping multi-experiment batch")
+                    break
+    
+    # Summary
+    print(f"\n{'='*80}")
+    print(f"📊 MULTI-EXPERIMENT BATCH SUMMARY")
+    print(f"{'='*80}")
+    successful = [r for r in results if r.get('success', True) != False]
+    failed = [r for r in results if r.get('success', True) == False]
+    
+    print(f"✅ Successful experiments: {len(successful)}/{len(experiment_configs)}")
+    print(f"❌ Failed experiments: {len(failed)}")
+    
+    if successful:
+        print(f"\n🎉 Successful experiments:")
+        for result in successful:
+            overrides = result.get('config_overrides', {})
+            summary = ", ".join([f"{k}={v}" for k, v in overrides.items()]) if overrides else "default config"
+            print(f"   • Experiment {result['experiment_number']}: {summary}")
+    
+    if failed:
+        print(f"\n💥 Failed experiments:")
+        for result in failed:
+            overrides = result.get('config_overrides', {})
+            summary = ", ".join([f"{k}={v}" for k, v in overrides.items()]) if overrides else "default config"
+            print(f"   • Experiment {result['experiment_number']}: {summary} - Error: {result.get('error', 'Unknown')}")
+    
+    return results
+
+# Example usage functions
+def example_volume_study():
+    """Example: Test different volume sets"""
+    experiments = [
+        {'volumes': [0.1, 0.05, 0.01]},
+        {'volumes': [0.2, 0.1, 0.05]},
+        {'volumes': [0.05, 0.025, 0.01]}
+    ]
+    return run_multiple_experiments(experiments)
+
+def run_glycerol():
+    custom_experiments = [
+        {'liquid': 'glycerol', 'volumes': [0.1, 0.05, 0.01], 'base_time_seconds': 60, 'simulate': False}
+    ]
+    run_multiple_experiments(custom_experiments)
 
 if __name__ == "__main__":
-    main()
+    # Single experiment (default behavior)
+    #main()
+    
+    # Uncomment one of these to run multi-experiment studies:
+    # example_volume_study() 
+ 
+    # Or create your own experiment list:
+    custom_experiments = [
+        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.01]}
+    ]
+    run_multiple_experiments(custom_experiments)
