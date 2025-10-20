@@ -42,24 +42,16 @@ INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
 REPLICATES = 1  # for optimization
 PRECISION_REPLICATES = 4
-# Volume generation configuration
-# MIN_VOLUME_ML = 0.3      # Minimum volume in mL
-# MAX_VOLUME_ML = 1.0      # Maximum volume in mL  
-# NUM_VOLUMES = 3          # Number of volumes to test
 VOLUMES = [0.05, 0.025, 0.01]  # Manually specified volume list (in mL)
 MAX_WELLS = 96
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 
+# Based on pipetting accuracy standards: relative bias and CV thresholds
+BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cutoff)... Should probably calculate from viscosity. Eg 20s for water, 60s for glycerol... Can this be automated?
+TIME_SCALING_FACTOR = 2.5  # +2.5 seconds per 100 μL above baseline (used for first volume only)
+TIME_BUFFER_FRACTION = 0.1  # Buffer fraction: optimal_time = base_time * (1 - buffer)
+TIME_TRANSITION_MODE = "asymmetric"  # Options: "relu" (max(0,x)), "smooth" (log(1+exp(x))), "asymmetric" (gentle penalty for fast times)
 
-# --- LLM Configuration ---
-# Two independent LLM settings for different phases:
-# 1. SCREENING: Initial exploration of parameter space (first volume only)
-#    - USE_LLM_FOR_SCREENING = True: Use LLM instead of SOBOL for initial suggestions
-#    - USE_LLM_FOR_SCREENING = False: Use SOBOL for initial suggestions (default)
-# 
-# 2. OPTIMIZATION: Finding better parameters when current ones don't meet criteria
-#    - USE_LLM_FOR_OPTIMIZATION = True: Use LLM instead of Bayesian optimization
-#    - USE_LLM_FOR_OPTIMIZATION = False: Use Bayesian optimization (default)
 USE_LLM_FOR_SCREENING = False     # LLM vs SOBOL for initial exploration (first volume)
 USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
 
@@ -68,14 +60,6 @@ USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
 # NOTE: This is only used when USE_LLM_FOR_OPTIMIZATION = False
 # Options: 'qEI' (Expected Improvement), 'qLogEI' (Log Expected Improvement), 'qNEHVI' (Noisy Expected Hypervolume Improvement)
 BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
-
-# Criteria (For real life testing) - Volume-dependent relative percentage tolerances
-# Based on pipetting accuracy standards: relative bias and CV thresholds
-BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cutoff)... Should probably calculate from viscosity. Eg 20s for water, 60s for glycerol... Can this be automated?
-TIME_SCALING_FACTOR = 2.5  # +2.5 seconds per 100 μL above baseline (used for first volume only)
-TIME_BUFFER_FRACTION = 0.1  # Buffer fraction: optimal_time = base_time * (1 - buffer)
-# ADAPTIVE_TIME_SCALING removed - time scaling only used for first volume, no adaptive updates needed
-TIME_TRANSITION_MODE = "asymmetric"  # Options: "relu" (max(0,x)), "smooth" (log(1+exp(x))), "asymmetric" (gentle penalty for fast times)
 
 # Relative percentage tolerances (applies to both optimization and precision test)
 # Volume ranges defined as (min_volume_ul, max_volume_ul, tolerance_pct)
