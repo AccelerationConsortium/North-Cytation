@@ -55,7 +55,7 @@
       "type": "integer",
       "unit": "uL/s",
       "range": [
-        5,
+        10,
         35
       ],
       "description": "Speed for liquid aspiration operations. IMPORTANT: Higher values = SLOWER speed. Lower values = faster speed. Slower speeds (higher values) may improve accuracy but increase time.",
@@ -65,7 +65,7 @@
       "type": "integer",
       "unit": "uL/s",
       "range": [
-        5,
+        10,
         35
       ],
       "description": "Speed for liquid dispensing operations. IMPORTANT: Higher values = SLOWER speed. Lower values = faster speed. Slower speeds (higher values) may improve accuracy but increase time.",
@@ -101,14 +101,14 @@
       "description": "Speed for retracting tip from liquid surface. Higher values = faster retraction, lower values = slower retraction. Slower retractions may improve accuracy.",
       "safety_limit": 20.0
     },
-    "pre_asp_air_vol": {
+    "blowout_vol": {
       "type": "float",
       "unit": "mL",
       "range": [
         0.0,
         0.1
       ],
-      "description": "Air volume aspirated before liquid, allowing liquid stuck in the tip to be expelled. ",
+      "description": "Air volume blown out after dispensing to ensure complete liquid transfer and reduce retention.",
       "safety_limit": 0.15
     },
     "post_asp_air_vol": {

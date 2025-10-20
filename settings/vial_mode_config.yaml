@@ -1,0 +1,37 @@
+# Vial Management Mode Configuration
+# Maps vial modes to their configuration parameters
+
+vial_modes:
+  legacy:
+    description: "Legacy mode - single vial used for all volumes"
+    vial_file: "status/calibration_vials_short.csv"
+    mode: "legacy"
+    default_params:
+      reservoir_usage: false
+      waste_usage: false
+      swap_between_volumes: false
+      
+  maintain:
+    description: "Maintain mode - keep vials, use reservoir/waste for volume changes"
+    vial_file: "status/calibration_vials_overnight.csv"
+    mode: "maintain"
+    default_params:
+      reservoir_usage: true
+      waste_usage: true
+      swap_between_volumes: false
+      volume_buffer_ul: 50
+      
+  swap:
+    description: "Swap mode - new vials for each volume, no reservoir/waste"
+    vial_file: "status/calibration_vials_overnight.csv"
+    mode: "swap"
+    default_params:
+      reservoir_usage: false
+      waste_usage: false
+      swap_between_volumes: true
+      volume_buffer_ul: 50
+
+# Usage examples:
+# vial_config = get_vial_config("maintain")
+# INPUT_VIAL_STATUS_FILE = vial_config["vial_file"]
+# lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, vial_mode=vial_config["mode"])

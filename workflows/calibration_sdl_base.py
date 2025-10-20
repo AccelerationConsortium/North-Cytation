@@ -206,12 +206,18 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
         liquid_density = LIQUIDS[liquid]["density"]
 
-        debug_sim = os.environ.get("CAL_SIM_DEBUG", "1") == "1"
-        if debug_sim:
+        # Simple debug for simulation mode
+        if simulate:
             print(f"[sim-debug] target_volume_ul={volume*1000:.2f} expected_mass={expected_measurement:.5f}g density={liquid_density} -> expected_vol_from_mass={(expected_measurement/liquid_density)*1000:.2f}µL")
         
         for replicate_idx in range(replicate_count):
             # Generate a slightly different mass for each replicate to simulate real variability
+            
+            lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, parameters=aspirate_params)
+            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, parameters=dispense_params, measure_weight=True)
+            if new_pipet_each_time:
+                lash_e.nr_robot.remove_pipet()
+
             base_mass = simulated_result["simulated_mass"]
             replicate_mass = base_mass + np.random.normal(0, base_mass * 0.02)  # 2% replicate variation
             replicate_mass = max(replicate_mass, 0)  # Can't be negative
@@ -219,7 +225,7 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             # Calculate volume from mass and density
             calculated_volume = replicate_mass / liquid_density
 
-            if debug_sim and replicate_idx == 0:
+            if simulate and replicate_idx == 0:
                 print(f"[sim-debug] first_replicate_mass={replicate_mass:.5f}g calc_volume_ul={calculated_volume*1000:.2f} deviation_pct={simulated_result['deviation']:.2f}")
             
             # Simulate replicate timing (base time + some variation)
@@ -260,6 +266,16 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
         liquid_density = LIQUIDS[liquid]["density"]
         
+        # Vial management hook - only use per-experiment overrides
+        try:
+            # Use only the global overrides set by set_vial_management()
+            if _VIAL_MANAGEMENT_MODE_OVERRIDE and _VIAL_MANAGEMENT_MODE_OVERRIDE.lower() != "legacy":
+                # state may be managed higher level; create minimal state if absent
+                _state = {'measurement_vial_name': dest_vial}
+                manage_vials(lash_e, _state)
+        except Exception as _e:
+            lash_e.logger.info(f"[vial-mgmt] skipped: {_e}")
+
         for replicate_idx in range(replicate_count):
             replicate_start_time = time.time()
             replicate_start = datetime.now().isoformat()
@@ -387,3 +403,145 @@ def flatten_measurements(raw_data: dict) -> pd.DataFrame:
                 'absorbance': absorbance
             })
     return pd.DataFrame(records)
+
+# ================= Vial Management (Non-legacy modes) ==================
+# Modes: 'legacy' (do nothing), 'maintain', 'swap'.
+# Vial management configuration - set via per-experiment overrides only
+_VIAL_MANAGEMENT_MODE_OVERRIDE = None
+_VIAL_MANAGEMENT_CONFIG_OVERRIDE = None
+
+# Default vial management configuration
+VIAL_MANAGEMENT_DEFAULTS = {
+    'source_vial': 'liquid_source_0',
+    'measurement_vial': 'measurement_vial_0',
+    'waste_vial': 'waste_0',
+    'reservoir_index': 0,
+    'min_source_ml': 2.0,
+    'refill_target_ml': 8.0,
+    'max_measurement_ml': 7.0,
+}
+
+def set_vial_management(mode: str | None = None, config: dict | None = None):
+    """Override vial management mode/config for the current experiment.
+
+    Args:
+        mode: 'legacy', 'maintain', or 'swap' (case-insensitive). None leaves existing value.
+        config: dict with keys: source_vial, measurement_vial, waste_vial, reservoir_index,
+                min_source_ml, refill_target_ml, max_measurement_ml.
+    """
+    global _VIAL_MANAGEMENT_MODE_OVERRIDE, _VIAL_MANAGEMENT_CONFIG_OVERRIDE
+    print(f"[vial-mgmt] Setting vial management: mode={mode}, config={config}")
+    
+    if mode:
+        _VIAL_MANAGEMENT_MODE_OVERRIDE = mode.lower()
+    if config:
+        # Shallow copy to avoid external mutation side-effects
+        _VIAL_MANAGEMENT_CONFIG_OVERRIDE = dict(config)
+
+def _maintain_vials(lash_e, state, cfg):
+    src = cfg['source_vial']
+    meas = cfg['measurement_vial']
+    waste = cfg['waste_vial']
+    
+    # Empty measurement vial if above threshold (do this first to free up clamp if needed)
+    try:
+        vol_meas = lash_e.nr_robot.get_vial_info(meas, 'vial_volume')
+        if vol_meas is not None and vol_meas >= cfg['max_measurement_ml']:
+            lash_e.nr_robot.remove_pipet()
+            # Leave a small buffer to avoid rounding errors in multi-transfer operations
+            # When the volume gets split into multiple transfers, cumulative rounding can cause
+            # the final transfer to try aspirating more than what's actually left
+            transfer_volume = vol_meas - 0.05  # Leave 50μL buffer to prevent aspiration errors
+            if transfer_volume > 0:
+                lash_e.nr_robot.dispense_from_vial_into_vial(meas, waste, transfer_volume, remove_tip=False)
+                msg = f"[maintain] Emptied {transfer_volume:.2f} mL from {meas} to {waste}"
+                lash_e.logger.info(msg)
+                print(f"[LOG] {msg}")
+    except Exception as e:
+        msg = f"[maintain] empty skipped: {e}"
+        lash_e.logger.info(msg)
+        print(f"[LOG] {msg}")
+    
+    # Refill source vial if below threshold
+    try:
+        vol_src = lash_e.nr_robot.get_vial_info(src, 'vial_volume')
+        if vol_src is not None and vol_src < cfg['min_source_ml']:
+            top_up = cfg['refill_target_ml'] - vol_src
+            if top_up > 0:
+                lash_e.nr_robot.remove_pipet()
+                
+                # Handle clamp conflicts: temporarily return measurement vial if needed
+                clamp_vial = lash_e.nr_robot.get_vial_in_location('clamp', 0)
+                measurement_returned = False
+                if clamp_vial is not None and lash_e.nr_robot.get_vial_info(clamp_vial, 'vial_name') == meas:
+                    lash_e.nr_robot.return_vial_home(clamp_vial)
+                    measurement_returned = True
+                
+                # Refill the source vial
+                lash_e.nr_robot.dispense_into_vial_from_reservoir(cfg['reservoir_index'], src, top_up, return_home=True)
+                
+                # Move measurement vial back to clamp if we returned it
+                if measurement_returned:
+                    lash_e.nr_robot.move_vial_to_location(meas, "clamp", 0)
+                
+                msg = f"[maintain] Refilled {src} by {top_up:.2f} mL"
+                lash_e.logger.info(msg)
+                print(f"[LOG] {msg}")
+    except Exception as e:
+        msg = f"[maintain] refill skipped: {e}"
+        lash_e.logger.info(msg)
+        print(f"[LOG] {msg}")
+
+def _swap_vials_if_needed(lash_e, state, cfg):
+    src = cfg['source_vial']
+    meas = cfg['measurement_vial']
+    try:
+        vol_src = lash_e.nr_robot.get_vial_info(src, 'vial_volume')
+        vol_meas = lash_e.nr_robot.get_vial_info(meas, 'vial_volume')
+        if vol_src is not None and vol_meas is not None:
+            if vol_src < cfg['min_source_ml'] and vol_meas > cfg['min_source_ml']:
+                lash_e.nr_robot.remove_pipet()
+                
+                # Physically swap the vials if measurement vial is in clamp
+                meas_location = lash_e.nr_robot.get_vial_info(meas, 'location')
+                if meas_location == 'clamp':
+                    # Return measurement vial home and move source vial to clamp
+                    lash_e.nr_robot.return_vial_home(meas)
+                    lash_e.nr_robot.move_vial_to_location(src, "clamp", 0)
+                
+                # Update configuration and state
+                cfg['source_vial'], cfg['measurement_vial'] = meas, src
+                state['measurement_vial_name'] = cfg['measurement_vial']
+                msg = f"[swap] Swapped roles: source→{cfg['source_vial']} measurement→{cfg['measurement_vial']}"
+                lash_e.logger.info(msg)
+                print(f"[LOG] {msg}")
+    except Exception as e:
+        msg = f"[swap] skipped: {e}"
+        lash_e.logger.info(msg)
+        print(f"[LOG] {msg}")
+
+def manage_vials(lash_e, state):
+    # Only use per-experiment overrides (no environment variables)
+    mode = _VIAL_MANAGEMENT_MODE_OVERRIDE
+    print(f"[vial-mgmt] mode = {mode}")
+    
+    # Merge override with defaults
+    if _VIAL_MANAGEMENT_CONFIG_OVERRIDE:
+        cfg = {**VIAL_MANAGEMENT_DEFAULTS, **_VIAL_MANAGEMENT_CONFIG_OVERRIDE}
+    else:
+        cfg = VIAL_MANAGEMENT_DEFAULTS
+    
+    if not mode or mode == 'legacy':
+        print(f"[vial-mgmt] Using legacy mode (no vial management)")
+        return
+    
+    # Log activation with configuration keys
+    cfg_keys = list(cfg.keys()) if cfg else []
+    lash_e.logger.info(f"[vial-mgmt] manage_vials called: mode={mode} cfg_keys={cfg_keys}")
+    # Force to console as well in case of handler issues
+    print(f"[LOG] [vial-mgmt] manage_vials called: mode={mode} cfg_keys={cfg_keys}")
+    
+    if mode == 'maintain':
+        _maintain_vials(lash_e, state, cfg)
+    elif mode == 'swap':
+        _swap_vials_if_needed(lash_e, state, cfg)
