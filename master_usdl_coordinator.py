@@ -132,7 +132,8 @@ class Lash_E:
             self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}' for CarrierIn")
         
         if not self.simulate:
-            self.cytation.CarrierOut()
+            #self.cytation.CarrierOut()
+            None
         # Use robot's plate_type for robot movements
         self.nr_track.grab_wellplate_from_location('cytation_tray', plate_type)
         self.nr_track.move_through_path(['cytation_safe_area'])
