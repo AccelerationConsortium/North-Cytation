@@ -2077,6 +2077,6 @@ if __name__ == "__main__":
  
     # Or create your own experiment list:
     custom_experiments = [
-        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.01]}
+        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.01], 'simulate': False}
     ]
     run_multiple_experiments(custom_experiments)
