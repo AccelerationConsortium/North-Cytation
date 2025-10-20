@@ -169,7 +169,6 @@ class Biotek_Wrapper:
                 results.append(f"{ex_val}_{em_val}")
 
         return results
-    
 
     def get_wavelengths_from_plate(self, plate):
         """
