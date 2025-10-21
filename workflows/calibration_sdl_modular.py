@@ -2123,16 +2123,50 @@ def run_experiment_logic():
     
     if not SIMULATE and SLACK_AVAILABLE:
         try:
-            completed_list = [f"{int(v*1000)}�uL" for v, _ in completed_volumes]
+            completed_list = [f"{int(v*1000)}uL" for v, _ in completed_volumes]
             remaining_vols = [v for v in VOLUMES if v not in [cv for cv, _ in completed_volumes]]
-            remaining_list = [f"{int(v*1000)}�uL" for v in remaining_vols]
+            remaining_list = [f"{int(v*1000)}uL" for v in remaining_vols]
             completed_str = ", ".join(completed_list) if completed_list else "None"
             remaining_str = ", ".join(remaining_list) if remaining_list else "None"
 
+            # Calculate per-volume metrics and overall statistics
+            volume_summaries = []
+            total_trials = 0
+            
+            for i, (volume, params) in enumerate(completed_volumes):
+                # Get trial count for this volume from volume_report_data
+                vol_data = volume_report_data.get(volume, {})
+                vol_trials = (vol_data.get('sobol_trials', 0) + 
+                             vol_data.get('optimization_trials', 0) + 
+                             vol_data.get('precision_trials_passed', 0) + 
+                             vol_data.get('precision_trials_failed', 0))
+                total_trials += vol_trials
+                
+                # Get accuracy metrics from optimal_conditions
+                if i < len(optimal_conditions):
+                    oc = optimal_conditions[i]
+                    deviation = oc.get('deviation_percent', 0)
+                    variability = oc.get('variability_percent', 0)
+                    volume_summaries.append(f"{int(volume*1000)}uL({vol_trials}t,{deviation:.1f}%,{variability:.1f}%)")
+                else:
+                    volume_summaries.append(f"{int(volume*1000)}uL({vol_trials}t,N/A,N/A)")
+            
+            # Calculate overall averages
+            if optimal_conditions:
+                avg_deviation = sum(oc.get('deviation_percent', 0) for oc in optimal_conditions) / len(optimal_conditions)
+                avg_time = sum(oc.get('time_seconds', 0) for oc in optimal_conditions if oc.get('time_seconds')) / len([oc for oc in optimal_conditions if oc.get('time_seconds')])
+            else:
+                avg_deviation = 0
+                avg_time = 0
+
+            volumes_line = " ".join(volume_summaries) if volume_summaries else "None"
+            time_str = f"{avg_time:.0f}s" if avg_time else "N/A"
+
             slack_msg = (
-                f"Modular calibration with {LIQUID} COMPLETE\n"
-                f"Volumes completed: {len(completed_volumes)}/{len(VOLUMES)} -> {completed_str}\n"
-                f"Remaining (not calibrated): {remaining_str}"
+                f"🎯 Modular calibration with {LIQUID} COMPLETE\n"
+                f"✅ {volumes_line}\n"
+                f"🎯 Total: {total_trials} trials, {avg_deviation:.1f}% avg accuracy\n"
+                f"⏱️ Avg time: {time_str}"
             )
             slack_agent.send_slack_message(slack_msg)
         except Exception as e:
@@ -2297,35 +2331,35 @@ def run_glycerol():
 def get_default_config():
     """Get default experiment configuration"""
     return {
-        'liquid': LIQUID,
-        'simulate': SIMULATE,
-        'seed': SEED,
-        'initial_suggestions': INITIAL_SUGGESTIONS,
-        'batch_size': BATCH_SIZE,
-        'replicates': REPLICATES,
-        'precision_replicates': PRECISION_REPLICATES,
-        'volumes': VOLUMES,
-        'max_wells': MAX_WELLS,
-        'input_vial_status_file': INPUT_VIAL_STATUS_FILE,
-        'base_time_seconds': BASE_TIME_SECONDS,
-        'time_scaling_factor': TIME_SCALING_FACTOR,
-        'time_buffer_fraction': TIME_BUFFER_FRACTION,
-        'time_transition_mode': TIME_TRANSITION_MODE,
-        'use_llm_for_screening': USE_LLM_FOR_SCREENING,
-        'use_llm_for_optimization': USE_LLM_FOR_OPTIMIZATION,
-        'bayesian_model_type': BAYESIAN_MODEL_TYPE,
-        'volume_tolerance_ranges': VOLUME_TOLERANCE_RANGES,
-        'overaspirate_base_ul': OVERASPIRATE_BASE_UL,
-        'overaspirate_scaling_percent': OVERASPIRATE_SCALING_PERCENT,
-        'auto_calibrate_overvolume': AUTO_CALIBRATE_OVERVOLUME,
-        'overvolume_calibration_buffer_ul': OVERVOLUME_CALIBRATION_BUFFER_UL,
-        'overvolume_max_base_ul': OVERVOLUME_MAX_BASE_UL,
-        'overvolume_max_percent': OVERVOLUME_MAX_PERCENT,
-        'use_selective_optimization': USE_SELECTIVE_OPTIMIZATION,
-        'use_historical_data_for_optimization': USE_HISTORICAL_DATA_FOR_OPTIMIZATION,
-        'volume_dependent_params': VOLUME_DEPENDENT_PARAMS,
-        'all_params': ALL_PARAMS,
-        'base_autosave_dir': BASE_AUTOSAVE_DIR,
+        'liquid': LIQUID,  # str: 'water', 'glycerol', 'ethanol'
+        'simulate': SIMULATE,  # bool: True/False
+        'seed': SEED,  # int: random seed for reproducibility
+        'initial_suggestions': INITIAL_SUGGESTIONS,  # int: number of SOBOL/LLM initial trials
+        'batch_size': BATCH_SIZE,  # int: batch size for optimization loops
+        'replicates': REPLICATES,  # int: replicates per optimization trial
+        'precision_replicates': PRECISION_REPLICATES,  # int: replicates for final precision test
+        'volumes': VOLUMES,  # list[float]: volumes in mL, e.g., [0.05, 0.025, 0.1]
+        'max_wells': MAX_WELLS,  # int: maximum wellplate wells to use
+        'input_vial_status_file': INPUT_VIAL_STATUS_FILE,  # str: path to vial CSV file
+        'base_time_seconds': BASE_TIME_SECONDS,  # float: base time cutoff for optimization
+        'time_scaling_factor': TIME_SCALING_FACTOR,  # float: seconds per 100uL above baseline
+        'time_buffer_fraction': TIME_BUFFER_FRACTION,  # float: 0.0-1.0, optimal time buffer
+        'time_transition_mode': TIME_TRANSITION_MODE,  # str: 'relu', 'smooth', 'asymmetric'
+        'use_llm_for_screening': USE_LLM_FOR_SCREENING,  # bool: LLM vs SOBOL for initial exploration
+        'use_llm_for_optimization': USE_LLM_FOR_OPTIMIZATION,  # bool: LLM vs Bayesian for optimization
+        'bayesian_model_type': BAYESIAN_MODEL_TYPE,  # str: 'qEI', 'qLogEI', 'qNEHVI'
+        'volume_tolerance_ranges': VOLUME_TOLERANCE_RANGES,  # list[dict]: tolerance specs by volume
+        'overaspirate_base_ul': OVERASPIRATE_BASE_UL,  # float: base overaspirate volume in uL
+        'overaspirate_scaling_percent': OVERASPIRATE_SCALING_PERCENT,  # float: % scaling per volume
+        'auto_calibrate_overvolume': AUTO_CALIBRATE_OVERVOLUME,  # bool: enable auto overvolume calibration
+        'overvolume_calibration_buffer_ul': OVERVOLUME_CALIBRATION_BUFFER_UL,  # float: safety buffer in uL
+        'overvolume_max_base_ul': OVERVOLUME_MAX_BASE_UL,  # float: max allowed base overvolume uL
+        'overvolume_max_percent': OVERVOLUME_MAX_PERCENT,  # float: max allowed scaling %
+        'use_selective_optimization': USE_SELECTIVE_OPTIMIZATION,  # bool: optimize subset of params after first volume
+        'use_historical_data_for_optimization': USE_HISTORICAL_DATA_FOR_OPTIMIZATION,  # bool: load previous volume data
+        'volume_dependent_params': VOLUME_DEPENDENT_PARAMS,  # list[str]: params to optimize per volume
+        'all_params': ALL_PARAMS,  # list[str]: all parameter names
+        'base_autosave_dir': BASE_AUTOSAVE_DIR,  # str: directory for saving results
     }
 
 if __name__ == "__main__":
@@ -2344,28 +2378,89 @@ if __name__ == "__main__":
     # NEW: Just specify vial_mode - the vial file is automatically selected!
     #
     EXPERIMENTS = [
-        # Test LLM screening with maintain mode (simplified syntax)
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 
-         'vial_mode': 'maintain',  # Automatically uses calibration_vials_overnight.csv
-         'use_llm_for_screening': True},
+        # ============================================================================
+        # BASELINE EXPERIMENTS (Default: qEI, asymmetric time transition)
+        # ============================================================================
         
-        # Legacy mode example (simplified syntax)
-        # {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 
-        #  'vial_mode': 'legacy'},  # Automatically uses calibration_vials_short.csv
+        # Volume Set 1: [0.05, 0.025, 0.1] - 2 replicates
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
         
-        # Swap mode example (simplified syntax)
-        # {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 
-        #  'vial_mode': 'swap'},   # Automatically uses calibration_vials_overnight.csv
+        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - 2 replicates
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
         
-        # Old syntax still supported (for backward compatibility)
-        # {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 
-        #  'vial_management_mode': 'maintain', 
-        #  'input_vial_status_file': 'status/calibration_vials_overnight.csv'}, 
-        #  'vial_management_mode': 'legacy', 'simulate': False, 'seed': 2},
+        # ============================================================================
+        # BAYESIAN MODEL TYPE: qLogEI
+        # ============================================================================
         
-        # Swap mode example
-        # {'liquid': 'water', 'volumes': [0.2, 0.1], 
-        #  'vial_management_mode': 'swap', 'precision_replicates': 6},
+        # Volume Set 1: [0.05, 0.025, 0.1] - qLogEI
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'simulate': False},
+        
+        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - qLogEI
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'simulate': False},
+        
+        # ============================================================================
+        # BAYESIAN MODEL TYPE: qNEHVI 
+        # ============================================================================
+        
+        # Volume Set 1: [0.05, 0.025, 0.1] - qNEHVI
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
+        
+        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - qNEHVI
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
+        
+        # ============================================================================
+        # TIME TRANSITION MODE: smooth (Default qEI)
+        # ============================================================================
+        
+        # Volume Set 1: [0.05, 0.025, 0.1] - smooth
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'smooth', 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'smooth', 'simulate': False},
+        
+        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - smooth
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'smooth', 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'smooth', 'simulate': False},
+        
+        # ============================================================================
+        # TIME TRANSITION MODE: relu (Default qEI)
+        # ============================================================================
+        
+        # Volume Set 1: [0.05, 0.025, 0.1] - relu
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'relu', 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'relu', 'simulate': False},
+        
+        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - relu
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'relu', 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'relu', 'simulate': False},
+        
+        # ============================================================================
+        # LLM SCREENING: True (Default qEI, asymmetric)
+        # ============================================================================
+        
+        # Volume Set 1: [0.05, 0.025, 0.1] - LLM screening
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_screening': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_screening': True, 'simulate': False},
+        
+        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - LLM screening
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_screening': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_screening': True, 'simulate': False},
+        
+        # ============================================================================
+        # LLM OPTIMIZATION: True (Default qEI, asymmetric)  
+        # ============================================================================
+        
+        # Volume Set 1: [0.05, 0.025, 0.1] - LLM optimization
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_optimization': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_optimization': True, 'simulate': False},
+        
+        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - LLM optimization
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_optimization': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_optimization': True, 'simulate': False},
     ]
 
     print("\nConfigured experiments:")
