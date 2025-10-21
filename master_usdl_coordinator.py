@@ -97,7 +97,7 @@ class Lash_E:
         if return_home:
             self.nr_robot.return_vial_home(vial) 
 
-    def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE"):
+    def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE", use_lid=False):
         self.logger.info(f"Moving wellplate {wellplate_index} to Cytation")
         
         # Get Cytation software's wellplate name from robot's wellplate configuration
@@ -115,12 +115,14 @@ class Lash_E:
         if not self.simulate:
             self.cytation.CarrierOut()
         # Use robot's plate_type for robot movements
+        #input()
         self.nr_track.release_wellplate_in_location('cytation_tray', plate_type)
+        #input()
         if not self.simulate:
             # Use cytation_plate_type for Cytation software commands
-            self.cytation.CarrierIn(plate_type=cytation_plate_type)
+            self.cytation.CarrierIn(plate_type=cytation_plate_type, use_lid=use_lid)
 
-    def move_wellplate_back_from_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE"):
+    def move_wellplate_back_from_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE", use_lid=False):
         self.logger.info("Moving wellplate %d back from Cytation", wellplate_index)
         
         # Get Cytation software's wellplate name from robot's wellplate configuration
@@ -132,19 +134,20 @@ class Lash_E:
             self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}' for CarrierIn")
         
         if not self.simulate:
-            #self.cytation.CarrierOut()
+            self.cytation.CarrierOut()
             None
         # Use robot's plate_type for robot movements
         self.nr_track.grab_wellplate_from_location('cytation_tray', plate_type)
+        #input()
         self.nr_track.move_through_path(['cytation_safe_area'])
         if not self.simulate:
             # Use cytation_plate_type for Cytation software commands
-            self.cytation.CarrierIn(plate_type=cytation_plate_type)
+            self.cytation.CarrierIn(plate_type=cytation_plate_type, use_lid=use_lid)
         # Use robot's plate_type for robot movements
         self.nr_track.release_wellplate_in_location('pipetting_area', plate_type)
 
     #Note from OAM: The data formatting from this can be annoying. Need to think about how to handle it. 
-    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1):
+    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1, use_lid=False):
         """
         Measure a wellplate on the Cytation reader. Supports multiple protocols and replicate measurements.
         Each replicate includes all protocols, e.g.:
@@ -154,6 +157,7 @@ class Lash_E:
         
         Args:
             plate_type (str): Robot's wellplate type (e.g., "96 WELL PLATE", "quartz") - used for robot movements
+            use_lid (bool): Whether the wellplate has a lid (default: False)
         """
         self.logger.info("Measuring wellplate %d with protocols: %s", wellplate_index, protocol_file_path)
         
@@ -166,7 +170,7 @@ class Lash_E:
             self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}'")
         
         self.nr_robot.move_home()
-        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type)
+        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid)
 
         all_data = []
 
@@ -193,7 +197,7 @@ class Lash_E:
         else:
             combined_data = None
 
-        self.move_wellplate_back_from_cytation(wellplate_index, plate_type=plate_type)
+        self.move_wellplate_back_from_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid)
         self.nr_track.origin()
         return combined_data
 

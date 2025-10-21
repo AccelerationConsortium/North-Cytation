@@ -84,14 +84,15 @@ class Biotek_Wrapper:
         elif not simulate:
             self._log('warning', "Cytation5 not connected... May need to restart")
             
-    def CarrierIn(self, plate_type="96 WELL PLATE"):
+    def CarrierIn(self, plate_type="96 WELL PLATE", use_lid=False):
         """
         Move the plate carrier into the reader.
         
         Args:
             plate_type (str): Type of plate to expect ("96 WELL PLATE" or "48 WELL PLATE")
+            use_lid (bool): Whether the plate has a lid (default: False)
         """
-        self.biotek.carrier_in(plate_type_name=plate_type)
+        self.biotek.carrier_in(plate_type_name=plate_type, lid_on_plate=use_lid)
         
     def CarrierOut(self):
         """Move the plate carrier out of the reader for plate access."""

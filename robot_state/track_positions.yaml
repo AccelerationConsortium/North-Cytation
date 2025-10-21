@@ -7,42 +7,48 @@ positions:
   
   # Primary pipetting area - where wellplates are positioned for pipetting
   pipetting_area:
-    x: 131100 #131854 old
+    x: 131425 #131100 last known
     z_transfer: 75000          # Safe retreat position (use transfer height)
-    z_grab: 88750     # Standard Z position for grabbing
-    z_release: 86350  # Higher Z position for releasing (88750 - 2400 = 86350)
+    z_grab: 89000     # Standard Z position for grabbing #88750 last known
+    z_release: 88000  # Higher Z position for releasing (88750 - 2400 = 86350)
     description: "Main wellplate position for pipetting operations"
     
   # Wellplate stack storage areas 
   source_stack:
-    x: -400  # Note: 50 with old holder but scratches wellplate
+    x: -25  # Note: 50 with old holder but scratches wellplate
     z_transfer: 0          # Safe retreat position (use transfer height)
-    z_grab: 83500     # Base height for picking up from source stack
+    z_grab: 85500     # Base height for picking up from source stack, 83500 last known
     z_release: 83000  # Base height for dropping off to source stack (same as grab)
     description: "Source wellplate stack position"
     
   waste_stack:
-    x: 14000
+    x: 14375
     z_transfer: 0          # Safe retreat position (use transfer height)
-    z_grab: 83500     # Base height for picking up from waste stack (rare but possible)
+    z_grab: 85500     # Base height for picking up from waste stack (rare but possible)
     z_release: 83000  # Base height for dropping off to waste stack (500 units lower)
     description: "Waste wellplate stack position"
     
   # Cytation reader interface
   cytation_tray:
-    x: 67600
+    x: 67975
     z_transfer: 0
     z_release: 5500
     z_grab: 8500
     description: "Cytation tray loading position"
-    
+
+  lid_storage:
+    x: 60000
+    z_transfer: 75000
+    z_grab: 91000
+    z_release: 89000
+
   # Safe routing positions for wellplate transfers
   transfer_stack:
-    x: 27500
+    x: 27875
     description: "Safe transfer area X position for routing around cytation"
        
   cytation_safe_area:
-    x: 47000
+    x: 47375
     description: "Safe X position past cytation loading area"
 
   max_height:

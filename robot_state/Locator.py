@@ -1,7 +1,7 @@
 home = [0.0, 0.0, 0.0, 0.0]
 
 #Location of the clamp (gripper)
-vial_clamp = [2482, 7540, 44004, 17700]
+vial_clamp = [2482, 7540, 44004, 17400] #17700
 vial_clamp_pip = [2443, 5805, 39725, 11501]
 
 #Tip removal

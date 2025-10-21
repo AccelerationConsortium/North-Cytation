@@ -108,7 +108,7 @@ except ImportError as e:
 
 # --- Experiment Config ---
 LIQUID = "glycerol"
-SIMULATE = True
+SIMULATE = False
 SEED = 7
 INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
 BATCH_SIZE = 1
@@ -142,9 +142,9 @@ BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 # Uses gradual scaling instead of sharp cutoffs to avoid excessive failure at boundary volumes
 VOLUME_TOLERANCE_RANGES = [
     {'min_ul': 200, 'max_ul': 1000, 'tolerance_pct': 1.0, 'name': 'large_volume'},   # ≥200�uL: 1%
-    {'min_ul': 50,  'max_ul': 200,  'tolerance_pct': 2.0, 'name': 'medium_large_volume'}, # 50-199�uL: 2%
-    {'min_ul': 10,  'max_ul': 50,   'tolerance_pct': 3.0, 'name': 'medium_volume'}, # 10-49�uL: 3%  
-    {'min_ul': 1,   'max_ul': 10,   'tolerance_pct': 5.0, 'name': 'small_volume'},  # 1-9�uL: 5%
+    {'min_ul': 60,  'max_ul': 200,  'tolerance_pct': 2.0, 'name': 'medium_large_volume'}, # 50-199�uL: 2%
+    {'min_ul': 20,  'max_ul': 60,   'tolerance_pct': 3.0, 'name': 'medium_volume'}, # 10-49�uL: 3%  
+    {'min_ul': 1,   'max_ul': 20,   'tolerance_pct': 5.0, 'name': 'small_volume'},  # 1-9�uL: 5%
     {'min_ul': 0,   'max_ul': 1,    'tolerance_pct': 10.0, 'name': 'micro_volume'}, # <1�uL: 10% (fallback)
 ]
 
@@ -2345,13 +2345,13 @@ if __name__ == "__main__":
     #
     EXPERIMENTS = [
         # Test LLM screening with maintain mode (simplified syntax)
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 
-         'vial_mode': 'maintain',  # Automatically uses calibration_vials_overnight.csv
-         'use_llm_for_screening': True},
+        # {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 
+        #  'vial_mode': 'maintain',  # Automatically uses calibration_vials_overnight.csv
+        #  'use_llm_for_screening': True},
         
         # Legacy mode example (simplified syntax)
-        # {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 
-        #  'vial_mode': 'legacy'},  # Automatically uses calibration_vials_short.csv
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8], 
+         'vial_mode': 'legacy', 'simulate': SIMULATE},  # Automatically uses calibration_vials_short.csv
         
         # Swap mode example (simplified syntax)
         # {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 

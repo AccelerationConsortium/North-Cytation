@@ -36,24 +36,37 @@ def test_wp_stack(num_wp): #num_wp = number of wellplates to move
 
 
 def test_wp_movement(well_plate_type):
-    #lash_e.nr_track.check_input_file()
-    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type=well_plate_type, waypoint_locations=['max_height', 'cytation_safe_area'])
-    lash_e.nr_track.move_through_path(['cytation_safe_area'])
-    lash_e.cytation.CarrierOut()
-    lash_e.nr_track.release_wellplate_in_location('cytation_tray', wellplate_type=well_plate_type)
+    # #lash_e.nr_track.check_input_file()
+    # lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type=well_plate_type, waypoint_locations=['max_height', 'cytation_safe_area'])
+    # lash_e.nr_track.move_through_path(['cytation_safe_area'])
+    # lash_e.cytation.CarrierOut()
+    # lash_e.nr_track.release_wellplate_in_location('cytation_tray', wellplate_type=well_plate_type)
 
 
-    #lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type=well_plate_type, waypoint_locations=['max_height', 'cytation_safe_area'])
-    #lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type=well_plate_type)
+    lash_e.nr_track.open_gripper()
+
+    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type=well_plate_type)
+    # lash_e.nr_track.release_wellplate_in_location('lid_storage', wellplate_type=well_plate_type)
+    
+    # lash_e.nr_track.grab_wellplate_from_location('lid_storage', wellplate_type=well_plate_type)
+    lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type=well_plate_type)
+
+
     #lash_e.move_wellplate_to_cytation(plate_type=well_plate_type)
     #lash_e.move_wellplate_back_from_cytation(plate_type=well_plate_type)
 
 def move_back(well_plate_type):
     lash_e.move_wellplate_back_from_cytation(plate_type=well_plate_type)
 
-test_wp_movement('48 WELL PLATE') #workcing!
-input()
-move_back('48 WELL PLATE')
+#test_wp_stack(3)
+
+lash_e.measure_wellplate(None, None, plate_type="quartz")
+
+# #lash_e.nr_track.move_through_path(['pipetting_area'])
+# for i in range (0, 10):
+#     test_wp_movement(well_plate_type="quartz_lid")
+
+# lash_e.nr_track.origin()
 
 #lash_e.nr_track.move_through_path(['max_height'])
 #test_wp_stack(3) #working!

@@ -2521,8 +2521,10 @@ class North_Robot(North_Base):
 
         self.check_for_errors(error_check_list,True) #Check for an error and pause if there is one
         
-        self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not   
+        
         self.c9.close_clamp() #clamp vial
+        self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not  
+        time.sleep(0.5) 
         self.c9.close_gripper()
         self.c9.uncap(revs=revs)
         self.GRIPPER_STATUS = "Cap"
@@ -2545,8 +2547,10 @@ class North_Robot(North_Base):
         
         self.check_for_errors(error_check_list,True) #Let's pause if there is an error
 
-        self.goto_location_if_not_there(vial_clamp)
+        
         self.c9.close_clamp() #Make sure vial is clamped
+        self.goto_location_if_not_there(vial_clamp)
+        time.sleep(0.5)
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap
         self.GRIPPER_STATUS = None
