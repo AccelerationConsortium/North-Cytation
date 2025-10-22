@@ -416,7 +416,7 @@ VIAL_MANAGEMENT_DEFAULTS = {
     'measurement_vial': 'measurement_vial_0',
     'waste_vial': 'waste_0',
     'reservoir_index': 0,
-    'min_source_ml': 2.0,
+    'min_source_ml': 2.5,
     'refill_target_ml': 8.0,
     'max_measurement_ml': 7.0,
 }

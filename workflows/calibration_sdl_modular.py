@@ -1060,11 +1060,20 @@ def get_liquid_source_with_vial_management(lash_e, state, minimum_volume=2.0):
         # Apply vial management first (refill source if low, empty measurement if full)
         if base_module._VIAL_MANAGEMENT_MODE_OVERRIDE and base_module._VIAL_MANAGEMENT_MODE_OVERRIDE.lower() != "legacy":
             base_module.manage_vials(lash_e, state)
+            
+            # CRITICAL FIX: After vial management, get the current source vial from config
+            if base_module._VIAL_MANAGEMENT_CONFIG_OVERRIDE:
+                cfg = {**base_module.VIAL_MANAGEMENT_DEFAULTS, **base_module._VIAL_MANAGEMENT_CONFIG_OVERRIDE}
+            else:
+                cfg = base_module.VIAL_MANAGEMENT_DEFAULTS
+            
+            current_source = cfg.get('source_vial', 'liquid_source_0')
+            lash_e.logger.info(f"[vial-mgmt] Using current source vial: {current_source}")
+            return current_source
     except Exception as e:
         lash_e.logger.info(f"[vial-mgmt] pre-pipetting management skipped: {e}")
     
-    # After vial management, always use the primary source vial
-    # The vial management should have refilled it if it was low
+    # Fallback to default source vial for legacy mode
     return "liquid_source_0"
 
 def params_are_blacklisted(params, blacklisted_params, tolerance=1e-6):
@@ -1448,6 +1457,8 @@ def run_single_experiment(config_overrides=None):
         vial_config = get_vial_config(config_overrides['vial_mode'])
         INPUT_VIAL_STATUS_FILE = vial_config['vial_file']
         print(f"🔧 Using vial mode: {config_overrides['vial_mode']} -> {INPUT_VIAL_STATUS_FILE}")
+        # CRITICAL: Also set the vial management mode from the config
+        config_overrides['vial_management_mode'] = vial_config['mode']
     
     print(f"\n📋 EXPERIMENT CONFIGURATION:")
     print(f"   Liquid: {LIQUID}")
@@ -2278,13 +2289,10 @@ def run_multiple_experiments(experiment_configs):
             results.append(error_result)
             print(f"❌ Experiment {i} failed: {e}")
             
-            # Ask if user wants to continue or stop
+            # For automated operation, continue with remaining experiments
             if i < len(experiment_configs):
-                print(f"\n⚠️  Experiment {i} failed. Continue with remaining experiments? (y/n): ", end="")
-                choice = input().strip().lower()
-                if choice != 'y':
-                    print("🛑 Stopping multi-experiment batch")
-                    break
+                print(f"\n⚠️  Experiment {i} failed. Automatically continuing with remaining experiments...")
+                # Note: In interactive mode, you could add a flag to enable user prompts
     
     # Summary
     print(f"\n{'='*80}")
@@ -2377,6 +2385,11 @@ if __name__ == "__main__":
     #
     # NEW: Just specify vial_mode - the vial file is automatically selected!
     #
+
+    #EXPERIMENTS = [{'liquid': 'water', 'volumes': [0.8, 0.5, 0.3], 'vial_mode': 'swap', 'seed': 1, 'simulate': False}]
+
+    # Full experiment list commented out
+    
     EXPERIMENTS = [
         # ============================================================================
         # BASELINE EXPERIMENTS (Default: qEI, asymmetric time transition)
@@ -2462,6 +2475,7 @@ if __name__ == "__main__":
         {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_optimization': True, 'simulate': False},
         {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_optimization': True, 'simulate': False},
     ]
+    
 
     print("\nConfigured experiments:")
     for i, cfg in enumerate(EXPERIMENTS, 1):
