@@ -512,11 +512,52 @@ def _swap_vials_if_needed(lash_e, state, cfg):
                 # Update configuration and state
                 cfg['source_vial'], cfg['measurement_vial'] = meas, src
                 state['measurement_vial_name'] = cfg['measurement_vial']
+                
+                # CRITICAL FIX: Update the global config override so changes persist
+                global _VIAL_MANAGEMENT_CONFIG_OVERRIDE
+                if not _VIAL_MANAGEMENT_CONFIG_OVERRIDE:
+                    _VIAL_MANAGEMENT_CONFIG_OVERRIDE = {}
+                _VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial'] = cfg['source_vial']
+                _VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial'] = cfg['measurement_vial']
+                
                 msg = f"[swap] Swapped roles: source→{cfg['source_vial']} measurement→{cfg['measurement_vial']}"
                 lash_e.logger.info(msg)
                 print(f"[LOG] {msg}")
+                print(f"[LOG] Updated global config: source={_VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial']} measurement={_VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial']}")
     except Exception as e:
         msg = f"[swap] skipped: {e}"
+        lash_e.logger.info(msg)
+        print(f"[LOG] {msg}")
+
+def _single_vial_mode(lash_e, state, cfg):
+    """Single vial mode - use same vial for both source and destination (infinite recycling)"""
+    try:
+        # Set both source and measurement to use the same vial (liquid_source_0)
+        single_vial = cfg.get('source_vial', 'liquid_source_0')
+        
+        # Update configuration to use same vial for both roles
+        cfg['measurement_vial'] = single_vial
+        state['measurement_vial_name'] = single_vial
+        
+        # Update global config so future lookups get the same vial
+        global _VIAL_MANAGEMENT_CONFIG_OVERRIDE
+        if not _VIAL_MANAGEMENT_CONFIG_OVERRIDE:
+            _VIAL_MANAGEMENT_CONFIG_OVERRIDE = {}
+        _VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial'] = single_vial
+        _VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial'] = single_vial
+        
+        # Ensure the vial is in the clamp for easy access
+        vial_location = lash_e.nr_robot.get_vial_info(single_vial, 'location')
+        if vial_location != 'clamp':
+            lash_e.nr_robot.remove_pipet()
+            lash_e.nr_robot.move_vial_to_location(single_vial, "clamp", 0)
+        
+        msg = f"[single] Using single vial for infinite recycling: {single_vial}"
+        lash_e.logger.info(msg)
+        print(f"[LOG] {msg}")
+        
+    except Exception as e:
+        msg = f"[single] setup failed: {e}"
         lash_e.logger.info(msg)
         print(f"[LOG] {msg}")
 
@@ -545,3 +586,5 @@ def manage_vials(lash_e, state):
         _maintain_vials(lash_e, state, cfg)
     elif mode == 'swap':
         _swap_vials_if_needed(lash_e, state, cfg)
+    elif mode == 'single':
+        _single_vial_mode(lash_e, state, cfg)

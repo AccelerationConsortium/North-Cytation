@@ -58,6 +58,11 @@ def get_vial_config(mode):
                 'vial_file': 'status/calibration_vials_overnight.csv',
                 'mode': 'swap', 
                 'description': 'Swap mode - new vials for each volume'
+            },
+            'single': {
+                'vial_file': 'status/calibration_vials_overnight.csv',
+                'mode': 'single', 
+                'description': 'Single mode - one vial for infinite liquid recycling'
             }
         }
         if mode in fallback_configs:
