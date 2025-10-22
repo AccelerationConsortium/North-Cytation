@@ -111,35 +111,56 @@ except ImportError as e:
     llm_opt = None
     LLM_AVAILABLE = False
 
-# --- Experiment Config ---
-LIQUID = "glycerol"
-SIMULATE = False
-SEED = 7
-INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
-BATCH_SIZE = 1
-REPLICATES = 1  # for optimization
-PRECISION_REPLICATES = 4
-VOLUMES = [0.05, 0.025, 0.01]  # Manually specified volume list (in mL)
-MAX_WELLS = 96
-INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
+# --- DEFAULT EXPERIMENT CONFIG (IMMUTABLE) ---
+# These constants store the TRUE defaults and should NEVER be modified at runtime
+DEFAULT_LIQUID = "glycerol"
+DEFAULT_SIMULATE = False
+DEFAULT_SEED = 7
+DEFAULT_INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
+DEFAULT_BATCH_SIZE = 1
+DEFAULT_REPLICATES = 1  # for optimization
+DEFAULT_PRECISION_REPLICATES = 4
+DEFAULT_VOLUMES = [0.05, 0.025, 0.01]  # Manually specified volume list (in mL)
+DEFAULT_MAX_WELLS = 96
+DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
+DEFAULT_BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cutoff)
+DEFAULT_TIME_SCALING_FACTOR = 2.5  # +2.5 seconds per 100 uL above baseline (used for first volume only)
+DEFAULT_TIME_BUFFER_FRACTION = 0.1  # Buffer fraction: optimal_time = base_time * (1 - buffer)
+DEFAULT_TIME_TRANSITION_MODE = "asymmetric"  # Options: "relu" (max(0,x)), "smooth" (log(1+exp(x))), "asymmetric" (gentle penalty for fast times)
+DEFAULT_USE_LLM_FOR_SCREENING = False     # LLM vs SOBOL for initial exploration (first volume)
+DEFAULT_USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
+DEFAULT_BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
+
+# --- RUNTIME EXPERIMENT CONFIG (MUTABLE) ---
+# These variables can be modified during experiments but should be reset to defaults between experiments
+LIQUID = DEFAULT_LIQUID
+SIMULATE = DEFAULT_SIMULATE
+SEED = DEFAULT_SEED
+INITIAL_SUGGESTIONS = DEFAULT_INITIAL_SUGGESTIONS
+BATCH_SIZE = DEFAULT_BATCH_SIZE
+REPLICATES = DEFAULT_REPLICATES
+PRECISION_REPLICATES = DEFAULT_PRECISION_REPLICATES
+VOLUMES = DEFAULT_VOLUMES.copy()  # Make a copy to avoid modifying the default
+MAX_WELLS = DEFAULT_MAX_WELLS
+INPUT_VIAL_STATUS_FILE = DEFAULT_INPUT_VIAL_STATUS_FILE
 EXPERIMENT_INDEX = 0  # Tracks index in multi-experiment runs; 0 = first
 _CACHED_LASH_E = None  # Reused robot controller across experiments
 RETAIN_PIPET_BETWEEN_EXPERIMENTS = False  # Default: remove pipet between experiments (set True to retain)
 
 # Based on pipetting accuracy standards: relative bias and CV thresholds
-BASE_TIME_SECONDS = 20  # Base time in seconds for optimization acceptance (cutoff)... Should probably calculate from viscosity. Eg 20s for water, 60s for glycerol... Can this be automated?
-TIME_SCALING_FACTOR = 2.5  # +2.5 seconds per 100 uL above baseline (used for first volume only)
-TIME_BUFFER_FRACTION = 0.1  # Buffer fraction: optimal_time = base_time * (1 - buffer)
-TIME_TRANSITION_MODE = "asymmetric"  # Options: "relu" (max(0,x)), "smooth" (log(1+exp(x))), "asymmetric" (gentle penalty for fast times)
+BASE_TIME_SECONDS = DEFAULT_BASE_TIME_SECONDS
+TIME_SCALING_FACTOR = DEFAULT_TIME_SCALING_FACTOR
+TIME_BUFFER_FRACTION = DEFAULT_TIME_BUFFER_FRACTION
+TIME_TRANSITION_MODE = DEFAULT_TIME_TRANSITION_MODE
 
-USE_LLM_FOR_SCREENING = False     # LLM vs SOBOL for initial exploration (first volume)
-USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
+USE_LLM_FOR_SCREENING = DEFAULT_USE_LLM_FOR_SCREENING
+USE_LLM_FOR_OPTIMIZATION = DEFAULT_USE_LLM_FOR_OPTIMIZATION
 
 # --- Bayesian Model Configuration ---
 # Controls which Bayesian acquisition function to use for optimization
 # NOTE: This is only used when USE_LLM_FOR_OPTIMIZATION = False
 # Options: 'qEI' (Expected Improvement), 'qLogEI' (Log Expected Improvement), 'qNEHVI' (Noisy Expected Hypervolume Improvement)
-BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
+BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
 
 # Relative percentage tolerances (applies to both optimization and precision test)
 # Volume ranges defined as (min_volume_ul, max_volume_ul, tolerance_pct)
@@ -153,22 +174,73 @@ VOLUME_TOLERANCE_RANGES = [
     {'min_ul': 0,   'max_ul': 1,    'tolerance_pct': 10.0, 'name': 'micro_volume'}, # <1�uL: 10% (fallback)
 ]
 
+# --- DEFAULT OVERASPIRATE CONFIG (IMMUTABLE) ---
+DEFAULT_OVERASPIRATE_BASE_UL = 5.0        # Base overaspirate volume in microliters
+DEFAULT_OVERASPIRATE_SCALING_PERCENT = 5.0  # Additional percentage of total volume
+DEFAULT_AUTO_CALIBRATE_OVERVOLUME = True  # Enable automatic overvolume calibration after SOBOL trials
+DEFAULT_OVERVOLUME_CALIBRATION_BUFFER_UL = 2.0  # Buffer to add above fitted line (uL)
+DEFAULT_OVERVOLUME_MAX_BASE_UL = 50.0     # Maximum allowed base overvolume (uL)
+DEFAULT_OVERVOLUME_MAX_PERCENT = 100.0    # Maximum allowed percentage scaling (%)
+
+# --- RUNTIME OVERASPIRATE CONFIG (MUTABLE) ---
 # Selective parameter optimization config
 # Max overaspirate: Base volume + percentage scaling
-OVERASPIRATE_BASE_UL = 5.0        # Base overaspirate volume in microliters
-OVERASPIRATE_SCALING_PERCENT = 5.0  # Additional percentage of total volume
+OVERASPIRATE_BASE_UL = DEFAULT_OVERASPIRATE_BASE_UL
+OVERASPIRATE_SCALING_PERCENT = DEFAULT_OVERASPIRATE_SCALING_PERCENT
 
 # Auto-calibration of overvolume parameters
-AUTO_CALIBRATE_OVERVOLUME = True  # Enable automatic overvolume calibration after SOBOL trials
-OVERVOLUME_CALIBRATION_BUFFER_UL = 2.0  # Buffer to add above fitted line (uL)
-OVERVOLUME_MAX_BASE_UL = 50.0     # Maximum allowed base overvolume (uL)
-OVERVOLUME_MAX_PERCENT = 100.0    # Maximum allowed percentage scaling (%)
+AUTO_CALIBRATE_OVERVOLUME = DEFAULT_AUTO_CALIBRATE_OVERVOLUME
+OVERVOLUME_CALIBRATION_BUFFER_UL = DEFAULT_OVERVOLUME_CALIBRATION_BUFFER_UL
+OVERVOLUME_MAX_BASE_UL = DEFAULT_OVERVOLUME_MAX_BASE_UL
+OVERVOLUME_MAX_PERCENT = DEFAULT_OVERVOLUME_MAX_PERCENT
 
 USE_SELECTIVE_OPTIMIZATION = True  # Enable selective parameter optimization
 USE_HISTORICAL_DATA_FOR_OPTIMIZATION = False  # Load data from previous volumes into optimizer
 VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]  # Parameters to optimize for each volume
 ALL_PARAMS = ["aspirate_speed", "dispense_speed", "aspirate_wait_time", "dispense_wait_time", 
               "retract_speed", "blowout_vol", "post_asp_air_vol", "overaspirate_vol"]
+
+# --- CONFIG MANAGEMENT FUNCTIONS ---
+def reset_config_to_defaults():
+    """Reset all global configuration variables back to their original default values.
+    
+    This function MUST be called before each experiment to ensure a clean slate
+    and prevent config persistence between experiments.
+    """
+    global LIQUID, SIMULATE, SEED, INITIAL_SUGGESTIONS, BATCH_SIZE, REPLICATES
+    global PRECISION_REPLICATES, VOLUMES, MAX_WELLS, INPUT_VIAL_STATUS_FILE
+    global BASE_TIME_SECONDS, TIME_SCALING_FACTOR, TIME_BUFFER_FRACTION, TIME_TRANSITION_MODE
+    global USE_LLM_FOR_SCREENING, USE_LLM_FOR_OPTIMIZATION, BAYESIAN_MODEL_TYPE
+    global OVERASPIRATE_BASE_UL, OVERASPIRATE_SCALING_PERCENT, AUTO_CALIBRATE_OVERVOLUME
+    global OVERVOLUME_CALIBRATION_BUFFER_UL, OVERVOLUME_MAX_BASE_UL, OVERVOLUME_MAX_PERCENT
+    
+    print("🔄 Resetting configuration to default values...")
+    
+    LIQUID = DEFAULT_LIQUID
+    SIMULATE = DEFAULT_SIMULATE
+    SEED = DEFAULT_SEED
+    INITIAL_SUGGESTIONS = DEFAULT_INITIAL_SUGGESTIONS
+    BATCH_SIZE = DEFAULT_BATCH_SIZE
+    REPLICATES = DEFAULT_REPLICATES
+    PRECISION_REPLICATES = DEFAULT_PRECISION_REPLICATES
+    VOLUMES = DEFAULT_VOLUMES.copy()  # Make a copy to avoid modifying the immutable default
+    MAX_WELLS = DEFAULT_MAX_WELLS
+    INPUT_VIAL_STATUS_FILE = DEFAULT_INPUT_VIAL_STATUS_FILE
+    BASE_TIME_SECONDS = DEFAULT_BASE_TIME_SECONDS
+    TIME_SCALING_FACTOR = DEFAULT_TIME_SCALING_FACTOR
+    TIME_BUFFER_FRACTION = DEFAULT_TIME_BUFFER_FRACTION
+    TIME_TRANSITION_MODE = DEFAULT_TIME_TRANSITION_MODE
+    USE_LLM_FOR_SCREENING = DEFAULT_USE_LLM_FOR_SCREENING
+    USE_LLM_FOR_OPTIMIZATION = DEFAULT_USE_LLM_FOR_OPTIMIZATION
+    BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
+    OVERASPIRATE_BASE_UL = DEFAULT_OVERASPIRATE_BASE_UL
+    OVERASPIRATE_SCALING_PERCENT = DEFAULT_OVERASPIRATE_SCALING_PERCENT
+    AUTO_CALIBRATE_OVERVOLUME = DEFAULT_AUTO_CALIBRATE_OVERVOLUME
+    OVERVOLUME_CALIBRATION_BUFFER_UL = DEFAULT_OVERVOLUME_CALIBRATION_BUFFER_UL
+    OVERVOLUME_MAX_BASE_UL = DEFAULT_OVERVOLUME_MAX_BASE_UL
+    OVERVOLUME_MAX_PERCENT = DEFAULT_OVERVOLUME_MAX_PERCENT
+    
+    print("✅ Configuration reset complete")
 
 if SIMULATE:
     DEFAULT_LOCAL_AUTOSAVE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'output', 'calibration_runs'))
@@ -1423,6 +1495,10 @@ def run_single_experiment(config_overrides=None):
     Returns:
         dict: Experiment results including paths, statistics, and completion status
     """
+    # CRITICAL: Reset all globals to defaults before each experiment
+    # This prevents config persistence between experiments
+    reset_config_to_defaults()
+    
     # Start with default configuration
     config = get_default_config()
     
@@ -1438,9 +1514,10 @@ def run_single_experiment(config_overrides=None):
     
     # Update global variables with the configuration (for backward compatibility)
     global LIQUID, SIMULATE, SEED, VOLUMES, MAX_WELLS, PRECISION_REPLICATES
-    global BASE_TIME_SECONDS, USE_LLM_FOR_SCREENING, USE_LLM_FOR_OPTIMIZATION
-    global BAYESIAN_MODEL_TYPE, AUTO_CALIBRATE_OVERVOLUME, OVERASPIRATE_BASE_UL
-    global OVERASPIRATE_SCALING_PERCENT, INPUT_VIAL_STATUS_FILE
+    global BASE_TIME_SECONDS, TIME_SCALING_FACTOR, TIME_BUFFER_FRACTION, TIME_TRANSITION_MODE
+    global USE_LLM_FOR_SCREENING, USE_LLM_FOR_OPTIMIZATION, BAYESIAN_MODEL_TYPE
+    global AUTO_CALIBRATE_OVERVOLUME, OVERASPIRATE_BASE_UL, OVERASPIRATE_SCALING_PERCENT
+    global INPUT_VIAL_STATUS_FILE
     
     LIQUID = config['liquid']
     SIMULATE = config['simulate'] 
@@ -1449,6 +1526,9 @@ def run_single_experiment(config_overrides=None):
     MAX_WELLS = config['max_wells']
     PRECISION_REPLICATES = config['precision_replicates']
     BASE_TIME_SECONDS = config['base_time_seconds']
+    TIME_SCALING_FACTOR = config['time_scaling_factor']
+    TIME_BUFFER_FRACTION = config['time_buffer_fraction']
+    TIME_TRANSITION_MODE = config['time_transition_mode']  # FIX: This was missing!
     USE_LLM_FOR_SCREENING = config['use_llm_for_screening']
     USE_LLM_FOR_OPTIMIZATION = config['use_llm_for_optimization']
     BAYESIAN_MODEL_TYPE = config['bayesian_model_type']
@@ -1793,6 +1873,8 @@ def run_experiment_logic():
             )
             
             # Update global parameters if calibration succeeded
+            # NOTE: This modification is TEMPORARY and only affects the current experiment.
+            # The reset_config_to_defaults() function ensures these values are reset before each new experiment.
             if new_base_ul is not None and new_scaling_percent is not None:
                 global OVERASPIRATE_BASE_UL, OVERASPIRATE_SCALING_PERCENT
                 old_base = OVERASPIRATE_BASE_UL
@@ -2342,32 +2424,36 @@ def run_glycerol():
     run_multiple_experiments(custom_experiments)
 
 def get_default_config():
-    """Get default experiment configuration"""
+    """Get default experiment configuration using IMMUTABLE default constants.
+    
+    This function returns the TRUE defaults, not the current runtime values.
+    This ensures config consistency and prevents config persistence between experiments.
+    """
     return {
-        'liquid': LIQUID,  # str: 'water', 'glycerol', 'ethanol'
-        'simulate': SIMULATE,  # bool: True/False
-        'seed': SEED,  # int: random seed for reproducibility
-        'initial_suggestions': INITIAL_SUGGESTIONS,  # int: number of SOBOL/LLM initial trials
-        'batch_size': BATCH_SIZE,  # int: batch size for optimization loops
-        'replicates': REPLICATES,  # int: replicates per optimization trial
-        'precision_replicates': PRECISION_REPLICATES,  # int: replicates for final precision test
-        'volumes': VOLUMES,  # list[float]: volumes in mL, e.g., [0.05, 0.025, 0.1]
-        'max_wells': MAX_WELLS,  # int: maximum wellplate wells to use
-        'input_vial_status_file': INPUT_VIAL_STATUS_FILE,  # str: path to vial CSV file
-        'base_time_seconds': BASE_TIME_SECONDS,  # float: base time cutoff for optimization
-        'time_scaling_factor': TIME_SCALING_FACTOR,  # float: seconds per 100uL above baseline
-        'time_buffer_fraction': TIME_BUFFER_FRACTION,  # float: 0.0-1.0, optimal time buffer
-        'time_transition_mode': TIME_TRANSITION_MODE,  # str: 'relu', 'smooth', 'asymmetric'
-        'use_llm_for_screening': USE_LLM_FOR_SCREENING,  # bool: LLM vs SOBOL for initial exploration
-        'use_llm_for_optimization': USE_LLM_FOR_OPTIMIZATION,  # bool: LLM vs Bayesian for optimization
-        'bayesian_model_type': BAYESIAN_MODEL_TYPE,  # str: 'qEI', 'qLogEI', 'qNEHVI'
+        'liquid': DEFAULT_LIQUID,  # str: 'water', 'glycerol', 'ethanol'
+        'simulate': DEFAULT_SIMULATE,  # bool: True/False
+        'seed': DEFAULT_SEED,  # int: random seed for reproducibility
+        'initial_suggestions': DEFAULT_INITIAL_SUGGESTIONS,  # int: number of SOBOL/LLM initial trials
+        'batch_size': DEFAULT_BATCH_SIZE,  # int: batch size for optimization loops
+        'replicates': DEFAULT_REPLICATES,  # int: replicates per optimization trial
+        'precision_replicates': DEFAULT_PRECISION_REPLICATES,  # int: replicates for final precision test
+        'volumes': DEFAULT_VOLUMES.copy(),  # list[float]: volumes in mL, e.g., [0.05, 0.025, 0.1] - copy to prevent mutation
+        'max_wells': DEFAULT_MAX_WELLS,  # int: maximum wellplate wells to use
+        'input_vial_status_file': DEFAULT_INPUT_VIAL_STATUS_FILE,  # str: path to vial CSV file
+        'base_time_seconds': DEFAULT_BASE_TIME_SECONDS,  # float: base time cutoff for optimization
+        'time_scaling_factor': DEFAULT_TIME_SCALING_FACTOR,  # float: seconds per 100uL above baseline
+        'time_buffer_fraction': DEFAULT_TIME_BUFFER_FRACTION,  # float: 0.0-1.0, optimal time buffer
+        'time_transition_mode': DEFAULT_TIME_TRANSITION_MODE,  # str: 'relu', 'smooth', 'asymmetric'
+        'use_llm_for_screening': DEFAULT_USE_LLM_FOR_SCREENING,  # bool: LLM vs SOBOL for initial exploration
+        'use_llm_for_optimization': DEFAULT_USE_LLM_FOR_OPTIMIZATION,  # bool: LLM vs Bayesian for optimization
+        'bayesian_model_type': DEFAULT_BAYESIAN_MODEL_TYPE,  # str: 'qEI', 'qLogEI', 'qNEHVI'
         'volume_tolerance_ranges': VOLUME_TOLERANCE_RANGES,  # list[dict]: tolerance specs by volume
-        'overaspirate_base_ul': OVERASPIRATE_BASE_UL,  # float: base overaspirate volume in uL
-        'overaspirate_scaling_percent': OVERASPIRATE_SCALING_PERCENT,  # float: % scaling per volume
-        'auto_calibrate_overvolume': AUTO_CALIBRATE_OVERVOLUME,  # bool: enable auto overvolume calibration
-        'overvolume_calibration_buffer_ul': OVERVOLUME_CALIBRATION_BUFFER_UL,  # float: safety buffer in uL
-        'overvolume_max_base_ul': OVERVOLUME_MAX_BASE_UL,  # float: max allowed base overvolume uL
-        'overvolume_max_percent': OVERVOLUME_MAX_PERCENT,  # float: max allowed scaling %
+        'overaspirate_base_ul': DEFAULT_OVERASPIRATE_BASE_UL,  # float: base overaspirate volume in uL
+        'overaspirate_scaling_percent': DEFAULT_OVERASPIRATE_SCALING_PERCENT,  # float: % scaling per volume
+        'auto_calibrate_overvolume': DEFAULT_AUTO_CALIBRATE_OVERVOLUME,  # bool: enable auto overvolume calibration
+        'overvolume_calibration_buffer_ul': DEFAULT_OVERVOLUME_CALIBRATION_BUFFER_UL,  # float: safety buffer in uL
+        'overvolume_max_base_ul': DEFAULT_OVERVOLUME_MAX_BASE_UL,  # float: max allowed base overvolume uL
+        'overvolume_max_percent': DEFAULT_OVERVOLUME_MAX_PERCENT,  # float: max allowed scaling %
         'use_selective_optimization': USE_SELECTIVE_OPTIMIZATION,  # bool: optimize subset of params after first volume
         'use_historical_data_for_optimization': USE_HISTORICAL_DATA_FOR_OPTIMIZATION,  # bool: load previous volume data
         'volume_dependent_params': VOLUME_DEPENDENT_PARAMS,  # list[str]: params to optimize per volume
