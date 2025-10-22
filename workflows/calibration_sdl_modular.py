@@ -2391,95 +2391,95 @@ if __name__ == "__main__":
     # NEW: Just specify vial_mode - the vial file is automatically selected!
     #
 
-    #EXPERIMENTS = [{'liquid': 'water', 'volumes': [0.8, 0.5, 0.3], 'vial_mode': 'swap', 'seed': 1, 'simulate': False}]
+    EXPERIMENTS = [{'liquid': 'glycerol', 'volumes': [0.05, 0.025, 0.1], 'simulate': False, 'base_time_seconds':60}]
 
     # Full experiment list commented out
     
-    EXPERIMENTS = [
-        # ============================================================================
-        # BASELINE EXPERIMENTS (Default: qEI, asymmetric time transition)
-        # ============================================================================
+    # EXPERIMENTS = [
+    #     # ============================================================================
+    #     # BASELINE EXPERIMENTS (Default: qEI, asymmetric time transition)
+    #     # ============================================================================
         
-        # Volume Set 1: [0.05, 0.025, 0.1] - 2 replicates
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+    #     # Volume Set 1: [0.05, 0.025, 0.1] - 2 replicates
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
         
-        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - 2 replicates
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+    #     # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - 2 replicates
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
         
-        # ============================================================================
-        # BAYESIAN MODEL TYPE: qLogEI
-        # ============================================================================
+    #     # ============================================================================
+    #     # BAYESIAN MODEL TYPE: qLogEI
+    #     # ============================================================================
         
-        # Volume Set 1: [0.05, 0.025, 0.1] - qLogEI
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'simulate': False},
+    #     # Volume Set 1: [0.05, 0.025, 0.1] - qLogEI
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'simulate': False},
         
-        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - qLogEI
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'simulate': False},
+    #     # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - qLogEI
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'simulate': False},
         
-        # ============================================================================
-        # BAYESIAN MODEL TYPE: qNEHVI 
-        # ============================================================================
+    #     # ============================================================================
+    #     # BAYESIAN MODEL TYPE: qNEHVI 
+    #     # ============================================================================
         
-        # Volume Set 1: [0.05, 0.025, 0.1] - qNEHVI
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
+    #     # Volume Set 1: [0.05, 0.025, 0.1] - qNEHVI
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
         
-        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - qNEHVI
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
+    #     # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - qNEHVI
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'simulate': False},
         
-        # ============================================================================
-        # TIME TRANSITION MODE: smooth (Default qEI)
-        # ============================================================================
+    #     # ============================================================================
+    #     # TIME TRANSITION MODE: smooth (Default qEI)
+    #     # ============================================================================
         
-        # Volume Set 1: [0.05, 0.025, 0.1] - smooth
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'smooth', 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'smooth', 'simulate': False},
+    #     # Volume Set 1: [0.05, 0.025, 0.1] - smooth
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'smooth', 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'smooth', 'simulate': False},
         
-        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - smooth
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'smooth', 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'smooth', 'simulate': False},
+    #     # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - smooth
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'smooth', 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'smooth', 'simulate': False},
         
-        # ============================================================================
-        # TIME TRANSITION MODE: relu (Default qEI)
-        # ============================================================================
+    #     # ============================================================================
+    #     # TIME TRANSITION MODE: relu (Default qEI)
+    #     # ============================================================================
         
-        # Volume Set 1: [0.05, 0.025, 0.1] - relu
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'relu', 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'relu', 'simulate': False},
+    #     # Volume Set 1: [0.05, 0.025, 0.1] - relu
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'relu', 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'relu', 'simulate': False},
         
-        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - relu
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'relu', 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'relu', 'simulate': False},
+    #     # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - relu
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'time_transition_mode': 'relu', 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'time_transition_mode': 'relu', 'simulate': False},
         
-        # ============================================================================
-        # LLM SCREENING: True (Default qEI, asymmetric)
-        # ============================================================================
+    #     # ============================================================================
+    #     # LLM SCREENING: True (Default qEI, asymmetric)
+    #     # ============================================================================
         
-        # Volume Set 1: [0.05, 0.025, 0.1] - LLM screening
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_screening': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_screening': True, 'simulate': False},
+    #     # Volume Set 1: [0.05, 0.025, 0.1] - LLM screening
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_screening': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_screening': True, 'simulate': False},
         
-        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - LLM screening
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_screening': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_screening': True, 'simulate': False},
+    #     # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - LLM screening
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_screening': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_screening': True, 'simulate': False},
         
-        # ============================================================================
-        # LLM OPTIMIZATION: True (Default qEI, asymmetric)  
-        # ============================================================================
+    #     # ============================================================================
+    #     # LLM OPTIMIZATION: True (Default qEI, asymmetric)  
+    #     # ============================================================================
         
-        # Volume Set 1: [0.05, 0.025, 0.1] - LLM optimization
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_optimization': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_optimization': True, 'simulate': False},
+    #     # Volume Set 1: [0.05, 0.025, 0.1] - LLM optimization
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_optimization': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_optimization': True, 'simulate': False},
         
-        # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - LLM optimization
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_optimization': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_optimization': True, 'simulate': False},
-    ]
+    #     # Volume Set 4: [0.05, 0.025, 0.1, 0.3, 0.8, 0.010] - LLM optimization
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 1, 'use_llm_for_optimization': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.010], 'vial_mode': 'swap', 'seed': 2, 'use_llm_for_optimization': True, 'simulate': False},
+    # ]
     
 
     print("\nConfigured experiments:")
