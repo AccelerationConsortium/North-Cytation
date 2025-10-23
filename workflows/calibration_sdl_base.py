@@ -36,13 +36,21 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     # More realistic simulation that considers ALL parameters, especially volume-dependent ones
     mass_error_factor = 0.0
     
-    # Speed parameters (optimal around 15-20, bounds [5, 35])
-    mass_error_factor += np.abs(params["aspirate_speed"] - 17) * 0.004
-    mass_error_factor += np.abs(params["dispense_speed"] - 17) * 0.004
+    # Speed parameters: Faster speeds (lower numbers) may be less accurate but faster
+    # Higher speeds (higher numbers) are more accurate but slower
+    # No single "optimal" - it's a tradeoff between speed and accuracy
+    min_speed_penalty = 0.002  # Penalty for very fast speeds (accuracy issues)
+    fast_speed_penalty_aspirate = max(0, (15 - params["aspirate_speed"])) * min_speed_penalty
+    fast_speed_penalty_dispense = max(0, (15 - params["dispense_speed"])) * min_speed_penalty
+    mass_error_factor += fast_speed_penalty_aspirate + fast_speed_penalty_dispense
     
-    # Wait time parameters (optimal around 10-15, bounds [0, 30])
-    mass_error_factor += np.abs(params["aspirate_wait_time"] - 12) * 0.003
-    mass_error_factor += np.abs(params["dispense_wait_time"] - 12) * 0.003
+    # Wait time parameters: Longer waits generally improve accuracy (settling time)
+    # Very short waits can cause accuracy issues, very long waits waste time but don't help much
+    wait_accuracy_benefit = -0.001  # Slight accuracy improvement with longer waits
+    mass_error_factor += max(0, (5 - params["aspirate_wait_time"])) * 0.002  # Penalty for very short waits
+    mass_error_factor += max(0, (5 - params["dispense_wait_time"])) * 0.002  # Penalty for very short waits
+    mass_error_factor += params["aspirate_wait_time"] * wait_accuracy_benefit  # Small benefit from longer waits
+    mass_error_factor += params["dispense_wait_time"] * wait_accuracy_benefit  # Small benefit from longer waits
     
     # VOLUME-DEPENDENT PARAMETERS - These are HIGHLY critical for selective optimization!
     # Make these parameters much more volume-sensitive so optimization is forced
@@ -125,21 +133,27 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     variability += np.random.normal(0, 0.3)
     variability = np.clip(variability, 0.5, 6)
     
-    # Time: center around provided expected_time baseline rather than arbitrary constants.
-    # Penalties for slower speeds / higher waits adjust upward; faster settings cannot push below 70% of expected_time.
-    baseline = expected_time if expected_time and expected_time > 0 else 30.0
-    penalty = 0.0
-    # Wait times add linearly (scaled)
-    penalty += (params["aspirate_wait_time"] + params["dispense_wait_time"]) * 0.15
-    # Speed penalties (only when slower than an 'ideal' ~20)
-    ideal_speed = 20
-    penalty += max(0, ideal_speed - params["aspirate_speed"]) * 0.4
-    penalty += max(0, ideal_speed - params["dispense_speed"]) * 0.4
-    # Small random variation (5% of baseline)
-    noise = np.random.normal(0, baseline * 0.05)
-    time_score = baseline + penalty + noise
-    # Enforce lower/upper bounds relative to baseline to avoid extreme rejects in simulation
-    time_score = np.clip(time_score, baseline * 0.7, baseline * 1.6)
+    # Time simulation: More realistic model
+    # Start with a reasonable baseline (8-15 seconds for typical pipetting)
+    baseline = 12.0  # Base pipetting time in seconds
+    
+    # Wait times ALWAYS add to the time (no "optimal" value)
+    wait_time_penalty = params["aspirate_wait_time"] + params["dispense_wait_time"]
+    
+    # Speed penalties: Higher numbers (like 35) are SLOWER, lower numbers (like 10) are FASTER
+    # Speed range is [10, 35], with 10 being fastest and 35 being slowest
+    # Convert speed to time penalty: higher speed = more time
+    aspirate_time_penalty = (params["aspirate_speed"] - 10) * 0.3  # 0.3s per speed unit above 10
+    dispense_time_penalty = (params["dispense_speed"] - 10) * 0.3  # 0.3s per speed unit above 10
+    
+    # Small random variation (±2 seconds)
+    noise = np.random.normal(0, 2.0)
+    
+    # Total time = baseline + wait times + speed penalties + noise
+    time_score = baseline + wait_time_penalty + aspirate_time_penalty + dispense_time_penalty + noise
+    
+    # Enforce realistic bounds: minimum 3 seconds, maximum 150 seconds
+    time_score = np.clip(time_score, 3.0, 150.0)
     
     # Ensure no NaN values are returned
     deviation = np.nan_to_num(deviation, nan=15.0)

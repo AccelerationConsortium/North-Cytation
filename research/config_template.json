@@ -1,0 +1,77 @@
+{
+  "project_info": {
+    "name": "Template Experiment",
+    "author": "Your Name", 
+    "date_created": "YYYY-MM-DD",
+    "version": "1.0",
+    "description": "Template for new experiments"
+  },
+  
+  "experimental_parameters": {
+    "volumes": {
+      "source_volume_mL": 1.0,
+      "transfer_volume_mL": 0.5,
+      "measurement_volume_mL": 0.2,
+      "total_volume_per_sample_mL": 0.3
+    },
+    
+    "replication": {
+      "technical_replicates": 3,
+      "biological_replicates": 1,
+      "control_wells": 2,
+      "blank_wells": 1
+    },
+    
+    "processing": {
+      "temperature_celsius": 25.0,
+      "incubation_time_seconds": 300,
+      "mixing_time_seconds": 10,
+      "vortex_speed": "medium"
+    }
+  },
+  
+  "instrument_settings": {
+    "cytation": {
+      "protocol_file": "C:\\Protocols\\Template_Protocol.prt",
+      "read_time_per_well_seconds": 2,
+      "wavelengths": [280, 350, 450],
+      "gain": "auto"
+    },
+    
+    "photoreactor": {
+      "enabled": false,
+      "reactor_number": 1,
+      "led_intensity_percent": 50,
+      "stirring_rpm": 400,
+      "reaction_time_seconds": 600
+    },
+    
+    "temperature_controller": {
+      "enabled": true,
+      "target_temperature_celsius": 25.0,
+      "stirring_enabled": false,
+      "equilibration_time_seconds": 300
+    }
+  },
+  
+  "file_paths": {
+    "vial_config": "./config/vials.csv",
+    "output_directory": "./data/raw/",
+    "analysis_directory": "./data/processed/",
+    "backup_directory": "./data/backup/"
+  },
+  
+  "safety_limits": {
+    "max_volume_per_vial_mL": 10.0,
+    "max_temperature_celsius": 80.0,
+    "max_processing_time_minutes": 180,
+    "emergency_stop_enabled": true
+  },
+  
+  "data_handling": {
+    "auto_backup": true,
+    "timestamp_format": "YYYYMMDD_HHMMSS",
+    "file_naming_convention": "experiment_{timestamp}_{liquid}.csv",
+    "compression": false
+  }
+}
