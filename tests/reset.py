@@ -14,7 +14,7 @@ def reset(input_vial_status_file):
     # lash_e.photoreactor.turn_off_reactor_fan(reactor_num=1)
     # lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
 
-    lash_e.nr_track.origin()
+    #lash_e.nr_track.origin()
     # lash_e.nr_robot.move_home()
 
     # lash_e.nr_track.open_gripper()
