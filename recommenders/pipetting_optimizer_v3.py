@@ -13,7 +13,7 @@ from botorch.acquisition.logei import qLogExpectedImprovement
 from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
 
 obj1_name = "deviation"
-obj2_name = "time"  # Note: This will actually receive time_score values computed from raw time
+obj2_name = "time"  # Raw time in seconds - no transformations
 
 # Default parameter bounds for all parameters
 DEFAULT_PARAMETER_BOUNDS = {
@@ -28,8 +28,7 @@ DEFAULT_PARAMETER_BOUNDS = {
 }
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, 
-                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0, 
-                 max_wait_time=30.0):
+                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0):
     """
     Create an Ax client for selective parameter optimization.
     
@@ -44,7 +43,6 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         fixed_params: Dict of parameter names and values to keep fixed
         simulate: Whether in simulation mode
         max_overaspirate_ul: Maximum overaspirate volume in microliters (default 10.0 µL)
-        max_wait_time: Maximum wait time for aspirate_wait_time and dispense_wait_time (default 30.0 s)
     """
     
     # Default to optimizing all parameters if not specified
@@ -132,9 +130,6 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
             # Convert max_overaspirate_ul (microliters) to mL for consistency with other volumes
             max_overaspirate_ml = max_overaspirate_ul / 1000.0
             param_config["bounds"] = [0.0, max_overaspirate_ml]  # Fixed maximum overaspirate volume
-        elif param_name in ["aspirate_wait_time", "dispense_wait_time"]:
-            # Use dynamic max_wait_time instead of hardcoded 30.0
-            param_config["bounds"] = [0.0, max_wait_time]
         
         parameters.append(param_config)
     
@@ -182,16 +177,13 @@ def get_suggestions(ax_client, volume, n=1):
     
     return suggestions
 
-def add_result(ax_client, trial_index, results, base_time_seconds=20, time_optimal_target=17, time_transition_mode="relu"):
-    """Add results for only deviation and time_score (no variability).
+def add_result(ax_client, trial_index, results):
+    """Add results for deviation and raw time (no transformations).
     
     Args:
         ax_client: The Ax client instance
         trial_index: The trial index
         results: Dictionary containing 'deviation' and 'time' keys
-        base_time_seconds: Base time threshold (used for other criteria, kept for compatibility)
-        time_optimal_target: Optimal time target in seconds - score approaches 0 at optimal
-        time_transition_mode: "relu" (max(0,x)), "smooth" (log(1+exp(x))), or "asymmetric" (gentle penalty for fast times)
     """
     
     # Debug: Print the results to check for NaN values
@@ -202,47 +194,15 @@ def add_result(ax_client, trial_index, results, base_time_seconds=20, time_optim
         if pd.isna(value):
             print(f"WARNING: NaN found in {key}: {value}")
     
-    # Compute time_score using selected transition method:
-    import numpy as np
+    # Use raw time directly - no transformations
     raw_time = results["time"]
     
-    # Handle case where time optimization is disabled (time_optimal_target is None)
-    if time_optimal_target is None:
-        time_score = 0  # No time penalty when time optimization is disabled
-    elif time_transition_mode == "smooth":
-        # Smooth transition (soft ReLU): log(1 + exp(x))
-        # - Below optimal: Very small score (smooth approach to 0)
-        # - At optimal: Small score (~0.69)  
-        # - Above optimal: Approximately linear increase
-        # This avoids sharp discontinuity issues with Bayesian optimization
-        time_score = np.log(1 + np.exp(raw_time - time_optimal_target))
-    elif time_transition_mode == "asymmetric":
-        # Asymmetric transition: gentle penalty for fast times, standard ReLU for slow times
-        # - Below optimal: Small linear penalty to discourage unstable fast times
-        # - At optimal: No penalty (0)
-        # - Above optimal: Standard linear penalty
-        # Addresses instability of very fast times while not heavily penalizing them
-        if raw_time < time_optimal_target:
-            # Gentle discouragement for fast times (configurable factor)
-            low_time_penalty_factor = 0.1  # Can be made configurable later
-            time_score = (time_optimal_target - raw_time) * low_time_penalty_factor
-        else:
-            # Standard ReLU for times at or above optimal
-            time_score = max(0, raw_time - time_optimal_target)
-    else:  # "relu" (default)
-        # ReLU transition: max(0, x)
-        # - Below optimal: No penalty (0)
-        # - At optimal: No penalty (0)
-        # - Above optimal: Linear increase
-        # Sharp cutoff - the original method that worked well
-        time_score = max(0, raw_time - time_optimal_target)
+    print(f"DEBUG: Using raw time={raw_time:.2f}s (no transformations)")
     
-    print(f"DEBUG: Computed time_score={time_score:.2f} from raw_time={raw_time:.2f}, optimal_target={time_optimal_target if time_optimal_target is not None else 'None'}s")
-    
-    # Only use deviation and time_score (ignore variability)
+    # Only use deviation and raw time (ignore variability)
     data = {
         "deviation": (results["deviation"], 0.0),
-        "time": (time_score, 0.0),
+        "time": (raw_time, 0.0),
     }
     
     # Additional check for NaN in the data being passed to Ax
