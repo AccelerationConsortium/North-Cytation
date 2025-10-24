@@ -3247,79 +3247,79 @@ if __name__ == "__main__":
     #
 
     # Current experiment - uncomment to run single experiment
-    EXPERIMENTS = [{'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'simulate': True}]
+    #EXPERIMENTS = [{'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'simulate': True}]
 
     # OVERNIGHT EXPERIMENT SUITE - Volume Order & Multi-Factor Studiesok 
-    # EXPERIMENTS = [
-    #     # ============================================================================
-    #     # STUDY 1: VOLUME ORDER EFFECTS (Small Volumes)
-    #     # Compare [0.05, 0.025, 0.1] vs [0.1, 0.05, 0.025] - 3 replicates each
-    #     # ============================================================================
+    EXPERIMENTS = [
+        # ============================================================================
+        # STUDY 1: VOLUME ORDER EFFECTS (Small Volumes)
+        # Compare [0.05, 0.025, 0.1] vs [0.1, 0.05, 0.025] - 3 replicates each
+        # ============================================================================
         
-    #     # Volume Order A: [0.05, 0.025, 0.1] - Small to Large
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'single', 'seed': 1, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'single', 'seed': 2, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'single', 'seed': 3, 'simulate': False},
+        # Volume Order A: [0.05, 0.025, 0.1] - Small to Large
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
         
-    #     # Volume Order B: [0.1, 0.05, 0.025] - Large to Small
-    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'single', 'seed': 1, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'single', 'seed': 2, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'single', 'seed': 3, 'simulate': False},
+        # Volume Order B: [0.1, 0.05, 0.025] - Large to Small
+        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
         
-    #     # ============================================================================
-    #     # STUDY 2: VOLUME ORDER EFFECTS (Wider Range)
-    #     # Compare [0.5, 0.1, 0.05, 0.025] vs [0.05, 0.025, 0.1, 0.5] - 3 replicates each
-    #     # ============================================================================
+        # ============================================================================
+        # STUDY 2: VOLUME ORDER EFFECTS (Wider Range)
+        # Compare [0.5, 0.1, 0.05, 0.025] vs [0.05, 0.025, 0.1, 0.5] - 3 replicates each
+        # ============================================================================
         
-    #     # Volume Order C: [0.5, 0.1, 0.05, 0.025] - Large to Small
-    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'single', 'seed': 1, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'single', 'seed': 2, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'single', 'seed': 3, 'simulate': False},
+        # Volume Order C: [0.5, 0.1, 0.05, 0.025] - Large to Small
+        {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
         
-    #     # Volume Order D: [0.05, 0.025, 0.1, 0.5] - Small to Large
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'single', 'seed': 1, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'single', 'seed': 2, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'single', 'seed': 3, 'simulate': False},
+        # Volume Order D: [0.05, 0.025, 0.1, 0.5] - Small to Large
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
         
-    #     # ============================================================================
-    #     # STUDY 3: MULTI-FACTOR EXPERIMENT
-    #     # Volume Set: [0.05, 0.025, 0.1, 0.3, 0.8, 0.01]
-    #     # Factors: 3 Model Types x 2 Screening Types x 3 Seeds = 18 experiments
-    #     # ============================================================================
+        # ============================================================================
+        # STUDY 3: MULTI-FACTOR EXPERIMENT
+        # Volume Set: [0.05, 0.025, 0.1, 0.3, 0.8, 0.01]
+        # Factors: 3 Model Types x 2 Screening Types x 3 Seeds = 18 experiments
+        # ============================================================================
         
-    #     # Factor 1: qEI (Default Bayesian Model)
-    #     # SOBOL Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
+        # Factor 1: qEI (Default Bayesian Model)
+        # SOBOL Screening
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
         
-    #     # LLM Screening  
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
+        # LLM Screening  
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
         
-    #     # Factor 2: qLogEI (Log Expected Improvement)
-    #     # SOBOL Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
+        # Factor 2: qLogEI (Log Expected Improvement)
+        # SOBOL Screening
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
         
-    #     # LLM Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
+        # LLM Screening
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
         
-    #     # Factor 3: qNEHVI (Noisy Expected Hypervolume Improvement)
-    #     # SOBOL Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
+        # Factor 3: qNEHVI (Noisy Expected Hypervolume Improvement)
+        # SOBOL Screening
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
         
-    #     # LLM Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'single', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-    # ]
+        # LLM Screening
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
+        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
+    ]
     
 
     print("\nConfigured experiments:")
