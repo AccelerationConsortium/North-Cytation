@@ -128,6 +128,7 @@ DEFAULT_USE_LLM_FOR_SCREENING = False     # LLM vs SOBOL for initial exploration
 DEFAULT_USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loops
 DEFAULT_BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 DEFAULT_CANDIDATE_SELECTION_PERCENTILE = 35  # Target percentile for candidate selection (avoid fastest, pick reasonably fast)
+DEFAULT_MIN_ACCURATE_TRIALS = 6  # Minimum accurate trials before stopping decisions can be made
 
 # Default scoring weights for candidate evaluation
 DEFAULT_INITIAL_SELECTION_TIME_WEIGHT = 0.4      # Initial selection: time proximity weight
@@ -165,6 +166,7 @@ BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
 
 # --- Candidate Selection Configuration ---
 CANDIDATE_SELECTION_PERCENTILE = DEFAULT_CANDIDATE_SELECTION_PERCENTILE  # Can be modified at runtime
+MIN_ACCURATE_TRIALS = DEFAULT_MIN_ACCURATE_TRIALS  # Minimum accurate trials for stopping decisions
 
 # --- Candidate Scoring Weights ---
 # For initial candidate selection (select_best_candidate_from_accurate_trials)
@@ -229,7 +231,7 @@ def reset_config_to_defaults():
     global LIQUID, SIMULATE, SEED, INITIAL_SUGGESTIONS, BATCH_SIZE, REPLICATES
     global PRECISION_REPLICATES, VOLUMES, MAX_WELLS, INPUT_VIAL_STATUS_FILE
     global USE_LLM_FOR_SCREENING, USE_LLM_FOR_OPTIMIZATION, BAYESIAN_MODEL_TYPE
-    global CANDIDATE_SELECTION_PERCENTILE
+    global CANDIDATE_SELECTION_PERCENTILE, MIN_ACCURATE_TRIALS
     global INITIAL_SELECTION_TIME_WEIGHT, INITIAL_SELECTION_ACCURACY_WEIGHT
     global CASCADING_TIME_WEIGHT, CASCADING_ACCURACY_WEIGHT, CASCADING_SWEET_SPOT_BONUS
     global OVERASPIRATE_BASE_UL, OVERASPIRATE_SCALING_PERCENT, AUTO_CALIBRATE_OVERVOLUME
@@ -254,6 +256,7 @@ def reset_config_to_defaults():
     USE_LLM_FOR_OPTIMIZATION = DEFAULT_USE_LLM_FOR_OPTIMIZATION
     BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
     CANDIDATE_SELECTION_PERCENTILE = DEFAULT_CANDIDATE_SELECTION_PERCENTILE
+    MIN_ACCURATE_TRIALS = DEFAULT_MIN_ACCURATE_TRIALS
     INITIAL_SELECTION_TIME_WEIGHT = DEFAULT_INITIAL_SELECTION_TIME_WEIGHT
     INITIAL_SELECTION_ACCURACY_WEIGHT = DEFAULT_INITIAL_SELECTION_ACCURACY_WEIGHT
     CASCADING_TIME_WEIGHT = DEFAULT_CASCADING_TIME_WEIGHT
@@ -295,6 +298,7 @@ def get_current_config_summary():
     print(f"   Simulate: {SIMULATE}")
     print(f"   Volumes: {[f'{v*1000:.0f}uL' for v in VOLUMES]}")
     print(f"   Candidate selection: P{CANDIDATE_SELECTION_PERCENTILE}")
+    print(f"   Min accurate trials: {MIN_ACCURATE_TRIALS}")
     print(f"   Precision replicates: {PRECISION_REPLICATES}")
     print(f"   Initial suggestions: {INITIAL_SUGGESTIONS}")
     print(f"   LLM screening/optimization: {USE_LLM_FOR_SCREENING}/{USE_LLM_FOR_OPTIMIZATION}")
@@ -407,7 +411,7 @@ def get_max_overaspirate_ul(volume_ml):
     
     return max_overaspirate
 
-def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_ml=None, min_trials=6):
+def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_ml=None, min_trials=None):
     """
     Gradual dynamic cutoff using 3-factor scoring: spread, hit rate, and trial pressure.
     
@@ -421,7 +425,7 @@ def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_
     Args:
         current_trial_data: List of dicts with {'time': float, 'accurate': bool, 'volume': float}
         volume_ml: Target volume for filtering (if None, uses all data) 
-        min_trials: Minimum accurate trials needed (default: 6)
+        min_trials: Minimum accurate trials needed (if None, uses global MIN_ACCURATE_TRIALS)
     
     Returns:
         dict with 'decision' ('STOP_NOW', 'STOP_SOON', 'CONTINUE'), hit_rate_pct, time_spread_pct, etc.
@@ -429,6 +433,10 @@ def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_
     """
     if not current_trial_data:
         return None
+    
+    # Use global configuration if not specified
+    if min_trials is None:
+        min_trials = MIN_ACCURATE_TRIALS
     
     # Convert to DataFrame and filter by volume
     df = pd.DataFrame(current_trial_data) if isinstance(current_trial_data, list) else current_trial_data.copy()
@@ -456,7 +464,7 @@ def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_
     spread_factor = time_spread_pct / 25.0  # Reference: 25% spread
     
     # Factor 2: Hit rate factor (higher hit rate above 20% = more reason to continue)
-    hit_rate_factor = max(0, (hit_rate_pct - 20.0) / 25.0)  # Reference: 20% baseline, 45% = 1.0
+    hit_rate_factor = max(0, (hit_rate_pct - 20.0) / 20.0)  # Reference: 20% baseline, 45% = 1.0
     
     # Factor 3: Trial pressure (more trials = more pressure to stop)
     total_trials = len(df)
@@ -486,7 +494,9 @@ def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_
         'hit_rate_factor': hit_rate_factor,
         'trial_pressure': trial_pressure,
         # Legacy fields for compatibility
-        'decision_score': 1 - continue_score  # Invert for compatibility with old logic
+        'decision_score': 1 - continue_score,  # Invert for compatibility with old logic
+        'easy_liquid_score': continue_score,  # Using continue_score as easy liquid score
+        'confidence_factor': hit_rate_factor  # Using hit_rate_factor as confidence
     }
 
 def isolate_pipetting_params(source_params, context="unknown"):
@@ -639,9 +649,9 @@ def select_best_candidate_from_accurate_trials(accurate_candidates):
     max_distance = max(distances) if max(distances) > 0 else 1.0
     max_deviation = max(deviations) if max(deviations) > 0 else 1.0
     
-    # Same weights used everywhere
-    TIME_WEIGHT = 0.4      # 40% weight on time proximity
-    ACCURACY_WEIGHT = 0.6  # 60% weight on accuracy
+    # Use configurable weights for initial candidate selection
+    TIME_WEIGHT = INITIAL_SELECTION_TIME_WEIGHT      # Configurable time proximity weight
+    ACCURACY_WEIGHT = INITIAL_SELECTION_ACCURACY_WEIGHT  # Configurable accuracy weight
     
     for candidate in accurate_candidates:
         # Calculate normalized scores
@@ -1399,9 +1409,9 @@ def get_ordered_candidates_from_results(optimization_results, criteria):
         max_distance = max(distances) if max(distances) > 0 else 1.0
         max_deviation = max(deviations) if max(deviations) > 0 else 1.0
         
-        # Single set of weights used everywhere
-        TIME_WEIGHT = 0.4      # 40% weight on time proximity  
-        ACCURACY_WEIGHT = 0.6  # 60% weight on accuracy
+        # Use configurable weights for consistency
+        TIME_WEIGHT = CASCADING_TIME_WEIGHT          # Configurable time proximity weight
+        ACCURACY_WEIGHT = CASCADING_ACCURACY_WEIGHT  # Configurable accuracy weight
         
         for candidate in all_candidates_with_distance:
             # Normalize both metrics to 0-1 scale
@@ -1601,7 +1611,7 @@ def run_cascading_precision_tests(optimization_results, criteria, lash_e, state,
                 })
         
         # Run dynamic cutoff analysis
-        cutoff_result = calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_ml=volume, min_trials=6)
+        cutoff_result = calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_ml=volume)
         
         if cutoff_result:
             print(f"   📈 ANALYSIS RESULTS:")
@@ -2356,6 +2366,9 @@ def run_single_experiment(config_overrides=None):
     # Update global variables with the configuration (for backward compatibility)
     global LIQUID, SIMULATE, SEED, VOLUMES, MAX_WELLS, PRECISION_REPLICATES
     global USE_LLM_FOR_SCREENING, USE_LLM_FOR_OPTIMIZATION, BAYESIAN_MODEL_TYPE
+    global CANDIDATE_SELECTION_PERCENTILE, MIN_ACCURATE_TRIALS
+    global INITIAL_SELECTION_TIME_WEIGHT, INITIAL_SELECTION_ACCURACY_WEIGHT
+    global CASCADING_TIME_WEIGHT, CASCADING_ACCURACY_WEIGHT, CASCADING_SWEET_SPOT_BONUS
     global AUTO_CALIBRATE_OVERVOLUME, OVERASPIRATE_BASE_UL, OVERASPIRATE_SCALING_PERCENT
     global INPUT_VIAL_STATUS_FILE
     
@@ -2368,6 +2381,13 @@ def run_single_experiment(config_overrides=None):
     USE_LLM_FOR_SCREENING = config['use_llm_for_screening']
     USE_LLM_FOR_OPTIMIZATION = config['use_llm_for_optimization']
     BAYESIAN_MODEL_TYPE = config['bayesian_model_type']
+    CANDIDATE_SELECTION_PERCENTILE = config['candidate_selection_percentile']
+    MIN_ACCURATE_TRIALS = config['min_accurate_trials']
+    INITIAL_SELECTION_TIME_WEIGHT = config['initial_selection_time_weight']
+    INITIAL_SELECTION_ACCURACY_WEIGHT = config['initial_selection_accuracy_weight']
+    CASCADING_TIME_WEIGHT = config['cascading_time_weight']
+    CASCADING_ACCURACY_WEIGHT = config['cascading_accuracy_weight']
+    CASCADING_SWEET_SPOT_BONUS = config['cascading_sweet_spot_bonus']
     AUTO_CALIBRATE_OVERVOLUME = config['auto_calibrate_overvolume']
     OVERASPIRATE_BASE_UL = config['overaspirate_base_ul']
     OVERASPIRATE_SCALING_PERCENT = config['overaspirate_scaling_percent']
@@ -3365,6 +3385,13 @@ def get_default_config():
         'use_llm_for_screening': DEFAULT_USE_LLM_FOR_SCREENING,  # bool: LLM vs SOBOL for initial exploration
         'use_llm_for_optimization': DEFAULT_USE_LLM_FOR_OPTIMIZATION,  # bool: LLM vs Bayesian for optimization
         'bayesian_model_type': DEFAULT_BAYESIAN_MODEL_TYPE,  # str: 'qEI', 'qLogEI', 'qNEHVI'
+        'candidate_selection_percentile': DEFAULT_CANDIDATE_SELECTION_PERCENTILE,  # int: percentile for candidate selection
+        'min_accurate_trials': DEFAULT_MIN_ACCURATE_TRIALS,  # int: minimum accurate trials before stopping decisions
+        'initial_selection_time_weight': DEFAULT_INITIAL_SELECTION_TIME_WEIGHT,  # float: time weight for initial selection
+        'initial_selection_accuracy_weight': DEFAULT_INITIAL_SELECTION_ACCURACY_WEIGHT,  # float: accuracy weight for initial selection
+        'cascading_time_weight': DEFAULT_CASCADING_TIME_WEIGHT,  # float: time weight for cascading precision tests
+        'cascading_accuracy_weight': DEFAULT_CASCADING_ACCURACY_WEIGHT,  # float: accuracy weight for cascading precision tests
+        'cascading_sweet_spot_bonus': DEFAULT_CASCADING_SWEET_SPOT_BONUS,  # float: sweet spot bonus for cascading
         'volume_tolerance_ranges': VOLUME_TOLERANCE_RANGES,  # list[dict]: tolerance specs by volume
         'overaspirate_base_ul': DEFAULT_OVERASPIRATE_BASE_UL,  # float: base overaspirate volume in uL
         'overaspirate_scaling_percent': DEFAULT_OVERASPIRATE_SCALING_PERCENT,  # float: % scaling per volume
@@ -3396,80 +3423,7 @@ if __name__ == "__main__":
     #
 
     # Current experiment - uncomment to run single experiment
-    EXPERIMENTS = [{'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'simulate': True}]
-
-    # OVERNIGHT EXPERIMENT SUITE - Volume Order & Multi-Factor Studiesok 
-    # EXPERIMENTS = [
-    #     # ============================================================================
-    #     # STUDY 1: VOLUME ORDER EFFECTS (Small Volumes)
-    #     # Compare [0.05, 0.025, 0.1] vs [0.1, 0.05, 0.025] - 3 replicates each
-    #     # ============================================================================
-        
-    #     # Volume Order A: [0.05, 0.025, 0.1] - Small to Large
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
-        
-    #     # Volume Order B: [0.1, 0.05, 0.025] - Large to Small
-    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
-        
-    #     # ============================================================================
-    #     # STUDY 2: VOLUME ORDER EFFECTS (Wider Range)
-    #     # Compare [0.5, 0.1, 0.05, 0.025] vs [0.05, 0.025, 0.1, 0.5] - 3 replicates each
-    #     # ============================================================================
-        
-    #     # Volume Order C: [0.5, 0.1, 0.05, 0.025] - Large to Small
-    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
-        
-    #     # Volume Order D: [0.05, 0.025, 0.1, 0.5] - Small to Large
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
-        
-    #     # ============================================================================
-    #     # STUDY 3: MULTI-FACTOR EXPERIMENT
-    #     # Volume Set: [0.05, 0.025, 0.1, 0.3, 0.8, 0.01]
-    #     # Factors: 3 Model Types x 2 Screening Types x 3 Seeds = 18 experiments
-    #     # ============================================================================
-        
-    #     # Factor 1: qEI (Default Bayesian Model)
-    #     # SOBOL Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
-        
-    #     # LLM Screening  
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
-        
-    #     # Factor 2: qLogEI (Log Expected Improvement)
-    #     # SOBOL Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
-        
-    #     # LLM Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
-        
-    #     # Factor 3: qNEHVI (Noisy Expected Hypervolume Improvement)
-    #     # SOBOL Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
-        
-    #     # LLM Screening
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-    # ]
-    
+    EXPERIMENTS = [{'liquid': 'glycerol', 'volumes': [0.05, 0.025, 0.1], 'simulate': False, 'vial_management_mode':'legacy'}]
 
     print("\nConfigured experiments:")
     for i, cfg in enumerate(EXPERIMENTS, 1):
