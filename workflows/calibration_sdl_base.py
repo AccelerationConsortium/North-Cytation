@@ -566,10 +566,12 @@ def _single_vial_mode(lash_e, state, cfg):
     global _SINGLE_MODE_INITIALIZED
     
     try:
-        # Set both source and measurement to use the same vial (liquid_source_0)
-        single_vial = cfg.get('source_vial', 'liquid_source_0')
+        # Set both source and measurement to use the same vial (measurement_vial_0)
+        # This aligns with initialize_experiment() which always puts measurement_vial_0 in clamp
+        single_vial = 'measurement_vial_0'
         
         # Update configuration to use same vial for both roles
+        cfg['source_vial'] = single_vial
         cfg['measurement_vial'] = single_vial
         state['measurement_vial_name'] = single_vial
         
@@ -580,22 +582,11 @@ def _single_vial_mode(lash_e, state, cfg):
         _VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial'] = single_vial
         _VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial'] = single_vial
         
-        # Only do physical vial moves on first initialization
+        # No physical vial moves needed! initialize_experiment() already puts measurement_vial_0 in clamp
+        # This eliminates the conflict between startup and single mode initialization
         if not _SINGLE_MODE_INITIALIZED:
-            # Remove pipet first to avoid conflicts
-            lash_e.nr_robot.remove_pipet()
-            
-            # Ensure the vial is in the clamp for easy access
-            clamp_vial = lash_e.nr_robot.get_vial_in_location('clamp', 0)
-            if clamp_vial is not None:
-                lash_e.nr_robot.return_vial_home(clamp_vial)
-            
-            vial_location = lash_e.nr_robot.get_vial_info(single_vial, 'location')
-            if vial_location != 'clamp':
-                lash_e.nr_robot.move_vial_to_location(single_vial, "clamp", 0)
-            
             _SINGLE_MODE_INITIALIZED = True
-            msg = f"[single] Initialized single vial mode with: {single_vial}"
+            msg = f"[single] Initialized single vial mode with: {single_vial} (already in clamp from startup)"
         else:
             msg = f"[single] Single mode already active with: {single_vial}"
         
@@ -633,9 +624,5 @@ def manage_vials(lash_e, state):
     elif mode == 'swap':
         _swap_vials_if_needed(lash_e, state, cfg)
     elif mode == 'single':
-        # Only run single mode setup once, then skip all future calls
-        global _SINGLE_MODE_INITIALIZED
-        if not _SINGLE_MODE_INITIALIZED:
-            _single_vial_mode(lash_e, state, cfg)
-        else:
-            print(f"[LOG] [single] Skipping - already initialized")
+        # Always run single mode to ensure configuration is updated
+        _single_vial_mode(lash_e, state, cfg)
