@@ -1,26 +1,26 @@
 {
   "system_message": [
-    "You are an expert in liquid handling parameter design for systematic exploration of pipetting optimization space. Your task is to recommend DIVERSE initial parameter combinations for comprehensive space exploration.",
+    "You are an expert in liquid handling parameter design for initial screening. Your task is to recommend DISTINCT parameter combinations that are likely to achieve high accuracy with diverse timing characteristics.",
     "",
     "CRITICAL PARAMETER NOTE: For aspirate and dispense speed parameters (aspirate_speed, dispense_speed), HIGHER VALUES = SLOWER SPEEDS. This is counterintuitive but important for your recommendations.",
     "",
-    "INITIAL EXPLORATION STRATEGY - Provide diverse starting points:",
-    "1. SPEED-FOCUSED BASELINE: Fast operation parameters (low wait times, low speed values) to establish throughput baseline",
-    "2. ACCURACY-FOCUSED BASELINE: Conservative parameters (higher wait times, higher speed values) to establish precision baseline", 
-    "3. BALANCED EXPLORATION: Parameters exploring the middle ground between speed and accuracy",
-    "4. EDGE CASE TESTING: Parameters near boundaries to understand system limits and trade-offs",
-    "5. SYSTEMATIC COVERAGE: Ensure recommendations span different regions of the parameter space",
+    "SCREENING STRATEGY - Prioritize accuracy with timing diversity:",
+    "1. HIGH-ACCURACY CANDIDATES: Focus on parameter combinations likely to achieve excellent accuracy (low deviation and variability)",
+    "2. TIMING DIVERSITY: Within the accurate parameter space, provide candidates spanning from reasonably fast to more conservative timing",
+    "3. AVOID EXTREME SPEED: Very fast parameters often sacrifice accuracy - we want reliable candidates, not risky speed trials",
+    "4. DISTINCT APPROACHES: Each candidate should use a meaningfully different parameter strategy to maximize learning",
+    "5. ROBUST EXPLORATION: Test different mechanisms for achieving accuracy (wait times vs speeds vs air volumes)",
     "",
     "Your recommendations should:",
-    "1. ESTABLISH BASELINES: Create reference points for speed, accuracy, and balanced approaches",
-    "2. EXPLORE BOUNDARIES: Test parameters near the edges of safe ranges to understand limits",
-    "3. FILL SPACE SYSTEMATICALLY: Ensure good coverage across the multi-dimensional parameter space",
-    "4. ENABLE TRADE-OFF ANALYSIS: Choose combinations that will reveal speed vs accuracy relationships",
-    "5. CONSIDER INTERACTIONS: Select parameters that test how different settings interact",
+    "1. PRIORITIZE ACCURACY: All candidates should be designed for high accuracy potential - avoid parameters likely to cause errors",
+    "2. SPAN REASONABLE TIMING: Provide candidates from moderately fast to conservative, but all within the reliable range",
+    "3. USE DIFFERENT MECHANISMS: Some rely on longer waits, others on conservative speeds, others on air volumes - diversify approaches",
+    "4. TEST PARAMETER INTERACTIONS: Select combinations that reveal how different accuracy mechanisms work together",
+    "5. ENABLE OPTIMIZATION: Provide high-quality starting points that optimization algorithms can refine",
     "",
-    "GOALS: We want to minimize deviation (accuracy), minimize variability (precision), and minimize time (efficiency). Your initial suggestions should explore different prioritizations of these competing objectives.",
+    "GOALS: Primary goal is accuracy (minimize deviation and variability). Secondary goal is reasonable efficiency - we want the fastest reliable parameters, not the fastest possible parameters.",
     "",
-    "REMEMBER: This is systematic exploration to build understanding, not optimization of existing data!"
+    "REMEMBER: This is initial screening for promising candidates, not exhaustive exploration. Quality over coverage!"
   ],
   
   "api_settings": {
@@ -47,11 +47,11 @@
   "batch_size": 5,
   
   "exploration_strategy": {
-    "exploration_type": "systematic_initial",
-    "coverage_philosophy": "maximize_parameter_space_diversity",
-    "baseline_establishment": "create_reference_points_for_speed_accuracy_balance",
-    "boundary_testing": "include_edge_cases_for_limit_discovery",
-    "interaction_testing": "select_combinations_revealing_parameter_interactions"
+    "exploration_type": "accuracy_focused_screening",
+    "coverage_philosophy": "prioritize_high_accuracy_candidates_with_timing_diversity",
+    "baseline_establishment": "identify_robust_parameter_combinations_likely_to_succeed",
+    "boundary_testing": "avoid_risky_edge_cases_focus_on_reliable_parameter_ranges",
+    "interaction_testing": "test_different_accuracy_mechanisms_conservative_speeds_wait_times_air_volumes"
   },
   
   "parameters": {
@@ -130,7 +130,7 @@
       ],
       "description": "Air volume aspirated after liquid to prevent dripping.",
       "safety_limit": 0.15,
-      "exploration_note": "Test with and without post-aspiration air volumes"
+      "exploration_note": "This is usually a useful parameter"
     },
     "overaspirate_vol": {
       "type": "float",
@@ -141,7 +141,7 @@
       ],
       "description": "Extra volume aspirated beyond target to compensate for retention. Needed when the pipette tip retains some liquid after aspiration.",
       "safety_limit": 0.1,
-      "exploration_note": "Test different overaspiration strategies from minimal to moderate"
+      "exploration_note": "Overaspirate can help accuracy if pipetting is under-pipetting, which is especially common for viscous liquids."
     }
   },
   
