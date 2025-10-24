@@ -124,8 +124,8 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     simulated_mass = expected_mass * (1 + mass_error_factor)
     simulated_mass = max(simulated_mass, 0)  # Can't have negative mass
     
-    # Calculate deviation from expected mass
-    deviation = abs(simulated_mass - expected_mass) / expected_mass * 100
+    # NOTE: Deviation will be calculated later after volume conversion in pipet_and_measure
+    # Don't calculate deviation here from mass - it should be from volume vs target volume
        
     # Time simulation: More realistic model
     # Start with a reasonable baseline (8-15 seconds for typical pipetting)
@@ -150,10 +150,9 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     time_score = np.clip(time_score, 3.0, 150.0)
     
     # Ensure no NaN values are returned
-    deviation = np.nan_to_num(deviation, nan=15.0)
     time_score = np.nan_to_num(time_score, nan=50.0)
     
-    return {"deviation": deviation, "time": time_score, "simulated_mass": simulated_mass}
+    return {"time": time_score, "simulated_mass": simulated_mass}
 
 def empty_vial_if_needed(lash_e, vial_name, state):
     volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
@@ -231,14 +230,16 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             
             # Calculate volume from mass and density
             calculated_volume = replicate_mass / liquid_density
+            
+            # Calculate deviation AFTER volume conversion - this is the correct place!
+            target_volume = volume  # Target volume we were trying to pipette
+            replicate_deviation = abs(calculated_volume - target_volume) / target_volume * 100
 
             if simulate and replicate_idx == 0:
-                print(f"[sim-debug] first_replicate_mass={replicate_mass:.5f}g calc_volume_ul={calculated_volume*1000:.2f} deviation_pct={simulated_result['deviation']:.2f}")
+                print(f"[sim-debug] first_replicate_mass={replicate_mass:.5f}g calc_volume_ul={calculated_volume*1000:.2f} deviation_pct={replicate_deviation:.2f}")
             
-            # Simulate replicate timing (base time + some variation)
-            base_time = simulated_result["time"]
-            replicate_time = base_time + np.random.normal(0, base_time * 0.1)  # 10% time variation
-            replicate_time = max(replicate_time, 0.1)  # Minimum 0.1 seconds
+            # Use the time directly from simulation - no additional noise needed
+            replicate_time = simulated_result["time"]
             
             replicate_start = datetime.now().isoformat()
             # Simulate end time by adding the replicate time (in seconds)
@@ -265,7 +266,18 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             }
             raw_measurements.append(raw_entry)
         
-        return simulated_result
+        # Calculate average deviation from all replicates (volume-based, not mass-based)
+        all_deviations = []
+        for entry in raw_measurements[-replicate_count:]:  # Get the replicates we just added
+            calculated_vol = entry["calculated_volume"]
+            target_vol = entry["volume"]
+            dev = abs(calculated_vol - target_vol) / target_vol * 100
+            all_deviations.append(dev)
+        
+        avg_deviation = np.mean(all_deviations)
+        avg_time = np.mean([entry["replicate_time"] for entry in raw_measurements[-replicate_count:]])
+        
+        return {"deviation": avg_deviation, "time": avg_time}
     else:
         # Real robot mode
         measurements = []
@@ -554,10 +566,12 @@ def _single_vial_mode(lash_e, state, cfg):
     global _SINGLE_MODE_INITIALIZED
     
     try:
-        # Set both source and measurement to use the same vial (liquid_source_0)
-        single_vial = cfg.get('source_vial', 'liquid_source_0')
+        # Set both source and measurement to use the same vial (measurement_vial_0)
+        # This aligns with initialize_experiment() which always puts measurement_vial_0 in clamp
+        single_vial = 'measurement_vial_0'
         
         # Update configuration to use same vial for both roles
+        cfg['source_vial'] = single_vial
         cfg['measurement_vial'] = single_vial
         state['measurement_vial_name'] = single_vial
         
@@ -568,22 +582,11 @@ def _single_vial_mode(lash_e, state, cfg):
         _VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial'] = single_vial
         _VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial'] = single_vial
         
-        # Only do physical vial moves on first initialization
+        # No physical vial moves needed! initialize_experiment() already puts measurement_vial_0 in clamp
+        # This eliminates the conflict between startup and single mode initialization
         if not _SINGLE_MODE_INITIALIZED:
-            # Remove pipet first to avoid conflicts
-            lash_e.nr_robot.remove_pipet()
-            
-            # Ensure the vial is in the clamp for easy access
-            clamp_vial = lash_e.nr_robot.get_vial_in_location('clamp', 0)
-            if clamp_vial is not None:
-                lash_e.nr_robot.return_vial_home(clamp_vial)
-            
-            vial_location = lash_e.nr_robot.get_vial_info(single_vial, 'location')
-            if vial_location != 'clamp':
-                lash_e.nr_robot.move_vial_to_location(single_vial, "clamp", 0)
-            
             _SINGLE_MODE_INITIALIZED = True
-            msg = f"[single] Initialized single vial mode with: {single_vial}"
+            msg = f"[single] Initialized single vial mode with: {single_vial} (already in clamp from startup)"
         else:
             msg = f"[single] Single mode already active with: {single_vial}"
         
@@ -621,9 +624,5 @@ def manage_vials(lash_e, state):
     elif mode == 'swap':
         _swap_vials_if_needed(lash_e, state, cfg)
     elif mode == 'single':
-        # Only run single mode setup once, then skip all future calls
-        global _SINGLE_MODE_INITIALIZED
-        if not _SINGLE_MODE_INITIALIZED:
-            _single_vial_mode(lash_e, state, cfg)
-        else:
-            print(f"[LOG] [single] Skipping - already initialized")
+        # Always run single mode to ensure configuration is updated
+        _single_vial_mode(lash_e, state, cfg)
