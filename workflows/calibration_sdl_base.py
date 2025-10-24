@@ -126,13 +126,7 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     
     # Calculate deviation from expected mass
     deviation = abs(simulated_mass - expected_mass) / expected_mass * 100
-    
-    # Variability: also affected by volume-dependent parameters (but keep it reasonable)
-    base_variability = 1.5
-    variability = base_variability + blowout_error * 0.3 + overasp_error * 0.2
-    variability += np.random.normal(0, 0.3)
-    variability = np.clip(variability, 0.5, 6)
-    
+       
     # Time simulation: More realistic model
     # Start with a reasonable baseline (8-15 seconds for typical pipetting)
     baseline = 12.0  # Base pipetting time in seconds
@@ -157,10 +151,9 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     
     # Ensure no NaN values are returned
     deviation = np.nan_to_num(deviation, nan=15.0)
-    variability = np.nan_to_num(variability, nan=5.0)
     time_score = np.nan_to_num(time_score, nan=50.0)
     
-    return {"deviation": deviation, "variability": variability, "time": time_score, "simulated_mass": simulated_mass}
+    return {"deviation": deviation, "time": time_score, "simulated_mass": simulated_mass}
 
 def empty_vial_if_needed(lash_e, vial_name, state):
     volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
@@ -184,7 +177,7 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
         lash_e.nr_robot.return_vial_home(liquid_source_name)
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
-def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time):
+def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, trial_type="UNKNOWN"):
     blowout_vol = params.get("blowout_vol", 0.0)  # Default blowout volume
     post_air = params.get("post_asp_air_vol", 0)
     over_volume = params.get("overaspirate_vol", 0)
@@ -254,6 +247,10 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             end_dt = start_dt + dt.timedelta(seconds=replicate_time)
             replicate_end = end_dt.isoformat()
             
+            # Filter out internal simulation data and trial_type from params before saving
+            # trial_type will be set explicitly from the function parameter
+            filtered_params = {k: v for k, v in params.items() if k not in ['simulated_mass', 'trial_type', 'variability']}
+            
             raw_entry = {
                 "volume": volume, 
                 "replicate": replicate_idx, 
@@ -263,7 +260,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
                 "start_time": replicate_start, 
                 "end_time": replicate_end, 
                 "liquid": liquid, 
-                **params
+                "trial_type": trial_type,
+                **filtered_params
             }
             raw_measurements.append(raw_entry)
         
@@ -306,6 +304,10 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             # Calculate volume from mass and density
             calculated_volume = measurement / liquid_density
             
+            # Filter out internal simulation data and trial_type from params before saving
+            # trial_type will be set explicitly from the function parameter
+            filtered_params = {k: v for k, v in params.items() if k not in ['simulated_mass', 'trial_type', 'variability']}
+            
             raw_entry = {
                 "volume": volume, 
                 "replicate": replicate_idx, 
@@ -315,7 +317,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
                 "start_time": replicate_start, 
                 "end_time": replicate_end, 
                 "liquid": liquid, 
-                **params
+                "trial_type": trial_type,
+                **filtered_params
             }
             raw_measurements.append(raw_entry) 
             pd.DataFrame([raw_entry]).to_csv(raw_path, mode='a', index=False, header=not os.path.exists(raw_path))
@@ -327,7 +330,7 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         percent_errors = [abs((m - expected_measurement) / expected_measurement * 100) for m in measurements]
         deviation = np.mean(percent_errors)
         time_score = ((end - start) / replicate_count)
-        return {"deviation": deviation, "variability": std_measurement , "time": time_score}
+        return {"deviation": deviation, "time": time_score}
 
 def strip_tuples(d):
     """Convert any (x, None) → x in a flat dict."""
@@ -543,8 +546,13 @@ def _swap_vials_if_needed(lash_e, state, cfg):
         lash_e.logger.info(msg)
         print(f"[LOG] {msg}")
 
+# Track if single mode has been initialized to avoid repeated moves
+_SINGLE_MODE_INITIALIZED = False
+
 def _single_vial_mode(lash_e, state, cfg):
     """Single vial mode - use same vial for both source and destination (infinite recycling)"""
+    global _SINGLE_MODE_INITIALIZED
+    
     try:
         # Set both source and measurement to use the same vial (liquid_source_0)
         single_vial = cfg.get('source_vial', 'liquid_source_0')
@@ -560,13 +568,25 @@ def _single_vial_mode(lash_e, state, cfg):
         _VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial'] = single_vial
         _VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial'] = single_vial
         
-        # Ensure the vial is in the clamp for easy access
-        vial_location = lash_e.nr_robot.get_vial_info(single_vial, 'location')
-        if vial_location != 'clamp':
+        # Only do physical vial moves on first initialization
+        if not _SINGLE_MODE_INITIALIZED:
+            # Remove pipet first to avoid conflicts
             lash_e.nr_robot.remove_pipet()
-            lash_e.nr_robot.move_vial_to_location(single_vial, "clamp", 0)
+            
+            # Ensure the vial is in the clamp for easy access
+            clamp_vial = lash_e.nr_robot.get_vial_in_location('clamp', 0)
+            if clamp_vial is not None:
+                lash_e.nr_robot.return_vial_home(clamp_vial)
+            
+            vial_location = lash_e.nr_robot.get_vial_info(single_vial, 'location')
+            if vial_location != 'clamp':
+                lash_e.nr_robot.move_vial_to_location(single_vial, "clamp", 0)
+            
+            _SINGLE_MODE_INITIALIZED = True
+            msg = f"[single] Initialized single vial mode with: {single_vial}"
+        else:
+            msg = f"[single] Single mode already active with: {single_vial}"
         
-        msg = f"[single] Using single vial for infinite recycling: {single_vial}"
         lash_e.logger.info(msg)
         print(f"[LOG] {msg}")
         
@@ -601,4 +621,9 @@ def manage_vials(lash_e, state):
     elif mode == 'swap':
         _swap_vials_if_needed(lash_e, state, cfg)
     elif mode == 'single':
-        _single_vial_mode(lash_e, state, cfg)
+        # Only run single mode setup once, then skip all future calls
+        global _SINGLE_MODE_INITIALIZED
+        if not _SINGLE_MODE_INITIALIZED:
+            _single_vial_mode(lash_e, state, cfg)
+        else:
+            print(f"[LOG] [single] Skipping - already initialized")

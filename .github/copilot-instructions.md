@@ -82,24 +82,6 @@ self.pause_after_error("Error description", send_slack=True)
 - `recommenders/` - Bayesian optimization using BayBe/Ax frameworks
 - Both support parameter fixing and selective optimization
 
-## Conditional Import Pattern
-```python
-# Handle optional dependencies gracefully
-try:
-    import slack_agent
-    SLACK_AVAILABLE = True
-except Exception:
-    slack_agent = None
-    SLACK_AVAILABLE = False
-
-try:
-    import recommenders.llm_optimizer as llm_opt
-    LLM_AVAILABLE = True
-except ImportError:
-    llm_opt = None
-    LLM_AVAILABLE = False
-```
-
 ## Development Practices
 
 - Start with minimal, lean implementations focused on proof-of-concept
@@ -110,9 +92,50 @@ except ImportError:
 - Set environment variables `PIP_TIMEOUT=600` and `PIP_RETRIES=2` before installs
 - Each code change should update CHANGELOG.md with semantic versioning
 
+## Debugging Best Practices
+
+### Always Start with Data, Not Assumptions
+- **FIRST**: Ask user to show actual data (CSV files, terminal output, logs)
+- **NEVER** assume code is working as designed - verify with real examples
+- **TRACE systematically**: Follow data flow from input → processing → output
+- **Example**: "Show me the actual CSV/raw data" before analyzing code
+
+### Debugging Best Practices
+
+#### Always Start with Data, Not Assumptions
+- **FIRST**: Ask user to show actual data (CSV files, terminal output, logs)
+- **NEVER** assume code is working as designed - verify with real examples
+- **TRACE systematically**: Follow data flow from input → processing → output
+- **Example**: "Show me the actual CSV/raw data" before analyzing code
+
+#### Look for Simple Inconsistencies First
+- When issues only happen in one mode (simulation vs real), check for **return value differences**
+- **Compare similar code paths** - simulation vs real robot, different volume handling, etc.
+- **Fix obvious inconsistencies** before building complex theories
+- **Trust user clues** about when/where problems occur
+
 ## Communication Style
 
 - Use minimal emoji and special symbols
 - Ask clarifying questions when needed about hardware setup or experimental parameters
 - Put documentation in comment replies, not separate files unless asked
 - Include direct hyperlinks with shortened (7-character) commit hashes when referencing files
+
+## Confidence and Collaboration Guidelines
+
+### Express Uncertainty Appropriately
+- **AVOID**: "This will fix it" or "The problem is definitely X"
+- **USE**: "This might help" or "One possibility is..." or "Let's try..."
+- **CAVEAT**: Explicitly mention when suggestions are untested theories vs proven solutions
+
+### Respect User Expertise
+- User has real hardware, real consequences, and domain knowledge
+- Ask "Does this match what you're seeing?" rather than assuming
+- Suggest collaborative investigation: "Should we check..." vs prescriptive fixes
+- When uncertain, say "You know your setup better - does this approach make sense?"
+
+### Incremental Changes Over Confident Overhauls  
+- Suggest small, reversible changes first
+- Ask permission before major modifications to working systems
+- Offer to help user investigate rather than confidently diagnosing
+- "Would you rather try a simpler approach first?" for complex fixes
