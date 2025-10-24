@@ -375,6 +375,97 @@ def get_max_overaspirate_ul(volume_ml):
     
     return max_overaspirate
 
+def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_ml=None, min_trials=6):
+    """
+    Simple dynamic cutoff: decide when to stop optimization based on hit rate and time spread.
+    
+    Logic:
+    - If hit rate < 20% and ≥6 accurate trials → STOP_NOW (hard liquid, save wells)  
+    - If hit rate high + time spread low → STOP_NOW (confident, good data)
+    - If hit rate high + time spread high → CONTINUE (need more data to find sweet spot)
+    
+    Args:
+        current_trial_data: List of dicts with {'time': float, 'accurate': bool, 'volume': float}
+        volume_ml: Target volume for filtering (if None, uses all data) 
+        min_trials: Minimum accurate trials needed (default: 6)
+    
+    Returns:
+        dict with 'decision' ('STOP_NOW', 'STOP_SOON', 'CONTINUE'), hit_rate_pct, time_spread_pct, etc.
+        Returns None if insufficient data
+    """
+    if not current_trial_data:
+        return None
+    
+    # Convert to DataFrame and filter by volume
+    df = pd.DataFrame(current_trial_data) if isinstance(current_trial_data, list) else current_trial_data.copy()
+    if volume_ml is not None and 'volume' in df.columns:
+        df = df[abs(df['volume'] - volume_ml) < 0.001]
+    
+    # Calculate hit rate (percentage of accurate trials)
+    if 'accurate' in df.columns:
+        accurate_trials = df[df['accurate'] == True]
+        hit_rate_pct = (len(accurate_trials) / len(df)) * 100 if len(df) > 0 else 0
+    else:
+        accurate_trials = df
+        hit_rate_pct = 100.0
+    
+    # Need at least min_trials accurate trials
+    if len(accurate_trials) < min_trials:
+        return None
+    
+    # Calculate time spread (simple standard deviation approach)
+    times = accurate_trials['time'].values
+    time_spread_pct = (np.std(times) / np.mean(times)) * 100 if len(times) > 1 else 0
+    
+    # MULTI-FACTOR DECISION ALGORITHM
+    hit_rate_norm = min(hit_rate_pct / 100.0, 1.0)
+    spread_norm = min(time_spread_pct / 100.0, 1.0)
+    
+    # Decision factors
+    confidence_factor = max(0, 1 - spread_norm)  # High when spread is low (0-1)
+    difficulty_factor = hit_rate_norm            # High when hit rate is high (0-1) 
+    sample_factor = min(len(accurate_trials) / 10.0, 1.0)  # Saturates at 10 trials
+    
+    # Resource-aware decision logic for laboratory constraints
+    easy_liquid_score = difficulty_factor * confidence_factor  # 0-1 range
+    
+    # Hard liquid evidence: stop earlier when hit rate is very low
+    # If hit rate < 20% after reasonable sample, it's likely a very hard liquid
+    if hit_rate_norm < 0.2 and len(accurate_trials) >= 6:
+        # Force early stop for very difficult liquids to preserve wells
+        hard_liquid_evidence = 0.7  # High enough to trigger STOP_NOW
+    else:
+        hard_liquid_evidence = sample_factor * (1 - difficulty_factor)
+    
+    # Combined score: stop for either easy+confident OR hard+enough_samples
+    decision_score = max(easy_liquid_score, hard_liquid_evidence)
+    
+    # Decision thresholds
+    if decision_score >= 0.5:
+        decision = "STOP_NOW"
+    elif decision_score >= 0.3:
+        decision = "STOP_SOON"
+    else:
+        decision = "CONTINUE"
+    
+    return {
+        'decision': decision,
+        'decision_score': decision_score,
+        'hit_rate_pct': hit_rate_pct,
+        'time_spread_pct': time_spread_pct,
+        'trials_used': len(accurate_trials),
+        'total_trials': len(df),
+        'strategy': f"P{CANDIDATE_SELECTION_PERCENTILE}",
+        'cutoff': np.percentile(times, CANDIDATE_SELECTION_PERCENTILE),
+        'spread_method': "std_dev",
+        # Multi-factor diagnostics (the smart part!)
+        'easy_liquid_score': easy_liquid_score,
+        'hard_liquid_evidence': hard_liquid_evidence,
+        'confidence_factor': confidence_factor,
+        'difficulty_factor': difficulty_factor,
+        'sample_factor': sample_factor
+    }
+
 def select_best_candidate_from_accurate_trials(accurate_candidates):
     """
     Select the best candidate from accurate trials using configurable percentile selection.
@@ -1266,7 +1357,7 @@ def run_precision_test(lash_e, state, best_params, volume, expected_mass, expect
     
     return True, measurements, times
 
-def run_cascading_precision_tests(optimization_results, criteria, lash_e, state, volume, expected_mass, expected_time, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set, tolerances, blacklisted_params):
+def run_cascading_precision_tests(optimization_results, criteria, lash_e, state, volume, expected_mass, expected_time, autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set, tolerances, blacklisted_params, volume_index=None):
     """
     Try precision testing on multiple candidates with adaptive fallback.
     
@@ -1287,6 +1378,78 @@ def run_cascading_precision_tests(optimization_results, criteria, lash_e, state,
         is_adaptive=True means we used fallback due to tolerance issues
     """
     print(f"\n🎯 CASCADING PRECISION TESTS: Finding robust candidate...")
+    
+    # DYNAMIC CUTOFF ANALYSIS: Only run on first volume (volume_index == 0)
+    # For subsequent volumes, we use transferred parameters and don't need intelligent stopping
+    is_first_volume = (volume_index == 0) if volume_index is not None else ('max_time' in criteria)  # Direct check
+    
+    if is_first_volume:
+        print(f"\n📊 DYNAMIC CUTOFF ANALYSIS: Evaluating optimization progress (first volume only)...")
+        
+        # Prepare data for dynamic analysis - convert optimization results to format expected by algorithm
+        current_trial_data = []
+        for result in optimization_results:
+            if 'deviation' in result and 'time' in result and 'volume' in result:
+                # Calculate if this trial meets accuracy criteria (same logic as check_optimization_criteria)
+                absolute_deviation_ul = (result['deviation'] / 100) * (result['volume'] * 1000)
+                
+                if SIMULATE:
+                    max_pct = 100.0
+                    try:
+                        max_pct = float(os.environ.get('SIM_MAX_DEV_PCT', '100'))
+                    except ValueError:
+                        pass
+                    meets_accuracy = (result['deviation'] <= max_pct) or (absolute_deviation_ul <= criteria['max_deviation_ul'])
+                else:
+                    meets_accuracy = absolute_deviation_ul <= criteria['max_deviation_ul']
+                
+                current_trial_data.append({
+                    'time': result['time'],
+                    'accurate': meets_accuracy,
+                    'volume': result['volume']
+                })
+        
+        # Run dynamic cutoff analysis
+        cutoff_result = calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_ml=volume, min_trials=6)
+        
+        if cutoff_result:
+            print(f"   📈 ANALYSIS RESULTS:")
+            print(f"      Hit rate: {cutoff_result['hit_rate_pct']:.1f}% ({cutoff_result['trials_used']}/{cutoff_result['total_trials']} accurate)")
+            print(f"      Time spread: {cutoff_result['time_spread_pct']:.1f}% ({cutoff_result['spread_method']})")
+            print(f"      Decision score: {cutoff_result['decision_score']:.3f}")
+            print(f"      Algorithm decision: {cutoff_result['decision']}")
+            print(f"      Recommended strategy: {cutoff_result['strategy']} (using P{CANDIDATE_SELECTION_PERCENTILE})")
+            
+            # Show the decision breakdown for transparency
+            print(f"      └─ Easy liquid score: {cutoff_result['easy_liquid_score']:.3f}")
+            print(f"      └─ Hard liquid evidence: {cutoff_result.get('hard_liquid_evidence', 0):.3f}")
+            print(f"      └─ Confidence factor: {cutoff_result['confidence_factor']:.3f}")
+            
+            # Make decision based on algorithm output
+            if cutoff_result['decision'] == 'CONTINUE':
+                print(f"   🔄 DYNAMIC DECISION: Continue optimization (high hit rate + high spread = need more data)")
+                print(f"   💡 Reasoning: Hit rate is good ({cutoff_result['hit_rate_pct']:.1f}%) but time spread is high ({cutoff_result['time_spread_pct']:.1f}%)")
+                print(f"      More trials will help find the sweet spot and reduce variability")
+                return False, None, [], [], None, False
+            
+            elif cutoff_result['decision'] == 'STOP_SOON':
+                print(f"   ⚠️  DYNAMIC DECISION: Stop soon (moderate confidence)")
+                # Continue to precision testing but with higher priority
+            
+            elif cutoff_result['decision'] == 'STOP_NOW':
+                print(f"   ✅ DYNAMIC DECISION: Stop now and proceed with precision testing")
+                if cutoff_result['hit_rate_pct'] < 20:
+                    print(f"   🔥 Hard liquid detected: {cutoff_result['hit_rate_pct']:.1f}% hit rate < 20% threshold")
+                    print(f"      Conserving wells for very challenging liquid")
+                else:
+                    print(f"   🎯 Confidence achieved: Low time spread ({cutoff_result['time_spread_pct']:.1f}%) + good hit rate")
+        else:
+            print(f"   📊 Insufficient data for dynamic analysis (need ≥6 accurate trials)")
+            print(f"   🔄 Continuing with standard n≥6 candidate requirement...")
+    
+    else:
+        print(f"\n📊 SUBSEQUENT VOLUME: Skipping dynamic cutoff analysis (using transferred parameters)")
+        print(f"   🎯 Strategy: Using P{CANDIDATE_SELECTION_PERCENTILE} percentile selection from simplified algorithm")
     
     # Get ordered candidates using comprehensive ranking
     ordered_candidates = get_ordered_candidates_from_results(optimization_results, criteria)
@@ -2420,7 +2583,7 @@ def run_experiment_logic():
             passed, candidate_params, precision_measurements, precision_times, selected_candidate, is_adaptive = run_cascading_precision_tests(
                 all_results, criteria, lash_e, state, volume, expected_mass, expected_time, 
                 autosave_raw_path, raw_measurements, LIQUID, NEW_PIPET_EACH_TIME_SET, 
-                tolerances, blacklisted_params
+                tolerances, blacklisted_params, volume_index=volume_idx
             )
             
             if precision_measurements:
