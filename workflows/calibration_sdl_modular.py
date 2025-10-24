@@ -2058,7 +2058,7 @@ def count_actual_trials_from_raw_data(raw_measurements, volumes):
     
     return trial_counts
 
-def generate_calibration_report(volume_report_data, volumes, completed_volumes, raw_measurements=None):
+def generate_calibration_report(volume_report_data, volumes, completed_volumes, raw_measurements=None, optimal_conditions=None):
     """Generate a comprehensive calibration report with diagnostics and recommendations."""
     
     # Get actual trial counts from raw data
@@ -2191,6 +2191,36 @@ def generate_calibration_report(volume_report_data, volumes, completed_volumes, 
     completed_count = len(completed_volumes)
     
     report_lines.append(f"Volumes Completed: {completed_count}/{total_volumes}")
+    
+    # Add performance metrics summary if we have optimal conditions data
+    if optimal_conditions and len(optimal_conditions) > 0:
+        report_lines.append("")
+        report_lines.append("PERFORMANCE METRICS:")
+        
+        for i, oc in enumerate(optimal_conditions):
+            target_vol = oc.get('target_volume_mL', 0) * 1000  # Convert to uL
+            avg_vol = oc.get('average_obtained_volume_mL', 0) * 1000  # Convert to uL
+            deviation_pct = oc.get('deviation_percent', 0)
+            time_s = oc.get('time_seconds', 0)
+            variability_pct = oc.get('variability_percent', 0)
+            replicates = oc.get('precision_replicates', 0)
+            
+            # Format values with proper None handling
+            avg_vol_str = f"{avg_vol:.1f}uL" if avg_vol > 0 else "N/A"
+            deviation_str = f"{deviation_pct:.1f}%" if deviation_pct > 0 else "N/A"
+            time_str = f"{time_s:.0f}s" if time_s and time_s > 0 else "N/A"
+            variability_str = f"{variability_pct:.1f}%" if variability_pct > 0 else "N/A"
+            
+            report_lines.append(f"  {target_vol:.0f}uL: Target→{avg_vol_str}, Accuracy:{deviation_str}, Time:{time_str}/trial, Precision:±{variability_str} (n={replicates})")
+        
+        # Calculate overall averages
+        if len(optimal_conditions) > 1:
+            avg_deviation = sum(oc.get('deviation_percent', 0) for oc in optimal_conditions) / len(optimal_conditions)
+            avg_times = [oc.get('time_seconds', 0) for oc in optimal_conditions if oc.get('time_seconds', 0) > 0]
+            avg_time = sum(avg_times) / len(avg_times) if avg_times else 0
+            
+            report_lines.append(f"  OVERALL: Average accuracy: {avg_deviation:.1f}%, Average time: {avg_time:.0f}s/trial")
+    
     report_lines.append("")
     
     # Optimization trial statistics
@@ -3105,22 +3135,27 @@ def run_experiment_logic():
             # Calculate per-volume metrics and overall statistics using actual trial counts
             actual_trial_counts = count_actual_trials_from_raw_data(raw_measurements, VOLUMES)
             volume_summaries = []
-            total_trials = 0
+            
+            # Calculate total trials across ALL volumes (completed and failed)
+            total_trials = sum(counts.get('total', 0) for counts in actual_trial_counts.values())
             
             for i, (volume, params) in enumerate(completed_volumes):
                 # Get actual trial count for this volume from raw data
                 actual_counts = actual_trial_counts.get(volume, {})
                 vol_trials = actual_counts.get('total', 0)
-                total_trials += vol_trials
                 
-                # Get accuracy metrics from optimal_conditions
+                # Get performance metrics from optimal_conditions
                 if i < len(optimal_conditions):
                     oc = optimal_conditions[i]
-                    deviation = oc.get('deviation_percent', 0)
-                    variability = oc.get('variability_percent', 0)
-                    volume_summaries.append(f"{int(volume*1000)}uL({vol_trials}t,{deviation:.1f}%,{variability:.1f}%)")
+                    accuracy = oc.get('deviation_percent', 0)  # Average error from target
+                    avg_time = oc.get('time_seconds', 0)       # Average time per precision trial
+                    
+                    # Format time per trial (from precision test measurements)
+                    time_str = f"{avg_time:.0f}s" if avg_time and avg_time > 0 else "N/A"
+                    
+                    volume_summaries.append(f"{int(volume*1000)}uL({vol_trials}trials,{accuracy:.1f}%acc,{time_str}/trial)")
                 else:
-                    volume_summaries.append(f"{int(volume*1000)}uL({vol_trials}t,N/A,N/A)")
+                    volume_summaries.append(f"{int(volume*1000)}uL({vol_trials}trials,N/A,N/A)")
             
             # Calculate overall averages
             if optimal_conditions:
@@ -3132,12 +3167,35 @@ def run_experiment_logic():
 
             volumes_line = " ".join(volume_summaries) if volume_summaries else "None"
             time_str = f"{avg_time:.0f}s" if avg_time else "N/A"
+            
+            # Determine overall status
+            completed_count = len(completed_volumes)
+            total_volumes = len(VOLUMES)
+            failed_count = total_volumes - completed_count
+            
+            if completed_count == total_volumes:
+                status_emoji = "✅"
+                status_text = "ALL VOLUMES COMPLETE"
+            elif completed_count > 0:
+                status_emoji = "⚠️"
+                status_text = f"PARTIAL SUCCESS ({completed_count}/{total_volumes} volumes)"
+            else:
+                status_emoji = "❌"
+                status_text = "ALL VOLUMES FAILED"
+            
+            # Build status line
+            if failed_count > 0:
+                failed_volumes = [f"{int(v*1000)}uL" for v in VOLUMES if not any(cv[0] == v for cv in completed_volumes)]
+                status_line = f"{status_text}\n❌ Failed: {', '.join(failed_volumes)}"
+            else:
+                status_line = status_text
 
             slack_msg = (
-                f"🎯 Modular calibration with {LIQUID} COMPLETE\n"
-                f"✅ {volumes_line}\n"
+                f"🎯 Modular calibration with {LIQUID} FINISHED\n"
+                f"{status_emoji} {status_line}\n"
+                f"✅ Completed: {volumes_line}\n"
                 f"🎯 Total: {total_trials} trials, {avg_deviation:.1f}% avg accuracy\n"
-                f"⏱️ Avg time: {time_str}"
+                #f"⏱️ Avg time: {time_str}"
             )
             slack_agent.send_slack_message(slack_msg)
         except Exception as e:
@@ -3145,7 +3203,7 @@ def run_experiment_logic():
 
     # Generate and save calibration report
     try:
-        report_content = generate_calibration_report(volume_report_data, VOLUMES, completed_volumes, raw_measurements)
+        report_content = generate_calibration_report(volume_report_data, VOLUMES, completed_volumes, raw_measurements, optimal_conditions)
         
         # Save report to file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
