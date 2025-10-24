@@ -129,6 +129,13 @@ DEFAULT_USE_LLM_FOR_OPTIMIZATION = False  # LLM vs Bayesian for optimization loo
 DEFAULT_BAYESIAN_MODEL_TYPE = 'qEI'  # Default Bayesian acquisition function
 DEFAULT_CANDIDATE_SELECTION_PERCENTILE = 35  # Target percentile for candidate selection (avoid fastest, pick reasonably fast)
 
+# Default scoring weights for candidate evaluation
+DEFAULT_INITIAL_SELECTION_TIME_WEIGHT = 0.4      # Initial selection: time proximity weight
+DEFAULT_INITIAL_SELECTION_ACCURACY_WEIGHT = 0.6  # Initial selection: accuracy weight  
+DEFAULT_CASCADING_TIME_WEIGHT = 0.3              # Cascading ranking: time distance weight
+DEFAULT_CASCADING_ACCURACY_WEIGHT = 0.7          # Cascading ranking: accuracy weight
+DEFAULT_CASCADING_SWEET_SPOT_BONUS = -0.1        # Cascading ranking: sweet spot bonus
+
 # --- RUNTIME EXPERIMENT CONFIG (MUTABLE) ---
 # These variables can be modified during experiments but should be reset to defaults between experiments
 LIQUID = DEFAULT_LIQUID
@@ -158,6 +165,16 @@ BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
 
 # --- Candidate Selection Configuration ---
 CANDIDATE_SELECTION_PERCENTILE = DEFAULT_CANDIDATE_SELECTION_PERCENTILE  # Can be modified at runtime
+
+# --- Candidate Scoring Weights ---
+# For initial candidate selection (select_best_candidate_from_accurate_trials)
+INITIAL_SELECTION_TIME_WEIGHT = DEFAULT_INITIAL_SELECTION_TIME_WEIGHT
+INITIAL_SELECTION_ACCURACY_WEIGHT = DEFAULT_INITIAL_SELECTION_ACCURACY_WEIGHT
+
+# For cascading precision test ranking (get_ordered_candidates_from_results)  
+CASCADING_TIME_WEIGHT = DEFAULT_CASCADING_TIME_WEIGHT
+CASCADING_ACCURACY_WEIGHT = DEFAULT_CASCADING_ACCURACY_WEIGHT
+CASCADING_SWEET_SPOT_BONUS = DEFAULT_CASCADING_SWEET_SPOT_BONUS
 
 # Relative percentage tolerances (applies to both optimization and precision test)
 # Volume ranges defined as (min_volume_ul, max_volume_ul, tolerance_pct)
@@ -213,6 +230,8 @@ def reset_config_to_defaults():
     global PRECISION_REPLICATES, VOLUMES, MAX_WELLS, INPUT_VIAL_STATUS_FILE
     global USE_LLM_FOR_SCREENING, USE_LLM_FOR_OPTIMIZATION, BAYESIAN_MODEL_TYPE
     global CANDIDATE_SELECTION_PERCENTILE
+    global INITIAL_SELECTION_TIME_WEIGHT, INITIAL_SELECTION_ACCURACY_WEIGHT
+    global CASCADING_TIME_WEIGHT, CASCADING_ACCURACY_WEIGHT, CASCADING_SWEET_SPOT_BONUS
     global OVERASPIRATE_BASE_UL, OVERASPIRATE_SCALING_PERCENT, AUTO_CALIBRATE_OVERVOLUME
     global OVERVOLUME_CALIBRATION_BUFFER_UL, OVERVOLUME_MAX_BASE_UL, OVERVOLUME_MAX_PERCENT
     
@@ -235,6 +254,11 @@ def reset_config_to_defaults():
     USE_LLM_FOR_OPTIMIZATION = DEFAULT_USE_LLM_FOR_OPTIMIZATION
     BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
     CANDIDATE_SELECTION_PERCENTILE = DEFAULT_CANDIDATE_SELECTION_PERCENTILE
+    INITIAL_SELECTION_TIME_WEIGHT = DEFAULT_INITIAL_SELECTION_TIME_WEIGHT
+    INITIAL_SELECTION_ACCURACY_WEIGHT = DEFAULT_INITIAL_SELECTION_ACCURACY_WEIGHT
+    CASCADING_TIME_WEIGHT = DEFAULT_CASCADING_TIME_WEIGHT
+    CASCADING_ACCURACY_WEIGHT = DEFAULT_CASCADING_ACCURACY_WEIGHT
+    CASCADING_SWEET_SPOT_BONUS = DEFAULT_CASCADING_SWEET_SPOT_BONUS
     OVERASPIRATE_BASE_UL = DEFAULT_OVERASPIRATE_BASE_UL
     OVERASPIRATE_SCALING_PERCENT = DEFAULT_OVERASPIRATE_SCALING_PERCENT
     AUTO_CALIBRATE_OVERVOLUME = DEFAULT_AUTO_CALIBRATE_OVERVOLUME
@@ -571,8 +595,15 @@ def select_best_candidate_from_accurate_trials(accurate_candidates):
     """
     Select the best candidate from accurate trials using configurable percentile selection.
     
-    Strategy: Pick candidates at the target percentile to avoid fastest (often unstable) 
-    but still get reasonably fast parameters.
+    Strategy: Use sophisticated scoring that balances time proximity to target percentile 
+    and accuracy (deviation). Scoring uses normalized metrics with configurable weights 
+    and non-linear scaling to emphasize accuracy while still considering time performance.
+    
+    Scoring Formula:
+        combined_score = (TIME_WEIGHT × scaled_distance) + (ACCURACY_WEIGHT × scaled_deviation)
+        where scaled_distance = (norm_distance)^1.2 and scaled_deviation = (norm_deviation)^1.8
+        
+    Default weights: 40% time proximity, 60% accuracy (configurable via constants)
     
     Args:
         accurate_candidates: List of dicts with candidate data
@@ -610,19 +641,42 @@ def select_best_candidate_from_accurate_trials(accurate_candidates):
     best_candidate = None
     best_score = float('inf')
     
+    # Use the same unified scoring system (40% time, 60% accuracy)
+    distances = [abs(c['time'] - target_time) for c in accurate_candidates]
+    deviations = [c.get('deviation', 0) for c in accurate_candidates]
+    
+    max_distance = max(distances) if max(distances) > 0 else 1.0
+    max_deviation = max(deviations) if max(deviations) > 0 else 1.0
+    
+    # Same weights used everywhere
+    TIME_WEIGHT = 0.4      # 40% weight on time proximity
+    ACCURACY_WEIGHT = 0.6  # 60% weight on accuracy
+    
     for candidate in accurate_candidates:
-        # Primary scoring: distance from target time
+        # Calculate normalized scores
         time_distance = abs(candidate['time'] - target_time)
+        norm_distance = time_distance / max_distance
+        norm_deviation = candidate.get('deviation', 0) / max_deviation
         
-        # Secondary scoring: deviation (accuracy), weighted much lower
-        deviation_penalty = candidate.get('deviation', 0) * 0.1  # 10% weight vs time
+        # Apply same non-linear scaling
+        scaled_distance = norm_distance ** 1.2  # Mild penalty for time differences
+        scaled_deviation = norm_deviation ** 1.8 # Strong penalty for accuracy problems
         
-        # Combined score (lower is better)
-        combined_score = time_distance + deviation_penalty
+        # Same scoring formula
+        combined_score = (TIME_WEIGHT * scaled_distance) + (ACCURACY_WEIGHT * scaled_deviation)
         
         if combined_score < best_score:
             best_score = combined_score
             best_candidate = candidate.copy()
+            # Add scoring details for debugging
+            best_candidate['selection_score_breakdown'] = {
+                'combined_score': combined_score,
+                'time_component': TIME_WEIGHT * scaled_distance,
+                'accuracy_component': ACCURACY_WEIGHT * scaled_deviation,
+                'time_distance': time_distance,
+                'norm_distance': norm_distance,
+                'norm_deviation': norm_deviation
+            }
     
     # Add selection metadata to the best candidate
     if best_candidate:
@@ -631,8 +685,15 @@ def select_best_candidate_from_accurate_trials(accurate_candidates):
         best_candidate['target_percentile'] = CANDIDATE_SELECTION_PERCENTILE
         best_candidate['configured_percentile'] = CANDIDATE_SELECTION_PERCENTILE
         
+        # Show detailed scoring breakdown
+        breakdown = best_candidate.get('selection_score_breakdown', {})
+        total_score = breakdown.get('combined_score', 0)
+        time_score = breakdown.get('time_component', 0)
+        accuracy_score = breakdown.get('accuracy_component', 0)
+        
         print(f"      ✅ Selected: {best_candidate['time']:.1f}s candidate (P{CANDIDATE_SELECTION_PERCENTILE})")
-        print(f"      🎯 Target: {target_time:.1f}s, actual: {best_candidate['time']:.1f}s")
+        print(f"      🎯 Target: {target_time:.1f}s, actual: {best_candidate['time']:.1f}s, dev: {best_candidate.get('deviation', 0):.1f}%")
+        print(f"      📊 Selection score: {total_score:.3f} (time: {time_score:.3f}, accuracy: {accuracy_score:.3f})")
     
     return best_candidate
 
@@ -1339,12 +1400,44 @@ def get_ordered_candidates_from_results(optimization_results, criteria):
         
         all_candidates_with_distance.append(candidate_copy)
     
-    # Sort by: 1) Sweet spot first, 2) Distance from target, 3) Deviation as tiebreaker
-    ordered_candidates = sorted(all_candidates_with_distance, key=lambda c: (
-        not c['is_sweet_spot'],  # False (sweet spot) comes before True (non-sweet spot)
-        c['distance_from_sweet_spot'],  # Smaller distance is better
-        c['deviation']  # Lower deviation as tiebreaker
-    ))
+    # Unified scoring system: 40% time distance, 60% accuracy
+    if len(all_candidates_with_distance) > 1:
+        distances = [c['distance_from_sweet_spot'] for c in all_candidates_with_distance]
+        deviations = [c['deviation'] for c in all_candidates_with_distance]
+        
+        max_distance = max(distances) if max(distances) > 0 else 1.0
+        max_deviation = max(deviations) if max(deviations) > 0 else 1.0
+        
+        # Single set of weights used everywhere
+        TIME_WEIGHT = 0.4      # 40% weight on time proximity  
+        ACCURACY_WEIGHT = 0.6  # 60% weight on accuracy
+        
+        for candidate in all_candidates_with_distance:
+            # Normalize both metrics to 0-1 scale
+            norm_distance = candidate['distance_from_sweet_spot'] / max_distance
+            norm_deviation = candidate['deviation'] / max_deviation
+            
+            # Apply non-linear scaling (your preferred approach)
+            scaled_distance = norm_distance ** 1.2  # Mild penalty for time differences
+            scaled_deviation = norm_deviation ** 1.8 # Strong penalty for accuracy problems
+            
+            # Calculate combined score (lower is better)
+            candidate['combined_score'] = (TIME_WEIGHT * scaled_distance) + (ACCURACY_WEIGHT * scaled_deviation)
+            
+            # Debug info for transparency
+            candidate['score_breakdown'] = {
+                'time_component': TIME_WEIGHT * scaled_distance,
+                'accuracy_component': ACCURACY_WEIGHT * scaled_deviation,
+                'norm_distance': norm_distance,
+                'norm_deviation': norm_deviation
+            }
+    else:
+        # Single candidate - just assign score of 0
+        all_candidates_with_distance[0]['combined_score'] = 0.0
+        all_candidates_with_distance[0]['score_breakdown'] = {}
+    
+    # Sort by combined score (lower is better)
+    ordered_candidates = sorted(all_candidates_with_distance, key=lambda c: c['combined_score'])
     
     return ordered_candidates
 
@@ -1608,7 +1701,14 @@ def run_cascading_precision_tests(optimization_results, criteria, lash_e, state,
         is_sweet_spot = candidate.get('is_sweet_spot', False)
         spot_type = "🎯 sweet spot" if is_sweet_spot else f"📍 distance {candidate.get('distance_from_sweet_spot', 0):.1f}s"
         
+        # Show the unified scoring
+        score = candidate.get('combined_score', 0)
+        score_breakdown = candidate.get('score_breakdown', {})
+        time_component = score_breakdown.get('time_component', 0)
+        accuracy_component = score_breakdown.get('accuracy_component', 0)
+        
         print(f"\n   🧪 CANDIDATE #{i+1}/{max_tests}: {candidate['time']:.1f}s, {candidate['deviation']:.1f}% dev ({spot_type})")
+        print(f"      📊 Score: {score:.3f} (time: {time_component:.3f}, accuracy: {accuracy_component:.3f})")
         
         # Run precision test on this candidate
         passed, precision_measurements, precision_times = run_precision_test(
@@ -3247,79 +3347,79 @@ if __name__ == "__main__":
     #
 
     # Current experiment - uncomment to run single experiment
-    #EXPERIMENTS = [{'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'simulate': True}]
+    EXPERIMENTS = [{'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'simulate': True}]
 
     # OVERNIGHT EXPERIMENT SUITE - Volume Order & Multi-Factor Studiesok 
-    EXPERIMENTS = [
-        # ============================================================================
-        # STUDY 1: VOLUME ORDER EFFECTS (Small Volumes)
-        # Compare [0.05, 0.025, 0.1] vs [0.1, 0.05, 0.025] - 3 replicates each
-        # ============================================================================
+    # EXPERIMENTS = [
+    #     # ============================================================================
+    #     # STUDY 1: VOLUME ORDER EFFECTS (Small Volumes)
+    #     # Compare [0.05, 0.025, 0.1] vs [0.1, 0.05, 0.025] - 3 replicates each
+    #     # ============================================================================
         
-        # Volume Order A: [0.05, 0.025, 0.1] - Small to Large
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
+    #     # Volume Order A: [0.05, 0.025, 0.1] - Small to Large
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
         
-        # Volume Order B: [0.1, 0.05, 0.025] - Large to Small
-        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
+    #     # Volume Order B: [0.1, 0.05, 0.025] - Large to Small
+    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
         
-        # ============================================================================
-        # STUDY 2: VOLUME ORDER EFFECTS (Wider Range)
-        # Compare [0.5, 0.1, 0.05, 0.025] vs [0.05, 0.025, 0.1, 0.5] - 3 replicates each
-        # ============================================================================
+    #     # ============================================================================
+    #     # STUDY 2: VOLUME ORDER EFFECTS (Wider Range)
+    #     # Compare [0.5, 0.1, 0.05, 0.025] vs [0.05, 0.025, 0.1, 0.5] - 3 replicates each
+    #     # ============================================================================
         
-        # Volume Order C: [0.5, 0.1, 0.05, 0.025] - Large to Small
-        {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
+    #     # Volume Order C: [0.5, 0.1, 0.05, 0.025] - Large to Small
+    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.5, 0.1, 0.05, 0.025], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
         
-        # Volume Order D: [0.05, 0.025, 0.1, 0.5] - Small to Large
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
+    #     # Volume Order D: [0.05, 0.025, 0.1, 0.5] - Small to Large
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 1, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 2, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.5], 'vial_mode': 'swap', 'seed': 3, 'simulate': False},
         
-        # ============================================================================
-        # STUDY 3: MULTI-FACTOR EXPERIMENT
-        # Volume Set: [0.05, 0.025, 0.1, 0.3, 0.8, 0.01]
-        # Factors: 3 Model Types x 2 Screening Types x 3 Seeds = 18 experiments
-        # ============================================================================
+    #     # ============================================================================
+    #     # STUDY 3: MULTI-FACTOR EXPERIMENT
+    #     # Volume Set: [0.05, 0.025, 0.1, 0.3, 0.8, 0.01]
+    #     # Factors: 3 Model Types x 2 Screening Types x 3 Seeds = 18 experiments
+    #     # ============================================================================
         
-        # Factor 1: qEI (Default Bayesian Model)
-        # SOBOL Screening
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
+    #     # Factor 1: qEI (Default Bayesian Model)
+    #     # SOBOL Screening
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': False, 'simulate': False},
         
-        # LLM Screening  
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
+    #     # LLM Screening  
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qEI', 'use_llm_for_screening': True, 'simulate': False},
         
-        # Factor 2: qLogEI (Log Expected Improvement)
-        # SOBOL Screening
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
+    #     # Factor 2: qLogEI (Log Expected Improvement)
+    #     # SOBOL Screening
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': False, 'simulate': False},
         
-        # LLM Screening
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
+    #     # LLM Screening
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qLogEI', 'use_llm_for_screening': True, 'simulate': False},
         
-        # Factor 3: qNEHVI (Noisy Expected Hypervolume Improvement)
-        # SOBOL Screening
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
+    #     # Factor 3: qNEHVI (Noisy Expected Hypervolume Improvement)
+    #     # SOBOL Screening
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': False, 'simulate': False},
         
-        # LLM Screening
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-        {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
-    ]
+    #     # LLM Screening
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 1, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 2, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
+    #     {'liquid': 'water', 'volumes': [0.05, 0.025, 0.1, 0.3, 0.8, 0.01], 'vial_mode': 'swap', 'seed': 3, 'bayesian_model_type': 'qNEHVI', 'use_llm_for_screening': True, 'simulate': False},
+    # ]
     
 
     print("\nConfigured experiments:")
