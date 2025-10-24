@@ -385,12 +385,14 @@ def get_max_overaspirate_ul(volume_ml):
 
 def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_ml=None, min_trials=6):
     """
-    Simple dynamic cutoff: decide when to stop optimization based on hit rate and time spread.
+    Gradual dynamic cutoff using 3-factor scoring: spread, hit rate, and trial pressure.
     
-    Logic:
-    - If hit rate < 20% and ≥6 accurate trials → STOP_NOW (hard liquid, save wells)  
-    - If hit rate high + time spread low → STOP_NOW (confident, good data)
-    - If hit rate high + time spread high → CONTINUE (need more data to find sweet spot)
+    Algorithm:
+    - spread_factor = spread_pct / 25%  (encourages continuation with high spread)
+    - hit_rate_factor = (hit_rate - 20%) / 25%  (encourages continuation above 20% hit rate)
+    - trial_pressure = total_trials / 30  (resource pressure increases over time)
+    - continue_score = spread_factor * hit_rate_factor * (1 - trial_pressure)
+    - Stop when continue_score < 0.3 (equivalent threshold to old algorithm)
     
     Args:
         current_trial_data: List of dicts with {'time': float, 'accurate': bool, 'volume': float}
@@ -425,40 +427,29 @@ def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_
     times = accurate_trials['time'].values
     time_spread_pct = (np.std(times) / np.mean(times)) * 100 if len(times) > 1 else 0
     
-    # MULTI-FACTOR DECISION ALGORITHM
-    hit_rate_norm = min(hit_rate_pct / 100.0, 1.0)
-    spread_norm = min(time_spread_pct / 100.0, 1.0)
+    # NEW GRADUAL 3-FACTOR ALGORITHM
+    # Factor 1: Spread encouragement (higher spread = more reason to continue)
+    spread_factor = time_spread_pct / 25.0  # Reference: 25% spread
     
-    # Decision factors
-    confidence_factor = max(0, 1 - spread_norm)  # High when spread is low (0-1)
-    difficulty_factor = hit_rate_norm            # High when hit rate is high (0-1) 
-    sample_factor = min(len(accurate_trials) / 10.0, 1.0)  # Saturates at 10 trials
+    # Factor 2: Hit rate factor (higher hit rate above 20% = more reason to continue)
+    hit_rate_factor = max(0, (hit_rate_pct - 20.0) / 25.0)  # Reference: 20% baseline, 45% = 1.0
     
-    # Resource-aware decision logic for laboratory constraints
-    easy_liquid_score = difficulty_factor * confidence_factor  # 0-1 range
+    # Factor 3: Trial pressure (more trials = more pressure to stop)
+    total_trials = len(df)
+    trial_pressure = total_trials / 30.0  # Reference: 30 trials = full pressure
     
-    # Hard liquid evidence: stop earlier when hit rate is very low
-    # If hit rate < 20% after reasonable sample, it's likely a very hard liquid
-    if hit_rate_norm < 0.2 and len(accurate_trials) >= 6:
-        # Force early stop for very difficult liquids to preserve wells
-        hard_liquid_evidence = 0.7  # High enough to trigger STOP_NOW
-    else:
-        hard_liquid_evidence = sample_factor * (1 - difficulty_factor)
+    # Combined continue score: high when spread + hit rate are good, but decreases with trial count
+    continue_score = spread_factor * hit_rate_factor * (1 - trial_pressure)
     
-    # Combined score: stop for either easy+confident OR hard+enough_samples
-    decision_score = max(easy_liquid_score, hard_liquid_evidence)
-    
-    # Decision thresholds
-    if decision_score >= 0.5:
+    # Decision logic: Stop when continue_score drops below threshold
+    if continue_score < 0.3:
         decision = "STOP_NOW"
-    elif decision_score >= 0.3:
-        decision = "STOP_SOON"
     else:
         decision = "CONTINUE"
     
     return {
         'decision': decision,
-        'decision_score': decision_score,
+        'continue_score': continue_score,
         'hit_rate_pct': hit_rate_pct,
         'time_spread_pct': time_spread_pct,
         'trials_used': len(accurate_trials),
@@ -466,12 +457,12 @@ def calculate_dynamic_time_cutoff_with_dual_criteria(current_trial_data, volume_
         'strategy': f"P{CANDIDATE_SELECTION_PERCENTILE}",
         'cutoff': np.percentile(times, CANDIDATE_SELECTION_PERCENTILE),
         'spread_method': "std_dev",
-        # Multi-factor diagnostics (the smart part!)
-        'easy_liquid_score': easy_liquid_score,
-        'hard_liquid_evidence': hard_liquid_evidence,
-        'confidence_factor': confidence_factor,
-        'difficulty_factor': difficulty_factor,
-        'sample_factor': sample_factor
+        # 3-factor diagnostics
+        'spread_factor': spread_factor,
+        'hit_rate_factor': hit_rate_factor,
+        'trial_pressure': trial_pressure,
+        # Legacy fields for compatibility
+        'decision_score': 1 - continue_score  # Invert for compatibility with old logic
     }
 
 def isolate_pipetting_params(source_params, context="unknown"):
