@@ -265,6 +265,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
                 **filtered_params
             }
             raw_measurements.append(raw_entry)
+            # Save to CSV (same as real robot mode)
+            pd.DataFrame([raw_entry]).to_csv(raw_path, mode='a', index=False, header=not os.path.exists(raw_path))
         
         # Calculate average deviation from all replicates (volume-based, not mass-based)
         all_deviations = []
