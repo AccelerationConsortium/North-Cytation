@@ -1529,9 +1529,9 @@ class North_Robot(North_Base):
             time.sleep(wait_time)
 
         if blowout_vol > 0: #Adjust this later into pipetting parameter
-            blow_speed = 5
+            #blow_speed = 5
             self.logger.debug(f"Blowing out {blowout_vol:.3f} mL")
-            self.adjust_pump_speed(0, blow_speed)
+            #self.adjust_pump_speed(0, blow_speed)
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_LEFT)
             self.c9.aspirate_ml(0, blowout_vol)
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)
