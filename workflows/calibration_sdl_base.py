@@ -30,8 +30,45 @@ LIQUIDS = {
 }
 
 # --- Utility Functions ---
+def normalize_parameters(params):
+    """
+    Normalize parameter names to handle different parameter naming conventions.
+    
+    Sometimes we get 'blowout_vol', sometimes 'pre_asp_air_vol'.
+    This function ensures consistent parameter names for simulation.
+    """
+    normalized = params.copy()
+    
+    # Handle blowout_vol vs pre_asp_air_vol (only map if both are missing)
+    if 'pre_asp_air_vol' in params and 'blowout_vol' not in params:
+        normalized['blowout_vol'] = params['pre_asp_air_vol']
+    elif 'blowout_vol' in params and 'pre_asp_air_vol' not in params:
+        # Don't automatically add pre_asp_air_vol - let the calling code decide
+        pass
+    
+    # Ensure all expected parameters exist with defaults
+    defaults = {
+        'aspirate_speed': 20,
+        'dispense_speed': 20, 
+        'aspirate_wait_time': 2.0,
+        'dispense_wait_time': 2.0,
+        'retract_speed': 8.0,
+        'blowout_vol': 0.05,
+        'post_asp_air_vol': 0.05,
+        'overaspirate_vol': 0.01
+    }
+    
+    for param, default_value in defaults.items():
+        if param not in normalized:
+            normalized[param] = default_value
+    
+    return normalized
+
 def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     time.sleep(0.2)
+    
+    # Normalize parameters to handle different naming conventions
+    params = normalize_parameters(params)
     
     # More realistic simulation that considers ALL parameters, especially volume-dependent ones
     mass_error_factor = 0.0
@@ -177,6 +214,9 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
 def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, trial_type="UNKNOWN"):
+    # Normalize parameters to handle different naming conventions
+    params = normalize_parameters(params)
+    
     blowout_vol = params.get("blowout_vol", 0.0)  # Default blowout volume
     post_air = params.get("post_asp_air_vol", 0)
     over_volume = params.get("overaspirate_vol", 0)
