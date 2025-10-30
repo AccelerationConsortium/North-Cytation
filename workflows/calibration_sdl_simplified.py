@@ -1573,6 +1573,10 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
         
         if tolerance_met:
             print(f"   ✅ INHERITED PARAMETERS SUCCESSFUL: {avg_deviation:.1f}% dev, {variability:.1f}% var")
+            
+            # Add the successful inherited test result to all_results so CSV can find it
+            all_results.append(inherited_comprehensive_result)
+            
             return True, successful_params, 'success'
     else:
         # Poor result or insufficient budget for replicates - use penalty variability
@@ -2199,6 +2203,49 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
     except Exception as e:
         print(f"⚠️  Error saving results: {e}")
     
+    # Send completion Slack message (only for real experiments)
+    if not SIMULATE and SLACK_AVAILABLE:
+        try:
+            # Calculate summary stats
+            successful_vols = [c for c in optimal_conditions if c['status'] == 'success']
+            partial_vols = [c for c in optimal_conditions if c['status'] == 'partial_success']
+            total_vols = len(optimal_conditions)
+            success_rate = (len(successful_vols) + len(partial_vols)) / total_vols * 100 if total_vols > 0 else 0
+            
+            # Build results table from optimal_conditions
+            results_table = "📊 CALIBRATION RESULTS:\n"
+            results_table += "Volume(μL) | Measured(μL) | Deviation(%) | Variability(%) | Time(s)\n"
+            results_table += "-----------|--------------|--------------|----------------|--------\n"
+            
+            for condition in optimal_conditions:
+                vol_target = condition.get('volume_ul', condition.get('volume_target', 'N/A'))
+                vol_measured = condition.get('volume_measured', 'N/A')
+                deviation = condition.get('average_deviation', 'N/A')
+                variability = condition.get('variability', 'N/A')  
+                time_val = condition.get('time', 'N/A')
+                
+                # Format values
+                if vol_measured != 'N/A':
+                    vol_measured = f"{vol_measured:.2f}"
+                if deviation != 'N/A':
+                    deviation = f"{deviation:.2f}"
+                if variability != 'N/A':
+                    variability = f"{variability:.2f}"
+                if time_val != 'N/A':
+                    time_val = f"{time_val:.2f}"
+                    
+                results_table += f"{vol_target:>9} | {vol_measured:>11} | {deviation:>11} | {variability:>13} | {time_val:>6}\n"
+            
+            slack_msg = (
+                f"🎯 Simplified calibration with {LIQUID.upper()} FINISHED\n"
+                f"✅ Success rate: {success_rate:.1f}% ({len(successful_vols + partial_vols)}/{total_vols} volumes)\n"
+                f"🎯 Completed: {len(successful_vols)} success, {len(partial_vols)} partial\n\n"
+                f"{results_table}"
+            )
+            slack_agent.send_slack_message(slack_msg)
+        except Exception as e:
+            print(f"Warning: Failed to send completion Slack message: {e}")
+    
     print(f"\n🎉 SIMPLIFIED CALIBRATION WORKFLOW COMPLETE!")
     return optimal_conditions, autosave_dir
 
@@ -2214,9 +2261,7 @@ if __name__ == "__main__":
         vial_mode="legacy",
         liquid="glycerol",
         simulate=False,
-        volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        min_good_parameter_sets=6,  # Updated parameter name
-        precision_measurements=3,  # Number of measurements for precision testing and good candidates
+        volumes=[0.05, 0.025, 0.1]  # Test with 3 volumes
     )
     
     # Analyze results
