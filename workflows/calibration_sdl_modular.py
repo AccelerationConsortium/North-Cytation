@@ -113,7 +113,7 @@ except ImportError as e:
 
 # --- DEFAULT EXPERIMENT CONFIG (IMMUTABLE) ---
 # These constants store the TRUE defaults and should NEVER be modified at runtime
-DEFAULT_LIQUID = "glycerol"
+DEFAULT_LIQUID = "water"
 DEFAULT_SIMULATE = False
 DEFAULT_SEED = 7
 DEFAULT_INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
@@ -2456,6 +2456,18 @@ def run_experiment_logic():
     """Core experiment logic separated from configuration handling"""
     lash_e, DENSITY_LIQUID, NEW_PIPET_EACH_TIME_SET, state = initialize_experiment()
     
+    # Home robot components at start of experiment for consistent positioning
+    if not SIMULATE:
+        print("🏠 HOMING: Starting comprehensive robot homing sequence...")
+        try:
+            lash_e.nr_robot.home_robot_components()
+            print("   ✅ All robot components homed successfully")
+        except Exception as e:
+            print(f"   ⚠️  Warning: Robot homing failed: {e}")
+            lash_e.logger.warning(f"Robot homing failed at experiment start: {e}")
+    else:
+        print("🏠 HOMING: Skipped in simulation mode")
+    
     # Show vial management status at start of experiment
     try:
         import calibration_sdl_base as base_module
@@ -2697,7 +2709,8 @@ def run_experiment_logic():
                 # Add result to optimizer for future suggestions
                 get_recommender().add_result(ax_client, trial_index, result)
                 result.update(clean_params)  # Use clean_params to prevent contamination
-                result.update({"volume": volume, "trial_index": trial_index, "strategy": screening_method, "trial_type": "SCREENING", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
+                trial_count += 1  # Increment trial_count before using it
+                result.update({"volume": volume, "trial_index": trial_index, "strategy": screening_method, "trial_type": "SCREENING", "liquid": LIQUID, "time_reported": datetime.now().isoformat(), "trial_number": trial_count})
                 result = strip_tuples(result)
                 all_results.append(result)
                 if not SIMULATE:
@@ -2768,6 +2781,25 @@ def run_experiment_logic():
                 print(f"   ✅ OVERVOLUME PARAMETERS UPDATED:")
                 print(f"      Old: {old_base:.1f}uL + {old_scaling:.1f}%")
                 print(f"      New: {OVERASPIRATE_BASE_UL:.1f}uL + {OVERASPIRATE_SCALING_PERCENT:.1f}%")
+                
+                # CRITICAL: Recreate ax_client with updated overaspirate parameters
+                print(f"   🔄 RECREATING OPTIMIZER: Updating parameter bounds with new overaspirate limits...")
+                old_overaspirate_limit = old_base + (old_scaling/100)*volume*1000
+                max_overaspirate_for_volume = get_max_overaspirate_ul(volume)
+                ax_client = get_recommender().create_model(SEED, INITIAL_SUGGESTIONS, bayesian_batch_size=BATCH_SIZE, 
+                                                   volume=volume, tip_volume=tip_volume, model_type=bayesian_model_type, 
+                                                   optimize_params=optimize_params, fixed_params=fixed_params, simulate=SIMULATE,
+                                                   max_overaspirate_ul=max_overaspirate_for_volume)
+                print(f"      Updated overaspirate limit: {max_overaspirate_for_volume:.1f}uL (was {old_overaspirate_limit:.1f}uL)")
+                
+                # CRITICAL: Re-attach all screening trial data to the new ax_client using existing function
+                screening_results_for_restoration = [r for r in all_results if r.get('trial_type') == 'SCREENING']
+                print(f"   📊 RESTORING DATA: Re-attaching {len(screening_results_for_restoration)} screening trials to new optimizer...")
+                load_previous_data_into_model(ax_client, screening_results_for_restoration)
+                
+                # Verify the data is actually in the new optimizer
+                total_trials_in_optimizer = len(ax_client.experiment.trials)
+                print(f"      ✅ New optimizer now has {total_trials_in_optimizer} total trials")
                 
                 # Store calibration info for reporting
                 volume_report_data[volume]['overvolume_calibration'] = {
