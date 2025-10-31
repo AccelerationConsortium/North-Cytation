@@ -226,13 +226,88 @@ class PipettingWizard:
         
         return result
     
-    def get_pipetting_parameters(self, liquid: str, volume_ml: float) -> Optional[Dict[str, float]]:
+    def apply_overvolume_compensation(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Adjust overaspirate_vol based on measured vs target volume accuracy.
+        
+        Args:
+            df: Calibration dataframe with volume_target, volume_measured, and overaspirate_vol columns
+            
+        Returns:
+            DataFrame with adjusted overaspirate_vol values
+        """
+        if 'volume_measured' not in df.columns or 'overaspirate_vol' not in df.columns:
+            print("Warning: Cannot apply overvolume compensation - missing volume_measured or overaspirate_vol columns")
+            return df
+        
+        # Ensure we have volume_target column
+        if 'volume_target' not in df.columns:
+            print("Warning: Cannot apply overvolume compensation - missing volume_target column")
+            return df
+        
+        compensated_count = 0
+        adjustment_details = []
+        
+        for idx, row in df.iterrows():
+            volume_target = row['volume_target']  # μL
+            volume_measured = row['volume_measured']  # μL  
+            current_overasp = row['overaspirate_vol']  # mL
+            
+            # Calculate volume error in μL
+            volume_error = volume_measured - volume_target  # Positive = over-target, Negative = under-target
+            
+            # Convert error to mL to match overaspirate units
+            volume_error_ml = volume_error / 1000  # Convert μL to mL
+            
+            # Adjust overaspirate: if over-target, decrease overasp; if under-target, increase overasp
+            # Apply full compensation for the measured error
+            adjustment_factor = 1.0  # Apply 100% of the measured error
+            adjustment = -volume_error_ml * adjustment_factor  # Negative error (under) → positive adjustment (increase overasp)
+            
+            new_overasp = current_overasp + adjustment
+            
+            # Ensure overaspirate stays within reasonable bounds (0 to 20% of target volume)
+            max_overasp = volume_target / 1000 * 0.2  # 20% of target volume in mL
+            new_overasp = max(0.0, min(new_overasp, max_overasp))
+            
+            # Calculate the actual adjustment that would be applied
+            actual_adjustment_ml = new_overasp - current_overasp
+            actual_adjustment_ul = actual_adjustment_ml * 1000
+            
+            # Store details for reporting
+            adjustment_details.append({
+                'volume': volume_target,
+                'error': volume_error, 
+                'adjustment_ul': actual_adjustment_ul,
+                'old_overasp': current_overasp,
+                'new_overasp': new_overasp
+            })
+            
+            # Always apply compensation if there's any volume error >0.01μL
+            if abs(volume_error) > 0.01:  # Only skip truly negligible errors
+                df.at[idx, 'overaspirate_vol'] = new_overasp
+                compensated_count += 1
+                
+                print(f"  {volume_target}μL: error {volume_error:+.2f}μL → overasp {current_overasp:.4f}→{new_overasp:.4f}mL "
+                      f"(Δ{actual_adjustment_ul:+.2f}μL)")
+            else:
+                print(f"  {volume_target}μL: error {volume_error:+.2f}μL → no adjustment needed (negligible)")
+        
+        if compensated_count > 0:
+            print(f"Applied overvolume compensation to {compensated_count}/{len(df)} parameter sets")
+        else:
+            print("No overvolume compensation applied - all volume errors were negligible (<0.01μL)")
+            
+        return df
+    
+    def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = False) -> Optional[Dict[str, float]]:
         """
         Get pipetting parameters for a specific liquid and volume.
         
         Args:
             liquid: Liquid name (e.g., 'water', 'glycerol')
             volume_ml: Target volume in mL
+            compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
             
         Returns:
             Dictionary with pipetting parameters, or None if not available
@@ -244,14 +319,20 @@ class PipettingWizard:
         
         file_path, df = file_result
         
+        # Apply overvolume compensation before interpolation if requested
+        if compensate_overvolume:
+            df = self.apply_overvolume_compensation(df.copy())
+        
         # Interpolate parameters
         parameters = self.interpolate_parameters(df, volume_ml)
         
         # Add metadata
         parameters['_source_file'] = str(file_path)
         parameters['_liquid'] = liquid
+        parameters['_compensated'] = compensate_overvolume
         
-        print(f"Parameters for {liquid} {volume_ml}mL from {file_path.name}:")
+        compensation_note = " (with overvolume compensation)" if compensate_overvolume else ""
+        print(f"Parameters for {liquid} {volume_ml}mL from {file_path.name}{compensation_note}:")
         for key, value in parameters.items():
             if not key.startswith('_'):
                 print(f"  {key}: {value:.6f}")
@@ -272,7 +353,7 @@ def create_wizard(search_directory: str = None) -> PipettingWizard:
     return PipettingWizard(search_directory)
 
 
-def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: str = None) -> Optional[Dict[str, float]]:
+def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: str = None, compensate_overvolume: bool = False) -> Optional[Dict[str, float]]:
     """
     Convenience function to get pipetting parameters without creating a wizard instance.
     
@@ -280,12 +361,13 @@ def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: st
         liquid: Liquid name (e.g., 'water', 'glycerol', 'DMSO')
         volume_ml: Target volume in mL
         search_directory: Directory to search for calibration files
+        compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
         
     Returns:
         Dictionary with pipetting parameters, or None if not available
     """
     wizard = PipettingWizard(search_directory)
-    return wizard.get_pipetting_parameters(liquid, volume_ml)
+    return wizard.get_pipetting_parameters(liquid, volume_ml, compensate_overvolume)
 
 
 # Example usage
