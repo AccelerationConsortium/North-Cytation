@@ -218,9 +218,9 @@ def reset_global_measurement_count():
     global global_measurement_count
     global_measurement_count = 0
 
-def extract_performance_metrics(all_results, volume_ml, best_params, raw_measurements=None):
+def extract_performance_metrics(all_results, volume_ml, best_params):
     """
-    Extract key performance metrics for a volume from actual precision test measurements.
+    Extract key performance metrics for a volume from all_results.
     
     Returns dict with volume_target, volume_measured, average_deviation, variability, time,
     and tolerance check results.
@@ -265,61 +265,24 @@ def extract_performance_metrics(all_results, volume_ml, best_params, raw_measure
             'precision_tolerance_met': None
         }
     
-    # CRITICAL FIX: Use actual precision test measurements, not calculated estimates!
+    # Calculate measured volume from deviation
     target_ul = volume_ml * 1000
-    measured_ul = None
-    actual_deviation_pct = None
-    actual_variability = None
+    deviation_pct = best_result.get('deviation', 0)
+    # Assuming under-delivery: measured = target * (1 - deviation/100)
+    measured_ul = target_ul * (1 - deviation_pct / 100)
     
-    # Find precision test measurements from raw_measurements
-    if raw_measurements:
-        # Look for precision test measurements for this volume
-        # These could be INHERITED_TEST, PRECISION, or similar trial types
-        precision_measurements = [
-            m for m in raw_measurements 
-            if (m.get('volume') == volume_ml and 
-                m.get('trial_type') in ['INHERITED_TEST', 'PRECISION', 'PRECISION_TEST'])
-        ]
-        
-        if precision_measurements:
-            # Extract actual measured volumes from precision tests
-            measured_volumes_ml = [m.get('calculated_volume', 0) for m in precision_measurements]
-            measured_volumes_ul = [v * 1000 for v in measured_volumes_ml]  # Convert to μL
-            
-            # Calculate actual statistics from real measurements
-            measured_ul = sum(measured_volumes_ul) / len(measured_volumes_ul)  # Average
-            
-            # Calculate actual deviation from target
-            actual_deviation_pct = abs(measured_ul - target_ul) / target_ul * 100
-            
-            # Calculate actual variability (CV as percentage)
-            if len(measured_volumes_ul) > 1:
-                std_ul = np.std(measured_volumes_ul)
-                actual_variability = (std_ul / measured_ul) * 100
-            else:
-                actual_variability = 0
-    
-    # Fallback to optimization result estimates if no precision data found
-    if measured_ul is None:
-        deviation_pct = best_result.get('deviation', 0)
-        measured_ul = target_ul * (1 - deviation_pct / 100)  # Old calculation as fallback
-        actual_deviation_pct = deviation_pct
-        actual_variability = best_result.get('variability', None)
-    
-    # Calculate tolerance checks using actual measurements
+    # Calculate tolerance checks
     tolerances = get_volume_dependent_tolerances(volume_ml)
     
-    # Check accuracy tolerance using actual deviation
-    if actual_deviation_pct is not None:
-        deviation_ul = (actual_deviation_pct / 100.0) * target_ul
-        accuracy_tolerance_met = deviation_ul <= tolerances['deviation_ul']
-    else:
-        accuracy_tolerance_met = None
+    # Check accuracy tolerance
+    deviation_ul = (deviation_pct / 100.0) * target_ul
+    accuracy_tolerance_met = deviation_ul <= tolerances['deviation_ul']
     
-    # Check precision tolerance using actual variability
-    if actual_variability is not None and actual_variability != ADAPTIVE_PENALTY_VARIABILITY:
-        # Convert variability percentage to μL
-        variability_ul = (actual_variability / 100.0) * target_ul
+    # Check precision tolerance
+    variability = best_result.get('variability', None)
+    if variability is not None and variability != ADAPTIVE_PENALTY_VARIABILITY:
+        # Convert variability percentage to μL if it's a real measurement
+        variability_ul = (variability / 100.0) * target_ul
         precision_tolerance_met = variability_ul <= tolerances['variation_ul']
     else:
         precision_tolerance_met = False  # No valid precision data or penalty value
@@ -327,8 +290,8 @@ def extract_performance_metrics(all_results, volume_ml, best_params, raw_measure
     return {
         'volume_target': target_ul,
         'volume_measured': measured_ul,
-        'average_deviation': actual_deviation_pct,
-        'variability': actual_variability,
+        'average_deviation': deviation_pct,
+        'variability': variability,
         'time': best_result.get('time', None),
         'accuracy_tolerance_met': accuracy_tolerance_met,
         'precision_tolerance_met': precision_tolerance_met
@@ -2082,8 +2045,8 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
             # Always continue with best_params found, regardless of tolerance met
             successful_params = best_params
             
-            # Extract performance metrics using actual precision test measurements
-            performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements)
+            # Extract performance metrics
+            performance = extract_performance_metrics(all_results, volume, best_params)
             
             # Determine status based on success flag
             status = 'success' if success else 'partial_success'
@@ -2157,8 +2120,8 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
                 LIQUID, new_pipet_each_time_set, all_results, successful_params, measurements_budget
             )
             
-            # Extract performance metrics using actual precision test measurements
-            performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements)
+            # Extract performance metrics
+            performance = extract_performance_metrics(all_results, volume, best_params)
             
             # Extract ONLY the pipetting parameters (filter out scoring junk)
             pipetting_params = {k: v for k, v in best_params.items() if k in ALL_PARAMS}
