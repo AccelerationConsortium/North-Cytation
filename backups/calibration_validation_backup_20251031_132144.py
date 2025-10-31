@@ -38,26 +38,18 @@ sys.path.append("../pipetting_data")
 from pipetting_data.pipetting_wizard import PipettingWizard
 
 # --- CONFIGURATION ---
-DEFAULT_LIQUID = "glycerol"
+DEFAULT_LIQUID = "water"
 DEFAULT_SIMULATE = False
 DEFAULT_VOLUMES = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15]  # mL
 DEFAULT_REPLICATES = 3
 DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 
-# Vial management mode - set to match your calibration setup
-# Options: "legacy" (no vial management), "single", "dual", etc.
-VIAL_MANAGEMENT_MODE = "legacy"  # Change this to match calibration setup
-
 def initialize_experiment(lash_e, liquid):
     """Initialize experiment with proper vial setup"""
     print(f"🔧 Initializing experiment for {liquid} validation...")
     
-    # Set vial management mode (configurable at top of file)
-    if VIAL_MANAGEMENT_MODE != "legacy":
-        set_vial_management(mode=VIAL_MANAGEMENT_MODE)
-        print(f"   🧪 Vial management: {VIAL_MANAGEMENT_MODE}")
-    else:
-        print(f"   🧪 Vial management: legacy (no vial management)")
+    # Use single vial mode for validation (same vial for source and destination)
+    set_vial_management(mode='single')
     
     # Ensure measurement vial is in clamp position
     lash_e.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
@@ -87,10 +79,6 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard):
         raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
     liquid_density = LIQUIDS[liquid]["density"]
     
-    # Get liquid-specific pipet behavior (CRITICAL: matches calibration setup)
-    new_pipet_each_time_set = LIQUIDS[liquid]["refill_pipets"]
-    print(f"   🔧 Pipet behavior for {liquid}: {'new tip each time' if new_pipet_each_time_set else 'reuse tip'}")
-    
     # Initialize results storage
     results = []
     raw_measurements = []
@@ -101,17 +89,9 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard):
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_path = output_dir / "raw_validation_data.csv"
     
-    # Vial configuration based on vial management mode
-    if VIAL_MANAGEMENT_MODE == "legacy":
-        # Legacy mode: separate source and destination vials
-        source_vial = "liquid_source_0"      # Liquid reservoir
-        dest_vial = "measurement_vial_0"     # Measurement vial 
-        print(f"   🧪 Legacy mode: {source_vial} → {dest_vial}")
-    else:
-        # Single vial mode: same vial for source and destination
-        source_vial = "measurement_vial_0"   # Same vial
-        dest_vial = "measurement_vial_0"     # Same vial
-        print(f"   🧪 Single vial mode: {source_vial} (same vial)")
+    # Vial configuration
+    source_vial = "measurement_vial_0"  # Single vial mode
+    dest_vial = "measurement_vial_0"    # Same vial
     
     # Process each volume
     for i, volume in enumerate(volumes):
@@ -154,7 +134,7 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard):
                     raw_path=str(raw_path),
                     raw_measurements=raw_measurements,
                     liquid=liquid,
-                    new_pipet_each_time=new_pipet_each_time_set,  # FIXED: Use liquid-specific setting
+                    new_pipet_each_time=True,
                     trial_type="VALIDATION"
                 )
                 
