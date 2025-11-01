@@ -92,6 +92,30 @@ self.pause_after_error("Error description", send_slack=True)
 - Set environment variables `PIP_TIMEOUT=600` and `PIP_RETRIES=2` before installs
 - Each code change should update CHANGELOG.md with semantic versioning
 
+### MANDATORY: Automatic Backup Protocol
+**ALWAYS create backups before making significant code changes:**
+
+```powershell
+# Create timestamped backup before any major edit
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+Copy-Item "path/to/file.py" "backups/file_backup_$timestamp.py"
+```
+
+**Required for:**
+- Any `replace_string_in_file` operation on files >500 lines
+- Modifying critical workflow files (calibration_sdl_*, master_usdl_*, North_Safe.py)
+- Adding new functions or classes to existing files
+- Any change that affects core system functionality
+
+**Backup naming convention:**
+- `backups/filename_backup_YYYYMMDD_HHMMSS.py`
+- Include descriptive suffix for major changes: `_before_conditional_replication`
+
+**Recovery protocol:**
+- If changes fail or break functionality, immediately restore from most recent backup
+- Test backup restoration: `Copy-Item "backups/file_backup_*.py" "original/path/file.py" -Force`
+- Keep backups for at least the duration of the coding session
+
 ## Debugging Best Practices
 
 ### Always Start with Data, Not Assumptions

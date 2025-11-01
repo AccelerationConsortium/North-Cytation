@@ -113,7 +113,7 @@ except ImportError as e:
 
 # --- DEFAULT EXPERIMENT CONFIG (IMMUTABLE) ---
 # These constants store the TRUE defaults and should NEVER be modified at runtime
-DEFAULT_LIQUID = "glycerol"
+DEFAULT_LIQUID = "water"
 DEFAULT_SIMULATE = False
 DEFAULT_SEED = 7
 DEFAULT_INITIAL_SUGGESTIONS = 5  # replaces SOBOL_CYCLES_PER_VOLUME
@@ -2456,6 +2456,18 @@ def run_experiment_logic():
     """Core experiment logic separated from configuration handling"""
     lash_e, DENSITY_LIQUID, NEW_PIPET_EACH_TIME_SET, state = initialize_experiment()
     
+    # Home robot components at start of experiment for consistent positioning
+    if not SIMULATE:
+        print("🏠 HOMING: Starting comprehensive robot homing sequence...")
+        try:
+            lash_e.nr_robot.home_robot_components()
+            print("   ✅ All robot components homed successfully")
+        except Exception as e:
+            print(f"   ⚠️  Warning: Robot homing failed: {e}")
+            lash_e.logger.warning(f"Robot homing failed at experiment start: {e}")
+    else:
+        print("🏠 HOMING: Skipped in simulation mode")
+    
     # Show vial management status at start of experiment
     try:
         import calibration_sdl_base as base_module
@@ -2697,13 +2709,15 @@ def run_experiment_logic():
                 # Add result to optimizer for future suggestions
                 get_recommender().add_result(ax_client, trial_index, result)
                 result.update(clean_params)  # Use clean_params to prevent contamination
-                result.update({"volume": volume, "trial_index": trial_index, "strategy": screening_method, "trial_type": "SCREENING", "liquid": LIQUID, "time_reported": datetime.now().isoformat()})
+                trial_count += 1  # Increment trial_count before using it
+                result.update({"volume": volume, "trial_index": trial_index, "strategy": screening_method, "trial_type": "SCREENING", "liquid": LIQUID, "time_reported": datetime.now().isoformat(), "trial_number": trial_count})
                 result = strip_tuples(result)
                 all_results.append(result)
                 if not SIMULATE:
                     pd.DataFrame([result]).to_csv(autosave_summary_path, mode='a', index=False, header=not os.path.exists(autosave_summary_path))
                 
                 trial_count += 1
+                print(f"   🔢 Trial count now: {trial_count}/{MAX_WELLS}")
                 
                 # Collect ALL screening results for calibration (regardless of criteria)
                 screening_result_info = {
@@ -2768,6 +2782,25 @@ def run_experiment_logic():
                 print(f"      Old: {old_base:.1f}uL + {old_scaling:.1f}%")
                 print(f"      New: {OVERASPIRATE_BASE_UL:.1f}uL + {OVERASPIRATE_SCALING_PERCENT:.1f}%")
                 
+                # CRITICAL: Recreate ax_client with updated overaspirate parameters
+                print(f"   🔄 RECREATING OPTIMIZER: Updating parameter bounds with new overaspirate limits...")
+                old_overaspirate_limit = old_base + (old_scaling/100)*volume*1000
+                max_overaspirate_for_volume = get_max_overaspirate_ul(volume)
+                ax_client = get_recommender().create_model(SEED, INITIAL_SUGGESTIONS, bayesian_batch_size=BATCH_SIZE, 
+                                                   volume=volume, tip_volume=tip_volume, model_type=bayesian_model_type, 
+                                                   optimize_params=optimize_params, fixed_params=fixed_params, simulate=SIMULATE,
+                                                   max_overaspirate_ul=max_overaspirate_for_volume)
+                print(f"      Updated overaspirate limit: {max_overaspirate_for_volume:.1f}uL (was {old_overaspirate_limit:.1f}uL)")
+                
+                # CRITICAL: Re-attach all screening trial data to the new ax_client using existing function
+                screening_results_for_restoration = [r for r in all_results if r.get('trial_type') == 'SCREENING']
+                print(f"   📊 RESTORING DATA: Re-attaching {len(screening_results_for_restoration)} screening trials to new optimizer...")
+                load_previous_data_into_model(ax_client, screening_results_for_restoration)
+                
+                # Verify the data is actually in the new optimizer
+                total_trials_in_optimizer = len(ax_client.experiment.trials)
+                print(f"      ✅ New optimizer now has {total_trials_in_optimizer} total trials")
+                
                 # Store calibration info for reporting
                 volume_report_data[volume]['overvolume_calibration'] = {
                     'enabled': True,
@@ -2825,7 +2858,9 @@ def run_experiment_logic():
                 
                 # Get suggestions and test them
                 optimization_found = False
-                while not optimization_found and trial_count < MAX_WELLS - PRECISION_REPLICATES:
+                # Ensure we have enough wells for at least 1 optimization trial + precision test
+                min_wells_needed = 1 + PRECISION_REPLICATES
+                while not optimization_found and (trial_count + min_wells_needed) <= MAX_WELLS:
                     try:
                         if use_llm_for_optimization and LLM_AVAILABLE:
                             # Use LLM for optimization suggestions
@@ -2839,6 +2874,12 @@ def run_experiment_logic():
                     
                     if not suggestions:
                         print("   ❌ No more suggestions available")
+                        break
+                    
+                    # SAFETY CHECK: Verify we still have enough wells before processing suggestions
+                    wells_remaining = MAX_WELLS - trial_count
+                    if wells_remaining < min_wells_needed:
+                        print(f"   ⚠️  Stopping optimization: only {wells_remaining} wells left, need ≥{min_wells_needed}")
                         break
                     
                     for params, trial_index in suggestions:
@@ -2892,6 +2933,7 @@ def run_experiment_logic():
                             pd.DataFrame([result]).to_csv(autosave_summary_path, mode='a', index=False, header=not os.path.exists(autosave_summary_path))
                         
                         trial_count += 1
+                        print(f"   🔢 Trial count now: {trial_count}/{MAX_WELLS}")
                         
                         if meets_criteria:
                             candidate_params = params
@@ -2909,6 +2951,11 @@ def run_experiment_logic():
             if trial_count + PRECISION_REPLICATES > MAX_WELLS:
                 print(f"⚠️ Not enough wells remaining for precision test ({MAX_WELLS - trial_count} left)")
                 break
+            
+            # Reserve wells for precision test BEFORE running it
+            print(f"🔒 Reserving {PRECISION_REPLICATES} wells for precision test (wells {trial_count+1}-{trial_count+PRECISION_REPLICATES})")
+            precision_test_start_count = trial_count
+            trial_count += PRECISION_REPLICATES
             
             if completed_volumes and USE_SELECTIVE_OPTIMIZATION:
                 # Volumes 2+: Use the EXACT parameters from the candidate we just found!
@@ -2936,8 +2983,17 @@ def run_experiment_logic():
                 )
             
             if precision_measurements:
-                trial_count += len(precision_measurements)
-                candidate_trial_number = selected_candidate.get('trial_number', trial_count) if selected_candidate else trial_count
+                # Wells already reserved before precision test - adjust if we used fewer wells than reserved
+                actual_precision_wells_used = len(precision_measurements)
+                wells_overestimated = PRECISION_REPLICATES - actual_precision_wells_used
+                if wells_overestimated > 0:
+                    print(f"🔄 Returning {wells_overestimated} unused reserved wells to pool")
+                    trial_count -= wells_overestimated
+                candidate_trial_number = selected_candidate.get('trial_number', precision_test_start_count + actual_precision_wells_used) if selected_candidate else precision_test_start_count + actual_precision_wells_used
+            else:
+                # No precision measurements - return all reserved wells
+                print(f"🔄 Returning all {PRECISION_REPLICATES} reserved wells (precision test failed/cancelled)")
+                trial_count = precision_test_start_count
             
             # Track precision test results
             # ALL precision measurements are precision trials, not optimization trials
@@ -3003,15 +3059,31 @@ def run_experiment_logic():
                 volume_completed = True
                 
             else:
-                # ALL CANDIDATES FAILED! Need more optimization trials
-                print(f"\n❌ ALL PRECISION TESTS FAILED - need more optimization trials")
-                print(f"   📈 Blacklisted candidates will be avoided in next optimization round")
-                candidate_params = None  # Force new optimization
+                # ALL CANDIDATES FAILED! Check if we have enough wells for more optimization + precision test
+                wells_needed_for_retry = 1 + PRECISION_REPLICATES  # At least 1 optimization + precision test
+                wells_remaining = MAX_WELLS - trial_count
+                
+                if wells_remaining >= wells_needed_for_retry:
+                    print(f"\n❌ ALL PRECISION TESTS FAILED - trying more optimization trials")
+                    print(f"   📈 Blacklisted candidates will be avoided in next optimization round")
+                    print(f"   🔢 Wells remaining: {wells_remaining}, need ≥{wells_needed_for_retry} for retry")
+                    candidate_params = None  # Force new optimization
+                else:
+                    print(f"\n❌ ALL PRECISION TESTS FAILED - insufficient wells for more attempts")
+                    print(f"   🔢 Wells remaining: {wells_remaining}, need ≥{wells_needed_for_retry} (optimization + precision test)")
+                    print(f"   ⏹️  Stopping this volume to avoid exceeding well limit")
+                    volume_completed = True  # Force completion to prevent more optimization
         
         if not volume_completed:
             print(f"\n⚠️  VOLUME {volume*1000:.0f}uL: Could not complete within well limit ({MAX_WELLS - trial_count} wells remaining)")
         
         print(f"Wells used: {trial_count}/{MAX_WELLS}")
+        
+        # SAFETY CHECK: Ensure we never exceed MAX_WELLS
+        if trial_count > MAX_WELLS:
+            print(f"⚠️  WARNING: Trial count ({trial_count}) exceeded MAX_WELLS ({MAX_WELLS})!")
+            print(f"   This indicates an issue with well counting logic.")
+            trial_count = MAX_WELLS  # Cap at maximum
         
         if trial_count >= MAX_WELLS:
             print(f"Reached maximum wells ({MAX_WELLS}), stopping experiment.")
@@ -3423,7 +3495,7 @@ if __name__ == "__main__":
     #
 
     # Current experiment - uncomment to run single experiment
-    EXPERIMENTS = [{'liquid': 'glycerol', 'volumes': [0.05, 0.025, 0.1], 'simulate': False, 'vial_management_mode':'legacy'}]
+    EXPERIMENTS = [{'liquid': 'glycerol', 'volumes': [0.05, 0.025, 0.1], 'simulate': True, 'vial_management_mode':'legacy'}]
 
     print("\nConfigured experiments:")
     for i, cfg in enumerate(EXPERIMENTS, 1):
