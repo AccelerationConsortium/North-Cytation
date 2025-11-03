@@ -13,7 +13,6 @@ import pandas as pd
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.modelbridge.factory import Models
 from ax.modelbridge.generation_strategy import GenerationStep, GenerationStrategy
-from ax.core.observation import ObservationFeatures
 from botorch.acquisition.logei import qLogExpectedImprovement
 from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
 
@@ -214,23 +213,21 @@ def get_suggestions(ax_client, volume=None, n=1, fixed_features=None):
     suggestions = []
     
     # Handle both old and new API
-    if fixed_features is None:
+    if fixed_features is None and volume is not None:
+        # Old API: single volume mode
+        fixed_features = {}
+    elif fixed_features is None:
+        # Transfer learning mode without fixed features
         fixed_features = {}
     
-    # Only add volume to fixed features if it's actually a parameter in the search space
-    # (i.e., when transfer learning is enabled and volume is in optimize_params)
-    if (volume is not None and 
-        "volume" not in fixed_features and 
-        hasattr(ax_client, '_optimize_params') and 
-        "volume" in ax_client._optimize_params):
+    # Add volume to fixed features if provided
+    if volume is not None and "volume" not in fixed_features:
         fixed_features["volume"] = volume
     
     for _ in range(n):
         # Get suggestions for optimized parameters with fixed features
         if fixed_features:
-            # Convert dict to ObservationFeatures for Ax API
-            fixed_obs_features = ObservationFeatures(parameters=fixed_features)
-            optimized_params, trial_index = ax_client.get_next_trial(fixed_features=fixed_obs_features)
+            optimized_params, trial_index = ax_client.get_next_trial(fixed_features=fixed_features)
         else:
             optimized_params, trial_index = ax_client.get_next_trial()
         
