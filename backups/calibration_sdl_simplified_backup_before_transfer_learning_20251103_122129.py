@@ -180,14 +180,9 @@ SIM_VAR_MULTIPLIER = DEFAULT_SIM_VAR_MULTIPLIER
 USE_SELECTIVE_OPTIMIZATION = True
 VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]
 
-# Transfer learning configuration
-DEFAULT_USE_TRANSFER_LEARNING = True  # Enable cross-volume parameter transfer
-USE_TRANSFER_LEARNING = DEFAULT_USE_TRANSFER_LEARNING
-
 # Global measurement counter and volume-specific calibrations
 global_measurement_count = 0
 volume_overaspirate_calibrations = {}  # Store volume-specific overaspirate calibrations
-global_ax_client = None  # Global optimizer for transfer learning
 
 def pipet_and_measure_tracked(*args, **kwargs):
     """
@@ -385,7 +380,6 @@ def reset_config_to_defaults():
     global ADAPTIVE_DEVIATION_THRESHOLD, ADAPTIVE_PENALTY_VARIABILITY
     global ACCURACY_WEIGHT, PRECISION_WEIGHT, TIME_WEIGHT, SIM_DEV_MULTIPLIER, SIM_VAR_MULTIPLIER
     global BAYESIAN_MODEL_TYPE_SUBSEQUENT, OPTIMIZER_DEVIATION_THRESHOLD, OPTIMIZER_VARIABILITY_THRESHOLD, OPTIMIZER_TIME_THRESHOLD
-    global USE_TRANSFER_LEARNING, global_ax_client
     
     print("🔄 Resetting configuration to default values...")
     
@@ -422,8 +416,6 @@ def reset_config_to_defaults():
     OPTIMIZER_DEVIATION_THRESHOLD = DEFAULT_OPTIMIZER_DEVIATION_THRESHOLD
     OPTIMIZER_VARIABILITY_THRESHOLD = DEFAULT_OPTIMIZER_VARIABILITY_THRESHOLD
     OPTIMIZER_TIME_THRESHOLD = DEFAULT_OPTIMIZER_TIME_THRESHOLD
-    USE_TRANSFER_LEARNING = DEFAULT_USE_TRANSFER_LEARNING
-    global_ax_client = None
     
     print("✅ Configuration reset complete")
 
@@ -441,7 +433,6 @@ def get_current_config_summary():
     print(f"   LLM screening: {USE_LLM_FOR_SCREENING}")
     print(f"   Bayesian model (1st vol): {BAYESIAN_MODEL_TYPE}")
     print(f"   Bayesian model (2nd+ vol): {BAYESIAN_MODEL_TYPE_SUBSEQUENT}")
-    print(f"   Transfer learning: {'✅ ENABLED' if USE_TRANSFER_LEARNING else '❌ DISABLED'}")
     print(f"   Adaptive threshold: {ADAPTIVE_DEVIATION_THRESHOLD}% deviation")
     print(f"   Ranking weights: Acc={ACCURACY_WEIGHT}, Prec={PRECISION_WEIGHT}, Time={TIME_WEIGHT}")
     if SIMULATE:
@@ -558,44 +549,6 @@ def get_tip_volume_for_volume(lash_e, volume):
     except Exception as e:
         print(f"Warning: Could not determine tip volume for {volume} mL: {e}")
         return 1.0 if volume > 0.25 else 0.25
-
-def create_transfer_learning_optimizer():
-    """Create a global optimizer for transfer learning across all volumes."""
-    global global_ax_client
-    
-    if not USE_TRANSFER_LEARNING:
-        return None
-        
-    print(f"\n🌐 CREATING TRANSFER LEARNING OPTIMIZER")
-    print(f"   Volumes: {[f'{v*1000:.0f}μL' for v in VOLUMES]}")
-    print(f"   Benefits: Cross-volume parameter learning")
-    
-    # Calculate volume bounds from all volumes we'll test
-    min_volume = min(VOLUMES)
-    max_volume = max(VOLUMES)
-    volume_bounds = [min_volume, max_volume]
-    
-    # Use maximum overaspirate constraint across all volumes
-    max_overaspirate_across_volumes = max([get_max_overaspirate_ul(v) for v in VOLUMES])
-    
-    # Create transfer learning optimizer
-    global_ax_client = optimizer_3obj.create_model(
-        seed=SEED,
-        num_initial_recs=0,  # We'll load data as we go
-        bayesian_batch_size=PARAMETER_SETS_PER_RECOMMENDATION,
-        volume=None,  # No fixed volume
-        tip_volume=1.0,  # Use largest tip
-        model_type=BAYESIAN_MODEL_TYPE,
-        optimize_params=ALL_PARAMS,  # Will include volume parameter internally
-        fixed_params={},
-        simulate=SIMULATE,
-        max_overaspirate_ul=max_overaspirate_across_volumes,
-        transfer_learning=True,
-        volume_bounds=volume_bounds
-    )
-    
-    print(f"   ✅ Global optimizer created with volume range {min_volume*1000:.0f}-{max_volume*1000:.0f}μL")
-    return global_ax_client
 
 # --- ADAPTIVE VARIABILITY MEASUREMENT ---
 
@@ -1710,21 +1663,14 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
     
     # Prepare inherited parameters with volume-specific overaspirate if available
     test_params = successful_params.copy()
-    # DEBUG: Show what calibration data we have
-    print(f"   🔍 DEBUG: Available calibrations: {list(volume_overaspirate_calibrations.keys())}")
-    print(f"   🔍 DEBUG: Looking for volume: {volume} (mL)")
-    
-    # Use volume in mL for lookup (that's how calibration data is stored)
-    if volume in volume_overaspirate_calibrations:
+    volume_ul = volume * 1000  # Convert to μL for lookup
+    if volume_ul in volume_overaspirate_calibrations:
         old_overaspirate = test_params.get('overaspirate_vol', 0) * 1000  # Convert to μL
-        calib_data = volume_overaspirate_calibrations[volume]
-        new_overaspirate_ml = calib_data['guess_ml']
-        test_params['overaspirate_vol'] = new_overaspirate_ml  # Already in mL
-        print(f"   🎯 Using calibrated overaspirate guess: {old_overaspirate:.1f}μL → {new_overaspirate_ml*1000:.1f}μL")
-        print(f"   🔍 DEBUG: Calibration data: guess={calib_data['guess_ml']*1000:.1f}μL, max={calib_data['max_ml']*1000:.1f}μL")
+        new_overaspirate_ul = volume_overaspirate_calibrations[volume_ul]['guess_overaspirate_ul']
+        test_params['overaspirate_vol'] = new_overaspirate_ul / 1000  # Convert back to mL
+        print(f"   🎯 Using calibrated overaspirate guess: {old_overaspirate:.1f}μL → {new_overaspirate_ul:.1f}μL")
     else:
         print(f"   🎯 Using inherited overaspirate: {test_params.get('overaspirate_vol', 0)*1000:.1f}μL")
-        print(f"   🔍 DEBUG: No calibration found for {volume} mL")
 
     # Test inherited parameters first
     print(f"   Testing inherited parameters...")
@@ -1920,18 +1866,13 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
     
     # Use volume-specific overaspirate calibration if available, otherwise default
     global volume_overaspirate_calibrations
-    print(f"   🔍 DEBUG: Optimization constraint lookup - volume={volume} mL, available calibrations: {list(volume_overaspirate_calibrations.keys())}")
-    
-    # Use volume in mL for lookup (that's how calibration data is stored)
-    if volume in volume_overaspirate_calibrations:
-        calib_data = volume_overaspirate_calibrations[volume]
-        max_overaspirate_ul = calib_data['max_ml'] * 1000  # Convert to μL
+    volume_ul = volume * 1000  # Convert to μL for lookup
+    if volume_ul in volume_overaspirate_calibrations:
+        max_overaspirate_ul = volume_overaspirate_calibrations[volume_ul]['max_overaspirate_ul']
         print(f"   🎯 Using calibrated overaspirate constraint: {max_overaspirate_ul:.1f}μL")
-        print(f"   🔍 DEBUG: From calibration - guess={calib_data['guess_ml']*1000:.1f}μL, max={calib_data['max_ml']*1000:.1f}μL")
     else:
         max_overaspirate_ul = get_max_overaspirate_ul(volume)
         print(f"   🎯 Using default overaspirate constraint: {max_overaspirate_ul:.1f}μL")
-        print(f"   🔍 DEBUG: No calibration data found for volume {volume} mL")
     
     try:
         if use_single_objective:
@@ -2562,10 +2503,8 @@ if __name__ == "__main__":
     optimal_conditions, save_dir = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="glycerol",
-        simulate=False,
-        volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        sim_dev_multiplier=0.7,  # Stricter simulation (less noise) - default is 2.0x
-        sim_var_multiplier=0.7   # Stricter simulation (less noise) - default is 2.0x
+        simulate=True,
+        volumes=[0.05, 0.025, 0.1]  # Test with 3 volumes
     )
     
     # Analyze results

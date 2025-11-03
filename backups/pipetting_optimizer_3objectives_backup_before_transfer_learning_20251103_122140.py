@@ -13,7 +13,6 @@ import pandas as pd
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.modelbridge.factory import Models
 from ax.modelbridge.generation_strategy import GenerationStep, GenerationStrategy
-from ax.core.observation import ObservationFeatures
 from botorch.acquisition.logei import qLogExpectedImprovement
 from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
 
@@ -31,46 +30,35 @@ DEFAULT_PARAMETER_BOUNDS = {
     "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},
     "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
     "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set to fixed maximum in create_model()
-    "volume": {"type": "range", "bounds": [0.001, 1.0]},  # Volume parameter for transfer learning (mL)
 }
 
-def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_volume=1.0, model_type="qNEHVI", 
-                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0, 
-                 transfer_learning=False, volume_bounds=None):
+def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, 
+                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0):
     """
-    Create an Ax client for 3-objective parameter optimization with optional transfer learning.
+    Create an Ax client for 3-objective parameter optimization.
     
     Args:
         seed: Random seed
         num_initial_recs: Number of initial SOBOL suggestions
         bayesian_batch_size: Batch size for Bayesian optimization
-        volume: Target pipetting volume (for single-volume mode) or None (for transfer learning)
+        volume: Target pipetting volume
         tip_volume: Tip capacity
         model_type: Model type (SOBOL, qLogEI, etc.)
         optimize_params: List of parameter names to optimize. If None, optimize all parameters.
         fixed_params: Dict of parameter names and values to keep fixed
         simulate: Whether in simulation mode
         max_overaspirate_ul: Maximum overaspirate volume in microliters (default 10.0 µL)
-        transfer_learning: If True, include volume as a parameter for cross-volume learning
-        volume_bounds: [min_vol, max_vol] in mL for transfer learning mode
     """
     
-    # Default to optimizing all parameters except volume if not specified
+    # Default to optimizing all parameters if not specified
     if optimize_params is None:
-        optimize_params = [p for p in DEFAULT_PARAMETER_BOUNDS.keys() if p != "volume"]
+        optimize_params = list(DEFAULT_PARAMETER_BOUNDS.keys())
     
     # Default to no fixed parameters if not specified
     if fixed_params is None:
         fixed_params = {}
     
-    # Handle transfer learning setup
-    if transfer_learning:
-        print(f"Creating 3-objective TRANSFER LEARNING optimizer:")
-        print(f"  Volume bounds: {volume_bounds[0]*1000:.0f}-{volume_bounds[1]*1000:.0f}μL")
-        optimize_params.append("volume")  # Include volume as optimizable parameter
-    else:
-        print(f"Creating 3-objective optimizer for volume {volume*1000:.0f}μL:")
-    
+    print(f"Creating 3-objective optimizer for volume {volume*1000:.0f}μL:")
     print(f"  Optimizing parameters: {optimize_params}")
     print(f"  Fixed parameters: {list(fixed_params.keys())}")
     print(f"  Objectives: {obj1_name}, {obj2_name}, {obj3_name}")
@@ -151,40 +139,22 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
             # Convert max_overaspirate_ul (microliters) to mL for consistency with other volumes
             max_overaspirate_ml = max_overaspirate_ul / 1000.0
             param_config["bounds"] = [0.0, max_overaspirate_ml]  # Fixed maximum overaspirate volume
-        elif param_name == "volume" and transfer_learning:
-            # Use provided volume bounds for transfer learning
-            if volume_bounds:
-                param_config["bounds"] = volume_bounds
-            else:
-                raise ValueError("volume_bounds must be provided for transfer learning mode")
         
         parameters.append(param_config)
     
     # Create parameter constraints
     constraints = []
-    
-    # Handle constraints differently for transfer learning vs single volume
-    if transfer_learning:
-        # For transfer learning, we need volume-dependent constraints
-        # Note: Ax supports constraints with parameters, so we can use "volume" in the constraint
-        if "post_asp_air_vol" in optimize_params and "overaspirate_vol" in optimize_params:
-            constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume} - volume")
-        elif "post_asp_air_vol" in optimize_params and "overaspirate_vol" in fixed_params:
-            fixed_overaspirate = fixed_params["overaspirate_vol"]
-            constraints.append(f"post_asp_air_vol <= {tip_volume} - volume - {fixed_overaspirate}")
-        elif "overaspirate_vol" in optimize_params and "post_asp_air_vol" in fixed_params:
-            fixed_post_asp = fixed_params["post_asp_air_vol"]
-            constraints.append(f"overaspirate_vol <= {tip_volume} - volume - {fixed_post_asp}")
-    else:
-        # Single volume mode - use fixed volume value
-        if "post_asp_air_vol" in optimize_params and "overaspirate_vol" in optimize_params:
-            constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume - volume}")
-        elif "post_asp_air_vol" in optimize_params and "overaspirate_vol" in fixed_params:
-            fixed_overaspirate = fixed_params["overaspirate_vol"]
-            constraints.append(f"post_asp_air_vol <= {tip_volume - volume - fixed_overaspirate}")
-        elif "overaspirate_vol" in optimize_params and "post_asp_air_vol" in fixed_params:
-            fixed_post_asp = fixed_params["post_asp_air_vol"]
-            constraints.append(f"overaspirate_vol <= {tip_volume - volume - fixed_post_asp}")
+    # Only add constraint if both parameters are being optimized
+    if "post_asp_air_vol" in optimize_params and "overaspirate_vol" in optimize_params:
+        constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume - volume}")
+    elif "post_asp_air_vol" in optimize_params and "overaspirate_vol" in fixed_params:
+        # Fixed overaspirate_vol, variable post_asp_air_vol
+        fixed_overaspirate = fixed_params["overaspirate_vol"]
+        constraints.append(f"post_asp_air_vol <= {tip_volume - volume - fixed_overaspirate}")
+    elif "overaspirate_vol" in optimize_params and "post_asp_air_vol" in fixed_params:
+        # Fixed post_asp_air_vol, variable overaspirate_vol
+        fixed_post_asp = fixed_params["post_asp_air_vol"]
+        constraints.append(f"overaspirate_vol <= {tip_volume - volume - fixed_post_asp}")
 
     ax_client.create_experiment(
         parameters=parameters,
@@ -202,45 +172,16 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
 
     return ax_client
 
-def get_suggestions(ax_client, volume=None, n=1, fixed_features=None):
-    """Get parameter suggestions, combining optimized and fixed parameters.
-    
-    Args:
-        ax_client: The Ax client
-        volume: Volume for single-volume mode (backwards compatibility)
-        n: Number of suggestions
-        fixed_features: Dict of features to fix (for transfer learning)
-    """
+def get_suggestions(ax_client, volume, n=1):
+    """Get parameter suggestions, combining optimized and fixed parameters."""
     suggestions = []
-    
-    # Handle both old and new API
-    if fixed_features is None:
-        fixed_features = {}
-    
-    # Only add volume to fixed features if it's actually a parameter in the search space
-    # (i.e., when transfer learning is enabled and volume is in optimize_params)
-    if (volume is not None and 
-        "volume" not in fixed_features and 
-        hasattr(ax_client, '_optimize_params') and 
-        "volume" in ax_client._optimize_params):
-        fixed_features["volume"] = volume
-    
     for _ in range(n):
-        # Get suggestions for optimized parameters with fixed features
-        if fixed_features:
-            # Convert dict to ObservationFeatures for Ax API
-            fixed_obs_features = ObservationFeatures(parameters=fixed_features)
-            optimized_params, trial_index = ax_client.get_next_trial(fixed_features=fixed_obs_features)
-        else:
-            optimized_params, trial_index = ax_client.get_next_trial()
+        # Get suggestions for optimized parameters
+        optimized_params, trial_index = ax_client.get_next_trial()
         
-        # Combine with fixed parameters from model creation
-        full_params = dict(ax_client._fixed_params)  # Start with model fixed parameters
+        # Combine with fixed parameters
+        full_params = dict(ax_client._fixed_params)  # Start with fixed parameters
         full_params.update(optimized_params)  # Add optimized parameters
-        
-        # Remove volume from full_params if it was just a fixed feature
-        if "volume" in full_params and volume is not None:
-            del full_params["volume"]  # Don't include volume in pipetting parameters
         
         suggestions.append((full_params, trial_index))
     
@@ -295,7 +236,7 @@ def add_result(ax_client, trial_index, results):
     print(f"DEBUG: Completing trial {trial_index} with data: {data}")
     ax_client.complete_trial(trial_index=trial_index, raw_data=data)
 
-def load_previous_data_into_model(ax_client, all_results, transfer_learning=False):
+def load_previous_data_into_model(ax_client, all_results):
     """Load previous experimental results into the model, filtering for optimized parameters only."""
     if not all_results:
         return
@@ -317,14 +258,7 @@ def load_previous_data_into_model(ax_client, all_results, transfer_learning=Fals
             # Extract only the parameters we're optimizing
             parameters = {}
             for param in optimize_params:
-                if param == "volume" and transfer_learning:
-                    # For transfer learning, get volume from result
-                    if "volume" in result:
-                        parameters[param] = float(result[param])
-                    else:
-                        print(f"  Skipping result missing volume parameter")
-                        break
-                elif param in result:
+                if param in result:
                     # Convert to appropriate type
                     if param in ['aspirate_speed', 'dispense_speed']:
                         parameters[param] = int(result[param])
