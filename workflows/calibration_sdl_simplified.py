@@ -92,8 +92,8 @@ DEFAULT_INITIAL_PARAMETER_SETS = 5
 
 # Active learning settings
 DEFAULT_USE_LLM_FOR_SCREENING = False
-DEFAULT_BAYESIAN_MODEL_TYPE = 'qNEHVI'  # Use multi-objective optimization
-DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT = 'qNEHVI'  # Model type for subsequent volumes
+DEFAULT_BAYESIAN_MODEL_TYPE = 'qNEHVI'  # Use multi-objective optimization for first volume
+DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT = 'qLogEI'  # Single-objective (deviation only) for subsequent volumes
 
 # Overaspirate configuration
 DEFAULT_OVERASPIRATE_BASE_UL = 5.0
@@ -180,8 +180,9 @@ SIM_VAR_MULTIPLIER = DEFAULT_SIM_VAR_MULTIPLIER
 USE_SELECTIVE_OPTIMIZATION = True
 VOLUME_DEPENDENT_PARAMS = ["blowout_vol", "overaspirate_vol"]
 
-# Global measurement counter
+# Global measurement counter and volume-specific calibrations
 global_measurement_count = 0
+volume_overaspirate_calibrations = {}  # Store volume-specific overaspirate calibrations
 
 def pipet_and_measure_tracked(*args, **kwargs):
     """
@@ -1074,6 +1075,132 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
 
 # --- OVERASPIRATE CALIBRATION (REUSE FROM MODULAR) ---
 
+def calculate_first_volume_constraint(best_candidate, volume):
+    """
+    Calculate overaspirate constraint for first volume based on screening shortfall.
+    
+    Args:
+        best_candidate: Best screening candidate with deviation and parameters
+        volume: Target volume in mL
+        
+    Returns:
+        max_overaspirate_ml: Upper constraint for overaspirate_vol parameter
+    """
+    # Calculate shortfall from the screening result using actual measured volume
+    target_volume_ul = volume * 1000
+    
+    # Use actual average measured volume if available, otherwise fall back to deviation calculation
+    raw_measurements = best_candidate.get('raw_measurements', [])
+    if raw_measurements:
+        # Use actual average measured volume (handles both over- and under-delivery)
+        avg_measured_volume_ml = np.mean(raw_measurements)  # raw_measurements are in mL
+        measured_volume_ul = avg_measured_volume_ml * 1000  # Convert to μL
+        print(f"   📏 Using actual measured volume: {measured_volume_ul:.1f}μL from {len(raw_measurements)} measurements")
+    else:
+        # Fallback: calculate from deviation (assuming under-delivery)
+        deviation_pct = best_candidate.get('deviation', 0)
+        measured_volume_ul = target_volume_ul * (1 - deviation_pct / 100)
+        print(f"   📏 Using deviation-calculated volume: {measured_volume_ul:.1f}μL (deviation: {deviation_pct:.1f}%)")
+    
+    shortfall_ul = target_volume_ul - measured_volume_ul  # Positive = under-delivery, Negative = over-delivery
+    
+    # Get existing overaspirate from screening parameters
+    existing_overaspirate_ul = best_candidate.get('overaspirate_vol', 0) * 1000
+    
+    # Calculate constraint: existing + shortfall + buffer
+    # Note: shortfall can be negative (over-delivery), which would reduce total overaspirate needed
+    max_overaspirate_ul = existing_overaspirate_ul + shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
+    
+    # Ensure minimum constraint (prevent negative overaspirate)
+    min_overaspirate_ul = 1.0  # Minimum 1μL overaspirate
+    max_overaspirate_ul = max(max_overaspirate_ul, min_overaspirate_ul)
+    max_overaspirate_ml = max_overaspirate_ul / 1000  # Convert back to mL
+    
+    print(f"   📊 First volume constraint calculation:")
+    if shortfall_ul >= 0:
+        print(f"     Target: {target_volume_ul:.1f}μL, Measured: {measured_volume_ul:.1f}μL → Under-delivery: {shortfall_ul:.1f}μL")
+    else:
+        print(f"     Target: {target_volume_ul:.1f}μL, Measured: {measured_volume_ul:.1f}μL → Over-delivery: {abs(shortfall_ul):.1f}μL")
+    print(f"     Existing overaspirate: {existing_overaspirate_ul:.1f}μL")
+    print(f"     Buffer: {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f}μL")
+    print(f"     → Max overaspirate constraint: {max_overaspirate_ul:.1f}μL ({max_overaspirate_ml:.4f}mL)")
+    
+    return max_overaspirate_ml
+
+def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, lash_e, state, 
+                                         autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set):
+    """
+    Calibrate overvolume parameters using final optimized parameters from first volume.
+    Tests optimized parameters on remaining volumes and calculates volume-specific shortfalls.
+    
+    Args:
+        optimized_params: Final optimized parameters from first volume
+        remaining_volumes: List of volumes to test (excluding first volume)
+        
+    Returns:
+        dict: {volume_ml: {'guess_ml': X, 'max_ml': Y}} for each remaining volume
+    """
+    if not remaining_volumes:
+        print("⚠️  No remaining volumes for post-optimization overaspirate calibration")
+        return {}
+    
+    print(f"\n🔬 POST-OPTIMIZATION OVERASPIRATE CALIBRATION")
+    print(f"   Testing optimized parameters on {len(remaining_volumes)} volumes...")
+    
+    volume_calibrations = {}
+    
+    for volume in remaining_volumes:
+        # Check budget before each measurement
+        if global_measurement_count >= MAX_MEASUREMENTS:
+            print(f"🛑 BUDGET EXHAUSTED: Cannot continue overaspirate calibration")
+            break
+            
+        print(f"   🧪 Testing {volume*1000:.0f}μL...", end=" ")
+        
+        expected_mass = volume * LIQUIDS[liquid]["density"]
+        expected_time = volume * 10.146 + 9.5813
+        
+        check_if_measurement_vial_full(lash_e, state)
+        liquid_source = get_liquid_source_with_vial_management(lash_e, state)
+        
+        # Single measurement using optimized parameters
+        result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
+                                          volume, optimized_params, expected_mass, expected_time, 
+                                          1, SIMULATE, autosave_raw_path, raw_measurements, 
+                                          liquid, new_pipet_each_time_set, "POST_OPT_OVERVOLUME_ASSAY")
+        
+        # Get actual measured volume from raw_measurements
+        if raw_measurements:
+            actual_mass = raw_measurements[-1]['mass']
+            actual_volume_ml = actual_mass / LIQUIDS[liquid]["density"]
+        else:
+            actual_volume_ml = volume  # Fallback
+        
+        # Calculate shortfall and overaspirate adjustments
+        target_volume_ul = volume * 1000
+        measured_volume_ul = actual_volume_ml * 1000
+        shortfall_ul = target_volume_ul - measured_volume_ul
+        
+        existing_overaspirate_ul = optimized_params.get('overaspirate_vol', 0) * 1000
+        
+        # Calculate guess (no buffer) and max constraint (with buffer)
+        guess_overaspirate_ul = existing_overaspirate_ul + shortfall_ul
+        max_overaspirate_ul = guess_overaspirate_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
+        
+        # Convert to mL and store
+        volume_calibrations[volume] = {
+            'guess_ml': guess_overaspirate_ul / 1000,
+            'max_ml': max_overaspirate_ul / 1000,
+            'shortfall_ul': shortfall_ul,
+            'measured_volume_ul': measured_volume_ul
+        }
+        
+        print(f"{measured_volume_ul:.1f}μL measured (shortfall: {shortfall_ul:+.1f}μL)")
+        print(f"     → Guess: {guess_overaspirate_ul:.1f}μL, Max: {max_overaspirate_ul:.1f}μL")
+    
+    print(f"   ✅ Post-optimization overaspirate calibration complete for {len(volume_calibrations)} volumes")
+    return volume_calibrations
+
 def get_liquid_source_with_vial_management(lash_e, state, minimum_volume=2.0):
     """Get liquid source with vial management."""
     try:
@@ -1168,10 +1295,17 @@ def calibrate_overvolume_parameters(screening_candidates, remaining_volumes, las
     first_volume_ul = first_volume * 1000  # Convert to uL
     deviation_pct = best_candidate['deviation']
     
-    # Calculate measured volume from deviation
-    # Deviation = |target - measured| / target * 100 (absolute deviation)
-    # For under-delivery (most common): measured = target * (1 - deviation/100)
-    measured_volume_ul = first_volume_ul * (1 - deviation_pct / 100)
+    # Use actual measured volume if available, otherwise calculate from deviation
+    raw_measurements = best_candidate.get('raw_measurements', [])
+    if raw_measurements:
+        # Use actual average measured volume (handles both over- and under-delivery)
+        avg_measured_volume_ml = np.mean(raw_measurements)  # raw_measurements are in mL
+        measured_volume_ul = avg_measured_volume_ml * 1000  # Convert to μL
+    else:
+        # Fallback: calculate from deviation (assuming under-delivery)
+        # Deviation = |target - measured| / target * 100 (absolute deviation)
+        # For under-delivery (most common): measured = target * (1 - deviation/100)
+        measured_volume_ul = first_volume_ul * (1 - deviation_pct / 100)
     
     calibration_data.append({
         'volume_set': first_volume_ul,
@@ -1351,56 +1485,40 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
                                           liquid, new_pipet_each_time_set)
     all_results.extend(screening_results)
     
-    # Phase 2: Overaspirate calibration (if enabled)
-    if AUTO_CALIBRATE_OVERVOLUME and len(VOLUMES) > 1:
-        # Check budget before starting overaspirate calibration
-        measurements_remaining = MAX_MEASUREMENTS - global_measurement_count
-        volumes_remaining = len(VOLUMES) - 1  # Remaining volumes after first
-        min_measurements_needed = volumes_remaining * 2  # Minimum 2 measurements per remaining volume
+    # Phase 2: Calculate first volume constraint based on screening shortfall
+    print(f"\n🎯 CALCULATING FIRST VOLUME CONSTRAINT...")
+    
+    # Select best screening candidate using ranking system
+    ranked_candidates = rank_candidates_by_priority(screening_results, volume, tolerances)
+    best_candidate = ranked_candidates[0] if ranked_candidates else screening_results[0]
+    print(f"   🏆 Selected best screening candidate: {best_candidate.get('deviation', 0):.1f}% deviation")
+    
+    max_overaspirate_ml_updated = calculate_first_volume_constraint(best_candidate, volume)
+    max_overaspirate_ul_updated = max_overaspirate_ml_updated * 1000  # Convert to μL for display and optimizer
+    print(f"   ✅ Updated max overaspirate constraint: {max_overaspirate_ul_updated:.1f}μL")
+    print(f"   🔍 DEBUG: mL value = {max_overaspirate_ml_updated:.6f}mL, μL value = {max_overaspirate_ul_updated:.6f}μL")
+    
+    # Recreate ax_client with updated constraint if it changed  
+    if abs(max_overaspirate_ul_updated - max_overaspirate_ul) > 0.01:  # Only recreate if meaningful change (compare in μL)
+        print(f"   🔄 Recreating optimizer with updated constraint ({max_overaspirate_ul:.1f} → {max_overaspirate_ul_updated:.1f}μL)...")
+        ax_client = optimizer_3obj.create_model(
+            seed=SEED,
+            num_initial_recs=0,  # No initial SOBOL since we already have screening data
+            bayesian_batch_size=PARAMETER_SETS_PER_RECOMMENDATION,
+            volume=volume,
+            tip_volume=tip_volume,
+            model_type=BAYESIAN_MODEL_TYPE,
+            optimize_params=ALL_PARAMS,
+            fixed_params={},
+            simulate=SIMULATE,
+            max_overaspirate_ul=max_overaspirate_ul_updated  # Pass in μL as expected
+        )
         
-        if measurements_remaining < min_measurements_needed + len(VOLUMES[1:]):  # +1 measurement per volume for overaspirate calibration
-            print(f"\n⚠️  SKIPPING OVERASPIRATE CALIBRATION: Insufficient budget")
-            print(f"   Need {min_measurements_needed + len(VOLUMES[1:])} measurements, have {measurements_remaining} remaining")
-        else:
-            print(f"\n🔬 OVERASPIRATE CALIBRATION...")
-            print(f"   Budget check: {measurements_remaining} remaining, need ~{len(VOLUMES[1:])} for calibration")
-            remaining_volumes = VOLUMES[1:]  # Skip first volume
-            criteria = {'max_deviation_ul': tolerances['deviation_ul']}
-            
-            new_base_ul, new_scaling_percent, calibration_data = calibrate_overvolume_parameters(
-                screening_results, remaining_volumes, lash_e, state, autosave_raw_path, 
-                raw_measurements, liquid, new_pipet_each_time_set, criteria
-            )
-            
-            if new_base_ul is not None:
-                global OVERASPIRATE_BASE_UL, OVERASPIRATE_SCALING_PERCENT
-                old_base = OVERASPIRATE_BASE_UL
-                old_scaling = OVERASPIRATE_SCALING_PERCENT
-                OVERASPIRATE_BASE_UL = new_base_ul
-                OVERASPIRATE_SCALING_PERCENT = new_scaling_percent
-                print(f"   📈 Updated overaspirate parameters: {old_base:.1f}μL + {old_scaling:.1f}% → {new_base_ul:.1f}μL + {new_scaling_percent:.1f}%")
-                
-                # CRITICAL: Recreate ax_client with updated overaspirate bounds
-                print(f"   🔄 Recreating optimizer with updated overaspirate bounds...")
-                max_overaspirate_ul_updated = get_max_overaspirate_ul(volume)  # This now uses updated parameters
-                
-                # Load existing screening data into new optimizer
-                ax_client = optimizer_3obj.create_model(
-                    seed=SEED,
-                    num_initial_recs=0,  # No initial SOBOL since we already have screening data
-                    bayesian_batch_size=PARAMETER_SETS_PER_RECOMMENDATION,
-                    volume=volume,
-                    tip_volume=tip_volume,
-                    model_type=BAYESIAN_MODEL_TYPE,
-                    optimize_params=ALL_PARAMS,
-                    fixed_params={},
-                    simulate=SIMULATE,
-                    max_overaspirate_ul=max_overaspirate_ul_updated  # Uses updated bounds!
-                )
-                
-                # Load screening results into the new optimizer
-                optimizer_3obj.load_previous_data_into_model(ax_client, screening_results)
-                print(f"   ✅ Loaded {len(screening_results)} screening results into updated optimizer")
+        # Load screening results into the new optimizer
+        optimizer_3obj.load_previous_data_into_model(ax_client, screening_results)
+        print(f"   ✅ Loaded {len(screening_results)} screening results into updated optimizer")
+    else:
+        print(f"   ✅ Constraint unchanged, keeping existing optimizer")
     
     # Phase 3: 3-objective optimization with simplified stopping
     print(f"\n⚙️  3-OBJECTIVE OPTIMIZATION...")
@@ -1543,13 +1661,24 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
     volume_start_count = global_measurement_count
     volume_results = []  # Results for this volume only
     
+    # Prepare inherited parameters with volume-specific overaspirate if available
+    test_params = successful_params.copy()
+    volume_ul = volume * 1000  # Convert to μL for lookup
+    if volume_ul in volume_overaspirate_calibrations:
+        old_overaspirate = test_params.get('overaspirate_vol', 0) * 1000  # Convert to μL
+        new_overaspirate_ul = volume_overaspirate_calibrations[volume_ul]['guess_overaspirate_ul']
+        test_params['overaspirate_vol'] = new_overaspirate_ul / 1000  # Convert back to mL
+        print(f"   🎯 Using calibrated overaspirate guess: {old_overaspirate:.1f}μL → {new_overaspirate_ul:.1f}μL")
+    else:
+        print(f"   🎯 Using inherited overaspirate: {test_params.get('overaspirate_vol', 0)*1000:.1f}μL")
+
     # Test inherited parameters first
     print(f"   Testing inherited parameters...")
     check_if_measurement_vial_full(lash_e, state)
     liquid_source = get_liquid_source_with_vial_management(lash_e, state)
     
     inherited_result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
-                                               volume, successful_params, expected_mass, expected_time, 
+                                               volume, test_params, expected_mass, expected_time, 
                                                1, SIMULATE, autosave_raw_path, raw_measurements, 
                                                liquid, new_pipet_each_time_set, "INHERITED_TEST")
     
@@ -1581,7 +1710,7 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             check_if_measurement_vial_full(lash_e, {"measurement_vial_name": state["measurement_vial_name"]})
             
             result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
-                                              volume, successful_params, expected_mass, expected_time, 
+                                              volume, test_params, expected_mass, expected_time, 
                                               1, SIMULATE, autosave_raw_path, raw_measurements, 
                                               liquid, new_pipet_each_time_set, "INHERITED_TEST")
             
@@ -1614,7 +1743,7 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             'variability': variability,
             'replicate_count': PRECISION_MEASUREMENTS,
             'strategy': 'INHERITED_TEST',
-            **successful_params
+            **test_params
         }
         volume_results.append(inherited_comprehensive_result)
         
@@ -1633,7 +1762,7 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             # Add the successful inherited test result to all_results so CSV can find it
             all_results.append(inherited_comprehensive_result)
             
-            return True, successful_params, 'success'
+            return True, test_params, 'success'
     else:
         # Poor result or insufficient budget for replicates - use penalty variability
         inherited_comprehensive_result = {
@@ -1643,7 +1772,7 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             'variability': ADAPTIVE_PENALTY_VARIABILITY,
             'replicate_count': 1,
             'strategy': 'INHERITED_TEST',
-            **successful_params
+            **test_params
         }
         volume_results.append(inherited_comprehensive_result)
         print(f"   ❌ Inherited parameters need improvement: {deviation:.1f}% deviation")
@@ -1658,7 +1787,7 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
         # This reuses the proven adaptive testing approach from the initial volume
         optimization_results = run_budget_constrained_optimization(
             volume, lash_e, state, autosave_raw_path, raw_measurements,
-            liquid, new_pipet_each_time_set, successful_params, remaining_budget, tolerances, all_results
+            liquid, new_pipet_each_time_set, test_params, remaining_budget, tolerances, all_results
         )
         volume_results.extend(optimization_results)
     
@@ -1697,17 +1826,24 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
 def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path, raw_measurements,
                                        liquid, new_pipet_each_time_set, successful_params, budget, tolerances, all_results):
     """
-    Run optimization within measurement budget using 2-objective optimization (deviation + variability).
+    Run optimization within measurement budget using configurable optimization type.
     
-    Uses the 3-objective optimizer but focuses on deviation and variability only, with time 
-    set to a neutral value since speed/timing parameters are inherited from first volume.
+    - Single-objective: deviation only (if BAYESIAN_MODEL_TYPE_SUBSEQUENT is qLogEI/qEI)
+    - Multi-objective: deviation + variability (if BAYESIAN_MODEL_TYPE_SUBSEQUENT is qNEHVI)
+    
     Only optimizes volume-dependent parameters, keeps others fixed from successful_params.
     """
     if budget <= 0:
         return []
+    
+    # Choose optimizer based on model type
+    use_single_objective = BAYESIAN_MODEL_TYPE_SUBSEQUENT in ['qLogEI', 'qEI']
         
     print(f"   Running budget-constrained optimization: {budget} measurements available")
-    print(f"   Using 2-objective optimization (deviation + variability) with {BAYESIAN_MODEL_TYPE_SUBSEQUENT}")
+    if use_single_objective:
+        print(f"   Using single-objective optimization (deviation only) with {BAYESIAN_MODEL_TYPE_SUBSEQUENT}")
+    else:
+        print(f"   Using 2-objective optimization (deviation + variability) with {BAYESIAN_MODEL_TYPE_SUBSEQUENT}")
     
     # Calculate expected values
     expected_mass = volume * LIQUIDS[liquid]["density"]
@@ -1718,28 +1854,55 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
     fixed_params = {k: v for k, v in successful_params.items() 
                    if k not in volume_dependent_params}
     
-    # Check if 3-objective optimizer is available for 2-objective optimization (deviation + variability)
-    if not OPTIMIZER_3OBJ_AVAILABLE:
-        print("   ⚠️  3-objectives optimizer not available - using inherited parameters")
+    if use_single_objective and not OPTIMIZER_SINGLE_AVAILABLE:
+        print("   ⚠️  Single-objective optimizer not available - using inherited parameters")
+        return []
+    elif not use_single_objective and not OPTIMIZER_3OBJ_AVAILABLE:
+        print("   ⚠️  Multi-objective optimizer not available - using inherited parameters") 
         return []
     
-    # Create 2-objective optimizer focusing on deviation + variability (using 3-obj optimizer)
+    # Create appropriate optimizer
     tip_volume = get_tip_volume_for_volume(lash_e, volume)
-    max_overaspirate_ul = get_max_overaspirate_ul(volume)
+    
+    # Use volume-specific overaspirate calibration if available, otherwise default
+    global volume_overaspirate_calibrations
+    volume_ul = volume * 1000  # Convert to μL for lookup
+    if volume_ul in volume_overaspirate_calibrations:
+        max_overaspirate_ul = volume_overaspirate_calibrations[volume_ul]['max_overaspirate_ul']
+        print(f"   🎯 Using calibrated overaspirate constraint: {max_overaspirate_ul:.1f}μL")
+    else:
+        max_overaspirate_ul = get_max_overaspirate_ul(volume)
+        print(f"   🎯 Using default overaspirate constraint: {max_overaspirate_ul:.1f}μL")
     
     try:
-        ax_client = optimizer_3obj.create_model(
-            seed=SEED,
-            num_initial_recs=min(3, budget // 2),  # Use half budget for initial exploration
-            bayesian_batch_size=1,
-            volume=volume,
-            tip_volume=tip_volume,
-            model_type=BAYESIAN_MODEL_TYPE_SUBSEQUENT,  # Use configurable model type
-            optimize_params=volume_dependent_params,
-            fixed_params=fixed_params,
-            simulate=SIMULATE,
-            max_overaspirate_ul=max_overaspirate_ul
-        )
+        if use_single_objective:
+            # Single-objective optimization (deviation only)
+            ax_client = optimizer_single.create_model(
+                seed=SEED,
+                num_initial_recs=min(3, budget // 2),  # Use half budget for initial exploration
+                bayesian_batch_size=1,
+                volume=volume,
+                tip_volume=tip_volume,
+                model_type=BAYESIAN_MODEL_TYPE_SUBSEQUENT,  # qLogEI or qEI
+                optimize_params=volume_dependent_params,
+                fixed_params=fixed_params,
+                simulate=SIMULATE,
+                max_overaspirate_ul=max_overaspirate_ul
+            )
+        else:
+            # Multi-objective optimization (deviation + variability)
+            ax_client = optimizer_3obj.create_model(
+                seed=SEED,
+                num_initial_recs=min(3, budget // 2),  # Use half budget for initial exploration
+                bayesian_batch_size=1,
+                volume=volume,
+                tip_volume=tip_volume,
+                model_type=BAYESIAN_MODEL_TYPE_SUBSEQUENT,
+                optimize_params=volume_dependent_params,
+                fixed_params=fixed_params,
+                simulate=SIMULATE,
+                max_overaspirate_ul=max_overaspirate_ul
+            )
     except Exception as e:
         print(f"   ⚠️  Could not create optimizer: {e}")
         return []
@@ -1786,13 +1949,19 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
             
             print(f"{adaptive_result['deviation']:.1f}% dev ({actual_measurements_used} meas)")
             
-            # Add result to optimizer (2-objective: deviation + variability, time set to minimal impact)
-            model_result = {
-                "deviation": adaptive_result['deviation'],
-                "variability": adaptive_result['variability'], 
-                "time": 30.0  # Fixed neutral time since we're not optimizing for it
-            }
-            optimizer_3obj.add_result(ax_client, trial_index, model_result)
+            # Add result to optimizer 
+            if use_single_objective:
+                # Single-objective: only deviation matters
+                model_result = {"deviation": adaptive_result['deviation']}
+                optimizer_single.add_result(ax_client, trial_index, model_result)
+            else:
+                # Multi-objective: deviation + variability, time set to minimal impact
+                model_result = {
+                    "deviation": adaptive_result['deviation'],
+                    "variability": adaptive_result['variability'], 
+                    "time": 30.0  # Fixed neutral time since we're not optimizing for it
+                }
+                optimizer_3obj.add_result(ax_client, trial_index, model_result)
             
             # Store result for ranking
             full_result = dict(params)
@@ -2116,6 +2285,20 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
                 print(f"✅ VOLUME {volume*1000:.0f}μL COMPLETED SUCCESSFULLY")
             else:
                 print(f"🔶 VOLUME {volume*1000:.0f}μL PARTIAL SUCCESS - best effort within tolerance limits")
+            
+            # Post-optimization overaspirate assay for subsequent volumes (if any)
+            if len(VOLUMES) > 1:
+                print(f"\n🔬 RUNNING POST-OPTIMIZATION OVERASPIRATE ASSAY...")
+                remaining_volumes = VOLUMES[1:]  # Skip first volume
+                volume_calibrations = calibrate_overvolume_post_optimization(
+                    best_params, remaining_volumes, lash_e, state, autosave_raw_path, 
+                    raw_measurements, LIQUID, new_pipet_each_time_set
+                )
+                
+                # Store volume-specific calibrations for subsequent optimization seeding
+                global volume_overaspirate_calibrations
+                volume_overaspirate_calibrations = volume_calibrations
+                print(f"   ✅ Calibrated overaspirate for {len(volume_calibrations)} subsequent volumes")
                 
         else:
             # Subsequent volumes: budget-aware optimization
@@ -2320,7 +2503,7 @@ if __name__ == "__main__":
     optimal_conditions, save_dir = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="glycerol",
-        simulate=False,
+        simulate=True,
         volumes=[0.05, 0.025, 0.1]  # Test with 3 volumes
     )
     
