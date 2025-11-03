@@ -319,7 +319,21 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         avg_deviation = np.mean(all_deviations)
         avg_time = np.mean([entry["replicate_time"] for entry in raw_measurements[-replicate_count:]])
         
-        return {"deviation": avg_deviation, "time": avg_time}
+        # Get measurement data from simulation
+        recent_measurements = raw_measurements[-replicate_count:]
+        all_masses = [entry["mass"] for entry in recent_measurements]
+        all_volumes = [entry["calculated_volume"] for entry in recent_measurements]
+        avg_mass = np.mean(all_masses)
+        avg_volume = np.mean(all_volumes)
+        
+        return {
+            "deviation": avg_deviation, 
+            "time": avg_time,
+            "measured_mass": avg_mass,
+            "measured_volume": avg_volume,
+            "all_masses": all_masses,
+            "all_volumes": all_volumes
+        }
     else:
         # Real robot mode
         measurements = []
@@ -384,7 +398,18 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         percent_errors = [abs((m - expected_measurement) / expected_measurement * 100) for m in measurements]
         deviation = np.mean(percent_errors)
         time_score = ((end - start) / replicate_count)
-        return {"deviation": deviation, "time": time_score}
+        
+        # Calculate average measured volume for display
+        avg_measured_volume = avg_measurement / liquid_density
+        
+        return {
+            "deviation": deviation, 
+            "time": time_score,
+            "measured_mass": avg_measurement,
+            "measured_volume": avg_measured_volume,
+            "all_masses": measurements,
+            "all_volumes": [m / liquid_density for m in measurements]
+        }
 
 def strip_tuples(d):
     """Convert any (x, None) → x in a flat dict."""

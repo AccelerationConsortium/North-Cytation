@@ -151,6 +151,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
             # Convert max_overaspirate_ul (microliters) to mL for consistency with other volumes
             max_overaspirate_ml = max_overaspirate_ul / 1000.0
             param_config["bounds"] = [0.0, max_overaspirate_ml]  # Fixed maximum overaspirate volume
+            print(f"🔧 OPTIMIZER DEBUG: Setting overaspirate_vol bounds to [0.0, {max_overaspirate_ml:.6f}] mL ({max_overaspirate_ul:.1f}μL)")
         elif param_name == "volume" and transfer_learning:
             # Use provided volume bounds for transfer learning
             if volume_bounds:
@@ -178,7 +179,10 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
     else:
         # Single volume mode - use fixed volume value
         if "post_asp_air_vol" in optimize_params and "overaspirate_vol" in optimize_params:
-            constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume - volume}")
+            constraint_value = tip_volume - volume
+            constraint_str = f"post_asp_air_vol + overaspirate_vol <= {constraint_value}"
+            constraints.append(constraint_str)
+            print(f"🔧 OPTIMIZER DEBUG: Adding constraint: {constraint_str} (tip_volume={tip_volume}, volume={volume})")
         elif "post_asp_air_vol" in optimize_params and "overaspirate_vol" in fixed_params:
             fixed_overaspirate = fixed_params["overaspirate_vol"]
             constraints.append(f"post_asp_air_vol <= {tip_volume - volume - fixed_overaspirate}")

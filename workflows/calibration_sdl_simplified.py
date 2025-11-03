@@ -99,7 +99,7 @@ DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT = 'qLogEI'  # Single-objective (deviation
 DEFAULT_OVERASPIRATE_BASE_UL = 5.0
 DEFAULT_OVERASPIRATE_SCALING_PERCENT = 5.0
 DEFAULT_AUTO_CALIBRATE_OVERVOLUME = True
-DEFAULT_OVERVOLUME_CALIBRATION_BUFFER_UL = 2.0
+DEFAULT_OVERVOLUME_CALIBRATION_BUFFER_UL = 5.0  # Fixed: Was 2.0, should be 5.0μL
 DEFAULT_OVERVOLUME_MAX_BASE_UL = 50.0
 DEFAULT_OVERVOLUME_MAX_PERCENT = 100.0
 
@@ -652,21 +652,11 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
     
     initial_deviation = result['deviation']  # pipet_and_measure always returns deviation
     initial_time = result['time']  # pipet_and_measure always returns time
+    initial_measured_volume = result.get('measured_volume', 0)  # pipet_and_measure now returns measured_volume
     
     all_deviations.append(initial_deviation)
     all_times.append(initial_time)
-    
-    # Extract actual measurement volume for variability calculation
-    if raw_measurements:
-        actual_mass = raw_measurements[-1]['mass']
-        liquid_density = LIQUIDS[liquid]["density"]
-        actual_volume = actual_mass / liquid_density
-        all_measurements.append(actual_volume)
-    else:
-        # Fallback for simulation
-        liquid_density = LIQUIDS[liquid]["density"]
-        actual_volume = expected_mass / liquid_density
-        all_measurements.append(actual_volume)
+    all_measurements.append(initial_measured_volume)
     
     print(f"{initial_deviation:.1f}% deviation")
     
@@ -705,18 +695,11 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             
             deviation = result['deviation']  # pipet_and_measure always returns deviation
             time_taken = result['time']  # pipet_and_measure always returns time
+            measured_volume = result.get('measured_volume', 0)  # pipet_and_measure now returns measured_volume
             
             all_deviations.append(deviation)
             all_times.append(time_taken)
-            
-            # Extract measurement volume
-            if raw_measurements:
-                actual_mass = raw_measurements[-1]['mass']
-                actual_volume = actual_mass / liquid_density
-                all_measurements.append(actual_volume)
-            else:
-                actual_volume = expected_mass / liquid_density
-                all_measurements.append(actual_volume)
+            all_measurements.append(measured_volume)
             
             print(f"{deviation:.1f}% dev")
         
@@ -739,6 +722,9 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
         else:
             variability = 0.0  # Single measurement somehow
     
+    # Calculate average measured volume
+    avg_measured_volume = np.mean(all_measurements) if all_measurements else 0
+    
     return {
         'deviation': avg_deviation,
         'variability': variability,
@@ -746,7 +732,8 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
         'replicate_count': replicate_count,
         'all_measurements': all_measurements,
         'all_deviations': all_deviations,
-        'all_times': all_times
+        'all_times': all_times,
+        'measured_volume': avg_measured_volume
     }
 
 # --- GOOD TRIAL EVALUATION ---
@@ -958,7 +945,7 @@ def check_stopping_criteria(all_results, volume_ml, tolerances):
     else:
         return {
             'should_stop': False,
-            'reason': f'Need {MIN_GOOD_PARAMETER_SETS - good_parameter_sets} more good parameter sets or {MAX_MEASUREMENTS - total_measurements} more measurements',
+            'reason': f'Need {MIN_GOOD_PARAMETER_SETS - good_parameter_sets} more good parameter sets or {MAX_MEASUREMENTS_INITIAL_VOLUME - total_measurements} more measurements',
             'good_trials': good_parameter_sets,
             'total_trials': total_parameter_sets
         }
@@ -1115,7 +1102,10 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
         })
         screening_results.append(full_result)
         
-        print(f"      → {adaptive_result['deviation']:.1f}% deviation, {adaptive_result['variability']:.1f}% variability, {adaptive_result['time']:.1f}s ({adaptive_result['replicate_count']} reps)")
+        # Display target vs measured volume
+        target_ul = volume * 1000  # Convert to μL
+        measured_ul = adaptive_result.get('measured_volume', 0) * 1000  # Convert to μL
+        print(f"      → {adaptive_result['deviation']:.1f}% dev, {adaptive_result['variability']:.1f}% var, {adaptive_result['time']:.1f}s | Target: {target_ul:.1f}μL → Measured: {measured_ul:.1f}μL [{adaptive_result['replicate_count']} reps]")
     
     print(f"   ✅ Screening complete: {len(screening_results)} trials")
     return screening_results
@@ -1154,9 +1144,9 @@ def calculate_first_volume_constraint(best_candidate, volume):
     # Get existing overaspirate from screening parameters
     existing_overaspirate_ul = best_candidate.get('overaspirate_vol', 0) * 1000
     
-    # Calculate constraint: existing + shortfall + buffer
+    # Calculate constraint: shortfall + buffer (don't use existing overaspirate from best trial)
     # Note: shortfall can be negative (over-delivery), which would reduce total overaspirate needed
-    max_overaspirate_ul = existing_overaspirate_ul + shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
+    max_overaspirate_ul = shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
     
     # Ensure minimum constraint (prevent negative overaspirate)
     min_overaspirate_ul = 1.0  # Minimum 1μL overaspirate
@@ -1548,6 +1538,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     # Recreate ax_client with updated constraint if it changed  
     if abs(max_overaspirate_ul_updated - max_overaspirate_ul) > 0.01:  # Only recreate if meaningful change (compare in μL)
         print(f"   🔄 Recreating optimizer with updated constraint ({max_overaspirate_ul:.1f} → {max_overaspirate_ul_updated:.1f}μL)...")
+        print(f"   🔧 CONSTRAINT DEBUG: About to pass max_overaspirate_ul={max_overaspirate_ul_updated:.6f}μL to create_model")
         ax_client = optimizer_3obj.create_model(
             seed=SEED,
             num_initial_recs=0,  # No initial SOBOL since we already have screening data
@@ -1630,7 +1621,11 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         
         quality = evaluate_trial_quality(full_result, volume, tolerances)
         quality_status = "✅ GOOD" if quality['is_good'] else "❌ needs improvement"
-        print(f"      → {adaptive_result['deviation']:.1f}% dev, {adaptive_result['variability']:.1f}% var, {adaptive_result['time']:.1f}s ({quality_status}) [{adaptive_result['replicate_count']} reps]")
+        
+        # Display target vs measured volume
+        target_ul = volume * 1000  # Convert to μL  
+        measured_ul = adaptive_result.get('measured_volume', 0) * 1000  # Convert to μL
+        print(f"      → {adaptive_result['deviation']:.1f}% dev, {adaptive_result['variability']:.1f}% var, {adaptive_result['time']:.1f}s | Target: {target_ul:.1f}μL → Measured: {measured_ul:.1f}μL ({quality_status}) [{adaptive_result['replicate_count']} reps]")
     
     # Phase 4: Select best candidate and run precision test
     print(f"\n🏆 SELECTING BEST CANDIDATE...")
@@ -2262,7 +2257,8 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
     
     # Setup autosave
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_name = f"calibration_simplified_{LIQUID}_{timestamp}"
+    simulate_suffix = "_simulate" if SIMULATE else ""
+    experiment_name = f"calibration_simplified_{LIQUID}_{timestamp}{simulate_suffix}"
     autosave_dir = os.path.join(BASE_AUTOSAVE_DIR, experiment_name)
     os.makedirs(autosave_dir, exist_ok=True)
     
@@ -2562,10 +2558,10 @@ if __name__ == "__main__":
     optimal_conditions, save_dir = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="glycerol",
-        simulate=False,
+        simulate=True,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        sim_dev_multiplier=0.7,  # Stricter simulation (less noise) - default is 2.0x
-        sim_var_multiplier=0.7   # Stricter simulation (less noise) - default is 2.0x
+        sim_dev_multiplier=1.5,  # Stricter simulation (less noise) - default is 2.0x
+        sim_var_multiplier=1.5   # Stricter simulation (less noise) - default is 2.0x
     )
     
     # Analyze results
