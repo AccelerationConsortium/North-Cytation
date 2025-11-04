@@ -896,12 +896,12 @@ def rank_candidates_by_priority(candidates, volume_ml, tolerances):
     prec_std = max(statistics.stdev(raw_precisions) if len(raw_precisions) > 1 else 0.1, 0.1)
     time_std = max(statistics.stdev(raw_times) if len(raw_times) > 1 else 1.0, 1.0)
     
-    # Calculate normalized scores using direct performance scoring (lower raw value = lower score)
+    # Calculate normalized scores and composite scores using standard deviation normalization
     for candidate in evaluated_candidates:
-        # Compare to zero instead of mean - lower raw values get better (lower) scores
-        acc_score = candidate['raw_accuracy'] / acc_std * 100
-        prec_score = candidate['raw_precision'] / prec_std * 100  
-        time_score = candidate['raw_time'] / time_std * 100
+        # Normalize using standard deviations from mean (compresses small differences)
+        acc_score = abs(candidate['raw_accuracy'] - acc_mean) / acc_std * 100
+        prec_score = abs(candidate['raw_precision'] - prec_mean) / prec_std * 100  
+        time_score = abs(candidate['raw_time'] - time_mean) / time_std * 100
         
         # Weighted composite score (lower is better)
         composite_score = ACCURACY_WEIGHT * acc_score + PRECISION_WEIGHT * prec_score + TIME_WEIGHT * time_score
@@ -1712,7 +1712,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     # Check if optimizer is available
     if not OPTIMIZER_3OBJ_AVAILABLE:
         print("❌ 3-objectives optimizer not available - cannot proceed with first volume optimization")
-        return False, None, None
+        return False, None
     
     # Determine initial recommendations based on external data availability
     external_data_preview = load_external_calibration_data(volume, liquid)
@@ -1858,7 +1858,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     
     if not first_volume_trials:
         print("   ❌ No trials found for ranking!")
-        return False, None, None
+        return False, None
     
     print(f"   🔍 Ranking {len(first_volume_trials)} total trials (screening + optimization)")
     
@@ -1948,11 +1948,11 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
             else:
                 print(f"   � ORIGINAL BETTER: Keeping original parameters")
             
-            return final_tolerance_met, final_params, final_best
+            return final_tolerance_met, final_params
         else:
             print(f"   ⚠️  Insufficient budget for rescue attempt ({rescue_budget} measurements)")
             print(f"   📊 Using original best parameters as baseline for subsequent volumes")
-            return False, best_params, best_candidate
+            return False, best_params
 
 
 def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_path, raw_measurements, 
@@ -2849,8 +2849,8 @@ if __name__ == "__main__":
         liquid="glycerol",
         simulate=True,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        sim_dev_multiplier=0.01,  # Moderate challenge
-        sim_var_multiplier=0.01
+        sim_dev_multiplier=0.6,  # Moderate challenge
+        sim_var_multiplier=0.6
     )
     
     # Example 2: External data mode (uncomment to use)
