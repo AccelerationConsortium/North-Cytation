@@ -1144,9 +1144,10 @@ def calculate_first_volume_constraint(best_candidate, volume):
     # Get existing overaspirate from screening parameters
     existing_overaspirate_ul = best_candidate.get('overaspirate_vol', 0) * 1000
     
-    # Calculate constraint: shortfall + buffer (don't use existing overaspirate from best trial)
+    # Calculate constraint: existing + shortfall + buffer
+    # Logic: Need baseline amount already tried + additional to cover shortfall + safety buffer
     # Note: shortfall can be negative (over-delivery), which would reduce total overaspirate needed
-    max_overaspirate_ul = shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
+    max_overaspirate_ul = existing_overaspirate_ul + shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
     
     # Ensure minimum constraint (prevent negative overaspirate)
     min_overaspirate_ul = 1.0  # Minimum 1μL overaspirate
@@ -2558,10 +2559,8 @@ if __name__ == "__main__":
     optimal_conditions, save_dir = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="glycerol",
-        simulate=True,
+        simulate=False,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        sim_dev_multiplier=1.5,  # Stricter simulation (less noise) - default is 2.0x
-        sim_var_multiplier=1.5   # Stricter simulation (less noise) - default is 2.0x
     )
     
     # Analyze results
