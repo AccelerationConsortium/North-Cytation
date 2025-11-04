@@ -224,9 +224,12 @@ def reset_global_measurement_count():
     global global_measurement_count
     global_measurement_count = 0
 
-def extract_performance_metrics(all_results, volume_ml, best_params, raw_measurements=None):
+def extract_performance_metrics(all_results, volume_ml, best_params, raw_measurements=None, best_candidate=None):
     """
     Extract key performance metrics for a volume from actual precision test measurements.
+    
+    Args:
+        best_candidate: The actual ranked best candidate (avoids parameter matching issues)
     
     Returns dict with volume_target, volume_measured, average_deviation, variability, time,
     and tolerance check results.
@@ -245,20 +248,15 @@ def extract_performance_metrics(all_results, volume_ml, best_params, raw_measure
             'precision_tolerance_met': None
         }
     
-    # Find the best result that matches the selected parameters
-    best_result = None
-    for result in volume_results:
-        # Check if this result matches the selected parameters (compare a few key params)
-        matches = all(result.get(param) == best_params.get(param) 
-                     for param in ['aspirate_speed', 'dispense_speed', 'overaspirate_vol'] 
-                     if param in best_params and param in result)
-        if matches:
-            best_result = result
-            break
-    
-    # Fallback: use the result with best deviation if no exact match
-    if best_result is None and volume_results:
-        best_result = min(volume_results, key=lambda r: r.get('deviation', float('inf')))
+    # Use the ranked best candidate directly if provided (eliminates parameter matching issues)
+    if best_candidate is not None:
+        best_result = best_candidate
+    else:
+        # Fallback: use the result with best deviation if no candidate provided
+        if volume_results:
+            best_result = min(volume_results, key=lambda r: r.get('deviation', float('inf')))
+        else:
+            best_result = None
     
     if best_result is None:
         return {
@@ -855,22 +853,24 @@ def rank_candidates_by_priority(candidates, volume_ml, tolerances):
         })
         evaluated_candidates.append(candidate_with_metrics)
     
-    # Calculate normalization ranges from actual data
-    acc_min, acc_max = min(raw_accuracies), max(raw_accuracies)
-    prec_min, prec_max = min(raw_precisions), max(raw_precisions)
-    time_min, time_max = min(raw_times), max(raw_times)
+    # Calculate normalization using standard deviation (compresses small differences, preserves large ones)
+    import statistics
     
-    # Ensure minimum ranges to prevent division by zero
-    acc_range = max(acc_max - acc_min, 0.1)
-    prec_range = max(prec_max - prec_min, 0.1)
-    time_range = max(time_max - time_min, 1.0)
+    acc_mean = statistics.mean(raw_accuracies)
+    prec_mean = statistics.mean(raw_precisions) 
+    time_mean = statistics.mean(raw_times)
     
-    # Calculate normalized scores and composite scores
+    # Use standard deviation for normalization (with minimum threshold to prevent division by zero)
+    acc_std = max(statistics.stdev(raw_accuracies) if len(raw_accuracies) > 1 else 0.1, 0.1)
+    prec_std = max(statistics.stdev(raw_precisions) if len(raw_precisions) > 1 else 0.1, 0.1)
+    time_std = max(statistics.stdev(raw_times) if len(raw_times) > 1 else 1.0, 1.0)
+    
+    # Calculate normalized scores and composite scores using standard deviation normalization
     for candidate in evaluated_candidates:
-        # Normalize to 0-100 scale (0 = best performer, 100 = worst performer)
-        acc_score = (candidate['raw_accuracy'] - acc_min) / acc_range * 100
-        prec_score = (candidate['raw_precision'] - prec_min) / prec_range * 100  
-        time_score = (candidate['raw_time'] - time_min) / time_range * 100
+        # Normalize using standard deviations from mean (compresses small differences)
+        acc_score = abs(candidate['raw_accuracy'] - acc_mean) / acc_std * 100
+        prec_score = abs(candidate['raw_precision'] - prec_mean) / prec_std * 100  
+        time_score = abs(candidate['raw_time'] - time_mean) / time_std * 100
         
         # Weighted composite score (lower is better)
         composite_score = ACCURACY_WEIGHT * acc_score + PRECISION_WEIGHT * prec_score + TIME_WEIGHT * time_score
@@ -887,7 +887,7 @@ def rank_candidates_by_priority(candidates, volume_ml, tolerances):
     
     # Log ranking results with composite scores
     print(f"🏆 CANDIDATE RANKING (best first):")
-    print(f"   Data ranges: Acc {acc_min:.1f}-{acc_max:.1f}%, Prec {prec_min:.1f}-{prec_max:.1f}%, Time {time_min:.1f}-{time_max:.1f}s")
+    print(f"   Data stats: Acc μ={acc_mean:.1f}%±{acc_std:.1f}, Prec μ={prec_mean:.1f}%±{prec_std:.1f}, Time μ={time_mean:.1f}s±{time_std:.1f}")
     for i, candidate in enumerate(ranked_candidates[:5]):  # Show top 5
         quality = candidate['quality_evaluation']
         print(f"   #{i+1}: Score={candidate['composite_score']:.1f} "
@@ -1116,13 +1116,14 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
 
 # --- OVERASPIRATE CALIBRATION (REUSE FROM MODULAR) ---
 
-def calculate_first_volume_constraint(best_candidate, volume):
+def calculate_first_volume_constraint(best_candidate, volume, autosave_raw_path=None):
     """
     Calculate overaspirate constraint for first volume based on screening shortfall.
     
     Args:
         best_candidate: Best screening candidate with deviation and parameters
         volume: Target volume in mL
+        autosave_raw_path: Path to save constraint log file
         
     Returns:
         max_overaspirate_ml: Upper constraint for overaspirate_vol parameter
@@ -1148,9 +1149,10 @@ def calculate_first_volume_constraint(best_candidate, volume):
     # Get existing overaspirate from screening parameters
     existing_overaspirate_ul = best_candidate.get('overaspirate_vol', 0) * 1000
     
-    # Calculate constraint: shortfall + buffer (don't use existing overaspirate from best trial)
+    # Calculate constraint: existing + shortfall + buffer
+    # Logic: Need baseline amount already tried + additional to cover shortfall + safety buffer
     # Note: shortfall can be negative (over-delivery), which would reduce total overaspirate needed
-    max_overaspirate_ul = shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
+    max_overaspirate_ul = existing_overaspirate_ul + shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
     
     # Ensure minimum constraint (prevent negative overaspirate)
     min_overaspirate_ul = 1.0  # Minimum 1μL overaspirate
@@ -1165,6 +1167,22 @@ def calculate_first_volume_constraint(best_candidate, volume):
     print(f"     Existing overaspirate: {existing_overaspirate_ul:.1f}μL")
     print(f"     Buffer: {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f}μL")
     print(f"     → Max overaspirate constraint: {max_overaspirate_ul:.1f}μL ({max_overaspirate_ml:.4f}mL)")
+    
+    # Log constraint calculation to file
+    if autosave_raw_path:
+        log_file = os.path.join(os.path.dirname(autosave_raw_path), "constraint_log.txt")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(f"\n[{timestamp}] FIRST VOLUME CONSTRAINT CALCULATION\n")
+            f.write(f"Volume: {volume*1000:.1f}μL\n")
+            f.write(f"Target: {target_volume_ul:.1f}μL, Measured: {measured_volume_ul:.1f}μL\n")
+            if shortfall_ul >= 0:
+                f.write(f"Under-delivery: {shortfall_ul:.1f}μL\n")
+            else:
+                f.write(f"Over-delivery: {abs(shortfall_ul):.1f}μL\n")
+            f.write(f"Existing overaspirate: {existing_overaspirate_ul:.1f}μL\n")
+            f.write(f"Buffer: {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f}μL\n")
+            f.write(f"Max overaspirate constraint: {max_overaspirate_ul:.1f}μL ({max_overaspirate_ml:.4f}mL)\n")
     
     return max_overaspirate_ml
 
@@ -1238,6 +1256,20 @@ def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, 
         
         print(f"{measured_volume_ul:.1f}μL measured (shortfall: {shortfall_ul:+.1f}μL)")
         print(f"     → Guess: {guess_overaspirate_ul:.1f}μL, Max: {max_overaspirate_ul:.1f}μL")
+        
+        # Log subsequent volume constraint to file
+        if autosave_raw_path:
+            log_file = os.path.join(os.path.dirname(autosave_raw_path), "constraint_log.txt")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"\n[{timestamp}] SUBSEQUENT VOLUME CONSTRAINT CALCULATION\n")
+                f.write(f"Volume: {volume*1000:.1f}μL\n")
+                f.write(f"Target: {target_volume_ul:.1f}μL, Measured: {measured_volume_ul:.1f}μL\n")
+                f.write(f"Shortfall: {shortfall_ul:+.1f}μL\n")
+                f.write(f"Existing overaspirate: {existing_overaspirate_ul:.1f}μL\n")
+                f.write(f"Buffer: {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f}μL\n")
+                f.write(f"Guess overaspirate: {guess_overaspirate_ul:.1f}μL\n")
+                f.write(f"Max overaspirate constraint: {max_overaspirate_ul:.1f}μL\n")
     
     print(f"   ✅ Post-optimization overaspirate calibration complete for {len(volume_calibrations)} volumes")
     return volume_calibrations
@@ -1540,7 +1572,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     best_candidate = ranked_candidates[0] if ranked_candidates else screening_results[0]
     print(f"   🏆 Selected best screening candidate: {best_candidate.get('deviation', 0):.1f}% deviation")
     
-    max_overaspirate_ml_updated = calculate_first_volume_constraint(best_candidate, volume)
+    max_overaspirate_ml_updated = calculate_first_volume_constraint(best_candidate, volume, autosave_raw_path)
     max_overaspirate_ul_updated = max_overaspirate_ml_updated * 1000  # Convert to μL for display and optimizer
     print(f"   ✅ Updated max overaspirate constraint: {max_overaspirate_ul_updated:.1f}μL")
     print(f"   🔍 DEBUG: mL value = {max_overaspirate_ml_updated:.6f}mL, μL value = {max_overaspirate_ul_updated:.6f}μL")
@@ -1671,13 +1703,13 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         print(f"\n✅ FIRST VOLUME OPTIMIZATION COMPLETE!")
         print(f"   Selected parameters meet tolerance requirements")
         print(f"   Parameters will be used as baseline for subsequent volumes")
-        return True, best_params
+        return True, best_params, best_candidate
     else:
         print(f"\n🔶 FIRST VOLUME PARTIAL SUCCESS!")
         print(f"   Best parameters found but do not meet strict tolerance")
         print(f"   Accuracy: {quality['accuracy_deviation_ul']:.2f}μL > {quality['accuracy_tolerance_ul']:.2f}μL tolerance")
         print(f"   Parameters will still be used as baseline for subsequent volumes")
-        return False, best_params  # Return False to indicate partial success
+        return False, best_params, best_candidate  # Return False to indicate partial success
 
 
 def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_path, raw_measurements, 
@@ -2313,7 +2345,7 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
         
         if volume_index == 0:
             # First volume: full optimization
-            success, best_params = optimize_first_volume(
+            success, best_params, best_candidate = optimize_first_volume(
                 volume, lash_e, state, autosave_raw_path, raw_measurements,
                 LIQUID, new_pipet_each_time_set, all_results
             )
@@ -2321,8 +2353,8 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
             # Always continue with best_params found, regardless of tolerance met
             successful_params = best_params
             
-            # Extract performance metrics using actual precision test measurements
-            performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements)
+            # Extract performance metrics using the actual ranked best candidate
+            performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements, best_candidate)
             
             # Determine status based on success flag
             status = 'success' if success else 'partial_success'
@@ -2573,10 +2605,8 @@ if __name__ == "__main__":
     optimal_conditions, save_dir = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="glycerol",
-        simulate=True,
+        simulate=False,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        sim_dev_multiplier=1.5,  # Stricter simulation (less noise) - default is 2.0x
-        sim_var_multiplier=1.5   # Stricter simulation (less noise) - default is 2.0x
     )
     
     # Analyze results
