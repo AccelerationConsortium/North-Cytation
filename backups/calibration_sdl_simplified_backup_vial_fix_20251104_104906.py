@@ -526,11 +526,7 @@ def initialize_experiment():
     global _CACHED_LASH_E
     DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
     NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
-    state = {
-        "measurement_vial_index": 0, 
-        "measurement_vial_name": "measurement_vial_0",
-        "total_measurements": 0
-    }
+    state = {"measurement_vial_index": 0, "measurement_vial_name": "measurement_vial_0"}
 
     if _CACHED_LASH_E is None:
         print("Creating new Lash_E controller...")
@@ -685,7 +681,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             print(f"         Replicate {replicate_num}/{total_replicates}...", end=" ")
             
             # Need to get fresh liquid source for each replicate
-            check_if_measurement_vial_full(lash_e, {"measurement_vial_name": measurement_vial, "measurement_vial_index": 0})
+            check_if_measurement_vial_full(lash_e, {"measurement_vial_name": measurement_vial})
             
             result = pipet_and_measure_tracked(lash_e, liquid_source, measurement_vial, 
                                               volume, params, expected_mass, expected_time, 
@@ -1282,12 +1278,6 @@ def check_if_measurement_vial_full(lash_e, state):
         if not RETAIN_PIPET_BETWEEN_EXPERIMENTS:
             lash_e.nr_robot.remove_pipet()
         lash_e.nr_robot.return_vial_home(current_vial)
-        
-        # Ensure measurement_vial_index exists (robustness fix)
-        if "measurement_vial_index" not in state:
-            print(f"[legacy] Warning: measurement_vial_index missing from state, initializing to 0")
-            state["measurement_vial_index"] = 0
-        
         state["measurement_vial_index"] += 1
         new_vial_name = f"measurement_vial_{state['measurement_vial_index']}"
         state["measurement_vial_name"] = new_vial_name
@@ -1766,7 +1756,7 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             replicate_num = i + 2
             print(f"      Replicate {replicate_num}/{PRECISION_MEASUREMENTS}...", end=" ")
             
-            check_if_measurement_vial_full(lash_e, {"measurement_vial_name": state["measurement_vial_name"], "measurement_vial_index": state.get("measurement_vial_index", 0)})
+            check_if_measurement_vial_full(lash_e, {"measurement_vial_name": state["measurement_vial_name"]})
             
             result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
                                               volume, test_params, expected_mass, expected_time, 
@@ -2260,15 +2250,10 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
     # Initialize experiment
     lash_e, density_liquid, new_pipet_each_time_set, state = initialize_experiment()
     
-    # Set vial management mode with error handling
+    # Set vial management mode
     if vial_mode != "legacy":
-        try:
-            set_vial_management(mode=vial_mode)
-            print(f"   🧪 Vial management: {vial_mode}")
-        except Exception as e:
-            print(f"   ⚠️  Warning: Could not set vial management to {vial_mode}: {e}")
-            print(f"   🧪 Falling back to legacy vial management")
-            vial_mode = "legacy"
+        set_vial_management(mode=vial_mode)
+        print(f"   🧪 Vial management: {vial_mode}")
     
     # Setup autosave
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

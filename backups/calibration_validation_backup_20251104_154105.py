@@ -2,18 +2,16 @@
 """
 Calibration Validation Workflow
 
-Tests intelligent parameter optimization across specified volume ranges to validate 
-calibration accuracy. Uses the integrated parameter system in North_Safe for 
-automatic optimization based on liquid type and volume.
+Tests calibrated pipetting parameters across specified volume ranges to validate 
+calibration accuracy. Uses pipetting wizard to get parameters and measures 
+actual vs target volumes.
 
 Workflow:
-1. Specify liquid type to enable automatic parameter optimization
-2. Test specified volumes with replicates using intelligent parameter system
+1. Load liquid-specific calibration parameters using pipetting wizard
+2. Test specified volumes with replicates
 3. Measure mass and convert to volume using liquid density  
 4. Calculate accuracy and precision metrics
 5. Generate validation report and graphs
-
-The robot automatically optimizes parameters using: defaults → liquid-calibrated → user overrides
 """
 
 import sys
@@ -35,7 +33,9 @@ from calibration_sdl_base import (
 )
 from master_usdl_coordinator import Lash_E
 
-# Pipetting wizard integration now handled automatically by North_Safe parameter system
+# Import pipetting wizard
+sys.path.append("../pipetting_data")
+from pipetting_data.pipetting_wizard import PipettingWizard
 
 # --- CONFIGURATION ---
 DEFAULT_LIQUID = "glycerol"
@@ -64,16 +64,18 @@ def initialize_experiment(lash_e, liquid):
     
     print("✅ Experiment initialized")
 
-def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
+def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard, compensate_overvolume=False):
     """
-    Validate pipetting accuracy across specified volumes using intelligent parameter optimization
+    Validate pipetting accuracy across specified volumes
     
     Args:
         lash_e: Lash_E coordinator instance
-        liquid: Liquid type for density calculations and automatic parameter optimization
+        liquid: Liquid type for density calculations
         volumes: List of volumes to test (mL)
         replicates: Number of replicates per volume
         simulate: Simulation mode flag
+        wizard: PipettingWizard instance
+        compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
     
     Returns:
         results_df: Summary results per volume
@@ -117,9 +119,16 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
         print(f"\n📏 Testing volume {i+1}/{len(volumes)}: {volume*1000:.1f} μL")
         
         try:
-            # Use intelligent parameter system - no manual wizard lookup needed!
-            # The robot methods will automatically optimize parameters based on liquid and volume
-            print(f"   Using intelligent parameter optimization for {liquid} at {volume*1000:.1f} μL")
+            # Get parameters from wizard with optional compensation
+            params_dict = wizard.get_pipetting_parameters(liquid, volume, compensate_overvolume)
+            if params_dict is None:
+                raise ValueError(f"Could not get parameters for {liquid} at {volume}mL")
+            
+            compensation_note = " (compensated)" if compensate_overvolume else ""
+            print(f"   Parameters from wizard{compensation_note}: aspirate_speed={params_dict['aspirate_speed']:.1f}, "
+                  f"dispense_speed={params_dict['dispense_speed']:.1f}, "
+                  f"blowout_vol={params_dict['blowout_vol']:.3f}, "
+                  f"overaspirate_vol={params_dict['overaspirate_vol']:.4f}")
             
             # Calculate expected mass
             expected_mass = volume * liquid_density
@@ -140,15 +149,15 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
                     source_vial=source_vial,
                     dest_vial=dest_vial,
                     volume=volume,
-                    params=None,  # Let intelligent parameter system optimize automatically
+                    params=params_dict,
                     expected_measurement=expected_mass,
                     expected_time=30.0,  # Placeholder
                     replicate_count=1,  # Single measurement
                     simulate=simulate,
                     raw_path=str(raw_path),
                     raw_measurements=raw_measurements,
-                    liquid=liquid,  # CRITICAL: This enables automatic parameter optimization!
-                    new_pipet_each_time=new_pipet_each_time_set,  # Use liquid-specific setting
+                    liquid=liquid,
+                    new_pipet_each_time=new_pipet_each_time_set,  # FIXED: Use liquid-specific setting
                     trial_type="VALIDATION"
                 )
                 
@@ -190,7 +199,7 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
                 'mean_absolute_error_percent': mean_absolute_error,
                 'replicates': replicates,
                 'liquid': liquid,
-                'parameter_source': 'intelligent_optimization'  # Parameters automatically optimized
+                **params_dict  # Include all parameters used
             }
             results.append(volume_result)
             
@@ -403,16 +412,18 @@ def generate_validation_report(results_df, raw_df, output_dir, liquid):
 
 def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE, 
                   volumes=None, replicates=DEFAULT_REPLICATES, 
-                  input_vial_file=DEFAULT_INPUT_VIAL_STATUS_FILE):
+                  input_vial_file=DEFAULT_INPUT_VIAL_STATUS_FILE,
+                  compensate_overvolume=False):
     """
-    Run calibration validation with intelligent parameter optimization
+    Run calibration validation with specified parameters
     
     Args:
-        liquid: Liquid type (e.g., "glycerol", "water", "ethanol") - enables automatic optimization
+        liquid: Liquid type (e.g., "glycerol", "water", "ethanol") 
         simulate: Run in simulation mode
         volumes: List of volumes to test in mL (defaults to DEFAULT_VOLUMES)
         replicates: Number of replicates per volume
         input_vial_file: Path to vial configuration file
+        compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
     """
     if volumes is None:
         volumes = DEFAULT_VOLUMES
@@ -430,20 +441,28 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
         lash_e.nr_robot.check_input_file()
         lash_e.nr_track.check_input_file()
         
-        # Intelligent parameter system handles optimization automatically
-        print(f"✅ Using intelligent parameter optimization for {liquid}")
-        print(f"   Robot will automatically optimize parameters for each volume")
-        if liquid is None:
-            print(f"   Liquid=None: Will use pure system defaults (no calibration)")
-        else:
-            print(f"   Liquid={liquid}: Will use calibrated parameters if available, defaults otherwise")
+        # Initialize pipetting wizard - this is the key integration!
+        wizard = PipettingWizard()
+        
+        # Verify wizard can find calibration data
+        try:
+            test_params = wizard.get_pipetting_parameters(liquid, volumes[0], compensate_overvolume)
+            if test_params is None:
+                raise ValueError(f"No parameters found for {liquid} at {volumes[0]}mL")
+            compensation_note = " (with compensation)" if compensate_overvolume else ""
+            print(f"✅ Found calibration data for {liquid}{compensation_note}")
+            print(f"   Sample parameters for {volumes[0]*1000:.1f}μL: aspirate_speed={test_params['aspirate_speed']:.1f}")
+        except Exception as e:
+            print(f"❌ Could not find calibration data for {liquid}: {e}")
+            print("   Please ensure calibration files exist in pipetting_data/ directory")
+            return
         
         # Initialize experiment
         initialize_experiment(lash_e, liquid)
         
-        # Run validation using intelligent parameter optimization
+        # Run validation using pipetting wizard parameters
         results_df, raw_df, output_dir = validate_volumes(
-            lash_e, liquid, volumes, replicates, simulate
+            lash_e, liquid, volumes, replicates, simulate, wizard, compensate_overvolume
         )
         
         # Generate report
