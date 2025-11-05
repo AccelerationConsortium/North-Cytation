@@ -2861,7 +2861,7 @@ if __name__ == "__main__":
     optimal_conditions, save_dir = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="glycerol",
-        simulate=True,
+        simulate=False,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
         sim_dev_multiplier=0.2,  # Moderate challenge
         sim_var_multiplier=0.2    )
