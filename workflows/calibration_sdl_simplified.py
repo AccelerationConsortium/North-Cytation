@@ -263,36 +263,31 @@ def extract_performance_metrics(all_results, volume_ml, best_params, raw_measure
     if best_candidate is None:
         raise ValueError(f"No best_candidate provided for volume {volume_ml}mL - this indicates a serious optimization failure")
     
+    # Basic validation - ensure we have essential fields
+    required_fields = ['deviation', 'time']
+    missing_fields = [f for f in required_fields if f not in best_candidate or best_candidate[f] is None]
+    if missing_fields:
+        raise ValueError(f"CRITICAL: Missing required fields {missing_fields} in best_candidate for {volume_ml}mL. Available fields: {list(best_candidate.keys())}")
+    
     # Extract the data we already calculated and ranked
     # Use the stored calculated average volume (consistent with deviation calculation)
     measured_volume_ml = best_candidate.get('measured_volume')
     if measured_volume_ml is None:
-        # Fallback 1: re-calculate from raw measurements if available
+        # Fallback: re-calculate from raw measurements if available
+        # Check both possible field names for raw measurements
         raw_measurements = best_candidate.get('raw_measurements', [])
+        if not raw_measurements:
+            raw_measurements = best_candidate.get('all_measurements', [])
+        
         if raw_measurements and len(raw_measurements) > 0:
             measured_volume_ml = sum(raw_measurements) / len(raw_measurements)
             print(f"   ⚠️  WARNING: Re-calculated measured_volume from raw_measurements for {volume_ml}mL")
         else:
-            # Fallback 2: If we have deviation, we can reconstruct the measured volume
-            # But we need to be smart about over/under delivery
-            deviation_pct = best_candidate.get('deviation')
-            if deviation_pct is not None:
-                # For pipetting, we need to assume a direction. Check strategy to make educated guess
-                strategy = best_candidate.get('strategy', '')
-                
-                # Most pipetting systems tend toward under-delivery, but inherited tests
-                # might have been corrected. Without more info, use a conservative approach:
-                # Calculate both possibilities and pick the more reasonable one
-                target_volume_ml = volume_ml
-                under_delivery_ml = target_volume_ml * (1 - deviation_pct / 100)
-                over_delivery_ml = target_volume_ml * (1 + deviation_pct / 100)
-                
-                # For now, assume under-delivery as it's more common in pipetting
-                measured_volume_ml = under_delivery_ml
-                print(f"   ⚠️  WARNING: Reconstructed measured_volume from deviation for {volume_ml}mL (assumed under-delivery)")
-                print(f"   📊 Target: {target_volume_ml:.4f}mL, Deviation: {deviation_pct:.2f}% → Estimated: {measured_volume_ml:.4f}mL")
-            else:
-                raise ValueError(f"Cannot find measured_volume, raw_measurements, or deviation in best_candidate for {volume_ml}mL. Available fields: {list(best_candidate.keys())}")
+            # CRITICAL: Never reconstruct measured volume from deviation - this is wrong!
+            # If we don't have actual measured data, that's a data integrity error
+            raise ValueError(f"CRITICAL ERROR: Cannot find measured_volume or raw_measurements in best_candidate for {volume_ml}mL. "
+                           f"Reconstructing from deviation is incorrect and leads to wrong constraint calculations. "
+                           f"Available fields: {list(best_candidate.keys())}")
     
     measured_ul = measured_volume_ml * 1000  # Convert to μL
     actual_deviation_pct = best_candidate.get('deviation')
@@ -532,6 +527,75 @@ def get_max_overaspirate_ul(volume_ml):
         max_overaspirate = min_overaspirate
     
     return max_overaspirate
+
+def debug_ax_constraints(ax_client, label="", autosave_raw_path=None):
+    """Debug function to check what constraints Ax actually has."""
+    debug_lines = []
+    
+    try:
+        experiment = ax_client.experiment
+        search_space = experiment.search_space
+        
+        print(f"🔍 AX CONSTRAINTS CHECK {label}:")
+        debug_lines.append(f"AX CONSTRAINTS CHECK {label}")
+        
+        # Debug: show all parameters
+        print(f"   All parameters: {list(search_space.parameters.keys())}")
+        debug_lines.append(f"All parameters: {list(search_space.parameters.keys())}")
+        
+        for param_name, param in search_space.parameters.items():
+            if param_name == "overaspirate_vol":
+                print(f"   Found parameter '{param_name}': type = {type(param)}")
+                debug_lines.append(f"Found parameter '{param_name}': type = {type(param)}")
+                print(f"   Parameter attributes: {dir(param)}")
+                
+                # For RangeParameter, use lower and upper attributes
+                if hasattr(param, 'lower') and hasattr(param, 'upper'):
+                    lower_ml = param.lower
+                    upper_ml = param.upper
+                    lower_ul = lower_ml * 1000  # Convert mL to μL
+                    upper_ul = upper_ml * 1000  # Convert mL to μL
+                    print(f"   Parameter '{param_name}': range = [{lower_ml:.6f}, {upper_ml:.6f}] mL")
+                    print(f"   → In μL: [{lower_ul:.6f}, {upper_ul:.6f}]μL")
+                    print(f"   ✅ CONSTRAINT ACTIVE: Ax will limit overaspirate_vol to {upper_ul:.1f}μL")
+                    
+                    debug_lines.append(f"Parameter '{param_name}': range = [{lower_ml:.6f}, {upper_ml:.6f}] mL")
+                    debug_lines.append(f"In μL: [{lower_ul:.6f}, {upper_ul:.6f}]μL")
+                    debug_lines.append(f"✅ CONSTRAINT ACTIVE: Ax will limit overaspirate_vol to {upper_ul:.1f}μL")
+                else:
+                    print(f"   Parameter '{param_name}': No lower/upper bounds found")
+                    debug_lines.append(f"Parameter '{param_name}': No lower/upper bounds found")
+                break
+        else:
+            print(f"   ⚠️  'overaspirate_vol' parameter not found!")
+            debug_lines.append(f"⚠️  'overaspirate_vol' parameter not found!")
+        
+        # Check outcome constraints too
+        outcome_constraints = experiment.optimization_config.outcome_constraints if experiment.optimization_config else []
+        if outcome_constraints:
+            print(f"   Outcome constraints: {len(outcome_constraints)} found")
+            debug_lines.append(f"Outcome constraints: {len(outcome_constraints)} found")
+        else:
+            print(f"   No outcome constraints found")
+            debug_lines.append(f"No outcome constraints found")
+            
+    except Exception as e:
+        print(f"   ❌ Error checking Ax constraints: {e}")
+        debug_lines.append(f"❌ Error checking Ax constraints: {e}")
+    
+    print()
+    
+    # Log to constraint log file if path provided
+    if autosave_raw_path and debug_lines:
+        try:
+            log_file = os.path.join(os.path.dirname(autosave_raw_path), "constraint_log.txt")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"\n[{timestamp}] AX CONSTRAINT VERIFICATION {label}\n")
+                for line in debug_lines:
+                    f.write(f"{line}\n")
+        except Exception as e:
+            print(f"   ⚠️  Could not write to constraint log: {e}")
 
 def calculate_measurements_per_volume(global_measurement_count, volumes_remaining):
     """
@@ -1160,7 +1224,8 @@ def load_external_calibration_data(volume, liquid, data_path=None, volume_filter
         external_results = []
         required_columns = ['aspirate_speed', 'dispense_speed', 'deviation', 'time']
         optional_columns = ['aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 
-                           'blowout_vol', 'post_asp_air_vol', 'overaspirate_vol', 'variability']
+                           'blowout_vol', 'post_asp_air_vol', 'overaspirate_vol', 'variability',
+                           'measured_volume', 'calculated_volume']
         
         for idx, row in filtered_df.iterrows():
             # Check for required columns
@@ -1168,6 +1233,18 @@ def load_external_calibration_data(volume, liquid, data_path=None, volume_filter
             if missing_required:
                 print(f"   ⚠️  Skipping row {idx}: missing required columns {missing_required}")
                 continue
+            
+            # CRITICAL: External data MUST have actual measured volume - never reconstruct from deviation
+            measured_volume = None
+            if 'measured_volume' in row and not pd.isna(row['measured_volume']):
+                measured_volume = float(row['measured_volume'])
+            elif 'calculated_volume' in row and not pd.isna(row['calculated_volume']):
+                measured_volume = float(row['calculated_volume'])
+            else:
+                # NEVER reconstruct measured volume from deviation - this makes wrong assumptions
+                print(f"   ❌ ERROR: External data row {idx} missing both 'measured_volume' and 'calculated_volume' - skipping")
+                print(f"   💡 External data must contain actual measured volumes, not just deviation percentages")
+                continue  # Skip this row entirely
             
             # Build result dict  
             result = {
@@ -1180,7 +1257,8 @@ def load_external_calibration_data(volume, liquid, data_path=None, volume_filter
                 "time_reported": datetime.now().isoformat(),
                 "trial_index": f"ext_{idx}",  # Unique identifier
                 "replicate_count": int(row.get('replicate_count', 1)),  # Default to 1
-                "raw_measurements": []  # Empty for external data
+                "raw_measurements": [],  # Empty for external data - no individual measurements available
+                "measured_volume": measured_volume  # CRITICAL: Always provide measured_volume for external data
             }
             
             # Add all parameter columns
@@ -1341,6 +1419,7 @@ def calculate_first_volume_constraint(best_candidate, volume, liquid, autosave_r
     # Logic: Need baseline amount already tried + additional to cover shortfall + safety buffer
     # Note: shortfall can be negative (over-delivery), which would reduce total overaspirate needed
     max_overaspirate_ul = existing_overaspirate_ul + shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
+    print(f"   📊 Constraint calc: {existing_overaspirate_ul:.1f} + {shortfall_ul:.1f} + {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f} = {max_overaspirate_ul:.1f}μL")
     
     # Ensure minimum constraint (prevent negative overaspirate)
     min_overaspirate_ul = 1.0  # Minimum 1μL overaspirate
@@ -1727,6 +1806,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     tip_volume = get_tip_volume_for_volume(lash_e, volume)
     max_overaspirate_ul = get_max_overaspirate_ul(volume)
     
+    print(f"   🔧 INITIAL CONSTRAINT: max_overaspirate_ul={max_overaspirate_ul:.6f}μL (from get_max_overaspirate_ul)")
     print(f"   Target tolerances: ±{tolerances['deviation_ul']:.1f}μL deviation, {tolerances['tolerance_percent']:.1f}% precision")
     
     # Check if optimizer is available
@@ -1763,6 +1843,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         simulate=SIMULATE,
         max_overaspirate_ul=max_overaspirate_ul
     )
+    debug_ax_constraints(ax_client, "(INITIAL OPTIMIZER)", autosave_raw_path)
     
     # Phase 1: External Data Loading or Screening
     screening_results = load_external_data_or_run_screening(ax_client, lash_e, state, volume, expected_mass, 
@@ -1784,9 +1865,12 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     print(f"   🔍 DEBUG: mL value = {max_overaspirate_ml_updated:.6f}mL, μL value = {max_overaspirate_ul_updated:.6f}μL")
     
     # Recreate ax_client with updated constraint if it changed  
-    if abs(max_overaspirate_ul_updated - max_overaspirate_ul) > 0.01:  # Only recreate if meaningful change (compare in μL)
-        print(f"   🔄 Recreating optimizer with updated constraint ({max_overaspirate_ul:.1f} → {max_overaspirate_ul_updated:.1f}μL)...")
-        print(f"   🔧 CONSTRAINT DEBUG: About to pass max_overaspirate_ul={max_overaspirate_ul_updated:.6f}μL to create_model")
+    constraint_difference = abs(max_overaspirate_ul_updated - max_overaspirate_ul)
+    
+    print(f"   🔍 CONSTRAINT: {max_overaspirate_ul:.1f}μL → {max_overaspirate_ul_updated:.1f}μL (Δ={constraint_difference:.3f}μL)")
+    
+    if constraint_difference > 0.01:  # Only recreate if meaningful change (compare in μL)
+        print(f"   🔄 Recreating optimizer with updated constraint...")
         ax_client = optimizer_3obj.create_model(
             seed=SEED,
             num_initial_recs=0,  # No initial SOBOL since we already have screening data
@@ -1803,8 +1887,10 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         # Load screening results into the new optimizer
         optimizer_3obj.load_previous_data_into_model(ax_client, screening_results)
         print(f"   ✅ Loaded {len(screening_results)} screening results into updated optimizer")
+        debug_ax_constraints(ax_client, "(AFTER UPDATE)", autosave_raw_path)
     else:
         print(f"   ✅ Constraint unchanged, keeping existing optimizer")
+        debug_ax_constraints(ax_client, "(NO UPDATE)", autosave_raw_path)
     
     # Phase 3: 3-objective optimization with simplified stopping
     print(f"\n⚙️  3-OBJECTIVE OPTIMIZATION...")
@@ -1827,10 +1913,16 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
             print(f"   🔄 CONTINUING: {stopping_result['reason']}")
         
         # Get next suggestion
+        if optimization_trial_count == 0:  # Only debug on first optimization trial to avoid spam
+            debug_ax_constraints(ax_client, "(BEFORE FIRST SUGGESTION)", autosave_raw_path)
+        
         params, trial_index = optimizer_3obj.get_suggestions(ax_client, volume, n=1)[0]
         optimization_trial_count += 1
         
         print(f"   Optimization trial {optimization_trial_count}...")
+        if optimization_trial_count == 1:  # Show the first suggested parameters to verify constraint application
+            overaspirate_suggested_ul = params.get('overaspirate_vol', 0) * 1000  # Convert to μL
+            print(f"   🔍 FIRST SUGGESTION: overaspirate_vol = {overaspirate_suggested_ul:.3f}μL")
         
         # Run adaptive measurement (conditional replicates)
         check_if_measurement_vial_full(lash_e, state)
@@ -2126,7 +2218,7 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             # Add the successful inherited test result to all_results so CSV can find it
             all_results.append(inherited_comprehensive_result)
             
-            return True, test_params, 'success'
+            return True, test_params, 'success', inherited_comprehensive_result
     else:
         # Poor result or insufficient budget for replicates - use penalty variability
         inherited_comprehensive_result = {
@@ -2352,6 +2444,7 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
                 "deviation": adaptive_result['deviation'],
                 "variability": adaptive_result['variability'],
                 "time": adaptive_result['time'],
+                "measured_volume": adaptive_result['measured_volume'],  # CRITICAL: Include measured volume
                 "replicate_count": actual_measurements_used,
                 "strategy": f"OPTIMIZATION_{optimization_trial_count}"
             })
@@ -2860,11 +2953,10 @@ if __name__ == "__main__":
     
     optimal_conditions, save_dir = run_simplified_calibration_workflow(
         vial_mode="legacy",
-        liquid="glycerol",
+        liquid="water",
         simulate=False,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        sim_dev_multiplier=0.2,  # Moderate challenge
-        sim_var_multiplier=0.2    )
+ )
     
     # Example 1b: Water experiment with fixed parameters
     # print("\n🎯 SIMPLIFIED CALIBRATION WORKFLOW - FIXED PARAMETERS MODE")

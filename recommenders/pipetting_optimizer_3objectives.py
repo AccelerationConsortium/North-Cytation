@@ -183,6 +183,12 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
             constraint_str = f"post_asp_air_vol + overaspirate_vol <= {constraint_value}"
             constraints.append(constraint_str)
             print(f"🔧 OPTIMIZER DEBUG: Adding constraint: {constraint_str} (tip_volume={tip_volume}, volume={volume})")
+            
+            # DEBUG: Show constraint values for verification
+            print(f"🔍 CONSTRAINT VALUES:")
+            print(f"   Tip volume constraint: {constraint_value * 1000:.1f}μL available for post_asp + overaspirate")
+            print(f"   Parameter bound for overaspirate_vol: {max_overaspirate_ul:.1f}μL")
+            print(f"   This should allow overaspirate_vol up to {max_overaspirate_ul:.1f}μL")
         elif "post_asp_air_vol" in optimize_params and "overaspirate_vol" in fixed_params:
             fixed_overaspirate = fixed_params["overaspirate_vol"]
             constraints.append(f"post_asp_air_vol <= {tip_volume - volume - fixed_overaspirate}")
