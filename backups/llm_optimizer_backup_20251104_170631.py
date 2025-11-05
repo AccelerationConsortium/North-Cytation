@@ -5,85 +5,25 @@ import os
 from typing import Dict, Any, List
 import argparse
 from dotenv import load_dotenv
-import requests
 
 # Load environment variables from .env file
 load_dotenv()
 
 class LLMOptimizer:
-    def __init__(self, api_key: str = None, backend: str = "auto", ollama_model: str = None, ollama_url: str = "http://localhost:11434"):
+    def __init__(self, api_key: str = None):
         """
         Initialize the LLM Optimizer
         
         Args:
             api_key: OpenAI API key. If None, will try to get from environment variable OPENAI_API_KEY
-            backend: Backend to use ("openai", "ollama", or "auto"). Auto will try OpenAI first, fallback to Ollama
-            ollama_model: Ollama model to use (e.g., "gpt-oss:20b", "gemma3:1b")
-            ollama_url: Ollama server URL
         """
-        self.backend = backend
-        self.ollama_model = ollama_model
-        self.ollama_url = ollama_url
-        self.client = None
-        
-        if backend == "auto":
-            # Try OpenAI first, fallback to Ollama
-            try:
-                if api_key and api_key != "demo-key":
-                    self.client = OpenAI(api_key=api_key)
-                    self.backend = "openai"
-                else:
-                    api_key = os.getenv("OPENAI_API_KEY")
-                    if api_key:
-                        self.client = OpenAI(api_key=api_key)
-                        self.backend = "openai"
-                    else:
-                        raise ValueError("No OpenAI API key found")
-            except:
-                print("⚠️  OpenAI API key not found, falling back to Ollama")
-                self.backend = "ollama"
-                self._setup_ollama()
-        elif backend == "openai":
-            if api_key and api_key != "demo-key":
-                self.client = OpenAI(api_key=api_key)
-            else:
-                api_key = os.getenv("OPENAI_API_KEY")
-                if not api_key:
-                    raise ValueError("OpenAI API key not provided. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
-                self.client = OpenAI(api_key=api_key)
-        elif backend == "ollama":
-            self._setup_ollama()
+        if api_key and api_key != "demo-key":
+            self.client = OpenAI(api_key=api_key)
         else:
-            raise ValueError(f"Invalid backend: {backend}. Must be 'openai', 'ollama', or 'auto'")
-    
-    def _setup_ollama(self):
-        """Setup Ollama backend"""
-        try:
-            # Test if Ollama is running
-            response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
-            if response.status_code == 200:
-                available_models = [model["name"] for model in response.json().get("models", [])]
-                print(f"🦙 Ollama connected! Available models: {available_models}")
-                
-                # Auto-select model if not specified
-                if not self.ollama_model:
-                    if "gpt-oss:20b" in available_models:
-                        self.ollama_model = "gpt-oss:20b"
-                        print(f"🎯 Auto-selected model: {self.ollama_model}")
-                    elif available_models:
-                        self.ollama_model = available_models[0]
-                        print(f"🎯 Auto-selected model: {self.ollama_model}")
-                    else:
-                        raise ValueError("No Ollama models available")
-                elif self.ollama_model not in available_models:
-                    print(f"⚠️  Requested model {self.ollama_model} not found. Available: {available_models}")
-                    if available_models:
-                        self.ollama_model = available_models[0]
-                        print(f"🎯 Using fallback model: {self.ollama_model}")
-            else:
-                raise ValueError(f"Ollama server not responding (status: {response.status_code})")
-        except requests.exceptions.RequestException:
-            raise ValueError("Ollama server not running. Start it with: ollama serve")
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OpenAI API key not provided. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
+            self.client = OpenAI(api_key=api_key)
     
     def list_data_files(self, data_folder: str) -> list:
         """
@@ -316,31 +256,7 @@ JSON Response Format:
 }}"""
         return prompt
     
-    def call_llm(self, prompt: str, config: Dict[str, Any] = None, model: str = None) -> str:
-        """
-        Call LLM (OpenAI or Ollama) with the given prompt
-        
-        Args:
-            prompt: The prompt to send to the LLM
-            config: Configuration dictionary (used for logging settings)
-            model: Model to use (overrides default)
-            
-        Returns:
-            Response from the LLM
-        """
-        if self.backend == "openai":
-            return self._call_openai(prompt, config, model or "gpt-3.5-turbo")
-        elif self.backend == "ollama":
-            return self._call_ollama(prompt, config, model or self.ollama_model)
-        else:
-            raise ValueError(f"Invalid backend: {self.backend}")
-    
-    # Keep the old method name for backward compatibility
     def call_openai(self, prompt: str, config: Dict[str, Any] = None, model: str = "gpt-3.5-turbo") -> str:
-        """Legacy method name for backward compatibility"""
-        return self.call_llm(prompt, config, model)
-    
-    def _call_openai(self, prompt: str, config: Dict[str, Any] = None, model: str = "gpt-3.5-turbo") -> str:
         """
         Call OpenAI API with the given prompt
         
@@ -374,78 +290,6 @@ JSON Response Format:
             return response_content
         except Exception as e:
             raise Exception(f"Error calling OpenAI API: {str(e)}")
-    
-    def _call_ollama(self, prompt: str, config: Dict[str, Any] = None, model: str = None) -> str:
-        """
-        Call Ollama API with the given prompt
-        
-        Args:
-            prompt: The prompt to send to the LLM
-            config: Configuration dictionary (used for logging settings)
-            model: Ollama model to use
-            
-        Returns:
-            Response from the LLM
-        """
-        try:
-            model = model or self.ollama_model
-            
-            # Get API parameters from config if available
-            api_config = config.get("api_settings", {}) if config else {}
-            temperature = api_config.get("temperature", 0.7)
-            
-            # Ollama API payload
-            payload = {
-                "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "temperature": temperature,
-                }
-            }
-            
-            # Add max_tokens equivalent for Ollama if specified
-            max_tokens = api_config.get("max_tokens")
-            if max_tokens:
-                payload["options"]["num_predict"] = max_tokens
-            
-            print(f"🦙 Calling Ollama with model: {model}")
-            response = requests.post(
-                f"{self.ollama_url}/api/generate",
-                json=payload,
-                timeout=300  # 5 minute timeout for local generation
-            )
-            
-            if response.status_code != 200:
-                raise Exception(f"Ollama API error (status {response.status_code}): {response.text}")
-            
-            result = response.json()
-            response_content = result.get("response", "")
-            
-            if not response_content:
-                raise Exception("Empty response from Ollama")
-            
-            # Create a mock response object for logging compatibility
-            mock_response = type('MockResponse', (), {
-                'choices': [type('MockChoice', (), {'message': type('MockMessage', (), {'content': response_content})()})()],
-                'usage': type('MockUsage', (), {
-                    'prompt_tokens': len(prompt.split()),  # Rough estimate
-                    'completion_tokens': len(response_content.split()),  # Rough estimate
-                    'total_tokens': len(prompt.split()) + len(response_content.split())
-                })(),
-                'id': result.get('created_at', 'ollama-response'),
-                'created': result.get('created_at', 'unknown')
-            })()
-            
-            # Save prompt and response to timestamped folder
-            self._save_prompt_and_response(prompt, response_content, model, mock_response, config)
-            
-            return response_content
-            
-        except requests.exceptions.Timeout:
-            raise Exception("Ollama request timed out. Try a smaller model or increase timeout.")
-        except Exception as e:
-            raise Exception(f"Error calling Ollama API: {str(e)}")
     
     def _save_prompt_and_response(self, prompt: str, response_content: str, model: str, full_response, config: Dict[str, Any] = None):
         """
@@ -589,10 +433,7 @@ JSON Response Format:
         
         # Get model from config if not specified
         if model is None:
-            if self.backend == "ollama":
-                model = config.get("api_settings", {}).get("model", self.ollama_model)
-            else:
-                model = config.get("api_settings", {}).get("model", "gpt-3.5-turbo")
+            model = config.get("api_settings", {}).get("model", "gpt-3.5-turbo")
         
         print(f"Loaded {len(df)} rows of data")
         print(f"Using model: {model}")
@@ -600,10 +441,10 @@ JSON Response Format:
         # Create optimization prompt
         prompt = self.create_optimization_prompt(df, config)
         
-        print(f"Calling {self.backend.upper()} API...")
+        print("Calling OpenAI API...")
         
-        # Call LLM API
-        response = self.call_llm(prompt, config, model)
+        # Call OpenAI API
+        response = self.call_openai(prompt, config, model)
         
         print("Parsing response...")
         
@@ -611,9 +452,7 @@ JSON Response Format:
         parsed_response = self.parse_llm_response(response)
         
         # Ensure output directory exists
-        output_dir = os.path.dirname(output_path)
-        if output_dir:  # Only create directory if there is one
-            os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
         # Create output CSV
         self.create_recommendations_csv(parsed_response, output_path)
@@ -626,22 +465,13 @@ def main():
     parser.add_argument("--csv", required=True, help="Path to input CSV file")
     parser.add_argument("--config", required=True, help="Path to configuration JSON file")
     parser.add_argument("--output", required=True, help="Path for output CSV file")
-    parser.add_argument("--model", help="Model to use (e.g., 'gpt-3.5-turbo' for OpenAI or 'gpt-oss:20b' for Ollama)")
+    parser.add_argument("--model", default="gpt-3.5-turbo", help="OpenAI model to use")
     parser.add_argument("--api-key", help="OpenAI API key (optional if set in environment)")
-    parser.add_argument("--backend", default="auto", choices=["openai", "ollama", "auto"], 
-                       help="Backend to use: 'openai', 'ollama', or 'auto' (tries OpenAI first, falls back to Ollama)")
-    parser.add_argument("--ollama-model", help="Ollama model to use (e.g., 'gpt-oss:20b', 'gemma3:1b')")
-    parser.add_argument("--ollama-url", default="http://localhost:11434", help="Ollama server URL")
     
     args = parser.parse_args()
     
     # Initialize optimizer
-    optimizer = LLMOptimizer(
-        api_key=args.api_key,
-        backend=args.backend,
-        ollama_model=args.ollama_model,
-        ollama_url=args.ollama_url
-    )
+    optimizer = LLMOptimizer(api_key=args.api_key)
     
     # Load data and config
     data = optimizer.load_csv(args.csv)

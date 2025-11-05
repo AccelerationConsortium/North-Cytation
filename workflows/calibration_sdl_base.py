@@ -232,13 +232,15 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         retract_speed=params["retract_speed"],
         pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
         post_asp_air_vol=post_air,
-        # Note: blowout_vol removed from aspirate_params since it's only used during dispense
+        overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for calibration
     )
     dispense_params = PipettingParameters(
         dispense_speed=params["dispense_speed"],
         dispense_wait_time=params["dispense_wait_time"],
-        air_vol=air_vol,
-        blowout_vol=blowout_vol,  # CRITICAL: Add blowout_vol to dispense_params!
+        blowout_vol=blowout_vol,
+        overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for overdispense calculation
+        pre_asp_air_vol=0.0,  # Include for overdispense calculation
+        post_asp_air_vol=post_air,  # Include for overdispense calculation
     )  
 
     if simulate:
@@ -259,8 +261,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         for replicate_idx in range(replicate_count):
             # Generate a slightly different mass for each replicate to simulate real variability
             
-            lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, parameters=aspirate_params)
-            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, parameters=dispense_params, measure_weight=True)
+            lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params)
+            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True)
             if new_pipet_each_time:
                 lash_e.nr_robot.remove_pipet()
 
@@ -360,8 +362,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             replicate_start_time = time.time()
             replicate_start = datetime.now().isoformat()
             
-            lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, parameters=aspirate_params)
-            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, parameters=dispense_params, measure_weight=True)
+            lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params)
+            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True)
             if new_pipet_each_time:
                 lash_e.nr_robot.remove_pipet()
                 
