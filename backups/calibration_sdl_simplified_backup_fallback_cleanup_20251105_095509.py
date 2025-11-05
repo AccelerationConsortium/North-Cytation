@@ -249,85 +249,126 @@ def reset_global_measurement_count():
 
 def extract_performance_metrics(all_results, volume_ml, best_params, raw_measurements=None, best_candidate=None):
     """
-    Extract key performance metrics for a volume from the ranked best candidate.
+    Extract key performance metrics for a volume from actual precision test measurements.
     
     Args:
-        best_candidate: The actual ranked best candidate from optimization
+        best_candidate: The actual ranked best candidate (avoids parameter matching issues)
     
     Returns dict with volume_target, volume_measured, average_deviation, variability, time,
     and tolerance check results.
     """
-    target_ul = volume_ml * 1000  # Convert to μL
+    # Find all results for this volume
+    volume_results = [r for r in all_results if r.get('volume') == volume_ml]
     
-    # CRITICAL: We must have a best_candidate - this is our optimization result!
-    if best_candidate is None:
-        raise ValueError(f"No best_candidate provided for volume {volume_ml}mL - this indicates a serious optimization failure")
+    if not volume_results:
+        return {
+            'volume_target': volume_ml * 1000,  # Convert to μL
+            'volume_measured': None,
+            'average_deviation': None,
+            'variability': None,
+            'time': None,
+            'accuracy_tolerance_met': None,
+            'precision_tolerance_met': None
+        }
     
-    # Extract the data we already calculated and ranked
-    # Use the stored calculated average volume (consistent with deviation calculation)
-    measured_volume_ml = best_candidate.get('measured_volume')
-    if measured_volume_ml is None:
-        # Fallback 1: re-calculate from raw measurements if available
-        raw_measurements = best_candidate.get('raw_measurements', [])
-        if raw_measurements and len(raw_measurements) > 0:
-            measured_volume_ml = sum(raw_measurements) / len(raw_measurements)
-            print(f"   ⚠️  WARNING: Re-calculated measured_volume from raw_measurements for {volume_ml}mL")
+    # Use the ranked best candidate directly if provided (eliminates parameter matching issues)
+    if best_candidate is not None:
+        best_result = best_candidate
+    else:
+        # Fallback: use the result with best deviation if no candidate provided
+        if volume_results:
+            best_result = min(volume_results, key=lambda r: r.get('deviation', float('inf')))
         else:
-            # Fallback 2: If we have deviation, we can reconstruct the measured volume
-            # But we need to be smart about over/under delivery
-            deviation_pct = best_candidate.get('deviation')
-            if deviation_pct is not None:
-                # For pipetting, we need to assume a direction. Check strategy to make educated guess
-                strategy = best_candidate.get('strategy', '')
-                
-                # Most pipetting systems tend toward under-delivery, but inherited tests
-                # might have been corrected. Without more info, use a conservative approach:
-                # Calculate both possibilities and pick the more reasonable one
-                target_volume_ml = volume_ml
-                under_delivery_ml = target_volume_ml * (1 - deviation_pct / 100)
-                over_delivery_ml = target_volume_ml * (1 + deviation_pct / 100)
-                
-                # For now, assume under-delivery as it's more common in pipetting
-                measured_volume_ml = under_delivery_ml
-                print(f"   ⚠️  WARNING: Reconstructed measured_volume from deviation for {volume_ml}mL (assumed under-delivery)")
-                print(f"   📊 Target: {target_volume_ml:.4f}mL, Deviation: {deviation_pct:.2f}% → Estimated: {measured_volume_ml:.4f}mL")
+            best_result = None
+    
+    if best_result is None:
+        return {
+            'volume_target': volume_ml * 1000,
+            'volume_measured': None,
+            'average_deviation': None,
+            'variability': None,
+            'time': None,
+            'accuracy_tolerance_met': None,
+            'precision_tolerance_met': None
+        }
+    
+    # CRITICAL FIX: Use actual precision test measurements, not calculated estimates!
+    target_ul = volume_ml * 1000
+    measured_ul = None
+    actual_deviation_pct = None
+    actual_variability = None
+    
+    # Find precision test measurements from raw_measurements
+    if raw_measurements:
+        # Look for precision test measurements for this volume
+        # These could be INHERITED_TEST, PRECISION, or similar trial types
+        precision_measurements = [
+            m for m in raw_measurements 
+            if (m.get('volume') == volume_ml and 
+                m.get('trial_type') in ['INHERITED_TEST', 'PRECISION', 'PRECISION_TEST'])
+        ]
+        
+        if precision_measurements:
+            # Extract actual measured volumes from precision tests
+            measured_volumes_ml = [m.get('calculated_volume', 0) for m in precision_measurements]
+            measured_volumes_ul = [v * 1000 for v in measured_volumes_ml]  # Convert to μL
+            
+            # Calculate actual statistics from real measurements
+            measured_ul = sum(measured_volumes_ul) / len(measured_volumes_ul)  # Average
+            
+            # Calculate actual deviation from target
+            actual_deviation_pct = abs(measured_ul - target_ul) / target_ul * 100
+            
+            # Calculate actual variability (CV as percentage)
+            if len(measured_volumes_ul) > 1:
+                std_ul = np.std(measured_volumes_ul)
+                actual_variability = (std_ul / measured_ul) * 100
             else:
-                raise ValueError(f"Cannot find measured_volume, raw_measurements, or deviation in best_candidate for {volume_ml}mL. Available fields: {list(best_candidate.keys())}")
+                actual_variability = 0
     
-    measured_ul = measured_volume_ml * 1000  # Convert to μL
-    actual_deviation_pct = best_candidate.get('deviation')
-    actual_variability = best_candidate.get('variability')
-    time_val = best_candidate.get('time')
-    
-    # Validate critical data
-    if actual_deviation_pct is None:
-        raise ValueError(f"best_candidate missing 'deviation' for {volume_ml}mL - optimization data is corrupted")
-    if actual_variability is None:
-        raise ValueError(f"best_candidate missing 'variability' for {volume_ml}mL - optimization data is corrupted")
-    if time_val is None:
-        raise ValueError(f"best_candidate missing 'time' for {volume_ml}mL - optimization data is corrupted")
+    # Fallback to optimization result estimates if no precision data found
+    if measured_ul is None:
+        deviation_pct = best_result.get('deviation', 0)
+        
+        # FIXED: Check if we have the actual measured volume in the candidate
+        if 'calculated_volume' in best_result and best_result['calculated_volume'] is not None:
+            # Use the actual measured volume if available
+            measured_ul = best_result['calculated_volume'] * 1000  # Convert mL to μL
+            actual_deviation_pct = abs(measured_ul - target_ul) / target_ul * 100
+        else:
+            # If no measured volume, we need to reconstruct from deviation
+            # The deviation could be positive (over-delivery) or negative (under-delivery)
+            # Since deviation is stored as absolute value, we need to guess the direction
+            # Most systems tend toward under-delivery, but this is imperfect
+            measured_ul = target_ul * (1 - deviation_pct / 100)  # Assume under-delivery
+            actual_deviation_pct = deviation_pct
+            
+        actual_variability = best_result.get('variability', None)
     
     # Calculate tolerance checks using actual measurements
     tolerances = get_volume_dependent_tolerances(volume_ml)
     
     # Check accuracy tolerance using actual deviation
-    deviation_ul = (actual_deviation_pct / 100.0) * target_ul
-    accuracy_tolerance_met = deviation_ul <= tolerances['deviation_ul']
+    if actual_deviation_pct is not None:
+        deviation_ul = (actual_deviation_pct / 100.0) * target_ul
+        accuracy_tolerance_met = deviation_ul <= tolerances['deviation_ul']
+    else:
+        accuracy_tolerance_met = None
     
     # Check precision tolerance using actual variability
-    if actual_variability != ADAPTIVE_PENALTY_VARIABILITY:
+    if actual_variability is not None and actual_variability != ADAPTIVE_PENALTY_VARIABILITY:
         # Convert variability percentage to μL
         variability_ul = (actual_variability / 100.0) * target_ul
         precision_tolerance_met = variability_ul <= tolerances['variation_ul']
     else:
-        precision_tolerance_met = False  # Penalty value indicates no valid precision data
+        precision_tolerance_met = False  # No valid precision data or penalty value
     
     return {
         'volume_target': target_ul,
         'volume_measured': measured_ul,
         'average_deviation': actual_deviation_pct,
         'variability': actual_variability,
-        'time': time_val,
+        'time': best_result.get('time', None),
         'accuracy_tolerance_met': accuracy_tolerance_met,
         'precision_tolerance_met': precision_tolerance_met
     }
@@ -1275,7 +1316,6 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
             "deviation": adaptive_result['deviation'],
             "variability": adaptive_result['variability'],
             "time": adaptive_result['time'],
-            "measured_volume": adaptive_result['measured_volume'],  # ADD: Store the calculated average volume
             "trial_index": trial_index,
             "strategy": "SCREENING",
             "liquid": liquid,
@@ -1295,14 +1335,13 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
 
 # --- OVERASPIRATE CALIBRATION (REUSE FROM MODULAR) ---
 
-def calculate_first_volume_constraint(best_candidate, volume, liquid, autosave_raw_path=None):
+def calculate_first_volume_constraint(best_candidate, volume, autosave_raw_path=None):
     """
     Calculate overaspirate constraint for first volume based on screening shortfall.
     
     Args:
         best_candidate: Best screening candidate with deviation and parameters
         volume: Target volume in mL
-        liquid: Liquid type for density calculation
         autosave_raw_path: Path to save constraint log file
         
     Returns:
@@ -1311,26 +1350,18 @@ def calculate_first_volume_constraint(best_candidate, volume, liquid, autosave_r
     # Calculate shortfall from the screening result using actual measured volume
     target_volume_ul = volume * 1000
     
-    # Use the stored calculated average volume (consistent with deviation calculation)
-    calculated_volume_ml = best_candidate.get('measured_volume')
-    
-    if calculated_volume_ml is None:
-        # Fallback: re-calculate from raw measurements if measured_volume missing
-        raw_measurements = best_candidate.get('raw_measurements', [])
-        if raw_measurements and len(raw_measurements) > 0:
-            calculated_volume_ml = sum(raw_measurements) / len(raw_measurements)
-            print(f"   ⚠️  WARNING: Re-calculated measured_volume from raw_measurements")
-        elif 'mass' in best_candidate and best_candidate['mass'] is not None:
-            actual_mass = best_candidate['mass']
-            calculated_volume_ml = actual_mass / LIQUIDS[liquid]["density"]
-            print(f"   ⚠️  WARNING: Calculated volume from mass fallback")
-        else:
-            raise ValueError(f"Cannot find measured_volume, raw_measurements, or mass in best_candidate. Available fields: {list(best_candidate.keys())}")
+    # Use actual average measured volume if available, otherwise fall back to deviation calculation
+    raw_measurements = best_candidate.get('raw_measurements', [])
+    if raw_measurements:
+        # Use actual average measured volume (handles both over- and under-delivery)
+        avg_measured_volume_ml = np.mean(raw_measurements)  # raw_measurements are in mL
+        measured_volume_ul = avg_measured_volume_ml * 1000  # Convert to μL
+        print(f"   📏 Using actual measured volume: {measured_volume_ul:.1f}μL from {len(raw_measurements)} measurements")
     else:
-        print(f"   📏 Using stored measured_volume: {calculated_volume_ml:.4f}mL")
-    
-    measured_volume_ul = calculated_volume_ml * 1000  # Convert to μL
-    print(f"   📏 Using measured volume: {measured_volume_ul:.1f}μL from optimization result")
+        # Fallback: calculate from deviation (assuming under-delivery)
+        deviation_pct = best_candidate.get('deviation', 0)
+        measured_volume_ul = target_volume_ul * (1 - deviation_pct / 100)
+        print(f"   📏 Using deviation-calculated volume: {measured_volume_ul:.1f}μL (deviation: {deviation_pct:.1f}%)")
     
     shortfall_ul = target_volume_ul - measured_volume_ul  # Positive = under-delivery, Negative = over-delivery
     
@@ -1417,11 +1448,11 @@ def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, 
                                           liquid, new_pipet_each_time_set, "POST_OPT_OVERVOLUME_ASSAY")
         
         # Get actual measured volume from raw_measurements
-        if raw_measurements and 'mass' in raw_measurements[-1]:
+        if raw_measurements:
             actual_mass = raw_measurements[-1]['mass']
             actual_volume_ml = actual_mass / LIQUIDS[liquid]["density"]
         else:
-            raise ValueError(f"No mass measurement data available for volume {volume}mL - cannot calculate overaspirate adjustment")
+            actual_volume_ml = volume  # Fallback
         
         # Calculate shortfall and overaspirate adjustments
         target_volume_ul = volume * 1000
@@ -1563,18 +1594,16 @@ def calibrate_overvolume_parameters(screening_candidates, remaining_volumes, las
     deviation_pct = best_candidate['deviation']
     
     # Use actual measured volume if available, otherwise calculate from deviation
-    # Use the stored calculated average volume (consistent with deviation calculation)
-    calculated_volume_ml = best_candidate.get('measured_volume')
-    if calculated_volume_ml is None:
-        # Fallback: re-calculate from raw measurements if measured_volume missing
-        raw_measurements = best_candidate.get('raw_measurements', [])
-        if raw_measurements and len(raw_measurements) > 0:
-            calculated_volume_ml = sum(raw_measurements) / len(raw_measurements)
-            print(f"   ⚠️  WARNING: Re-calculated measured_volume from raw_measurements")
-        else:
-            raise ValueError(f"Cannot find measured_volume or raw_measurements in best_candidate. Available fields: {list(best_candidate.keys())}")
-    
-    measured_volume_ul = calculated_volume_ml * 1000  # Convert to μL
+    raw_measurements = best_candidate.get('raw_measurements', [])
+    if raw_measurements:
+        # Use actual average measured volume (handles both over- and under-delivery)
+        avg_measured_volume_ml = np.mean(raw_measurements)  # raw_measurements are in mL
+        measured_volume_ul = avg_measured_volume_ml * 1000  # Convert to μL
+    else:
+        # Fallback: calculate from deviation (assuming under-delivery)
+        # Deviation = |target - measured| / target * 100 (absolute deviation)
+        # For under-delivery (most common): measured = target * (1 - deviation/100)
+        measured_volume_ul = first_volume_ul * (1 - deviation_pct / 100)
     
     calibration_data.append({
         'volume_set': first_volume_ul,
@@ -1608,11 +1637,11 @@ def calibrate_overvolume_parameters(screening_candidates, remaining_volumes, las
                                           liquid, new_pipet_each_time_set, "OVERVOLUME_ASSAY")
         
         # Get actual measured volume from raw_measurements
-        if raw_measurements and 'mass' in raw_measurements[-1]:
+        if raw_measurements:
             actual_mass = raw_measurements[-1]['mass']
             actual_volume = actual_mass / LIQUIDS[liquid]["density"]  # Convert back to mL
         else:
-            raise ValueError(f"No mass measurement data available for volume {volume}mL - cannot calculate calibration data")
+            actual_volume = volume  # Fallback
         
         calibration_data.append({
             'volume_set': volume * 1000,      # Convert to uL for easier math
@@ -1778,7 +1807,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     best_candidate = ranked_candidates[0] if ranked_candidates else screening_results[0]
     print(f"   🏆 Selected best screening candidate: {best_candidate.get('deviation', 0):.1f}% deviation")
     
-    max_overaspirate_ml_updated = calculate_first_volume_constraint(best_candidate, volume, liquid, autosave_raw_path)
+    max_overaspirate_ml_updated = calculate_first_volume_constraint(best_candidate, volume, autosave_raw_path)
     max_overaspirate_ul_updated = max_overaspirate_ml_updated * 1000  # Convert to μL for display and optimizer
     print(f"   ✅ Updated max overaspirate constraint: {max_overaspirate_ul_updated:.1f}μL")
     print(f"   🔍 DEBUG: mL value = {max_overaspirate_ml_updated:.6f}mL, μL value = {max_overaspirate_ul_updated:.6f}μL")
@@ -1858,7 +1887,6 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
             "deviation": adaptive_result['deviation'],
             "variability": adaptive_result['variability'],
             "time": adaptive_result['time'],
-            "measured_volume": adaptive_result['measured_volume'],  # ADD: Store the calculated average volume
             "trial_index": trial_index,
             "strategy": f"OPTIMIZATION_{optimization_trial_count}",
             "liquid": liquid,
@@ -1917,7 +1945,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         print(f"   Accuracy: {quality['accuracy_deviation_ul']:.2f}μL > {quality['accuracy_tolerance_ul']:.2f}μL tolerance")
         
         # Calculate rescue overaspirate constraints based on best candidate shortfall
-        rescue_overaspirate_constraint = calculate_first_volume_constraint(best_candidate, volume, liquid)
+        rescue_overaspirate_constraint = calculate_first_volume_constraint(best_candidate, volume)
         rescue_overaspirate_ul = rescue_overaspirate_constraint * 1000  # Convert to μL
         
         # Store as volume-specific calibration for rescue optimization
@@ -1946,7 +1974,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         
         if rescue_budget >= 2:  # Need at least 2 measurements for meaningful rescue attempt
             # Run rescue optimization using subsequent volume logic
-            rescue_success, rescue_params, rescue_status, rescue_candidate = optimize_subsequent_volume_budget_aware(
+            rescue_success, rescue_params, rescue_status = optimize_subsequent_volume_budget_aware(
                 volume, lash_e, state, autosave_raw_path, raw_measurements,
                 LIQUID, new_pipet_each_time_set, all_results, best_params, rescue_budget
             )
@@ -2090,11 +2118,10 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
         # Calculate final metrics using existing logic
         avg_deviation = np.mean(all_deviations)
         avg_time = np.mean(all_times)
-        avg_measured_volume = np.mean(all_measurements) if all_measurements else None
         
         if len(all_measurements) > 1:
             volume_std = np.std(all_measurements)
-            variability = volume_std / avg_measured_volume * 100
+            variability = volume_std / np.mean(all_measurements) * 100
         else:
             variability = ADAPTIVE_PENALTY_VARIABILITY
         
@@ -2104,7 +2131,6 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             'deviation': avg_deviation,
             'time': avg_time,
             'variability': variability,
-            'measured_volume': avg_measured_volume,  # Use average of all measurements
             'replicate_count': PRECISION_MEASUREMENTS,
             'strategy': 'INHERITED_TEST',
             **test_params
@@ -2182,10 +2208,10 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
         for result in volume_results:
             all_results.append(result)
         
-        return tolerance_met, best_params, status, best_result
+        return tolerance_met, best_params, status
     else:
         print(f"   ❌ No valid results obtained")
-        return False, successful_params, 'failed', None
+        return False, successful_params, 'failed'
 
 def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path, raw_measurements,
                                        liquid, new_pipet_each_time_set, successful_params, budget, tolerances, all_results):
@@ -2442,23 +2468,58 @@ def generate_experimental_summary(all_results, optimal_conditions, raw_measureme
         status = volume_result.get('status', 'unknown')
         
         if status in ['success', 'partial_success']:
-            # FIXED: Use the performance data we already calculated and stored in optimal_conditions
+            # Find performance metrics from results
             volume_ml = volume_result.get('volume_ml', 0)
             volume_trials = [r for r in all_results if r.get('volume') == volume_ml]
             
-            # Get performance metrics directly from optimal_conditions (no fallbacks needed!)
-            avg_deviation = volume_result.get('average_deviation')
-            avg_time = volume_result.get('time')
+            # Get best performance - try precision tests first, then fall back to best optimization result
+            deviation = None
+            time_per_trial = None
             
-            if avg_deviation is not None:
+            # Find precision test results for this volume
+            precision_results = [r for r in all_results 
+                               if r.get('volume') == volume_ml and r.get('strategy') == 'PRECISION_TEST']
+            
+            if precision_results:
+                # Calculate average performance from precision tests
+                avg_deviation = sum(r.get('deviation', 0) for r in precision_results) / len(precision_results)
+                avg_time = sum(r.get('time', 0) for r in precision_results) / len(precision_results)
                 deviation = f"{avg_deviation:.1f}%"
-            else:
-                deviation = "N/A"
-                
-            if avg_time is not None:
                 time_per_trial = f"{avg_time:.0f}s"
             else:
-                time_per_trial = "N/A"
+                # Fallback: use the selected best parameters from optimal_conditions
+                # Find the best result that was selected for this volume
+                volume_optimization_results = [r for r in all_results 
+                                             if r.get('volume') == volume_ml 
+                                             and r.get('strategy') in ['SCREENING'] or r.get('strategy', '').startswith('OPTIMIZATION')]
+                
+                if volume_optimization_results:
+                    # Use the parameters that are stored in optimal_conditions (these come from the best ranked candidate)
+                    # Find the result that matches the stored parameters
+                    best_result = None
+                    for param_key in ['aspirate_speed', 'dispense_speed']:  # Check a few key parameters to find match
+                        if param_key in volume_result:
+                            target_value = volume_result[param_key]
+                            for result in volume_optimization_results:
+                                if result.get(param_key) == target_value:
+                                    best_result = result
+                                    break
+                            if best_result:
+                                break
+                    
+                    # If we found the matching result, use its performance
+                    if best_result:
+                        deviation = f"{best_result.get('deviation', 0):.1f}%"
+                        time_per_trial = f"{best_result.get('time', 0):.0f}s"
+                    else:
+                        # Final fallback: use average of all optimization results for this volume
+                        avg_deviation = sum(r.get('deviation', 0) for r in volume_optimization_results) / len(volume_optimization_results)
+                        avg_time = sum(r.get('time', 0) for r in volume_optimization_results) / len(volume_optimization_results)
+                        deviation = f"{avg_deviation:.1f}%"
+                        time_per_trial = f"{avg_time:.0f}s"
+                else:
+                    deviation = "N/A"
+                    time_per_trial = "N/A"
             
             if status == 'success':
                 report_lines.append(f"     ✅ {volume_ul:.0f}μL: {len(volume_trials)} trials, {deviation} accuracy, {time_per_trial}/trial")
@@ -2609,6 +2670,14 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
             # Always continue with best_params found, regardless of tolerance met
             successful_params = best_params
             
+            # Debug logging to understand the mismatch
+            print(f"\n🔍 DEBUG: best_candidate data for optimal_conditions:")
+            if best_candidate:
+                print(f"   Deviation: {best_candidate.get('deviation', 'N/A')}%")
+                print(f"   Variability: {best_candidate.get('variability', 'N/A')}%") 
+                print(f"   Measured volume: {best_candidate.get('calculated_volume', 'N/A')} mL")
+                print(f"   Composite score: {best_candidate.get('composite_score', 'N/A')}")
+            
             # Extract performance metrics using the actual ranked best candidate
             performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements, best_candidate)
             
@@ -2693,13 +2762,13 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
                 })
                 continue
                 
-            success, best_params, status, volume_best_candidate = optimize_subsequent_volume_budget_aware(
+            success, best_params, status = optimize_subsequent_volume_budget_aware(
                 volume, lash_e, state, autosave_raw_path, raw_measurements,
                 LIQUID, new_pipet_each_time_set, all_results, successful_params, measurements_budget
             )
             
-            # Extract performance metrics using the actual ranked best candidate FOR THIS VOLUME
-            performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements, volume_best_candidate)
+            # Extract performance metrics using actual precision test measurements
+            performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements)
             
             # Extract ONLY the pipetting parameters (filter out scoring junk)
             pipetting_params = {k: v for k, v in best_params.items() if k in ALL_PARAMS}
