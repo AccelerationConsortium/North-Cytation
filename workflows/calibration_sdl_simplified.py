@@ -2715,7 +2715,22 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
                 LIQUID, new_pipet_each_time_set, all_results, successful_params, measurements_budget
             )
             print(f"🔍 DEBUG: optimize_subsequent_volume_budget_aware returned {len(result)} values: {result}")
-            success, best_params, status = result
+            print(f"🔍 DEBUG: result type: {type(result)}")
+            print(f"🔍 DEBUG: result elements: {[f'{i}: {type(elem)} = {elem}' for i, elem in enumerate(result)]}")
+            
+            # Defensive unpacking with explicit error handling
+            try:
+                if len(result) != 3:
+                    print(f"❌ ERROR: Expected 3 values, got {len(result)}. Result: {result}")
+                    # Fallback: attempt to extract just the first 3 values
+                    success, best_params, status = result[0], result[1], result[2]
+                    print(f"🔧 FALLBACK: Using first 3 values: success={success}, best_params keys={list(best_params.keys()) if isinstance(best_params, dict) else 'NOT_DICT'}, status={status}")
+                else:
+                    success, best_params, status = result
+            except Exception as unpack_error:
+                print(f"❌ UNPACKING ERROR: {unpack_error}")
+                print(f"   Result was: {result}")
+                raise
             
             # Extract performance metrics using actual precision test measurements
             performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements)
