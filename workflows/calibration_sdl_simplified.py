@@ -249,116 +249,51 @@ def reset_global_measurement_count():
 
 def extract_performance_metrics(all_results, volume_ml, best_params, raw_measurements=None, best_candidate=None):
     """
-    Extract key performance metrics for a volume from actual precision test measurements.
+    Extract key performance metrics for a volume from the best candidate.
     
     Args:
-        best_candidate: The actual ranked best candidate (avoids parameter matching issues)
+        best_candidate: The actual ranked best candidate (contains all the data we need)
     
     Returns dict with volume_target, volume_measured, average_deviation, variability, time,
     and tolerance check results.
     """
-    # Find all results for this volume
-    volume_results = [r for r in all_results if r.get('volume') == volume_ml]
+    target_ul = volume_ml * 1000  # Convert to μL
     
-    if not volume_results:
-        return {
-            'volume_target': volume_ml * 1000,  # Convert to μL
-            'volume_measured': None,
-            'average_deviation': None,
-            'variability': None,
-            'time': None,
-            'accuracy_tolerance_met': None,
-            'precision_tolerance_met': None
-        }
-    
-    # Use the ranked best candidate directly if provided (eliminates parameter matching issues)
+    # Use the ranked best candidate data directly (this is the gold standard!)
     if best_candidate is not None:
-        best_result = best_candidate
-    else:
-        # Fallback: use the result with best deviation if no candidate provided
-        if volume_results:
-            best_result = min(volume_results, key=lambda r: r.get('deviation', float('inf')))
-        else:
-            best_result = None
-    
-    if best_result is None:
+        # Extract the actual measured performance from candidate
+        measured_volume_ml = best_candidate.get('measured_volume')
+        measured_ul = measured_volume_ml * 1000 if measured_volume_ml is not None else None
+        
+        # Get the actual performance metrics calculated during ranking
+        actual_deviation_pct = best_candidate.get('raw_accuracy')  # Already in %
+        actual_variability = best_candidate.get('raw_precision')   # Already in %
+        actual_time = best_candidate.get('raw_time')
+        
+        # Get tolerance check results from quality evaluation
+        quality_eval = best_candidate.get('quality_evaluation', {})
+        accuracy_tolerance_met = quality_eval.get('accuracy_ok')
+        precision_tolerance_met = quality_eval.get('precision_ok')
+        
         return {
-            'volume_target': volume_ml * 1000,
-            'volume_measured': None,
-            'average_deviation': None,
-            'variability': None,
-            'time': None,
-            'accuracy_tolerance_met': None,
-            'precision_tolerance_met': None
+            'volume_target': target_ul,
+            'volume_measured': measured_ul,
+            'average_deviation': actual_deviation_pct,
+            'variability': actual_variability,
+            'time': actual_time,
+            'accuracy_tolerance_met': accuracy_tolerance_met,
+            'precision_tolerance_met': precision_tolerance_met
         }
     
-    # CRITICAL FIX: Use actual precision test measurements, not calculated estimates!
-    target_ul = volume_ml * 1000
-    measured_ul = None
-    actual_deviation_pct = None
-    actual_variability = None
-    
-    # Find precision test measurements from raw_measurements
-    if raw_measurements:
-        # Look for precision test measurements for this volume
-        # These could be INHERITED_TEST, PRECISION, or similar trial types
-        precision_measurements = [
-            m for m in raw_measurements 
-            if (m.get('volume') == volume_ml and 
-                m.get('trial_type') in ['INHERITED_TEST', 'PRECISION', 'PRECISION_TEST'])
-        ]
-        
-        if precision_measurements:
-            # Extract actual measured volumes from precision tests
-            measured_volumes_ml = [m.get('calculated_volume', 0) for m in precision_measurements]
-            measured_volumes_ul = [v * 1000 for v in measured_volumes_ml]  # Convert to μL
-            
-            # Calculate actual statistics from real measurements
-            measured_ul = sum(measured_volumes_ul) / len(measured_volumes_ul)  # Average
-            
-            # Calculate actual deviation from target
-            actual_deviation_pct = abs(measured_ul - target_ul) / target_ul * 100
-            
-            # Calculate actual variability (CV as percentage)
-            if len(measured_volumes_ul) > 1:
-                std_ul = np.std(measured_volumes_ul)
-                actual_variability = (std_ul / measured_ul) * 100
-            else:
-                actual_variability = 0
-    
-    # Fallback to optimization result estimates if no precision data found
-    if measured_ul is None:
-        deviation_pct = best_result.get('deviation', 0)
-        measured_ul = target_ul * (1 - deviation_pct / 100)  # Old calculation as fallback
-        actual_deviation_pct = deviation_pct
-        actual_variability = best_result.get('variability', None)
-    
-    # Calculate tolerance checks using actual measurements
-    tolerances = get_volume_dependent_tolerances(volume_ml)
-    
-    # Check accuracy tolerance using actual deviation
-    if actual_deviation_pct is not None:
-        deviation_ul = (actual_deviation_pct / 100.0) * target_ul
-        accuracy_tolerance_met = deviation_ul <= tolerances['deviation_ul']
-    else:
-        accuracy_tolerance_met = None
-    
-    # Check precision tolerance using actual variability
-    if actual_variability is not None and actual_variability != ADAPTIVE_PENALTY_VARIABILITY:
-        # Convert variability percentage to μL
-        variability_ul = (actual_variability / 100.0) * target_ul
-        precision_tolerance_met = variability_ul <= tolerances['variation_ul']
-    else:
-        precision_tolerance_met = False  # No valid precision data or penalty value
-    
+    # If no candidate provided, return empty metrics (don't try to reconstruct)
     return {
         'volume_target': target_ul,
-        'volume_measured': measured_ul,
-        'average_deviation': actual_deviation_pct,
-        'variability': actual_variability,
-        'time': best_result.get('time', None),
-        'accuracy_tolerance_met': accuracy_tolerance_met,
-        'precision_tolerance_met': precision_tolerance_met
+        'volume_measured': None,
+        'average_deviation': None,
+        'variability': None,
+        'time': None,
+        'accuracy_tolerance_met': None,
+        'precision_tolerance_met': None
     }
 ALL_PARAMS = ["aspirate_speed", "dispense_speed", "aspirate_wait_time", "dispense_wait_time", 
               "retract_speed", "blowout_vol", "post_asp_air_vol", "overaspirate_vol"]
@@ -2213,7 +2148,7 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             # Add the successful inherited test result to all_results so CSV can find it
             all_results.append(inherited_comprehensive_result)
             
-            return True, test_params, 'success', inherited_comprehensive_result
+            return True, test_params, 'success'
     else:
         # Poor result or insufficient budget for replicates - use penalty variability
         inherited_comprehensive_result = {
@@ -2809,23 +2744,7 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
                 volume, lash_e, state, autosave_raw_path, raw_measurements,
                 LIQUID, new_pipet_each_time_set, all_results, successful_params, measurements_budget
             )
-            print(f"🔍 DEBUG: optimize_subsequent_volume_budget_aware returned {len(result)} values: {result}")
-            print(f"🔍 DEBUG: result type: {type(result)}")
-            print(f"🔍 DEBUG: result elements: {[f'{i}: {type(elem)} = {elem}' for i, elem in enumerate(result)]}")
-            
-            # Defensive unpacking with explicit error handling
-            try:
-                if len(result) != 3:
-                    print(f"❌ ERROR: Expected 3 values, got {len(result)}. Result: {result}")
-                    # Fallback: attempt to extract just the first 3 values
-                    success, best_params, status = result[0], result[1], result[2]
-                    print(f"🔧 FALLBACK: Using first 3 values: success={success}, best_params keys={list(best_params.keys()) if isinstance(best_params, dict) else 'NOT_DICT'}, status={status}")
-                else:
-                    success, best_params, status = result
-            except Exception as unpack_error:
-                print(f"❌ UNPACKING ERROR: {unpack_error}")
-                print(f"   Result was: {result}")
-                raise
+            success, best_params, status = result
             
             # Extract performance metrics using actual precision test measurements
             performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements)
@@ -3001,7 +2920,7 @@ if __name__ == "__main__":
     optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="water",
-        simulate=False,
+        simulate=True,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
         # Fix timing parameters for speed and post-aspirate air volume
         fixed_parameters={
