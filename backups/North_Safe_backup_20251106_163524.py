@@ -1885,24 +1885,13 @@ class North_Robot(North_Base):
             self.logger.warning("Cannot dispense <=0 mL")
             return
 
-        # Calculate total tip volume requirement including optimized parameters
-        total_tip_volume_required = (volume + 
-                                    parameters.overaspirate_vol + 
-                                    parameters.pre_asp_air_vol + 
-                                    parameters.post_asp_air_vol)
-
-        # Handle large volumes by splitting based on TOTAL tip volume requirement
+        # Handle large volumes by splitting into multiple transfers
         max_system_volume = max((tip_config.get('volume', 0) for tip_config in self.PIPET_TIPS.values()), default=1.0)
         repeats = 1
-        
-        if total_tip_volume_required > max_system_volume:
-            # Calculate how many splits we need based on total tip volume
-            repeats = math.ceil(total_tip_volume_required / max_system_volume)
-            volume = volume / repeats  # Split the BASE volume, not the total tip volume
-            self.logger.info(f"Total tip volume ({total_tip_volume_required:.3f} mL) exceeds capacity, splitting into {repeats} transfers of {round(volume,3)} mL each")
-            
-            # Recalculate optimized parameters for the new smaller volume
-            parameters = self._get_optimized_parameters(volume, liquid, parameters)
+        if volume > max_system_volume:
+            repeats = math.ceil(volume / max_system_volume)
+            volume = volume / repeats
+            self.logger.info(f"Volume too high for single transfer, splitting into {repeats} transfers of {round(volume,3)} mL each")
 
         total_mass = 0
         for i in range(repeats):
@@ -2130,20 +2119,30 @@ class North_Robot(North_Base):
         return actual_grid
 
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, parameters=None, liquid=None, well_plate_type=None):
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, parameters=None, well_plate_type=None):
         """
         Dispenses specified amounts into a series of wells in a well plate.
         Args:
             dest_wp_num_array (list or range): Array of well indices to dispense into (e.g., [0, 1, 2])
             amount_mL_array (list[float]): Array of amounts (in mL) to dispense into each well (e.g., [0.1, 0.2, 0.3])
-            parameters (PipettingParameters, optional): Manual parameter overrides (uses defaults if None)
-            liquid (str, optional): Liquid type for automatic parameter optimization
+            parameters (PipettingParameters, optional): Standardized parameters (uses defaults if None)
             well_plate_type (str, optional): Type of well plate (defaults to "96 WELL PLATE")
         """
+        if parameters is None:
+            parameters = PipettingParameters()
+        
+        # Extract values directly from parameters
+        wait_time = parameters.dispense_wait_time
+        blowout_vol = parameters.blowout_vol
+        
         # Default well plate type if not specified
         if well_plate_type is None:
             well_plate_type = "96 WELL PLATE"
-
+        
+        # Determine dispense speed (can be done safely here)
+        dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
+            
+        self.adjust_pump_speed(0, dispense_speed) #Adjust the pump speed if needed
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
             try:
@@ -2156,17 +2155,6 @@ class North_Robot(North_Base):
 
             if amount_mL == 0: #Skip empty dispenses
                 continue
-
-            # Use intelligent parameter resolution for each volume: defaults → liquid-calibrated → user overrides
-            optimized_parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
-            
-            # Extract values from optimized parameters
-            wait_time = optimized_parameters.dispense_wait_time
-            blowout_vol = optimized_parameters.blowout_vol
-            
-            # Determine dispense speed from optimized parameters
-            dispense_speed = optimized_parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
-            self.adjust_pump_speed(0, dispense_speed) #Adjust the pump speed if needed
 
             height = self.get_height_at_location(location)
             height = self.adjust_height_based_on_pipet_held(height) 
@@ -2181,11 +2169,11 @@ class North_Robot(North_Base):
 
             self.logger.info(f"Transferring {amount_mL:.3f} mL into well #{dest_wp_num_array[i]} of {well_plate_type}")
 
-            # Calculate overdispense volume using optimized parameters for this specific amount
+            # Calculate overdispense volume for this specific amount
             overdispense_vol = (amount_mL + 
-                               optimized_parameters.overaspirate_vol + 
-                               optimized_parameters.pre_asp_air_vol + 
-                               optimized_parameters.post_asp_air_vol)
+                               parameters.overaspirate_vol + 
+                               parameters.pre_asp_air_vol + 
+                               parameters.post_asp_air_vol)
 
             #Dispense and then wait
             self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)     
@@ -2194,7 +2182,7 @@ class North_Robot(North_Base):
         self.save_robot_status()    
         return True
 
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, liquid=None, strategy="auto", 
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, strategy="auto", 
                                           low_volume_cutoff=0.05, buffer_vol=0.02, well_plate_type="96 WELL PLATE"):
         """
         Dispense from multiple vials into wellplate wells using strategy pattern.
@@ -2202,8 +2190,7 @@ class North_Robot(North_Base):
         Args:
             well_plate_df (DataFrame): DataFrame where columns are vial names and rows are well volumes
             vial_names (list, optional): DEPRECATED - for backwards compatibility only
-            parameters (PipettingParameters, optional): Manual parameter overrides
-            liquid (str, optional): Liquid type for automatic parameter optimization
+            parameters (PipettingParameters, optional): Liquid handling parameters 
             strategy (str): "serial", "batched", or "auto" (default: auto-select based on parameters)
             low_volume_cutoff (float): Volume threshold for switching between tip types (mL)
             buffer_vol (float): Extra volume to aspirate for accuracy, returned to source vial (mL)
@@ -2239,13 +2226,13 @@ class North_Robot(North_Base):
         
         # Dispatch to appropriate strategy
         if strategy == "serial":
-            return self._dispense_wellplate_serial(well_plate_df, parameters, liquid, well_plate_type)
+            return self._dispense_wellplate_serial(well_plate_df, parameters, well_plate_type)
         elif strategy == "batched":
-            return self._dispense_wellplate_batched(well_plate_df, parameters, liquid, low_volume_cutoff, buffer_vol, well_plate_type)
+            return self._dispense_wellplate_batched(well_plate_df, parameters, low_volume_cutoff, buffer_vol, well_plate_type)
         else:
             raise ValueError(f"Unknown strategy: {strategy}. Use 'serial', 'batched', or 'auto'")
 
-    def _dispense_wellplate_serial(self, well_plate_df, parameters, liquid, well_plate_type):
+    def _dispense_wellplate_serial(self, well_plate_df, parameters, well_plate_type):
         """
         Serial strategy: One aspirate -> one dispense per well, full parameter support.
         Slower but supports all PipettingParameters features.
@@ -2281,8 +2268,8 @@ class North_Robot(North_Base):
             
             # Process volumes in sorted order - this naturally groups similar volumes
             for well_idx, volume in volume_list:
-                self.aspirate_from_vial(vial_name, volume, parameters=parameters, liquid=liquid)  # Automatic tip selection
-                self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, liquid=liquid,
+                self.aspirate_from_vial(vial_name, volume, parameters=parameters)  # Automatic tip selection
+                self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, 
                                            well_plate_type=well_plate_type)
             
             # Remove tip after processing all volumes for this vial
@@ -2293,7 +2280,7 @@ class North_Robot(North_Base):
         self.logger.info("Serial wellplate dispensing completed")
         return True
 
-    def _dispense_wellplate_batched(self, well_plate_df, parameters, liquid, low_volume_cutoff, buffer_vol, well_plate_type):
+    def _dispense_wellplate_batched(self, well_plate_df, parameters, low_volume_cutoff, buffer_vol, well_plate_type):
         """
         Batched strategy: Multiple dispenses per aspirate for speed optimization.
         Faster but limited parameter support (no air volumes, minimal mixing).
@@ -2359,7 +2346,7 @@ class North_Robot(North_Base):
                     # Execute the batch
                     batch_total = self._execute_batch(
                         vial_name, batch_wells, batch_volumes, buffer_vol, max_volume,
-                        parameters, liquid, tip_type, well_plate_type
+                        parameters, tip_type, well_plate_type
                     )
                     
                     dispensed += batch_total
@@ -2407,7 +2394,7 @@ class North_Robot(North_Base):
         return batch_wells, batch_volumes, current_idx
 
     def _execute_batch(self, vial_name, batch_wells, batch_volumes, buffer_vol, max_volume, 
-                      parameters, liquid, tip_type, well_plate_type):
+                      parameters, tip_type, well_plate_type):
         """
         Execute one complete batch: aspirate with buffer -> dispense -> return buffer.
         
@@ -2424,16 +2411,16 @@ class North_Robot(North_Base):
         # Note: aspirate_from_vial will handle tip acquisition and speed setting
         
         # Aspirate with buffer
-        self.aspirate_from_vial(vial_name, total_aspirate, parameters=parameters, liquid=liquid, specified_tip=tip_type)
+        self.aspirate_from_vial(vial_name, total_aspirate, parameters=parameters, specified_tip=tip_type)
         
         # Dispense to wells
         self.dispense_into_wellplate(batch_wells, batch_volumes, 
-                                   parameters=parameters, liquid=liquid, well_plate_type=well_plate_type)
+                                   parameters=parameters, well_plate_type=well_plate_type)
         
         # Return buffer volume to source vial if any
         if extra_aspirate_vol > 1e-6:
             self.logger.debug(f"Returning buffer volume: {extra_aspirate_vol:.3f} mL to vial {vial_name}")
-            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=parameters, liquid=liquid)
+            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=parameters)
         
         return batch_total
 

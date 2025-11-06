@@ -58,11 +58,11 @@ class PipettingWizard:
         Returns:
             List of Path objects for matching calibration files
         """
-        # Search patterns - look for optimal_conditions files with liquid name (case-insensitive)
+        # Search patterns - look for liquid name in filename (case-insensitive)
         patterns = [
-            f"optimal_conditions*{liquid.lower()}*.csv",
-            f"optimal_conditions*{liquid.upper()}*.csv", 
-            f"optimal_conditions*{liquid.title()}*.csv"
+            f"*{liquid.lower()}*.csv",
+            f"*{liquid.upper()}*.csv", 
+            f"*{liquid.title()}*.csv"
         ]
         
         found_files = []
