@@ -2805,10 +2805,12 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
                 })
                 continue
                 
-            success, best_params, status = optimize_subsequent_volume_budget_aware(
+            result = optimize_subsequent_volume_budget_aware(
                 volume, lash_e, state, autosave_raw_path, raw_measurements,
                 LIQUID, new_pipet_each_time_set, all_results, successful_params, measurements_budget
             )
+            print(f"🔍 DEBUG: optimize_subsequent_volume_budget_aware returned {len(result)} values: {result}")
+            success, best_params, status = result
             
             # Extract performance metrics using actual precision test measurements
             performance = extract_performance_metrics(all_results, volume, best_params, raw_measurements)
