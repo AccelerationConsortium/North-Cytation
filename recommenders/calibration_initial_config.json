@@ -1,26 +1,17 @@
 {
   "system_message": [
-    "You are an expert in liquid handling parameter design for initial screening. Your task is to recommend DISTINCT parameter combinations that are likely to achieve high accuracy with diverse timing characteristics.",
+    "Generate diverse parameter sets for liquid handling optimization. Focus on combinations likely to achieve good accuracy and precision with different timing characteristics.",
     "",
-    "CRITICAL PARAMETER NOTE: For aspirate and dispense speed parameters (aspirate_speed, dispense_speed), HIGHER VALUES = SLOWER SPEEDS. This is counterintuitive but important for your recommendations.",
+    "KEY OBJECTIVES:",
+    "- Primary: Minimize deviation and variability (accuracy/precision)",
+    "- Secondary: Reasonable timing efficiency",
     "",
-    "SCREENING STRATEGY - Prioritize accuracy with timing diversity:",
-    "1. HIGH-ACCURACY and PRECISION CANDIDATES: Focus on parameter combinations likely to achieve excellent accuracy (low deviation and variability)",
-    "2. TIMING DIVERSITY: Within the accurate parameter space, provide candidates spanning from reasonably fast to more conservative timing. Consider the liquid being pipetted.",
-    "3. AVOID EXTREME SPEED: Very fast parameters often sacrifice accuracy - we want reliable candidates, not risky speed trials",
-    "4. DISTINCT APPROACHES: Each candidate should use a meaningfully different parameter strategy to maximize learning",
-    "5. ROBUST EXPLORATION: Test different mechanisms for achieving accuracy (wait times vs speeds vs air volumes)",
+    "STRATEGY:",
+    "- Provide distinct parameter combinations with different approaches to accuracy",
+    "- Avoid extreme parameters that sacrifice reliability",
+    "- Span from moderately fast to conservative timing",
     "",
-    "Your recommendations should:",
-    "1. PRIORITIZE ACCURACY/PRECISION: All candidates should be designed for high accuracy potential - avoid parameters likely to cause errors",
-    "2. SPAN REASONABLE TIMING: Provide candidates from moderately fast to conservative, but all within the reliable range",
-    "3. USE DIFFERENT MECHANISMS: Some rely on longer waits, others on conservative speeds, others on air volumes - diversify approaches",
-    "4. TEST PARAMETER INTERACTIONS: Select combinations that reveal how different accuracy mechanisms work together",
-    "5. ENABLE OPTIMIZATION: Provide high-quality starting points that optimization algorithms can refine",
-    "",
-    "GOALS: Primary goal is accuracy (minimize deviation and variability). Secondary goal is reasonable efficiency - we want the fastest reliable parameters, not the fastest possible parameters.",
-    "",
-    "REMEMBER: This is initial screening for promising candidates, not exhaustive exploration. Quality over coverage!"
+    "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter scaling)"
   ],
   
   "api_settings": {
@@ -48,100 +39,65 @@
   
   "exploration_strategy": {
     "exploration_type": "accuracy_focused_screening",
-    "coverage_philosophy": "prioritize_high_accuracy_candidates_with_timing_diversity",
-    "baseline_establishment": "identify_robust_parameter_combinations_likely_to_succeed",
-    "boundary_testing": "avoid_risky_edge_cases_focus_on_reliable_parameter_ranges",
-    "interaction_testing": "test_different_accuracy_mechanisms_conservative_speeds_wait_times_air_volumes"
+    "approach": "diverse_reliable_parameters_with_timing_variation"
   },
   
   "parameters": {
     "aspirate_speed": {
       "type": "integer",
       "unit": "uL/s",
-      "range": [
-        10,
-        35
-      ],
-      "description": "Speed for liquid aspiration operations. IMPORTANT: Higher values = SLOWER speed. Lower values = faster speed. Slower speeds (higher values) may improve accuracy but increase time.",
-      "safety_limit": 40,
-      "exploration_note": "Test low values (fast), high values (slow), and middle ranges"
+      "range": [10, 35],
+      "description": "Aspiration speed. Higher values = SLOWER speed. Thicker liquids may benefit in some cases.",
+      "safety_limit": 40
     },
     "dispense_speed": {
       "type": "integer",
       "unit": "uL/s", 
-      "range": [
-        10,
-        35
-      ],
-      "description": "Speed for liquid dispensing operations. IMPORTANT: Higher values = SLOWER speed. Lower values = faster speed. Slower speeds (higher values) may improve accuracy but increase time.",
-      "safety_limit": 40,
-      "exploration_note": "Test low values (fast), high values (slow), and middle ranges"
+      "range": [10, 35],
+      "description": "Dispense speed. Higher values = SLOWER speed. Thicker liquids may benefit in some cases.",
+      "safety_limit": 40
     },
     "aspirate_wait_time": {
       "type": "float",
       "unit": "seconds",
-      "range": [
-        0.0,
-        30.0
-      ],
-      "description": "Wait time after aspiration before tip movement. Longer wait times may improve accuracy/reduce deviation by allowing liquid to settle, but increase total time.",
-      "safety_limit": 35.0,
-      "exploration_note": "Test minimal waits (speed focus) vs longer waits (accuracy focus)"
+      "range": [0.0, 30.0],
+      "description": "Wait time after aspiration. Longer waits may improve accuracy or do nothing. Thicker liquids may benefit in some cases.",
+      "safety_limit": 35.0
     },
     "dispense_wait_time": {
       "type": "float",
       "unit": "seconds",
-      "range": [
-        0.0,
-        30.0
-      ],
-      "description": "Wait time after dispensing before tip movement. Longer wait times may improve accuracy/reduce deviation by ensuring complete dispensing, but increase total time.",
-      "safety_limit": 35.0,
-      "exploration_note": "Test minimal waits (speed focus) vs longer waits (accuracy focus)"
+      "range": [0.0, 30.0],
+      "description": "Wait time after dispensing. Longer waits may improve accuracy or do nothing. Thicker liquids may benefit in some cases.",
+      "safety_limit": 35.0
     },
     "retract_speed": {
       "type": "float",
       "unit": "uL/s",
-      "range": [
-        1.0,
-        15.0
-      ],
-      "description": "Speed for retracting tip from liquid surface. Higher values = faster retraction, lower values = slower retraction. Slower retractions may improve accuracy.",
-      "safety_limit": 20.0,
-      "exploration_note": "Include fast and slow retraction speeds to test impact"
+      "range": [1.0, 15.0],
+      "description": "Tip retraction speed. Higher = faster. Only a short part of the protocol.",
+      "safety_limit": 20.0
     },
     "blowout_vol": {
       "type": "float",
       "unit": "mL",
-      "range": [
-        0.0,
-        0.1
-      ],
-      "description": "Air volume blown out after dispensing to ensure complete liquid transfer and reduce retention.",
-      "safety_limit": 0.15,
-      "exploration_note": "Test with and without blowout volumes to assess impact on accuracy"
+      "range": [0.0, 0.1],
+      "description": "Air volume blown out after dispensing. Often helpful for squeezing out liquid stuck in the tip.",
+      "safety_limit": 0.15
     },
     "post_asp_air_vol": {
       "type": "float",
       "unit": "mL", 
-      "range": [
-        0.0,
-        0.1
-      ],
+      "range": [0.0, 0.1],
       "description": "Air volume aspirated after liquid to prevent dripping.",
-      "safety_limit": 0.15,
-      "exploration_note": "This is usually a useful parameter"
+      "safety_limit": 0.15
     },
     "overaspirate_vol": {
       "type": "float",
       "unit": "mL",
-      "range": [
-        0.0,
-        0.025
-      ],
-      "description": "Extra volume aspirated beyond target to compensate for retention. Needed when the pipette tip retains some liquid after aspiration.",
-      "safety_limit": 0.1,
-      "exploration_note": "Overaspirate can help accuracy if pipetting is under-pipetting, which is especially common for viscous liquids."
+      "range": [0.0, 0.025],
+      "description": "Extra volume aspirated to compensate for tip retention or lack of efficient aspiration of thick liquids.",
+      "safety_limit": 0.1
     }
   },
   
@@ -149,41 +105,35 @@
     "deviation": {
       "goal": "minimize",
       "unit": "percentage_error",
-      "description": "Accuracy metric - deviation from expected mass",
-      "priority": "primary",
-      "exploration_context": "One key objective to optimize through parameter selection"
+      "description": "Accuracy - deviation from target",
+      "priority": "primary"
     },
     "variability": {
       "goal": "minimize", 
       "unit": "percentage_cv",
-      "description": "Precision metric - standard deviation across replicates",
-      "priority": "primary", 
-      "exploration_context": "Another key objective, may trade off with speed"
+      "description": "Precision - replicate consistency",
+      "priority": "primary"
     },
     "time": {
       "goal": "minimize",
       "unit": "seconds", 
-      "description": "Efficiency metric - total operation time per pipetting cycle",
-      "priority": "secondary",
-      "exploration_context": "Important efficiency metric that often trades off with accuracy/precision"
+      "description": "Operation time efficiency",
+      "priority": "secondary"
     }
   },
   
   "material_properties": {
     "water": {
-      "description": "Low viscosity reference liquid with standard flow characteristics",
-      "exploration_notes": "Excellent for exploring full parameter ranges. Test aggressive speed settings and minimal wait times. Good baseline for parameter relationships.",
-      "recommended_focus": "Explore speed-accuracy trade-offs across full parameter space"
+      "description": "Low viscosity reference liquid",
+      "focus": "Test full parameter ranges, speed-accuracy trade-offs"
     },
     "glycerol": {
-      "description": "High viscosity liquid with strong hydrogen bonding and slower flow",
-      "exploration_notes": "Requires conservative approach. Prioritize slower speeds (higher values) and longer wait times. Test blowout volumes for complete transfer.",
-      "recommended_focus": "Emphasize accuracy-focused and balanced approaches, test boundary conditions carefully"
+      "description": "High viscosity liquid", 
+      "focus": "Conservative speeds, longer waits, test blowout"
     },
     "ethanol": {
-      "description": "Low viscosity, volatile liquid with fast flow characteristics", 
-      "exploration_notes": "Fast operations to minimize evaporation. Consider minimal wait times but test for accuracy impacts.",
-      "recommended_focus": "Speed-focused approach with precision validation"
+      "description": "Low viscosity, volatile liquid",
+      "focus": "Fast operations, minimal waits"
     }
   }
 }
