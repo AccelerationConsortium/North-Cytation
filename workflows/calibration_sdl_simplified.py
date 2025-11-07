@@ -2963,6 +2963,7 @@ if __name__ == "__main__":
         vial_mode="legacy",
         liquid="water",
         simulate=False,
+        use_LLM_for_screening=True,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
         # Fix timing parameters for speed and post-aspirate air volume
         fixed_parameters={
