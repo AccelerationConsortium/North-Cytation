@@ -2920,7 +2920,7 @@ if __name__ == "__main__":
     optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="water",
-        simulate=True,
+        simulate=False,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
         # Fix timing parameters for speed and post-aspirate air volume
         fixed_parameters={
