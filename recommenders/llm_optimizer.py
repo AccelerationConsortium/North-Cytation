@@ -18,8 +18,8 @@ class LLMOptimizer:
         Args:
             api_key: OpenAI API key. If None, will try to get from environment variable OPENAI_API_KEY
             backend: Backend to use ("openai", "ollama", or "auto"). Auto will try OpenAI first, fallback to Ollama
-            ollama_model: Ollama model to use (e.g., "gpt-oss:20b", "gemma3:1b")
-            ollama_url: Ollama server URL
+            ollama_model: Ollama model to use (e.g., "gpt-oss:20b", "gemma3:1b") or "online_server" for remote
+            ollama_url: Ollama server URL (local or remote)
         """
         self.backend = backend
         self.ollama_model = ollama_model
@@ -57,21 +57,36 @@ class LLMOptimizer:
             raise ValueError(f"Invalid backend: {backend}. Must be 'openai', 'ollama', or 'auto'")
     
     def _setup_ollama(self):
-        """Setup Ollama backend"""
+        """Setup Ollama backend (local or remote)"""
         try:
+            # Handle special case for remote server
+            if self.ollama_model == "online_server":
+                # Use colleague's remote server
+                self.ollama_url = "https://mac-llm.tail2a00e9.ts.net/ollama"
+                print(f"🌐 Using remote Ollama server: {self.ollama_url}")
+            
             # Test if Ollama is running
-            response = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
+            response = requests.get(f"{self.ollama_url}/api/tags", timeout=10)
             if response.status_code == 200:
                 available_models = [model["name"] for model in response.json().get("models", [])]
-                print(f"🦙 Ollama connected! Available models: {available_models}")
+                server_type = "remote" if "tail2a00e9.ts.net" in self.ollama_url else "local"
+                print(f"🦙 Ollama {server_type} server connected! Available models: {available_models}")
                 
-                # Auto-select model if not specified
-                if not self.ollama_model:
-                    if "gpt-oss:20b" in available_models:
-                        self.ollama_model = "gpt-oss:20b"
-                        print(f"🎯 Auto-selected model: {self.ollama_model}")
-                    elif available_models:
-                        self.ollama_model = available_models[0]
+                # Auto-select model if not specified or if using online_server
+                if not self.ollama_model or self.ollama_model == "online_server":
+                    if available_models:
+                        # Prefer certain models if available
+                        preferred_models = ["gpt-oss:20b", "llama2", "mistral"]
+                        selected_model = None
+                        for pref in preferred_models:
+                            if pref in available_models:
+                                selected_model = pref
+                                break
+                        
+                        if not selected_model:
+                            selected_model = available_models[0]
+                        
+                        self.ollama_model = selected_model
                         print(f"🎯 Auto-selected model: {self.ollama_model}")
                     else:
                         raise ValueError("No Ollama models available")
@@ -82,8 +97,11 @@ class LLMOptimizer:
                         print(f"🎯 Using fallback model: {self.ollama_model}")
             else:
                 raise ValueError(f"Ollama server not responding (status: {response.status_code})")
-        except requests.exceptions.RequestException:
-            raise ValueError("Ollama server not running. Start it with: ollama serve")
+        except requests.exceptions.RequestException as e:
+            if "online_server" in str(self.ollama_model):
+                raise ValueError(f"Remote Ollama server not accessible: {e}")
+            else:
+                raise ValueError(f"Ollama server not running. Start it with: ollama serve. Error: {e}")
     
     def list_data_files(self, data_folder: str) -> list:
         """
@@ -146,7 +164,19 @@ class LLMOptimizer:
             system_message = system_message_raw
         
         # Convert DataFrame to string representation
-        data_str = df.to_string(index=False)
+        # Check if we have meaningful experimental data (more than just liquid/material type)
+        has_experimental_data = False
+        if not df.empty:
+            # Check if we have any parameter columns with actual experimental results
+            experimental_columns = ['aspirate_speed', 'dispense_speed', 'deviation', 'variability', 'time']
+            has_experimental_data = any(col in df.columns for col in experimental_columns)
+        
+        if df.empty or not has_experimental_data:
+            data_str = "No existing experimental data - generating initial parameter recommendations"
+            is_initial_generation = True
+        else:
+            data_str = df.to_string(index=False)
+            is_initial_generation = False
         
         # Extract parameter information if available
         parameters_info = ""
@@ -267,27 +297,62 @@ class LLMOptimizer:
         # Extract material/condition types for the prompt (using configurable column name)
         material_info = ""
         if material_col and material_col in df.columns:
-            material_types = ", ".join(df[material_col].unique().tolist())
-            material_info = f"\nMATERIAL TYPE: {material_types} - Consider relevant material properties\n"
+            material_types_list = df[material_col].unique().tolist()
+            material_types = ", ".join(material_types_list)
+            material_info = f"\nMATERIAL TYPE: {material_types}"
+            
+            # Add detailed material properties if available
+            if "material_properties" in config:
+                material_info += "\nMATERIAL PROPERTIES:\n"
+                for material_name in material_types_list:
+                    if material_name in config["material_properties"]:
+                        properties = config["material_properties"][material_name]
+                        prop_desc = properties.get("description", "No description")
+                        focus = properties.get("focus", "")
+                        material_info += f"- {material_name}: {prop_desc}"
+                        if focus:
+                            material_info += f" | Focus: {focus}"
+                        material_info += "\n"
+                    else:
+                        material_info += f"- {material_name}: Use general liquid handling principles\n"
+            else:
+                material_info += " - Consider relevant material properties"
+            material_info += "\n"
         
         # Generate dynamic JSON format based on config parameters
         param_names = list(config["parameters"].keys())
         json_fields = ',\n            '.join([f'"{param}": value' for param in param_names])
         
-        # Generate dynamic optimization instructions based on metrics config
-        metrics_instruction = "1. Identify which experiments performed best"
-        if "metrics" in config:
-            metrics_goals = []
-            for metric, details in config["metrics"].items():
-                goal = details.get("goal", "minimize")
-                priority = details.get("priority", "medium")
-                if goal == "minimize":
-                    metrics_goals.append(f"{goal} {metric}")
-                else:
-                    metrics_goals.append(f"{goal} {metric}")
+        # Generate appropriate instructions based on whether we have data or not
+        if is_initial_generation:
+            instructions = f"""INSTRUCTIONS: 
+1. Generate {batch_size} diverse initial parameter combinations based on the parameter ranges and guidelines
+2. Use your understanding of liquid handling physics and the material properties
+3. Consider the experimental setup and optimization objectives
+4. Provide reasoning based on expected behavior and best practices"""
+            reasoning_description = "physics-based explanation for parameter choice and expected behavior"
+        else:
+            # Generate dynamic optimization instructions based on metrics config
+            metrics_instruction = "1. Identify which experiments performed best"
+            if "metrics" in config:
+                metrics_goals = []
+                for metric, details in config["metrics"].items():
+                    goal = details.get("goal", "minimize")
+                    priority = details.get("priority", "medium")
+                    if goal == "minimize":
+                        metrics_goals.append(f"{goal} {metric}")
+                    else:
+                        metrics_goals.append(f"{goal} {metric}")
+                
+                if metrics_goals:
+                    metrics_instruction = f"1. Identify which experiments performed best ({', '.join(metrics_goals)})"
             
-            if metrics_goals:
-                metrics_instruction = f"1. Identify which experiments performed best ({', '.join(metrics_goals)})"
+            instructions = f"""INSTRUCTIONS: 
+{metrics_instruction}
+2. Spot patterns: what parameter values correlate with good/bad performance?
+3. Recommend {batch_size} new parameter combinations based on your analysis
+4. Reference specific data points in your reasoning"""
+            reasoning_description = "data-driven explanation citing specific experimental results"
             
         prompt = f"""{system_message}
 
@@ -296,11 +361,7 @@ PARAMETERS (ranges): {', '.join([f"{param} {details['range']} {details.get('unit
 EXPERIMENTAL DATA TO ANALYZE:
 {data_str}
 
-INSTRUCTIONS: 
-{metrics_instruction}
-2. Spot patterns: what parameter values correlate with good/bad performance?
-3. Recommend {batch_size} new parameter combinations based on your analysis
-4. Reference specific data points in your reasoning
+{instructions}
 
 JSON Response Format:
 {{
@@ -308,11 +369,11 @@ JSON Response Format:
         {{
             {json_fields},
             "confidence": "high/medium/low",
-            "reasoning": "data-driven explanation citing specific experimental results",
+            "reasoning": "{reasoning_description}",
             "expected_improvement": "quantified prediction based on observed patterns"
         }}
     ],
-    "summary": "Key data insights and optimization strategy"
+    "summary": "Key insights and strategy for parameter selection"
 }}"""
         return prompt
     
@@ -590,7 +651,12 @@ JSON Response Format:
         # Get model from config if not specified
         if model is None:
             if self.backend == "ollama":
-                model = config.get("api_settings", {}).get("model", self.ollama_model)
+                config_model = config.get("api_settings", {}).get("model", self.ollama_model)
+                # If config specifies "online_server", use the actual selected model
+                if config_model == "online_server":
+                    model = self.ollama_model
+                else:
+                    model = config_model
             else:
                 model = config.get("api_settings", {}).get("model", "gpt-3.5-turbo")
         

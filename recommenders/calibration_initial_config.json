@@ -4,19 +4,28 @@
     "",
     "KEY OBJECTIVES:",
     "- Primary: Minimize deviation and variability (accuracy/precision)",
-    "- Secondary: Reasonable timing efficiency",
+    "- Secondary: Vary timing (operation speed) while maintaining reliability",
     "",
     "STRATEGY:",
     "- Provide distinct parameter combinations with different approaches to accuracy",
-    "- Avoid extreme parameters that sacrifice reliability",
-    "- Span from moderately fast to conservative timing",
+    "- CRITICAL: Match your parameter exploration to the liquid's viscosity level",
+    "- For low viscosity liquids (~1-10 cP): CENTER exploration toward the FASTER end of speed ranges and SHORTER end of wait ranges",
+    "- For medium viscosity liquids (~100-2000 cP): CENTER exploration in the MIDDLE of speed and wait ranges", 
+    "- For high viscosity liquids (>5000 cP): CENTER exploration toward the SLOWER end of speed ranges and LONGER end of wait ranges",
+    "",
+    "PARAMETER DIVERSITY REQUIREMENTS:",
+    "- Ensure parameter values are varied and independent across recommendations",
+    "- Create orthogonal parameter combinations to enable clear effect identification", 
+    "- Each recommendation should explore different parameter space regions",
+    "- CRITICAL: Avoid setting multiple parameters to identical values within a single recommendation",
+    "- CRITICAL: Vary aspirate_speed, dispense_speed, and wait times independently - don't pair them identically",
     "",
     "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter scaling)"
   ],
   
   "api_settings": {
-    "model": "gpt-oss:20b",
-    "temperature": 0.8,
+    "model": "online_server",
+    "temperature": 1.0,
     "max_tokens": 8000
   },
   
@@ -39,7 +48,8 @@
   
   "exploration_strategy": {
     "exploration_type": "accuracy_focused_screening",
-    "approach": "diverse_reliable_parameters_with_timing_variation"
+    "approach": "diverse_reliable_parameters_with_timing_variation",
+    "parameter_independence": "MANDATORY - No two timing parameters should have identical values within a recommendation"
   },
   
   "parameters": {
@@ -47,29 +57,25 @@
       "type": "integer",
       "unit": "uL/s",
       "range": [10, 35],
-      "description": "Aspiration speed. Higher values = SLOWER speed. Thicker liquids may benefit in some cases.",
-      "safety_limit": 40
+      "description": "Aspiration speed. Higher values = SLOWER speed. Thicker liquids may benefit in some cases."
     },
     "dispense_speed": {
       "type": "integer",
       "unit": "uL/s", 
       "range": [10, 35],
-      "description": "Dispense speed. Higher values = SLOWER speed. Thicker liquids may benefit in some cases.",
-      "safety_limit": 40
+      "description": "Dispense speed. Higher values = SLOWER speed. Thicker liquids may benefit in some cases."
     },
     "aspirate_wait_time": {
       "type": "float",
       "unit": "seconds",
       "range": [0.0, 30.0],
-      "description": "Wait time after aspiration. Longer waits may improve accuracy or do nothing. Thicker liquids may benefit in some cases.",
-      "safety_limit": 35.0
+      "description": "Wait time after aspiration. Longer waits may improve accuracy or do nothing. Thicker liquids may benefit in some cases."
     },
     "dispense_wait_time": {
       "type": "float",
       "unit": "seconds",
       "range": [0.0, 30.0],
-      "description": "Wait time after dispensing. Longer waits may improve accuracy or do nothing. Thicker liquids may benefit in some cases.",
-      "safety_limit": 35.0
+      "description": "Wait time after dispensing. Longer waits may improve accuracy or do nothing. Thicker liquids may benefit in some cases."
     },
     "retract_speed": {
       "type": "float",
@@ -124,16 +130,24 @@
   
   "material_properties": {
     "water": {
-      "description": "Low viscosity reference liquid",
-      "focus": "Test full parameter ranges, speed-accuracy trade-offs"
+      "description": "Standard aqueous solution, low viscosity (1 cP)",
+      "focus": "Fast dispense/aspirate speeds, shorter waits"
     },
     "glycerol": {
-      "description": "High viscosity liquid", 
-      "focus": "Conservative speeds, longer waits, test blowout"
+      "description": "Medium viscosity liquid (1000 cP)", 
+      "focus": "Conservative dispense/aspirate speeds, longer waits"
     },
     "ethanol": {
-      "description": "Low viscosity, volatile liquid",
-      "focus": "Fast operations, minimal waits"
+      "description": "Low viscosity, volatile liquid (1.2 cP, thinner than water)",
+      "focus": "Fast dispense/aspirate speeds, minimal waits"
+    },
+    "4%_hyaluronic_acid_water": {
+      "description": "Very high viscosity polymer solution (10,000-50,000 cP, 10-50x thicker than glycerol)",
+      "focus": "Very conservative speeds, extended wait times, maximum clearing volumes"
+    },
+    "DMSO": {
+      "description": "Medium viscosity organic solvent (2 cP, slightly thicker than water)",
+      "focus": "Moderate speeds, short waits, consider volatility"
     }
   }
 }
