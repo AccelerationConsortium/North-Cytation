@@ -28,6 +28,7 @@ LIQUIDS = {
     "DMSO": {"density": 1.1, "refill_pipets": False},
     "glycerol": {"density": 1.26, "refill_pipets": True},
     "PEG_Water": {"density": 1.05, "refill_pipets": True},
+    "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
 }
 
 # --- Utility Functions ---
