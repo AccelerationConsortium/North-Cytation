@@ -36,7 +36,7 @@ DEFAULT_PARAMETER_BOUNDS = {
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_volume=1.0, model_type="qNEHVI", 
                  optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0, 
-                 transfer_learning=False, volume_bounds=None):
+                 min_overaspirate_ul=0.0, transfer_learning=False, volume_bounds=None):
     """
     Create an Ax client for 3-objective parameter optimization with optional transfer learning.
     
@@ -148,10 +148,11 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
         
         # Special handling for volume-dependent bounds
         if param_name == "overaspirate_vol":
-            # Convert max_overaspirate_ul (microliters) to mL for consistency with other volumes
+            # Convert overaspirate bounds (microliters) to mL for consistency with other volumes
             max_overaspirate_ml = max_overaspirate_ul / 1000.0
-            param_config["bounds"] = [0.0, max_overaspirate_ml]  # Fixed maximum overaspirate volume
-            print(f"🔧 OPTIMIZER DEBUG: Setting overaspirate_vol bounds to [0.0, {max_overaspirate_ml:.6f}] mL ({max_overaspirate_ul:.1f}μL)")
+            min_overaspirate_ml = min_overaspirate_ul / 1000.0
+            param_config["bounds"] = [min_overaspirate_ml, max_overaspirate_ml]
+            print(f"🔧 OPTIMIZER DEBUG: Setting overaspirate_vol bounds to [{min_overaspirate_ml:.6f}, {max_overaspirate_ml:.6f}] mL ([{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL])")
         elif param_name == "volume" and transfer_learning:
             # Use provided volume bounds for transfer learning
             if volume_bounds:

@@ -25,7 +25,8 @@ DEFAULT_PARAMETER_BOUNDS = {
 }
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, 
-                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0):
+                 optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0, 
+                 min_overaspirate_ul=0.0):
     """
     Create an Ax client for single-objective parameter optimization (deviation only).
     
@@ -119,9 +120,10 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         
         # Special handling for volume-dependent bounds
         if param_name == "overaspirate_vol":
-            # Convert max_overaspirate_ul (microliters) to mL for consistency with other volumes
+            # Convert overaspirate bounds (microliters) to mL for consistency with other volumes
             max_overaspirate_ml = max_overaspirate_ul / 1000.0
-            param_config["bounds"] = [0.0, max_overaspirate_ml]  # Fixed maximum overaspirate volume
+            min_overaspirate_ml = min_overaspirate_ul / 1000.0
+            param_config["bounds"] = [min_overaspirate_ml, max_overaspirate_ml]
         
         parameters.append(param_config)
     
