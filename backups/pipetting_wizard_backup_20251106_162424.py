@@ -12,7 +12,6 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import glob
-import logging
 
 # Standard pipetting parameters to extract/interpolate
 PIPETTING_PARAMETERS = [
@@ -59,11 +58,11 @@ class PipettingWizard:
         Returns:
             List of Path objects for matching calibration files
         """
-        # Search patterns - look for optimal_conditions files with liquid name (case-insensitive)
+        # Search patterns - look for liquid name in filename (case-insensitive)
         patterns = [
-            f"optimal_conditions*{liquid.lower()}*.csv",
-            f"optimal_conditions*{liquid.upper()}*.csv", 
-            f"optimal_conditions*{liquid.title()}*.csv"
+            f"*{liquid.lower()}*.csv",
+            f"*{liquid.upper()}*.csv", 
+            f"*{liquid.title()}*.csv"
         ]
         
         found_files = []
@@ -94,18 +93,18 @@ class PipettingWizard:
             
             # Check for volume_target column (essential)
             if 'volume_target' not in df.columns:
-                logging.warning(f"File {file_path} missing required 'volume_target' column")
+                print(f"Warning: File {file_path} missing required 'volume_target' column")
                 return None
             
             # Check which parameters are available
             available_params = [p for p in PIPETTING_PARAMETERS if p in df.columns]
             if not available_params:
-                logging.warning(f"File {file_path} has no pipetting parameters")
+                print(f"Warning: File {file_path} has no pipetting parameters")
                 return None
             
             # Ensure we have volume data
             if df.empty:
-                logging.warning(f"File {file_path} is empty")
+                print(f"Warning: File {file_path} is empty")
                 return None
             
             # Sort by volume for easier interpolation
@@ -114,7 +113,7 @@ class PipettingWizard:
             return df
             
         except Exception as e:
-            logging.error(f"Error loading calibration file {file_path}: {e}")
+            print(f"Error loading calibration file {file_path}: {e}")
             return None
     
     def find_best_calibration_file(self, liquid: str, target_volume_ml: float) -> Optional[Tuple[Path, pd.DataFrame]]:
@@ -132,7 +131,7 @@ class PipettingWizard:
         calibration_files = self.find_calibration_files(liquid)
         
         if not calibration_files:
-            logging.error(f"No calibration files found for liquid '{liquid}' in directory {self.search_directory}")
+            print(f"Error: No calibration files found for liquid '{liquid}' in directory {self.search_directory}")
             return None
         
         best_file = None
@@ -176,7 +175,7 @@ class PipettingWizard:
                 best_df = df
         
         if best_file is None:
-            logging.error(f"No valid calibration files found for liquid '{liquid}'")
+            print(f"Error: No valid calibration files found for liquid '{liquid}'")
             return None
             
         return best_file, best_df
@@ -200,9 +199,9 @@ class PipettingWizard:
         
         # Check if we need to extrapolate and warn user
         if target_volume_ul < min_vol:
-            logging.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}μL) is below available range ({min_vol}-{max_vol}μL). Extrapolating...")
+            print(f"Warning: Target volume {target_volume_ml}mL ({target_volume_ul}μL) is below available range ({min_vol}-{max_vol}μL). Extrapolating...")
         elif target_volume_ul > max_vol:
-            logging.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}μL) is above available range ({min_vol}-{max_vol}μL). Extrapolating...")
+            print(f"Warning: Target volume {target_volume_ml}mL ({target_volume_ul}μL) is above available range ({min_vol}-{max_vol}μL). Extrapolating...")
         
         # If exact match exists, return it
         exact_match = df[df['volume_target'] == target_volume_ul]
@@ -238,12 +237,12 @@ class PipettingWizard:
             DataFrame with adjusted overaspirate_vol values
         """
         if 'volume_measured' not in df.columns or 'overaspirate_vol' not in df.columns:
-            logging.warning("Cannot apply overvolume compensation - missing volume_measured or overaspirate_vol columns")
+            print("Warning: Cannot apply overvolume compensation - missing volume_measured or overaspirate_vol columns")
             return df
         
         # Ensure we have volume_target column
         if 'volume_target' not in df.columns:
-            logging.warning("Cannot apply overvolume compensation - missing volume_target column")
+            print("Warning: Cannot apply overvolume compensation - missing volume_target column")
             return df
         
         compensated_count = 0
@@ -289,15 +288,15 @@ class PipettingWizard:
                 df.at[idx, 'overaspirate_vol'] = new_overasp
                 compensated_count += 1
                 
-                logging.debug(f"  {volume_target}μL: error {volume_error:+.2f}μL → overasp {current_overasp:.4f}→{new_overasp:.4f}mL "
+                print(f"  {volume_target}μL: error {volume_error:+.2f}μL → overasp {current_overasp:.4f}→{new_overasp:.4f}mL "
                       f"(Δ{actual_adjustment_ul:+.2f}μL)")
             else:
-                logging.debug(f"  {volume_target}μL: error {volume_error:+.2f}μL → no adjustment needed (negligible)")
+                print(f"  {volume_target}μL: error {volume_error:+.2f}μL → no adjustment needed (negligible)")
         
         if compensated_count > 0:
-            logging.info(f"Applied overvolume compensation to {compensated_count}/{len(df)} parameter sets")
+            print(f"Applied overvolume compensation to {compensated_count}/{len(df)} parameter sets")
         else:
-            logging.debug("No overvolume compensation applied - all volume errors were negligible (<0.01μL)")
+            print("No overvolume compensation applied - all volume errors were negligible (<0.01μL)")
             
         return df
     
@@ -333,10 +332,10 @@ class PipettingWizard:
         parameters['_compensated'] = compensate_overvolume
         
         compensation_note = " (with overvolume compensation)" if compensate_overvolume else ""
-        logging.debug(f"Parameters for {liquid} {volume_ml}mL from {file_path.name}{compensation_note}:")
+        print(f"Parameters for {liquid} {volume_ml}mL from {file_path.name}{compensation_note}:")
         for key, value in parameters.items():
             if not key.startswith('_'):
-                logging.debug(f"  {key}: {value:.6f}")
+                print(f"  {key}: {value:.6f}")
         
         return parameters
 

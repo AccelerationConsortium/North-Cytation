@@ -25,6 +25,7 @@ except ImportError as e:
 LIQUIDS = {
     "water": {"density": 1.00, "refill_pipets": False},
     "ethanol": {"density": 0.789, "refill_pipets": False},
+    "DMSO": {"density": 1.1, "refill_pipets": False},
     "glycerol": {"density": 1.26, "refill_pipets": True},
     "PEG_Water": {"density": 1.05, "refill_pipets": True},
 }

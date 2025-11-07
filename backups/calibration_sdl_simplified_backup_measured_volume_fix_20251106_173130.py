@@ -285,43 +285,7 @@ def extract_performance_metrics(all_results, volume_ml, best_params, raw_measure
             'precision_tolerance_met': precision_tolerance_met
         }
     
-    # If no candidate provided, try to find the best trial from all_results for this volume
-    if all_results:
-        # Find trials for this volume that match the best_params
-        volume_trials = [r for r in all_results if r.get('volume') == volume_ml]
-        
-        if volume_trials:
-            # Find the trial that matches the best_params most closely
-            best_trial = None
-            for trial in volume_trials:
-                # Check if this trial has the same parameters as best_params
-                params_match = True
-                for param in ALL_PARAMS:
-                    if param in best_params and param in trial:
-                        if abs(trial[param] - best_params[param]) > 1e-6:  # Small tolerance for float comparison
-                            params_match = False
-                            break
-                
-                if params_match:
-                    best_trial = trial
-                    break
-            
-            # If we found a matching trial, use its data
-            if best_trial:
-                measured_volume_ml = best_trial.get('measured_volume', 0)
-                measured_ul = measured_volume_ml * 1000 if measured_volume_ml is not None else None
-                
-                return {
-                    'volume_target': target_ul,
-                    'volume_measured': measured_ul,
-                    'average_deviation': best_trial.get('deviation'),
-                    'variability': best_trial.get('variability'),
-                    'time': best_trial.get('time'),
-                    'accuracy_tolerance_met': None,  # Will need to be calculated elsewhere
-                    'precision_tolerance_met': None   # Will need to be calculated elsewhere
-                }
-    
-    # Final fallback: return empty metrics (don't try to reconstruct)
+    # If no candidate provided, return empty metrics (don't try to reconstruct)
     return {
         'volume_target': target_ul,
         'volume_measured': None,
@@ -1340,8 +1304,7 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
             "liquid": liquid,
             "time_reported": datetime.now().isoformat(),
             "replicate_count": adaptive_result['replicate_count'],
-            "raw_measurements": adaptive_result['all_measurements'],
-            "measured_volume": adaptive_result.get('measured_volume', 0)  # CRITICAL: Store measured volume for optimal conditions reporting
+            "raw_measurements": adaptive_result['all_measurements']
         })
         screening_results.append(full_result)
         
@@ -1925,8 +1888,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
             "liquid": liquid,
             "time_reported": datetime.now().isoformat(),
             "replicate_count": adaptive_result['replicate_count'],
-            "raw_measurements": adaptive_result['all_measurements'],
-            "measured_volume": adaptive_result.get('measured_volume', 0)  # CRITICAL: Store measured volume for optimal conditions reporting
+            "raw_measurements": adaptive_result['all_measurements']
         })
         all_results.append(full_result)
         
@@ -2152,7 +2114,6 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
         # Calculate final metrics using existing logic
         avg_deviation = np.mean(all_deviations)
         avg_time = np.mean(all_times)
-        avg_measured_volume = np.mean(all_measurements) if all_measurements else 0
         
         if len(all_measurements) > 1:
             volume_std = np.std(all_measurements)
@@ -2168,7 +2129,6 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             'variability': variability,
             'replicate_count': PRECISION_MEASUREMENTS,
             'strategy': 'INHERITED_TEST',
-            'measured_volume': avg_measured_volume,  # CRITICAL: Store measured volume for optimal conditions reporting
             **test_params
         }
         volume_results.append(inherited_comprehensive_result)
@@ -2191,7 +2151,6 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             return True, test_params, 'success'
     else:
         # Poor result or insufficient budget for replicates - use penalty variability
-        measured_volume = inherited_result.get('measured_volume', 0)  # Get measured volume from single test
         inherited_comprehensive_result = {
             'volume': volume,
             'deviation': deviation,
@@ -2199,7 +2158,6 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
             'variability': ADAPTIVE_PENALTY_VARIABILITY,
             'replicate_count': 1,
             'strategy': 'INHERITED_TEST',
-            'measured_volume': measured_volume,  # CRITICAL: Store measured volume for optimal conditions reporting
             **test_params
         }
         volume_results.append(inherited_comprehensive_result)
@@ -2962,7 +2920,7 @@ if __name__ == "__main__":
     optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="water",
-        simulate=False,
+        simulate=True,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
         # Fix timing parameters for speed and post-aspirate air volume
         fixed_parameters={
