@@ -2056,8 +2056,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         print(f"   Accuracy: {quality['accuracy_deviation_ul']:.2f}μL > {quality['accuracy_tolerance_ul']:.2f}μL tolerance")
         
         # Calculate rescue overaspirate constraints based on best candidate shortfall
-        min_rescue_overaspirate_ml, max_rescue_overaspirate_ml = calculate_first_volume_constraint(best_candidate, volume)
-        rescue_overaspirate_constraint = max_rescue_overaspirate_ml  # Use the max constraint for rescue
+        rescue_overaspirate_constraint = calculate_first_volume_constraint(best_candidate, volume)
         rescue_overaspirate_ul = rescue_overaspirate_constraint * 1000  # Convert to μL
         
         # Store as volume-specific calibration for rescue optimization
@@ -3064,9 +3063,9 @@ if __name__ == "__main__":
     optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
         vial_mode="legacy",
         liquid="water",
-        simulate=True,
+        simulate=False,
         volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        use_LLM_for_screening = True,
+        use_LLM_for_screening = True
         # Fix timing parameters for speed and post-aspirate air volume
         fixed_parameters={
             'post_asp_air_vol': 0.05
