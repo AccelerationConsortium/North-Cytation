@@ -7,13 +7,22 @@ import pandas as pd
 from pathlib import Path
 
 # Take aliquot -> Wellplate measurement (1 replicate)-> Put sample back to wellplate
-
-def create_samples_and_measure(lash_e,output_dir,first_well_index,cytation_protocol_file_path,simulate, solvent_vial, wash_vial, sample_name, waste_state, replicates=1):
+def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_protocol_file_path, simulate, sample_name, used_wells, replicates=1):
     create_samples_in_wellplate(lash_e, sample_name=sample_name, first_well_index=first_well_index, well_volume=0.2, replicates=replicates)
     wells = list(range(first_well_index, first_well_index + replicates))
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
-    save_data(data_out,output_dir,first_well_index,simulate)
-    wash_wellplate(lash_e, first_well_index, solvent_vial=solvent_vial, wash_vial=wash_vial, waste_state=waste_state, sample_name=sample_name, solvent_repeats=1, acetone_repeats=2, volume=0.1, replicates=replicates)
+    save_data(data_out, output_dir, first_well_index, simulate)
+    used_wells.extend(wells)
+    print("Used wells so far:", used_wells)
+    
+def pipet_sample_from_well_to_vial(lash_e, first_well_index, sample_name, replicates):
+    wells = list(range(first_well_index, first_well_index + replicates))
+    print(f"Returning samples from wells {wells} back to sample vial: {sample_name}")
+    lash_e.nr_robot.move_vial_to_location(sample_name, location='main_8mL_rack', location_index=4)
+    lash_e.nr_robot.pipet_from_wellplate(wells, volume=0.2, aspirate=True, well_plate_type="96 WELL PLATE")
+    lash_e.nr_robot.dispense_into_vial(sample_name, volume=0.2)
+    lash_e.nr_robot.remove_pipet()
+    lash_e.nr_robot.return_vial_home(sample_name)
 
 def safe_pipet(source_vial, dest_vial, volume, lash_e):
     source_home_location_index = lash_e.nr_robot.get_vial_info(source_vial, 'location_index')
@@ -64,50 +73,45 @@ def save_data(data_out,output_dir,first_well_index,simulate):
     else:
         print(f"Simulation mode: Would save data for well index {first_well_index}")
 
-# Clean well plate = Solvent wash *1 + Acetone wash *2
-def wash_wellplate(lash_e, first_well_index, solvent_vial, wash_vial, waste_state, sample_name, solvent_repeats=1, acetone_repeats=2, volume=0.2, replicates=1):
-    wells_to_wash = list(range(first_well_index, first_well_index + replicates))
-    print(f"\nWashing wellplate wells: {wells_to_wash}")
+# Clean well plate = Solvent wash *1 + Acetone wash *2 <- DO it serially (ie wash 5 wells at a time, and wash all wells w solvent first before moving on to acetone)
+def wash_wellplate(lash_e, used_wells, solvent_vial, wash_vial, waste_state, solvent_repeats=1, acetone_repeats=2, volume=1):
+    used_wells=used_wells
+    print(f"\nWashing wellplate wells: {used_wells}")
 
     # Check and switch waste vial if needed before washing
     current_waste = check_and_switch_waste_vial(lash_e, waste_state)
     
-    # Step 1: Return samples from wellplate back to sample vial
-    print(f"Returning samples from wells {wells_to_wash} back to sample vial: {sample_name}")
-    lash_e.nr_robot.move_vial_to_location(sample_name, location='main_8mL_rack', location_index=4)
-    for well in wells_to_wash:
-        lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, well_plate_type="96 WELL PLATE")
-        lash_e.nr_robot.dispense_into_vial(sample_name, volume)
-    lash_e.nr_robot.remove_pipet()
-    lash_e.nr_robot.return_vial_home(sample_name)
     lash_e.nr_robot.move_vial_to_location(current_waste, location='main_8mL_rack', location_index=4) #Added by OAM
     for _ in range(solvent_repeats):
-        for well in wells_to_wash:
+        for well in used_wells:
             lash_e.nr_robot.aspirate_from_vial(solvent_vial,volume,track_height=True)
-            lash_e.nr_robot.move_vial_to_location(solvent_vial, location='main_8mL_rack', location_index=5) #Added by OAM
             lash_e.nr_robot.dispense_into_wellplate([well],[volume], well_plate_type="96 WELL PLATE") #Added by OAM
+        lash_e.nr_robot.move_vial_to_location(solvent_vial, location='main_8mL_rack', location_index=5)
+        for well in used_wells:
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
             # pipet wash solution to current waste vial
+        for well in used_wells:
             lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, move_to_aspirate=False, well_plate_type="96 WELL PLATE")
-            lash_e.nr_robot.dispense_into_vial(current_waste, volume)
-            lash_e.nr_robot.move_vial_to_location(current_waste, location='main_8mL_rack', location_index=4) #Added by OAM
-        lash_e.nr_robot.remove_pipet()
+            lash_e.nr_robot.dispense_into_vial(current_waste, volume)  
+        lash_e.nr_robot.remove_pipet()  
+        lash_e.nr_robot.move_vial_to_location(current_waste, location='main_8mL_rack', location_index=4) #Added by OAM
         lash_e.nr_robot.return_vial_home(solvent_vial)
     # Acetone wash for all wells  
     for _ in range(acetone_repeats):
-        for well in wells_to_wash:
+        for well in used_wells:
             lash_e.nr_robot.aspirate_from_vial(wash_vial,volume,track_height=True)
             lash_e.nr_robot.move_vial_to_location(wash_vial, location='main_8mL_rack', location_index=5)#Added by OAM
             lash_e.nr_robot.dispense_into_wellplate([well],[volume], well_plate_type="96 WELL PLATE") #Added by OAM
+        for well in used_wells:
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
             # pipet wash solution to current waste vial
+        for well in used_wells:
             lash_e.nr_robot.pipet_from_wellplate(well, volume, aspirate=True, move_to_aspirate=False, well_plate_type="96 WELL PLATE")
             lash_e.nr_robot.dispense_into_vial(current_waste, volume)
-            lash_e.nr_robot.move_vial_to_location(current_waste, location='main_8mL_rack', location_index=4) #Added by OAM
         lash_e.nr_robot.remove_pipet()
-        lash_e.nr_robot.return_vial_home(wash_vial)
+    lash_e.nr_robot.return_vial_home(wash_vial)
     lash_e.nr_robot.return_vial_home(current_waste)
-    print()
+    print("\nWashing completed.")
 
 def get_time(simulate,current_time=None):
     if not simulate:
@@ -151,7 +155,7 @@ def degradation_workflow():
     SCHEDULE_FILE = "../utoronto_demo/status/degradation_vial_schedule.csv"
 
     # d. Simulate mode True or False
-    SIMULATE = False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+    SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
     
     # e. Number of replicate measurements per timepoint
     REPLICATES = 1  # Number of wells to use for each measurement (default: 3)
@@ -230,6 +234,8 @@ def degradation_workflow():
     # 2. Add acid to the polymer samples to initiate degradation and take scheduled UV-VIS measurements.
     t0_map = {} #Dictionary: sample -> start time (same time basis as start_time/current_time)
     first_well_index = 0 #This is the first well index to use for the first sample
+    # Minimal requested change: track used wells as a simple list of integer indices
+    used_wells = []
 
     i = 0
     for sample in sample_solutions:
@@ -238,7 +244,7 @@ def degradation_workflow():
         print("\nAdding acid to sample: ", sample)
         # Record per-sample start time using consistent basis (simulated clock = 0; real clock = wall time)
         t0_map[sample] = 0 if SIMULATE else time.time()
-        create_samples_and_measure(lash_e,output_dir,first_well_index,CYTATION_PROTOCOL_FILE,SIMULATE, solvent_vial='2MeTHF', wash_vial='acetone', sample_name=sample, waste_state=waste_state, replicates=REPLICATES)
+        create_samples_and_measure(lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample, used_wells=used_wells, replicates=REPLICATES)
         try:
             lash_e.temp_controller.turn_off_stirring()
             if not SIMULATE:
@@ -288,9 +294,7 @@ def degradation_workflow():
             print(f"\n[TRIGGER] {action_required} for {sample_index} at elapsed {elapsed_time:.0f}s (target {time_required}s)")
             if action_required in ("create_samples_and_measure","measure_samples"):
                 create_samples_and_measure(
-                    lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE,
-                    solvent_vial='2MeTHF', wash_vial='acetone', sample_name=sample_index, waste_state=waste_state, replicates=REPLICATES
-                )
+                    lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample_index,used_wells=used_wells,replicates=REPLICATES)
                 first_well_index += REPLICATES
             else:
                 print(f"[WARN] Unknown action '{action_required}' – skipping (row {items_completed})")
@@ -313,6 +317,9 @@ def degradation_workflow():
     lash_e.nr_robot.return_vial_home(sample_index)
     lash_e.temp_controller.turn_off_stirring()
     lash_e.nr_robot.move_home()
+
+    # 3. Clean the well plate after all measurements are done
+    wash_wellplate(lash_e, used_wells, solvent_vial='2MeTHF', wash_vial='Acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=2, volume=0.2)
 
     if not SIMULATE:   
         slack_agent.send_slack_message("Degradation workflow completed!")
