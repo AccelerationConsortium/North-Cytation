@@ -3084,33 +3084,33 @@ if __name__ == "__main__":
     # print("\n⚡ FIXED PARAMETERS EXPERIMENT - Water with fast parameters")
     # print("   Fixing wait times to 0 and post-aspirate air volume for water\n")
     
-    optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
-        vial_mode="legacy",
-        liquid="water",
-        simulate=True,
-        volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        use_LLM_for_screening = True,
-        # Fix timing parameters for speed and post-aspirate air volume
-        fixed_parameters={
-            'post_asp_air_vol': 0.05
-        }
-    )
+    # optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
+    #     vial_mode="legacy",
+    #     liquid="water",
+    #     simulate=True,
+    #     volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
+    #     use_LLM_for_screening = True,
+    #     # Fix timing parameters for speed and post-aspirate air volume
+    #     fixed_parameters={
+    #         'post_asp_air_vol': 0.05
+    #     }
+    # )
     
     # Example 3: Fixed parameters for glycerol - just post-aspirate air volume
     print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
     print("   Fixing only post-aspirate air volume for glycerol\n")
     
-    # optimal_conditions_glycerol, save_dir_glycerol = run_simplified_calibration_workflow(
-    #     vial_mode="legacy",
-    #     liquid="glycerol",
-    #     simulate=False,
-    #     use_LLM_for_screening=False,
-    #     volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-    #     # Fix only post-aspirate air volume
-    #     fixed_parameters={
-    #         'post_asp_air_vol': 0.05
-    #     }
-    # )
+    optimal_conditions_glycerol, save_dir_glycerol = run_simplified_calibration_workflow(
+        vial_mode="legacy",
+        liquid="glycerol",
+        simulate=False,
+        use_LLM_for_screening=False,
+        volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
+        # Fix only post-aspirate air volume
+        fixed_parameters={
+            'post_asp_air_vol': 0.05
+        }
+    )
     
     # Example 4: Hot start experiment using unified dataset
     # print("\n🔥 HOT START EXPERIMENT - Using unified dataset for faster convergence")
