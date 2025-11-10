@@ -25,8 +25,10 @@ except ImportError as e:
 LIQUIDS = {
     "water": {"density": 1.00, "refill_pipets": False},
     "ethanol": {"density": 0.789, "refill_pipets": False},
+    "DMSO": {"density": 1.1, "refill_pipets": False},
     "glycerol": {"density": 1.26, "refill_pipets": True},
     "PEG_Water": {"density": 1.05, "refill_pipets": True},
+    "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
 }
 
 # --- Utility Functions ---
@@ -232,13 +234,15 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         retract_speed=params["retract_speed"],
         pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
         post_asp_air_vol=post_air,
-        # Note: blowout_vol removed from aspirate_params since it's only used during dispense
+        overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for calibration
     )
     dispense_params = PipettingParameters(
         dispense_speed=params["dispense_speed"],
         dispense_wait_time=params["dispense_wait_time"],
-        air_vol=air_vol,
-        blowout_vol=blowout_vol,  # CRITICAL: Add blowout_vol to dispense_params!
+        blowout_vol=blowout_vol,
+        overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for overdispense calculation
+        pre_asp_air_vol=0.0,  # Include for overdispense calculation
+        post_asp_air_vol=post_air,  # Include for overdispense calculation
     )  
 
     if simulate:
@@ -259,8 +263,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         for replicate_idx in range(replicate_count):
             # Generate a slightly different mass for each replicate to simulate real variability
             
-            lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, parameters=aspirate_params)
-            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, parameters=dispense_params, measure_weight=True)
+            lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params)
+            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True)
             if new_pipet_each_time:
                 lash_e.nr_robot.remove_pipet()
 
@@ -319,7 +323,21 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         avg_deviation = np.mean(all_deviations)
         avg_time = np.mean([entry["replicate_time"] for entry in raw_measurements[-replicate_count:]])
         
-        return {"deviation": avg_deviation, "time": avg_time}
+        # Get measurement data from simulation
+        recent_measurements = raw_measurements[-replicate_count:]
+        all_masses = [entry["mass"] for entry in recent_measurements]
+        all_volumes = [entry["calculated_volume"] for entry in recent_measurements]
+        avg_mass = np.mean(all_masses)
+        avg_volume = np.mean(all_volumes)
+        
+        return {
+            "deviation": avg_deviation, 
+            "time": avg_time,
+            "measured_mass": avg_mass,
+            "measured_volume": avg_volume,
+            "all_masses": all_masses,
+            "all_volumes": all_volumes
+        }
     else:
         # Real robot mode
         measurements = []
@@ -346,8 +364,8 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             replicate_start_time = time.time()
             replicate_start = datetime.now().isoformat()
             
-            lash_e.nr_robot.aspirate_from_vial(source_vial, volume+over_volume, parameters=aspirate_params)
-            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume+over_volume, parameters=dispense_params, measure_weight=True)
+            lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params)
+            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True)
             if new_pipet_each_time:
                 lash_e.nr_robot.remove_pipet()
                 
@@ -384,7 +402,18 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         percent_errors = [abs((m - expected_measurement) / expected_measurement * 100) for m in measurements]
         deviation = np.mean(percent_errors)
         time_score = ((end - start) / replicate_count)
-        return {"deviation": deviation, "time": time_score}
+        
+        # Calculate average measured volume for display
+        avg_measured_volume = avg_measurement / liquid_density
+        
+        return {
+            "deviation": deviation, 
+            "time": time_score,
+            "measured_mass": avg_measurement,
+            "measured_volume": avg_measured_volume,
+            "all_masses": measurements,
+            "all_volumes": [m / liquid_density for m in measurements]
+        }
 
 def strip_tuples(d):
     """Convert any (x, None) → x in a flat dict."""

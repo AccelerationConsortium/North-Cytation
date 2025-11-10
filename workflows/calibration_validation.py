@@ -2,16 +2,18 @@
 """
 Calibration Validation Workflow
 
-Tests calibrated pipetting parameters across specified volume ranges to validate 
-calibration accuracy. Uses pipetting wizard to get parameters and measures 
-actual vs target volumes.
+Tests intelligent parameter optimization across specified volume ranges to validate 
+calibration accuracy. Uses the integrated parameter system in North_Safe for 
+automatic optimization based on liquid type and volume.
 
 Workflow:
-1. Load liquid-specific calibration parameters using pipetting wizard
-2. Test specified volumes with replicates
+1. Specify liquid type to enable automatic parameter optimization
+2. Test specified volumes with replicates using intelligent parameter system
 3. Measure mass and convert to volume using liquid density  
 4. Calculate accuracy and precision metrics
 5. Generate validation report and graphs
+
+The robot automatically optimizes parameters using: defaults → liquid-calibrated → user overrides
 """
 
 import sys
@@ -33,40 +35,45 @@ from calibration_sdl_base import (
 )
 from master_usdl_coordinator import Lash_E
 
-# Import pipetting wizard
-sys.path.append("../pipetting_data")
-from pipetting_data.pipetting_wizard import PipettingWizard
+# Pipetting wizard integration now handled automatically by North_Safe parameter system
 
 # --- CONFIGURATION ---
 DEFAULT_LIQUID = "glycerol"
-DEFAULT_SIMULATE = True
+DEFAULT_SIMULATE = False
 DEFAULT_VOLUMES = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15]  # mL
 DEFAULT_REPLICATES = 3
 DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
+
+# Vial management mode - set to match your calibration setup
+# Options: "legacy" (no vial management), "single", "dual", etc.
+VIAL_MANAGEMENT_MODE = "legacy"  # Change this to match calibration setup
 
 def initialize_experiment(lash_e, liquid):
     """Initialize experiment with proper vial setup"""
     print(f"🔧 Initializing experiment for {liquid} validation...")
     
-    # Use single vial mode for validation (same vial for source and destination)
-    set_vial_management(mode='single')
+    # Set vial management mode (configurable at top of file)
+    if VIAL_MANAGEMENT_MODE != "legacy":
+        set_vial_management(mode=VIAL_MANAGEMENT_MODE)
+        print(f"   🧪 Vial management: {VIAL_MANAGEMENT_MODE}")
+    else:
+        print(f"   🧪 Vial management: legacy (no vial management)")
     
     # Ensure measurement vial is in clamp position
     lash_e.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
     
     print("✅ Experiment initialized")
 
-def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard):
+def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
     """
-    Validate pipetting accuracy across specified volumes
+    Validate pipetting accuracy across specified volumes using intelligent parameter optimization
     
     Args:
         lash_e: Lash_E coordinator instance
-        liquid: Liquid type for density calculations
+        liquid: Liquid type for density calculations and automatic parameter optimization
         volumes: List of volumes to test (mL)
         replicates: Number of replicates per volume
         simulate: Simulation mode flag
-        wizard: PipettingWizard instance
     
     Returns:
         results_df: Summary results per volume
@@ -79,6 +86,10 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard):
         raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
     liquid_density = LIQUIDS[liquid]["density"]
     
+    # Get liquid-specific pipet behavior (CRITICAL: matches calibration setup)
+    new_pipet_each_time_set = LIQUIDS[liquid]["refill_pipets"]
+    print(f"   🔧 Pipet behavior for {liquid}: {'new tip each time' if new_pipet_each_time_set else 'reuse tip'}")
+    
     # Initialize results storage
     results = []
     raw_measurements = []
@@ -89,23 +100,26 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard):
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_path = output_dir / "raw_validation_data.csv"
     
-    # Vial configuration
-    source_vial = "measurement_vial_0"  # Single vial mode
-    dest_vial = "measurement_vial_0"    # Same vial
+    # Vial configuration based on vial management mode
+    if VIAL_MANAGEMENT_MODE == "legacy":
+        # Legacy mode: separate source and destination vials
+        source_vial = "liquid_source_0"      # Liquid reservoir
+        dest_vial = "measurement_vial_0"     # Measurement vial 
+        print(f"   🧪 Legacy mode: {source_vial} → {dest_vial}")
+    else:
+        # Single vial mode: same vial for source and destination
+        source_vial = "measurement_vial_0"   # Same vial
+        dest_vial = "measurement_vial_0"     # Same vial
+        print(f"   🧪 Single vial mode: {source_vial} (same vial)")
     
     # Process each volume
     for i, volume in enumerate(volumes):
         print(f"\n📏 Testing volume {i+1}/{len(volumes)}: {volume*1000:.1f} μL")
         
         try:
-            # Get parameters from wizard - this is the key integration!
-            params_dict = wizard.get_pipetting_parameters(liquid, volume)
-            if params_dict is None:
-                raise ValueError(f"Could not get parameters for {liquid} at {volume}mL")
-            
-            print(f"   Parameters from wizard: aspirate_speed={params_dict['aspirate_speed']:.1f}, "
-                  f"dispense_speed={params_dict['dispense_speed']:.1f}, "
-                  f"blowout_vol={params_dict['blowout_vol']:.3f}")
+            # Use intelligent parameter system - no manual wizard lookup needed!
+            # The robot methods will automatically optimize parameters based on liquid and volume
+            print(f"   Using intelligent parameter optimization for {liquid} at {volume*1000:.1f} μL")
             
             # Calculate expected mass
             expected_mass = volume * liquid_density
@@ -126,15 +140,15 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard):
                     source_vial=source_vial,
                     dest_vial=dest_vial,
                     volume=volume,
-                    params=params_dict,
+                    params=None,  # Let intelligent parameter system optimize automatically
                     expected_measurement=expected_mass,
                     expected_time=30.0,  # Placeholder
                     replicate_count=1,  # Single measurement
                     simulate=simulate,
                     raw_path=str(raw_path),
                     raw_measurements=raw_measurements,
-                    liquid=liquid,
-                    new_pipet_each_time=True,
+                    liquid=liquid,  # CRITICAL: This enables automatic parameter optimization!
+                    new_pipet_each_time=new_pipet_each_time_set,  # Use liquid-specific setting
                     trial_type="VALIDATION"
                 )
                 
@@ -176,7 +190,7 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, wizard):
                 'mean_absolute_error_percent': mean_absolute_error,
                 'replicates': replicates,
                 'liquid': liquid,
-                **params_dict  # Include all parameters used
+                'parameter_source': 'intelligent_optimization'  # Parameters automatically optimized
             }
             results.append(volume_result)
             
@@ -391,10 +405,10 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
                   volumes=None, replicates=DEFAULT_REPLICATES, 
                   input_vial_file=DEFAULT_INPUT_VIAL_STATUS_FILE):
     """
-    Run calibration validation with specified parameters
+    Run calibration validation with intelligent parameter optimization
     
     Args:
-        liquid: Liquid type (e.g., "glycerol", "water", "ethanol") 
+        liquid: Liquid type (e.g., "glycerol", "water", "ethanol") - enables automatic optimization
         simulate: Run in simulation mode
         volumes: List of volumes to test in mL (defaults to DEFAULT_VOLUMES)
         replicates: Number of replicates per volume
@@ -416,27 +430,20 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
         lash_e.nr_robot.check_input_file()
         lash_e.nr_track.check_input_file()
         
-        # Initialize pipetting wizard - this is the key integration!
-        wizard = PipettingWizard()
-        
-        # Verify wizard can find calibration data
-        try:
-            test_params = wizard.get_pipetting_parameters(liquid, volumes[0])
-            if test_params is None:
-                raise ValueError(f"No parameters found for {liquid} at {volumes[0]}mL")
-            print(f"✅ Found calibration data for {liquid}")
-            print(f"   Sample parameters for {volumes[0]*1000:.1f}μL: {test_params}")
-        except Exception as e:
-            print(f"❌ Could not find calibration data for {liquid}: {e}")
-            print("   Please ensure calibration files exist in pipetting_data/ directory")
-            return
+        # Intelligent parameter system handles optimization automatically
+        print(f"✅ Using intelligent parameter optimization for {liquid}")
+        print(f"   Robot will automatically optimize parameters for each volume")
+        if liquid is None:
+            print(f"   Liquid=None: Will use pure system defaults (no calibration)")
+        else:
+            print(f"   Liquid={liquid}: Will use calibrated parameters if available, defaults otherwise")
         
         # Initialize experiment
         initialize_experiment(lash_e, liquid)
         
-        # Run validation using pipetting wizard parameters
+        # Run validation using intelligent parameter optimization
         results_df, raw_df, output_dir = validate_volumes(
-            lash_e, liquid, volumes, replicates, simulate, wizard
+            lash_e, liquid, volumes, replicates, simulate
         )
         
         # Generate report

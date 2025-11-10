@@ -8,6 +8,7 @@ import yaml
 from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
 from pipetting_data.pipetting_parameters import PipettingParameters
+from pipetting_data.pipetting_wizard import PipettingWizard
 import matplotlib.patches as patches
 
 class North_Base:
@@ -1575,6 +1576,49 @@ class North_Robot(North_Base):
         self.logger.debug(f"Selected {selected_tip} for volume {volume:.3f} mL")
         return selected_tip
     
+    def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None):
+        """
+        Get optimized pipetting parameters using intelligent hierarchy:
+        defaults → liquid-calibrated → user overrides
+        
+        Args:
+            volume (float): Target pipetting volume in mL
+            liquid (str, optional): Liquid type for calibrated parameters
+            user_parameters (PipettingParameters, optional): User-provided overrides
+            
+        Returns:
+            PipettingParameters: Optimized parameters with intelligent defaults
+        """
+        # Start with system defaults
+        optimized = PipettingParameters()
+        
+        # Apply liquid-specific calibration if available
+        if liquid is not None:
+            try:
+                wizard = PipettingWizard()
+                calibrated_params = wizard.get_pipetting_parameters(liquid, volume)
+                
+                if calibrated_params is not None:
+                    # Update only the parameters that were successfully calibrated
+                    for param_name, param_value in calibrated_params.items():
+                        if hasattr(optimized, param_name) and param_value is not None:
+                            setattr(optimized, param_name, param_value)
+                            self.logger.debug(f"Using calibrated {param_name}={param_value} for {liquid} at {volume:.3f}mL")
+                            
+            except Exception as e:
+                # Graceful fallback - calibration is optional enhancement
+                self.logger.debug(f"Could not load calibrated parameters for {liquid}: {e}")
+        
+        # Apply user overrides (highest priority)
+        if user_parameters is not None:
+            for param_name in dir(user_parameters):
+                if not param_name.startswith('_'):  # Skip private attributes
+                    user_value = getattr(user_parameters, param_name)
+                    if user_value is not None:  # Only override if user explicitly set a value
+                        setattr(optimized, param_name, user_value)
+                        
+        return optimized
+    
     #Check if the aspiration volume is within limits... Now extensible and configuration-driven
     def check_if_aspiration_volume_unacceptable(self, amount_mL):
         if self.HELD_PIPET_TYPE is None:
@@ -1704,7 +1748,7 @@ class North_Robot(North_Base):
     # ====================================================================
 
     #Aspirate from a vial using the pipet tool
-    def aspirate_from_vial(self, source_vial_name, amount_mL, parameters=None, 
+    def aspirate_from_vial(self, source_vial_name, amount_mL, parameters=None, liquid=None,
                           move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False):
         """
         Aspirate amount_ml from a source vial.
@@ -1713,19 +1757,23 @@ class North_Robot(North_Base):
             source_vial_name (str): Name of the source vial to aspirate from
             amount_mL (float): Amount to aspirate in mL
             parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
+            liquid (str, optional): Liquid type for calibrated parameter optimization
             move_to_aspirate (bool): Whether to move to aspiration location (default: True)
             track_height (bool): Whether to track liquid height during aspiration (default: True)
             move_up (bool): Whether to retract after aspiration (default: True)
             specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
         """
-        if parameters is None:
-            parameters = PipettingParameters()  # Use all defaults
+        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
         
         # Extract liquid handling values from parameters
         asp_disp_cycles = parameters.asp_disp_cycles
         aspirate_wait_time = parameters.aspirate_wait_time
         pre_asp_air_vol = parameters.pre_asp_air_vol
         post_asp_air_vol = parameters.post_asp_air_vol
+        overaspirate_vol = parameters.overaspirate_vol
+        total_tip_vol = post_asp_air_vol + amount_mL + overaspirate_vol
+
         
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
 
@@ -1734,13 +1782,13 @@ class North_Robot(North_Base):
             return
 
         #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
-        required_tip_type = self.select_pipet_tip(amount_mL, specified_tip)
+        required_tip_type = self.select_pipet_tip(total_tip_vol, specified_tip)
 
         #Get a tip if we need one
         self.get_tip_if_needed(required_tip_type)
         
         #Check for an issue with the pipet and the specified amount, pause and send slack message if so
-        self.check_if_aspiration_volume_unacceptable(amount_mL) 
+        self.check_if_aspiration_volume_unacceptable(total_tip_vol) 
         
         # Now that we have a pipet tip, we can safely determine speeds
         aspirate_speed = parameters.aspirate_speed or self.get_tip_dependent_aspirate_speed()
@@ -1755,6 +1803,7 @@ class North_Robot(North_Base):
             self.pause_after_error("Cannot aspirate more volume than in vial")
 
         self.logger.info(f"Pipetting from vial {self.get_vial_info(source_vial_num, 'vial_name')}, amount: {round(amount_mL, 3)} mL")
+        self.logger.info(f"Additional volume from calibration, amount: {round(overaspirate_vol, 3)} mL")
 
         #Adjust the height based on the volume, then pipet type
         if move_to_aspirate:
@@ -1781,9 +1830,9 @@ class North_Robot(North_Base):
         #Step 2: Move to inside the site and aspirate liquid
         self.c9.move_z(asp_height)
         for i in range (0, asp_disp_cycles):
-            self.pipet_aspirate(amount_mL, wait_time=0)
-            self.pipet_dispense(amount_mL, wait_time=0)
-        self.pipet_aspirate(amount_mL, wait_time=aspirate_wait_time) #Main aspiration of liquid plus wait
+            self.pipet_aspirate(amount_mL+overaspirate_vol, wait_time=0)
+            self.pipet_dispense(amount_mL+overaspirate_vol, wait_time=0)
+        self.pipet_aspirate(amount_mL+overaspirate_vol, wait_time=aspirate_wait_time) #Main aspiration of liquid plus wait
         
         #Step 3: Retract and aspirate air if needed
         if move_up:
@@ -1812,7 +1861,7 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, specified_tip=None, remove_tip=True):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -1821,10 +1870,11 @@ class North_Robot(North_Base):
             dest_vial_name (str): Name of the destination vial to dispense into
             volume (float): Volume (in mL) to transfer
             parameters (PipettingParameters, optional): Standardized parameters
+            liquid (str, optional): Liquid type for calibrated parameter optimization
             specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
         """
-        if parameters is None:
-            parameters = PipettingParameters()
+        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        parameters = self._get_optimized_parameters(volume, liquid, parameters)
 
         self.logger.info(f"Dispensing {volume:.3f} mL from {source_vial_name} to {dest_vial_name}")
 
@@ -1835,23 +1885,34 @@ class North_Robot(North_Base):
             self.logger.warning("Cannot dispense <=0 mL")
             return
 
-        # Handle large volumes by splitting into multiple transfers
+        # Calculate total tip volume requirement including optimized parameters
+        total_tip_volume_required = (volume + 
+                                    parameters.overaspirate_vol + 
+                                    parameters.pre_asp_air_vol + 
+                                    parameters.post_asp_air_vol)
+
+        # Handle large volumes by splitting based on TOTAL tip volume requirement
         max_system_volume = max((tip_config.get('volume', 0) for tip_config in self.PIPET_TIPS.values()), default=1.0)
         repeats = 1
-        if volume > max_system_volume:
-            repeats = math.ceil(volume / max_system_volume)
-            volume = volume / repeats
-            self.logger.info(f"Volume too high for single transfer, splitting into {repeats} transfers of {round(volume,3)} mL each")
+        
+        if total_tip_volume_required > max_system_volume:
+            # Calculate how many splits we need based on total tip volume
+            repeats = math.ceil(total_tip_volume_required / max_system_volume)
+            volume = volume / repeats  # Split the BASE volume, not the total tip volume
+            self.logger.info(f"Total tip volume ({total_tip_volume_required:.3f} mL) exceeds capacity, splitting into {repeats} transfers of {round(volume,3)} mL each")
+            
+            # Recalculate optimized parameters for the new smaller volume
+            parameters = self._get_optimized_parameters(volume, liquid, parameters)
 
         total_mass = 0
         for i in range(repeats):
             last_run = (i == repeats - 1)
 
             # Aspirate from source
-            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, specified_tip=specified_tip)
+            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip)
 
             # Dispense into destination
-            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters)
+            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid)
             total_mass += mass_increment if mass_increment is not None else 0
 
             # Return vials and remove pipet on last run
@@ -1867,7 +1928,7 @@ class North_Robot(North_Base):
         return total_mass
 
     #TODO add error checks and safeguards
-    def pipet_from_wellplate(self, wp_index, volume, parameters=None, aspirate=True, specified_tip=None, move_to_aspirate=True, well_plate_type="96 WELL PLATE"):
+    def pipet_from_wellplate(self, wp_index, volume, parameters=None, liquid=None, aspirate=True, specified_tip=None, move_to_aspirate=True, well_plate_type="96 WELL PLATE"):
         """
         Aspirate or dispense from/to a wellplate.
         
@@ -1875,15 +1936,29 @@ class North_Robot(North_Base):
             wp_index: Well plate index
             volume: Volume in mL
             parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
+            liquid (str, optional): Liquid type for calibrated parameter optimization
             aspirate (bool): True for aspirate, False for dispense (default: True)
             move_to_aspirate (bool): Whether to move to location (default: True)
             well_plate_type (str): Type of well plate (default: "96 WELL PLATE")
         """
-        if parameters is None:
-            parameters = PipettingParameters()
+        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        parameters = self._get_optimized_parameters(volume, liquid, parameters)
 
+        # Calculate volumes based on operation
+        if aspirate:
+            # For aspiration, need to consider overaspirate volume for tip selection
+            total_tip_vol = volume + parameters.overaspirate_vol
+            actual_aspirate_vol = volume + parameters.overaspirate_vol
+        else:
+            # For dispensing, calculate overdispense volume
+            overdispense_vol = (volume + 
+                               parameters.overaspirate_vol + 
+                               parameters.pre_asp_air_vol + 
+                               parameters.post_asp_air_vol)
+            total_tip_vol = volume  # Use base volume for tip selection in dispense
+        
         #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
-        required_tip_type = self.select_pipet_tip(volume, specified_tip)
+        required_tip_type = self.select_pipet_tip(total_tip_vol, specified_tip)
 
         #Get a tip if we need one
         self.get_tip_if_needed(required_tip_type)
@@ -1918,30 +1993,51 @@ class North_Robot(North_Base):
 
         self.adjust_pump_speed(0, speed)
         if aspirate:
-            self.pipet_aspirate(volume, wait_time=wait_time)
+            self.pipet_aspirate(actual_aspirate_vol, wait_time=wait_time)
         else:
-            self.pipet_dispense(volume, wait_time=wait_time, blowout_vol=blowout_vol)
+            self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
 
     #Mix the well
-    def mix_well_in_wellplate(self,wp_index,volume,repeats=3,well_plate_type="96 WELL PLATE"):
+    def mix_well_in_wellplate(self, wp_index, volume, repeats=3, well_plate_type="96 WELL PLATE", parameters=None, liquid=None):
+        """
+        Mix a well in a wellplate by aspirating and dispensing repeatedly.
+        
+        Args:
+            wp_index: Well plate index to mix
+            volume: Volume to use for mixing in mL
+            repeats: Number of mixing cycles (default: 3)
+            well_plate_type: Type of well plate (default: "96 WELL PLATE")
+            parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
+            liquid (str, optional): Liquid type for calibrated parameter optimization
+        """
         self.logger.info(f"Mixing well {wp_index} in well plate of type {well_plate_type} with volume {volume:.3f} mL for {repeats} repeats")
-        self.pipet_from_wellplate(wp_index,volume,well_plate_type=well_plate_type)
-        self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False,well_plate_type=well_plate_type)
-        for i in range (1, repeats):
-            self.pipet_from_wellplate(wp_index,volume,move_to_aspirate=False,well_plate_type=well_plate_type)
-            self.pipet_from_wellplate(wp_index,volume,aspirate=False,move_to_aspirate=False,well_plate_type=well_plate_type)
+        self.pipet_from_wellplate(wp_index, volume, parameters=parameters, liquid=liquid, well_plate_type=well_plate_type)
+        self.pipet_from_wellplate(wp_index, volume, parameters=parameters, liquid=liquid, aspirate=False, move_to_aspirate=False, well_plate_type=well_plate_type)
+        for i in range(1, repeats):
+            self.pipet_from_wellplate(wp_index, volume, parameters=parameters, liquid=liquid, move_to_aspirate=False, well_plate_type=well_plate_type)
+            self.pipet_from_wellplate(wp_index, volume, parameters=parameters, liquid=liquid, aspirate=False, move_to_aspirate=False, well_plate_type=well_plate_type)
 
     #Mix in a vial
-    def mix_vial(self,vial_name,volume,repeats=3):
+    def mix_vial(self, vial_name, volume, repeats=3, parameters=None, liquid=None):
+        """
+        Mix a vial by aspirating and dispensing repeatedly.
+        
+        Args:
+            vial_name: Name or index of the vial to mix
+            volume: Volume to use for mixing in mL
+            repeats: Number of mixing cycles (default: 3)
+            parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
+            liquid (str, optional): Liquid type for calibrated parameter optimization
+        """
         self.logger.info(f"Mixing vial {vial_name} with volume {volume:.3f} mL for {repeats} repeats")
-        vial_index= self.normalize_vial_index(vial_name)
-        self.aspirate_from_vial(vial_index, volume, move_up=False, track_height=False)
-        self.dispense_into_vial(vial_index, volume, initial_move=False)
-        for i in range (1,repeats):
-            self.dispense_from_vial_into_vial(vial_index, vial_index, volume)
+        vial_index = self.normalize_vial_index(vial_name)
+        self.aspirate_from_vial(vial_index, volume, parameters=parameters, liquid=liquid, move_up=False, track_height=False)
+        self.dispense_into_vial(vial_index, volume, parameters=parameters, liquid=liquid, initial_move=False)
+        for i in range(1, repeats):
+            self.dispense_from_vial_into_vial(vial_index, vial_index, volume, parameters=parameters, liquid=liquid)
 
     #Dispense an amount into a vial
-    def dispense_into_vial(self, dest_vial_name, amount_mL, parameters=None, 
+    def dispense_into_vial(self, dest_vial_name, amount_mL, parameters=None, liquid=None,
                           initial_move=True, measure_weight=False):
         """
         Dispense liquid into a vial.
@@ -1950,16 +2046,22 @@ class North_Robot(North_Base):
             dest_vial_name: Name of destination vial
             amount_mL: Amount to dispense in mL
             parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
+            liquid (str, optional): Liquid type for calibrated parameter optimization
             initial_move (bool): Whether to perform initial movement (default: True)
             measure_weight (bool): Whether to measure mass during dispensing (default: False)
         """
-        if parameters is None:
-            parameters = PipettingParameters()
+        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
         
         # Extract liquid handling values from parameters
         wait_time = parameters.dispense_wait_time
         blowout_vol = parameters.blowout_vol
-        air_vol = parameters.air_vol     
+        
+        # Calculate overdispense volume from constituent parts
+        overdispense_vol = (amount_mL + 
+                           parameters.overaspirate_vol + 
+                           parameters.pre_asp_air_vol + 
+                           parameters.post_asp_air_vol)
         
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
@@ -2001,7 +2103,7 @@ class North_Robot(North_Base):
         #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
         if initial_move:
             self.c9.move_z(height)
-        self.pipet_dispense(amount_mL + air_vol, wait_time=wait_time, blowout_vol=blowout_vol)
+        self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
 
         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
@@ -2028,31 +2130,20 @@ class North_Robot(North_Base):
         return actual_grid
 
     #Dispense into a series of wells (dest_wp_num_array) a specific set of amounts (amount_mL_array)
-    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, parameters=None, well_plate_type=None):
+    def dispense_into_wellplate(self, dest_wp_num_array, amount_mL_array, parameters=None, liquid=None, well_plate_type=None):
         """
         Dispenses specified amounts into a series of wells in a well plate.
         Args:
             dest_wp_num_array (list or range): Array of well indices to dispense into (e.g., [0, 1, 2])
             amount_mL_array (list[float]): Array of amounts (in mL) to dispense into each well (e.g., [0.1, 0.2, 0.3])
-            parameters (PipettingParameters, optional): Standardized parameters (uses defaults if None)
+            parameters (PipettingParameters, optional): Manual parameter overrides (uses defaults if None)
+            liquid (str, optional): Liquid type for automatic parameter optimization
             well_plate_type (str, optional): Type of well plate (defaults to "96 WELL PLATE")
         """
-        if parameters is None:
-            parameters = PipettingParameters()
-        
-        # Extract values directly from parameters
-        wait_time = parameters.dispense_wait_time
-        blowout_vol = parameters.blowout_vol
-        air_vol = parameters.air_vol
-        
         # Default well plate type if not specified
         if well_plate_type is None:
             well_plate_type = "96 WELL PLATE"
-        
-        # Determine dispense speed (can be done safely here)
-        dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
-            
-        self.adjust_pump_speed(0, dispense_speed) #Adjust the pump speed if needed
+
         first_dispense = True
         for i in range(0, len(dest_wp_num_array)):    
             try:
@@ -2065,6 +2156,17 @@ class North_Robot(North_Base):
 
             if amount_mL == 0: #Skip empty dispenses
                 continue
+
+            # Use intelligent parameter resolution for each volume: defaults → liquid-calibrated → user overrides
+            optimized_parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
+            
+            # Extract values from optimized parameters
+            wait_time = optimized_parameters.dispense_wait_time
+            blowout_vol = optimized_parameters.blowout_vol
+            
+            # Determine dispense speed from optimized parameters
+            dispense_speed = optimized_parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
+            self.adjust_pump_speed(0, dispense_speed) #Adjust the pump speed if needed
 
             height = self.get_height_at_location(location)
             height = self.adjust_height_based_on_pipet_held(height) 
@@ -2079,14 +2181,20 @@ class North_Robot(North_Base):
 
             self.logger.info(f"Transferring {amount_mL:.3f} mL into well #{dest_wp_num_array[i]} of {well_plate_type}")
 
+            # Calculate overdispense volume using optimized parameters for this specific amount
+            overdispense_vol = (amount_mL + 
+                               optimized_parameters.overaspirate_vol + 
+                               optimized_parameters.pre_asp_air_vol + 
+                               optimized_parameters.post_asp_air_vol)
+
             #Dispense and then wait
-            self.pipet_dispense(amount_mL + air_vol, wait_time=wait_time, blowout_vol=blowout_vol)     
+            self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)     
 
         self.PIPET_FLUID_VOLUME -= np.sum(amount_mL_array)  # <-- Add this line back
         self.save_robot_status()    
         return True
 
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, strategy="auto", 
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, liquid=None, strategy="auto", 
                                           low_volume_cutoff=0.05, buffer_vol=0.02, well_plate_type="96 WELL PLATE"):
         """
         Dispense from multiple vials into wellplate wells using strategy pattern.
@@ -2094,7 +2202,8 @@ class North_Robot(North_Base):
         Args:
             well_plate_df (DataFrame): DataFrame where columns are vial names and rows are well volumes
             vial_names (list, optional): DEPRECATED - for backwards compatibility only
-            parameters (PipettingParameters, optional): Liquid handling parameters 
+            parameters (PipettingParameters, optional): Manual parameter overrides
+            liquid (str, optional): Liquid type for automatic parameter optimization
             strategy (str): "serial", "batched", or "auto" (default: auto-select based on parameters)
             low_volume_cutoff (float): Volume threshold for switching between tip types (mL)
             buffer_vol (float): Extra volume to aspirate for accuracy, returned to source vial (mL)
@@ -2130,13 +2239,13 @@ class North_Robot(North_Base):
         
         # Dispatch to appropriate strategy
         if strategy == "serial":
-            return self._dispense_wellplate_serial(well_plate_df, parameters, well_plate_type)
+            return self._dispense_wellplate_serial(well_plate_df, parameters, liquid, well_plate_type)
         elif strategy == "batched":
-            return self._dispense_wellplate_batched(well_plate_df, parameters, low_volume_cutoff, buffer_vol, well_plate_type)
+            return self._dispense_wellplate_batched(well_plate_df, parameters, liquid, low_volume_cutoff, buffer_vol, well_plate_type)
         else:
             raise ValueError(f"Unknown strategy: {strategy}. Use 'serial', 'batched', or 'auto'")
 
-    def _dispense_wellplate_serial(self, well_plate_df, parameters, well_plate_type):
+    def _dispense_wellplate_serial(self, well_plate_df, parameters, liquid, well_plate_type):
         """
         Serial strategy: One aspirate -> one dispense per well, full parameter support.
         Slower but supports all PipettingParameters features.
@@ -2172,8 +2281,8 @@ class North_Robot(North_Base):
             
             # Process volumes in sorted order - this naturally groups similar volumes
             for well_idx, volume in volume_list:
-                self.aspirate_from_vial(vial_name, volume, parameters=parameters)  # Automatic tip selection
-                self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, 
+                self.aspirate_from_vial(vial_name, volume, parameters=parameters, liquid=liquid)  # Automatic tip selection
+                self.dispense_into_wellplate([well_idx], [volume], parameters=parameters, liquid=liquid,
                                            well_plate_type=well_plate_type)
             
             # Remove tip after processing all volumes for this vial
@@ -2184,7 +2293,7 @@ class North_Robot(North_Base):
         self.logger.info("Serial wellplate dispensing completed")
         return True
 
-    def _dispense_wellplate_batched(self, well_plate_df, parameters, low_volume_cutoff, buffer_vol, well_plate_type):
+    def _dispense_wellplate_batched(self, well_plate_df, parameters, liquid, low_volume_cutoff, buffer_vol, well_plate_type):
         """
         Batched strategy: Multiple dispenses per aspirate for speed optimization.
         Faster but limited parameter support (no air volumes, minimal mixing).
@@ -2250,7 +2359,7 @@ class North_Robot(North_Base):
                     # Execute the batch
                     batch_total = self._execute_batch(
                         vial_name, batch_wells, batch_volumes, buffer_vol, max_volume,
-                        parameters, tip_type, well_plate_type
+                        parameters, liquid, tip_type, well_plate_type
                     )
                     
                     dispensed += batch_total
@@ -2298,7 +2407,7 @@ class North_Robot(North_Base):
         return batch_wells, batch_volumes, current_idx
 
     def _execute_batch(self, vial_name, batch_wells, batch_volumes, buffer_vol, max_volume, 
-                      parameters, tip_type, well_plate_type):
+                      parameters, liquid, tip_type, well_plate_type):
         """
         Execute one complete batch: aspirate with buffer -> dispense -> return buffer.
         
@@ -2315,16 +2424,16 @@ class North_Robot(North_Base):
         # Note: aspirate_from_vial will handle tip acquisition and speed setting
         
         # Aspirate with buffer
-        self.aspirate_from_vial(vial_name, total_aspirate, parameters=parameters, specified_tip=tip_type)
+        self.aspirate_from_vial(vial_name, total_aspirate, parameters=parameters, liquid=liquid, specified_tip=tip_type)
         
         # Dispense to wells
         self.dispense_into_wellplate(batch_wells, batch_volumes, 
-                                   parameters=parameters, well_plate_type=well_plate_type)
+                                   parameters=parameters, liquid=liquid, well_plate_type=well_plate_type)
         
         # Return buffer volume to source vial if any
         if extra_aspirate_vol > 1e-6:
             self.logger.debug(f"Returning buffer volume: {extra_aspirate_vol:.3f} mL to vial {vial_name}")
-            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=parameters)
+            self.dispense_into_vial(vial_name, extra_aspirate_vol, parameters=parameters, liquid=liquid)
         
         return batch_total
 

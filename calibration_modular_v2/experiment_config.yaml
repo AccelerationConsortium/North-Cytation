@@ -1,0 +1,199 @@
+# Calibration Experiment Configuration
+# ==============================================================================
+# This file defines all parameters for a calibration experiment.
+# 
+# Key Features:
+# - Clear naming (no abbreviated 'params')
+# - Explicit units in field names
+# - Comprehensive validation
+# - Support for all current features: adaptive measurement, multi-objective 
+#   optimization, transfer learning, external data integration
+# ==============================================================================
+
+# Experiment Identification
+experiment:
+  name: "multi_volume_calibration_test"  # Human-readable experiment name
+  liquid: "glycerol"                     # Target liquid (water, glycerol, ethanol)
+  description: "Testing calibration across 6 volumes: 5μL to 200μL"
+  
+# Execution Mode
+execution:
+  simulate: true                         # Use simulation instead of hardware
+  random_seed: 7                         # Reproducibility seed
+  
+# Target Volumes (in mL)
+volumes:
+  targets_ml: [0.05, 0.025, 0.01]       # Test with 3 volumes for faster debugging
+  
+# Global Resource Limits
+budget:
+  max_total_measurements: 180           # Hard limit across entire experiment (increased for 6 volumes)
+  max_measurements_first_volume: 60     # Dedicated budget for first volume
+  
+# Protocol Configuration (Hardware Abstraction)
+protocol:
+  hardware_module: "calibration_protocol_example"     # Real hardware protocol
+  simulation_module: "calibration_protocol_simulated" # Simulation protocol  
+  # Optional: force specific module regardless of simulation mode
+  # module: "custom_protocol"
+  
+# Parameter Space Definition
+calibration_parameters:
+  # Mandatory parameters that all hardware must support
+  overaspirate_vol:
+    bounds: [0.0, 0.15]
+    default: 0.004
+    description: "Overaspiration volume for volume accuracy (mL)"
+    volume_dependent: true              # Re-optimized for each volume
+    max_fraction_of_target: 0.2         # Dynamic constraint: max = min(static_max, target * fraction)
+
+hardware_parameters:
+  # Optional hardware-specific parameters
+  # Parameter names and validation rules are defined by hardware configuration
+  # These will be passed through to the protocol layer as-is
+  
+  aspirate_speed:
+    bounds: [5, 35]
+    default: 17
+    time_affecting: true                # Affects operation timing
+    description: "Aspiration speed (relative units)"
+    
+  dispense_speed:
+    bounds: [5, 35] 
+    default: 17
+    time_affecting: true                # Affects operation timing
+    description: "Dispense speed (relative units)"
+    
+  aspirate_wait_time:
+    bounds: [0.0, 30.0]
+    default: 12.0
+    time_affecting: true                # Directly affects timing
+    description: "Wait time after aspiration (seconds)"
+    
+  dispense_wait_time:
+    bounds: [0.0, 30.0]
+    default: 12.0
+    time_affecting: true                # Directly affects timing
+    description: "Wait time after dispensing (seconds)"
+    
+  retract_speed:
+    bounds: [1.0, 15.0]
+    default: 8.0
+    time_affecting: false               # Minimal timing impact
+    description: "Tip retract speed (relative units)"
+    
+  blowout_vol:
+    bounds: [0.0, 0.2]
+    default: 0.07
+    time_affecting: false               # Volume parameter, not timing
+    description: "Blowout volume (mL)"
+    volume_dependent: true              # Re-optimized for each volume
+    
+  post_asp_air_vol:
+    bounds: [0.0, 0.1]
+    default: 0.05
+    time_affecting: false               # Volume parameter, not timing
+    description: "Post-aspiration air volume (mL)"
+
+# Volume Tolerance Ranges (matches original system VOLUME_TOLERANCE_RANGES)
+tolerances:
+  # Explicit volume-based tolerance ranges (inclusive bounds)
+  volume_ranges:
+    - volume_min_ul: 200               # 200-1000μL range
+      volume_max_ul: 1000
+      tolerance_pct: 1.0
+      
+    - volume_min_ul: 60                # 60-199μL range  
+      volume_max_ul: 199
+      tolerance_pct: 2.0
+      
+    - volume_min_ul: 20                # 20-59μL range
+      volume_max_ul: 59
+      tolerance_pct: 3.0
+      
+    - volume_min_ul: 1                 # 1-19μL range
+      volume_max_ul: 19
+      tolerance_pct: 5.0
+      
+    - volume_min_ul: 0                 # 0-0.999μL range
+      volume_max_ul: 0.999
+      tolerance_pct: 10.0
+  
+  # Simulation multipliers (matches original DEFAULT_SIM_*_MULTIPLIER)
+  simulation:
+    deviation_multiplier: 0.9           # DEFAULT_SIM_DEV_MULTIPLIER
+    variability_multiplier: 0.9         # DEFAULT_SIM_VAR_MULTIPLIER
+
+# Adaptive Measurement Strategy
+adaptive_measurement:
+  enabled: true                         # Use conditional replicates
+  deviation_threshold_pct: 10.0         # Threshold for running additional replicates
+  base_replicates: 1                    # Initial measurement count
+  additional_replicates: 2              # Extra replicates for good accuracy
+  penalty_variability_pct: 100.0        # Penalty for poor single measurements
+  
+# Multi-Objective Optimization
+optimization:
+  # Objective weighting (must sum to 1.0)
+  objectives:
+    accuracy_weight: 0.5                # Weight for accuracy (deviation)
+    precision_weight: 0.4               # Weight for precision (variability)
+    time_weight: 0.1                    # Weight for speed (duration)
+    
+  # Objective thresholds for gradient learning
+  objective_thresholds:
+    deviation_threshold_pct: 50.0       # Values above this treated equally bad
+    variability_threshold_pct: 25.0     # Values above this treated equally bad
+    time_threshold_s: 120.0             # Values above this treated equally bad
+    
+  # Optimizer configuration
+  optimizer:
+    type: "multi_objective"             # "multi_objective" or "single_objective"
+    backend: "qNEHVI"                   # For first volume: qNEHVI, qLogEI
+    backend_subsequent: "qLogEI"        # For subsequent volumes if different
+    
+  # Parameter inheritance across volumes
+  parameter_inheritance:
+    enabled: true                       # Use parameter inheritance across volumes
+    volume_dependent_params:            # Parameters to re-optimize per volume
+      - "blowout_vol"
+      - "overaspirate_vol"
+    carry_optimizer_state: false       # Maintain optimizer state across volumes (advanced)
+    
+  # LLM-based optimization suggestions (experimental feature)
+  llm_optimization:
+    enabled: false                      # Use LLM suggestions for Bayesian optimization
+    config_path: null                   # Path to LLM configuration
+    
+  # Stopping criteria (measurement-based)
+  stopping_criteria:
+    min_good_trials: 6                  # Stop after this many "good" parameter sets
+
+# Screening Phase (Initial Exploration)
+screening:
+  # Manual screening trials (when external data not available)
+  num_trials: 5                         # Number of exploratory trials if no external data
+  
+  # LLM-based screening (separate from optimization LLM)
+  use_llm_suggestions: false            # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)
+  llm_config_path: null                 # Path to LLM configuration for screening phase
+  
+  # External data integration (replaces manual screening if available)
+  external_data:
+    enabled: false                      # Load existing calibration data
+    data_path: null                     # Path to external CSV file
+    volume_filter_ml: null              # Only use data for specific volume
+    liquid_filter: null                 # Only use data for specific liquid
+    required_columns: ["volume_ml", "aspirate_speed", "dispense_speed", "deviation_pct", "duration_s"]
+
+# Output Configuration
+output:
+  base_directory: "output/calibration_v2_runs"  # Root directory for results
+  save_raw_measurements: true           # Include individual measurement data
+  generate_plots: true                  # Create visualization plots
+  export_optimal_conditions: true      # Generate optimal_conditions.csv
+  
+# Advanced Features
+advanced:
+  # Variability calculation method
+  use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV

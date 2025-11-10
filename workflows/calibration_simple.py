@@ -25,7 +25,7 @@ VOLUME = 0.05  # Single volume to test
 RANDOMIZE_ORDER = True  # Randomize the order of conditions to reduce systematic bias
 
 # Input conditions - All 7 best conditions from different strategies
-INPUT_CONDITIONS_FILE = "inputs/best_round2_conditions_by_strategy.csv"  # All 7 strategies
+INPUT_CONDITIONS_FILE = "inputs/full_benchmark_dataset_with_status.csv"  # All 7 strategies
 
 # Output folder configuration
 OUTPUT_FOLDER_REAL = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\simple_calibration"  # For real experiments

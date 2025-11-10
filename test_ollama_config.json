@@ -1,0 +1,29 @@
+{
+    "parameters": {
+        "temperature": {
+            "type": "continuous",
+            "range": "[20, 80]",
+            "unit": "°C",
+            "description": "Reaction temperature"
+        },
+        "concentration": {
+            "type": "continuous", 
+            "range": "[0.1, 5.0]",
+            "unit": "M",
+            "description": "Reactant concentration"
+        }
+    },
+    "output_metrics": {
+        "yield": {
+            "target": "maximize",
+            "unit": "%",
+            "description": "Product yield"
+        }
+    },
+    "batch_size": 3,
+    "api_settings": {
+        "temperature": 0.7,
+        "max_tokens": 1500
+    },
+    "system_message": "You are an expert chemical process optimizer. Analyze experimental data to suggest optimal parameter combinations that maximize yield."
+}

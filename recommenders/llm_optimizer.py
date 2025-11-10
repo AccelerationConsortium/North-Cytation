@@ -5,25 +5,103 @@ import os
 from typing import Dict, Any, List
 import argparse
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables from .env file
 load_dotenv()
 
 class LLMOptimizer:
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, backend: str = "auto", ollama_model: str = None, ollama_url: str = "http://localhost:11434"):
         """
         Initialize the LLM Optimizer
         
         Args:
             api_key: OpenAI API key. If None, will try to get from environment variable OPENAI_API_KEY
+            backend: Backend to use ("openai", "ollama", or "auto"). Auto will try OpenAI first, fallback to Ollama
+            ollama_model: Ollama model to use (e.g., "gpt-oss:20b", "gemma3:1b") or "online_server" for remote
+            ollama_url: Ollama server URL (local or remote)
         """
-        if api_key and api_key != "demo-key":
-            self.client = OpenAI(api_key=api_key)
+        self.backend = backend
+        self.ollama_model = ollama_model
+        self.ollama_url = ollama_url
+        self.client = None
+        
+        if backend == "auto":
+            # Try OpenAI first, fallback to Ollama
+            try:
+                if api_key and api_key != "demo-key":
+                    self.client = OpenAI(api_key=api_key)
+                    self.backend = "openai"
+                else:
+                    api_key = os.getenv("OPENAI_API_KEY")
+                    if api_key:
+                        self.client = OpenAI(api_key=api_key)
+                        self.backend = "openai"
+                    else:
+                        raise ValueError("No OpenAI API key found")
+            except:
+                print("⚠️  OpenAI API key not found, falling back to Ollama")
+                self.backend = "ollama"
+                self._setup_ollama()
+        elif backend == "openai":
+            if api_key and api_key != "demo-key":
+                self.client = OpenAI(api_key=api_key)
+            else:
+                api_key = os.getenv("OPENAI_API_KEY")
+                if not api_key:
+                    raise ValueError("OpenAI API key not provided. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
+                self.client = OpenAI(api_key=api_key)
+        elif backend == "ollama":
+            self._setup_ollama()
         else:
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                raise ValueError("OpenAI API key not provided. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
-            self.client = OpenAI(api_key=api_key)
+            raise ValueError(f"Invalid backend: {backend}. Must be 'openai', 'ollama', or 'auto'")
+    
+    def _setup_ollama(self):
+        """Setup Ollama backend (local or remote)"""
+        try:
+            # Handle special case for remote server
+            if self.ollama_model == "online_server":
+                # Use colleague's remote server
+                self.ollama_url = "https://mac-llm.tail2a00e9.ts.net/ollama"
+                print(f"🌐 Using remote Ollama server: {self.ollama_url}")
+            
+            # Test if Ollama is running
+            response = requests.get(f"{self.ollama_url}/api/tags", timeout=10)
+            if response.status_code == 200:
+                available_models = [model["name"] for model in response.json().get("models", [])]
+                server_type = "remote" if "tail2a00e9.ts.net" in self.ollama_url else "local"
+                print(f"🦙 Ollama {server_type} server connected! Available models: {available_models}")
+                
+                # Auto-select model if not specified or if using online_server
+                if not self.ollama_model or self.ollama_model == "online_server":
+                    if available_models:
+                        # Prefer certain models if available
+                        preferred_models = ["gpt-oss:20b", "llama2", "mistral"]
+                        selected_model = None
+                        for pref in preferred_models:
+                            if pref in available_models:
+                                selected_model = pref
+                                break
+                        
+                        if not selected_model:
+                            selected_model = available_models[0]
+                        
+                        self.ollama_model = selected_model
+                        print(f"🎯 Auto-selected model: {self.ollama_model}")
+                    else:
+                        raise ValueError("No Ollama models available")
+                elif self.ollama_model not in available_models:
+                    print(f"⚠️  Requested model {self.ollama_model} not found. Available: {available_models}")
+                    if available_models:
+                        self.ollama_model = available_models[0]
+                        print(f"🎯 Using fallback model: {self.ollama_model}")
+            else:
+                raise ValueError(f"Ollama server not responding (status: {response.status_code})")
+        except requests.exceptions.RequestException as e:
+            if "online_server" in str(self.ollama_model):
+                raise ValueError(f"Remote Ollama server not accessible: {e}")
+            else:
+                raise ValueError(f"Ollama server not running. Start it with: ollama serve. Error: {e}")
     
     def list_data_files(self, data_folder: str) -> list:
         """
@@ -86,7 +164,19 @@ class LLMOptimizer:
             system_message = system_message_raw
         
         # Convert DataFrame to string representation
-        data_str = df.to_string(index=False)
+        # Check if we have meaningful experimental data (more than just liquid/material type)
+        has_experimental_data = False
+        if not df.empty:
+            # Check if we have any parameter columns with actual experimental results
+            experimental_columns = ['aspirate_speed', 'dispense_speed', 'deviation', 'variability', 'time']
+            has_experimental_data = any(col in df.columns for col in experimental_columns)
+        
+        if df.empty or not has_experimental_data:
+            data_str = "No existing experimental data - generating initial parameter recommendations"
+            is_initial_generation = True
+        else:
+            data_str = df.to_string(index=False)
+            is_initial_generation = False
         
         # Extract parameter information if available
         parameters_info = ""
@@ -207,27 +297,62 @@ class LLMOptimizer:
         # Extract material/condition types for the prompt (using configurable column name)
         material_info = ""
         if material_col and material_col in df.columns:
-            material_types = ", ".join(df[material_col].unique().tolist())
-            material_info = f"\nMATERIAL TYPE: {material_types} - Consider relevant material properties\n"
+            material_types_list = df[material_col].unique().tolist()
+            material_types = ", ".join(material_types_list)
+            material_info = f"\nMATERIAL TYPE: {material_types}"
+            
+            # Add detailed material properties if available
+            if "material_properties" in config:
+                material_info += "\nMATERIAL PROPERTIES:\n"
+                for material_name in material_types_list:
+                    if material_name in config["material_properties"]:
+                        properties = config["material_properties"][material_name]
+                        prop_desc = properties.get("description", "No description")
+                        focus = properties.get("focus", "")
+                        material_info += f"- {material_name}: {prop_desc}"
+                        if focus:
+                            material_info += f" | Focus: {focus}"
+                        material_info += "\n"
+                    else:
+                        material_info += f"- {material_name}: Use general liquid handling principles\n"
+            else:
+                material_info += " - Consider relevant material properties"
+            material_info += "\n"
         
         # Generate dynamic JSON format based on config parameters
         param_names = list(config["parameters"].keys())
         json_fields = ',\n            '.join([f'"{param}": value' for param in param_names])
         
-        # Generate dynamic optimization instructions based on metrics config
-        metrics_instruction = "1. Identify which experiments performed best"
-        if "metrics" in config:
-            metrics_goals = []
-            for metric, details in config["metrics"].items():
-                goal = details.get("goal", "minimize")
-                priority = details.get("priority", "medium")
-                if goal == "minimize":
-                    metrics_goals.append(f"{goal} {metric}")
-                else:
-                    metrics_goals.append(f"{goal} {metric}")
+        # Generate appropriate instructions based on whether we have data or not
+        if is_initial_generation:
+            instructions = f"""INSTRUCTIONS: 
+1. Generate {batch_size} diverse initial parameter combinations based on the parameter ranges and guidelines
+2. Use your understanding of liquid handling physics and the material properties
+3. Consider the experimental setup and optimization objectives
+4. Provide reasoning based on expected behavior and best practices"""
+            reasoning_description = "physics-based explanation for parameter choice and expected behavior"
+        else:
+            # Generate dynamic optimization instructions based on metrics config
+            metrics_instruction = "1. Identify which experiments performed best"
+            if "metrics" in config:
+                metrics_goals = []
+                for metric, details in config["metrics"].items():
+                    goal = details.get("goal", "minimize")
+                    priority = details.get("priority", "medium")
+                    if goal == "minimize":
+                        metrics_goals.append(f"{goal} {metric}")
+                    else:
+                        metrics_goals.append(f"{goal} {metric}")
+                
+                if metrics_goals:
+                    metrics_instruction = f"1. Identify which experiments performed best ({', '.join(metrics_goals)})"
             
-            if metrics_goals:
-                metrics_instruction = f"1. Identify which experiments performed best ({', '.join(metrics_goals)})"
+            instructions = f"""INSTRUCTIONS: 
+{metrics_instruction}
+2. Spot patterns: what parameter values correlate with good/bad performance?
+3. Recommend {batch_size} new parameter combinations based on your analysis
+4. Reference specific data points in your reasoning"""
+            reasoning_description = "data-driven explanation citing specific experimental results"
             
         prompt = f"""{system_message}
 
@@ -236,11 +361,7 @@ PARAMETERS (ranges): {', '.join([f"{param} {details['range']} {details.get('unit
 EXPERIMENTAL DATA TO ANALYZE:
 {data_str}
 
-INSTRUCTIONS: 
-{metrics_instruction}
-2. Spot patterns: what parameter values correlate with good/bad performance?
-3. Recommend {batch_size} new parameter combinations based on your analysis
-4. Reference specific data points in your reasoning
+{instructions}
 
 JSON Response Format:
 {{
@@ -248,15 +369,39 @@ JSON Response Format:
         {{
             {json_fields},
             "confidence": "high/medium/low",
-            "reasoning": "data-driven explanation citing specific experimental results",
+            "reasoning": "{reasoning_description}",
             "expected_improvement": "quantified prediction based on observed patterns"
         }}
     ],
-    "summary": "Key data insights and optimization strategy"
+    "summary": "Key insights and strategy for parameter selection"
 }}"""
         return prompt
     
+    def call_llm(self, prompt: str, config: Dict[str, Any] = None, model: str = None) -> str:
+        """
+        Call LLM (OpenAI or Ollama) with the given prompt
+        
+        Args:
+            prompt: The prompt to send to the LLM
+            config: Configuration dictionary (used for logging settings)
+            model: Model to use (overrides default)
+            
+        Returns:
+            Response from the LLM
+        """
+        if self.backend == "openai":
+            return self._call_openai(prompt, config, model or "gpt-3.5-turbo")
+        elif self.backend == "ollama":
+            return self._call_ollama(prompt, config, model or self.ollama_model)
+        else:
+            raise ValueError(f"Invalid backend: {self.backend}")
+    
+    # Keep the old method name for backward compatibility
     def call_openai(self, prompt: str, config: Dict[str, Any] = None, model: str = "gpt-3.5-turbo") -> str:
+        """Legacy method name for backward compatibility"""
+        return self.call_llm(prompt, config, model)
+    
+    def _call_openai(self, prompt: str, config: Dict[str, Any] = None, model: str = "gpt-3.5-turbo") -> str:
         """
         Call OpenAI API with the given prompt
         
@@ -290,6 +435,78 @@ JSON Response Format:
             return response_content
         except Exception as e:
             raise Exception(f"Error calling OpenAI API: {str(e)}")
+    
+    def _call_ollama(self, prompt: str, config: Dict[str, Any] = None, model: str = None) -> str:
+        """
+        Call Ollama API with the given prompt
+        
+        Args:
+            prompt: The prompt to send to the LLM
+            config: Configuration dictionary (used for logging settings)
+            model: Ollama model to use
+            
+        Returns:
+            Response from the LLM
+        """
+        try:
+            model = model or self.ollama_model
+            
+            # Get API parameters from config if available
+            api_config = config.get("api_settings", {}) if config else {}
+            temperature = api_config.get("temperature", 0.7)
+            
+            # Ollama API payload
+            payload = {
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": temperature,
+                }
+            }
+            
+            # Add max_tokens equivalent for Ollama if specified
+            max_tokens = api_config.get("max_tokens")
+            if max_tokens:
+                payload["options"]["num_predict"] = max_tokens
+            
+            print(f"🦙 Calling Ollama with model: {model}")
+            response = requests.post(
+                f"{self.ollama_url}/api/generate",
+                json=payload,
+                timeout=300  # 5 minute timeout for local generation
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"Ollama API error (status {response.status_code}): {response.text}")
+            
+            result = response.json()
+            response_content = result.get("response", "")
+            
+            if not response_content:
+                raise Exception("Empty response from Ollama")
+            
+            # Create a mock response object for logging compatibility
+            mock_response = type('MockResponse', (), {
+                'choices': [type('MockChoice', (), {'message': type('MockMessage', (), {'content': response_content})()})()],
+                'usage': type('MockUsage', (), {
+                    'prompt_tokens': len(prompt.split()),  # Rough estimate
+                    'completion_tokens': len(response_content.split()),  # Rough estimate
+                    'total_tokens': len(prompt.split()) + len(response_content.split())
+                })(),
+                'id': result.get('created_at', 'ollama-response'),
+                'created': result.get('created_at', 'unknown')
+            })()
+            
+            # Save prompt and response to timestamped folder
+            self._save_prompt_and_response(prompt, response_content, model, mock_response, config)
+            
+            return response_content
+            
+        except requests.exceptions.Timeout:
+            raise Exception("Ollama request timed out. Try a smaller model or increase timeout.")
+        except Exception as e:
+            raise Exception(f"Error calling Ollama API: {str(e)}")
     
     def _save_prompt_and_response(self, prompt: str, response_content: str, model: str, full_response, config: Dict[str, Any] = None):
         """
@@ -433,7 +650,15 @@ JSON Response Format:
         
         # Get model from config if not specified
         if model is None:
-            model = config.get("api_settings", {}).get("model", "gpt-3.5-turbo")
+            if self.backend == "ollama":
+                config_model = config.get("api_settings", {}).get("model", self.ollama_model)
+                # If config specifies "online_server", use the actual selected model
+                if config_model == "online_server":
+                    model = self.ollama_model
+                else:
+                    model = config_model
+            else:
+                model = config.get("api_settings", {}).get("model", "gpt-3.5-turbo")
         
         print(f"Loaded {len(df)} rows of data")
         print(f"Using model: {model}")
@@ -441,10 +666,10 @@ JSON Response Format:
         # Create optimization prompt
         prompt = self.create_optimization_prompt(df, config)
         
-        print("Calling OpenAI API...")
+        print(f"Calling {self.backend.upper()} API...")
         
-        # Call OpenAI API
-        response = self.call_openai(prompt, config, model)
+        # Call LLM API
+        response = self.call_llm(prompt, config, model)
         
         print("Parsing response...")
         
@@ -452,7 +677,9 @@ JSON Response Format:
         parsed_response = self.parse_llm_response(response)
         
         # Ensure output directory exists
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        output_dir = os.path.dirname(output_path)
+        if output_dir:  # Only create directory if there is one
+            os.makedirs(output_dir, exist_ok=True)
         
         # Create output CSV
         self.create_recommendations_csv(parsed_response, output_path)
@@ -465,13 +692,22 @@ def main():
     parser.add_argument("--csv", required=True, help="Path to input CSV file")
     parser.add_argument("--config", required=True, help="Path to configuration JSON file")
     parser.add_argument("--output", required=True, help="Path for output CSV file")
-    parser.add_argument("--model", default="gpt-3.5-turbo", help="OpenAI model to use")
+    parser.add_argument("--model", help="Model to use (e.g., 'gpt-3.5-turbo' for OpenAI or 'gpt-oss:20b' for Ollama)")
     parser.add_argument("--api-key", help="OpenAI API key (optional if set in environment)")
+    parser.add_argument("--backend", default="auto", choices=["openai", "ollama", "auto"], 
+                       help="Backend to use: 'openai', 'ollama', or 'auto' (tries OpenAI first, falls back to Ollama)")
+    parser.add_argument("--ollama-model", help="Ollama model to use (e.g., 'gpt-oss:20b', 'gemma3:1b')")
+    parser.add_argument("--ollama-url", default="http://localhost:11434", help="Ollama server URL")
     
     args = parser.parse_args()
     
     # Initialize optimizer
-    optimizer = LLMOptimizer(api_key=args.api_key)
+    optimizer = LLMOptimizer(
+        api_key=args.api_key,
+        backend=args.backend,
+        ollama_model=args.ollama_model,
+        ollama_url=args.ollama_url
+    )
     
     # Load data and config
     data = optimizer.load_csv(args.csv)

@@ -12,6 +12,7 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import glob
+import logging
 
 # Standard pipetting parameters to extract/interpolate
 PIPETTING_PARAMETERS = [
@@ -58,11 +59,11 @@ class PipettingWizard:
         Returns:
             List of Path objects for matching calibration files
         """
-        # Search patterns - look for liquid name in filename (case-insensitive)
+        # Search patterns - look for optimal_conditions files with liquid name (case-insensitive)
         patterns = [
-            f"*{liquid.lower()}*.csv",
-            f"*{liquid.upper()}*.csv", 
-            f"*{liquid.title()}*.csv"
+            f"optimal_conditions*{liquid.lower()}*.csv",
+            f"optimal_conditions*{liquid.upper()}*.csv", 
+            f"optimal_conditions*{liquid.title()}*.csv"
         ]
         
         found_files = []
@@ -93,18 +94,18 @@ class PipettingWizard:
             
             # Check for volume_target column (essential)
             if 'volume_target' not in df.columns:
-                print(f"Warning: File {file_path} missing required 'volume_target' column")
+                logging.warning(f"File {file_path} missing required 'volume_target' column")
                 return None
             
             # Check which parameters are available
             available_params = [p for p in PIPETTING_PARAMETERS if p in df.columns]
             if not available_params:
-                print(f"Warning: File {file_path} has no pipetting parameters")
+                logging.warning(f"File {file_path} has no pipetting parameters")
                 return None
             
             # Ensure we have volume data
             if df.empty:
-                print(f"Warning: File {file_path} is empty")
+                logging.warning(f"File {file_path} is empty")
                 return None
             
             # Sort by volume for easier interpolation
@@ -113,7 +114,7 @@ class PipettingWizard:
             return df
             
         except Exception as e:
-            print(f"Error loading calibration file {file_path}: {e}")
+            logging.error(f"Error loading calibration file {file_path}: {e}")
             return None
     
     def find_best_calibration_file(self, liquid: str, target_volume_ml: float) -> Optional[Tuple[Path, pd.DataFrame]]:
@@ -131,7 +132,7 @@ class PipettingWizard:
         calibration_files = self.find_calibration_files(liquid)
         
         if not calibration_files:
-            print(f"Error: No calibration files found for liquid '{liquid}' in directory {self.search_directory}")
+            logging.error(f"No calibration files found for liquid '{liquid}' in directory {self.search_directory}")
             return None
         
         best_file = None
@@ -175,7 +176,7 @@ class PipettingWizard:
                 best_df = df
         
         if best_file is None:
-            print(f"Error: No valid calibration files found for liquid '{liquid}'")
+            logging.error(f"No valid calibration files found for liquid '{liquid}'")
             return None
             
         return best_file, best_df
@@ -199,9 +200,9 @@ class PipettingWizard:
         
         # Check if we need to extrapolate and warn user
         if target_volume_ul < min_vol:
-            print(f"Warning: Target volume {target_volume_ml}mL ({target_volume_ul}μL) is below available range ({min_vol}-{max_vol}μL). Extrapolating...")
+            logging.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}μL) is below available range ({min_vol}-{max_vol}μL). Extrapolating...")
         elif target_volume_ul > max_vol:
-            print(f"Warning: Target volume {target_volume_ml}mL ({target_volume_ul}μL) is above available range ({min_vol}-{max_vol}μL). Extrapolating...")
+            logging.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}μL) is above available range ({min_vol}-{max_vol}μL). Extrapolating...")
         
         # If exact match exists, return it
         exact_match = df[df['volume_target'] == target_volume_ul]
@@ -226,13 +227,88 @@ class PipettingWizard:
         
         return result
     
-    def get_pipetting_parameters(self, liquid: str, volume_ml: float) -> Optional[Dict[str, float]]:
+    def apply_overvolume_compensation(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Adjust overaspirate_vol based on measured vs target volume accuracy.
+        
+        Args:
+            df: Calibration dataframe with volume_target, volume_measured, and overaspirate_vol columns
+            
+        Returns:
+            DataFrame with adjusted overaspirate_vol values
+        """
+        if 'volume_measured' not in df.columns or 'overaspirate_vol' not in df.columns:
+            logging.warning("Cannot apply overvolume compensation - missing volume_measured or overaspirate_vol columns")
+            return df
+        
+        # Ensure we have volume_target column
+        if 'volume_target' not in df.columns:
+            logging.warning("Cannot apply overvolume compensation - missing volume_target column")
+            return df
+        
+        compensated_count = 0
+        adjustment_details = []
+        
+        for idx, row in df.iterrows():
+            volume_target = row['volume_target']  # μL
+            volume_measured = row['volume_measured']  # μL  
+            current_overasp = row['overaspirate_vol']  # mL
+            
+            # Calculate volume error in μL
+            volume_error = volume_measured - volume_target  # Positive = over-target, Negative = under-target
+            
+            # Convert error to mL to match overaspirate units
+            volume_error_ml = volume_error / 1000  # Convert μL to mL
+            
+            # Adjust overaspirate: if over-target, decrease overasp; if under-target, increase overasp
+            # Apply full compensation for the measured error
+            adjustment_factor = 1.0  # Apply 100% of the measured error
+            adjustment = -volume_error_ml * adjustment_factor  # Negative error (under) → positive adjustment (increase overasp)
+            
+            new_overasp = current_overasp + adjustment
+            
+            # Ensure overaspirate stays within reasonable bounds (0 to 20% of target volume)
+            max_overasp = volume_target / 1000 * 0.2  # 20% of target volume in mL
+            new_overasp = max(0.0, min(new_overasp, max_overasp))
+            
+            # Calculate the actual adjustment that would be applied
+            actual_adjustment_ml = new_overasp - current_overasp
+            actual_adjustment_ul = actual_adjustment_ml * 1000
+            
+            # Store details for reporting
+            adjustment_details.append({
+                'volume': volume_target,
+                'error': volume_error, 
+                'adjustment_ul': actual_adjustment_ul,
+                'old_overasp': current_overasp,
+                'new_overasp': new_overasp
+            })
+            
+            # Always apply compensation if there's any volume error >0.01μL
+            if abs(volume_error) > 0.01:  # Only skip truly negligible errors
+                df.at[idx, 'overaspirate_vol'] = new_overasp
+                compensated_count += 1
+                
+                logging.debug(f"  {volume_target}μL: error {volume_error:+.2f}μL → overasp {current_overasp:.4f}→{new_overasp:.4f}mL "
+                      f"(Δ{actual_adjustment_ul:+.2f}μL)")
+            else:
+                logging.debug(f"  {volume_target}μL: error {volume_error:+.2f}μL → no adjustment needed (negligible)")
+        
+        if compensated_count > 0:
+            logging.info(f"Applied overvolume compensation to {compensated_count}/{len(df)} parameter sets")
+        else:
+            logging.debug("No overvolume compensation applied - all volume errors were negligible (<0.01μL)")
+            
+        return df
+    
+    def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = False) -> Optional[Dict[str, float]]:
         """
         Get pipetting parameters for a specific liquid and volume.
         
         Args:
             liquid: Liquid name (e.g., 'water', 'glycerol')
             volume_ml: Target volume in mL
+            compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
             
         Returns:
             Dictionary with pipetting parameters, or None if not available
@@ -244,17 +320,23 @@ class PipettingWizard:
         
         file_path, df = file_result
         
+        # Apply overvolume compensation before interpolation if requested
+        if compensate_overvolume:
+            df = self.apply_overvolume_compensation(df.copy())
+        
         # Interpolate parameters
         parameters = self.interpolate_parameters(df, volume_ml)
         
         # Add metadata
         parameters['_source_file'] = str(file_path)
         parameters['_liquid'] = liquid
+        parameters['_compensated'] = compensate_overvolume
         
-        print(f"Parameters for {liquid} {volume_ml}mL from {file_path.name}:")
+        compensation_note = " (with overvolume compensation)" if compensate_overvolume else ""
+        logging.debug(f"Parameters for {liquid} {volume_ml}mL from {file_path.name}{compensation_note}:")
         for key, value in parameters.items():
             if not key.startswith('_'):
-                print(f"  {key}: {value:.6f}")
+                logging.debug(f"  {key}: {value:.6f}")
         
         return parameters
 
@@ -272,7 +354,7 @@ def create_wizard(search_directory: str = None) -> PipettingWizard:
     return PipettingWizard(search_directory)
 
 
-def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: str = None) -> Optional[Dict[str, float]]:
+def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: str = None, compensate_overvolume: bool = False) -> Optional[Dict[str, float]]:
     """
     Convenience function to get pipetting parameters without creating a wizard instance.
     
@@ -280,12 +362,13 @@ def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: st
         liquid: Liquid name (e.g., 'water', 'glycerol', 'DMSO')
         volume_ml: Target volume in mL
         search_directory: Directory to search for calibration files
+        compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
         
     Returns:
         Dictionary with pipetting parameters, or None if not available
     """
     wizard = PipettingWizard(search_directory)
-    return wizard.get_pipetting_parameters(liquid, volume_ml)
+    return wizard.get_pipetting_parameters(liquid, volume_ml, compensate_overvolume)
 
 
 # Example usage
