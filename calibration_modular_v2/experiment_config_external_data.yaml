@@ -1,0 +1,143 @@
+# Calibration Experiment Configuration - External Data Demo
+# ==============================================================================
+# Demonstrates external data integration feature
+# ==============================================================================
+
+# Experiment Identification
+experiment:
+  name: "glycerol_calibration_with_external_data"
+  liquid: "glycerol"
+  description: "Demo of external data integration replacing screening phase"
+  
+# Execution Mode
+execution:
+  simulate: true
+  random_seed: 7
+  
+# Target Volumes (in mL)
+volumes:
+  targets_ml: [0.05, 0.025, 0.01]
+  
+# Global Resource Limits
+budget:
+  max_total_measurements: 50            # Reduced for demo
+  max_measurements_first_volume: 30
+  
+# Protocol Configuration
+protocol:
+  hardware_module: "calibration_protocol_example"
+  simulation_module: "calibration_protocol_simulated"
+  
+# Parameter Space Definition
+parameters:
+  aspirate_speed:
+    bounds: [5, 35]
+    default: 17
+  dispense_speed:
+    bounds: [5, 35] 
+    default: 17
+  aspirate_wait_time:
+    bounds: [0.0, 30.0]
+    default: 12.0
+  dispense_wait_time:
+    bounds: [0.0, 30.0]
+    default: 12.0
+  retract_speed:
+    bounds: [1.0, 15.0]
+    default: 8.0
+  blowout_vol:
+    bounds: [0.0, 0.2]
+    default: 0.07
+    volume_dependent: true
+  post_asp_air_vol:
+    bounds: [0.0, 0.1]
+    default: 0.05
+  overaspirate_vol:
+    bounds: [0.0, 0.15]
+    default: 0.004
+    volume_dependent: true
+    max_fraction_of_target: 0.2
+
+# Tolerance Thresholds
+tolerances:
+  base_accuracy_ul: 1.0
+  base_precision_pct: 5.0
+  base_time_s: 20.0
+  accuracy_scaling_per_100ul: 0.2
+  precision_scaling_per_100ul: 0.0
+  time_scaling_per_100ul: 1.0
+  simulation:
+    base_accuracy_ul: 5.0
+    base_precision_pct: 10.0
+    time_scaling_per_100ul: 0.5
+
+# Adaptive Measurement Strategy
+adaptive_measurement:
+  enabled: true
+  deviation_threshold_pct: 10.0
+  base_replicates: 1
+  additional_replicates: 2
+  penalty_variability_pct: 100.0
+  
+# Multi-Objective Optimization
+optimization:
+  objectives:
+    accuracy_weight: 0.5
+    precision_weight: 0.4
+    time_weight: 0.1
+  objective_thresholds:
+    deviation_threshold_pct: 50.0
+    variability_threshold_pct: 25.0
+    time_threshold_s: 120.0
+  optimizer:
+    type: "multi_objective"
+    backend: "qNEHVI"
+    backend_subsequent: "qLogEI"
+
+# Transfer Learning
+transfer_learning:
+  enabled: true
+  volume_dependent_params:
+    - "blowout_vol"
+    - "overaspirate_vol"
+  carry_optimizer_history: false
+  
+# Workflow Phases
+phases:
+  screening:
+    num_trials: 3                       # Reduced for demo
+    use_llm_suggestions: false
+  optimization:
+    max_iterations: 10                  # Reduced for demo
+  stopping_criteria:
+    max_measurements: 30
+    min_good_trials: 3                  # Reduced for demo
+  precision_test:
+    replicates: 3
+
+# External Data Integration - ENABLED FOR DEMO
+external_data:
+  enabled: true                         # ENABLED
+  data_path: "sample_external_data.csv" # Sample data file
+  volume_filter_ml: null                # Use all volumes
+  liquid_filter: "glycerol"             # Filter to glycerol data
+  required_columns: ["volume_ml", "aspirate_speed", "dispense_speed", "deviation_pct", "duration_s"]
+
+# Output Configuration
+output:
+  base_directory: "output/calibration_v2_runs"
+  save_raw_measurements: true
+  generate_plots: true
+  export_optimal_conditions: true
+  
+# Advanced Features
+advanced:
+  llm_optimization:
+    enabled: false
+  multi_liquid:
+    enabled: false
+    liquids: []
+  real_time_analysis:
+    enabled: false
+    early_stopping: false
+  use_range_based_variability: true     # ENABLED - Demo range-based calculation

@@ -1,0 +1,31 @@
+{
+  "hardware_type": "north_robot_c9", 
+  "device_serial": "AU06CNCF",
+  
+  "parameter_warnings": [
+    "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter scaling)",
+    "NOTE: Speeds are relative units, not absolute velocities",
+    "CAUTION: Retract speed behaves differently - higher = faster"
+  ],
+  
+  "parameter_specifics": {
+    "aspirate_speed": {
+      "scaling": "inverse",
+      "note": "Higher values = slower aspiration"
+    },
+    "dispense_speed": {
+      "scaling": "inverse", 
+      "note": "Higher values = slower dispensing"
+    },
+    "retract_speed": {
+      "scaling": "direct",
+      "note": "Higher values = faster retraction"
+    }
+  },
+  
+  "volume_constraints": {
+    "min_volume_ul": 1,
+    "max_volume_ul": 1000,
+    "overaspirate_max_fraction": 0.2
+  }
+}
