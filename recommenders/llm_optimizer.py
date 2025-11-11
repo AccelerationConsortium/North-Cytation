@@ -167,9 +167,12 @@ class LLMOptimizer:
         # Check if we have meaningful experimental data (more than just liquid/material type)
         has_experimental_data = False
         if not df.empty:
-            # Check if we have any parameter columns with actual experimental results
+            # Check if we have any parameter columns with actual experimental results (not just NaN)
             experimental_columns = ['aspirate_speed', 'dispense_speed', 'deviation', 'variability', 'time']
-            has_experimental_data = any(col in df.columns for col in experimental_columns)
+            has_experimental_data = any(
+                col in df.columns and not df[col].isna().all() 
+                for col in experimental_columns
+            )
         
         if df.empty or not has_experimental_data:
             data_str = "No existing experimental data - generating initial parameter recommendations"
@@ -279,6 +282,21 @@ class LLMOptimizer:
                         if optimization_notes:
                             material_type_info += f" - {optimization_notes}"
                         material_type_info += "\n"
+        elif "experimental_setup" in config and "current_liquid" in config["experimental_setup"]:
+            # Handle case where no existing data but current liquid is specified
+            current_liquid = config["experimental_setup"]["current_liquid"]
+            material_type_info = f"\n\nMaterial/Condition Information:\n"
+            material_type_info += f"- Current liquid: {current_liquid}\n"
+            
+            # Add material properties for current liquid if available
+            if "material_properties" in config and current_liquid.lower() in config["material_properties"]:
+                properties = config["material_properties"][current_liquid.lower()]
+                prop_desc = properties.get("description", "No description")
+                focus = properties.get("focus", "")
+                material_type_info += f"- Material properties for {current_liquid}:\n"
+                material_type_info += f"  * Description: {prop_desc}\n"
+                if focus:
+                    material_type_info += f"  * Optimization focus: {focus}\n"
         
         
         # Legacy liquid properties support (for backward compatibility)
@@ -318,6 +336,25 @@ class LLMOptimizer:
             else:
                 material_info += " - Consider relevant material properties"
             material_info += "\n"
+        elif "experimental_setup" in config and "current_liquid" in config["experimental_setup"]:
+            # Handle case where no existing data but current liquid is specified
+            current_liquid = config["experimental_setup"]["current_liquid"]
+            material_info = f"\nMATERIAL TYPE: {current_liquid}"
+            
+            # Add material properties for current liquid if available
+            if "material_properties" in config and current_liquid.lower() in config["material_properties"]:
+                properties = config["material_properties"][current_liquid.lower()]
+                prop_desc = properties.get("description", "No description")
+                focus = properties.get("focus", "")
+                material_info += "\nMATERIAL PROPERTIES:\n"
+                material_info += f"- {current_liquid}: {prop_desc}"
+                if focus:
+                    material_info += f" | Focus: {focus}"
+                material_info += "\n"
+            else:
+                material_info += "\nMATERIAL PROPERTIES:\n- Use general liquid handling principles\n"
+        else:
+            material_info = "\nMATERIAL TYPE: \nMATERIAL PROPERTIES:\n"
         
         # Generate dynamic JSON format based on config parameters
         param_names = list(config["parameters"].keys())

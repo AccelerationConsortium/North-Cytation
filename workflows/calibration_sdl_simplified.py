@@ -738,7 +738,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
     all_times.append(initial_time)
     all_measurements.append(initial_measured_volume)
     
-    print(f"{initial_deviation:.1f}% deviation")
+    print(f"{initial_deviation:.1f}% deviation | Target: {volume*1000:.1f}μL → Measured: {initial_measured_volume*1000:.1f}μL")
     
     # Step 2: Decision based on initial deviation
     if initial_deviation > deviation_threshold:
@@ -781,7 +781,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             all_times.append(time_taken)
             all_measurements.append(measured_volume)
             
-            print(f"{deviation:.1f}% dev")
+            print(f"Target: {volume:.1f}μL → Measured: {measured_volume:.1f}μL ({deviation:+.1f}% dev)")
         
         replicate_count = total_replicates
         
@@ -798,7 +798,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             # Use range-based variability: (max_vol - min_vol) / (2 * avg_vol) * 100
             variability = (max_vol - min_vol) / (2 * avg_vol) * 100
             
-            print(f"      📊 Final averages: {avg_deviation:.1f}% dev, {variability:.1f}% var, {avg_time:.1f}s")
+            print(f"      📊 Final averages: Target: {volume:.1f}μL → Avg Measured: {avg_vol:.1f}μL ({avg_deviation:+.1f}% dev, {variability:.1f}% var, {avg_time:.1f}s)")
         else:
             variability = 0.0  # Single measurement somehow
     
@@ -1066,7 +1066,7 @@ def get_llm_suggestions(ax_client, n, all_results, volume=None, liquid=None):
         print("   📊 Using optimization config - data-driven improvements")
     
     # Load config and sync parameter ranges with actual Ax search space
-    optimizer = llm_opt.LLMOptimizer()
+    optimizer = llm_opt.LLMOptimizer(backend="ollama", ollama_model="online_server")
     config = optimizer.load_config(config_path)
     
     # Update config with current experimental context
@@ -1076,18 +1076,30 @@ def get_llm_suggestions(ax_client, n, all_results, volume=None, liquid=None):
     
     if liquid is not None:
         config['experimental_setup']['current_liquid'] = liquid
+        print(f"   🧪 Setting current_liquid to: {liquid}")
+        
+        # Debug material properties lookup
+        material_props = config.get('material_properties', {})
+        print(f"   🔍 Available materials in config: {list(material_props.keys())}")
+        print(f"   🔍 Looking for liquid: '{liquid.lower()}'")
+        
         # For initial exploration, add liquid context to system message if available in config
-        if not all_results and liquid.lower() in config.get('material_properties', {}):
-            liquid_info = config['material_properties'][liquid.lower()]
-            liquid_context = f"LIQUID CONTEXT: You are optimizing for {liquid.upper()}. {liquid_info.get('exploration_notes', '')} {liquid_info.get('recommended_focus', '')}"
+        if not all_results and liquid.lower() in material_props:
+            liquid_info = material_props[liquid.lower()]
+            liquid_context = f"LIQUID CONTEXT: You are optimizing for {liquid.upper()}. {liquid_info.get('description', '')} Focus: {liquid_info.get('focus', '')}"
             
             # Insert liquid-specific guidance at the beginning of system message
             original_message = config['system_message']
             enhanced_message = [liquid_context, ""] + original_message
             config['system_message'] = enhanced_message
             print(f"   🧪 Enhanced config for {liquid}")
-        elif liquid.lower() not in config.get('material_properties', {}):
-            print(f"   ⚠️  No material properties found for {liquid} in config")
+            print(f"   📝 Added liquid context: {liquid_context}")
+        elif liquid.lower() not in material_props:
+            print(f"   ⚠️  No material properties found for '{liquid}' in config")
+        else:
+            print(f"   ℹ️  Skipping liquid context (not initial exploration)")
+    else:
+        print(f"   ⚠️  No liquid specified")
     
     # Update config parameters with actual search space bounds from Ax client
     if hasattr(ax_client, 'experiment') and hasattr(ax_client.experiment, 'search_space'):
@@ -1107,9 +1119,16 @@ def get_llm_suggestions(ax_client, n, all_results, volume=None, liquid=None):
     
     if not all_results:
         # Create empty DataFrame with expected columns for initial exploration
+        # Include the current liquid type so LLM knows what material to optimize for
         empty_df = pd.DataFrame(columns=['liquid', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 
                                         'dispense_wait_time', 'retract_speed', 'blowout_vol', 
                                         'post_asp_air_vol', 'overaspirate_vol', 'deviation', 'time', 'trial_type'])
+        
+        # Add a single row with the current liquid type for material properties detection
+        if liquid:
+            empty_df.loc[0] = [liquid] + [None] * (len(empty_df.columns) - 1)
+            print(f"   🧪 Added liquid type '{liquid}' to LLM input for material properties detection")
+        
         empty_df.to_csv(llm_input_file, index=False)
     else:
         pd.DataFrame(all_results).to_csv(llm_input_file, index=False)
@@ -1307,21 +1326,25 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
     print(f"\n🔍 SCREENING PHASE: {INITIAL_PARAMETER_SETS} initial parameter sets...")
     
     screening_results = []
+    llm_suggestions = []
+    
+    # Get all LLM suggestions upfront if using LLM
+    if USE_LLM_FOR_SCREENING and LLM_AVAILABLE:
+        print(f"   🤖 Requesting {INITIAL_PARAMETER_SETS} LLM suggestions...")
+        llm_suggestions = get_llm_suggestions(ax_client, INITIAL_PARAMETER_SETS, screening_results, volume, liquid)
+        print(f"   📝 Received {len(llm_suggestions)} LLM suggestions")
     
     for i in range(INITIAL_PARAMETER_SETS):
         print(f"   Screening trial {i+1}/{INITIAL_PARAMETER_SETS}...")
         
-        if USE_LLM_FOR_SCREENING and LLM_AVAILABLE:
-            # Get LLM suggestion
-            suggestions = get_llm_suggestions(ax_client, 1, screening_results, volume, liquid)
-            if suggestions:
-                params, trial_index = suggestions[0]
-            else:
-                # Fallback to Ax suggestion
-                params, trial_index = ax_client.get_next_trial()
+        if USE_LLM_FOR_SCREENING and LLM_AVAILABLE and i < len(llm_suggestions):
+            # Use pre-generated LLM suggestion
+            params, trial_index = llm_suggestions[i]
+            print(f"     Using LLM suggestion {i+1}")
         else:
-            # Get Ax suggestion (SOBOL)
+            # Get Ax suggestion (SOBOL) as fallback
             params, trial_index = ax_client.get_next_trial()
+            print(f"     Using Ax/SOBOL suggestion {i+1}")
         
         # Enforce fixed parameters - override any values Ax suggested
         for param_name, fixed_value in FIXED_PARAMETERS.items():
@@ -3058,35 +3081,36 @@ if __name__ == "__main__":
     # )
     
     # Example 2: Fixed parameters for water - fast parameters
-    print("\n⚡ FIXED PARAMETERS EXPERIMENT - Water with fast parameters")
-    print("   Fixing wait times to 0 and post-aspirate air volume for water\n")
+    # print("\n⚡ FIXED PARAMETERS EXPERIMENT - Water with fast parameters")
+    # print("   Fixing wait times to 0 and post-aspirate air volume for water\n")
     
-    optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
-        vial_mode="legacy",
-        liquid="water",
-        simulate=True,
-        volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        use_LLM_for_screening = True,
-        # Fix timing parameters for speed and post-aspirate air volume
-        fixed_parameters={
-            'post_asp_air_vol': 0.05
-        }
-    )
-    
-    # # Example 3: Fixed parameters for glycerol - just post-aspirate air volume
-    # print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
-    # print("   Fixing only post-aspirate air volume for glycerol\n")
-    
-    # optimal_conditions_glycerol, save_dir_glycerol = run_simplified_calibration_workflow(
+    # optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
     #     vial_mode="legacy",
-    #     liquid="glycerol",
+    #     liquid="water",
     #     simulate=True,
     #     volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-    #     # Fix only post-aspirate air volume
+    #     use_LLM_for_screening = True,
+    #     # Fix timing parameters for speed and post-aspirate air volume
     #     fixed_parameters={
     #         'post_asp_air_vol': 0.05
     #     }
     # )
+    
+    # Example 3: Fixed parameters for glycerol - just post-aspirate air volume
+    print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
+    print("   Fixing only post-aspirate air volume for glycerol\n")
+    
+    optimal_conditions_glycerol, save_dir_glycerol = run_simplified_calibration_workflow(
+        vial_mode="legacy",
+        liquid="glycerol",
+        simulate=False,
+        use_LLM_for_screening=False,
+        volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
+        # Fix only post-aspirate air volume
+        fixed_parameters={
+            'post_asp_air_vol': 0.05
+        }
+    )
     
     # Example 4: Hot start experiment using unified dataset
     # print("\n🔥 HOT START EXPERIMENT - Using unified dataset for faster convergence")
