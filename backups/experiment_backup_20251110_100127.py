@@ -58,15 +58,7 @@ try:
 except ImportError as e:
     ENHANCED_OUTPUTS_AVAILABLE = False
 
-# Import optimization modules
-try:
-    from optimization_structures import OptimizationObjectives, OptimizerType
-    from bayesian_recommender import create_optimizer, AxBayesianOptimizer
-    BAYESIAN_OPTIMIZATION_AVAILABLE = True
-except ImportError as e:
-    logger = logging.getLogger(__name__)
-    logger.warning(f"Bayesian optimization not available: {e}")
-    BAYESIAN_OPTIMIZATION_AVAILABLE = False
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -202,24 +194,17 @@ class CalibrationExperiment:
         optimization_trials = []
         overaspirate_trials = []
         
-    def _calibrate_volume(self, target_volume_ml: float) -> VolumeCalibrationResult:
-        """
-        Calibrate a single volume using proper Bayesian optimization.
-        
-        Uses the new optimization structure with clean data flow.
-        """
-        start_time = time.time()
-        logger.info(f"Starting calibration for {target_volume_ml*1000:.1f}μL")
-        
-        # Phase 1: Screening (initial exploration)
-        screening_trials = self._run_screening_phase(target_volume_ml)
-        
-        # Phase 2: Bayesian optimization  
-        optimization_trials = self._run_optimization_phase(target_volume_ml, screening_trials)
-        
-        # Phase 3: Optional overaspirate calibration for subsequent volumes
-        overaspirate_trials = []
-        if self.current_volume_index > 0:
+        if self.current_volume_index == 0:
+            # First volume: Full optimization (screening + optimization)
+            logger.info("First volume: running full optimization with screening")
+            screening_trials = self._run_screening_phase(target_volume_ml, optimizer)
+            optimization_trials = self._run_optimization_phase(target_volume_ml, optimizer)
+        else:
+            # Subsequent volumes: Transfer learning only (no screening)
+            logger.info(f"Subsequent volume: using transfer learning from first volume")
+            optimization_trials = self._run_optimization_phase(target_volume_ml, optimizer)
+            
+            # Add overaspirate calibration for subsequent volumes
             overaspirate_trials = self._run_overaspirate_calibration_phase(target_volume_ml, optimization_trials)
         
         # Combine all trials for this volume
@@ -229,32 +214,6 @@ class CalibrationExperiment:
         # Analyze results
         best_trials = self.analyzer.find_best_trials(all_volume_trials, max_results=5)
         volume_statistics = self.analyzer.calculate_trial_statistics(all_volume_trials)
-        
-        # Select optimal parameters
-        optimal_parameters = best_trials[0].parameters if best_trials else None
-        
-        # Create volume result
-        duration = time.time() - start_time
-        measurement_count = sum(len(trial.measurements) for trial in all_volume_trials)
-        
-        volume_result = VolumeCalibrationResult(
-            target_volume_ml=target_volume_ml,
-            trials=all_volume_trials,
-            best_trials=best_trials,
-            optimal_parameters=optimal_parameters,
-            statistics=volume_statistics,
-            duration_s=duration,
-            measurement_count=measurement_count
-        )
-        
-        # Update state for next volume
-        self.volume_results.append(volume_result)
-        self.current_volume_index += 1
-        
-        logger.info(f"Volume {target_volume_ml*1000:.1f}μL calibration completed: "
-                   f"{measurement_count} measurements, {len(best_trials)} good trials")
-        
-        return volume_result
         
         volume_result = VolumeCalibrationResult(
             target_volume_ml=target_volume_ml,
@@ -370,7 +329,15 @@ class CalibrationExperiment:
         )
         return self.config.apply_volume_constraints(parameters, target_volume_ml)
     
-
+    def _run_optimization_phase(self, target_volume_ml: float, optimizer) -> List[TrialResult]:
+        """Run Bayesian optimization phase with measurement-based stopping."""
+        logger.info("Running optimization phase")
+        
+        # Use different optimization strategies for first vs subsequent volumes
+        if self.current_volume_index == 0:
+            return self._run_first_volume_optimization(target_volume_ml, optimizer)
+        else:
+            return self._run_subsequent_volume_optimization(target_volume_ml, optimizer)
     
     def _run_first_volume_optimization(self, target_volume_ml: float, optimizer) -> List[TrialResult]:
         """
@@ -583,137 +550,7 @@ class CalibrationExperiment:
         new_value = base_value + noise
         return max(min_val, min(max_val, new_value))
     
-    def _run_optimization_phase(self, target_volume_ml: float, screening_trials: List[TrialResult]) -> List[TrialResult]:
-        """
-        Run Bayesian optimization phase using proper Ax integration.
-        
-        Replaces the old noise-based parameter generation with actual Bayesian optimization
-        following the proven patterns from calibration_sdl_simplified.py.
-        """
-        logger.info("Starting Bayesian optimization phase")
-        
-        if not BAYESIAN_OPTIMIZATION_AVAILABLE:
-            logger.warning("Bayesian optimization not available - falling back to noise-based generation")
-            return self._run_fallback_optimization(target_volume_ml)
-        
-        # Determine optimization strategy
-        is_first_volume = len(self.volume_results) == 0
-        
-        # Set up fixed parameters for transfer learning
-        fixed_params = {}
-        if not is_first_volume and self.config.is_transfer_learning_enabled():
-            # For subsequent volumes, fix non-volume-dependent parameters
-            volume_dependent_params = ["blowout_vol", "overaspirate_vol"]
-            previous_best = self.volume_results[-1].optimal_parameters
-            
-            if previous_best:
-                logger.info("Using transfer learning - fixing non-volume-dependent parameters")
-                all_params = previous_best.to_protocol_dict()
-                fixed_params = {k: v for k, v in all_params.items() 
-                              if k not in volume_dependent_params}
-        
-        # Create optimizer
-        optimizer_type = OptimizerType.MULTI_OBJECTIVE if is_first_volume else OptimizerType.SINGLE_OBJECTIVE
-        optimizer = create_optimizer(
-            config=self.config,
-            target_volume_ml=target_volume_ml,
-            optimizer_type=optimizer_type,
-            fixed_params=fixed_params,
-            volume_dependent_only=not is_first_volume
-        )
-        
-        logger.info(f"Created {optimizer_type.value} optimizer for volume {target_volume_ml*1000:.0f}μL")
-        
-        # Load screening data into optimizer
-        if screening_trials:
-            logger.info(f"Loading {len(screening_trials)} screening trials into optimizer")
-            for trial in screening_trials:
-                objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                optimizer.update_with_result(trial.parameters, objectives)
-        
-        # Run optimization iterations
-        optimization_trials = []
-        max_measurements = self.config.get_max_total_measurements()
-        current_measurements = sum(len(vol.measurements) for vol in self.volume_results) if self.volume_results else 0
-        current_measurements += sum(len(trial.measurements) for trial in screening_trials)
-        
-        iteration = 0
-        while not optimizer.is_converged() and current_measurements < max_measurements:
-            iteration += 1
-            logger.info(f"Optimization iteration {iteration}")
-            
-            # Check budget
-            remaining_budget = max_measurements - current_measurements
-            if remaining_budget < 3:  # Need at least 3 measurements for meaningful trial
-                logger.info("Insufficient budget remaining - stopping optimization")
-                break
-            
-            # Get parameter suggestion from optimizer
-            try:
-                suggested_params = optimizer.suggest_parameters()
-                logger.info(f"Generated parameter suggestion from Ax optimizer")
-            except Exception as e:
-                logger.error(f"Failed to get suggestion from optimizer: {e}")
-                break
-            
-            # Run adaptive measurement
-            try:
-                trial = self._run_single_trial(
-                    parameters=suggested_params,
-                    target_volume_ml=target_volume_ml,
-                    strategy=f"BAYESIAN_OPT_{iteration}"
-                )
-                
-                optimization_trials.append(trial)
-                current_measurements += len(trial.measurements)
-                
-                # Update optimizer with result
-                objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                optimizer.update_with_result(trial.parameters, objectives)
-                
-                # Log progress
-                summary = optimizer.get_summary()
-                logger.info(f"Trial {iteration}: deviation={objectives.accuracy:.1f}%, "
-                           f"good_trials={summary.get('good_trials', 0)}")
-                
-            except Exception as e:
-                logger.error(f"Failed to run optimization trial {iteration}: {e}")
-                break
-        
-        # Log final optimization state
-        final_summary = optimizer.get_summary()
-        logger.info(f"Optimization completed: {final_summary}")
-        
-        return optimization_trials
-    
-    def _run_fallback_optimization(self, target_volume_ml: float) -> List[TrialResult]:
-        """Fallback optimization when Bayesian optimization is not available."""
-        logger.info("Running fallback optimization with noise-based parameter generation")
-        
-        trials = []
-        max_trials = 10  # Conservative fallback
-        
-        for i in range(max_trials):
-            try:
-                params = self._generate_fallback_parameters(target_volume_ml, i)
-                trial = self._run_single_trial(
-                    parameters=params,
-                    target_volume_ml=target_volume_ml, 
-                    strategy=f"FALLBACK_{i+1}"
-                )
-                trials.append(trial)
-                
-                # Early stopping if we find good parameters
-                if trial.analysis.absolute_deviation_pct <= 5.0:
-                    logger.info(f"Found good parameters early - stopping fallback optimization")
-                    break
-                    
-            except Exception as e:
-                logger.error(f"Fallback trial {i+1} failed: {e}")
-        
-        return trials
-    
-    def _generate_fallback_parameters(self, target_volume_ml: float, iteration: int) -> PipettingParameters:
+    def _generate_optimization_parameters(self, target_volume_ml: float, iteration: int) -> PipettingParameters:
         """Generate parameters using Bayesian optimization - HARDWARE AGNOSTIC."""
         # Get bounds for both calibration and hardware parameters
         cal_bounds = self.config.get_calibration_parameter_bounds()
@@ -820,7 +657,7 @@ class CalibrationExperiment:
         overaspirate_trials.append(baseline_trial)
         
         # Calculate volume-specific shortfall and adjustment
-        avg_measured_volume = np.mean([m.measured_volume_ml for m in baseline_trial.measurements])
+        avg_measured_volume = np.mean([m.actual_volume_ml for m in baseline_trial.measurements])
         shortfall_ml = target_volume_ml - avg_measured_volume
         
         # Only proceed with adjustment if there's significant shortfall
@@ -956,15 +793,14 @@ class CalibrationExperiment:
         if not self.config.should_export_optimal_conditions():
             return
         
-        # Export optimal conditions as structured JSON
+        # Export optimal conditions
         if results.optimal_conditions:
-            optimal_json_path = self.output_dir / "optimal_conditions.json"
-            import json
-            with open(optimal_json_path, 'w') as f:
-                json.dump(asdict(results.optimal_conditions), f, indent=2)
-            logger.info(f"Exported optimal conditions JSON to {optimal_json_path}")
+            optimal_df = pd.DataFrame([asdict(results.optimal_conditions)])
+            optimal_path = self.output_dir / "optimal_conditions.csv"
+            optimal_df.to_csv(optimal_path, index=False)
+            logger.info(f"Exported optimal conditions to {optimal_path}")
         
-        # Export raw measurements as structured JSON if requested
+        # Export raw measurements if requested
         if self.config.should_save_raw_measurements():
             all_measurements = []
             for trial in self.all_trials:
@@ -975,11 +811,10 @@ class CalibrationExperiment:
                     all_measurements.append(measurement_dict)
             
             if all_measurements:
-                measurements_json_path = self.output_dir / "raw_measurements.json"
-                import json
-                with open(measurements_json_path, 'w') as f:
-                    json.dump(all_measurements, f, indent=2)
-                logger.info(f"Exported raw measurements JSON to {measurements_json_path}")
+                measurements_df = pd.DataFrame(all_measurements)
+                measurements_path = self.output_dir / "raw_measurements.csv"
+                measurements_df.to_csv(measurements_path, index=False)
+                logger.info(f"Exported raw measurements to {measurements_path}")
         
         # Export summary statistics
         summary_path = self.output_dir / "experiment_summary.json"
@@ -1069,9 +904,9 @@ class CalibrationExperiment:
                 plot_count = len(list(plots_dir.glob("*.png")))
                 logger.info(f"[SUCCESS] Generated {plot_count} visualization plots in plots/")
             
-            clean_csvs = [f for f in self.output_dir.glob("*.csv")]
+            clean_csvs = [f for f in self.output_dir.glob("*_clean.csv")]
             if clean_csvs:
-                logger.info(f"[SUCCESS] Generated {len(clean_csvs)} CSV files")
+                logger.info(f"[SUCCESS] Generated {len(clean_csvs)} clean CSV files")
             
             if insights:
                 logger.info("[SUCCESS] Generated analysis insights and recommendations")

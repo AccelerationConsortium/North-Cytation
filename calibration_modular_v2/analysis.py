@@ -134,7 +134,7 @@ class CalibrationAnalyzer:
     def _calculate_adaptive_measurement_result(self, measurements: List[RawMeasurement], 
                                              target_volume_ml: float) -> AdaptiveMeasurementResult:
         """Calculate statistical analysis of measurement replicates."""
-        volumes_ml = [m.actual_volume_ml for m in measurements]
+        volumes_ml = [m.measured_volume_ml for m in measurements]
         durations_s = [m.duration_s for m in measurements]
         
         # Volume statistics

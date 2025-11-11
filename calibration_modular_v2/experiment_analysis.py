@@ -63,7 +63,7 @@ class CalibrationAnalyzer:
             'recommendations': self._generate_recommendations(trial_results, optimal_conditions)
         }
         
-        logger.info("✅ Experiment analysis completed")
+        logger.info("[SUCCESS] Experiment analysis completed")
         return insights
     
     def _analyze_experiment_overview(self, trial_results: List[Dict], 

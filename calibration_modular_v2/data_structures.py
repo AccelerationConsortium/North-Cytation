@@ -116,7 +116,7 @@ class RawMeasurement:
     measurement_id: str
     parameters: PipettingParameters
     target_volume_ml: float
-    actual_volume_ml: float
+    measured_volume_ml: float  # What was actually measured (not "actual")
     duration_s: float
     
     # Optional fields with defaults
@@ -128,8 +128,8 @@ class RawMeasurement:
         """Validate measurement data."""
         if self.target_volume_ml <= 0:
             raise ValueError(f"target_volume_ml must be positive, got {self.target_volume_ml}")
-        if self.actual_volume_ml < 0:
-            raise ValueError(f"actual_volume_ml cannot be negative, got {self.actual_volume_ml}")
+        if self.measured_volume_ml < 0:
+            raise ValueError(f"measured_volume_ml cannot be negative, got {self.measured_volume_ml}")
         if self.duration_s <= 0:
             raise ValueError(f"duration_s must be positive, got {self.duration_s}")
         if not self.measurement_id.strip():

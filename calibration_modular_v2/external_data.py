@@ -199,15 +199,15 @@ class ExternalDataLoader:
             variability_pct = float(row.get('variability_pct', 5.0))
             duration_s = float(row.get('duration_s', 10.0))
             
-            # Calculate actual volume from deviation
-            actual_volume_ml = target_volume_ml * (1 + deviation_pct / 100.0)
+            # Calculate measured volume from deviation
+            measured_volume_ml = target_volume_ml * (1 + deviation_pct / 100.0)
             
             # Create raw measurement
             measurement = RawMeasurement(
                 measurement_id=f"{trial_id}_external",
                 parameters=parameters,
                 target_volume_ml=target_volume_ml,
-                actual_volume_ml=actual_volume_ml,
+                measured_volume_ml=measured_volume_ml,
                 duration_s=duration_s,
                 replicate_id=0,
                 metadata={'source': 'external_data', 'original_index': str(row.name)}
@@ -217,17 +217,17 @@ class ExternalDataLoader:
             analysis = AdaptiveMeasurementResult(
                 target_volume_ml=target_volume_ml,
                 num_replicates=1,
-                mean_volume_ml=actual_volume_ml,
+                mean_volume_ml=measured_volume_ml,
                 stdev_volume_ml=0.0,  # Unknown for external data
                 cv_volume_pct=variability_pct,
-                deviation_ml=actual_volume_ml - target_volume_ml,
+                deviation_ml=measured_volume_ml - target_volume_ml,
                 deviation_pct=deviation_pct,
                 absolute_deviation_pct=abs(deviation_pct),
                 mean_duration_s=duration_s,
                 stdev_duration_s=0.0,
-                min_volume_ml=actual_volume_ml,
-                max_volume_ml=actual_volume_ml,
-                median_volume_ml=actual_volume_ml
+                min_volume_ml=measured_volume_ml,
+                max_volume_ml=measured_volume_ml,
+                median_volume_ml=measured_volume_ml
             )
             
             # Evaluate quality

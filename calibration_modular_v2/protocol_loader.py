@@ -184,7 +184,7 @@ class ProtocolWrapper:
             measurement_id=f"measurement_{int(time.time() * 1000)}",
             parameters=parameters,
             target_volume_ml=target_volume_ml,
-            actual_volume_ml=protocol_result['volume'],
+            measured_volume_ml=protocol_result['volume'],
             duration_s=protocol_result['elapsed_s'],
             timestamp=time.time(),
             metadata=protocol_result  # Include all protocol data as metadata
