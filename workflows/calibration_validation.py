@@ -78,6 +78,7 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
     Returns:
         results_df: Summary results per volume
         raw_df: Raw measurement data
+        output_dir: Output directory path
     """
     print(f"🧪 Starting validation for {len(volumes)} volumes with {replicates} replicates each...")
     
@@ -96,7 +97,8 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
     
     # Setup file paths for raw data
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("output") / "validation_runs" / f"validation_{liquid}_{timestamp}"
+    param_type = "wizard" if liquid else "default"
+    output_dir = Path("output") / "validation_runs" / f"validation_{param_type}_{liquid or 'default'}_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_path = output_dir / "raw_validation_data.csv"
     
@@ -117,9 +119,9 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
         print(f"\n📏 Testing volume {i+1}/{len(volumes)}: {volume*1000:.1f} μL")
         
         try:
-            # Use intelligent parameter system - no manual wizard lookup needed!
-            # The robot methods will automatically optimize parameters based on liquid and volume
-            print(f"   Using intelligent parameter optimization for {liquid} at {volume*1000:.1f} μL")
+            # Use intelligent parameter system - liquid=None triggers defaults
+            param_source = "wizard-optimized" if liquid else "default"
+            print(f"   Using {param_source} parameters for {volume*1000:.1f} μL")
             
             # Calculate expected mass
             expected_mass = volume * liquid_density
@@ -130,10 +132,6 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
             
             for rep in range(replicates):
                 print(f"   Replicate {rep+1}/{replicates}...", end="")
-                
-                # Measure using pipet_and_measure function
-                # We'll collect the raw data directly from the global raw_measurements list
-                raw_count_before = len(raw_measurements)
                 
                 result = pipet_and_measure(
                     lash_e=lash_e,
@@ -147,7 +145,7 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
                     simulate=simulate,
                     raw_path=str(raw_path),
                     raw_measurements=raw_measurements,
-                    liquid=liquid,  # CRITICAL: This enables automatic parameter optimization!
+                    liquid=liquid,  # None = defaults, liquid name = wizard optimization
                     new_pipet_each_time=new_pipet_each_time_set,  # Use liquid-specific setting
                     trial_type="VALIDATION"
                 )
@@ -189,8 +187,8 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
                 'absolute_accuracy_percent': absolute_accuracy,
                 'mean_absolute_error_percent': mean_absolute_error,
                 'replicates': replicates,
-                'liquid': liquid,
-                'parameter_source': 'intelligent_optimization'  # Parameters automatically optimized
+                'liquid': liquid or 'default',
+                'parameter_source': param_source
             }
             results.append(volume_result)
             
@@ -213,7 +211,8 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
                 'absolute_accuracy_percent': np.nan,
                 'mean_absolute_error_percent': np.nan,
                 'replicates': replicates,
-                'liquid': liquid,
+                'liquid': liquid or 'default',
+                'parameter_source': param_source,
                 'error': str(e)
             }
             results.append(volume_result)
@@ -229,6 +228,431 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
     print(f"\n💾 Results saved to: {output_dir}")
     
     return results_df, raw_df, output_dir
+
+
+def validate_volumes_wizard_only(lash_e, liquid, volumes, replicates, simulate):
+    """
+    Validate pipetting accuracy using only wizard-optimized parameters (original behavior)
+    """
+    print(f"🧪 Starting wizard-only validation for {len(volumes)} volumes with {replicates} replicates each...")
+    
+    # Get liquid properties
+    if liquid not in LIQUIDS:
+        raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
+    liquid_density = LIQUIDS[liquid]["density"]
+    
+    # Get liquid-specific pipet behavior
+    new_pipet_each_time_set = LIQUIDS[liquid]["refill_pipets"]
+    print(f"   🔧 Pipet behavior for {liquid}: {'new tip each time' if new_pipet_each_time_set else 'reuse tip'}")
+    
+    # Initialize results storage
+    results = []
+    raw_measurements = []
+    
+    # Setup file paths for raw data
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = Path("output") / "validation_runs" / f"validation_{liquid}_{timestamp}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    raw_path = output_dir / "raw_validation_data.csv"
+    
+    # Vial configuration
+    if VIAL_MANAGEMENT_MODE == "legacy":
+        source_vial = "liquid_source_0"
+        dest_vial = "measurement_vial_0"
+        print(f"   🧪 Legacy mode: {source_vial} → {dest_vial}")
+    else:
+        source_vial = "measurement_vial_0"
+        dest_vial = "measurement_vial_0"
+        print(f"   🧪 Single vial mode: {source_vial} (same vial)")
+    
+    # Process each volume with wizard parameters only
+    for i, volume in enumerate(volumes):
+        print(f"\n📏 Testing volume {i+1}/{len(volumes)}: {volume*1000:.1f} μL")
+        
+def validate_volumes_wizard_only(lash_e, liquid, volumes, replicates, simulate):
+    """
+    Validate pipetting accuracy using only wizard-optimized parameters (original behavior)
+    """
+    return validate_volumes(lash_e, liquid, volumes, replicates, simulate)
+
+
+def compare_validation_results(wizard_csv_path, default_csv_path, output_dir=None):
+    """
+    Compare two validation result CSV files and generate comparison report.
+    
+    Args:
+        wizard_csv_path: Path to wizard validation results CSV
+        default_csv_path: Path to default validation results CSV  
+        output_dir: Directory to save comparison results (optional)
+    
+    Returns:
+        comparison_df: DataFrame with side-by-side comparison
+    """
+    print(f"📊 Comparing validation results...")
+    print(f"   Wizard results: {wizard_csv_path}")
+    print(f"   Default results: {default_csv_path}")
+    
+    # Load both result files
+    try:
+        wizard_df = pd.read_csv(wizard_csv_path)
+        default_df = pd.read_csv(default_csv_path)
+    except Exception as e:
+        print(f"❌ Error loading result files: {e}")
+        return None
+    
+    # Merge on volume for comparison
+    comparison_data = []
+    
+    for _, wizard_row in wizard_df.iterrows():
+        volume = wizard_row['volume_target_ul']
+        
+        # Find matching default result
+        default_row = default_df[default_df['volume_target_ul'] == volume]
+        
+        if len(default_row) > 0:
+            default_row = default_row.iloc[0]
+            
+            # Calculate improvements
+            accuracy_improvement = default_row['absolute_accuracy_percent'] - wizard_row['absolute_accuracy_percent']
+            precision_improvement = default_row['cv_percent'] - wizard_row['cv_percent']
+            
+            comparison = {
+                'volume_target_ul': volume,
+                'wizard_accuracy_pct': wizard_row['accuracy_percent'],
+                'default_accuracy_pct': default_row['accuracy_percent'],
+                'wizard_absolute_accuracy_pct': wizard_row['absolute_accuracy_percent'],
+                'default_absolute_accuracy_pct': default_row['absolute_accuracy_percent'],
+                'accuracy_improvement_pct': accuracy_improvement,
+                'wizard_cv_pct': wizard_row['cv_percent'],
+                'default_cv_pct': default_row['cv_percent'],
+                'precision_improvement_pct': precision_improvement,
+                'wizard_better_accuracy': wizard_row['absolute_accuracy_percent'] < default_row['absolute_accuracy_percent'],
+                'wizard_better_precision': wizard_row['cv_percent'] < default_row['cv_percent']
+            }
+            comparison_data.append(comparison)
+    
+    comparison_df = pd.DataFrame(comparison_data)
+    
+    # Save comparison if output directory provided
+    if output_dir:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        comparison_df.to_csv(output_path / "parameter_comparison.csv", index=False)
+        
+        # Generate simple comparison plot
+        create_comparison_plot(comparison_df, output_path)
+        print(f"   💾 Comparison saved to: {output_path}")
+    
+    # Print summary
+    print_comparison_summary(comparison_df)
+    
+    return comparison_df
+
+
+def create_comparison_plot(comparison_df, output_dir):
+    """Create a simple comparison plot"""
+    if len(comparison_df) == 0:
+        return
+        
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    
+    volumes = comparison_df['volume_target_ul']
+    
+    # Accuracy comparison
+    ax1.bar(volumes - 2, comparison_df['wizard_absolute_accuracy_pct'], 
+            width=4, label='Wizard', color='green', alpha=0.7)
+    ax1.bar(volumes + 2, comparison_df['default_absolute_accuracy_pct'], 
+            width=4, label='Default', color='red', alpha=0.7)
+    ax1.set_xlabel('Volume (μL)')
+    ax1.set_ylabel('Absolute Accuracy Error (%)')
+    ax1.set_title('Accuracy Comparison')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    # Precision comparison
+    ax2.bar(volumes - 2, comparison_df['wizard_cv_pct'], 
+            width=4, label='Wizard', color='green', alpha=0.7)
+    ax2.bar(volumes + 2, comparison_df['default_cv_pct'], 
+            width=4, label='Default', color='red', alpha=0.7)
+    ax2.set_xlabel('Volume (μL)')
+    ax2.set_ylabel('Precision (CV %)')
+    ax2.set_title('Precision Comparison')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / "parameter_comparison.png", dpi=300, bbox_inches='tight')
+    print(f"   📈 Comparison plot saved")
+
+
+def print_comparison_summary(comparison_df):
+    """Print a summary of the comparison results"""
+    if len(comparison_df) == 0:
+        print("   ⚠️  No matching volumes found for comparison")
+        return
+        
+    print(f"\n📋 COMPARISON SUMMARY:")
+    print(f"   Volumes compared: {len(comparison_df)}")
+    
+    # Count wins
+    wizard_accuracy_wins = sum(comparison_df['wizard_better_accuracy'])
+    wizard_precision_wins = sum(comparison_df['wizard_better_precision'])
+    total = len(comparison_df)
+    
+    print(f"   Wizard accuracy wins: {wizard_accuracy_wins}/{total} ({wizard_accuracy_wins/total*100:.0f}%)")
+    print(f"   Wizard precision wins: {wizard_precision_wins}/{total} ({wizard_precision_wins/total*100:.0f}%)")
+    
+    # Average improvements
+    avg_acc_improvement = comparison_df['accuracy_improvement_pct'].mean()
+    avg_prec_improvement = comparison_df['precision_improvement_pct'].mean()
+    
+    print(f"   Avg accuracy improvement: {avg_acc_improvement:+.1f}% (positive = wizard better)")
+    print(f"   Avg precision improvement: {avg_prec_improvement:+.1f}% (positive = wizard better)")
+
+
+def run_comparison_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE, 
+                             volumes=None, replicates=DEFAULT_REPLICATES,
+                             input_vial_file=DEFAULT_INPUT_VIAL_STATUS_FILE):
+    """
+    Run validation twice (wizard vs default) and compare results.
+    
+    Args:
+        liquid: Liquid type for wizard optimization
+        simulate: Simulation mode
+        volumes: List of volumes to test
+        replicates: Number of replicates per volume
+        input_vial_file: Vial configuration file
+    """
+    if volumes is None:
+        volumes = DEFAULT_VOLUMES.copy()
+    
+    print(f"🔬 COMPARISON VALIDATION: Wizard vs Default Parameters")
+    print(f"   Liquid: {liquid}")
+    print(f"   Volumes: {[f'{v*1000:.0f}μL' for v in volumes]}")
+    print(f"   Replicates per volume: {replicates}")
+    
+    try:
+        # Initialize robot
+        lash_e = Lash_E(input_vial_file, simulate=simulate, initialize_biotek=False)
+        
+        # Run 1: Wizard-optimized parameters
+        print(f"\n🧙 PHASE 1: Testing wizard-optimized parameters...")
+        initialize_experiment(lash_e, liquid)
+        wizard_results_df, wizard_raw_df, wizard_output_dir = validate_volumes(
+            lash_e, liquid, volumes, replicates, simulate
+        )
+        generate_validation_report(wizard_results_df, wizard_raw_df, wizard_output_dir, f"{liquid}_wizard")
+        
+        # Run 2: Default parameters  
+        print(f"\n⚙️  PHASE 2: Testing default parameters...")
+        initialize_experiment(lash_e, liquid)  # Still need liquid for density calculation
+        default_results_df, default_raw_df, default_output_dir = validate_volumes(
+            lash_e, None, volumes, replicates, simulate  # liquid=None triggers defaults
+        )
+        generate_validation_report(default_results_df, default_raw_df, default_output_dir, "default")
+        
+        # Phase 3: Compare results
+        print(f"\n📊 PHASE 3: Comparing results...")
+        wizard_csv = wizard_output_dir / "validation_summary.csv"
+        default_csv = default_output_dir / "validation_summary.csv"
+        
+        comparison_output = Path("output") / "validation_runs" / f"comparison_{liquid}_vs_default_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        comparison_df = compare_validation_results(wizard_csv, default_csv, comparison_output)
+        
+        print(f"\n🎉 Comparison validation complete!")
+        print(f"   Wizard results: {wizard_output_dir}")
+        print(f"   Default results: {default_output_dir}")
+        print(f"   Comparison: {comparison_output}")
+        
+        return wizard_results_df, default_results_df, comparison_df
+        
+    except Exception as e:
+        print(f"❌ Comparison validation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, None, None
+        
+        results.append(wizard_results)
+    
+    # Convert to DataFrames
+    results_df = pd.DataFrame(results)
+    raw_df = pd.DataFrame(raw_measurements)
+    
+    # Save results
+    results_df.to_csv(output_dir / "validation_summary.csv", index=False)
+    raw_df.to_csv(output_dir / "raw_validation_data.csv", index=False)
+    
+    print(f"\n💾 Results saved to: {output_dir}")
+    
+    return results_df, raw_df, output_dir
+
+
+def generate_comparison_report(results_df, raw_df, comparison_df, output_dir, liquid):
+    """Generate comparison analysis and plots between wizard and default parameters"""
+    print(f"\n📊 Generating parameter comparison report...")
+    
+    # Filter out failed measurements for analysis
+    valid_results = results_df.dropna(subset=['accuracy_percent'])
+    valid_comparisons = comparison_df.dropna()
+    
+    if len(valid_results) == 0:
+        print("❌ No valid results for analysis")
+        return
+    
+    # Create figure with subplots for comparison
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    fig.suptitle(f'{liquid.capitalize()} Parameter Comparison: Wizard vs Default', fontsize=16)
+    
+    # Plot 1: Accuracy Comparison (Bar Chart)
+    ax1 = axes[0, 0]
+    volumes = valid_comparisons['volume_target_ul']
+    wizard_acc = valid_comparisons['wizard_absolute_accuracy_pct']
+    default_acc = valid_comparisons['default_absolute_accuracy_pct']
+    
+    x = np.arange(len(volumes))
+    width = 0.35
+    
+    bars1 = ax1.bar(x - width/2, wizard_acc, width, label='Wizard-optimized', color='green', alpha=0.7)
+    bars2 = ax1.bar(x + width/2, default_acc, width, label='Default parameters', color='red', alpha=0.7)
+    
+    ax1.set_xlabel('Volume (μL)')
+    ax1.set_ylabel('Absolute Accuracy Error (%)')
+    ax1.set_title('Accuracy Comparison (Lower is Better)')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([f'{int(v)}' for v in volumes])
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    # Plot 2: Precision Comparison (CV%)
+    ax2 = axes[0, 1]
+    wizard_cv = valid_comparisons['wizard_cv_pct']
+    default_cv = valid_comparisons['default_cv_pct']
+    
+    bars3 = ax2.bar(x - width/2, wizard_cv, width, label='Wizard-optimized', color='green', alpha=0.7)
+    bars4 = ax2.bar(x + width/2, default_cv, width, label='Default parameters', color='red', alpha=0.7)
+    
+    ax2.set_xlabel('Volume (μL)')
+    ax2.set_ylabel('Precision (CV %)')
+    ax2.set_title('Precision Comparison (Lower is Better)')
+    ax2.set_xticks(x)
+    ax2.set_xticklabels([f'{int(v)}' for v in volumes])
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    
+    # Plot 3: Improvement Metrics
+    ax3 = axes[0, 2]
+    accuracy_improvements = valid_comparisons['accuracy_improvement_pct']
+    precision_improvements = valid_comparisons['precision_improvement_pct']
+    
+    ax3.bar(x - width/2, accuracy_improvements, width, label='Accuracy improvement', color='blue', alpha=0.7)
+    ax3.bar(x + width/2, precision_improvements, width, label='Precision improvement', color='purple', alpha=0.7)
+    ax3.axhline(y=0, color='black', linestyle='-', alpha=0.5)
+    
+    ax3.set_xlabel('Volume (μL)')
+    ax3.set_ylabel('Improvement (%)')
+    ax3.set_title('Parameter Optimization Benefits')
+    ax3.set_xticks(x)
+    ax3.set_xticklabels([f'{int(v)}' for v in volumes])
+    ax3.legend()
+    ax3.grid(True, alpha=0.3)
+    
+    # Plot 4: Target vs Measured (Wizard)
+    ax4 = axes[1, 0]
+    wizard_data = valid_results[valid_results['parameter_source'] == 'wizard']
+    target_ul = wizard_data['volume_target_ul']
+    measured_ul = wizard_data['volume_measured_mean_ul']
+    measured_std_ul = wizard_data['volume_measured_std_ul']
+    
+    ax4.errorbar(target_ul, measured_ul, yerr=measured_std_ul, 
+                 fmt='o', capsize=5, capthick=2, markersize=8, color='green', alpha=0.7)
+    min_vol, max_vol = target_ul.min(), target_ul.max()
+    ax4.plot([min_vol, max_vol], [min_vol, max_vol], 'k--', alpha=0.8, linewidth=2)
+    ax4.set_xlabel('Target Volume (μL)')
+    ax4.set_ylabel('Measured Volume (μL)')
+    ax4.set_title('Wizard Parameters: Target vs Measured')
+    ax4.grid(True, alpha=0.3)
+    
+    # Plot 5: Target vs Measured (Default)
+    ax5 = axes[1, 1]
+    default_data = valid_results[valid_results['parameter_source'] == 'default']
+    target_ul_def = default_data['volume_target_ul']
+    measured_ul_def = default_data['volume_measured_mean_ul']
+    measured_std_ul_def = default_data['volume_measured_std_ul']
+    
+    ax5.errorbar(target_ul_def, measured_ul_def, yerr=measured_std_ul_def, 
+                 fmt='o', capsize=5, capthick=2, markersize=8, color='red', alpha=0.7)
+    min_vol_def, max_vol_def = target_ul_def.min(), target_ul_def.max()
+    ax5.plot([min_vol_def, max_vol_def], [min_vol_def, max_vol_def], 'k--', alpha=0.8, linewidth=2)
+    ax5.set_xlabel('Target Volume (μL)')
+    ax5.set_ylabel('Measured Volume (μL)')
+    ax5.set_title('Default Parameters: Target vs Measured')
+    ax5.grid(True, alpha=0.3)
+    
+    # Plot 6: Summary Statistics
+    ax6 = axes[1, 2]
+    
+    # Calculate overall statistics
+    wizard_mean_acc = wizard_acc.mean()
+    default_mean_acc = default_acc.mean()
+    wizard_mean_cv = wizard_cv.mean()
+    default_mean_cv = default_cv.mean()
+    
+    categories = ['Accuracy Error\n(%)', 'Precision\n(CV %)']
+    wizard_stats = [wizard_mean_acc, wizard_mean_cv]
+    default_stats = [default_mean_acc, default_mean_cv]
+    
+    x_stats = np.arange(len(categories))
+    ax6.bar(x_stats - width/2, wizard_stats, width, label='Wizard-optimized', color='green', alpha=0.7)
+    ax6.bar(x_stats + width/2, default_stats, width, label='Default parameters', color='red', alpha=0.7)
+    
+    ax6.set_ylabel('Performance (%)')
+    ax6.set_title('Overall Performance Summary')
+    ax6.set_xticks(x_stats)
+    ax6.set_xticklabels(categories)
+    ax6.legend()
+    ax6.grid(True, alpha=0.3)
+    
+    # Add value labels on bars
+    for i, (w_val, d_val) in enumerate(zip(wizard_stats, default_stats)):
+        ax6.text(i - width/2, w_val + max(wizard_stats + default_stats) * 0.02, f'{w_val:.1f}', 
+                ha='center', va='bottom', fontweight='bold', color='green')
+        ax6.text(i + width/2, d_val + max(wizard_stats + default_stats) * 0.02, f'{d_val:.1f}', 
+                ha='center', va='bottom', fontweight='bold', color='red')
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / "parameter_comparison_report.png", dpi=300, bbox_inches='tight')
+    print(f"   📈 Comparison plots saved to: parameter_comparison_report.png")
+    
+    # Print summary statistics
+    print(f"\n📋 PARAMETER COMPARISON SUMMARY:")
+    print(f"   Liquid: {liquid.upper()}")
+    print(f"   Volumes tested: {len(valid_comparisons)}")
+    
+    # Count wins for wizard vs default
+    wizard_accuracy_wins = sum(valid_comparisons['wizard_better_accuracy'])
+    wizard_precision_wins = sum(valid_comparisons['wizard_better_precision'])
+    total_tests = len(valid_comparisons)
+    
+    print(f"   Wizard wins (accuracy): {wizard_accuracy_wins}/{total_tests} ({wizard_accuracy_wins/total_tests*100:.0f}%)")
+    print(f"   Wizard wins (precision): {wizard_precision_wins}/{total_tests} ({wizard_precision_wins/total_tests*100:.0f}%)")
+    
+    # Average improvements
+    avg_acc_improvement = accuracy_improvements.mean()
+    avg_prec_improvement = precision_improvements.mean()
+    
+    print(f"   Average accuracy improvement: {avg_acc_improvement:+.1f}% (wizard vs default)")
+    print(f"   Average precision improvement: {avg_prec_improvement:+.1f}% (wizard vs default)")
+    
+    # Best and worst performing volumes
+    best_acc_idx = accuracy_improvements.idxmax()
+    worst_acc_idx = accuracy_improvements.idxmin()
+    
+    print(f"   Best accuracy improvement: {accuracy_improvements.iloc[best_acc_idx]:+.1f}% at {volumes.iloc[best_acc_idx]:.0f}μL")
+    print(f"   Worst accuracy performance: {accuracy_improvements.iloc[worst_acc_idx]:+.1f}% at {volumes.iloc[worst_acc_idx]:.0f}μL")
+    
+    plt.show()
+
 
 def generate_validation_report(results_df, raw_df, output_dir, liquid):
     """Generate validation analysis and plots"""
@@ -403,7 +827,8 @@ def generate_validation_report(results_df, raw_df, output_dir, liquid):
 
 def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE, 
                   volumes=None, replicates=DEFAULT_REPLICATES, 
-                  input_vial_file=DEFAULT_INPUT_VIAL_STATUS_FILE):
+                  input_vial_file=DEFAULT_INPUT_VIAL_STATUS_FILE,
+                  comparison_mode=False):
     """
     Run calibration validation with intelligent parameter optimization
     
@@ -413,6 +838,7 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
         volumes: List of volumes to test in mL (defaults to DEFAULT_VOLUMES)
         replicates: Number of replicates per volume
         input_vial_file: Path to vial configuration file
+        comparison_mode: If True, compare wizard vs default parameters; if False, test only wizard
     """
     if volumes is None:
         volumes = DEFAULT_VOLUMES
@@ -441,13 +867,20 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
         # Initialize experiment
         initialize_experiment(lash_e, liquid)
         
-        # Run validation using intelligent parameter optimization
-        results_df, raw_df, output_dir = validate_volumes(
-            lash_e, liquid, volumes, replicates, simulate
-        )
-        
-        # Generate report
-        generate_validation_report(results_df, raw_df, output_dir, liquid)
+        # Choose validation mode
+        if comparison_mode:
+            print(f"🔬 Running COMPARISON mode: Use run_comparison_validation() instead")
+            print(f"   Tip: Call run_comparison_validation() for automatic wizard vs default comparison")
+            return None, None, None
+        else:
+            print(f"🔬 Running single validation with {'wizard-optimized' if liquid else 'default'} parameters")
+            # Run single validation
+            results_df, raw_df, output_dir = validate_volumes(
+                lash_e, liquid, volumes, replicates, simulate
+            )
+            
+            # Generate standard report
+            generate_validation_report(results_df, raw_df, output_dir, liquid or 'default')
         
         print(f"\n🎉 Validation complete! Check {output_dir} for results.")
         
@@ -458,8 +891,11 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
 
 def main():
     """Main function for command line execution"""
-    # Default configuration
+    # Default configuration - single validation
     run_validation()
+    
+    # Uncomment the line below to run comparison validation instead:
+    # run_comparison_validation()
 
 if __name__ == "__main__":
     main()

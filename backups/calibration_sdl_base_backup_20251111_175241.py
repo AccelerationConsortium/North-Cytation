@@ -27,7 +27,6 @@ LIQUIDS = {
     "ethanol": {"density": 0.789, "refill_pipets": False},
     "isopropanol": {"density": 0.789, "refill_pipets": False},
     "DMSO": {"density": 1.1, "refill_pipets": False},
-    "acetone": {"density": 0.79, "refill_pipets": False},
     "glycerol": {"density": 1.26, "refill_pipets": True},
     "PEG_Water": {"density": 1.05, "refill_pipets": True},
     "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
@@ -252,20 +251,11 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         simulated_result = pipet_and_measure_simulated(volume, params, expected_measurement, expected_time)
         
         # Get liquid density for volume calculation - FAIL if not found
-        print(f"[DEBUG] About to look up liquid density for: '{liquid}' (type: {type(liquid).__name__})")
-        print(f"[DEBUG] Available liquids: {list(LIQUIDS.keys())}")
-        print(f"[DEBUG] liquid == None: {liquid is None}")
-        print(f"[DEBUG] liquid == 'None': {liquid == 'None'}")
-        
         if liquid not in LIQUIDS:
-            print(f"[DEBUG] ERROR: liquid '{liquid}' not found in LIQUIDS dictionary!")
             raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
         if "density" not in LIQUIDS[liquid]:
-            print(f"[DEBUG] ERROR: no density key for liquid '{liquid}'!")
             raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
         liquid_density = LIQUIDS[liquid]["density"]
-        print(f"[DEBUG] Successfully got liquid_density: {liquid_density}")
-        print(f"=== PIPET_AND_MEASURE DEBUG END ===\n")
 
         # Simple debug for simulation mode
         if simulate:
@@ -284,10 +274,7 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             replicate_mass = max(replicate_mass, 0)  # Can't be negative
             
             # Calculate volume from mass and density
-            print(f"[DEBUG] SIM: About to calculate volume: {replicate_mass} / {liquid_density}")
-            print(f"[DEBUG] SIM: replicate_mass type: {type(replicate_mass).__name__}, liquid_density type: {type(liquid_density).__name__}")
             calculated_volume = replicate_mass / liquid_density
-            print(f"[DEBUG] SIM: Calculated volume: {calculated_volume}")
             
             # Calculate deviation AFTER volume conversion - this is the correct place!
             target_volume = volume  # Target volume we were trying to pipette
@@ -380,7 +367,6 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             
             lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params)
             measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True)
-            
             if new_pipet_each_time:
                 lash_e.nr_robot.remove_pipet()
                 
@@ -619,7 +605,7 @@ def _swap_vials_if_needed(lash_e, state, cfg):
             lash_e.logger.info(msg)
             print(f"[LOG] {msg}")
             
-            if vol_src < cfg['min_source_ml']:
+            if vol_src < cfg['min_source_ml'] and vol_meas > cfg['min_source_ml']:
                 lash_e.nr_robot.remove_pipet()
                 
                 # Physically swap the vials if measurement vial is in clamp
@@ -640,7 +626,7 @@ def _swap_vials_if_needed(lash_e, state, cfg):
                 _VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial'] = cfg['source_vial']
                 _VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial'] = cfg['measurement_vial']
                 
-                msg = f"[swap] Swapped roles: source->{cfg['source_vial']} measurement->{cfg['measurement_vial']}"
+                msg = f"[swap] Swapped roles: source→{cfg['source_vial']} measurement→{cfg['measurement_vial']}"
                 lash_e.logger.info(msg)
                 print(f"[LOG] {msg}")
                 print(f"[LOG] Updated global config: source={_VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial']} measurement={_VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial']}")

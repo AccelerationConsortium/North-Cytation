@@ -225,6 +225,42 @@ def pipet_and_measure_tracked(*args, **kwargs):
         print(f"🛑 HARD BUDGET LIMIT: Skipping measurement {global_measurement_count + 1}/{MAX_MEASUREMENTS}")
         return None  # Return None instead of raising exception
     
+    # VIAL MANAGEMENT: Check vials before every pipetting operation
+    # Extract lash_e from arguments (always first parameter)
+    if len(args) > 0:
+        lash_e = args[0]
+        
+        # Get current vial assignments from vial management config
+        if base_module._VIAL_MANAGEMENT_CONFIG_OVERRIDE:
+            cfg = {**base_module.VIAL_MANAGEMENT_DEFAULTS, **base_module._VIAL_MANAGEMENT_CONFIG_OVERRIDE}
+            current_measurement_vial = cfg.get('measurement_vial', args[2] if len(args) > 2 else "measurement_vial_0")
+        else:
+            current_measurement_vial = args[2] if len(args) > 2 else "measurement_vial_0"
+            
+        state = {"measurement_vial_name": current_measurement_vial}
+        
+        # Apply vial management and get correct liquid source
+        try:
+            liquid_source = get_liquid_source_with_vial_management(lash_e, state)
+            
+            # Update both source and measurement vials if they changed
+            source_changed = len(args) >= 2 and liquid_source != args[1]
+            measurement_changed = len(args) >= 3 and state["measurement_vial_name"] != args[2]
+            
+            if source_changed or measurement_changed:
+                # Update parameters to match vial management changes
+                args_list = list(args)
+                
+                if source_changed:
+                    args_list[1] = liquid_source
+                    
+                if measurement_changed:
+                    args_list[2] = state["measurement_vial_name"]
+                    
+                args = tuple(args_list)
+        except Exception as e:
+            print(f"⚠️ Vial management error: {e}")
+    
     # Call the original function
     result = pipet_and_measure(*args, **kwargs)
     
@@ -781,7 +817,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             all_times.append(time_taken)
             all_measurements.append(measured_volume)
             
-            print(f"Target: {volume:.1f}μL → Measured: {measured_volume:.1f}μL ({deviation:+.1f}% dev)")
+            print(f"Target: {volume*1000:.1f}μL → Measured: {measured_volume*1000:.1f}μL ({deviation:+.1f}% dev)")
         
         replicate_count = total_replicates
         
@@ -1144,18 +1180,27 @@ def get_llm_suggestions(ax_client, n, all_results, volume=None, liquid=None):
             expected_params = set(ax_client.experiment.search_space.parameters.keys())
             filtered_params = {}
             
-            # Apply proper type casting based on Ax search space parameter types
+            # Apply proper type casting and bounds enforcement based on Ax search space parameter types
             for k, v in llm_params.items():
                 if k in expected_params:
                     ax_param = ax_client.experiment.search_space.parameters[k]
                     if hasattr(ax_param, 'parameter_type'):
                         # Cast to appropriate type based on Ax parameter type
                         if ax_param.parameter_type.name == 'INT':
-                            filtered_params[k] = int(round(float(v)))
+                            casted_value = int(round(float(v)))
                         elif ax_param.parameter_type.name == 'FLOAT':
-                            filtered_params[k] = float(v)
+                            casted_value = float(v)
                         else:
-                            filtered_params[k] = v
+                            casted_value = v
+                        
+                        # Enforce bounds for RangeParameter types
+                        if hasattr(ax_param, 'lower') and hasattr(ax_param, 'upper'):
+                            original_value = casted_value
+                            casted_value = max(ax_param.lower, min(ax_param.upper, casted_value))
+                            if casted_value != original_value:
+                                print(f"     🔧 Clamped {k}: {original_value} → {casted_value} (bounds: [{ax_param.lower}, {ax_param.upper}])")
+                        
+                        filtered_params[k] = casted_value
                     else:
                         filtered_params[k] = v
             
@@ -1630,8 +1675,49 @@ def get_liquid_source_with_vial_management(lash_e, state, minimum_volume=2.0):
     except Exception as e:
         lash_e.logger.info(f"[vial-mgmt] pre-pipetting management skipped: {e}")
     
-    # Fallback to default source
-    return "liquid_source_0"
+    # Legacy mode with smart source switching
+    return get_next_available_liquid_source(lash_e, state, minimum_volume)
+
+def get_next_available_liquid_source(lash_e, state, minimum_volume=2.0):
+    """Legacy mode: Find next available liquid source with enough volume."""
+    # Initialize source index if not exists
+    if "current_source_index" not in state:
+        state["current_source_index"] = 0
+    
+    # Try current source first
+    current_index = state["current_source_index"]
+    current_source = f"liquid_source_{current_index}"
+    
+    try:
+        current_vol = lash_e.nr_robot.get_vial_info(current_source, "vial_volume")
+        if current_vol is not None and current_vol >= minimum_volume:
+            # Current source is still good
+            return current_source
+        else:
+            print(f"[legacy] {current_source} volume ({current_vol:.1f}mL) below minimum ({minimum_volume:.1f}mL)")
+    except Exception as e:
+        print(f"[legacy] Could not check {current_source} volume: {e}")
+    
+    # Current source is low, try to find next available source
+    max_sources_to_check = 10  # Reasonable limit to avoid infinite loop
+    for i in range(max_sources_to_check):
+        next_index = current_index + 1 + i
+        next_source = f"liquid_source_{next_index}"
+        
+        try:
+            next_vol = lash_e.nr_robot.get_vial_info(next_source, "vial_volume")
+            if next_vol is not None and next_vol >= minimum_volume:
+                # Found good source, switch to it
+                state["current_source_index"] = next_index
+                print(f"[legacy] Switching to {next_source} (volume: {next_vol:.1f}mL)")
+                return next_source
+        except Exception as e:
+            # Source doesn't exist or error accessing it
+            continue
+    
+    # No good sources found, stick with current (will likely cause error downstream)
+    print(f"[legacy] Warning: No liquid sources with ≥{minimum_volume:.1f}mL found, using {current_source}")
+    return current_source
 
 def check_if_measurement_vial_full(lash_e, state):
     """Check and handle full measurement vial."""
@@ -2738,18 +2824,78 @@ def generate_experimental_summary(all_results, optimal_conditions, raw_measureme
 
 # --- MAIN WORKFLOW ---
 
-def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
+def cleanup_robot_and_vials(lash_e, simulate=False):
+    """
+    Clean up robot state at end of workflow:
+    - Return any vial in clamp to home position
+    - Remove pipet tip
+    - Origin the robot
+    """
+    try:
+        print(f"\n🧹 CLEANUP: Starting robot and vial cleanup...")
+        
+        if not simulate:
+            # Check if there's a vial in the clamp and return it home
+            try:
+                clamp_vial = lash_e.nr_robot.get_vial_in_location('clamp', 0)
+                if clamp_vial is not None:
+                    vial_name = lash_e.nr_robot.get_vial_info(clamp_vial, 'vial_name')
+                    print(f"   🏠 Returning vial '{vial_name}' from clamp to home position...")
+                    lash_e.nr_robot.return_vial_home(clamp_vial)
+                else:
+                    print(f"   ✅ No vial in clamp - clamp is clear")
+            except Exception as e:
+                print(f"   ⚠️  Warning: Could not return clamp vial home: {e}")
+            
+            # Remove any pipet tip
+            try:
+                print(f"   🗑️  Removing pipet tip...")
+                lash_e.nr_robot.remove_pipet()
+            except Exception as e:
+                print(f"   ⚠️  Warning: Could not remove pipet: {e}")
+            
+            # Origin the robot (return to safe home position)
+            try:
+                print(f"   🏠 Originating robot to home position...")
+                lash_e.nr_robot.origin()
+                print(f"   ✅ Robot cleanup complete!")
+            except Exception as e:
+                print(f"   ⚠️  Warning: Could not origin robot: {e}")
+        else:
+            print(f"   🎭 SIMULATION: Skipping physical robot cleanup")
+            print(f"   ✅ Cleanup complete!")
+            
+    except Exception as e:
+        print(f"   ❌ Cleanup failed: {e}")
+        print(f"   ⚠️  Manual cleanup may be required!")
+
+def run_simplified_calibration_workflow(vial_mode="legacy", input_vial_status_file=None, **config_overrides):
     """
     Main simplified calibration workflow.
     
     Args:
         vial_mode: Vial management mode ('legacy', 'maintain', 'swap', 'single')
+        input_vial_status_file: Path to vial status CSV file (overrides automatic selection)
         **config_overrides: Configuration parameters to override
     """
     
     # Reset config and measurement counter
     reset_config_to_defaults()
     reset_global_measurement_count()
+    
+    # Select appropriate vial file based on mode (if not explicitly provided)
+    if input_vial_status_file is None:
+        if vial_mode in ["swap", "maintain"]:
+            input_vial_status_file = "status/calibration_vials_overnight.csv"
+            print(f"   🧪 Auto-selected vial file for {vial_mode} mode: {input_vial_status_file}")
+        else:  # legacy, single
+            input_vial_status_file = "status/calibration_vials_short.csv"
+            print(f"   🧪 Auto-selected vial file for {vial_mode} mode: {input_vial_status_file}")
+    else:
+        print(f"   🧪 Using specified vial file: {input_vial_status_file}")
+    
+    # Override the global vial file setting
+    globals()['INPUT_VIAL_STATUS_FILE'] = input_vial_status_file
     
     for key, value in config_overrides.items():
         if key.upper() in globals():
@@ -3062,6 +3208,9 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
         except Exception as e:
             print(f"Warning: Failed to send completion Slack message: {e}")
     
+    # CLEANUP: Return vials to home, remove pipet, origin robot
+    cleanup_robot_and_vials(lash_e, simulate=SIMULATE)
+    
     print(f"\n🎉 SIMPLIFIED CALIBRATION WORKFLOW COMPLETE!")
     return optimal_conditions, autosave_dir
 
@@ -3100,17 +3249,37 @@ if __name__ == "__main__":
     print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
     print("   Fixing only post-aspirate air volume for glycerol\n")
     
-    optimal_conditions_glycerol, save_dir_glycerol = run_simplified_calibration_workflow(
-        vial_mode="legacy",
-        liquid="glycerol",
-        simulate=False,
-        use_LLM_for_screening=False,
-        volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        # Fix only post-aspirate air volume
-        fixed_parameters={
-            'post_asp_air_vol': 0.05
-        }
-    )
+    try:
+        optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
+            vial_mode="swap",
+            liquid="water",
+            simulate=False,
+            use_LLM_for_screening=True,
+            # volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
+            volumes=[0.05, 0.025, 0.1, 0.01, 0.005, 0.2, 0.5, 0.8],
+            min_good_parameter_sets=5,  # Instead of 6
+            precision_measurements=5,    # Instead of 3 replicates
+            max_measurements=250,        # Instead of 96 total trials
+            first_volume_max_measurements=150,  # Max for first volume
+            # No fixed_parameters for full optimization
+        )
+        print(f"\n✅ Workflow completed successfully!")
+        print(f"📊 Results saved to: {save_dir_water}")
+        
+    except Exception as e:
+        print(f"\n❌ WORKFLOW ERROR: {e}")
+        print(f"🧹 Attempting emergency cleanup...")
+        
+        # Emergency cleanup - create minimal lash_e for cleanup if needed
+        try:
+            from master_usdl_coordinator import Lash_E
+            emergency_lash_e = Lash_E("status/calibration_vials_short.csv", simulate=False, initialize_biotek=False)
+            cleanup_robot_and_vials(emergency_lash_e, simulate=False)
+        except Exception as cleanup_error:
+            print(f"⚠️  Emergency cleanup failed: {cleanup_error}")
+            print(f"🔧 Manual robot cleanup may be required!")
+        
+        raise  # Re-raise the original error
     
     # Example 4: Hot start experiment using unified dataset
     # print("\n🔥 HOT START EXPERIMENT - Using unified dataset for faster convergence")
