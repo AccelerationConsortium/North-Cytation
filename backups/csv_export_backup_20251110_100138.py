@@ -56,29 +56,23 @@ class CleanCSVExporter:
             logger.error(f"Error exporting CSV files: {e}")
     
     def _export_trial_results(self, trial_results: List[Dict]) -> None:
-        """Export trial results with unified volume naming and smart unit conversion."""
+        """Export trial results to clean CSV format."""
         rows = []
         
         for trial in trial_results:
-            # Extract volumes (primary source: mL)
-            target_vol_ml = trial.get('target_volume_ml', 0)
-            measured_vol_ml = trial.get('analysis', {}).get('mean_volume_ml', 0)
-            
-            # Base trial information with unified naming
+            # Base trial information
             row = {
                 'trial_id': trial.get('trial_id', ''),
-                # Volume data: provide both units but consistent naming
-                'volume_target_ml': target_vol_ml,
-                'volume_target_ul': target_vol_ml * 1000,
-                'volume_measured_ml': measured_vol_ml,
-                'volume_measured_ul': measured_vol_ml * 1000,
-                # Performance metrics
+                'target_volume_ml': trial.get('target_volume_ml', 0),
+                'target_volume_ul': trial.get('target_volume_ml', 0) * 1000,
+                'measured_volume_ml': trial.get('analysis', {}).get('mean_volume_ml', 0),
+                'measured_volume_ul': trial.get('analysis', {}).get('mean_volume_ml', 0) * 1000,
                 'deviation_pct': trial.get('analysis', {}).get('absolute_deviation_pct', 0),
-                'precision_cv_pct': trial.get('analysis', {}).get('cv_volume_pct', 0),
-                'duration_mean_s': trial.get('analysis', {}).get('mean_duration_s', 0),
+                'cv_pct': trial.get('analysis', {}).get('cv_volume_pct', 0),
+                'mean_time_s': trial.get('analysis', {}).get('mean_duration_s', 0),
                 'composite_score': trial.get('composite_score', 0),
-                'quality_overall': trial.get('quality', {}).get('overall_quality', ''),
-                'measurement_count': trial.get('analysis', {}).get('measurement_count', 0),
+                'overall_quality': trial.get('quality', {}).get('overall_quality', ''),
+                'measurements_count': trial.get('analysis', {}).get('measurement_count', 0),
             }
             
             # Add quality metrics
@@ -108,32 +102,26 @@ class CleanCSVExporter:
         
         # Create DataFrame and save
         df = pd.DataFrame(rows)
-        df.to_csv(self.output_dir / "trial_results.csv", index=False)
-        logger.info(f"Exported {len(df)} trial results to trial_results.csv")
+        df.to_csv(self.output_dir / "trial_results_clean.csv", index=False)
+        logger.info(f"Exported {len(df)} trial results to trial_results_clean.csv")
     
     def _export_optimal_conditions(self, optimal_conditions: List[Dict]) -> None:
-        """Export optimal conditions with unified volume naming."""
+        """Export optimal conditions to clean CSV format."""
         rows = []
         
         for condition in optimal_conditions:
-            # Extract volumes with consistent units
-            target_vol_ul = condition.get('volume_ul', 0)
-            measured_vol_ul = condition.get('measured_volume_ul', 0)
-            
-            # Base condition information with unified naming
+            # Base condition information
             row = {
-                # Volume data: consistent naming pattern
-                'volume_target_ml': target_vol_ul / 1000,
-                'volume_target_ul': target_vol_ul,
-                'volume_measured_ml': measured_vol_ul / 1000,
-                'volume_measured_ul': measured_vol_ul,
-                # Performance metrics
+                'volume_ul': condition.get('volume_ul', 0),
+                'volume_ml': condition.get('volume_ul', 0) / 1000,
+                'measured_volume_ul': condition.get('measured_volume_ul', 0),
+                'measured_volume_ml': condition.get('measured_volume_ul', 0) / 1000,
                 'deviation_pct': condition.get('deviation_pct', 0),
-                'precision_cv_pct': condition.get('cv_pct', 0),
-                'duration_s': condition.get('time_s', 0),
-                'trials_count': condition.get('trials_used', 0),
+                'cv_pct': condition.get('cv_pct', 0),
+                'time_s': condition.get('time_s', 0),
+                'trials_used': condition.get('trials_used', 0),
                 'status': condition.get('status', ''),
-                'measurement_count': condition.get('measurements_count', 0),
+                'measurements_count': condition.get('measurements_count', 0),
             }
             
             # Flatten optimal parameters
@@ -145,38 +133,32 @@ class CleanCSVExporter:
         
         # Create DataFrame and save
         df = pd.DataFrame(rows)
-        df.to_csv(self.output_dir / "optimal_conditions.csv", index=False)
-        logger.info(f"Exported {len(df)} optimal conditions to optimal_conditions.csv")
+        df.to_csv(self.output_dir / "optimal_conditions_clean.csv", index=False)
+        logger.info(f"Exported {len(df)} optimal conditions to optimal_conditions_clean.csv")
     
     def _export_raw_measurements(self, raw_measurements: List[Dict]) -> None:
-        """Export raw measurements with unified volume naming."""
+        """Export raw measurements to clean CSV format."""
         rows = []
         
         for measurement in raw_measurements:
-            # Extract volumes with fallback for backward compatibility
-            target_vol_ml = measurement.get('target_volume_ml', 0)
-            measured_vol_ml = measurement.get('measured_volume_ml', measurement.get('actual_volume_ml', 0))
-            
-            # Base measurement information with unified naming
+            # Base measurement information
             row = {
                 'measurement_id': measurement.get('measurement_id', ''),
                 'trial_id': measurement.get('trial_id', ''),
-                # Volume data: consistent naming pattern
-                'volume_target_ml': target_vol_ml,
-                'volume_target_ul': target_vol_ml * 1000,
-                'volume_measured_ml': measured_vol_ml,
-                'volume_measured_ul': measured_vol_ml * 1000,
-                # Measurement details
+                'target_volume_ml': measurement.get('target_volume_ml', 0),
+                'target_volume_ul': measurement.get('target_volume_ml', 0) * 1000,
+                'actual_volume_ml': measurement.get('actual_volume_ml', 0),
+                'actual_volume_ul': measurement.get('actual_volume_ml', 0) * 1000,
                 'duration_s': measurement.get('duration_s', 0),
                 'timestamp': measurement.get('timestamp', ''),
                 'replicate_id': measurement.get('replicate_id', ''),
             }
             
             # Calculate deviation for this individual measurement
-            if target_vol_ml > 0:
-                row['deviation_individual_pct'] = abs(measured_vol_ml - target_vol_ml) / target_vol_ml * 100
+            if row['target_volume_ml'] > 0:
+                row['individual_deviation_pct'] = abs(row['actual_volume_ml'] - row['target_volume_ml']) / row['target_volume_ml'] * 100
             else:
-                row['deviation_individual_pct'] = 0
+                row['individual_deviation_pct'] = 0
             
             # Flatten parameters
             parameters = measurement.get('parameters', {})
@@ -194,8 +176,8 @@ class CleanCSVExporter:
         
         # Create DataFrame and save
         df = pd.DataFrame(rows)
-        df.to_csv(self.output_dir / "raw_measurements.csv", index=False)
-        logger.info(f"Exported {len(df)} raw measurements to raw_measurements.csv")
+        df.to_csv(self.output_dir / "raw_measurements_clean.csv", index=False)
+        logger.info(f"Exported {len(df)} raw measurements to raw_measurements_clean.csv")
     
     def _flatten_parameters(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -266,8 +248,8 @@ class CleanCSVExporter:
         
         # Save summary
         summary_df = pd.DataFrame([summary_data])
-        summary_df.to_csv(self.output_dir / "experiment_summary.csv", index=False)
-        logger.info("Exported experiment summary to experiment_summary.csv")
+        summary_df.to_csv(self.output_dir / "experiment_summary_clean.csv", index=False)
+        logger.info("Exported experiment summary to experiment_summary_clean.csv")
 
 def export_clean_csvs(trial_results: List[Dict], optimal_conditions: List[Dict], 
                      raw_measurements: List[Dict], output_dir: str) -> None:
