@@ -536,24 +536,21 @@ def calculate_overaspirate_efficiency(baseline_params, test_params, baseline_vol
         return 0.0
 
 def calculate_efficiency_based_bounds(target_volume_ml, baseline_volume_ml, baseline_overaspirate_ml, 
-                                    efficiency, baseline_variability_pct=None, tolerance_percent=None, 
-                                    guess_volume_ml=None, guess_overaspirate_ml=None):
+                                    efficiency, baseline_variability_pct=None, tolerance_percent=None):
     """
     Calculate smart overaspirate bounds that span the tolerance range using linear interpolation
-    with proper uncertainty propagation from the two calibration points.
+    with uncertainty expansion. Allows negative overaspirate for over-delivery scenarios.
     
-    Uses uncertainty in the two measurement points to estimate confidence intervals for the
-    efficiency, then propagates this uncertainty when extrapolating to tolerance bounds.
+    Uses the two calibration points to create a linear model, then calculates the overaspirate 
+    values needed to achieve the tolerance bounds, accounting for measurement uncertainty.
     
     Args:
         target_volume_ml: Desired target volume (mL)
         baseline_volume_ml: Actually measured baseline volume (mL)  
         baseline_overaspirate_ml: Overaspirate used for baseline measurement (mL)
         efficiency: Measured efficiency (volume_gained_ul / overaspirate_added_ul)
-        baseline_variability_pct: Measurement uncertainty as % for each point
+        baseline_variability_pct: Measurement uncertainty as % (widens bounds if provided)
         tolerance_percent: Override tolerance % (if None, uses volume-dependent config)
-        guess_volume_ml: Second calibration point volume (for uncertainty propagation)
-        guess_overaspirate_ml: Second calibration point overaspirate (for uncertainty propagation)
         
     Returns:
         tuple: (min_overaspirate_ml, max_overaspirate_ml) - can be negative
@@ -567,85 +564,52 @@ def calculate_efficiency_based_bounds(target_volume_ml, baseline_volume_ml, base
         tolerances = get_volume_dependent_tolerances(target_volume_ml)
         tolerance_percent = tolerances['tolerance_percent']
     
-    # Calculate tolerance range endpoints - this is what we want to span
+    # Calculate tolerance range endpoints
     tolerance_ul = target_volume_ul * (tolerance_percent / 100.0)
     min_target_ul = target_volume_ul - tolerance_ul  # Lower tolerance bound (e.g., 48.5μL)
     max_target_ul = target_volume_ul + tolerance_ul  # Upper tolerance bound (e.g., 51.5μL)
     
-    print(f"   📏 Target tolerance range: {min_target_ul:.1f}μL to {max_target_ul:.1f}μL ({tolerance_percent}%)")
-    
-    # Check if we have both calibration points for additive uncertainty buffer
-    if (guess_volume_ml is not None and guess_overaspirate_ml is not None and 
-        baseline_variability_pct is not None and baseline_variability_pct > 0):
-        
-        # Convert guess point to μL
-        guess_volume_ul = guess_volume_ml * 1000
-        guess_overaspirate_ul = guess_overaspirate_ml * 1000
-        
-        # Calculate uncertainty in each measurement point
+    # Account for measurement uncertainty if provided
+    if baseline_variability_pct is not None and baseline_variability_pct > 0:
         baseline_uncertainty_ul = baseline_volume_ul * (baseline_variability_pct / 100.0)
-        guess_uncertainty_ul = guess_volume_ul * (baseline_variability_pct / 100.0)
+        pessimistic_baseline_ul = baseline_volume_ul + baseline_uncertainty_ul  # Assume worse performance
+        optimistic_baseline_ul = baseline_volume_ul - baseline_uncertainty_ul   # Assume better performance
         
-        # Calculate additive uncertainty buffer (simple and robust approach)
-        overasp_change_ul = guess_overaspirate_ul - baseline_overaspirate_ul
-        if overasp_change_ul != 0:
-            # How much measurement uncertainty could affect the final overaspirate calculation
-            measurement_error_impact_ul = (baseline_uncertainty_ul + guess_uncertainty_ul) / abs(overasp_change_ul)
-            uncertainty_buffer_ul = measurement_error_impact_ul * 2.0  # 2x safety factor
-        else:
-            uncertainty_buffer_ul = 2.0  # Fallback: 2μL buffer
-        
-        print(f"   📊 Two-point calibration with additive uncertainty buffer:")
-        print(f"      Point 1: {baseline_volume_ul:.1f}μL ± {baseline_uncertainty_ul:.1f}μL (overaspirate: {baseline_overaspirate_ul:.1f}μL)")
-        print(f"      Point 2: {guess_volume_ul:.1f}μL ± {guess_uncertainty_ul:.1f}μL (overaspirate: {guess_overaspirate_ul:.1f}μL)")
-        print(f"      Nominal efficiency: {efficiency:.3f} μL/μL")
-        print(f"      Measurement error impact: {measurement_error_impact_ul:.1f}μL")
-        print(f"      Uncertainty buffer: {uncertainty_buffer_ul:.1f}μL (2x safety factor)")
-        
-        use_additive_buffer = True
+        print(f"   📏 Tolerance range: {min_target_ul:.1f}μL to {max_target_ul:.1f}μL ({tolerance_percent}%)")
+        print(f"   📊 Uncertainty expansion: ±{baseline_uncertainty_ul:.1f}μL ({baseline_variability_pct:.1f}% variability)")
+        print(f"   📈 Baseline range: {optimistic_baseline_ul:.1f}μL to {pessimistic_baseline_ul:.1f}μL")
     else:
-        print(f"   📊 Single point estimation (no uncertainty buffer)")
-        uncertainty_buffer_ul = 0.0
-        use_additive_buffer = False
+        pessimistic_baseline_ul = baseline_volume_ul  # No uncertainty expansion
+        optimistic_baseline_ul = baseline_volume_ul
+        print(f"   📏 Tolerance range: {min_target_ul:.1f}μL to {max_target_ul:.1f}μL ({tolerance_percent}%)")
+        print(f"   📊 No uncertainty data - using point estimates")
     
     if efficiency > 0:
-        # Calculate overaspirate needed for tolerance bounds using simple linear interpolation
+        # Use linear interpolation with uncertainty-expanded ranges
+        # More conservative bounds: assume worst baseline for each direction
         
-        # Volume changes needed from baseline to reach tolerance bounds
-        volume_change_min = min_target_ul - baseline_volume_ul  # e.g., 48.5 - 46 = 2.5μL
-        volume_change_max = max_target_ul - baseline_volume_ul  # e.g., 51.5 - 46 = 5.5μL
+        print(f"      📐 Bounds calculation details:")
+        print(f"         Target: {target_volume_ul:.1f}μL ± {tolerance_ul:.1f}μL = [{min_target_ul:.1f}μL, {max_target_ul:.1f}μL]")
+        print(f"         Baseline: {baseline_volume_ul:.1f}μL ± {baseline_uncertainty_ul:.1f}μL = [{optimistic_baseline_ul:.1f}μL, {pessimistic_baseline_ul:.1f}μL]")
         
-        # Calculate simple bounds using nominal efficiency
-        overasp_change_min = volume_change_min / efficiency
-        overasp_change_max = volume_change_max / efficiency
+        # For lower bound: assume pessimistic baseline (harder to reach lower target)
+        volume_change_min = min_target_ul - pessimistic_baseline_ul
+        min_overaspirate_ul = baseline_overaspirate_ul + (volume_change_min / efficiency)
+        print(f"         Lower bound: need {min_target_ul:.1f}μL, assume worst baseline {pessimistic_baseline_ul:.1f}μL")
+        print(f"                     → change needed: {volume_change_min:.1f}μL")
+        print(f"                     → overaspirate needed: {baseline_overaspirate_ul:.1f} + ({volume_change_min:.1f} / {efficiency:.3f}) = {min_overaspirate_ul:.1f}μL")
         
-        simple_min_overaspirate_ul = baseline_overaspirate_ul + overasp_change_min
-        simple_max_overaspirate_ul = baseline_overaspirate_ul + overasp_change_max
+        # For upper bound: assume optimistic baseline (easier to reach upper target)  
+        volume_change_max = max_target_ul - optimistic_baseline_ul
+        max_overaspirate_ul = baseline_overaspirate_ul + (volume_change_max / efficiency)
+        print(f"         Upper bound: need {max_target_ul:.1f}μL, assume best baseline {optimistic_baseline_ul:.1f}μL")
+        print(f"                     → change needed: {volume_change_max:.1f}μL")
+        print(f"                     → overaspirate needed: {baseline_overaspirate_ul:.1f} + ({volume_change_max:.1f} / {efficiency:.3f}) = {max_overaspirate_ul:.1f}μL")
         
-        print(f"   📐 Simple bounds calculation:")
-        print(f"      Lower target: {min_target_ul:.1f}μL (change: {volume_change_min:+.1f}μL)")
-        print(f"      Upper target: {max_target_ul:.1f}μL (change: {volume_change_max:+.1f}μL)")
-        print(f"      Efficiency: {efficiency:.3f} μL/μL")
-        print(f"      Simple bounds: [{simple_min_overaspirate_ul:.1f}μL, {simple_max_overaspirate_ul:.1f}μL]")
-        
-        if use_additive_buffer:
-            # Apply additive uncertainty buffer
-            min_overaspirate_ul = simple_min_overaspirate_ul - uncertainty_buffer_ul/2
-            max_overaspirate_ul = simple_max_overaspirate_ul + uncertainty_buffer_ul/2
-            
-            simple_range_ul = simple_max_overaspirate_ul - simple_min_overaspirate_ul
-            final_range_ul = max_overaspirate_ul - min_overaspirate_ul
-            expansion_factor = final_range_ul / simple_range_ul if simple_range_ul > 0 else 1.0
-            
-            print(f"   � Additive uncertainty buffer applied:")
-            print(f"      Buffer: ±{uncertainty_buffer_ul/2:.1f}μL on each side (total: {uncertainty_buffer_ul:.1f}μL)")
-            print(f"      Final bounds: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
-            print(f"      Range expansion: {simple_range_ul:.1f}μL → {final_range_ul:.1f}μL ({expansion_factor:.1f}x)")
-        else:
-            # No uncertainty buffer - use simple bounds
-            min_overaspirate_ul = simple_min_overaspirate_ul
-            max_overaspirate_ul = simple_max_overaspirate_ul
-            print(f"   📊 No uncertainty buffer applied (using simple bounds)")
+        # Ensure bounds are ordered correctly (handle negative efficiency case)
+        if min_overaspirate_ul > max_overaspirate_ul:
+            min_overaspirate_ul, max_overaspirate_ul = max_overaspirate_ul, min_overaspirate_ul
+            print(f"   🔄 Swapped bounds due to negative efficiency")
         
         # Apply reasonable physical limits (allow negative, but not extreme values)
         max_negative_ul = target_volume_ul * 0.5  # Don't go more negative than 50% of target volume
@@ -660,8 +624,8 @@ def calculate_efficiency_based_bounds(target_volume_ml, baseline_volume_ml, base
             max_overaspirate_ul = midpoint_ul + min_range_ul / 2.0
             print(f"   🔧 Expanded narrow range to ensure {min_range_ul:.1f}μL minimum span")
         
-        print(f"   🎯 Final bounds: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
-        print(f"   📊 Range: {max_overaspirate_ul - min_overaspirate_ul:.1f}μL")
+        print(f"   🎯 Uncertainty-aware bounds: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
+        print(f"   📊 Linear interpolation: efficiency={efficiency:.3f}, range={max_overaspirate_ul - min_overaspirate_ul:.1f}μL")
         print(f"   💡 Bounds span from {min_target_ul:.1f}μL to {max_target_ul:.1f}μL delivery targets")
         
         if min_overaspirate_ul < 0:
@@ -1769,11 +1733,10 @@ def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, 
             print(f"         Overaspirate change: {(guess_params.get('overaspirate_vol', 0) - optimized_params.get('overaspirate_vol', 0))*1000:.1f}μL")
             print(f"         Efficiency: {efficiency:.3f} (volume gained per μL overaspirate added)")
             
-            # Use efficiency-based bounds with uncertainty propagation
+            # Use efficiency-based bounds with uncertainty expansion
             min_overaspirate_ml, max_overaspirate_ml = calculate_efficiency_based_bounds(
                 volume, baseline_volume_ml, optimized_params.get('overaspirate_vol', 0), 
-                efficiency, baseline_variability_pct, None,
-                guess_volume_ml, guess_params.get('overaspirate_vol', 0)
+                efficiency, baseline_variability_pct
             )
             
             volume_calibrations[volume] = {

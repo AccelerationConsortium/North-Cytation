@@ -512,3 +512,29 @@ Results saved to: output\calibration_v2_runs\run_1762786119
 2025-11-10 09:48:40,309 - __main__ - INFO -   - experiment_summary.json (complete statistics)
 2025-11-10 09:48:40,309 - __main__ - INFO - 
 [SUCCESS] Calibration experiment completed successfully!
+2025-11-11 11:04:08,621 - __main__ - INFO - Starting Universal Calibration System
+2025-11-11 11:04:08,621 - __main__ - INFO - Loading configuration from c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\calibration_modular_v2\experiment_config.yaml
+2025-11-11 11:04:08,656 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-11 11:04:08,657 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-11 11:04:08,657 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-11 11:04:08,657 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-11 11:04:08,657 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-11 11:04:08,657 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-11 11:04:08,657 - __main__ - INFO - Execution mode: Simulation
+2025-11-11 11:04:08,658 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-11 11:04:08,658 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-11 11:04:08,658 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1762877048
+2025-11-11 11:04:08,658 - __main__ - INFO - Starting experiment execution...
+2025-11-11 11:04:08,658 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-11 11:04:08,662 - calibration_modular_v2.experiment - INFO - Protocol initialized: ProtocolWrapper
+2025-11-11 11:04:08,662 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3)
+2025-11-11 11:04:08,684 - calibration_modular_v2.experiment - ERROR - Experiment failed: CalibrationExperiment._run_screening_phase() missing 1 required positional argument: 'optimizer'
+2025-11-11 11:04:08,684 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\calibration_modular_v2\experiment.py", line 135, in run
+    volume_result = self._calibrate_volume(target_volume_ml)
+  File "c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\calibration_modular_v2\experiment.py", line 215, in _calibrate_volume
+    screening_trials = self._run_screening_phase(target_volume_ml)
+TypeError: CalibrationExperiment._run_screening_phase() missing 1 required positional argument: 'optimizer'
+
+2025-11-11 11:04:08,684 - __main__ - ERROR - Experiment failed: CalibrationExperiment._run_screening_phase() missing 1 required positional argument: 'optimizer'
+2025-11-11 11:04:08,684 - __main__ - ERROR - Check configuration and try again
