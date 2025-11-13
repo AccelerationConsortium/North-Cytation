@@ -109,6 +109,34 @@ class CalibrationExperiment:
         # This would set up file logging, etc.
         pass
     
+    def _calculate_volume_budget(self, volume_index: int, target_volumes: list) -> int:
+        """
+        Calculate measurement budget for current volume using adaptive allocation.
+        
+        First volume gets dedicated budget from config.
+        Subsequent volumes share remaining budget equally.
+        
+        Args:
+            volume_index: Current volume index (0-based)
+            target_volumes: List of all target volumes
+            
+        Returns:
+            Measurement budget for this volume
+        """
+        if volume_index == 0:
+            # First volume gets dedicated budget
+            return self.config.get_max_measurements_first_volume()
+        
+        # Calculate remaining budget for subsequent volumes
+        total_budget = self.config.get_max_total_measurements()
+        volumes_remaining = len(target_volumes) - volume_index
+        measurements_remaining = total_budget - self.total_measurements
+        
+        # Allocate remaining measurements equally among remaining volumes
+        volume_budget = measurements_remaining // volumes_remaining if volumes_remaining > 0 else 0
+        
+        return max(0, volume_budget)
+    
     def run(self) -> ExperimentResults:
         """
         Execute the complete calibration experiment.
@@ -129,13 +157,21 @@ class CalibrationExperiment:
             for volume_index, target_volume_ml in enumerate(target_volumes):
                 self.current_volume_index = volume_index
                 
-                logger.info(f"Starting calibration for volume {target_volume_ml} mL "
-                           f"({volume_index + 1}/{len(target_volumes)})")
+                # Calculate adaptive budget for this volume
+                volume_budget = self._calculate_volume_budget(volume_index, target_volumes)
                 
-                volume_result = self._calibrate_volume(target_volume_ml)
+                logger.info(f"Starting calibration for volume {target_volume_ml} mL "
+                           f"({volume_index + 1}/{len(target_volumes)}) - Budget: {volume_budget} measurements")
+                
+                # Check if we have sufficient budget to proceed
+                if volume_budget < 3:  # Need minimum measurements for meaningful calibration
+                    logger.warning(f"Insufficient budget ({volume_budget}) for volume {target_volume_ml} mL, skipping")
+                    break
+                
+                volume_result = self._calibrate_volume(target_volume_ml, volume_budget)
                 self.volume_results.append(volume_result)
                 
-                # Check budget constraints
+                # Check global budget constraints
                 if self.total_measurements >= self.config.get_max_total_measurements():
                     logger.warning("Reached maximum total measurements, stopping experiment")
                     break
@@ -202,20 +238,30 @@ class CalibrationExperiment:
         optimization_trials = []
         overaspirate_trials = []
         
-    def _calibrate_volume(self, target_volume_ml: float) -> VolumeCalibrationResult:
+    def _calibrate_volume(self, target_volume_ml: float, volume_budget: int) -> VolumeCalibrationResult:
         """
         Calibrate a single volume using proper Bayesian optimization.
         
-        Uses the new optimization structure with clean data flow.
+        First volume: Full screening + multi-objective optimization
+        Subsequent volumes: Transfer learning + single-objective optimization 
+        
+        Args:
+            target_volume_ml: Target volume to calibrate
+            volume_budget: Maximum measurements allocated for this volume
         """
         start_time = time.time()
-        logger.info(f"Starting calibration for {target_volume_ml*1000:.1f}μL")
+        logger.info(f"Starting calibration for {target_volume_ml*1000:.1f}uL")
         
-        # Phase 1: Screening (initial exploration)
-        screening_trials = self._run_screening_phase(target_volume_ml)
+        # Phase 1: Screening (only for first volume)
+        screening_trials = []
+        if self.current_volume_index == 0:
+            logger.info("Running screening phase (first volume)")
+            screening_trials = self._run_screening_phase(target_volume_ml)
+        else:
+            logger.info("Skipping screening phase (using transfer learning from first volume)")
         
         # Phase 2: Bayesian optimization  
-        optimization_trials = self._run_optimization_phase(target_volume_ml, screening_trials)
+        optimization_trials = self._run_optimization_phase(target_volume_ml, screening_trials, volume_budget)
         
         # Phase 3: Optional overaspirate calibration for subsequent volumes
         overaspirate_trials = []
@@ -248,10 +294,9 @@ class CalibrationExperiment:
         )
         
         # Update state for next volume
-        self.volume_results.append(volume_result)
         self.current_volume_index += 1
         
-        logger.info(f"Volume {target_volume_ml*1000:.1f}μL calibration completed: "
+        logger.info(f"Volume {target_volume_ml*1000:.1f}uL calibration completed: "
                    f"{measurement_count} measurements, {len(best_trials)} good trials")
         
         return volume_result
@@ -279,7 +324,7 @@ class CalibrationExperiment:
         logger.info(f"Initialized {self.config.get_optimizer_type()} optimizer")
         return None
     
-    def _run_screening_phase(self, target_volume_ml: float, optimizer) -> List[TrialResult]:
+    def _run_screening_phase(self, target_volume_ml: float) -> List[TrialResult]:
         """Run initial screening phase with exploratory trials."""
         
         # Check if external data is available
@@ -310,7 +355,8 @@ class CalibrationExperiment:
             parameters = self._generate_screening_parameters(target_volume_ml, trial_idx)
             
             # Execute trial
-            trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}")
+            trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}", 
+                                              strategy="screening", liquid="water")
             screening_trials.append(trial_result)
             
             # Log meaningful results instead of abstract scores
@@ -337,13 +383,24 @@ class CalibrationExperiment:
                     logger.info(f"Using LLM-generated parameters for screening trial {trial_idx}")
                     return self.config.apply_volume_constraints(parameters, target_volume_ml)
                 except Exception as e:
-                    logger.warning(f"LLM screening failed, falling back to random: {e}")
+                    logger.warning(f"LLM screening failed, falling back to SOBOL: {e}")
         
-        # Fall back to random/SOBOL screening parameters
-        # Generate parameters using config-driven names (hardware-agnostic)
-        np.random.seed(self.config.get_random_seed() or 0 + trial_idx)
+        # Use SOBOL sampling via temporary Ax client (following calibration_sdl_simplified pattern)
+        if not hasattr(self, '_screening_optimizer'):
+            from .bayesian_recommender import create_optimizer, OptimizerType
+            # Create temporary optimizer for SOBOL screening
+            self._screening_optimizer = create_optimizer(
+                self.config, 
+                target_volume_ml, 
+                optimizer_type=OptimizerType.MULTI_OBJECTIVE,
+                fixed_params=None,
+                volume_dependent_only=False
+            )
+            logger.info("Created SOBOL optimizer for screening phase")
         
-        parameters = self._generate_parameters_from_config(target_volume_ml)
+        # Get SOBOL parameter suggestion
+        parameters = self._screening_optimizer.suggest_parameters()
+        logger.info(f"Using SOBOL-generated parameters for screening trial {trial_idx}")
         
         # Apply volume constraints
         return self.config.apply_volume_constraints(parameters, target_volume_ml)
@@ -394,7 +451,8 @@ class CalibrationExperiment:
             parameters = self._generate_optimization_parameters(target_volume_ml, iteration)
             
             # Execute trial
-            trial_result = self._execute_trial(parameters, target_volume_ml, f"optimization_{iteration}")
+            trial_result = self._execute_trial(parameters, target_volume_ml, f"optimization_{iteration}",
+                                              strategy="optimization", liquid="water")
             optimization_trials.append(trial_result)
             
             # Check if this is a good trial
@@ -454,7 +512,8 @@ class CalibrationExperiment:
             )
             
             # Execute trial
-            trial_result = self._execute_trial(parameters, target_volume_ml, f"vol_dependent_{iteration}")
+            trial_result = self._execute_trial(parameters, target_volume_ml, f"vol_dependent_{iteration}",
+                                              strategy="optimization", liquid="water")
             optimization_trials.append(trial_result)
             
             # Check if this is a good trial
@@ -583,7 +642,7 @@ class CalibrationExperiment:
         new_value = base_value + noise
         return max(min_val, min(max_val, new_value))
     
-    def _run_optimization_phase(self, target_volume_ml: float, screening_trials: List[TrialResult]) -> List[TrialResult]:
+    def _run_optimization_phase(self, target_volume_ml: float, screening_trials: List[TrialResult], volume_budget: int) -> List[TrialResult]:
         """
         Run Bayesian optimization phase using proper Ax integration.
         
@@ -597,7 +656,7 @@ class CalibrationExperiment:
             return self._run_fallback_optimization(target_volume_ml)
         
         # Determine optimization strategy
-        is_first_volume = len(self.volume_results) == 0
+        is_first_volume = self.current_volume_index == 0
         
         # Set up fixed parameters for transfer learning
         fixed_params = {}
@@ -614,38 +673,46 @@ class CalibrationExperiment:
         
         # Create optimizer
         optimizer_type = OptimizerType.MULTI_OBJECTIVE if is_first_volume else OptimizerType.SINGLE_OBJECTIVE
-        optimizer = create_optimizer(
-            config=self.config,
-            target_volume_ml=target_volume_ml,
-            optimizer_type=optimizer_type,
-            fixed_params=fixed_params,
-            volume_dependent_only=not is_first_volume
-        )
+        try:
+            optimizer = create_optimizer(
+                config=self.config,
+                target_volume_ml=target_volume_ml,
+                optimizer_type=optimizer_type,
+                fixed_params=fixed_params,
+                volume_dependent_only=not is_first_volume
+            )
+            
+            logger.info(f"Created {optimizer_type.value} optimizer for volume {target_volume_ml*1000:.0f}uL")
+        except RuntimeError as e:
+            logger.error(f"Cannot run optimization without Ax: {e}")
+            logger.error("Please install Ax with: pip install ax-platform")
+            logger.error("For now, running simple screening-only approach...")
+            
+            # Instead of fallback optimization, just return screening results
+            # This maintains the quality of the system without degrading to noise
+            logger.info("Using screening trials as optimization results")
+            return screening_trials
         
-        logger.info(f"Created {optimizer_type.value} optimizer for volume {target_volume_ml*1000:.0f}μL")
-        
-        # Load screening data into optimizer
-        if screening_trials:
-            logger.info(f"Loading {len(screening_trials)} screening trials into optimizer")
-            for trial in screening_trials:
-                objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                optimizer.update_with_result(trial.parameters, objectives)
+        # Historical data seeding disabled by default - start fresh
+        # if screening_trials:
+        #     logger.info(f"Loading {len(screening_trials)} screening trials into optimizer")
+        #     for trial in screening_trials:
+        #         objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
+        #         optimizer.seed_with_historical_data(trial.parameters, objectives)
         
         # Run optimization iterations
         optimization_trials = []
-        max_measurements = self.config.get_max_total_measurements()
-        current_measurements = sum(len(vol.measurements) for vol in self.volume_results) if self.volume_results else 0
-        current_measurements += sum(len(trial.measurements) for trial in screening_trials)
+        current_volume_measurements = sum(len(trial.measurements) for trial in screening_trials)
         
         iteration = 0
-        while not optimizer.is_converged() and current_measurements < max_measurements:
+        while not optimizer.is_converged() and current_volume_measurements < volume_budget:
             iteration += 1
             logger.info(f"Optimization iteration {iteration}")
             
-            # Check budget
-            remaining_budget = max_measurements - current_measurements
+            # Check volume budget
+            remaining_budget = volume_budget - current_volume_measurements
             if remaining_budget < 3:  # Need at least 3 measurements for meaningful trial
-                logger.info("Insufficient budget remaining - stopping optimization")
+                logger.info(f"Insufficient volume budget remaining ({remaining_budget}) - stopping optimization")
                 break
             
             # Get parameter suggestion from optimizer
@@ -658,14 +725,16 @@ class CalibrationExperiment:
             
             # Run adaptive measurement
             try:
-                trial = self._run_single_trial(
+                trial = self._execute_trial(
                     parameters=suggested_params,
                     target_volume_ml=target_volume_ml,
-                    strategy=f"BAYESIAN_OPT_{iteration}"
+                    trial_id=f"BAYESIAN_OPT_{iteration}",
+                    strategy="optimization",
+                    liquid="water"
                 )
                 
                 optimization_trials.append(trial)
-                current_measurements += len(trial.measurements)
+                current_volume_measurements += len(trial.measurements)
                 
                 # Update optimizer with result
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
@@ -685,87 +754,6 @@ class CalibrationExperiment:
         logger.info(f"Optimization completed: {final_summary}")
         
         return optimization_trials
-    
-    def _run_fallback_optimization(self, target_volume_ml: float) -> List[TrialResult]:
-        """Fallback optimization when Bayesian optimization is not available."""
-        logger.info("Running fallback optimization with noise-based parameter generation")
-        
-        trials = []
-        max_trials = 10  # Conservative fallback
-        
-        for i in range(max_trials):
-            try:
-                params = self._generate_fallback_parameters(target_volume_ml, i)
-                trial = self._run_single_trial(
-                    parameters=params,
-                    target_volume_ml=target_volume_ml, 
-                    strategy=f"FALLBACK_{i+1}"
-                )
-                trials.append(trial)
-                
-                # Early stopping if we find good parameters
-                if trial.analysis.absolute_deviation_pct <= 5.0:
-                    logger.info(f"Found good parameters early - stopping fallback optimization")
-                    break
-                    
-            except Exception as e:
-                logger.error(f"Fallback trial {i+1} failed: {e}")
-        
-        return trials
-    
-    def _generate_fallback_parameters(self, target_volume_ml: float, iteration: int) -> PipettingParameters:
-        """Generate parameters using Bayesian optimization - HARDWARE AGNOSTIC."""
-        # Get bounds for both calibration and hardware parameters
-        cal_bounds = self.config.get_calibration_parameter_bounds()
-        hw_bounds = self.config.get_hardware_parameter_bounds()
-        
-        # Use transfer learning if enabled and we have previous volume results
-        if (self.config.is_transfer_learning_enabled() and 
-            self.volume_results and 
-            iteration == 0):
-            
-            # Start from best parameters from previous volume
-            previous_best = self.volume_results[-1].optimal_parameters
-            if previous_best:
-                logger.info("Using transfer learning from previous volume")
-                base_cal = previous_best.calibration
-                base_hw = previous_best.hardware
-            else:
-                base_cal = self.config.get_default_calibration_parameters()
-                base_hw = self.config.get_default_hardware_parameters()
-        else:
-            base_cal = self.config.get_default_calibration_parameters()
-            base_hw = self.config.get_default_hardware_parameters()
-        
-        # Add optimization noise - hardware agnostic
-        noise_scale = 0.1  # 10% of parameter range
-        np.random.seed(self.config.get_random_seed() or 0 + iteration + 1000)
-        
-        def add_noise(value: float, bounds: Tuple[float, float]) -> float:
-            range_size = bounds[1] - bounds[0]
-            noise = np.random.normal(0, noise_scale * range_size)
-            return np.clip(value + noise, bounds[0], bounds[1])
-        
-        # Generate new calibration parameters
-        new_cal = CalibrationParameters(
-            overaspirate_vol=add_noise(base_cal.overaspirate_vol, cal_bounds.overaspirate_vol)
-        )
-        
-        # Generate new hardware parameters
-        new_hw_dict = {}
-        for param_name, param_bounds in hw_bounds.parameters.items():
-            base_value = base_hw.get(param_name, 
-                                   self.config.get_default_hardware_parameters().get(param_name, 0.0))
-            new_hw_dict[param_name] = add_noise(base_value, param_bounds)
-        
-        new_hw = HardwareParameters(parameters=new_hw_dict)
-        
-        parameters = PipettingParameters(
-            calibration=new_cal,
-            hardware=new_hw
-        )
-        
-        return self.config.apply_volume_constraints(parameters, target_volume_ml)
     
     def _run_overaspirate_calibration_phase(self, target_volume_ml: float, optimization_trials: List[TrialResult]) -> List[TrialResult]:
         """
@@ -815,7 +803,9 @@ class CalibrationExperiment:
             best_params, 
             target_volume_ml, 
             f"overaspirate_baseline_{target_volume_ml}",
-            force_replicates=precision_replicates
+            force_replicates=precision_replicates,
+            strategy="optimization",
+            liquid="water"
         )
         overaspirate_trials.append(baseline_trial)
         
@@ -852,7 +842,9 @@ class CalibrationExperiment:
                     adjusted_params,
                     target_volume_ml,
                     f"overaspirate_adjusted_{target_volume_ml}",
-                    force_replicates=precision_replicates
+                    force_replicates=precision_replicates,
+                    strategy="optimization",
+                    liquid="water"
                 )
                 overaspirate_trials.append(adjusted_trial)
                 
@@ -875,7 +867,9 @@ class CalibrationExperiment:
     def _execute_trial(self, parameters: PipettingParameters, 
                       target_volume_ml: float,
                       trial_id: str,
-                      force_replicates: Optional[int] = None) -> TrialResult:
+                      force_replicates: Optional[int] = None,
+                      strategy: str = "optimization",
+                      liquid: str = "water") -> TrialResult:
         """Execute a complete trial with adaptive measurement."""
         measurements: List[RawMeasurement] = []
         
@@ -903,7 +897,7 @@ class CalibrationExperiment:
         # Analyze and determine if more replicates are needed
         while use_adaptive and len(measurements) < force_replicates if force_replicates else 10:
             # Analyze current measurements
-            trial_result = self.analyzer.analyze_trial(measurements, target_volume_ml)
+            trial_result = self.analyzer.analyze_trial(measurements, target_volume_ml, strategy, liquid)
             
             if not trial_result.needs_additional_replicates:
                 break
@@ -925,7 +919,7 @@ class CalibrationExperiment:
             logger.debug(f"Added replicate {replicate_idx + 1} for trial {trial_id}")
         
         # Final analysis
-        trial_result = self.analyzer.analyze_trial(measurements, target_volume_ml)
+        trial_result = self.analyzer.analyze_trial(measurements, target_volume_ml, strategy, liquid)
         
         # Apply single measurement penalty if applicable
         if len(measurements) == 1:
@@ -941,11 +935,14 @@ class CalibrationExperiment:
         all_best_trials = self.analyzer.find_best_trials(self.all_trials, max_results=1)
         optimal_conditions = all_best_trials[0].parameters if all_best_trials else None
         
+        # Calculate total measurements from actual data
+        total_measurements = sum(vol.measurement_count for vol in self.volume_results)
+        
         return ExperimentResults(
             experiment_name=self.config.get_experiment_name(),
             volume_results=self.volume_results,
             optimal_conditions=optimal_conditions,
-            total_measurements=self.total_measurements,
+            total_measurements=total_measurements,
             total_duration_s=time.time() - experiment_start_time,
             overall_statistics=overall_statistics,
             config_used=self.config.get_raw_config()
@@ -1017,6 +1014,8 @@ class CalibrationExperiment:
                 trial_dict = {
                     'trial_id': f"trial_{trial_counter}",
                     'target_volume_ml': trial.target_volume_ml,
+                    'strategy': trial.strategy,
+                    'liquid': trial.liquid,
                     'parameters': asdict(trial.parameters),
                     'analysis': asdict(trial.analysis),
                     'quality': asdict(trial.quality),
@@ -1030,6 +1029,8 @@ class CalibrationExperiment:
                 for measurement in trial.measurements:
                     measurement_dict = asdict(measurement)
                     measurement_dict['trial_id'] = f"trial_{trial_counter}"
+                    measurement_dict['strategy'] = trial.strategy
+                    measurement_dict['liquid'] = trial.liquid
                     raw_measurements.append(measurement_dict)
             
             # Convert optimal conditions

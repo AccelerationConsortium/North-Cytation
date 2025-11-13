@@ -55,6 +55,8 @@ class OptimizationTrial:
     parameters: PipettingParameters
     objectives: OptimizationObjectives
     trial_index: Optional[int] = None
+    strategy: str = "optimization"  # "screening" or "optimization" 
+    liquid: str = "water"  # Liquid being pipetted
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     def to_ax_result(self) -> Tuple[int, Dict[str, float]]:
@@ -104,6 +106,10 @@ class OptimizationConfig:
     """Configuration for optimization phase."""
     optimizer_type: OptimizerType
     constraints: OptimizationConstraints
+    
+    # Experiment context
+    liquid: str = "water"            # Liquid being pipetted
+    experiment_name: str = "calibration"  # Experiment identifier
     
     # Optimization parameters
     num_initial_trials: int = 5      # SOBOL exploration trials

@@ -26,17 +26,15 @@ from optimization_structures import (
 
 logger = logging.getLogger(__name__)
 
-# Import Ax components (following calibration_sdl_simplified pattern)
+# Import Ax components (using modern Ax API)
 try:
     from ax.service.ax_client import AxClient, ObjectiveProperties  
-    from ax.modelbridge.factory import Models
-    from ax.modelbridge.generation_strategy import GenerationStep, GenerationStrategy
-    from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
-    from botorch.acquisition.logei import qLogNoisyExpectedImprovement
+    # Modern Ax API doesn't need modelbridge imports for basic usage
     AX_AVAILABLE = True
 except ImportError as e:
     logger.error(f"Ax not available: {e}")
-    AxClient, ObjectiveProperties, Models = None, None, None
+    AxClient, ObjectiveProperties = None, None
+    AX_AVAILABLE = False
     GenerationStep, GenerationStrategy = None, None
     qNoisyExpectedHypervolumeImprovement, qLogNoisyExpectedImprovement = None, None
     AX_AVAILABLE = False
@@ -134,47 +132,14 @@ class AxBayesianOptimizer:
             constraint_list.append(constraint_str)
             
             logger.info(f"Added volume constraint: {constraint_str}")
-            logger.info(f"  Available volume: {available_volume*1000:.1f}μL")
+            logger.info(f"  Available volume: {available_volume*1000:.1f}uL")
         
         return constraint_list
     
     def _create_ax_client(self) -> None:
-        """Create Ax client with proper configuration."""
-        # Set up acquisition function based on optimizer type
-        if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
-            model_gen_kwargs = {
-                "botorch_acqf_class": qNoisyExpectedHypervolumeImprovement,
-                "deduplicate": True,
-            }
-        else:  # Single objective
-            model_gen_kwargs = {
-                "botorch_acqf_class": qLogNoisyExpectedImprovement,
-                "deduplicate": True,
-            }
-        
-        # Create generation strategy
-        steps = []
-        if self.config.num_initial_trials > 0:
-            steps.append(GenerationStep(
-                model=Models.SOBOL,
-                num_trials=self.config.num_initial_trials,
-                min_trials_observed=self.config.num_initial_trials,
-                max_parallelism=self.config.num_initial_trials,
-                model_kwargs={"seed": self.config.random_seed},
-                model_gen_kwargs=model_gen_kwargs,
-            ))
-        
-        steps.append(GenerationStep(
-            model=Models.BOTORCH_MODULAR,
-            num_trials=-1,
-            max_parallelism=self.config.bayesian_batch_size,
-            model_gen_kwargs=model_gen_kwargs,
-        ))
-        
-        gs = GenerationStrategy(steps=steps)
-        
-        # Create Ax client
-        ax_client = AxClient(generation_strategy=gs, verbose_logging=False)
+        """Create Ax client with simplified modern API."""
+        # Create Ax client directly - modern API handles optimization strategy automatically
+        ax_client = AxClient(verbose_logging=False)
         
         # Create experiment
         if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
@@ -245,6 +210,40 @@ class AxBayesianOptimizer:
         
         logger.info(f"Updated with result: deviation={objectives.accuracy:.1f}%, trial={trial_index}")
     
+    def seed_with_historical_data(self, parameters: PipettingParameters, 
+                                 objectives: OptimizationObjectives) -> None:
+        """Add historical trial data to the optimizer for training."""
+        if not self.state.ax_client:
+            raise RuntimeError("Ax client not initialized")
+        
+        # Convert parameters to Ax format
+        ax_params = self._pipetting_parameters_to_ax_params(parameters)
+        
+        # Filter to only include parameters that are in the current search space
+        # (important for transfer learning where some parameters are fixed)
+        search_space_params = set(self.state.ax_client.experiment.search_space.parameters.keys())
+        filtered_ax_params = {k: v for k, v in ax_params.items() if k in search_space_params}
+        
+        # Convert objectives to Ax format  
+        _, ax_objectives = OptimizationTrial(
+            parameters=parameters,
+            objectives=objectives,
+            trial_index=-1  # Dummy index for conversion
+        ).to_ax_result()
+        
+        # Attach historical trial to Ax
+        _, trial_index = self.state.ax_client.attach_trial(
+            parameters=filtered_ax_params
+        )
+        
+        # Complete the trial with results
+        self.state.ax_client.complete_trial(
+            trial_index=trial_index,
+            raw_data=ax_objectives
+        )
+        
+        logger.info(f"Seeded optimizer with historical data: deviation={objectives.accuracy:.1f}%")
+    
     def is_converged(self) -> bool:
         """Check if optimization has converged."""
         return self.state.is_converged
@@ -275,6 +274,25 @@ class AxBayesianOptimizer:
         hw_params = HardwareParameters(parameters=hw_dict)
         
         return PipettingParameters(calibration=cal_params, hardware=hw_params)
+    
+    def _pipetting_parameters_to_ax_params(self, params: PipettingParameters) -> Dict[str, float]:
+        """Convert PipettingParameters to Ax parameters dictionary with proper type handling."""
+        ax_params = {}
+        
+        # Add calibration parameters
+        ax_params["overaspirate_vol"] = params.calibration.overaspirate_vol
+        
+        # Add hardware parameters with type conversions for Ax requirements
+        for name, value in params.hardware.parameters.items():
+            # Convert to appropriate type based on parameter requirements
+            if name in ['aspirate_speed', 'dispense_speed']:
+                # These are integer parameters in Ax
+                ax_params[name] = int(round(value))
+            else:
+                # Float parameters
+                ax_params[name] = float(value)
+        
+        return ax_params
 
 
 # Factory function for creating optimizers

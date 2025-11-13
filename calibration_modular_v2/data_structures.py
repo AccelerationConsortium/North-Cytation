@@ -213,6 +213,10 @@ class TrialResult:
     composite_score: float
     tolerances_used: VolumeTolerances
     
+    # Experiment context
+    strategy: str = "optimization"  # "screening" or "optimization"
+    liquid: str = "water"          # Liquid being pipetted
+    
     # Adaptive measurement state
     needs_additional_replicates: bool = False
     metadata: Dict[str, Any] = field(default_factory=dict)

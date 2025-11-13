@@ -832,14 +832,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             avg_vol = np.mean(all_measurements)
             
             # Use range-based variability: (max_vol - min_vol) / (2 * avg_vol) * 100
-            # Safeguard against negative measurements causing impossible negative variability
-            if avg_vol > 0 and max_vol >= min_vol:
-                variability = (max_vol - min_vol) / (2 * avg_vol) * 100
-                variability = max(0.0, variability)  # Ensure non-negative
-            else:
-                print(f"⚠️  WARNING: Invalid measurement data for variability - avg_vol: {avg_vol}, min: {min_vol}, max: {max_vol}")
-                print(f"    Setting variability to penalty value ({ADAPTIVE_PENALTY_VARIABILITY}%) due to invalid measurements")
-                variability = ADAPTIVE_PENALTY_VARIABILITY
+            variability = (max_vol - min_vol) / (2 * avg_vol) * 100
             
             print(f"      📊 Final averages: Target: {volume:.1f}μL → Avg Measured: {avg_vol:.1f}μL ({avg_deviation:+.1f}% dev, {variability:.1f}% var, {avg_time:.1f}s)")
         else:
@@ -1615,15 +1608,8 @@ def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, 
             
             # Calculate precision from replicates
             if len(all_measurements) > 1:
-                # Safeguard against negative measurements causing invalid standard deviation
-                if all(m >= 0 for m in all_measurements) and actual_volume_ml > 0:
-                    volume_std = statistics.stdev(all_measurements)
-                    precision_pct = (volume_std / actual_volume_ml) * 100
-                    precision_pct = max(0.0, precision_pct)  # Ensure non-negative
-                else:
-                    print(f"⚠️  WARNING: Invalid measurements for precision - negative values detected: {all_measurements}")
-                    print(f"    Setting precision to penalty value (100%) due to invalid measurements")
-                    precision_pct = 100.0  # High penalty for invalid data
+                volume_std = statistics.stdev(all_measurements)
+                precision_pct = (volume_std / actual_volume_ml) * 100
             else:
                 precision_pct = 0
                 
@@ -2356,15 +2342,8 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
         avg_measured_volume = np.mean(all_measurements) if all_measurements else 0
         
         if len(all_measurements) > 1:
-            # Safeguard against negative measurements causing invalid variability
-            if all(m >= 0 for m in all_measurements) and np.mean(all_measurements) > 0:
-                volume_std = np.std(all_measurements)
-                variability = volume_std / np.mean(all_measurements) * 100
-                variability = max(0.0, variability)  # Ensure non-negative
-            else:
-                print(f"⚠️  WARNING: Invalid measurements for variability - negative values detected: {all_measurements}")
-                print(f"    Setting variability to penalty value ({ADAPTIVE_PENALTY_VARIABILITY}%) due to invalid measurements")
-                variability = ADAPTIVE_PENALTY_VARIABILITY
+            volume_std = np.std(all_measurements)
+            variability = volume_std / np.mean(all_measurements) * 100
         else:
             variability = ADAPTIVE_PENALTY_VARIABILITY
         
