@@ -1092,3 +1092,222 @@ Results saved to: output\calibration_v2_runs\run_1763059706
 2025-11-13 13:48:28,455 - __main__ - INFO -   - experiment_summary.json (complete statistics)
 2025-11-13 13:48:28,455 - __main__ - INFO - 
 [SUCCESS] Calibration experiment completed successfully!
+2025-11-13 14:22:56,749 - __main__ - INFO - Starting Universal Calibration System
+2025-11-13 14:22:56,749 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-13 14:22:56,755 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-13 14:22:56,755 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-13 14:22:56,755 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-13 14:22:56,755 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-13 14:22:56,755 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-13 14:22:56,755 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-13 14:22:56,755 - __main__ - INFO - Execution mode: Simulation
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763061776
+2025-11-13 14:22:56,756 - __main__ - INFO - Starting experiment execution...
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Protocol initialized: ProtocolWrapper
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3) - Budget: 60 measurements
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-13 14:22:56,756 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-13 14:22:56,757 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-13 14:22:56,757 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-13 14:22:56,759 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client successfully
+2025-11-13 14:22:56,759 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-13 14:22:56,759 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-13 14:22:56,759 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-13 14:22:56,759 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase
+2025-11-13 14:22:56,765 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0)
+2025-11-13 14:22:56,765 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-13 14:22:56,766 - calibration_modular_v2.experiment - INFO - Screening trial 1/5: 47.8uL measured (4.4% dev, 24.7s)
+2025-11-13 14:22:56,771 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 1)
+2025-11-13 14:22:56,771 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 1
+2025-11-13 14:22:56,771 - calibration_modular_v2.experiment - INFO - Screening trial 2/5: 47.7uL measured (4.7% dev, 24.7s)
+2025-11-13 14:22:56,776 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 2)
+2025-11-13 14:22:56,776 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 2
+2025-11-13 14:22:56,776 - calibration_modular_v2.experiment - INFO - Screening trial 3/5: 47.6uL measured (4.9% dev, 24.7s)
+2025-11-13 14:22:56,781 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 3)
+2025-11-13 14:22:56,781 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 3
+2025-11-13 14:22:56,781 - calibration_modular_v2.experiment - INFO - Screening trial 4/5: 47.8uL measured (4.4% dev, 25.5s)
+2025-11-13 14:22:56,786 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 4)
+2025-11-13 14:22:56,786 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 4
+2025-11-13 14:22:56,787 - calibration_modular_v2.experiment - INFO - Screening trial 5/5: 47.9uL measured (4.2% dev, 25.6s)
+2025-11-13 14:22:56,787 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2025-11-13 14:22:56,787 - bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-13 14:22:56,787 - bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-13 14:22:56,789 - bayesian_recommender - INFO - Created Ax client successfully
+2025-11-13 14:22:56,789 - bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-13 14:22:56,789 - bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-13 14:22:56,789 - bayesian_recommender - INFO - Fixed: {}
+2025-11-13 14:22:56,789 - calibration_modular_v2.experiment - INFO - Created qNEHVI optimizer for volume 50uL
+2025-11-13 14:22:56,789 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2025-11-13 14:22:56,792 - bayesian_recommender - INFO - Generated suggestion (trial 0)
+2025-11-13 14:22:56,792 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,796 - bayesian_recommender - INFO - Updated with result: deviation=4.7%, trial=0
+2025-11-13 14:22:56,796 - calibration_modular_v2.experiment - INFO - Trial 1: deviation=4.7%, good_trials=1
+2025-11-13 14:22:56,796 - calibration_modular_v2.experiment - INFO - Optimization iteration 2
+2025-11-13 14:22:56,800 - bayesian_recommender - INFO - Generated suggestion (trial 1)
+2025-11-13 14:22:56,800 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,804 - bayesian_recommender - INFO - Updated with result: deviation=4.6%, trial=1
+2025-11-13 14:22:56,804 - calibration_modular_v2.experiment - INFO - Trial 2: deviation=4.6%, good_trials=2
+2025-11-13 14:22:56,805 - calibration_modular_v2.experiment - INFO - Optimization iteration 3
+2025-11-13 14:22:56,809 - bayesian_recommender - INFO - Generated suggestion (trial 2)
+2025-11-13 14:22:56,809 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,812 - bayesian_recommender - INFO - Updated with result: deviation=4.8%, trial=2
+2025-11-13 14:22:56,812 - calibration_modular_v2.experiment - INFO - Trial 3: deviation=4.8%, good_trials=3
+2025-11-13 14:22:56,812 - calibration_modular_v2.experiment - INFO - Optimization iteration 4
+2025-11-13 14:22:56,817 - bayesian_recommender - INFO - Generated suggestion (trial 3)
+2025-11-13 14:22:56,817 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,821 - bayesian_recommender - INFO - Updated with result: deviation=4.6%, trial=3
+2025-11-13 14:22:56,821 - calibration_modular_v2.experiment - INFO - Trial 4: deviation=4.6%, good_trials=4
+2025-11-13 14:22:56,821 - calibration_modular_v2.experiment - INFO - Optimization iteration 5
+2025-11-13 14:22:56,826 - bayesian_recommender - INFO - Generated suggestion (trial 4)
+2025-11-13 14:22:56,826 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,829 - bayesian_recommender - INFO - Updated with result: deviation=4.6%, trial=4
+2025-11-13 14:22:56,829 - calibration_modular_v2.experiment - INFO - Trial 5: deviation=4.6%, good_trials=5
+2025-11-13 14:22:56,830 - calibration_modular_v2.experiment - INFO - Optimization iteration 6
+2025-11-13 14:22:56,834 - bayesian_recommender - INFO - Generated suggestion (trial 5)
+2025-11-13 14:22:56,834 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,838 - bayesian_recommender - INFO - Updated with result: deviation=4.5%, trial=5
+2025-11-13 14:22:56,839 - calibration_modular_v2.experiment - INFO - Trial 6: deviation=4.5%, good_trials=6
+2025-11-13 14:22:56,839 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'converged', 'convergence_reason': 'Found 6 good trials', 'total_trials': 6, 'good_trials': 6, 'best_accuracy': np.float64(4.471065478983058), 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.009663763791322708), hardware=HardwareParameters(parameters={'aspirate_speed': 31, 'dispense_speed': 24, 'aspirate_wait_time': 17.519109528511763, 'dispense_wait_time': 13.797375289723277, 'retract_speed': 12.156993560492992, 'blowout_vol': 0.14925157111138107, 'post_asp_air_vol': 0.09164586020633579}))}
+2025-11-13 14:22:56,839 - calibration_modular_v2.experiment - INFO - Volume 50.0uL calibration completed: 33 measurements, 5 good trials
+2025-11-13 14:22:56,839 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.025 mL (2/3) - Budget: 73 measurements
+2025-11-13 14:22:56,839 - calibration_modular_v2.experiment - INFO - Starting calibration for 25.0uL
+2025-11-13 14:22:56,839 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2025-11-13 14:22:56,839 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2025-11-13 14:22:56,839 - calibration_modular_v2.experiment - INFO - Using transfer learning - fixing non-volume-dependent parameters
+2025-11-13 14:22:56,840 - bayesian_recommender - INFO - Created Ax client successfully
+2025-11-13 14:22:56,841 - bayesian_recommender - INFO - Initialized qLogEI optimizer
+2025-11-13 14:22:56,841 - bayesian_recommender - INFO - Optimizing: ['blowout_vol', 'overaspirate_vol']
+2025-11-13 14:22:56,841 - bayesian_recommender - INFO - Fixed: {'aspirate_speed': 10, 'dispense_speed': 17, 'aspirate_wait_time': 15.27101967483759, 'dispense_wait_time': 13.448945386335254, 'retract_speed': 8.14895979128778, 'post_asp_air_vol': 0.014521891064941884}
+2025-11-13 14:22:56,841 - calibration_modular_v2.experiment - INFO - Created qLogEI optimizer for volume 25uL
+2025-11-13 14:22:56,841 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2025-11-13 14:22:56,843 - bayesian_recommender - INFO - Generated suggestion (trial 0)
+2025-11-13 14:22:56,843 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,847 - bayesian_recommender - INFO - Updated with result: deviation=3.5%, trial=0
+2025-11-13 14:22:56,847 - calibration_modular_v2.experiment - INFO - Trial 1: deviation=3.5%, good_trials=1
+2025-11-13 14:22:56,847 - calibration_modular_v2.experiment - INFO - Optimization iteration 2
+2025-11-13 14:22:56,851 - bayesian_recommender - INFO - Generated suggestion (trial 1)
+2025-11-13 14:22:56,851 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,855 - bayesian_recommender - INFO - Updated with result: deviation=3.9%, trial=1
+2025-11-13 14:22:56,855 - calibration_modular_v2.experiment - INFO - Trial 2: deviation=3.9%, good_trials=2
+2025-11-13 14:22:56,855 - calibration_modular_v2.experiment - INFO - Optimization iteration 3
+2025-11-13 14:22:56,858 - bayesian_recommender - INFO - Generated suggestion (trial 2)
+2025-11-13 14:22:56,858 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,862 - bayesian_recommender - INFO - Updated with result: deviation=3.6%, trial=2
+2025-11-13 14:22:56,862 - calibration_modular_v2.experiment - INFO - Trial 3: deviation=3.6%, good_trials=3
+2025-11-13 14:22:56,862 - calibration_modular_v2.experiment - INFO - Optimization iteration 4
+2025-11-13 14:22:56,865 - bayesian_recommender - INFO - Generated suggestion (trial 3)
+2025-11-13 14:22:56,866 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,870 - bayesian_recommender - INFO - Updated with result: deviation=3.4%, trial=3
+2025-11-13 14:22:56,871 - calibration_modular_v2.experiment - INFO - Trial 4: deviation=3.4%, good_trials=4
+2025-11-13 14:22:56,871 - calibration_modular_v2.experiment - INFO - Optimization iteration 5
+2025-11-13 14:22:56,877 - bayesian_recommender - INFO - Generated suggestion (trial 4)
+2025-11-13 14:22:56,877 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:56,882 - bayesian_recommender - INFO - Updated with result: deviation=3.6%, trial=4
+2025-11-13 14:22:56,882 - calibration_modular_v2.experiment - INFO - Trial 5: deviation=3.6%, good_trials=5
+2025-11-13 14:22:56,882 - calibration_modular_v2.experiment - INFO - Optimization iteration 6
+2025-11-13 14:22:57,530 - calibration_modular_v2.experiment - ERROR - Failed to get suggestion from optimizer: `np.Inf` was removed in the NumPy 2.0 release. Use `np.inf` instead.
+2025-11-13 14:22:57,530 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'running', 'convergence_reason': '', 'total_trials': 5, 'good_trials': 5, 'best_accuracy': np.float64(3.404161838702055), 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0004037117492407561), hardware=HardwareParameters(parameters={'blowout_vol': 0.06420382559299469, 'aspirate_speed': 10, 'dispense_speed': 17, 'aspirate_wait_time': 15.27101967483759, 'dispense_wait_time': 13.448945386335254, 'retract_speed': 8.14895979128778, 'post_asp_air_vol': 0.014521891064941884}))}
+2025-11-13 14:22:57,531 - calibration_modular_v2.experiment - INFO - Starting post-optimization overaspirate calibration phase
+2025-11-13 14:22:57,531 - calibration_modular_v2.experiment - INFO - Using optimized parameters from first volume (0.05 mL)
+2025-11-13 14:22:57,531 - calibration_modular_v2.experiment - INFO - Testing optimized parameters on 25uL with 3 replicates
+2025-11-13 14:22:57,531 - calibration_modular_v2.experiment - INFO - Volume shortfall detected: 0.95uL, adjusting overaspirate
+2025-11-13 14:22:57,531 - calibration_modular_v2.experiment - INFO - Testing adjusted overaspirate: 9.11uL
+2025-11-13 14:22:57,532 - calibration_modular_v2.experiment - INFO - Overaspirate adjustment improved score: 0.590 vs 0.598
+2025-11-13 14:22:57,532 - calibration_modular_v2.experiment - INFO - Overaspirate calibration complete: 2 trials
+2025-11-13 14:22:57,532 - calibration_modular_v2.experiment - INFO - Volume 25.0uL calibration completed: 21 measurements, 5 good trials
+2025-11-13 14:22:57,532 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.01 mL (3/3) - Budget: 126 measurements
+2025-11-13 14:22:57,532 - calibration_modular_v2.experiment - INFO - Starting calibration for 10.0uL
+2025-11-13 14:22:57,532 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2025-11-13 14:22:57,532 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2025-11-13 14:22:57,532 - calibration_modular_v2.experiment - INFO - Using transfer learning - fixing non-volume-dependent parameters
+2025-11-13 14:22:57,533 - bayesian_recommender - INFO - Created Ax client successfully
+2025-11-13 14:22:57,533 - bayesian_recommender - INFO - Initialized qLogEI optimizer
+2025-11-13 14:22:57,534 - bayesian_recommender - INFO - Optimizing: ['blowout_vol', 'overaspirate_vol']
+2025-11-13 14:22:57,534 - bayesian_recommender - INFO - Fixed: {'aspirate_speed': 10, 'dispense_speed': 17, 'aspirate_wait_time': 15.27101967483759, 'dispense_wait_time': 13.448945386335254, 'retract_speed': 8.14895979128778, 'post_asp_air_vol': 0.014521891064941884}
+2025-11-13 14:22:57,534 - calibration_modular_v2.experiment - INFO - Created qLogEI optimizer for volume 10uL
+2025-11-13 14:22:57,534 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2025-11-13 14:22:57,536 - bayesian_recommender - INFO - Generated suggestion (trial 0)
+2025-11-13 14:22:57,536 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:57,540 - bayesian_recommender - INFO - Updated with result: deviation=3.7%, trial=0
+2025-11-13 14:22:57,540 - calibration_modular_v2.experiment - INFO - Trial 1: deviation=3.7%, good_trials=1
+2025-11-13 14:22:57,540 - calibration_modular_v2.experiment - INFO - Optimization iteration 2
+2025-11-13 14:22:57,544 - bayesian_recommender - INFO - Generated suggestion (trial 1)
+2025-11-13 14:22:57,544 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:57,548 - bayesian_recommender - INFO - Updated with result: deviation=4.1%, trial=1
+2025-11-13 14:22:57,548 - calibration_modular_v2.experiment - INFO - Trial 2: deviation=4.1%, good_trials=2
+2025-11-13 14:22:57,548 - calibration_modular_v2.experiment - INFO - Optimization iteration 3
+2025-11-13 14:22:57,552 - bayesian_recommender - INFO - Generated suggestion (trial 2)
+2025-11-13 14:22:57,552 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:57,557 - bayesian_recommender - INFO - Updated with result: deviation=3.6%, trial=2
+2025-11-13 14:22:57,557 - calibration_modular_v2.experiment - INFO - Trial 3: deviation=3.6%, good_trials=3
+2025-11-13 14:22:57,557 - calibration_modular_v2.experiment - INFO - Optimization iteration 4
+2025-11-13 14:22:57,561 - bayesian_recommender - INFO - Generated suggestion (trial 3)
+2025-11-13 14:22:57,562 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:57,565 - bayesian_recommender - INFO - Updated with result: deviation=3.7%, trial=3
+2025-11-13 14:22:57,565 - calibration_modular_v2.experiment - INFO - Trial 4: deviation=3.7%, good_trials=4
+2025-11-13 14:22:57,566 - calibration_modular_v2.experiment - INFO - Optimization iteration 5
+2025-11-13 14:22:57,572 - bayesian_recommender - INFO - Generated suggestion (trial 4)
+2025-11-13 14:22:57,572 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-13 14:22:57,577 - bayesian_recommender - INFO - Updated with result: deviation=3.7%, trial=4
+2025-11-13 14:22:57,577 - calibration_modular_v2.experiment - INFO - Trial 5: deviation=3.7%, good_trials=5
+2025-11-13 14:22:57,577 - calibration_modular_v2.experiment - INFO - Optimization iteration 6
+2025-11-13 14:22:57,789 - calibration_modular_v2.experiment - ERROR - Failed to get suggestion from optimizer: `np.Inf` was removed in the NumPy 2.0 release. Use `np.inf` instead.
+2025-11-13 14:22:57,789 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'running', 'convergence_reason': '', 'total_trials': 5, 'good_trials': 5, 'best_accuracy': np.float64(3.6388441854963425), 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.00011742610670626163), hardware=HardwareParameters(parameters={'blowout_vol': 0.08904482889920473, 'aspirate_speed': 10, 'dispense_speed': 17, 'aspirate_wait_time': 15.27101967483759, 'dispense_wait_time': 13.448945386335254, 'retract_speed': 8.14895979128778, 'post_asp_air_vol': 0.014521891064941884}))}
+2025-11-13 14:22:57,789 - calibration_modular_v2.experiment - INFO - Starting post-optimization overaspirate calibration phase
+2025-11-13 14:22:57,790 - calibration_modular_v2.experiment - INFO - Using optimized parameters from first volume (0.05 mL)
+2025-11-13 14:22:57,790 - calibration_modular_v2.experiment - INFO - Testing optimized parameters on 10uL with 3 replicates
+2025-11-13 14:22:57,790 - calibration_modular_v2.experiment - INFO - Volume shortfall detected: 0.37uL, adjusting overaspirate
+2025-11-13 14:22:57,790 - calibration_modular_v2.experiment - INFO - Testing adjusted overaspirate: 8.70uL
+2025-11-13 14:22:57,790 - calibration_modular_v2.experiment - INFO - Overaspirate adjustment improved score: 0.426 vs 0.475
+2025-11-13 14:22:57,791 - calibration_modular_v2.experiment - INFO - Overaspirate calibration complete: 2 trials
+2025-11-13 14:22:57,791 - calibration_modular_v2.experiment - INFO - Volume 10.0uL calibration completed: 21 measurements, 5 good trials
+2025-11-13 14:22:57,791 - calibration_modular_v2.experiment - INFO - Exported optimal conditions JSON to output\calibration_v2_runs\run_1763061776\optimal_conditions.json
+2025-11-13 14:22:57,800 - calibration_modular_v2.experiment - INFO - Exported raw measurements JSON to output\calibration_v2_runs\run_1763061776\raw_measurements.json
+2025-11-13 14:22:57,801 - calibration_modular_v2.experiment - INFO - Exported experiment summary to output\calibration_v2_runs\run_1763061776\experiment_summary.json
+2025-11-13 14:22:57,801 - calibration_modular_v2.experiment - INFO - Generating enhanced outputs...
+2025-11-13 14:22:57,804 - calibration_modular_v2.experiment - INFO - Generating calibration plots...
+2025-11-13 14:22:57,804 - visualization - INFO - Generating calibration visualization plots...
+2025-11-13 14:22:57,892 - visualization - INFO - Creating Time vs Deviation scatter for 3 volumes: [np.float64(10.0), np.float64(25.0), np.float64(50.0)] uL
+2025-11-13 14:22:58,095 - visualization - INFO - [OK] Time vs deviation scatter plot saved
+2025-11-13 14:22:58,342 - visualization - INFO - [OK] Measured volume over time plot saved
+2025-11-13 14:22:58,536 - visualization - INFO - [OK] Improvement summary saved
+2025-11-13 14:22:58,536 - visualization - INFO - [SUCCESS] All plots saved to: output\calibration_v2_runs\run_1763061776\plots
+2025-11-13 14:22:58,536 - calibration_modular_v2.experiment - INFO - Exporting clean CSV files...
+2025-11-13 14:22:58,536 - csv_export - INFO - Exporting clean CSV files...
+2025-11-13 14:22:58,539 - csv_export - INFO - Exported 25 trial results to trial_results.csv
+2025-11-13 14:22:58,541 - csv_export - INFO - Exported 3 optimal conditions to optimal_conditions.csv
+2025-11-13 14:22:58,543 - csv_export - INFO - Exported 75 raw measurements to raw_measurements.csv
+2025-11-13 14:22:58,543 - csv_export - INFO - [SUCCESS] Clean CSV files exported successfully
+2025-11-13 14:22:58,544 - csv_export - INFO - Exported experiment summary to experiment_summary.csv
+2025-11-13 14:22:58,544 - calibration_modular_v2.experiment - INFO - Generating analysis insights...
+2025-11-13 14:22:58,544 - experiment_analysis - INFO - Performing calibration experiment analysis...
+2025-11-13 14:22:58,587 - experiment_analysis - INFO - [SUCCESS] Experiment analysis completed
+2025-11-13 14:22:58,587 - experiment_analysis - INFO - Analysis report saved to: output\calibration_v2_runs\run_1763061776\analysis_report.txt
+2025-11-13 14:22:58,588 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated 3 visualization plots in plots/
+2025-11-13 14:22:58,588 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated 4 CSV files
+2025-11-13 14:22:58,588 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated analysis insights and recommendations
+2025-11-13 14:22:58,588 - calibration_modular_v2.experiment - INFO - Calibration experiment completed successfully
+2025-11-13 14:22:58,588 - calibration_modular_v2.experiment - INFO - Total measurements: 75
+2025-11-13 14:22:58,588 - calibration_modular_v2.experiment - INFO - Total duration: 1.0s
+2025-11-13 14:22:58,589 - __main__ - INFO - ============================================================
+2025-11-13 14:22:58,589 - __main__ - INFO - CALIBRATION COMPLETED SUCCESSFULLY
+2025-11-13 14:22:58,589 - __main__ - INFO - ============================================================
+2025-11-13 14:22:58,589 - __main__ - INFO - Experiment: multi_volume_calibration_test
+2025-11-13 14:22:58,589 - __main__ - INFO - Total measurements: 75
+2025-11-13 14:22:58,589 - __main__ - INFO - Total duration: 1.0 seconds
+2025-11-13 14:22:58,589 - __main__ - INFO - Volumes calibrated: 3
+2025-11-13 14:22:58,589 - __main__ - INFO - Success rate: 28.0%
+2025-11-13 14:22:58,589 - __main__ - INFO - Mean score: 0.563
+2025-11-13 14:22:58,589 - __main__ - INFO - High quality trials: 7
+2025-11-13 14:22:58,589 - __main__ - INFO - 
+Results saved to: output\calibration_v2_runs\run_1763061776
+2025-11-13 14:22:58,589 - __main__ - INFO - Files generated:
+2025-11-13 14:22:58,589 - __main__ - INFO -   - optimal_conditions.csv (best parameters for each volume)
+2025-11-13 14:22:58,590 - __main__ - INFO -   - raw_measurements.csv (all measurement data)
+2025-11-13 14:22:58,590 - __main__ - INFO -   - experiment_summary.json (complete statistics)
+2025-11-13 14:22:58,590 - __main__ - INFO - 
+[SUCCESS] Calibration experiment completed successfully!
