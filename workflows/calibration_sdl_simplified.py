@@ -2835,6 +2835,13 @@ def cleanup_robot_and_vials(lash_e, simulate=False):
         print(f"\n🧹 CLEANUP: Starting robot and vial cleanup...")
         
         if not simulate:
+            # Remove any pipet tip
+            try:
+                print(f"   🗑️  Removing pipet tip...")
+                lash_e.nr_robot.remove_pipet()
+            except Exception as e:
+                print(f"   ⚠️  Warning: Could not remove pipet: {e}")
+
             # Check if there's a vial in the clamp and return it home
             try:
                 clamp_vial = lash_e.nr_robot.get_vial_in_location('clamp', 0)
@@ -2846,13 +2853,6 @@ def cleanup_robot_and_vials(lash_e, simulate=False):
                     print(f"   ✅ No vial in clamp - clamp is clear")
             except Exception as e:
                 print(f"   ⚠️  Warning: Could not return clamp vial home: {e}")
-            
-            # Remove any pipet tip
-            try:
-                print(f"   🗑️  Removing pipet tip...")
-                lash_e.nr_robot.remove_pipet()
-            except Exception as e:
-                print(f"   ⚠️  Warning: Could not remove pipet: {e}")
             
             # Origin the robot (return to safe home position)
             try:
@@ -3256,7 +3256,8 @@ if __name__ == "__main__":
             simulate=False,
             use_LLM_for_screening=True,
             # volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-            volumes=[0.05, 0.025, 0.1, 0.01, 0.005, 0.2, 0.5, 0.8],
+            #volumes=[0.05, 0.025, 0.1, 0.01, 0.005, 0.2, 0.5, 0.8],
+            volumes=[0.01, 0.025, 0.005],
             min_good_parameter_sets=5,  # Instead of 6
             precision_measurements=5,    # Instead of 3 replicates
             max_measurements=250,        # Instead of 96 total trials
