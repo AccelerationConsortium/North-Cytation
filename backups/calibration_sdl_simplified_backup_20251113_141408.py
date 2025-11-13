@@ -832,14 +832,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             avg_vol = np.mean(all_measurements)
             
             # Use range-based variability: (max_vol - min_vol) / (2 * avg_vol) * 100
-            # Safeguard against negative measurements causing impossible negative variability
-            if avg_vol > 0 and max_vol >= min_vol:
-                variability = (max_vol - min_vol) / (2 * avg_vol) * 100
-                variability = max(0.0, variability)  # Ensure non-negative
-            else:
-                print(f"⚠️  WARNING: Invalid measurement data for variability - avg_vol: {avg_vol}, min: {min_vol}, max: {max_vol}")
-                print(f"    Setting variability to penalty value ({ADAPTIVE_PENALTY_VARIABILITY}%) due to invalid measurements")
-                variability = ADAPTIVE_PENALTY_VARIABILITY
+            variability = (max_vol - min_vol) / (2 * avg_vol) * 100
             
             print(f"      📊 Final averages: Target: {volume:.1f}μL → Avg Measured: {avg_vol:.1f}μL ({avg_deviation:+.1f}% dev, {variability:.1f}% var, {avg_time:.1f}s)")
         else:
@@ -1615,15 +1608,8 @@ def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, 
             
             # Calculate precision from replicates
             if len(all_measurements) > 1:
-                # Safeguard against negative measurements causing invalid standard deviation
-                if all(m >= 0 for m in all_measurements) and actual_volume_ml > 0:
-                    volume_std = statistics.stdev(all_measurements)
-                    precision_pct = (volume_std / actual_volume_ml) * 100
-                    precision_pct = max(0.0, precision_pct)  # Ensure non-negative
-                else:
-                    print(f"⚠️  WARNING: Invalid measurements for precision - negative values detected: {all_measurements}")
-                    print(f"    Setting precision to penalty value (100%) due to invalid measurements")
-                    precision_pct = 100.0  # High penalty for invalid data
+                volume_std = statistics.stdev(all_measurements)
+                precision_pct = (volume_std / actual_volume_ml) * 100
             else:
                 precision_pct = 0
                 
@@ -2356,15 +2342,8 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
         avg_measured_volume = np.mean(all_measurements) if all_measurements else 0
         
         if len(all_measurements) > 1:
-            # Safeguard against negative measurements causing invalid variability
-            if all(m >= 0 for m in all_measurements) and np.mean(all_measurements) > 0:
-                volume_std = np.std(all_measurements)
-                variability = volume_std / np.mean(all_measurements) * 100
-                variability = max(0.0, variability)  # Ensure non-negative
-            else:
-                print(f"⚠️  WARNING: Invalid measurements for variability - negative values detected: {all_measurements}")
-                print(f"    Setting variability to penalty value ({ADAPTIVE_PENALTY_VARIABILITY}%) due to invalid measurements")
-                variability = ADAPTIVE_PENALTY_VARIABILITY
+            volume_std = np.std(all_measurements)
+            variability = volume_std / np.mean(all_measurements) * 100
         else:
             variability = ADAPTIVE_PENALTY_VARIABILITY
         
@@ -2856,13 +2835,6 @@ def cleanup_robot_and_vials(lash_e, simulate=False):
         print(f"\n🧹 CLEANUP: Starting robot and vial cleanup...")
         
         if not simulate:
-            # Remove any pipet tip
-            try:
-                print(f"   🗑️  Removing pipet tip...")
-                lash_e.nr_robot.remove_pipet()
-            except Exception as e:
-                print(f"   ⚠️  Warning: Could not remove pipet: {e}")
-
             # Check if there's a vial in the clamp and return it home
             try:
                 clamp_vial = lash_e.nr_robot.get_vial_in_location('clamp', 0)
@@ -2874,6 +2846,13 @@ def cleanup_robot_and_vials(lash_e, simulate=False):
                     print(f"   ✅ No vial in clamp - clamp is clear")
             except Exception as e:
                 print(f"   ⚠️  Warning: Could not return clamp vial home: {e}")
+            
+            # Remove any pipet tip
+            try:
+                print(f"   🗑️  Removing pipet tip...")
+                lash_e.nr_robot.remove_pipet()
+            except Exception as e:
+                print(f"   ⚠️  Warning: Could not remove pipet: {e}")
             
             # Origin the robot (return to safe home position)
             try:
@@ -3245,7 +3224,7 @@ if __name__ == "__main__":
     # optimal_conditions, save_dir = run_simplified_calibration_workflow(
     #     vial_mode="legacy",
     #     liquid="glycerol",
-    #     simulate=False,
+    #     simulate=True,
     #     volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
     #     use_llm_for_screening=True
     # )
@@ -3267,8 +3246,8 @@ if __name__ == "__main__":
     # )
     
     # Example 3: Fixed parameters for glycerol - just post-aspirate air volume
-    # print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
-    # print("   Fixing only post-aspirate air volume for glycerol\n")
+    print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
+    print("   Fixing only post-aspirate air volume for glycerol\n")
     
     try:
         optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
@@ -3277,8 +3256,7 @@ if __name__ == "__main__":
             simulate=False,
             use_LLM_for_screening=True,
             # volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-            #volumes=[0.05, 0.025, 0.1, 0.01, 0.005, 0.2, 0.5, 0.8],
-            volumes=[0.01, 0.025, 0.005],
+            volumes=[0.05, 0.025, 0.1, 0.01, 0.005, 0.2, 0.5, 0.8],
             min_good_parameter_sets=5,  # Instead of 6
             precision_measurements=5,    # Instead of 3 replicates
             max_measurements=250,        # Instead of 96 total trials
@@ -3292,16 +3270,16 @@ if __name__ == "__main__":
         print(f"\n❌ WORKFLOW ERROR: {e}")
         print(f"🧹 Attempting emergency cleanup...")
         
-    #     # Emergency cleanup - create minimal lash_e for cleanup if needed
-    #     try:
-    #         from master_usdl_coordinator import Lash_E
-    #         emergency_lash_e = Lash_E("status/calibration_vials_short.csv", simulate=False, initialize_biotek=False)
-    #         cleanup_robot_and_vials(emergency_lash_e, simulate=False)
-    #     except Exception as cleanup_error:
-    #         print(f"⚠️  Emergency cleanup failed: {cleanup_error}")
-    #         print(f"🔧 Manual robot cleanup may be required!")
+        # Emergency cleanup - create minimal lash_e for cleanup if needed
+        try:
+            from master_usdl_coordinator import Lash_E
+            emergency_lash_e = Lash_E("status/calibration_vials_short.csv", simulate=False, initialize_biotek=False)
+            cleanup_robot_and_vials(emergency_lash_e, simulate=False)
+        except Exception as cleanup_error:
+            print(f"⚠️  Emergency cleanup failed: {cleanup_error}")
+            print(f"🔧 Manual robot cleanup may be required!")
         
-    #     raise  # Re-raise the original error
+        raise  # Re-raise the original error
     
     # Example 4: Hot start experiment using unified dataset
     # print("\n🔥 HOT START EXPERIMENT - Using unified dataset for faster convergence")

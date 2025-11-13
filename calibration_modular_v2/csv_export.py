@@ -67,6 +67,9 @@ class CleanCSVExporter:
             # Base trial information with unified naming
             row = {
                 'trial_id': trial.get('trial_id', ''),
+                # Experiment context
+                'strategy': trial.get('strategy', 'optimization'),
+                'liquid': trial.get('liquid', 'water'),
                 # Volume data: provide both units but consistent naming
                 'volume_target_ml': target_vol_ml,
                 'volume_target_ul': target_vol_ml * 1000,
@@ -161,6 +164,9 @@ class CleanCSVExporter:
             row = {
                 'measurement_id': measurement.get('measurement_id', ''),
                 'trial_id': measurement.get('trial_id', ''),
+                # Experiment context
+                'strategy': measurement.get('strategy', 'optimization'),
+                'liquid': measurement.get('liquid', 'water'),
                 # Volume data: consistent naming pattern
                 'volume_target_ml': target_vol_ml,
                 'volume_target_ul': target_vol_ml * 1000,

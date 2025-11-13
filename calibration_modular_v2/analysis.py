@@ -58,7 +58,9 @@ class CalibrationAnalyzer:
         self.objective_thresholds = config.get_objective_thresholds()
         
     def analyze_trial(self, measurements: List[RawMeasurement], 
-                     target_volume_ml: float) -> TrialResult:
+                     target_volume_ml: float,
+                     strategy: str = "optimization",
+                     liquid: str = "water") -> TrialResult:
         """
         Analyze a complete trial (set of replicate measurements).
         
@@ -101,6 +103,8 @@ class CalibrationAnalyzer:
             quality=quality,
             composite_score=composite_score,
             tolerances_used=tolerances,
+            strategy=strategy,
+            liquid=liquid,
             needs_additional_replicates=needs_additional_replicates,
             metadata={
                 'analyzer_version': '2.0',
