@@ -237,11 +237,9 @@ class ExternalDataLoader:
             quality = QualityEvaluation(
                 accuracy_good=deviation_ul <= tolerances.accuracy_tolerance_ul,
                 precision_good=variability_pct <= tolerances.precision_tolerance_pct,
-                time_good=duration_s <= tolerances.time_tolerance_s,
-                overall_quality="good",  # Mark external data as good quality
+                overall_quality="within_tolerance",  # Mark external data as within tolerance
                 accuracy_tolerance_ul=tolerances.accuracy_tolerance_ul,
                 precision_tolerance_pct=tolerances.precision_tolerance_pct,
-                time_tolerance_s=tolerances.time_tolerance_s,
                 measured_accuracy_ul=deviation_ul,
                 measured_precision_pct=variability_pct,
                 measured_time_s=duration_s

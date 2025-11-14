@@ -442,15 +442,6 @@ class ExperimentConfig:
             hardware=params.hardware  # Keep hardware params unchanged
         )
     
-    def get_parameter_exploration_config(self) -> Dict[str, float]:
-        """Get parameter exploration noise factor configuration."""
-        exploration_config = self._config.get('advanced', {}).get('parameter_exploration', {})
-        return {
-            'initial_noise_factor': exploration_config.get('initial_noise_factor', 0.5),
-            'noise_decay_rate': exploration_config.get('noise_decay_rate', 0.05),
-            'minimum_noise_factor': exploration_config.get('minimum_noise_factor', 0.1)
-        }
-    
     def get_raw_config(self) -> Dict[str, Any]:
         """Get raw configuration dictionary for advanced use cases."""
         return self._config.copy()

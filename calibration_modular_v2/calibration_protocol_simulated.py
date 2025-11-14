@@ -57,19 +57,50 @@ def _simulate_once(target_vol: float, params: Dict[str, Any]) -> Tuple[float, fl
     # Start with sophisticated parameter-dependent error modeling
     mass_error_factor = 0.0
     
-    # Speed parameters: Faster speeds (lower numbers) less accurate but faster
-    # Higher speeds (higher numbers) more accurate but slower - speed/accuracy tradeoff
-    min_speed_penalty = 0.002  # Penalty for very fast speeds (accuracy issues)
-    fast_speed_penalty_aspirate = max(0, (15 - asp_speed)) * min_speed_penalty
-    fast_speed_penalty_dispense = max(0, (15 - dsp_speed)) * min_speed_penalty
-    mass_error_factor += fast_speed_penalty_aspirate + fast_speed_penalty_dispense
+    # ENHANCED Speed parameters: More realistic speed/accuracy tradeoffs
+    # Range 10-35: Lower = faster but less accurate, Higher = slower but more accurate
+    # Optimal ranges: aspirate ~20-25, dispense ~15-20
     
-    # Wait time parameters: Longer waits improve accuracy (settling time)
-    wait_accuracy_benefit = -0.001  # Slight accuracy improvement with longer waits
-    mass_error_factor += max(0, (5 - asp_wait)) * 0.002  # Penalty for very short waits
-    mass_error_factor += max(0, (5 - dsp_wait)) * 0.002  # Penalty for very short waits
-    mass_error_factor += asp_wait * wait_accuracy_benefit  # Small benefit from longer waits
-    mass_error_factor += dsp_wait * wait_accuracy_benefit  # Small benefit from longer waits
+    # Aspirate speed effects (optimal around 22)
+    aspirate_optimal = 22
+    aspirate_deviation = abs(asp_speed - aspirate_optimal)
+    if aspirate_deviation > 8:  # Very far from optimal (>8 units away)
+        aspirate_penalty = 0.08 + aspirate_deviation * 0.004  # Large base + scaling penalty
+    else:
+        aspirate_penalty = aspirate_deviation * 0.006  # Moderate penalty for small deviations
+    mass_error_factor += aspirate_penalty
+    
+    # Dispense speed effects (optimal around 17)  
+    dispense_optimal = 17
+    dispense_deviation = abs(dsp_speed - dispense_optimal)
+    if dispense_deviation > 8:  # Very far from optimal 
+        dispense_penalty = 0.06 + dispense_deviation * 0.003  # Large base + scaling penalty
+    else:
+        dispense_penalty = dispense_deviation * 0.004  # Moderate penalty for small deviations
+    mass_error_factor += dispense_penalty
+    
+    # ENHANCED Wait time parameters: Stronger effects for settling time
+    # Optimal wait times: aspirate ~12-20s, dispense ~8-15s
+    
+    # Aspirate wait time (optimal around 15s)
+    aspirate_wait_optimal = 15
+    aspirate_wait_deviation = abs(asp_wait - aspirate_wait_optimal)
+    if asp_wait < 5:  # Very short waits are bad (rushing)
+        mass_error_factor += 0.05 + (5 - asp_wait) * 0.008  # High penalty for rushing
+    elif aspirate_wait_deviation > 10:  # Very long waits waste time without benefit
+        mass_error_factor += aspirate_wait_deviation * 0.003
+    else:
+        mass_error_factor += aspirate_wait_deviation * 0.002  # Small penalty near optimal
+        
+    # Dispense wait time (optimal around 10s)
+    dispense_wait_optimal = 10  
+    dispense_wait_deviation = abs(dsp_wait - dispense_wait_optimal)
+    if dsp_wait < 3:  # Very short waits are bad
+        mass_error_factor += 0.04 + (3 - dsp_wait) * 0.006  # High penalty for rushing
+    elif dispense_wait_deviation > 12:  # Very long waits
+        mass_error_factor += dispense_wait_deviation * 0.002
+    else:
+        mass_error_factor += dispense_wait_deviation * 0.0015  # Small penalty near optimal
     
     # VOLUME-DEPENDENT PARAMETERS - Critical for forcing selective optimization!
     # Different optimal values for different volumes to force re-optimization
@@ -110,49 +141,151 @@ def _simulate_once(target_vol: float, params: Dict[str, Any]) -> Tuple[float, fl
     else:
         mass_error_factor += relative_error * 0.05  # Small penalty if close
     
-    # Other parameters with their optimal values
-    mass_error_factor += np.abs(retract_speed - 8) * 0.002  # optimal ~8
-    mass_error_factor += np.abs(post_asp_air_vol - 0.05) * 0.04  # optimal ~0.05
-    
-    # Add base random noise
-    mass_error_factor += np.random.normal(0, 0.01)
-    
-    # REALISTIC SIMULATION: Pipetting typically under-delivers due to surface tension, viscosity
-    # Add systematic underdelivery bias based on volume
-    underdelivery_bias = -0.05 - (0.008 * target_vol)  # 5% + 0.8% per mL systematic underdelivery
-    
-    # Overaspirate compensation: partially compensates but not perfectly
-    overasp_compensation = (overasp_vol * 0.7) / target_vol if target_vol > 0 else 0  # 70% effectiveness
-    
-    # Apply realistic scaling - start with the underdelivery bias, then add parameter effects
-    total_error = underdelivery_bias + (mass_error_factor * 0.3) + overasp_compensation
-    
-    # Apply non-linear scaling but bias toward underdelivery (realistic)
-    if total_error > 0:
-        # Over-pipetting: rare and capped at ~5%
-        final_error = 0.05 * np.tanh(total_error / 0.05)
+    # ENHANCED Retract speed effects (optimal around 10)
+    retract_optimal = 10
+    retract_deviation = abs(retract_speed - retract_optimal)
+    if retract_deviation > 5:  # Very far from optimal
+        retract_penalty = 0.03 + retract_deviation * 0.004  # Significant penalty
     else:
-        # Under-pipetting: more common and can be up to ~12%
-        final_error = -0.12 * np.tanh(-total_error / 0.12)
+        retract_penalty = retract_deviation * 0.008  # Moderate penalty near optimal
+    mass_error_factor += retract_penalty
+    
+    # ENHANCED Post-aspirate air volume effects (optimal around 0.06)
+    post_air_optimal = 0.06
+    post_air_deviation = abs(post_asp_air_vol - post_air_optimal) 
+    if post_air_deviation > 0.04:  # Very far from optimal
+        post_air_penalty = 0.04 + post_air_deviation * 0.5  # High penalty for extreme values
+    else:
+        post_air_penalty = post_air_deviation * 0.15  # Moderate penalty near optimal
+    mass_error_factor += post_air_penalty
+    
+    # Parameter-dependent noise instead of fixed random noise
+    # Calculate noise level based on parameter extremes/suboptimal values
+    
+    # Speed-related noise: faster speeds = more noise (less controlled)
+    speed_noise_factor = 0.005  # Base noise
+    if asp_speed < 15 or asp_speed > 30:  # Very fast or very slow
+        speed_noise_factor += 0.008
+    if dsp_speed < 12 or dsp_speed > 25:  # Very fast or very slow  
+        speed_noise_factor += 0.006
+        
+    # Wait time noise: very short waits = more noise (insufficient settling)
+    wait_noise_factor = 0.0
+    if asp_wait < 3:  # Too short
+        wait_noise_factor += 0.006
+    if dsp_wait < 2:  # Too short
+        wait_noise_factor += 0.004
+        
+    # Volume parameter noise: extreme values = more noise
+    vol_noise_factor = 0.0
+    if blowout_vol < 0.02 or blowout_vol > 0.15:  # Too little or too much
+        vol_noise_factor += 0.005
+    if post_asp_air_vol < 0.02 or post_asp_air_vol > 0.12:  # Too little or too much
+        vol_noise_factor += 0.007
+        
+    # Retract speed noise: very fast retract = more noise
+    if retract_speed < 6 or retract_speed > 15:
+        vol_noise_factor += 0.004
+    
+    # Total parameter-dependent noise
+    total_noise_std = speed_noise_factor + wait_noise_factor + vol_noise_factor
+    parameter_dependent_noise = np.random.normal(0, total_noise_std)
+    mass_error_factor += parameter_dependent_noise
+    
+    # SIMPLIFIED REALISTIC SIMULATION
+    # 1. Systematic under-delivery bias (5%)
+    underdelivery_bias = -0.05  # 5% systematic underdelivery
+    
+    # 2. Overaspirate compensation: linear effect with higher effectiveness for testing
+    # If you overaspirate by X μL, you gain 0.8*X μL in delivered volume (increased from 0.5)
+    overasp_absolute_compensation = overasp_vol * 0.8  # 80% effectiveness in absolute terms
+    overasp_relative_compensation = overasp_absolute_compensation / target_vol if target_vol > 0 else 0
+    
+    # 3. Parameter effects - INCREASED to make optimization more meaningful
+    parameter_effect = mass_error_factor * 0.25  # Increased from 0.1 to 0.25 for stronger effects
+    
+    # 4. Total error: bias + overaspirate compensation + parameter effects
+    total_error = underdelivery_bias + overasp_relative_compensation + parameter_effect
+    
+    # 5. Soft saturation: use tanh to prevent extreme values but preserve differences
+    # Allow wider range (-50% to +50%) but compress extreme values
+    if total_error > 0:
+        final_error = 0.5 * np.tanh(total_error / 0.3)  # Positive errors compressed more gently
+    else:
+        final_error = 0.5 * np.tanh(total_error / 0.3)  # Negative errors same treatment
     
     # Generate simulated volume with parameter-dependent error
     measured_volume = target_vol * (1 + final_error)
+    
+    # Parameter-dependent replicate noise instead of fixed noise
+    # Better parameters = more consistent replicates, worse parameters = more variable
+    
+    # Base replicate variability
+    replicate_noise_std = 0.003  # Reduced base
+    
+    # Speed consistency: extreme speeds reduce replicate consistency  
+    if asp_speed < 18 or asp_speed > 28:
+        replicate_noise_std += 0.004
+    if dsp_speed < 14 or dsp_speed > 22:
+        replicate_noise_std += 0.003
+        
+    # Wait time consistency: too short = inconsistent replicates
+    if asp_wait < 5:
+        replicate_noise_std += 0.003
+    if dsp_wait < 3:
+        replicate_noise_std += 0.002
+        
+    # Volume parameter consistency
+    if abs(blowout_vol - 0.06) > 0.04:  # Far from optimal ~0.06
+        replicate_noise_std += 0.002
+    if abs(post_asp_air_vol - 0.06) > 0.03:  # Far from optimal ~0.06
+        replicate_noise_std += 0.003
+    if abs(retract_speed - 10) > 4:  # Far from optimal ~10
+        replicate_noise_std += 0.002
+    
+    # Apply parameter-dependent replicate noise
+    replicate_noise = np.random.normal(0, replicate_noise_std)
+    measured_volume = measured_volume * (1 + replicate_noise)
+    
     measured_volume = max(measured_volume, 0)  # Can't have negative volume
     
-    # Realistic time simulation
+    # ENHANCED Realistic time simulation with stronger parameter effects
     baseline = 12.0  # Base pipetting time in seconds
     
-    # Wait times ALWAYS add to the time (no "optimal" value)
+    # Wait times ALWAYS add to the time (no "optimal" value for time)
     wait_time_penalty = asp_wait + dsp_wait
     
-    # Speed penalties: Higher numbers (like 35) are SLOWER, lower numbers (like 10) are FASTER
-    # Convert speed to time penalty: higher speed = more time
-    aspirate_time_penalty = (asp_speed - 10) * 0.3  # 0.3s per speed unit above 10
-    dispense_time_penalty = (dsp_speed - 10) * 0.3  # 0.3s per speed unit above 10
+    # ENHANCED Speed penalties: Higher numbers (like 35) are SLOWER, lower numbers (like 10) are FASTER
+    # More realistic time differences to make speed optimization meaningful
+    aspirate_time_penalty = (asp_speed - 10) * 0.8  # Increased from 0.3 to 0.8s per speed unit
+    dispense_time_penalty = (dsp_speed - 10) * 0.6  # Increased from 0.3 to 0.6s per speed unit
     
-    # Calculate total time with some randomness
-    total_time = baseline + wait_time_penalty + aspirate_time_penalty + dispense_time_penalty
-    total_time += np.random.normal(0, 0.8)  # Add time variability
+    # Retract speed also affects time
+    retract_time_penalty = (retract_speed - 8) * 0.4  # 0.4s per speed unit above 8
+    
+    # Calculate total time with enhanced parameter sensitivity
+    total_time = baseline + wait_time_penalty + aspirate_time_penalty + dispense_time_penalty + retract_time_penalty
+    
+    # Parameter-dependent timing variability instead of fixed noise
+    # Poor parameters = more inconsistent timing
+    timing_noise_std = 0.3  # Reduced base timing noise
+    
+    # Extreme speeds create more timing variability
+    if asp_speed < 15 or asp_speed > 30:
+        timing_noise_std += 0.4
+    if dsp_speed < 12 or dsp_speed > 25:
+        timing_noise_std += 0.3
+    if retract_speed < 6 or retract_speed > 15:
+        timing_noise_std += 0.2
+        
+    # Very short wait times create timing inconsistency
+    if asp_wait < 3:
+        timing_noise_std += 0.3
+    if dsp_wait < 2:
+        timing_noise_std += 0.2
+    
+    # Apply parameter-dependent timing noise
+    total_time += np.random.normal(0, timing_noise_std)
     elapsed = max(total_time, 2.0)  # Minimum 2 seconds
     
     return measured_volume, elapsed

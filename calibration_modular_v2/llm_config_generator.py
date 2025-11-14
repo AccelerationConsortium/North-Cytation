@@ -37,9 +37,13 @@ class LLMConfigGenerator:
     def get_time_affecting_params(self) -> List[str]:
         """Get list of parameter names that affect timing."""
         time_params = []
-        for param_name, param_config in self.config._config['parameters'].items():
+        
+        # Check hardware parameters for time_affecting flag
+        hw_params = self.config._config.get('hardware_parameters', {})
+        for param_name, param_config in hw_params.items():
             if param_config.get('time_affecting', False):
                 time_params.append(param_name)
+                
         return time_params
     
     def get_non_fixed_params(self, fixed_params: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
@@ -48,7 +52,13 @@ class LLMConfigGenerator:
             fixed_params = {}
             
         llm_params = {}
-        for param_name, param_config in self.config._config['parameters'].items():
+        
+        # Combine calibration and hardware parameters
+        all_params = {}
+        all_params.update(self.config._config.get('calibration_parameters', {}))
+        all_params.update(self.config._config.get('hardware_parameters', {}))
+        
+        for param_name, param_config in all_params.items():
             if param_name not in fixed_params:
                 # Convert to LLM format
                 bounds = param_config['bounds']

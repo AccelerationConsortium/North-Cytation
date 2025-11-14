@@ -83,7 +83,7 @@ def main():
         stats = results.overall_statistics
         logger.info(f"Success rate: {stats['success_rate']:.1%}")
         logger.info(f"Mean score: {stats['mean_score']:.3f}")
-        logger.info(f"High quality trials: {stats['excellent_count'] + stats['good_count']}")
+        logger.info(f"High quality trials: {stats['within_tolerance_count']}")
         
         # Results location
         logger.info(f"\nResults saved to: {experiment.output_dir}")

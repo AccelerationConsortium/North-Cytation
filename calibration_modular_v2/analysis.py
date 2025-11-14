@@ -58,7 +58,9 @@ class CalibrationAnalyzer:
         self.objective_thresholds = config.get_objective_thresholds()
         
     def analyze_trial(self, measurements: List[RawMeasurement], 
-                     target_volume_ml: float) -> TrialResult:
+                     target_volume_ml: float,
+                     strategy: str = "optimization",
+                     liquid: str = "water") -> TrialResult:
         """
         Analyze a complete trial (set of replicate measurements).
         
@@ -101,6 +103,8 @@ class CalibrationAnalyzer:
             quality=quality,
             composite_score=composite_score,
             tolerances_used=tolerances,
+            strategy=strategy,
+            liquid=liquid,
             needs_additional_replicates=needs_additional_replicates,
             metadata={
                 'analyzer_version': '2.0',
@@ -142,14 +146,19 @@ class CalibrationAnalyzer:
         if len(volumes_ml) > 1:
             stdev_volume_ml = statistics.stdev(volumes_ml)
             
-            # Choose variability calculation method based on configuration
-            if self.config.use_range_based_variability():
-                # Range-based variability for small samples (original method)
-                range_ml = max(volumes_ml) - min(volumes_ml)
-                cv_volume_pct = (range_ml / (2 * mean_volume_ml)) * 100 if mean_volume_ml > 0 else 0
+            # Check for negative or zero mean volume (invalid data)
+            if mean_volume_ml <= 0:
+                cv_volume_pct = 100.0  # Penalty for invalid volume
+                logger.warning(f"Invalid mean volume ({mean_volume_ml:.3f}mL) - assigning penalty precision (100%)")
             else:
-                # Standard coefficient of variation
-                cv_volume_pct = (stdev_volume_ml / mean_volume_ml) * 100 if mean_volume_ml > 0 else 0
+                # Choose variability calculation method based on configuration
+                if self.config.use_range_based_variability():
+                    # Range-based variability for small samples (original method)
+                    range_ml = max(volumes_ml) - min(volumes_ml)
+                    cv_volume_pct = (range_ml / (2 * mean_volume_ml)) * 100
+                else:
+                    # Standard coefficient of variation
+                    cv_volume_pct = (stdev_volume_ml / mean_volume_ml) * 100
         else:
             stdev_volume_ml = 0.0
             cv_volume_pct = 0.0
@@ -158,6 +167,14 @@ class CalibrationAnalyzer:
         deviation_ml = mean_volume_ml - target_volume_ml
         deviation_pct = (deviation_ml / target_volume_ml) * 100 if target_volume_ml > 0 else 0
         absolute_deviation_pct = abs(deviation_pct)
+        
+        # Apply precision penalty for high deviation (like calibration_sdl_simplified)
+        deviation_threshold_pct = getattr(self.config, 'deviation_threshold_pct', 10.0)
+        if absolute_deviation_pct > deviation_threshold_pct:
+            # Set precision to penalty value for poor accuracy trials
+            penalty_variability_pct = getattr(self.config, 'penalty_variability_pct', 100.0)
+            cv_volume_pct = penalty_variability_pct
+            logger.info(f"High deviation ({absolute_deviation_pct:.1f}% > {deviation_threshold_pct}%) - applying precision penalty: {penalty_variability_pct}%")
         
         # Timing statistics
         mean_duration_s = statistics.mean(durations_s)
@@ -190,29 +207,24 @@ class CalibrationAnalyzer:
         # Convert deviation to microliters for comparison
         deviation_ul = abs(analysis.deviation_ml * 1000)
         
-        # Check individual criteria
+        # Check individual criteria (time not evaluated for trial success)
         accuracy_good = deviation_ul <= tolerances.accuracy_tolerance_ul
         precision_good = analysis.cv_volume_pct <= tolerances.precision_tolerance_pct
-        time_good = analysis.mean_duration_s <= tolerances.time_tolerance_s
         
-        # Determine overall quality
-        if accuracy_good and precision_good and time_good:
-            overall_quality = "excellent"
-        elif accuracy_good and precision_good:
-            overall_quality = "good"
+        # Determine overall quality (replication worthiness, not final accuracy assessment)
+        if accuracy_good and precision_good:
+            overall_quality = "within_tolerance"       # Worth replicating, meets accuracy/precision
         elif accuracy_good or precision_good:
-            overall_quality = "acceptable"
+            overall_quality = "partial_tolerance"      # Marginal, might be worth replicating
         else:
-            overall_quality = "poor"
+            overall_quality = "outside_tolerance"      # Not worth replicating
         
         return QualityEvaluation(
             accuracy_good=accuracy_good,
             precision_good=precision_good, 
-            time_good=time_good,
             overall_quality=overall_quality,
             accuracy_tolerance_ul=tolerances.accuracy_tolerance_ul,
             precision_tolerance_pct=tolerances.precision_tolerance_pct,
-            time_tolerance_s=tolerances.time_tolerance_s,
             measured_accuracy_ul=deviation_ul,
             measured_precision_pct=analysis.cv_volume_pct,
             measured_time_s=analysis.mean_duration_s
@@ -225,12 +237,12 @@ class CalibrationAnalyzer:
         # Individual objective scores (lower is better, 0 = perfect)
         accuracy_score = self._calculate_accuracy_score(analysis, tolerances)
         precision_score = self._calculate_precision_score(analysis, tolerances)
-        time_score = self._calculate_time_score(analysis, tolerances)
+        time_score = self._calculate_time_score_for_ranking(analysis)
         
-        # Weighted combination
+        # Weighted combination (time used for ranking, not success criteria)
         composite_score = (
             self.objective_weights.accuracy_weight * accuracy_score +
-            self.objective_weights.precision_weight * precision_score + 
+            self.objective_weights.precision_weight * precision_score +
             self.objective_weights.time_weight * time_score
         )
         
@@ -274,22 +286,18 @@ class CalibrationAnalyzer:
             # Catastrophic: flat penalty
             return 2.0
     
-    def _calculate_time_score(self, analysis: AdaptiveMeasurementResult,
-                            tolerances: VolumeTolerances) -> float:
-        """Calculate time objective score (0 = perfect, higher = worse)."""
+    def _calculate_time_score_for_ranking(self, analysis: AdaptiveMeasurementResult) -> float:
+        """Calculate time score for ranking purposes only (not tolerance-based)."""
         duration_s = analysis.mean_duration_s
-        tolerance_s = tolerances.time_tolerance_s
-        threshold_s = self.objective_thresholds['time_threshold_s']
         
-        if duration_s <= tolerance_s:
-            # Within tolerance: score between 0 and 1
-            return duration_s / tolerance_s
-        elif duration_s <= threshold_s:
-            # Outside tolerance but not catastrophic: score between 1 and 2
-            return 1.0 + (duration_s - tolerance_s) / (threshold_s - tolerance_s)
+        # Simple time scoring: normalize around reasonable baseline (30s)
+        baseline_time = 30.0
+        if duration_s <= baseline_time:
+            # Good time: score between 0 and 1
+            return duration_s / baseline_time
         else:
-            # Catastrophic: flat penalty
-            return 2.0
+            # Slower than baseline: linear penalty 
+            return 1.0 + (duration_s - baseline_time) / baseline_time
     
     def _should_run_additional_replicates(self, analysis: AdaptiveMeasurementResult,
                                         measurements: List[RawMeasurement],
@@ -338,7 +346,7 @@ class CalibrationAnalyzer:
         
         Args:
             trials: List of trial results
-            quality_filter: Optional quality filter ("excellent", "good", "acceptable")
+            quality_filter: Optional quality filter ("within_tolerance", "partial_tolerance")
             max_results: Maximum number of results to return
             
         Returns:
@@ -371,12 +379,10 @@ class CalibrationAnalyzer:
             'min_score': min(scores),
             'max_score': max(scores),
             'stdev_score': statistics.stdev(scores) if len(scores) > 1 else 0.0,
-            'excellent_count': quality_counts.get('excellent', 0),
-            'good_count': quality_counts.get('good', 0),
-            'acceptable_count': quality_counts.get('acceptable', 0),
-            'poor_count': quality_counts.get('poor', 0),
-            'success_rate': (quality_counts.get('excellent', 0) + 
-                           quality_counts.get('good', 0)) / len(trials)
+            'within_tolerance_count': quality_counts.get('within_tolerance', 0),
+            'partial_tolerance_count': quality_counts.get('partial_tolerance', 0),
+            'outside_tolerance_count': quality_counts.get('outside_tolerance', 0),
+            'success_rate': quality_counts.get('within_tolerance', 0) / len(trials)
         }
     
     def apply_single_measurement_penalty(self, trial_result: TrialResult) -> TrialResult:
@@ -410,6 +416,6 @@ class CalibrationAnalyzer:
             }
         )
         
-        logger.debug(f"Applied single measurement penalty: {original_score:.3f} → {adjusted_score:.3f}")
+        logger.debug(f"Applied single measurement penalty: {original_score:.3f} -> {adjusted_score:.3f}")
         
         return adjusted_trial
