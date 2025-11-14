@@ -83,150 +83,27 @@ class CalibrationExperiment:
     
     def __init__(self, config: ExperimentConfig):
         """Initialize experiment with configuration."""
-        self._initialize_core_components(config)
-        self._initialize_experiment_state()
-        self._setup_logging()
-        self._create_output_directory()
-        
-        logger.info(f"Calibration experiment initialized")
-        logger.info(f"Experiment: {config.get_experiment_name()}")
-        logger.info(f"Output directory: {self.output_dir}")
-
-    def _initialize_core_components(self, config: ExperimentConfig):
-        """Initialize core experiment components."""
         self.config = config
+        self.protocol = None  # Will be ProtocolWrapper from protocol_loader
         self.analyzer = CalibrationAnalyzer(config)
         self.external_data_loader = ExternalDataLoader(config)
-        self.protocol = None  # Will be ProtocolWrapper from protocol_loader
         
-    def _initialize_experiment_state(self):
-        """Initialize experiment state variables."""
+        # Experiment state
         self.current_volume_index = 0
         self.total_measurements = 0
         self.volume_results: List[VolumeCalibrationResult] = []
         self.all_trials: List[TrialResult] = []
         
-    def _create_output_directory(self):
-        """Create timestamped output directory."""
-        self.output_dir = Path(self.config.get_output_directory()) / f"run_{int(time.time())}"
+        # Setup logging
+        self._setup_logging()
+        
+        # Create output directory
+        self.output_dir = Path(config.get_output_directory()) / f"run_{int(time.time())}"
         self.output_dir.mkdir(parents=True, exist_ok=True)
-
-    def _run_optimization_loop(self, target_volume_ml: float, max_measurements: int, 
-                              strategy_name: str, param_generation_func) -> List[TrialResult]:
-        """Execute optimization loop with specified parameter generation strategy.
         
-        Args:
-            target_volume_ml: Target volume for optimization
-            max_measurements: Maximum measurements for this optimization  
-            strategy_name: Description for logging
-            param_generation_func: Function to generate parameters for each iteration
-            
-        Returns:
-            List of trial results from optimization
-        """
-        logger.info(f"{strategy_name}: starting optimization loop")
-        
-        optimization_trials = []
-        min_good_trials = self.config.get_min_good_trials()
-        good_trials_count = 0
-        iteration = 0
-        
-        # Continue until we hit measurement budget or have enough good trials
-        while (self.total_measurements < max_measurements and 
-               self.total_measurements < self.config.get_max_total_measurements()):
-            
-            # Generate parameters using provided function
-            parameters = param_generation_func(target_volume_ml, iteration)
-            
-            # Execute trial
-            trial_result = self._execute_trial(
-                parameters, target_volume_ml, f"{strategy_name.lower()}_{iteration}",
-                strategy="optimization", liquid=self.config.get_liquid_name()
-            )
-            optimization_trials.append(trial_result)
-            
-            # Check if this is a good trial
-            trial_passed = self._is_trial_successful(trial_result, target_volume_ml)
-            if trial_passed:
-                good_trials_count += 1
-            
-            # Log results
-            self._log_optimization_progress(trial_result, iteration, good_trials_count, 
-                                          max_measurements, strategy_name)
-            
-            # Check stopping criteria
-            if good_trials_count >= min_good_trials:
-                logger.info(f"Reached {good_trials_count} good trials, stopping optimization")
-                break
-                
-            iteration += 1
-        
-        if self.total_measurements >= max_measurements:
-            logger.info(f"Reached measurement budget ({max_measurements}), stopping optimization")
-            
-        return optimization_trials
-        
-    def _log_optimization_progress(self, trial_result: TrialResult, iteration: int, 
-                                 good_trials_count: int, max_measurements: int, strategy_name: str):
-        """Log optimization progress with meaningful metrics."""
-        avg_volume_ul = trial_result.analysis.mean_volume_ml * 1000
-        deviation_pct = abs(trial_result.analysis.deviation_pct)
-        avg_time_s = trial_result.analysis.mean_duration_s
-        
-        logger.info(f"Trial {iteration + 1}: deviation={deviation_pct:.1f}%, good_trials={good_trials_count}")
-        logger.info(f"{strategy_name} trial {iteration + 1}: "
-                   f"{avg_volume_ul:.1f}uL measured ({deviation_pct:.1f}% dev, {avg_time_s:.1f}s), "
-                   f"measurements={self.total_measurements}/{max_measurements}")
-
-    def _create_volume_dependent_param_generator(self, base_parameters: 'PipettingParameters', 
-                                                volume_dependent_params: List[str]):
-        """Create a parameter generation function for volume-dependent optimization."""
-        def generate_params(target_volume_ml: float, iteration: int) -> 'PipettingParameters':
-            return self._generate_volume_dependent_parameters(
-                base_parameters, target_volume_ml, volume_dependent_params, iteration
-            )
-        return generate_params
-
-    def _create_inherited_parameters(self, target_volume_ml: float, 
-                                   optimal_overaspirate_ml: float) -> 'PipettingParameters':
-        """Create parameters for inherited trial with optimal overaspirate.
-        
-        Args:
-            target_volume_ml: Target volume
-            optimal_overaspirate_ml: Calculated optimal overaspirate volume
-            
-        Returns:
-            PipettingParameters with optimal overaspirate and inherited hardware params
-        """
-        from .data_structures import PipettingParameters, CalibrationParameters
-        
-        # Use best parameters from previous volume as base
-        if self.volume_results:
-            base_params = self.volume_results[-1].optimal_parameters
-            if base_params:
-                return PipettingParameters(
-                    calibration=CalibrationParameters(overaspirate_vol=optimal_overaspirate_ml),
-                    hardware=base_params.hardware
-                )
-        
-        # Fallback to generated defaults with optimal overaspirate
-        fallback_params = self._generate_screening_parameters(target_volume_ml, 0)
-        return PipettingParameters(
-            calibration=CalibrationParameters(overaspirate_vol=optimal_overaspirate_ml),
-            hardware=fallback_params.hardware
-        )
-
-    def _log_inherited_trial_result(self, trial_result: 'TrialResult', target_volume_ml: float):
-        """Log inherited trial results with success/failure assessment."""
-        is_successful = self._is_trial_successful(trial_result, target_volume_ml)
-        
-        if is_successful:
-            logger.info("[SUCCESS] Inherited trial SUCCEEDED - using optimal parameters directly")
-        else:
-            logger.info("[FAILED] Inherited trial FAILED - will proceed with optimization")
-            
-        logger.info(f"  Measured: {trial_result.analysis.deviation_pct:.1f}% deviation")
-        logger.info(f"  Variability: {trial_result.analysis.cv_volume_pct:.1f}% CV")
+        logger.info(f"Calibration experiment initialized")
+        logger.info(f"Experiment: {config.get_experiment_name()}")
+        logger.info(f"Output directory: {self.output_dir}")
     
     def _setup_logging(self):
         """Configure experiment-specific logging."""
@@ -385,9 +262,6 @@ class CalibrationExperiment:
         elif self.current_volume_index > 0:
             logger.info("Running two-point constraint calibration using previous volume parameters")
             constraint_update, two_point_trials = self._run_two_point_constraint_calibration(target_volume_ml, volume_budget)
-        
-        # Store two-point trials for subsequent optimizer seeding
-        self._current_two_point_trials = two_point_trials
         
         # PAUSE: Allow inspection of two-point calibration results (if any were run)
         if two_point_trials:
@@ -585,15 +459,54 @@ class CalibrationExperiment:
         """
         logger.info("First volume: optimizing ALL parameters")
         
+        optimization_trials = []
+        min_good_trials = self.config.get_min_good_trials()
         max_measurements = self.config.get_max_measurements_first_volume()
         
-        # Use generic optimization loop with first-volume parameter generation
-        return self._run_optimization_loop(
-            target_volume_ml=target_volume_ml,
-            max_measurements=max_measurements,
-            strategy_name="First volume optimization",
-            param_generation_func=self._generate_optimization_parameters
-        )
+        good_trials_count = 0
+        iteration = 0
+        
+        # Continue until we hit measurement budget or have enough good trials
+        while (self.total_measurements < max_measurements and 
+               self.total_measurements < self.config.get_max_total_measurements()):
+            
+            # Generate next parameters using Bayesian optimizer (all parameters)
+            parameters = self._generate_optimization_parameters(target_volume_ml, iteration)
+            
+            # Execute trial
+            trial_result = self._execute_trial(parameters, target_volume_ml, f"optimization_{iteration}",
+                                              strategy="optimization", liquid="water")
+            optimization_trials.append(trial_result)
+            
+            # Check if this is a good trial using volume-based tolerances (not quality assessment)
+            logger.info(f"[DEBUG] About to check trial success for {target_volume_ml*1000:.0f}uL...")
+            trial_passed = self._is_trial_successful(trial_result, target_volume_ml)
+            if trial_passed:
+                good_trials_count += 1
+            
+            logger.info(f"[DEBUG] Trial passed tolerance check: {trial_passed}")
+            
+            # Log meaningful results instead of abstract scores
+            avg_volume_ul = trial_result.analysis.mean_volume_ml * 1000
+            deviation_pct = abs(trial_result.analysis.deviation_pct)
+            avg_time_s = trial_result.analysis.mean_duration_s
+            
+            logger.info(f"Trial {iteration + 1}: deviation={deviation_pct:.1f}%, good_trials={good_trials_count}")
+            logger.info(f"Optimization trial {iteration + 1}: "
+                       f"{avg_volume_ul:.1f}uL measured ({deviation_pct:.1f}% dev, {avg_time_s:.1f}s), "
+                       f"measurements={self.total_measurements}/{max_measurements}")
+            
+            # Check stopping criteria
+            if good_trials_count >= min_good_trials:
+                logger.info(f"Reached {good_trials_count} good trials, stopping optimization")
+                break
+                
+            iteration += 1
+        
+        if self.total_measurements >= max_measurements:
+            logger.info(f"Reached measurement budget ({max_measurements}), stopping optimization")
+        
+        return optimization_trials
     
     def _run_subsequent_volume_optimization(self, target_volume_ml: float, optimizer) -> List[TrialResult]:
         """
@@ -611,20 +524,46 @@ class CalibrationExperiment:
         volume_dependent_params = self.config.get_volume_dependent_parameters()
         logger.info(f"Volume-dependent parameters: {volume_dependent_params}")
         
+        optimization_trials = []
         max_measurements = self.config.get_max_measurements_per_volume()
+        min_good_trials = 1  # Hard coded: subsequent volumes only need 1 good trial for microtuning
         
-        # Create parameter generator for volume-dependent optimization
-        param_generator = self._create_volume_dependent_param_generator(
-            base_parameters, volume_dependent_params
-        )
+        good_trials_count = 0
+        iteration = 0
         
-        # Use generic optimization loop with volume-dependent parameter generation
-        return self._run_optimization_loop(
-            target_volume_ml=target_volume_ml,
-            max_measurements=max_measurements,
-            strategy_name="Volume-dependent optimization", 
-            param_generation_func=param_generator
-        )
+        while (self.total_measurements < self.config.get_max_total_measurements() and
+               len(optimization_trials) < max_measurements):
+            
+            # Generate parameters with only volume-dependent ones varying
+            parameters = self._generate_volume_dependent_parameters(
+                base_parameters, target_volume_ml, volume_dependent_params, iteration
+            )
+            
+            # Execute trial
+            trial_result = self._execute_trial(parameters, target_volume_ml, f"vol_dependent_{iteration}",
+                                              strategy="optimization", liquid="water")
+            optimization_trials.append(trial_result)
+            
+            # Check if this is a good trial using volume-based tolerances (not quality assessment)
+            if self._is_trial_successful(trial_result, target_volume_ml):
+                good_trials_count += 1
+            
+            # Log meaningful results instead of abstract scores
+            avg_volume_ul = trial_result.analysis.mean_volume_ml * 1000
+            deviation_pct = abs(trial_result.analysis.deviation_pct)
+            avg_time_s = trial_result.analysis.mean_duration_s
+            
+            logger.info(f"Volume-dependent trial {iteration + 1}: "
+                       f"{avg_volume_ul:.1f}uL measured ({deviation_pct:.1f}% dev, {avg_time_s:.1f}s)")
+            
+            # Check stopping criteria (fewer trials needed for volume-dependent optimization)
+            if good_trials_count >= min_good_trials:
+                logger.info(f"Reached {good_trials_count} good trials for volume-dependent optimization")
+                break
+                
+            iteration += 1
+        
+        return optimization_trials
     
     def _get_transfer_learning_parameters(self) -> Optional[PipettingParameters]:
         """
@@ -806,18 +745,6 @@ class CalibrationExperiment:
             objectives = OptimizationObjectives.from_adaptive_result(inherited_trial.analysis)
             optimizer.seed_with_historical_data(inherited_trial.parameters, objectives)
         
-        # Load two-point calibration trials for subsequent volumes only
-        # (First volume does multi-objective optimization including precision, 
-        #  so single-replicate two-point trials would mess up the precision model)
-        if not is_first_volume and hasattr(self, '_current_two_point_trials') and self._current_two_point_trials:
-            logger.info(f"Loading {len(self._current_two_point_trials)} two-point calibration trials into optimizer")
-            logger.info("Note: Only using for subsequent volumes (single-objective accuracy optimization)")
-            for trial in self._current_two_point_trials:
-                objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                optimizer.seed_with_historical_data(trial.parameters, objectives)
-                logger.debug(f"Added two-point trial: overaspirate={trial.parameters.calibration.overaspirate_vol*1000:.1f}uL, "
-                           f"measured={trial.analysis.mean_volume_ml*1000:.1f}uL, deviation={trial.analysis.deviation_pct:.1f}%")
-        
         # Run optimization iterations
         optimization_trials = []
         current_volume_measurements = sum(len(trial.measurements) for trial in screening_trials)
@@ -984,10 +911,10 @@ class CalibrationExperiment:
         
         # Import ConstraintCalibrator locally to avoid circular imports
         try:
-            from .constraint_calibration import ConstraintCalibrator
+            from .constraint_calibrator import ConstraintCalibrator
             calibrator = ConstraintCalibrator(tolerance_pct=tolerance_pct)
-        except ImportError as e:
-            logger.error(f"Could not import ConstraintCalibrator: {e}")
+        except ImportError:
+            logger.error("Could not import ConstraintCalibrator")
             return calibration_trials, None
         
         # Point 1: Test with base overaspirate from optimized parameters
@@ -1060,7 +987,7 @@ class CalibrationExperiment:
         
         # Calculate constraint bounds
         existing_screening_trials = getattr(self, '_current_screening_trials', []) if self.current_volume_index == 0 else []
-        calibration_result = calibrator.calculate_two_point_bounds(
+        constraint_update = calibrator.calculate_two_point_bounds(
             optimized_params=optimized_params,
             target_volume_ml=target_volume_ml,
             point_1_overaspirate_ml=optimized_params.overaspirate_vol,
@@ -1074,9 +1001,6 @@ class CalibrationExperiment:
             best_trial_variability_ml=best_trial_variability_ml,
             existing_trials=existing_screening_trials
         )
-        
-        # Convert to constraint update
-        constraint_update = calibrator.create_constraint_update(calibration_result)
         
         return calibration_trials, constraint_update
     
@@ -1150,7 +1074,7 @@ class CalibrationExperiment:
             logger.error(traceback.format_exc())
             return None, calibration_trials
     
-    def _run_inherited_trial(self, target_volume_ml: float, constraint_update: 'ConstraintBoundsUpdate') -> Optional['TrialResult']:
+    def _run_inherited_trial(self, target_volume_ml: float, constraint_update: ConstraintBoundsUpdate) -> Optional[TrialResult]:
         """
         Run inherited trial using optimal overaspirate calculated from two-point calibration.
         
@@ -1167,11 +1091,36 @@ class CalibrationExperiment:
             
         logger.info("Running inherited trial with optimal overaspirate from two-point calibration")
         
-        # Get optimal overaspirate value and create parameters
+        # Get optimal overaspirate value from constraint calculation
         optimal_overaspirate_ml = constraint_update.optimal_overaspirate_ml
         logger.info(f"Using optimal overaspirate: {optimal_overaspirate_ml*1000:.2f}uL")
         
-        inherited_params = self._create_inherited_parameters(target_volume_ml, optimal_overaspirate_ml)
+        # Create parameters with optimal overaspirate, inherit other parameters from first volume
+        if self.volume_results:
+            # Use best parameters from previous volume as base
+            base_params = self.volume_results[-1].optimal_parameters
+            if base_params:
+                # Create new parameters with optimal overaspirate but same hardware params
+                inherited_params = PipettingParameters(
+                    calibration=CalibrationParameters(overaspirate_vol=optimal_overaspirate_ml),
+                    hardware=base_params.hardware  # Reuse existing hardware parameters
+                )
+            else:
+                # Fallback to defaults if no previous parameters
+                inherited_params = self._generate_screening_parameters(target_volume_ml, 0)
+                # Update the overaspirate value
+                inherited_params = PipettingParameters(
+                    calibration=CalibrationParameters(overaspirate_vol=optimal_overaspirate_ml),
+                    hardware=inherited_params.hardware
+                )
+        else:
+            # Fallback for first volume case
+            inherited_params = self._generate_screening_parameters(target_volume_ml, 0)
+            # Update the overaspirate value  
+            inherited_params = PipettingParameters(
+                calibration=CalibrationParameters(overaspirate_vol=optimal_overaspirate_ml),
+                hardware=inherited_params.hardware
+            )
         
         # Execute the trial
         logger.info(f"Executing inherited trial: overaspirate={optimal_overaspirate_ml*1000:.2f}uL")
@@ -1184,8 +1133,17 @@ class CalibrationExperiment:
             liquid=self.config.get_liquid_name()
         )
         
-        # Log results with success assessment
-        self._log_inherited_trial_result(trial_result, target_volume_ml)
+        # Check if trial was successful
+        is_successful = self._is_trial_successful(trial_result, target_volume_ml)
+        
+        if is_successful:
+            logger.info(f"[SUCCESS] Inherited trial SUCCEEDED - using optimal parameters directly")
+            logger.info(f"  Measured: {trial_result.analysis.deviation_pct:.1f}% deviation")
+            logger.info(f"  Variability: {trial_result.analysis.cv_volume_pct:.1f}% CV")
+        else:
+            logger.info(f"[FAILED] Inherited trial FAILED - will proceed with optimization")
+            logger.info(f"  Measured: {trial_result.analysis.deviation_pct:.1f}% deviation")
+            logger.info(f"  Variability: {trial_result.analysis.cv_volume_pct:.1f}% CV")
         
         return trial_result
         

@@ -219,14 +219,13 @@ class OptimizationState:
         import statistics
         
         # Get weights (use config values or defaults)
-        if hasattr(config, 'experiment_config') and config.experiment_config is not None:
+        if hasattr(config, 'experiment_config') and hasattr(config.experiment_config, 'get_objective_weights'):
             weights = config.experiment_config.get_objective_weights()
             accuracy_weight = weights.accuracy_weight
             precision_weight = weights.precision_weight  
             time_weight = weights.time_weight
         else:
-            # Fallback to config defaults - should only happen in tests
-            # In production, experiment_config should always be provided
+            # Use calibration_sdl_simplified defaults
             accuracy_weight = 0.5
             precision_weight = 0.4
             time_weight = 0.1

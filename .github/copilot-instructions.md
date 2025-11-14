@@ -59,6 +59,26 @@ self.pause_after_error("Error description", send_slack=True)
 # Automatically logs, sends Slack notification, pauses for human intervention
 ```
 
+### 5. Logging Standards
+**CRITICAL**: Never use Unicode characters in logging messages (μ, →, ±, etc.)
+- Use "uL" not "μL"
+- Use "->" not "→" 
+- Use "+/-" not "±"
+- Use "deg" not "°"
+- Windows PowerShell cannot handle Unicode in log output and will crash with UnicodeEncodeError
+
+```python
+# CORRECT logging
+logger.info(f"Volume: {volume*1000:.1f}uL, efficiency: {eff:.3f}uL/uL")
+logger.info(f"Point 1: {x:.1f}uL -> {y:.1f}uL")
+logger.info(f"Range: +/-{tolerance:.1f}uL")
+
+# WRONG - will crash on Windows
+logger.info(f"Volume: {volume*1000:.1f}μL, efficiency: {eff:.3f}μL/μL")
+logger.info(f"Point 1: {x:.1f}μL → {y:.1f}μL")
+logger.info(f"Range: ±{tolerance:.1f}μL")
+```
+
 ## Key File Locations
 
 ### Primary Controllers
@@ -91,6 +111,7 @@ self.pause_after_error("Error description", send_slack=True)
 - Avoid creating new files until asked; extend existing workflow patterns
 - Set environment variables `PIP_TIMEOUT=600` and `PIP_RETRIES=2` before installs
 - Each code change should update CHANGELOG.md with semantic versioning
+- **NEVER save any files in the root directory** - use appropriate subdirectories (`workflows/`, `analysis/`, `calibration_modular_v2/`, etc.)
 
 ### MANDATORY: Automatic Backup Protocol
 **ALWAYS create backups before making significant code changes:**
@@ -132,11 +153,11 @@ Copy-Item "path/to/file.py" "backups/file_backup_$timestamp.py"
 - **TRACE systematically**: Follow data flow from input → processing → output
 - **Example**: "Show me the actual CSV/raw data" before analyzing code
 
-#### Look for Simple Inconsistencies First
-- When issues only happen in one mode (simulation vs real), check for **return value differences**
-- **Compare similar code paths** - simulation vs real robot, different volume handling, etc.
-- **Fix obvious inconsistencies** before building complex theories
-- **Trust user clues** about when/where problems occur
+#### Debug Data Flow, Not Algorithms
+- **Trace actual values** through the system - don't assume calculations are correct
+- **Never recreate or recalculate values when you have access to the raw values**
+- **Check function signatures** - are the right parameters being passed?
+- **Verify data structures** - is stored data different from calculated data?
 
 ## Communication Style
 

@@ -167,8 +167,24 @@ class ProtocolWrapper:
     
     def _parameters_to_dict(self, parameters) -> Dict[str, Any]:
         """Convert PipettingParameters to dict format."""
-        # Convert dataclass to dict, handling different parameter formats
-        if hasattr(parameters, '__dict__'):
+        # Handle PipettingParameters with nested structure
+        if hasattr(parameters, 'calibration') and hasattr(parameters, 'hardware'):
+            # Flatten nested parameters structure
+            params_dict = {}
+            
+            # Add calibration parameters (overaspirate_vol, etc.)
+            if hasattr(parameters.calibration, '__dict__'):
+                params_dict.update(parameters.calibration.__dict__)
+                
+            # Add hardware parameters
+            if hasattr(parameters.hardware, 'parameters') and isinstance(parameters.hardware.parameters, dict):
+                params_dict.update(parameters.hardware.parameters)
+            elif hasattr(parameters.hardware, '__dict__'):
+                params_dict.update(parameters.hardware.__dict__)
+                
+            return params_dict
+        elif hasattr(parameters, '__dict__'):
+            # Fallback for simple dict-like objects
             return {k: v for k, v in parameters.__dict__.items()}
         else:
             # Fallback for other parameter formats

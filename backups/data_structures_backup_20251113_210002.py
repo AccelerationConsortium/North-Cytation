@@ -34,9 +34,9 @@ class CalibrationParameters:
     
     def __post_init__(self):
         """Validate mandatory parameters."""
-        # Note: Physical limits for overaspirate_vol should be validated by hardware-specific config
-        # Removed hardcoded limits (-0.02 to 1.0 mL) to support different hardware systems
-        pass
+        # Allow negative overaspirate (aspirate less than target) and reasonable positive values
+        if not (-0.020 <= self.overaspirate_vol <= 1.0):
+            raise ValueError(f"overaspirate_vol must be -20uL to 1000uL (-0.02 to 1.0 mL), got {self.overaspirate_vol}")
 
 
 @dataclass(frozen=True)

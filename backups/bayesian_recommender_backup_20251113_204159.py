@@ -88,13 +88,12 @@ class AxBayesianOptimizer:
         all_params = ["overaspirate_vol"]  # Always include calibration parameters
         
         # Add hardware parameters from config (hardware-agnostic)
-        if not self.config.experiment_config:
-            raise ValueError(f"OptimizationConfig missing experiment_config - cannot access hardware parameters. Config type: {type(self.config)}")
-        
-        logger.debug(f"Using experiment_config: {type(self.config.experiment_config)}")
-        hardware_params = self.config.experiment_config.get_hardware_parameter_names()
-        logger.debug(f"Hardware parameters: {hardware_params}")
-        all_params.extend(hardware_params)
+        # In real implementation, this would come from config_manager
+        default_hw_params = [
+            "aspirate_speed", "dispense_speed", "aspirate_wait_time", 
+            "dispense_wait_time", "retract_speed", "blowout_vol", "post_asp_air_vol"
+        ]
+        all_params.extend(default_hw_params)
         
         # Filter out fixed parameters
         if constraints.optimize_parameters:
@@ -111,33 +110,19 @@ class AxBayesianOptimizer:
         constraints = self.config.constraints
         optimize_params = self._get_optimize_params()
         
-        # Get hardware parameter bounds from config (hardware-agnostic)
-        if not self.config.experiment_config:
-            raise ValueError("OptimizationConfig missing experiment_config - cannot access hardware bounds")
-        
-        hardware_bounds = self.config.experiment_config.get_hardware_parameter_bounds()
-        
-        # Build default bounds dict using config
-        default_bounds = {}
-        
-        # Add hardware parameters from config
-        if not self.config.experiment_config:
-            raise ValueError("OptimizationConfig missing experiment_config - cannot access hardware parameters")
-            
-        hardware_param_names = self.config.experiment_config.get_hardware_parameter_names()
-        
-        for param_name in hardware_param_names:
-            bounds_tuple = hardware_bounds.get(param_name)
-            if bounds_tuple:
-                default_bounds[param_name] = {
-                    "type": "range", 
-                    "bounds": list(bounds_tuple)
-                }
-        
-        # Add calibration parameters
-        default_bounds["overaspirate_vol"] = {
-            "type": "range", 
-            "bounds": [constraints.min_overaspirate_ml, constraints.max_overaspirate_ml]
+        # Default bounds (matching calibration_sdl_simplified)
+        default_bounds = {
+            "aspirate_speed": {"type": "range", "bounds": [10, 35]},
+            "dispense_speed": {"type": "range", "bounds": [10, 35]}, 
+            "aspirate_wait_time": {"type": "range", "bounds": [0.0, 30.0]},
+            "dispense_wait_time": {"type": "range", "bounds": [0.0, 30.0]},
+            "retract_speed": {"type": "range", "bounds": [1.0, 15.0]},
+            "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},
+            "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
+            "overaspirate_vol": {"type": "range", "bounds": [
+                constraints.min_overaspirate_ml, 
+                constraints.max_overaspirate_ml
+            ]},
         }
         
         # Build parameters list for Ax

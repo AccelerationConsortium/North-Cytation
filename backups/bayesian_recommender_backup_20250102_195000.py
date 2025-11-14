@@ -88,13 +88,12 @@ class AxBayesianOptimizer:
         all_params = ["overaspirate_vol"]  # Always include calibration parameters
         
         # Add hardware parameters from config (hardware-agnostic)
-        if not self.config.experiment_config:
-            raise ValueError(f"OptimizationConfig missing experiment_config - cannot access hardware parameters. Config type: {type(self.config)}")
-        
-        logger.debug(f"Using experiment_config: {type(self.config.experiment_config)}")
-        hardware_params = self.config.experiment_config.get_hardware_parameter_names()
-        logger.debug(f"Hardware parameters: {hardware_params}")
-        all_params.extend(hardware_params)
+        # In real implementation, this would come from config_manager
+        default_hw_params = [
+            "aspirate_speed", "dispense_speed", "aspirate_wait_time", 
+            "dispense_wait_time", "retract_speed", "blowout_vol", "post_asp_air_vol"
+        ]
+        all_params.extend(default_hw_params)
         
         # Filter out fixed parameters
         if constraints.optimize_parameters:
@@ -111,33 +110,19 @@ class AxBayesianOptimizer:
         constraints = self.config.constraints
         optimize_params = self._get_optimize_params()
         
-        # Get hardware parameter bounds from config (hardware-agnostic)
-        if not self.config.experiment_config:
-            raise ValueError("OptimizationConfig missing experiment_config - cannot access hardware bounds")
-        
-        hardware_bounds = self.config.experiment_config.get_hardware_parameter_bounds()
-        
-        # Build default bounds dict using config
-        default_bounds = {}
-        
-        # Add hardware parameters from config
-        if not self.config.experiment_config:
-            raise ValueError("OptimizationConfig missing experiment_config - cannot access hardware parameters")
-            
-        hardware_param_names = self.config.experiment_config.get_hardware_parameter_names()
-        
-        for param_name in hardware_param_names:
-            bounds_tuple = hardware_bounds.get(param_name)
-            if bounds_tuple:
-                default_bounds[param_name] = {
-                    "type": "range", 
-                    "bounds": list(bounds_tuple)
-                }
-        
-        # Add calibration parameters
-        default_bounds["overaspirate_vol"] = {
-            "type": "range", 
-            "bounds": [constraints.min_overaspirate_ml, constraints.max_overaspirate_ml]
+        # Default bounds (matching calibration_sdl_simplified)
+        default_bounds = {
+            "aspirate_speed": {"type": "range", "bounds": [10, 35]},
+            "dispense_speed": {"type": "range", "bounds": [10, 35]}, 
+            "aspirate_wait_time": {"type": "range", "bounds": [0.0, 30.0]},
+            "dispense_wait_time": {"type": "range", "bounds": [0.0, 30.0]},
+            "retract_speed": {"type": "range", "bounds": [1.0, 15.0]},
+            "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},
+            "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
+            "overaspirate_vol": {"type": "range", "bounds": [
+                constraints.min_overaspirate_ml, 
+                constraints.max_overaspirate_ml
+            ]},
         }
         
         # Build parameters list for Ax
@@ -319,18 +304,6 @@ class AxBayesianOptimizer:
         search_space_params = set(self.state.ax_client.experiment.search_space.parameters.keys())
         filtered_ax_params = {k: v for k, v in ax_params.items() if k in search_space_params}
         
-        # Check if parameter values are within current search space bounds
-        # (important when constraint updates have created tighter bounds than original screening)
-        search_space = self.state.ax_client.experiment.search_space
-        for param_name, param_value in filtered_ax_params.items():
-            if param_name in search_space.parameters:
-                param_def = search_space.parameters[param_name]
-                # Check bounds for range parameters
-                if hasattr(param_def, 'lower') and hasattr(param_def, 'upper'):
-                    if not (param_def.lower <= param_value <= param_def.upper):
-                        logger.info(f"Skipping historical trial: {param_name}={param_value:.6f} outside bounds [{param_def.lower:.6f}, {param_def.upper:.6f}]")
-                        return  # Skip this trial entirely if any parameter is out of bounds
-        
         # Convert objectives to Ax format  
         _, ax_objectives = OptimizationTrial(
             parameters=parameters,
@@ -438,10 +411,10 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         constraint_updates: Optional constraint bounds updates from two-point calibration
         num_sobol_trials: Number of SOBOL trials (5 for screening, 0 for subsequent volumes)
     """
-    # Get default overaspirate bounds from config (not calculated)
-    cal_bounds = config.get_calibration_parameter_bounds()
-    default_min_overaspirate_ml = cal_bounds.overaspirate_vol[0] 
-    default_max_overaspirate_ml = cal_bounds.overaspirate_vol[1]
+    # Calculate default overaspirate bounds (following calibration_sdl_simplified logic)
+    max_overaspirate_fraction = 0.2  # 20% of target volume
+    default_max_overaspirate_ml = min(0.01, target_volume_ml * max_overaspirate_fraction)
+    default_min_overaspirate_ml = 0.0
     
     # Apply constraint updates if available
     min_overaspirate_ml = default_min_overaspirate_ml
@@ -456,10 +429,6 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
                            f"[{min_overaspirate_ml*1000:.1f}, {max_overaspirate_ml*1000:.1f}] uL")
                 logger.info(f"Justification: {update.justification}")
                 break
-    else:
-        # Log the default bounds from config
-        logger.info(f"Using config default overaspirate bounds: "
-                   f"[{min_overaspirate_ml*1000:.1f}, {max_overaspirate_ml*1000:.1f}] uL")
     
     # Volume-dependent parameters (matching calibration_sdl_simplified)
     volume_dependent_params = ["blowout_vol", "overaspirate_vol"]
