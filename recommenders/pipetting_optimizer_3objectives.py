@@ -23,12 +23,12 @@ obj3_name = "time"         # Raw time in seconds
 
 # Default parameter bounds for all parameters
 DEFAULT_PARAMETER_BOUNDS = {
-    "aspirate_speed": {"type": "range", "bounds": [5, 35]},
-    "dispense_speed": {"type": "range", "bounds": [5, 35]},
-    "aspirate_wait_time": {"type": "range", "bounds": [0.0, 30.0]},
-    "dispense_wait_time": {"type": "range", "bounds": [0.0, 30.0]},
+    "aspirate_speed": {"type": "range", "bounds": [10, 40]},
+    "dispense_speed": {"type": "range", "bounds": [10, 40]},
+    "aspirate_wait_time": {"type": "range", "bounds": [0.0, 45.0]},
+    "dispense_wait_time": {"type": "range", "bounds": [0.0, 45.0]},
     "retract_speed": {"type": "range", "bounds": [1.0, 15.0]},
-    "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},
+    "blowout_vol": {"type": "range", "bounds": [0.0, 0.5]},
     "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
     "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set to fixed maximum in create_model()
     "volume": {"type": "range", "bounds": [0.001, 1.0]},  # Volume parameter for transfer learning (mL)

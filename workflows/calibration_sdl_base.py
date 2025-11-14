@@ -94,28 +94,46 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     overasp_absolute_compensation = overasp_vol * 0.8  # 80% effectiveness in absolute terms
     overasp_relative_compensation = overasp_absolute_compensation / volume if volume > 0 else 0
     
-    # 3. Parameter effects - simplified but meaningful
+    # 3. Parameter effects - both penalties AND bonuses
     parameter_effect = 0.0
     
-    # Speed effects: extreme speeds reduce accuracy
-    if asp_speed < 18 or asp_speed > 28:
-        parameter_effect -= 0.02  # Poor aspirate speed
-    if dsp_speed < 14 or dsp_speed > 22:
-        parameter_effect -= 0.015  # Poor dispense speed
+    # Speed effects: optimal speeds provide accuracy bonus
+    if 20 <= asp_speed <= 25:  # Optimal aspirate speed range
+        parameter_effect += 0.015  # Accuracy bonus for optimal speed
+    elif asp_speed < 18 or asp_speed > 28:
+        parameter_effect -= 0.02  # Poor aspirate speed penalty
         
-    # Wait time effects: too short reduces accuracy
-    if asp_wait < 5:
-        parameter_effect -= 0.01  # Too short aspirate wait
-    if dsp_wait < 3:
-        parameter_effect -= 0.008  # Too short dispense wait
+    if 16 <= dsp_speed <= 20:  # Optimal dispense speed range  
+        parameter_effect += 0.012  # Accuracy bonus for optimal speed
+    elif dsp_speed < 14 or dsp_speed > 22:
+        parameter_effect -= 0.015  # Poor dispense speed penalty
         
-    # Volume parameter effects: deviation from optimal values
-    if abs(blowout_vol - 0.06) > 0.04:  # Far from optimal ~0.06
-        parameter_effect -= 0.01
-    if abs(post_asp_air_vol - 0.06) > 0.03:  # Far from optimal ~0.06
-        parameter_effect -= 0.012
-    if abs(retract_speed - 10) > 4:  # Far from optimal ~10
-        parameter_effect -= 0.008
+    # Wait time effects: optimal waits provide bonus
+    if 4 <= asp_wait <= 6:  # Optimal aspirate wait range
+        parameter_effect += 0.008  # Accuracy bonus
+    elif asp_wait < 3:
+        parameter_effect -= 0.01  # Too short penalty
+        
+    if 2.5 <= dsp_wait <= 4:  # Optimal dispense wait range
+        parameter_effect += 0.006  # Accuracy bonus  
+    elif dsp_wait < 2:
+        parameter_effect -= 0.008  # Too short penalty
+        
+    # Volume parameter effects: optimal values provide bonuses
+    if abs(blowout_vol - 0.06) < 0.02:  # Near optimal ~0.06
+        parameter_effect += 0.008  # Accuracy bonus
+    elif abs(blowout_vol - 0.06) > 0.04:  # Far from optimal
+        parameter_effect -= 0.01  # Penalty
+        
+    if abs(post_asp_air_vol - 0.06) < 0.02:  # Near optimal ~0.06
+        parameter_effect += 0.010  # Accuracy bonus
+    elif abs(post_asp_air_vol - 0.06) > 0.03:  # Far from optimal
+        parameter_effect -= 0.012  # Penalty
+        
+    if abs(retract_speed - 10) < 2:  # Near optimal ~10
+        parameter_effect += 0.006  # Accuracy bonus
+    elif abs(retract_speed - 10) > 4:  # Far from optimal
+        parameter_effect -= 0.008  # Penalty
     
     # 4. Total error: bias + overaspirate compensation + parameter effects  
     total_error = underdelivery_bias + overasp_relative_compensation + parameter_effect
