@@ -13,7 +13,7 @@
 # Experiment Identification
 experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
-  liquid: "water"                     # Target liquid (water, glycerol, ethanol)
+  liquid: "glycerol"                     # Target liquid (water, glycerol, ethanol)
   description: "Testing calibration across 6 volumes: 5μL to 200μL"
   
 # Execution Mode
@@ -174,8 +174,8 @@ screening:
   num_trials: 5                         # Number of exploratory trials if no external data
   
   # LLM-based screening (separate from optimization LLM)
-  use_llm_suggestions: true             # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)
-  llm_config_path: "calibration_screening_llm_template.json" # Path to LLM configuration template for hardware-agnostic prompts
+  use_llm_suggestions: false            # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)
+  llm_config_path: null                 # Path to LLM configuration for screening phase
   
   # External data integration (replaces manual screening if available)
   external_data:
@@ -194,11 +194,5 @@ output:
   
 # Advanced Features
 advanced:
-  # Parameter exploration noise factors (for screening/volume-dependent generation)
-  parameter_exploration:
-    initial_noise_factor: 0.5           # Starting noise level (50% of parameter range)
-    noise_decay_rate: 0.05              # Noise reduction per iteration (5%)
-    minimum_noise_factor: 0.1           # Minimum noise level (10% of parameter range)
-  
   # Variability calculation method
   use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV
