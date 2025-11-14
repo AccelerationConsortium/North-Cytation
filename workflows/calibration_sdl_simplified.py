@@ -3245,7 +3245,7 @@ if __name__ == "__main__":
     # optimal_conditions, save_dir = run_simplified_calibration_workflow(
     #     vial_mode="legacy",
     #     liquid="glycerol",
-    #     simulate=True,
+    #     simulate=False,
     #     volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
     #     use_llm_for_screening=True
     # )
@@ -3267,8 +3267,8 @@ if __name__ == "__main__":
     # )
     
     # Example 3: Fixed parameters for glycerol - just post-aspirate air volume
-    print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
-    print("   Fixing only post-aspirate air volume for glycerol\n")
+    # print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
+    # print("   Fixing only post-aspirate air volume for glycerol\n")
     
     try:
         optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
@@ -3292,16 +3292,16 @@ if __name__ == "__main__":
         print(f"\n❌ WORKFLOW ERROR: {e}")
         print(f"🧹 Attempting emergency cleanup...")
         
-        # Emergency cleanup - create minimal lash_e for cleanup if needed
-        try:
-            from master_usdl_coordinator import Lash_E
-            emergency_lash_e = Lash_E("status/calibration_vials_short.csv", simulate=False, initialize_biotek=False)
-            cleanup_robot_and_vials(emergency_lash_e, simulate=False)
-        except Exception as cleanup_error:
-            print(f"⚠️  Emergency cleanup failed: {cleanup_error}")
-            print(f"🔧 Manual robot cleanup may be required!")
+    #     # Emergency cleanup - create minimal lash_e for cleanup if needed
+    #     try:
+    #         from master_usdl_coordinator import Lash_E
+    #         emergency_lash_e = Lash_E("status/calibration_vials_short.csv", simulate=False, initialize_biotek=False)
+    #         cleanup_robot_and_vials(emergency_lash_e, simulate=False)
+    #     except Exception as cleanup_error:
+    #         print(f"⚠️  Emergency cleanup failed: {cleanup_error}")
+    #         print(f"🔧 Manual robot cleanup may be required!")
         
-        raise  # Re-raise the original error
+    #     raise  # Re-raise the original error
     
     # Example 4: Hot start experiment using unified dataset
     # print("\n🔥 HOT START EXPERIMENT - Using unified dataset for faster convergence")
