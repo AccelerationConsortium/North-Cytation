@@ -18,8 +18,35 @@ experiment:
   
 # Execution Mode
 execution:
-  simulate: true                         # Use simulation instead of hardware
+  simulate: false                         # Use simulation instead of hardware
   random_seed: 7                         # Reproducibility seed
+
+# Hardware Configuration (merged from hardware_config_north_c9.json)
+hardware:
+  hardware_type: "north_robot_c9"
+  device_serial: "AU06CNCF"
+  
+  # Hardware-specific parameter warnings
+  parameter_warnings:
+    - "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter scaling)"
+    - "NOTE: Speeds are relative units, not absolute velocities"
+    - "CAUTION: Retract speed behaves differently - higher = faster"
+  
+  parameter_specifics:
+    aspirate_speed:
+      scaling: "inverse"
+      note: "Higher values = slower aspiration"
+    dispense_speed:
+      scaling: "inverse"
+      note: "Higher values = slower dispensing"
+    retract_speed:
+      scaling: "direct"
+      note: "Higher values = faster retraction"
+  
+  volume_constraints:
+    min_volume_ul: 1
+    max_volume_ul: 1000
+    overaspirate_max_fraction: 0.2
   
 # Target Volumes (in mL)
 volumes:
@@ -32,7 +59,7 @@ budget:
   
 # Protocol Configuration (Hardware Abstraction)
 protocol:
-  hardware_module: "calibration_protocol_example"     # Real hardware protocol
+  hardware_module: "calibration_protocol_hardware"     # Real hardware protocol
   simulation_module: "calibration_protocol_simulated" # Simulation protocol  
   # Optional: force specific module regardless of simulation mode
   # module: "custom_protocol"
@@ -174,7 +201,7 @@ screening:
   num_trials: 5                         # Number of exploratory trials if no external data
   
   # LLM-based screening (separate from optimization LLM)
-  use_llm_suggestions: true             # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)
+  use_llm_suggestions: false             # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)
   llm_config_path: "calibration_screening_llm_template.json" # Path to LLM configuration template for hardware-agnostic prompts
   
   # External data integration (replaces manual screening if available)

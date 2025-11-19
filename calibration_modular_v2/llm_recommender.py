@@ -51,6 +51,10 @@ class LLMRecommender:
         
     def _load_and_process_template(self, template_path: str) -> Dict[str, Any]:
         """Load template and substitute hardware-specific values."""
+        # Handle relative paths by making them relative to this file's directory
+        if not os.path.isabs(template_path):
+            template_path = os.path.join(os.path.dirname(__file__), template_path)
+            
         try:
             with open(template_path, 'r') as f:
                 template = json.load(f)
@@ -169,8 +173,12 @@ class LLMRecommender:
         # Handle legacy API: suggest_parameters(target_volume_ml, trial_idx)
         if isinstance(n_suggestions_or_volume, float) and isinstance(previous_results_or_trial, (int, type(None))):
             # Legacy mode: return single parameter set
+            self.logger.debug(f"Legacy API call: target_volume={n_suggestions_or_volume}, trial_idx={previous_results_or_trial}")
             suggestions = self._suggest_parameters_new_api(n_suggestions=1, previous_results=None)
-            return suggestions[0] if suggestions else None
+            if suggestions:
+                return suggestions[0]
+            else:
+                raise RuntimeError("LLM failed to generate parameters")
         
         # Handle new API: suggest_parameters(n_suggestions, previous_results)
         elif isinstance(n_suggestions_or_volume, int):

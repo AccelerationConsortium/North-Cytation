@@ -3,7 +3,7 @@ import time
 from venv import create
 
 from networkx import volume
-sys.path.append("../utoronto_demo")
+sys.path.append("../North-Cytation")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
 from pathlib import Path
@@ -261,14 +261,14 @@ def check_and_switch_waste_vial(lash_e, waste_state):
 def degradation_workflow():
   
     # a. Initial State of your Vials, so the robot can know where to pipet:
-    INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/degradation_vial_status.csv"
+    INPUT_VIAL_STATUS_FILE = "../North-Cytation/status/degradation_vial_status.csv"
 
     # b. Cytation 5 UV-Vis Measurement protocol:
     #CYTATION_PROTOCOL_FILE = r"C:\Protocols\degradation_protocol.prt"
     CYTATION_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt" 
 
     # c. Time schedule for UV-VIS measurements: 
-    SCHEDULE_FILE = "../utoronto_demo/status/degradation_vial_schedule.csv"
+    SCHEDULE_FILE = "../North-Cytation/status/degradation_vial_schedule.csv"
 
     # d. Simulate mode True or False
     SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot

@@ -83,11 +83,8 @@ def create_protocol(config, simulate: bool = True):
     Returns:
         ProtocolWrapper object that provides the same interface as old protocol classes
     """
-    # Determine which protocol to use based on config
-    if hasattr(config, 'is_simulation') and config.is_simulation():
-        protocol_name = 'calibration_protocol_simulated'
-    else:
-        protocol_name = 'calibration_protocol_example'  # Default hardware protocol
+    # Use config manager to determine protocol name - no hardcoded fallbacks
+    protocol_name = config.get_protocol_module()
     
     # Load the protocol module
     protocol_module = load_hardware_protocol(protocol_name)
@@ -104,21 +101,38 @@ class ProtocolWrapper:
     3-function hardware protocols underneath.
     """
     
-    def __init__(self, protocol_module, config):
-        self.protocol_module = protocol_module
+    def __init__(self, protocol_module_or_instance, config):
+        """Initialize wrapper with protocol module or instance.
+        
+        Args:
+            protocol_module_or_instance: Either a module with functions or a protocol class instance
+            config: Experiment configuration
+        """
+        self.protocol = protocol_module_or_instance
         self.config = config
         self.state = None
+        
+        # Determine if we're dealing with a module (functions) or instance (methods)
+        self.is_instance = (hasattr(protocol_module_or_instance, '__class__') and 
+                           not hasattr(protocol_module_or_instance, '__file__'))
     
     def initialize(self) -> bool:
         """Initialize the hardware protocol."""
         try:
             # Convert config to dict format expected by protocols
             config_dict = self._config_to_dict()
-            self.state = self.protocol_module.initialize(config_dict)
+            
+            if self.is_instance:
+                # Class instance - call method
+                self.state = self.protocol.initialize(config_dict)
+            else:
+                # Module - call function
+                self.state = self.protocol.initialize(config_dict)
+                
             return True
         except Exception as e:
-            print(f"Protocol initialization failed: {e}")
-            return False
+            # Don't silently return False - let the error bubble up!
+            raise RuntimeError(f"Protocol initialization failed: {e}") from e
     
     def measure(self, parameters, target_volume_ml: float):
         """
@@ -137,8 +151,13 @@ class ProtocolWrapper:
         # Convert parameters to dict format
         params_dict = self._parameters_to_dict(parameters)
         
-        # Call protocol measure function (single replicate)
-        results = self.protocol_module.measure(self.state, target_volume_ml, params_dict, replicates=1)
+        # Call protocol measure function/method (single replicate)
+        if self.is_instance:
+            # Class instance - call method
+            results = self.protocol.measure(self.state, target_volume_ml, params_dict, replicates=1)
+        else:
+            # Module - call function
+            results = self.protocol.measure(self.state, target_volume_ml, params_dict, replicates=1)
         
         # Convert back to expected format
         if results and len(results) > 0:
@@ -151,7 +170,12 @@ class ProtocolWrapper:
         """Clean up the hardware protocol."""
         try:
             if self.state is not None:
-                self.protocol_module.wrapup(self.state)
+                if self.is_instance:
+                    # Class instance - call method
+                    self.protocol.wrapup(self.state)
+                else:
+                    # Module - call function
+                    self.protocol.wrapup(self.state)
             return True
         except Exception as e:
             print(f"Protocol cleanup failed: {e}")
