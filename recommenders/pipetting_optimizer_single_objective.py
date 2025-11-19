@@ -26,7 +26,7 @@ DEFAULT_PARAMETER_BOUNDS = {
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume, model_type, 
                  optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0, 
-                 min_overaspirate_ul=0.0):
+                 min_overaspirate_ul=0.0, init_method="SOBOL"):
     """
     Create an Ax client for single-objective parameter optimization (deviation only).
     
@@ -41,6 +41,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         fixed_params: Dict of parameter names and values to keep fixed
         simulate: Whether in simulation mode
         max_overaspirate_ul: Maximum overaspirate volume in microliters (default 10.0 µL)
+        init_method: Initialization method - "SOBOL" (default), "UNIFORM", "FACTORIAL" (LATIN_HYPERCUBE not available in this Ax version)
     """
     
     # Default to optimizing all parameters if not specified
@@ -67,13 +68,32 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         # Default for single-objective
         model_gen_kwargs = {"deduplicate": True}
     
+    # Map initialization method string to Models enum
+    init_model_map = {
+        "SOBOL": Models.SOBOL,
+        "UNIFORM": Models.UNIFORM,
+        "FACTORIAL": Models.FACTORIAL
+    }
+    
+    # LATIN_HYPERCUBE not available in this Ax version - fallback to SOBOL
+    if init_method == "LATIN_HYPERCUBE":
+        print(f"Warning: LATIN_HYPERCUBE not available in this Ax version, falling back to SOBOL")
+        init_method = "SOBOL"
+    
+    if init_method not in init_model_map:
+        print(f"Warning: Unknown init_method '{init_method}', falling back to SOBOL")
+        init_method = "SOBOL"
+    
+    init_model = init_model_map[init_method]
+    print(f"  Using {init_method} initialization with {num_initial_recs} initial points")
+
     # Create generation strategy
     if not simulate:
         if num_initial_recs > 0:
             gs = GenerationStrategy(
                 steps=[
                     GenerationStep(
-                        model=Models.SOBOL,
+                        model=init_model,
                         num_trials=num_initial_recs,
                         min_trials_observed=num_initial_recs,
                         max_parallelism=num_initial_recs,
@@ -103,7 +123,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
         gs = GenerationStrategy(
             steps=[
                 GenerationStep(
-                    model=Models.SOBOL,
+                    model=init_model,
                     num_trials=-1,
                     max_parallelism=5,
                     model_kwargs={"seed": seed},

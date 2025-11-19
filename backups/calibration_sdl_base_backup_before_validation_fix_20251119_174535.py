@@ -253,7 +253,7 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
         lash_e.nr_robot.return_vial_home(liquid_source_name)
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
-def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, trial_type="UNKNOWN", liquid_for_params=None, use_wizard_mode=False):
+def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, trial_type="UNKNOWN", liquid_for_params=None):
     # Determine which liquid to use for parameter optimization
     # liquid_for_params takes precedence - can be None to force defaults
     param_liquid = liquid_for_params
@@ -262,55 +262,62 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
     if liquid_for_params != liquid:
         print(f"[PARAM DEBUG] liquid={liquid}, liquid_for_params={liquid_for_params}, param_liquid={param_liquid}")
     
-    # EXPLICIT MODE HANDLING - NO FALLBACKS
-    if use_wizard_mode or params is None:
-        # VALIDATION MODE: Let North_Safe parameter wizard handle everything
-        print(f"[WIZARD MODE] Using North_Safe parameter wizard for {param_liquid}")
-        # Don't create PipettingParameters - let robot handle it
-        use_robot_parameters = True
-        params = {}  # Empty dict to avoid crashes below
-    else:
-        # CALIBRATION MODE: Use exact parameters provided
-        print(f"[CALIBRATION MODE] Using provided parameters: {params}")
-        use_robot_parameters = False
-        # Normalize parameters to handle different naming conventions
-        params = normalize_parameters(params)
+    # Use intelligent parameter system if params=None (allows liquid=None for default comparison)
+    if params is None:
+        try:
+            # Get optimized parameters from the robot's intelligent system
+            # param_liquid=None will get defaults, param_liquid="water" will get optimized parameters
+            optimized_params = lash_e.nr_robot._get_optimized_parameters(volume, param_liquid)
+            if liquid_for_params != liquid:
+                print(f"[PARAM DEBUG] Got optimized params from robot for param_liquid={param_liquid}")
+            # Convert PipettingParameters object to dict for normalize_parameters
+            params = {
+                'aspirate_speed': optimized_params.aspirate_speed,
+                'dispense_speed': optimized_params.dispense_speed,
+                'aspirate_wait_time': optimized_params.aspirate_wait_time,
+                'dispense_wait_time': optimized_params.dispense_wait_time,
+                'retract_speed': optimized_params.retract_speed,
+                'blowout_vol': optimized_params.blowout_vol,
+                'post_asp_air_vol': optimized_params.post_asp_air_vol,
+                'overaspirate_vol': optimized_params.overaspirate_vol
+            }
+        except Exception as e:
+            print(f"Warning: Could not get optimized parameters for {param_liquid}: {e}")
+            params = None  # Fall back to defaults
+    
+    # Normalize parameters to handle different naming conventions
+    params = normalize_parameters(params)
     
     # DEBUG: Show final parameters only when investigating parameter issues
     if liquid_for_params != liquid:
         print(f"[PARAM DEBUG] Final parameters being used: {params}")
+    # Removed duplicate print(params) - too verbose
 
-    # PARAMETER OBJECT CREATION - CONDITIONAL ON MODE
-    if use_robot_parameters:
-        # WIZARD MODE: Pass None to let robot choose
-        aspirate_params = None
-        dispense_params = None
-    else:
-        # CALIBRATION MODE: Create specific parameter objects
-        blowout_vol = params.get("blowout_vol", 0.0)  # Default blowout volume
-        post_air = params.get("post_asp_air_vol", 0)
-        over_volume = params.get("overaspirate_vol", 0)
-        air_vol = post_air  # Only post_asp_air_vol contributes to air_vol now
-        
-        # Create PipettingParameters objects instead of kwargs dictionaries
-        aspirate_params = PipettingParameters(
-            aspirate_speed=params["aspirate_speed"],
-            aspirate_wait_time=params["aspirate_wait_time"],
-            retract_speed=params["retract_speed"],
-            pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
-            post_asp_air_vol=post_air,
-            overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for calibration
+    blowout_vol = params.get("blowout_vol", 0.0)  # Default blowout volume
+    post_air = params.get("post_asp_air_vol", 0)
+    over_volume = params.get("overaspirate_vol", 0)
+    #over_volume = 0
+    air_vol = post_air  # Only post_asp_air_vol contributes to air_vol now
+    
+    # Create PipettingParameters objects instead of kwargs dictionaries
+    aspirate_params = PipettingParameters(
+        aspirate_speed=params["aspirate_speed"],
+        aspirate_wait_time=params["aspirate_wait_time"],
+        retract_speed=params["retract_speed"],
+        pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
+        post_asp_air_vol=post_air,
+        overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for calibration
 
-        )
-        
-        dispense_params = PipettingParameters(
-            dispense_speed=params["dispense_speed"],
-            dispense_wait_time=params["dispense_wait_time"],
-            blowout_vol=blowout_vol,
-            overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for overdispense calculation
-            pre_asp_air_vol=0.0,  # Include for overdispense calculation
-            post_asp_air_vol=post_air,  # Include for overdispense calculation
-        )  
+    )
+    
+    dispense_params = PipettingParameters(
+        dispense_speed=params["dispense_speed"],
+        dispense_wait_time=params["dispense_wait_time"],
+        blowout_vol=blowout_vol,
+        overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for overdispense calculation
+        pre_asp_air_vol=0.0,  # Include for overdispense calculation
+        post_asp_air_vol=post_air,  # Include for overdispense calculation
+    )  
 
     if simulate:
         # In simulation mode, generate simulated data directly

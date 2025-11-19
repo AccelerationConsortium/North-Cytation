@@ -267,9 +267,11 @@ class PipettingWizard:
             
             new_overasp = current_overasp + adjustment
             
-            # Ensure overaspirate stays within reasonable bounds (0 to 20% of target volume)
-            max_overasp = volume_target / 1000 * 0.2  # 20% of target volume in mL
-            new_overasp = max(0.0, min(new_overasp, max_overasp))
+            # Apply reasonable bounds: -100% to +100% of target volume
+            target_volume_ml = volume_target / 1000  # Convert μL to mL
+            min_overasp = -target_volume_ml  # -100% of target volume
+            max_overasp = target_volume_ml   # +100% of target volume
+            new_overasp = max(min_overasp, min(new_overasp, max_overasp))
             
             # Calculate the actual adjustment that would be applied
             actual_adjustment_ml = new_overasp - current_overasp
@@ -301,7 +303,7 @@ class PipettingWizard:
             
         return df
     
-    def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = False) -> Optional[Dict[str, float]]:
+    def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = True) -> Optional[Dict[str, float]]:
         """
         Get pipetting parameters for a specific liquid and volume.
         
