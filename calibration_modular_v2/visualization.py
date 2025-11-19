@@ -18,8 +18,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pathlib import Path
 import logging
 
@@ -137,7 +136,7 @@ class CalibrationVisualizer:
         
         for i, vol in enumerate(volumes):
             df_sub = trials_df[trials_df['volume'] == vol].copy()
-            label = f"{vol*1000:.0f}μL"
+            label = f"{vol*1000:.0f}uL"
             
             plt.scatter(
                 df_sub["time"],
@@ -197,7 +196,7 @@ class CalibrationVisualizer:
                     vol_data['measured_volume_ul'],
                     color=colors[i],
                     alpha=0.7,
-                    label=f'{target_ul:.0f}μL target',
+                    label=f'{target_ul:.0f}uL target',
                     s=50
                 )
                 
@@ -213,7 +212,7 @@ class CalibrationVisualizer:
             plt.scatter(range(len(raw_df)), raw_df['measured_volume_ul'], alpha=0.7, s=50)
 
         plt.xlabel('Measurement Number')
-        plt.ylabel('Measured Volume (μL)')
+        plt.ylabel('Measured Volume (uL)')
         plt.title(f'Measured Volume Over Time (source: {source})')
         plt.legend()
         plt.grid(True, alpha=0.3)
@@ -251,7 +250,7 @@ class CalibrationVisualizer:
                     improvement = 0
                 
                 summary.append({
-                    'Volume': f'{vol*1000:.0f}μL',
+                    'Volume': f'{vol*1000:.0f}uL',
                     'Metric': metric.capitalize(),
                     'Improvement (%)': improvement
                 })

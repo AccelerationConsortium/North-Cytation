@@ -6780,3 +6780,1394 @@ TypeError: CalibrationExperiment._run_screening_phase() missing 1 required posit
 
 2025-11-11 11:04:08,684 - __main__ - ERROR - Experiment failed: CalibrationExperiment._run_screening_phase() missing 1 required positional argument: 'optimizer'
 2025-11-11 11:04:08,684 - __main__ - ERROR - Check configuration and try again
+2025-11-18 12:43:41,326 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 12:43:41,326 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 12:43:41,332 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 12:43:41,332 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 12:43:41,332 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 12:43:41,332 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-18 12:43:41,332 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 12:43:41,333 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 12:43:41,333 - __main__ - INFO - Execution mode: Simulation
+2025-11-18 12:43:41,333 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 12:43:41,333 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 12:43:41,333 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763487821
+2025-11-18 12:43:41,333 - __main__ - INFO - Starting experiment execution...
+2025-11-18 12:43:41,333 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 12:43:41,334 - calibration_modular_v2.experiment - INFO - Protocol initialized: ProtocolWrapper
+2025-11-18 12:43:41,334 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3) - Budget: 60 measurements
+2025-11-18 12:43:41,334 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2025-11-18 12:43:41,334 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-18 12:43:41,335 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-18 12:43:41,385 - calibration_modular_v2.experiment - WARNING - LLM screening failed, falling back to SOBOL: Failed to load LLM template from calibration_screening_llm_template.json: [Errno 2] No such file or directory: 'calibration_screening_llm_template.json'
+2025-11-18 12:43:41,385 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-18 12:43:41,386 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 12:43:41,386 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 12:43:41,387 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 5 SOBOL trials
+2025-11-18 12:43:41,387 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 5 SOBOL trials -> Bayesian optimization
+2025-11-18 12:43:41,387 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 12:43:41,388 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 12:43:41,388 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 12:43:41,388 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (5 trials)
+2025-11-18 12:43:41,422 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-18 12:43:41,422 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-18 12:43:41,423 - calibration_modular_v2.analysis - INFO - High deviation (10.0% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 12:43:41,423 - calibration_modular_v2.analysis - INFO - High deviation (10.0% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 12:43:41,423 - calibration_modular_v2.experiment - INFO - Screening trial 1/5: 55.0uL measured (10.0% dev, 35.6s)
+2025-11-18 12:43:41,423 - calibration_modular_v2.experiment - WARNING - LLM screening failed, falling back to SOBOL: Failed to load LLM template from calibration_screening_llm_template.json: [Errno 2] No such file or directory: 'calibration_screening_llm_template.json'
+2025-11-18 12:43:41,429 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 1) using Unknown
+2025-11-18 12:43:41,429 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 1
+2025-11-18 12:43:41,430 - calibration_modular_v2.experiment - INFO - Screening trial 2/5: 51.7uL measured (3.4% dev, 56.8s)
+2025-11-18 12:43:41,430 - calibration_modular_v2.experiment - WARNING - LLM screening failed, falling back to SOBOL: Failed to load LLM template from calibration_screening_llm_template.json: [Errno 2] No such file or directory: 'calibration_screening_llm_template.json'
+2025-11-18 12:43:41,434 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 2) using Unknown
+2025-11-18 12:43:41,434 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 2
+2025-11-18 12:43:41,434 - calibration_modular_v2.analysis - INFO - High deviation (21.9% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 12:43:41,434 - calibration_modular_v2.analysis - INFO - High deviation (21.9% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 12:43:41,434 - calibration_modular_v2.experiment - INFO - Screening trial 3/5: 60.9uL measured (21.9% dev, 49.9s)
+2025-11-18 12:43:41,435 - calibration_modular_v2.experiment - WARNING - LLM screening failed, falling back to SOBOL: Failed to load LLM template from calibration_screening_llm_template.json: [Errno 2] No such file or directory: 'calibration_screening_llm_template.json'
+2025-11-18 12:43:41,439 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 3) using Unknown
+2025-11-18 12:43:41,439 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 3
+2025-11-18 12:43:41,440 - calibration_modular_v2.experiment - INFO - Screening trial 4/5: 51.8uL measured (3.7% dev, 55.1s)
+2025-11-18 12:43:41,440 - calibration_modular_v2.experiment - WARNING - LLM screening failed, falling back to SOBOL: Failed to load LLM template from calibration_screening_llm_template.json: [Errno 2] No such file or directory: 'calibration_screening_llm_template.json'
+2025-11-18 12:43:41,445 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 4) using Unknown
+2025-11-18 12:43:41,445 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 4
+2025-11-18 12:43:41,445 - calibration_modular_v2.experiment - INFO - Screening trial 5/5: 54.5uL measured (8.9% dev, 46.9s)
+2025-11-18 12:43:41,445 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using best screening candidate
+2025-11-18 12:43:41,445 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2025-11-18 12:43:41,446 - calibration_modular_v2.experiment - INFO - Using best screening candidate for 50.0uL two-point calibration
+2025-11-18 12:43:41,446 - calibration_modular_v2.experiment - INFO - Best screening trial variability: 0.60uL
+2025-11-18 12:43:41,446 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 2.0uL
+2025-11-18 12:43:41,446 - calibration_modular_v2.experiment - INFO - Shortfall analysis: -1.5uL shortfall + 2.2uL tolerance = 3.8uL spread
+2025-11-18 12:43:41,446 - calibration_modular_v2.experiment - INFO - Point 2: Testing with decreased overaspirate -1.8uL (-3.8uL)
+2025-11-18 12:43:41,446 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.6uL (original: 0.6uL, cap: 2.5uL)
+2025-11-18 12:43:41,446 - calibration_modular_v2.constraint_calibration - INFO - Expanded bounds to include existing trials:
+2025-11-18 12:43:41,446 - calibration_modular_v2.constraint_calibration - INFO -   Original bounds: [-2.1, 3.2]uL
+2025-11-18 12:43:41,447 - calibration_modular_v2.constraint_calibration - INFO -   Existing data range: [0.9, 6.2]uL
+2025-11-18 12:43:41,447 - calibration_modular_v2.constraint_calibration - INFO -   Final bounds: [-2.1, 6.2]uL
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO -   New bounds: [-2.1, 6.2] uL
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=1.099uL/uL, tolerance=+/-2.3uL, error_margin=+/-1.0% for 50.0uL target
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=-0.0020669113257432746, max_value=0.0062183651234954595, justification='Two-point calibration: efficiency=1.099uL/uL, tolerance=+/-2.3uL, error_margin=+/-1.0% for 50.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.05, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0019700132380239665, measured_volume_ml=np.float64(0.05152486575843006), measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0019700132380239665), hardware=HardwareParameters(parameters={'aspirate_speed': 27, 'dispense_speed': 10, 'aspirate_wait_time': 17.624640623107553, 'dispense_wait_time': 13.395075257867575, 'retract_speed': 3.6173898614943027, 'blowout_vol': 0.12791422177106143, 'post_asp_air_vol': 0.09048205297440291}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=np.float64(-0.0018048525204060885), measured_volume_ml=np.float64(0.047375195628771266), measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=np.float64(-0.0018048525204060885)), hardware=HardwareParameters(parameters={'aspirate_speed': 27, 'dispense_speed': 10, 'aspirate_wait_time': 17.624640623107553, 'dispense_wait_time': 13.395075257867575, 'retract_speed': 3.6173898614943027, 'blowout_vol': 0.12791422177106143, 'post_asp_air_vol': 0.09048205297440291}))), volume_efficiency_ul_per_ul=np.float64(1.0992894569539913), shortfall_ml=np.float64(-0.0015248657584300551), optimal_overaspirate_ml=np.float64(0.0005828756203711138), min_overaspirate_ml=np.float64(-0.0020669113257432746), max_overaspirate_ml=0.0062183651234954595, tolerance_range_ml=0.0022500000000000003), optimal_overaspirate_ml=0.0005828756203711138)
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=1.099uL/uL, tolerance=+/-2.3uL, error_margin=+/-1.0% for 50.0uL target
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2025-11-18 12:43:41,447 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 0.0uL (target: 50.0uL)
+2025-11-18 12:43:41,448 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 0.0uL (target: 50.0uL)
+2025-11-18 12:43:41,448 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:41,448 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2025-11-18 12:43:41,448 - calibration_modular_v2.bayesian_recommender - INFO - Applied constraint update for overaspirate_vol: [-2.1, 6.2] uL
+2025-11-18 12:43:41,448 - calibration_modular_v2.bayesian_recommender - INFO - Justification: Two-point calibration: efficiency=1.099uL/uL, tolerance=+/-2.3uL, error_margin=+/-1.0% for 50.0uL target
+2025-11-18 12:43:41,448 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 12:43:41,448 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 12:43:41,449 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 0 SOBOL trials
+2025-11-18 12:43:41,449 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: Pure Bayesian optimization (no exploration)
+2025-11-18 12:43:41,449 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 12:43:41,449 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 12:43:41,450 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 12:43:41,450 - calibration_modular_v2.experiment - INFO - Created qNEHVI optimizer for volume 50uL
+2025-11-18 12:43:41,450 - calibration_modular_v2.experiment - INFO - Loading 5 screening trials into optimizer
+2025-11-18 12:43:41,454 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=10.0% (included in ranking)
+2025-11-18 12:43:41,457 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=3.4% (included in ranking)
+2025-11-18 12:43:41,461 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=21.9% (included in ranking)
+2025-11-18 12:43:41,464 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=3.7% (included in ranking)
+2025-11-18 12:43:41,468 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=8.9% (included in ranking)
+2025-11-18 12:43:41,468 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2025-11-18 12:43:44,448 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 5) using Unknown
+2025-11-18 12:43:44,448 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-18 12:43:44,452 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=1.9%, trial=5
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - Trial 1: deviation=1.9%, good_trials=3
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - OPTIMIZATION SUMMARY
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - Status: converged
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - Convergence reason: Found 3 good trials
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - Total trials: 6
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - Good trials (within tolerance): 3
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - Best accuracy achieved: 1.9% deviation
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - Best overaspirate volume: 0.8uL
+2025-11-18 12:43:44,453 - calibration_modular_v2.experiment - INFO - Best hardware parameters:
+2025-11-18 12:43:44,454 - calibration_modular_v2.experiment - INFO -   aspirate_speed: 29.0
+2025-11-18 12:43:44,454 - calibration_modular_v2.experiment - INFO -   dispense_speed: 17.0
+2025-11-18 12:43:44,454 - calibration_modular_v2.experiment - INFO -   aspirate_wait_time: 7.8
+2025-11-18 12:43:44,454 - calibration_modular_v2.experiment - INFO -   dispense_wait_time: 10.3
+2025-11-18 12:43:44,454 - calibration_modular_v2.experiment - INFO -   retract_speed: 5.4
+2025-11-18 12:43:44,454 - calibration_modular_v2.experiment - INFO -   blowout_vol: 0.1
+2025-11-18 12:43:44,454 - calibration_modular_v2.experiment - INFO -   post_asp_air_vol: 0.1
+2025-11-18 12:43:44,454 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:44,456 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'converged', 'convergence_reason': 'Found 3 good trials', 'total_trials': 6, 'good_trials': 3, 'best_accuracy': np.float64(1.8638174716689022), 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0007589559788101232), hardware=HardwareParameters(parameters={'aspirate_speed': 29, 'dispense_speed': 17, 'aspirate_wait_time': 7.772849966899517, 'dispense_wait_time': 10.325212942490595, 'retract_speed': 5.435954609286467, 'blowout_vol': 0.06021313843213766, 'post_asp_air_vol': 0.08391833252586467}))}
+2025-11-18 12:43:44,456 - calibration_modular_v2.experiment - INFO - Volume 50.0uL calibration completed: 18 measurements, 5 good trials
+2025-11-18 12:43:44,456 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.025 mL (2/3) - Budget: 39 measurements
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Starting calibration for 25.0uL
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using previous volume parameters
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Using optimized parameters from 50.0uL volume for 25.0uL calibration
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Best trial variability from first volume: 0.26uL
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 0.8uL
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Shortfall analysis: -0.6uL shortfall + 1.1uL tolerance = 2.0uL spread
+2025-11-18 12:43:44,457 - calibration_modular_v2.experiment - INFO - Point 2: Testing with decreased overaspirate -1.2uL (-2.0uL)
+2025-11-18 12:43:44,458 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.3uL (original: 0.3uL, cap: 1.3uL)
+2025-11-18 12:43:44,458 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2025-11-18 12:43:44,458 - calibration_modular_v2.experiment - INFO -   New bounds: [-0.7, 1.4] uL
+2025-11-18 12:43:44,458 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=1.394uL/uL, tolerance=+/-1.1uL, error_margin=+/-1.0% for 25.0uL target
+2025-11-18 12:43:44,458 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:44,458 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2025-11-18 12:43:44,458 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=-0.0007109357170918598, max_value=0.0014139513383810574, justification='Two-point calibration: efficiency=1.394uL/uL, tolerance=+/-1.1uL, error_margin=+/-1.0% for 25.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.025, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0007589559788101232, measured_volume_ml=np.float64(0.025567812538428707), measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0007589559788101232), hardware=HardwareParameters(parameters={'aspirate_speed': 29, 'dispense_speed': 17, 'aspirate_wait_time': 7.772849966899517, 'dispense_wait_time': 10.325212942490595, 'retract_speed': 5.435954609286467, 'blowout_vol': 0.06021313843213766, 'post_asp_air_vol': 0.08391833252586467}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=-0.0012410440211898769, measured_volume_ml=np.float64(0.022780648021355536), measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=-0.0012410440211898769), hardware=HardwareParameters(parameters={'aspirate_speed': 29, 'dispense_speed': 17, 'aspirate_wait_time': 7.772849966899517, 'dispense_wait_time': 10.325212942490595, 'retract_speed': 5.435954609286467, 'blowout_vol': 0.06021313843213766, 'post_asp_air_vol': 0.08391833252586467}))), volume_efficiency_ul_per_ul=np.float64(1.3935822585365853), shortfall_ml=np.float64(-0.0005678125384287053), optimal_overaspirate_ml=np.float64(0.0003515078106445988), min_overaspirate_ml=np.float64(-0.0007109357170918598), max_overaspirate_ml=np.float64(0.0014139513383810574), tolerance_range_ml=0.0011250000000000001), optimal_overaspirate_ml=0.0003515078106445988)
+2025-11-18 12:43:44,458 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=1.394uL/uL, tolerance=+/-1.1uL, error_margin=+/-1.0% for 25.0uL target
+2025-11-18 12:43:44,458 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 0.0uL (target: 25.0uL)
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 0.0uL (target: 25.0uL)
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO - Running inherited trial with optimal overaspirate from two-point calibration
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO - Using optimal overaspirate: 0.35uL
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO - Executing inherited trial: overaspirate=0.35uL
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 4.5% for 25uL
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO -   Deviation: -1.7% (tolerance: +/-4.5%)
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO -   Variability: 0.9% CV (tolerance: <=4.5%)
+2025-11-18 12:43:44,459 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.7 <= 4.5)
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.9 <= 4.5)
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO - [SUCCESS] Inherited trial SUCCEEDED - using optimal parameters directly
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Measured: -1.7% deviation
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Variability: 0.9% CV
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 4.5% for 25uL
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Deviation: -1.7% (tolerance: +/-4.5%)
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Variability: 0.9% CV (tolerance: <=4.5%)
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.7 <= 4.5)
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.9 <= 4.5)
+2025-11-18 12:43:44,460 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 4.5% for 25uL
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO -   Deviation: -1.7% (tolerance: +/-4.5%)
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO -   Variability: 0.9% CV (tolerance: <=4.5%)
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.7 <= 4.5)
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.9 <= 4.5)
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Using successful inherited trial as optimal result
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Volume 25.0uL calibration completed: 5 measurements, 1 good trials
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.01 mL (3/3) - Budget: 73 measurements
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Starting calibration for 10.0uL
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using previous volume parameters
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2025-11-18 12:43:44,461 - calibration_modular_v2.experiment - INFO - Using optimized parameters from 50.0uL volume for 10.0uL calibration
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO - Best trial variability from first volume: 0.26uL
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 0.8uL
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO - Shortfall analysis: -0.7uL shortfall + 0.8uL tolerance = 2.0uL spread
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO - Point 2: Testing with decreased overaspirate -1.2uL (-2.0uL)
+2025-11-18 12:43:44,462 - calibration_modular_v2.analysis - INFO - High deviation (16.8% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 12:43:44,462 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.3uL (original: 0.3uL, cap: 0.5uL)
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO -   New bounds: [-0.7, 1.1] uL
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=1.171uL/uL, tolerance=+/-0.8uL, error_margin=+/-100.0% for 10.0uL target
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:44,462 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=-0.0006993814607955987, max_value=0.0010919379354250203, justification='Two-point calibration: efficiency=1.171uL/uL, tolerance=+/-0.8uL, error_margin=+/-100.0% for 10.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.01, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0007589559788101232, measured_volume_ml=np.float64(0.010658885356298086), measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0007589559788101232), hardware=HardwareParameters(parameters={'aspirate_speed': 29, 'dispense_speed': 17, 'aspirate_wait_time': 7.772849966899517, 'dispense_wait_time': 10.325212942490595, 'retract_speed': 5.435954609286467, 'blowout_vol': 0.06021313843213766, 'post_asp_air_vol': 0.08391833252586467}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=-0.0012410440211898769, measured_volume_ml=np.float64(0.00831692189228408), measurement_count=1, variability_pct=100.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=-0.0012410440211898769), hardware=HardwareParameters(parameters={'aspirate_speed': 29, 'dispense_speed': 17, 'aspirate_wait_time': 7.772849966899517, 'dispense_wait_time': 10.325212942490595, 'retract_speed': 5.435954609286467, 'blowout_vol': 0.06021313843213766, 'post_asp_air_vol': 0.08391833252586467}))), volume_efficiency_ul_per_ul=np.float64(1.1709817320070033), shortfall_ml=np.float64(-0.0006588853562980862), optimal_overaspirate_ml=np.float64(0.00019627823731471094), min_overaspirate_ml=np.float64(-0.0006993814607955987), max_overaspirate_ml=np.float64(0.0010919379354250203), tolerance_range_ml=0.00075), optimal_overaspirate_ml=0.00019627823731471094)
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=1.171uL/uL, tolerance=+/-0.8uL, error_margin=+/-100.0% for 10.0uL target
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 0.0uL (target: 10.0uL)
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 0.0uL (target: 10.0uL)
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO - Running inherited trial with optimal overaspirate from two-point calibration
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO - Using optimal overaspirate: 0.20uL
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO - Executing inherited trial: overaspirate=0.20uL
+2025-11-18 12:43:44,463 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 7.5% for 10uL
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Deviation: -0.8% (tolerance: +/-7.5%)
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Variability: 0.5% CV (tolerance: <=7.5%)
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Deviation check: True (0.8 <= 7.5)
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.5 <= 7.5)
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO - [SUCCESS] Inherited trial SUCCEEDED - using optimal parameters directly
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Measured: -0.8% deviation
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Variability: 0.5% CV
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 7.5% for 10uL
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Deviation: -0.8% (tolerance: +/-7.5%)
+2025-11-18 12:43:44,464 - calibration_modular_v2.experiment - INFO -   Variability: 0.5% CV (tolerance: <=7.5%)
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO -   Deviation check: True (0.8 <= 7.5)
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.5 <= 7.5)
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 7.5% for 10uL
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO -   Deviation: -0.8% (tolerance: +/-7.5%)
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO -   Variability: 0.5% CV (tolerance: <=7.5%)
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO -   Deviation check: True (0.8 <= 7.5)
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.5 <= 7.5)
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO - Using successful inherited trial as optimal result
+2025-11-18 12:43:44,465 - calibration_modular_v2.experiment - INFO - Volume 10.0uL calibration completed: 5 measurements, 1 good trials
+2025-11-18 12:43:44,466 - calibration_modular_v2.experiment - INFO - Exported optimal conditions JSON to output\calibration_v2_runs\run_1763487821\optimal_conditions.json
+2025-11-18 12:43:44,468 - calibration_modular_v2.experiment - INFO - Exported raw measurements JSON to output\calibration_v2_runs\run_1763487821\raw_measurements.json
+2025-11-18 12:43:44,469 - calibration_modular_v2.experiment - INFO - Exported experiment summary to output\calibration_v2_runs\run_1763487821\experiment_summary.json
+2025-11-18 12:43:44,470 - calibration_modular_v2.experiment - INFO - Generating enhanced outputs...
+2025-11-18 12:43:44,471 - calibration_modular_v2.experiment - INFO - Generating calibration plots...
+2025-11-18 12:43:44,471 - calibration_modular_v2.visualization - INFO - Generating calibration visualization plots...
+2025-11-18 12:43:44,546 - calibration_modular_v2.visualization - INFO - Creating Time vs Deviation scatter for 3 volumes: [np.float64(10.0), np.float64(25.0), np.float64(50.0)] uL
+2025-11-18 12:43:44,706 - calibration_modular_v2.visualization - INFO - [OK] Time vs deviation scatter plot saved
+2025-11-18 12:43:44,950 - calibration_modular_v2.visualization - INFO - [OK] Measured volume over time plot saved
+2025-11-18 12:43:45,121 - calibration_modular_v2.visualization - INFO - [OK] Improvement summary saved
+2025-11-18 12:43:45,121 - calibration_modular_v2.visualization - INFO - [SUCCESS] All plots saved to: output\calibration_v2_runs\run_1763487821\plots
+2025-11-18 12:43:45,121 - calibration_modular_v2.experiment - INFO - Exporting clean CSV files...
+2025-11-18 12:43:45,121 - calibration_modular_v2.csv_export - INFO - Exporting clean CSV files...
+2025-11-18 12:43:45,125 - calibration_modular_v2.csv_export - INFO - Exported 14 trial results to trial_results.csv
+2025-11-18 12:43:45,126 - calibration_modular_v2.csv_export - INFO - Exported 3 optimal conditions to optimal_conditions.csv
+2025-11-18 12:43:45,128 - calibration_modular_v2.csv_export - INFO - Exported 28 raw measurements to raw_measurements.csv
+2025-11-18 12:43:45,128 - calibration_modular_v2.csv_export - INFO - [SUCCESS] Clean CSV files exported successfully
+2025-11-18 12:43:45,130 - calibration_modular_v2.csv_export - INFO - Exported experiment summary to experiment_summary.csv
+2025-11-18 12:43:45,130 - calibration_modular_v2.experiment - INFO - Generating analysis insights...
+2025-11-18 12:43:45,130 - calibration_modular_v2.experiment_analysis - INFO - Performing calibration experiment analysis...
+2025-11-18 12:43:45,176 - calibration_modular_v2.experiment_analysis - INFO - [SUCCESS] Experiment analysis completed
+2025-11-18 12:43:45,176 - calibration_modular_v2.experiment_analysis - INFO - Analysis report saved to: output\calibration_v2_runs\run_1763487821\analysis_report.txt
+2025-11-18 12:43:45,177 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated 3 visualization plots in plots/
+2025-11-18 12:43:45,177 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated 4 CSV files
+2025-11-18 12:43:45,177 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated analysis insights and recommendations
+2025-11-18 12:43:45,177 - calibration_modular_v2.experiment - INFO - Calibration experiment completed successfully
+2025-11-18 12:43:45,177 - calibration_modular_v2.experiment - INFO - Total measurements: 28
+2025-11-18 12:43:45,177 - calibration_modular_v2.experiment - INFO - Total duration: 3.1s
+2025-11-18 12:43:45,177 - __main__ - INFO - ============================================================
+2025-11-18 12:43:45,178 - __main__ - INFO - CALIBRATION COMPLETED SUCCESSFULLY
+2025-11-18 12:43:45,178 - __main__ - INFO - ============================================================
+2025-11-18 12:43:45,178 - __main__ - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 12:43:45,178 - __main__ - INFO - Total measurements: 28
+2025-11-18 12:43:45,178 - __main__ - INFO - Total duration: 3.1 seconds
+2025-11-18 12:43:45,178 - __main__ - INFO - Volumes calibrated: 3
+2025-11-18 12:43:45,178 - __main__ - INFO - Success rate: 57.1%
+2025-11-18 12:43:45,178 - __main__ - INFO - Mean score: 0.981
+2025-11-18 12:43:45,178 - __main__ - INFO - High quality trials: 8
+2025-11-18 12:43:45,178 - __main__ - INFO - 
+Results saved to: output\calibration_v2_runs\run_1763487821
+2025-11-18 12:43:45,178 - __main__ - INFO - Files generated:
+2025-11-18 12:43:45,178 - __main__ - INFO -   - optimal_conditions.csv (best parameters for each volume)
+2025-11-18 12:43:45,178 - __main__ - INFO -   - raw_measurements.csv (all measurement data)
+2025-11-18 12:43:45,178 - __main__ - INFO -   - experiment_summary.json (complete statistics)
+2025-11-18 12:43:45,178 - __main__ - INFO - 
+[SUCCESS] Calibration experiment completed successfully!
+2025-11-18 15:08:22,852 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:08:22,852 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:08:22,866 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:08:22,866 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:08:22,866 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:08:22,867 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:08:22,867 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:08:22,867 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:08:22,867 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:08:22,867 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:08:22,868 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:08:22,870 - __main__ - ERROR - Experiment failed: unexpected character after line continuation character (calibration_protocol_hardware.py, line 88)
+2025-11-18 15:08:22,870 - __main__ - ERROR - Check configuration and try again
+2025-11-18 15:09:33,046 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:09:33,046 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:09:33,053 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:09:33,053 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:09:33,053 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:09:33,053 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:09:33,053 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:09:33,053 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:09:33,053 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:09:33,054 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:09:33,054 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:09:33,065 - __main__ - ERROR - Experiment failed: unexpected character after line continuation character (calibration_protocol_hardware.py, line 90)
+2025-11-18 15:09:33,065 - __main__ - ERROR - Check configuration and try again
+2025-11-18 15:10:40,154 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:10:40,154 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:10:40,161 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:10:40,161 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:10:40,161 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:10:40,161 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:10:40,161 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:10:40,161 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:10:40,161 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:10:40,162 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:10:40,162 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:10:40,163 - __main__ - ERROR - Experiment failed: unexpected character after line continuation character (calibration_protocol_hardware.py, line 90)
+2025-11-18 15:10:40,163 - __main__ - ERROR - Check configuration and try again
+2025-11-18 15:13:07,826 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:13:07,826 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:13:07,833 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:13:07,833 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:13:07,833 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:13:07,833 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:13:07,833 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:13:07,833 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:13:07,834 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:13:07,834 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:13:07,834 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:13:07,846 - __main__ - ERROR - Experiment failed: unexpected character after line continuation character (calibration_protocol_hardware.py, line 179)
+2025-11-18 15:13:07,846 - __main__ - ERROR - Check configuration and try again
+2025-11-18 15:14:05,668 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:14:05,668 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:14:05,675 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:14:05,675 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:14:05,675 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:14:05,675 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:14:05,675 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:14:05,675 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:14:05,675 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:14:05,676 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:14:05,676 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:14:05,680 - __main__ - INFO - Protocol HardwareCalibrationProtocol created successfully
+2025-11-18 15:14:05,680 - __main__ - ERROR - Experiment failed: CalibrationExperiment.__init__() got an unexpected keyword argument 'protocol'
+2025-11-18 15:14:05,680 - __main__ - ERROR - Check configuration and try again
+2025-11-18 15:20:17,001 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:20:17,001 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:20:17,008 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:20:17,009 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:20:17,009 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:20:17,009 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:20:17,009 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:20:17,009 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:20:17,009 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:20:17,009 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:20:17,010 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:20:17,016 - __main__ - INFO - Protocol HardwareCalibrationProtocol created successfully
+2025-11-18 15:20:17,016 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 15:20:17,017 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:20:17,017 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763497217
+2025-11-18 15:20:17,017 - __main__ - INFO - Starting experiment execution...
+2025-11-18 15:20:17,017 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 15:20:17,017 - calibration_modular_v2.experiment - ERROR - Experiment failed: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_hardware_fixed', 'calibration_protocol_simulated', 'calibration_protocol_simulated_broken']
+2025-11-18 15:20:17,027 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 39, in load_hardware_protocol
+    protocol_module = importlib.import_module(protocol_name)
+  File "C:\Users\Owen\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'calibration_protocol_example'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 290, in run
+    self._initialize_protocol()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 349, in _initialize_protocol
+    self.protocol = create_protocol(self.config)
+                    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 93, in create_protocol
+    protocol_module = load_hardware_protocol(protocol_name)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 52, in load_hardware_protocol
+    raise ImportError(f"Cannot load protocol '{protocol_name}': {e}\n"
+                     f"Available protocols: {available_protocols}")
+ImportError: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_hardware_fixed', 'calibration_protocol_simulated', 'calibration_protocol_simulated_broken']
+
+2025-11-18 15:20:17,028 - __main__ - ERROR - Experiment failed: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_hardware_fixed', 'calibration_protocol_simulated', 'calibration_protocol_simulated_broken']
+2025-11-18 15:20:17,028 - __main__ - ERROR - Check configuration and try again
+2025-11-18 15:21:07,292 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:21:07,292 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:21:07,308 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:21:07,308 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:21:07,308 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:21:07,308 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:21:07,308 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:21:07,309 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:21:07,309 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:21:07,309 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:21:07,309 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:21:07,314 - __main__ - INFO - Protocol HardwareCalibrationProtocol created successfully
+2025-11-18 15:21:07,315 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 15:21:07,315 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:21:07,315 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763497267
+2025-11-18 15:21:07,315 - __main__ - INFO - Starting experiment execution...
+2025-11-18 15:21:07,315 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 15:21:07,315 - calibration_modular_v2.experiment - ERROR - Experiment failed: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_hardware_fixed', 'calibration_protocol_simulated', 'calibration_protocol_simulated_broken']
+2025-11-18 15:21:07,317 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 39, in load_hardware_protocol
+    protocol_module = importlib.import_module(protocol_name)
+  File "C:\Users\Owen\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'calibration_protocol_example'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 290, in run
+    self._initialize_protocol()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 349, in _initialize_protocol
+    self.protocol = create_protocol(self.config)
+                    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 93, in create_protocol
+    protocol_module = load_hardware_protocol(protocol_name)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 52, in load_hardware_protocol
+    raise ImportError(f"Cannot load protocol '{protocol_name}': {e}\n"
+                     f"Available protocols: {available_protocols}")
+ImportError: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_hardware_fixed', 'calibration_protocol_simulated', 'calibration_protocol_simulated_broken']
+
+2025-11-18 15:21:07,317 - __main__ - ERROR - Experiment failed: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_hardware_fixed', 'calibration_protocol_simulated', 'calibration_protocol_simulated_broken']
+2025-11-18 15:21:07,317 - __main__ - ERROR - Check configuration and try again
+2025-11-18 15:23:04,311 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:23:04,311 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:23:04,326 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:23:04,326 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:23:04,326 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:23:04,326 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:23:04,326 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:23:04,326 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:23:04,326 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:23:04,327 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:23:04,327 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:23:04,331 - __main__ - INFO - Protocol HardwareCalibrationProtocol created successfully
+2025-11-18 15:23:04,332 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 15:23:04,332 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:23:04,332 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763497384
+2025-11-18 15:23:04,332 - __main__ - INFO - Starting experiment execution...
+2025-11-18 15:23:04,332 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 15:23:04,333 - calibration_modular_v2.experiment - ERROR - Experiment failed: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_simulated']
+2025-11-18 15:23:04,334 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 39, in load_hardware_protocol
+    protocol_module = importlib.import_module(protocol_name)
+  File "C:\Users\Owen\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'calibration_protocol_example'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 290, in run
+    self._initialize_protocol()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 349, in _initialize_protocol
+    self.protocol = create_protocol(self.config)
+                    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 93, in create_protocol
+    protocol_module = load_hardware_protocol(protocol_name)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\protocol_loader.py", line 52, in load_hardware_protocol
+    raise ImportError(f"Cannot load protocol '{protocol_name}': {e}\n"
+                     f"Available protocols: {available_protocols}")
+ImportError: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_simulated']
+
+2025-11-18 15:23:04,335 - __main__ - ERROR - Experiment failed: Cannot load protocol 'calibration_protocol_example': No module named 'calibration_protocol_example'
+Available protocols: ['calibration_protocol_base', 'calibration_protocol_hardware', 'calibration_protocol_simulated']
+2025-11-18 15:23:04,335 - __main__ - ERROR - Check configuration and try again
+2025-11-18 15:25:42,666 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 15:25:42,667 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 15:25:42,674 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 15:25:42,674 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:25:42,674 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:25:42,674 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 15:25:42,674 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 15:25:42,674 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 15:25:42,674 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 15:25:42,674 - __main__ - INFO - Validating protocol interface...
+2025-11-18 15:25:42,675 - __main__ - INFO - Using hardware protocol
+2025-11-18 15:25:42,679 - __main__ - INFO - Protocol HardwareCalibrationProtocol created successfully
+2025-11-18 15:25:42,680 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 15:25:42,680 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 15:25:42,680 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763497542
+2025-11-18 15:25:42,680 - __main__ - INFO - Starting experiment execution...
+2025-11-18 15:25:42,680 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 15:25:42,680 - calibration_modular_v2.experiment - ERROR - Experiment failed: Failed to initialize measurement protocol
+2025-11-18 15:25:42,681 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 290, in run
+    self._initialize_protocol()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 353, in _initialize_protocol
+    raise RuntimeError("Failed to initialize measurement protocol")
+RuntimeError: Failed to initialize measurement protocol
+
+2025-11-18 15:25:42,681 - __main__ - ERROR - Experiment failed: Failed to initialize measurement protocol
+2025-11-18 15:25:42,681 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:08:11,024 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:08:11,024 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:08:11,031 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:08:11,031 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:08:11,031 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:08:11,031 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 16:08:11,031 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:08:11,031 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:08:11,032 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 16:08:11,032 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:08:11,032 - __main__ - INFO - Using hardware protocol
+2025-11-18 16:08:11,032 - __main__ - INFO - Protocol HardwareCalibrationProtocol created successfully
+2025-11-18 16:08:11,033 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:08:11,033 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:08:11,033 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763500091
+2025-11-18 16:08:11,033 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:08:11,033 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:08:11,033 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:08:11,033 - calibration_modular_v2.experiment - ERROR - Protocol initialization failed: Unknown protocol: calibration_protocol_hardware
+2025-11-18 16:08:11,033 - calibration_modular_v2.experiment - ERROR - Error type: ValueError
+2025-11-18 16:08:11,034 - calibration_modular_v2.experiment - ERROR - Traceback:   File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 365, in _initialize_protocol
+    raise ValueError(f"Unknown protocol: {protocol_name}")
+
+2025-11-18 16:08:11,034 - calibration_modular_v2.experiment - ERROR - Experiment failed: Failed to initialize measurement protocol: Unknown protocol: calibration_protocol_hardware
+2025-11-18 16:08:11,034 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 365, in _initialize_protocol
+    raise ValueError(f"Unknown protocol: {protocol_name}")
+ValueError: Unknown protocol: calibration_protocol_hardware
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 287, in run
+    self._initialize_protocol()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 376, in _initialize_protocol
+    raise RuntimeError(f"Failed to initialize measurement protocol: {e}") from e
+RuntimeError: Failed to initialize measurement protocol: Unknown protocol: calibration_protocol_hardware
+
+2025-11-18 16:08:11,035 - __main__ - ERROR - Experiment failed: 'CalibrationExperiment' object has no attribute 'protocol'
+2025-11-18 16:08:11,035 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:09:25,574 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:09:25,575 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:09:25,582 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:09:25,582 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:09:25,582 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:09:25,582 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 16:09:25,582 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:09:25,583 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:09:25,583 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 16:09:25,583 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:09:25,583 - __main__ - INFO - Using hardware protocol
+2025-11-18 16:09:25,583 - __main__ - INFO - Protocol HardwareCalibrationProtocol created successfully
+2025-11-18 16:09:25,584 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:09:25,584 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:09:25,584 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763500165
+2025-11-18 16:09:25,584 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:09:25,584 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:09:25,584 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:09:25,584 - calibration_modular_v2.experiment - ERROR - Protocol initialization failed: Hardware not available. Install North Robot libraries or use simulation protocol.
+2025-11-18 16:09:25,585 - calibration_modular_v2.experiment - ERROR - Error type: RuntimeError
+2025-11-18 16:09:25,585 - calibration_modular_v2.experiment - ERROR - Traceback:   File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 367, in _initialize_protocol
+    self.protocol_state = self.protocol.initialize(config_dict)
+                          ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 41, in initialize
+    raise RuntimeError(
+        "Hardware not available. Install North Robot libraries or use simulation protocol."
+    )
+
+2025-11-18 16:09:25,585 - calibration_modular_v2.experiment - ERROR - Experiment failed: Failed to initialize measurement protocol: Hardware not available. Install North Robot libraries or use simulation protocol.
+2025-11-18 16:09:25,586 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 367, in _initialize_protocol
+    self.protocol_state = self.protocol.initialize(config_dict)
+                          ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 41, in initialize
+    raise RuntimeError(
+        "Hardware not available. Install North Robot libraries or use simulation protocol."
+    )
+RuntimeError: Hardware not available. Install North Robot libraries or use simulation protocol.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 287, in run
+    self._initialize_protocol()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 376, in _initialize_protocol
+    raise RuntimeError(f"Failed to initialize measurement protocol: {e}") from e
+RuntimeError: Failed to initialize measurement protocol: Hardware not available. Install North Robot libraries or use simulation protocol.
+
+2025-11-18 16:09:25,586 - __main__ - ERROR - Experiment failed: Failed to initialize measurement protocol: Hardware not available. Install North Robot libraries or use simulation protocol.
+2025-11-18 16:09:25,586 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:10:58,591 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:10:58,591 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:10:58,599 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:10:58,599 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:10:58,599 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:10:58,599 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 16:10:58,599 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:10:58,599 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:10:58,599 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 16:10:58,599 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:10:58,599 - __main__ - INFO - Running in hardware mode
+2025-11-18 16:10:58,600 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:10:58,600 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:10:58,600 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763500258
+2025-11-18 16:10:58,600 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:10:58,600 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:10:58,600 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:10:58,604 - calibration_modular_v2.experiment - ERROR - Protocol initialization failed: Hardware not available. Install North Robot libraries or use simulation protocol.
+2025-11-18 16:10:58,604 - calibration_modular_v2.experiment - ERROR - Error type: RuntimeError
+2025-11-18 16:10:58,605 - calibration_modular_v2.experiment - ERROR - Traceback:   File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 360, in _initialize_protocol
+    self.protocol_state = self.protocol_module.initialize(config_dict)
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 191, in initialize
+    return _protocol_instance.initialize(cfg)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 41, in initialize
+    raise RuntimeError(
+        "Hardware not available. Install North Robot libraries or use simulation protocol."
+    )
+
+2025-11-18 16:10:58,605 - calibration_modular_v2.experiment - ERROR - Experiment failed: Failed to initialize measurement protocol: Hardware not available. Install North Robot libraries or use simulation protocol.
+2025-11-18 16:10:58,606 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 360, in _initialize_protocol
+    self.protocol_state = self.protocol_module.initialize(config_dict)
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 191, in initialize
+    return _protocol_instance.initialize(cfg)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 41, in initialize
+    raise RuntimeError(
+        "Hardware not available. Install North Robot libraries or use simulation protocol."
+    )
+RuntimeError: Hardware not available. Install North Robot libraries or use simulation protocol.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 286, in run
+    self._initialize_protocol()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 369, in _initialize_protocol
+    raise RuntimeError(f"Failed to initialize measurement protocol: {e}") from e
+RuntimeError: Failed to initialize measurement protocol: Hardware not available. Install North Robot libraries or use simulation protocol.
+
+2025-11-18 16:10:58,606 - __main__ - ERROR - Experiment failed: 'CalibrationExperiment' object has no attribute 'protocol'
+2025-11-18 16:10:58,606 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:13:19,188 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:13:19,188 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:13:19,203 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:13:19,203 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:13:19,203 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:13:19,203 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-18 16:13:19,204 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:13:19,204 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:13:19,204 - __main__ - INFO - Execution mode: Simulation
+2025-11-18 16:13:19,204 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:13:19,204 - __main__ - INFO - Running in simulation mode
+2025-11-18 16:13:19,205 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:13:19,205 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:13:19,205 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763500399
+2025-11-18 16:13:19,205 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:13:19,205 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:13:19,205 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:13:19,206 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_simulated
+2025-11-18 16:13:19,206 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3) - Budget: 60 measurements
+2025-11-18 16:13:19,206 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2025-11-18 16:13:19,206 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-18 16:13:19,207 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-18 16:13:19,207 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-18 16:13:19,207 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 16:13:19,207 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 16:13:19,208 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 5 SOBOL trials
+2025-11-18 16:13:19,209 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 5 SOBOL trials -> Bayesian optimization
+2025-11-18 16:13:19,209 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 16:13:19,209 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 16:13:19,209 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 16:13:19,209 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (5 trials)
+2025-11-18 16:13:19,215 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-18 16:13:19,215 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-18 16:13:19,215 - calibration_modular_v2.experiment - ERROR - Experiment failed: 'CalibrationExperiment' object has no attribute '_execute_protocol_measurement'
+2025-11-18 16:13:19,216 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 304, in run
+    volume_result = self._calibrate_volume(target_volume_ml, volume_budget)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 396, in _calibrate_volume
+    screening_trials = self._run_screening_phase(target_volume_ml)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 532, in _run_screening_phase
+    trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}",
+                                      strategy="screening", liquid="water")
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 1280, in _execute_trial
+    measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'CalibrationExperiment' object has no attribute '_execute_protocol_measurement'. Did you mean: '_execute_two_point_measurement'?
+
+2025-11-18 16:13:19,216 - __main__ - ERROR - Experiment failed: 'CalibrationExperiment' object has no attribute 'protocol'
+2025-11-18 16:13:19,216 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:16:52,807 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:16:52,807 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:16:52,814 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:16:52,814 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:16:52,814 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:16:52,815 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-18 16:16:52,815 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:16:52,815 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:16:52,815 - __main__ - INFO - Execution mode: Simulation
+2025-11-18 16:16:52,815 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:16:52,815 - __main__ - INFO - Running in simulation mode
+2025-11-18 16:16:52,815 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:16:52,816 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:16:52,816 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763500612
+2025-11-18 16:16:52,816 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:16:52,816 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:16:52,816 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:16:52,817 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_simulated
+2025-11-18 16:16:52,817 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3) - Budget: 60 measurements
+2025-11-18 16:16:52,817 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2025-11-18 16:16:52,817 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-18 16:16:52,817 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-18 16:16:52,818 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-18 16:16:52,818 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 16:16:52,818 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 16:16:52,819 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 5 SOBOL trials
+2025-11-18 16:16:52,819 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 5 SOBOL trials -> Bayesian optimization
+2025-11-18 16:16:52,819 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 16:16:52,820 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 16:16:52,820 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 16:16:52,820 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (5 trials)
+2025-11-18 16:16:52,825 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-18 16:16:52,825 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-18 16:16:52,826 - calibration_modular_v2.experiment - ERROR - Experiment failed: 'CalibrationExperiment' object has no attribute '_execute_protocol_measurement'
+2025-11-18 16:16:52,826 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 304, in run
+    volume_result = self._calibrate_volume(target_volume_ml, volume_budget)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 396, in _calibrate_volume
+    screening_trials = self._run_screening_phase(target_volume_ml)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 532, in _run_screening_phase
+    trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}",
+                                      strategy="screening", liquid="water")
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 1280, in _execute_trial
+    measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'CalibrationExperiment' object has no attribute '_execute_protocol_measurement'. Did you mean: '_execute_two_point_measurement'?
+
+2025-11-18 16:16:52,827 - __main__ - ERROR - Experiment failed: 'CalibrationExperiment' object has no attribute '_execute_protocol_measurement'
+2025-11-18 16:16:52,827 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:17:49,150 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:17:49,150 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:17:49,157 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:17:49,157 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:17:49,157 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:17:49,157 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-18 16:17:49,157 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:17:49,157 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:17:49,157 - __main__ - INFO - Execution mode: Simulation
+2025-11-18 16:17:49,158 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:17:49,158 - __main__ - INFO - Running in simulation mode
+2025-11-18 16:17:49,158 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:17:49,158 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:17:49,158 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763500669
+2025-11-18 16:17:49,158 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:17:49,158 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:17:49,159 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:17:49,160 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_simulated
+2025-11-18 16:17:49,160 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3) - Budget: 60 measurements
+2025-11-18 16:17:49,160 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2025-11-18 16:17:49,160 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-18 16:17:49,160 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-18 16:17:49,160 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-18 16:17:49,160 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 16:17:49,160 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 16:17:49,162 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 5 SOBOL trials
+2025-11-18 16:17:49,162 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 5 SOBOL trials -> Bayesian optimization
+2025-11-18 16:17:49,162 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 16:17:49,162 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 16:17:49,162 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 16:17:49,162 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (5 trials)
+2025-11-18 16:17:49,168 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-18 16:17:49,168 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-18 16:17:49,169 - calibration_modular_v2.experiment - ERROR - Experiment failed: 'PipettingParameters' object has no attribute 'get'
+2025-11-18 16:17:49,170 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 304, in run
+    volume_result = self._calibrate_volume(target_volume_ml, volume_budget)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 400, in _calibrate_volume
+    screening_trials = self._run_screening_phase(target_volume_ml)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 536, in _run_screening_phase
+    trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}",
+                                      strategy="screening", liquid="water")
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 1284, in _execute_trial
+    measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 380, in _execute_protocol_measurement
+    return self.protocol_module.measure(self.protocol_state, target_volume_ml, parameters, replicates=1)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_simulated.py", line 199, in measure
+    return _protocol_instance.measure(state, volume_mL, params, replicates)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_simulated.py", line 69, in measure
+    measured_volume, elapsed_s = self._simulate_pipetting(volume_mL, params, state)
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_simulated.py", line 126, in _simulate_pipetting
+    overaspirate_vol = params.get('overaspirate_vol', 0.005)
+                       ^^^^^^^^^^
+AttributeError: 'PipettingParameters' object has no attribute 'get'
+
+2025-11-18 16:17:49,170 - __main__ - ERROR - Experiment failed: 'PipettingParameters' object has no attribute 'get'
+2025-11-18 16:17:49,170 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:20:16,878 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:20:16,878 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:20:16,885 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:20:16,885 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:20:16,885 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:20:16,885 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-18 16:20:16,885 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:20:16,886 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:20:16,886 - __main__ - INFO - Execution mode: Simulation
+2025-11-18 16:20:16,886 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:20:16,886 - __main__ - INFO - Running in simulation mode
+2025-11-18 16:20:16,886 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:20:16,886 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:20:16,886 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763500816
+2025-11-18 16:20:16,887 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:20:16,887 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:20:16,887 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:20:16,889 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_simulated
+2025-11-18 16:20:16,889 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3) - Budget: 60 measurements
+2025-11-18 16:20:16,890 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2025-11-18 16:20:16,890 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-18 16:20:16,890 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-18 16:20:16,890 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-18 16:20:16,890 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 16:20:16,890 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 16:20:16,892 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 5 SOBOL trials
+2025-11-18 16:20:16,892 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 5 SOBOL trials -> Bayesian optimization
+2025-11-18 16:20:16,892 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 16:20:16,892 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 16:20:16,892 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 16:20:16,892 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (5 trials)
+2025-11-18 16:20:16,898 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-18 16:20:16,898 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-18 16:20:16,898 - calibration_modular_v2.experiment - ERROR - Experiment failed: 'PipettingParameters' object is not a mapping
+2025-11-18 16:20:16,899 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 304, in run
+    volume_result = self._calibrate_volume(target_volume_ml, volume_budget)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 400, in _calibrate_volume
+    screening_trials = self._run_screening_phase(target_volume_ml)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 536, in _run_screening_phase
+    trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}",
+                                      strategy="screening", liquid="water")
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 1284, in _execute_trial
+    measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 380, in _execute_protocol_measurement
+    return self.protocol_module.measure(self.protocol_state, target_volume_ml, parameters, replicates=1)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_simulated.py", line 199, in measure
+    return _protocol_instance.measure(state, volume_mL, params, replicates)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_simulated.py", line 78, in measure
+    result = {
+             ^
+    ...<8 lines>...
+    }
+    ^
+TypeError: 'PipettingParameters' object is not a mapping
+
+2025-11-18 16:20:16,899 - __main__ - ERROR - Experiment failed: 'PipettingParameters' object is not a mapping
+2025-11-18 16:20:16,899 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:22:49,513 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:22:49,514 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:22:49,520 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:22:49,520 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:22:49,521 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:22:49,521 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-18 16:22:49,521 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:22:49,521 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:22:49,521 - __main__ - INFO - Execution mode: Simulation
+2025-11-18 16:22:49,521 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:22:49,521 - __main__ - INFO - Running in simulation mode
+2025-11-18 16:22:49,522 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:22:49,522 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:22:49,522 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763500969
+2025-11-18 16:22:49,522 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:22:49,522 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:22:49,522 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:22:49,525 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_simulated
+2025-11-18 16:22:49,525 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3) - Budget: 60 measurements
+2025-11-18 16:22:49,525 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2025-11-18 16:22:49,525 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-18 16:22:49,526 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-18 16:22:49,526 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-18 16:22:49,526 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 16:22:49,526 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 16:22:49,527 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 5 SOBOL trials
+2025-11-18 16:22:49,527 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 5 SOBOL trials -> Bayesian optimization
+2025-11-18 16:22:49,528 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 16:22:49,528 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 16:22:49,528 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 16:22:49,528 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (5 trials)
+2025-11-18 16:22:49,533 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-18 16:22:49,533 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-18 16:22:49,534 - calibration_modular_v2.experiment - ERROR - Experiment failed: 'list' object has no attribute 'parameters'
+2025-11-18 16:22:49,535 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 304, in run
+    volume_result = self._calibrate_volume(target_volume_ml, volume_budget)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 411, in _calibrate_volume
+    screening_trials = self._run_screening_phase(target_volume_ml)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 547, in _run_screening_phase
+    trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}",
+                                      strategy="screening", liquid="water")
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 1302, in _execute_trial
+    trial_result = self.analyzer.analyze_trial(measurements, target_volume_ml, strategy, liquid)
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\analysis.py", line 78, in analyze_trial
+    self._validate_measurement_consistency(measurements, target_volume_ml)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\analysis.py", line 127, in _validate_measurement_consistency
+    reference_params = measurements[0].parameters
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'parameters'
+
+2025-11-18 16:22:49,535 - __main__ - ERROR - Experiment failed: 'list' object has no attribute 'parameters'
+2025-11-18 16:22:49,535 - __main__ - ERROR - Check configuration and try again
+2025-11-18 16:26:31,816 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:26:31,816 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:26:31,824 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:26:31,824 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:26:31,824 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:26:31,824 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-18 16:26:31,824 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:26:31,824 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:26:31,824 - __main__ - INFO - Execution mode: Simulation
+2025-11-18 16:26:31,824 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:26:31,824 - __main__ - INFO - Running in simulation mode
+2025-11-18 16:26:31,825 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:26:31,825 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:26:31,825 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763501191
+2025-11-18 16:26:31,825 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:26:31,825 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:26:31,825 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:26:31,826 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_simulated
+2025-11-18 16:26:31,826 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/3) - Budget: 60 measurements
+2025-11-18 16:26:31,826 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2025-11-18 16:26:31,826 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-18 16:26:31,826 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-18 16:26:31,826 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-18 16:26:31,827 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 16:26:31,827 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 16:26:31,828 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 5 SOBOL trials
+2025-11-18 16:26:31,828 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 5 SOBOL trials -> Bayesian optimization
+2025-11-18 16:26:31,828 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 16:26:31,828 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 16:26:31,828 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 16:26:31,828 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (5 trials)
+2025-11-18 16:26:31,835 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-18 16:26:31,835 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-18 16:26:31,835 - calibration_modular_v2.analysis - INFO - High deviation (29.2% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,835 - calibration_modular_v2.analysis - INFO - High deviation (29.2% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,836 - calibration_modular_v2.experiment - INFO - Screening trial 1/5: 35.4uL measured (29.2% dev, 15.4s)
+2025-11-18 16:26:31,840 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 1) using Unknown
+2025-11-18 16:26:31,840 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 1
+2025-11-18 16:26:31,840 - calibration_modular_v2.analysis - INFO - High deviation (15.1% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,840 - calibration_modular_v2.analysis - INFO - High deviation (15.1% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,841 - calibration_modular_v2.experiment - INFO - Screening trial 2/5: 42.4uL measured (15.1% dev, 15.1s)
+2025-11-18 16:26:31,844 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 2) using Unknown
+2025-11-18 16:26:31,844 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 2
+2025-11-18 16:26:31,845 - calibration_modular_v2.analysis - INFO - High deviation (29.1% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,845 - calibration_modular_v2.analysis - INFO - High deviation (29.1% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,845 - calibration_modular_v2.experiment - INFO - Screening trial 3/5: 35.5uL measured (29.1% dev, 15.5s)
+2025-11-18 16:26:31,849 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 3) using Unknown
+2025-11-18 16:26:31,849 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 3
+2025-11-18 16:26:31,850 - calibration_modular_v2.experiment - INFO - Screening trial 4/5: 47.6uL measured (4.8% dev, 15.5s)
+2025-11-18 16:26:31,854 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 4) using Unknown
+2025-11-18 16:26:31,854 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 4
+2025-11-18 16:26:31,854 - calibration_modular_v2.analysis - INFO - High deviation (19.6% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,854 - calibration_modular_v2.analysis - INFO - High deviation (19.6% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,854 - calibration_modular_v2.experiment - INFO - Screening trial 5/5: 40.2uL measured (19.6% dev, 16.2s)
+2025-11-18 16:26:31,854 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using best screening candidate
+2025-11-18 16:26:31,855 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2025-11-18 16:26:31,855 - calibration_modular_v2.experiment - INFO - Using best screening candidate for 50.0uL two-point calibration
+2025-11-18 16:26:31,855 - calibration_modular_v2.experiment - INFO - Best screening trial variability: 0.38uL
+2025-11-18 16:26:31,855 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 1.1uL
+2025-11-18 16:26:31,855 - calibration_modular_v2.experiment - INFO - Shortfall analysis: 0.2uL shortfall + 2.2uL tolerance = 2.4uL spread
+2025-11-18 16:26:31,855 - calibration_modular_v2.experiment - INFO - Point 2: Testing with increased overaspirate 3.5uL (+2.4uL)
+2025-11-18 16:26:31,855 - calibration_modular_v2.analysis - INFO - High deviation (26.3% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:31,855 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.4uL (original: 0.4uL, cap: 2.5uL)
+2025-11-18 16:26:31,855 - calibration_modular_v2.constraint_calibration - INFO - Expanded bounds to include existing trials:
+2025-11-18 16:26:31,856 - calibration_modular_v2.constraint_calibration - INFO -   Original bounds: [1.1, 1.0]uL
+2025-11-18 16:26:31,856 - calibration_modular_v2.constraint_calibration - INFO -   Existing data range: [1.1, 4.6]uL
+2025-11-18 16:26:31,856 - calibration_modular_v2.constraint_calibration - INFO -   Final bounds: [1.1, 4.6]uL
+2025-11-18 16:26:31,856 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2025-11-18 16:26:31,856 - calibration_modular_v2.experiment - INFO -   New bounds: [1.1, 4.6] uL
+2025-11-18 16:26:31,856 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=-5.366uL/uL, tolerance=+/-2.3uL, error_margin=+/-100.0% for 50.0uL target
+2025-11-18 16:26:31,856 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:31,856 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2025-11-18 16:26:31,856 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=0.001074595267418772, max_value=0.004644286525435745, justification='Two-point calibration: efficiency=-5.366uL/uL, tolerance=+/-2.3uL, error_margin=+/-100.0% for 50.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.05, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.001074595267418772, measured_volume_ml=np.float64(0.04982947245840399), measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.001074595267418772), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 21, 'aspirate_wait_time': 2.5767257530242205, 'dispense_wait_time': 1.9141790270805359, 'retract_speed': 11.804271165281534, 'blowout_vol': 0.1136836962774396, 'post_asp_air_vol': 0.0870400962419808}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=np.float64(0.0034951228090147864), measured_volume_ml=np.float64(0.036842073662477715), measurement_count=1, variability_pct=100.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=np.float64(0.0034951228090147864)), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 21, 'aspirate_wait_time': 2.5767257530242205, 'dispense_wait_time': 1.9141790270805359, 'retract_speed': 11.804271165281534, 'blowout_vol': 0.1136836962774396, 'post_asp_air_vol': 0.0870400962419808}))), volume_efficiency_ul_per_ul=np.float64(-5.365524073881358), shortfall_ml=np.float64(0.00017052754159601474), optimal_overaspirate_ml=np.float64(0.0010428131825286652), min_overaspirate_ml=0.001074595267418772, max_overaspirate_ml=0.004644286525435745, tolerance_range_ml=0.0022500000000000003), optimal_overaspirate_ml=0.0010428131825286652)
+2025-11-18 16:26:31,856 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=-5.366uL/uL, tolerance=+/-2.3uL, error_margin=+/-100.0% for 50.0uL target
+2025-11-18 16:26:31,857 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2025-11-18 16:26:31,857 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 0.0uL (target: 50.0uL)
+2025-11-18 16:26:31,857 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 0.0uL (target: 50.0uL)
+2025-11-18 16:26:31,857 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:31,857 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2025-11-18 16:26:31,857 - calibration_modular_v2.bayesian_recommender - INFO - Applied constraint update for overaspirate_vol: [1.1, 4.6] uL
+2025-11-18 16:26:31,857 - calibration_modular_v2.bayesian_recommender - INFO - Justification: Two-point calibration: efficiency=-5.366uL/uL, tolerance=+/-2.3uL, error_margin=+/-100.0% for 50.0uL target
+2025-11-18 16:26:31,857 - calibration_modular_v2.bayesian_recommender - INFO - Added volume constraint: post_asp_air_vol + overaspirate_vol <= 0.95
+2025-11-18 16:26:31,858 - calibration_modular_v2.bayesian_recommender - INFO -   Available volume: 950.0uL
+2025-11-18 16:26:31,859 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 0 SOBOL trials
+2025-11-18 16:26:31,859 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: Pure Bayesian optimization (no exploration)
+2025-11-18 16:26:31,859 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-18 16:26:31,859 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol']
+2025-11-18 16:26:31,859 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-18 16:26:31,859 - calibration_modular_v2.experiment - INFO - Created qNEHVI optimizer for volume 50uL
+2025-11-18 16:26:31,859 - calibration_modular_v2.experiment - INFO - Loading 5 screening trials into optimizer
+2025-11-18 16:26:31,863 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=29.2% (included in ranking)
+2025-11-18 16:26:31,867 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=15.1% (included in ranking)
+2025-11-18 16:26:31,870 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=29.1% (included in ranking)
+2025-11-18 16:26:31,874 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=4.8% (included in ranking)
+2025-11-18 16:26:31,877 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=19.6% (included in ranking)
+2025-11-18 16:26:31,878 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2025-11-18 16:26:34,932 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 5) using Unknown
+2025-11-18 16:26:34,932 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-18 16:26:34,936 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=2.1%, trial=5
+2025-11-18 16:26:34,937 - calibration_modular_v2.experiment - INFO - Trial 1: deviation=2.1%, good_trials=1
+2025-11-18 16:26:34,937 - calibration_modular_v2.experiment - INFO - Optimization iteration 2
+2025-11-18 16:26:38,539 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 6) using Unknown
+2025-11-18 16:26:38,539 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-18 16:26:38,544 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=5.7%, trial=6
+2025-11-18 16:26:38,544 - calibration_modular_v2.experiment - INFO - Trial 2: deviation=5.7%, good_trials=1
+2025-11-18 16:26:38,544 - calibration_modular_v2.experiment - INFO - Optimization iteration 3
+2025-11-18 16:26:41,812 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 7) using Unknown
+2025-11-18 16:26:41,812 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-18 16:26:41,817 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=1.2%, trial=7
+2025-11-18 16:26:41,817 - calibration_modular_v2.experiment - INFO - Trial 3: deviation=1.2%, good_trials=2
+2025-11-18 16:26:41,817 - calibration_modular_v2.experiment - INFO - Optimization iteration 4
+2025-11-18 16:26:45,315 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 8) using Unknown
+2025-11-18 16:26:45,315 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2025-11-18 16:26:45,319 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=4.5%, trial=8
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - Trial 4: deviation=4.5%, good_trials=3
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - OPTIMIZATION SUMMARY
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - Status: converged
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - Convergence reason: Found 3 good trials
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - Total trials: 9
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - Good trials (within tolerance): 3
+2025-11-18 16:26:45,320 - calibration_modular_v2.experiment - INFO - Best accuracy achieved: 1.2% deviation
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO - Best overaspirate volume: 1.1uL
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO - Best hardware parameters:
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO -   aspirate_speed: 23.0
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO -   dispense_speed: 27.0
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO -   aspirate_wait_time: 3.9
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO -   dispense_wait_time: 1.7
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO -   retract_speed: 12.4
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO -   blowout_vol: 0.1
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO -   post_asp_air_vol: 0.1
+2025-11-18 16:26:45,321 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,323 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'converged', 'convergence_reason': 'Found 3 good trials', 'total_trials': 9, 'good_trials': 3, 'best_accuracy': 1.2059158485554362, 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.001074595267418772), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'blowout_vol': 0.09862833110824398, 'post_asp_air_vol': 0.08970383332437848}))}
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Volume 50.0uL calibration completed: 21 measurements, 5 good trials
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.025 mL (2/3) - Budget: 37 measurements
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Starting calibration for 25.0uL
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using previous volume parameters
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Using optimized parameters from 50.0uL volume for 25.0uL calibration
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Best trial variability from first volume: 0.93uL
+2025-11-18 16:26:45,324 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 1.1uL
+2025-11-18 16:26:45,324 - calibration_modular_v2.analysis - INFO - High deviation (13.9% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:45,325 - calibration_modular_v2.experiment - INFO - Shortfall analysis: 3.5uL shortfall + 1.1uL tolerance = 4.6uL spread
+2025-11-18 16:26:45,325 - calibration_modular_v2.experiment - INFO - Point 2: Testing with increased overaspirate 5.7uL (+4.6uL)
+2025-11-18 16:26:45,325 - calibration_modular_v2.analysis - INFO - High deviation (26.2% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:45,325 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.9uL (original: 0.9uL, cap: 1.3uL)
+2025-11-18 16:26:45,325 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2025-11-18 16:26:45,325 - calibration_modular_v2.experiment - INFO -   New bounds: [-4.9, -3.4] uL
+2025-11-18 16:26:45,325 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=-0.666uL/uL, tolerance=+/-1.1uL, error_margin=+/-100.0% for 25.0uL target
+2025-11-18 16:26:45,325 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=-0.004900110411948819, max_value=-0.003379926594904814, justification='Two-point calibration: efficiency=-0.666uL/uL, tolerance=+/-1.1uL, error_margin=+/-100.0% for 25.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.025, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.001074595267418772, measured_volume_ml=np.float64(0.02152501195216412), measurement_count=1, variability_pct=100.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.001074595267418772), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'blowout_vol': 0.09862833110824398, 'post_asp_air_vol': 0.08970383332437848}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=np.float64(0.005674583315254654), measured_volume_ml=np.float64(0.018459606883089265), measurement_count=1, variability_pct=100.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=np.float64(0.005674583315254654)), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'blowout_vol': 0.09862833110824398, 'post_asp_air_vol': 0.08970383332437848}))), volume_efficiency_ul_per_ul=np.float64(-0.6663941378102077), shortfall_ml=np.float64(0.003474988047835883), optimal_overaspirate_ml=np.float64(-0.004140018503426816), min_overaspirate_ml=np.float64(-0.004900110411948819), max_overaspirate_ml=np.float64(-0.003379926594904814), tolerance_range_ml=0.0011250000000000001), optimal_overaspirate_ml=-0.004140018503426816)
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=-0.666uL/uL, tolerance=+/-1.1uL, error_margin=+/-100.0% for 25.0uL target
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 0.0uL (target: 25.0uL)
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 0.0uL (target: 25.0uL)
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO - Running inherited trial with optimal overaspirate from two-point calibration
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO - Using optimal overaspirate: -4.14uL
+2025-11-18 16:26:45,326 - calibration_modular_v2.experiment - INFO - Executing inherited trial: overaspirate=-4.14uL
+2025-11-18 16:26:45,327 - calibration_modular_v2.analysis - INFO - High deviation (29.5% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 4.5% for 25uL
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO -   Deviation: -29.5% (tolerance: +/-4.5%)
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV (tolerance: <=4.5%)
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO -   Deviation check: False (29.5 <= 4.5)
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO -   Variability check: False (100.0 <= 4.5)
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO - [FAILED] Inherited trial FAILED - will proceed with optimization
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO -   Measured: -29.5% deviation
+2025-11-18 16:26:45,327 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 4.5% for 25uL
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO -   Deviation: -29.5% (tolerance: +/-4.5%)
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV (tolerance: <=4.5%)
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO -   Deviation check: False (29.5 <= 4.5)
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO -   Variability check: False (100.0 <= 4.5)
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2025-11-18 16:26:45,328 - calibration_modular_v2.experiment - INFO - Using transfer learning - fixing non-volume-dependent parameters
+2025-11-18 16:26:45,328 - calibration_modular_v2.bayesian_recommender - INFO - Applied constraint update for overaspirate_vol: [-4.9, -3.4] uL
+2025-11-18 16:26:45,328 - calibration_modular_v2.bayesian_recommender - INFO - Justification: Two-point calibration: efficiency=-0.666uL/uL, tolerance=+/-1.1uL, error_margin=+/-100.0% for 25.0uL target
+2025-11-18 16:26:45,329 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 0 SOBOL trials
+2025-11-18 16:26:45,329 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: Pure Bayesian optimization (no exploration)
+2025-11-18 16:26:45,329 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qLogEI optimizer
+2025-11-18 16:26:45,329 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['blowout_vol', 'overaspirate_vol']
+2025-11-18 16:26:45,329 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'post_asp_air_vol': 0.08970383332437848}
+2025-11-18 16:26:45,329 - calibration_modular_v2.experiment - INFO - Created qLogEI optimizer for volume 25uL
+2025-11-18 16:26:45,329 - calibration_modular_v2.experiment - INFO - Loading inherited trial into optimizer for learning
+2025-11-18 16:26:45,333 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=29.5% (included in ranking)
+2025-11-18 16:26:45,334 - calibration_modular_v2.experiment - INFO - Loading 2 two-point calibration trials into optimizer
+2025-11-18 16:26:45,334 - calibration_modular_v2.experiment - INFO - Note: Only using for subsequent volumes (single-objective accuracy optimization)
+2025-11-18 16:26:45,334 - calibration_modular_v2.bayesian_recommender - INFO - Skipping historical trial: overaspirate_vol=0.001075 outside bounds [-0.004900, -0.003380]
+2025-11-18 16:26:45,334 - calibration_modular_v2.bayesian_recommender - INFO - Skipping historical trial: overaspirate_vol=0.005675 outside bounds [-0.004900, -0.003380]
+2025-11-18 16:26:45,334 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2025-11-18 16:26:45,477 - calibration_modular_v2.experiment - ERROR - Failed to get suggestion from optimizer: `np.Inf` was removed in the NumPy 2.0 release. Use `np.inf` instead.
+2025-11-18 16:26:45,477 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,477 - calibration_modular_v2.experiment - INFO - OPTIMIZATION SUMMARY
+2025-11-18 16:26:45,477 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,477 - calibration_modular_v2.experiment - INFO - Status: running
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO - Convergence reason: 
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO - Total trials: 1
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO - Good trials (within tolerance): 0
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO - Best accuracy achieved: 29.5% deviation
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO - Best overaspirate volume: -4.1uL
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO - Best hardware parameters:
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO -   aspirate_speed: 23.0
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO -   dispense_speed: 27.0
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO -   aspirate_wait_time: 3.9
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO -   dispense_wait_time: 1.7
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO -   retract_speed: 12.4
+2025-11-18 16:26:45,478 - calibration_modular_v2.experiment - INFO -   blowout_vol: 0.1
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO -   post_asp_air_vol: 0.1
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'running', 'convergence_reason': '', 'total_trials': 1, 'good_trials': 0, 'best_accuracy': 29.53186371999845, 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=-0.004140018503426816), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'blowout_vol': 0.09862833110824398, 'post_asp_air_vol': 0.08970383332437848}))}
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 4.5% for 25uL
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO -   Deviation: -29.5% (tolerance: +/-4.5%)
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV (tolerance: <=4.5%)
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO -   Deviation check: False (29.5 <= 4.5)
+2025-11-18 16:26:45,479 - calibration_modular_v2.experiment - INFO -   Variability check: False (100.0 <= 4.5)
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Volume 25.0uL calibration completed: 5 measurements, 3 good trials
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.01 mL (3/3) - Budget: 70 measurements
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Starting calibration for 10.0uL
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using previous volume parameters
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Using optimized parameters from 50.0uL volume for 10.0uL calibration
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Best trial variability from first volume: 0.93uL
+2025-11-18 16:26:45,480 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 1.1uL
+2025-11-18 16:26:45,481 - calibration_modular_v2.analysis - INFO - High deviation (34.6% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:45,481 - calibration_modular_v2.experiment - INFO - Shortfall analysis: 3.5uL shortfall + 0.8uL tolerance = 4.2uL spread
+2025-11-18 16:26:45,481 - calibration_modular_v2.experiment - INFO - Point 2: Testing with increased overaspirate 5.3uL (+4.2uL)
+2025-11-18 16:26:45,481 - calibration_modular_v2.analysis - INFO - High deviation (31.2% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:45,481 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.5uL (original: 0.9uL, cap: 0.5uL)
+2025-11-18 16:26:45,481 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2025-11-18 16:26:45,481 - calibration_modular_v2.experiment - INFO -   New bounds: [34.3, 53.9] uL
+2025-11-18 16:26:45,481 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=0.080uL/uL, tolerance=+/-0.8uL, error_margin=+/-100.0% for 10.0uL target
+2025-11-18 16:26:45,481 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,481 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=0.03427249668338115, max_value=0.0539199469772628, justification='Two-point calibration: efficiency=0.080uL/uL, tolerance=+/-0.8uL, error_margin=+/-100.0% for 10.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.01, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.001074595267418772, measured_volume_ml=np.float64(0.006539342439457886), measurement_count=1, variability_pct=100.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.001074595267418772), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'blowout_vol': 0.09862833110824398, 'post_asp_air_vol': 0.08970383332437848}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=np.float64(0.005285252827960886), measured_volume_ml=np.float64(0.006878047530034558), measurement_count=1, variability_pct=100.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=np.float64(0.005285252827960886)), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'blowout_vol': 0.09862833110824398, 'post_asp_air_vol': 0.08970383332437848}))), volume_efficiency_ul_per_ul=np.float64(0.08043995164808991), shortfall_ml=np.float64(0.0034606575605421143), optimal_overaspirate_ml=np.float64(0.04409622183032198), min_overaspirate_ml=np.float64(0.03427249668338115), max_overaspirate_ml=np.float64(0.0539199469772628), tolerance_range_ml=0.00075), optimal_overaspirate_ml=0.04409622183032198)
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=0.080uL/uL, tolerance=+/-0.8uL, error_margin=+/-100.0% for 10.0uL target
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 0.0uL (target: 10.0uL)
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 0.0uL (target: 10.0uL)
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO - Running inherited trial with optimal overaspirate from two-point calibration
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO - Using optimal overaspirate: 44.10uL
+2025-11-18 16:26:45,482 - calibration_modular_v2.experiment - INFO - Executing inherited trial: overaspirate=44.10uL
+2025-11-18 16:26:45,482 - calibration_modular_v2.analysis - INFO - High deviation (28.8% > 10.0%) - applying precision penalty: 100.0%
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 7.5% for 10uL
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO -   Deviation: -28.8% (tolerance: +/-7.5%)
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV (tolerance: <=7.5%)
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO -   Deviation check: False (28.8 <= 7.5)
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO -   Variability check: False (100.0 <= 7.5)
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO - [FAILED] Inherited trial FAILED - will proceed with optimization
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO -   Measured: -28.8% deviation
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV
+2025-11-18 16:26:45,483 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 7.5% for 10uL
+2025-11-18 16:26:45,484 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 16:26:45,484 - calibration_modular_v2.experiment - INFO -   Deviation: -28.8% (tolerance: +/-7.5%)
+2025-11-18 16:26:45,484 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV (tolerance: <=7.5%)
+2025-11-18 16:26:45,484 - calibration_modular_v2.experiment - INFO -   Deviation check: False (28.8 <= 7.5)
+2025-11-18 16:26:45,484 - calibration_modular_v2.experiment - INFO -   Variability check: False (100.0 <= 7.5)
+2025-11-18 16:26:45,484 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2025-11-18 16:26:45,484 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2025-11-18 16:26:45,484 - calibration_modular_v2.experiment - INFO - Using transfer learning - fixing non-volume-dependent parameters
+2025-11-18 16:26:45,484 - calibration_modular_v2.bayesian_recommender - INFO - Applied constraint update for overaspirate_vol: [34.3, 53.9] uL
+2025-11-18 16:26:45,484 - calibration_modular_v2.bayesian_recommender - INFO - Justification: Two-point calibration: efficiency=0.080uL/uL, tolerance=+/-0.8uL, error_margin=+/-100.0% for 10.0uL target
+2025-11-18 16:26:45,485 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 0 SOBOL trials
+2025-11-18 16:26:45,485 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: Pure Bayesian optimization (no exploration)
+2025-11-18 16:26:45,485 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qLogEI optimizer
+2025-11-18 16:26:45,485 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['blowout_vol', 'overaspirate_vol']
+2025-11-18 16:26:45,485 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'post_asp_air_vol': 0.08970383332437848}
+2025-11-18 16:26:45,485 - calibration_modular_v2.experiment - INFO - Created qLogEI optimizer for volume 10uL
+2025-11-18 16:26:45,486 - calibration_modular_v2.experiment - INFO - Loading inherited trial into optimizer for learning
+2025-11-18 16:26:45,490 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=28.8% (included in ranking)
+2025-11-18 16:26:45,490 - calibration_modular_v2.experiment - INFO - Loading 2 two-point calibration trials into optimizer
+2025-11-18 16:26:45,490 - calibration_modular_v2.experiment - INFO - Note: Only using for subsequent volumes (single-objective accuracy optimization)
+2025-11-18 16:26:45,490 - calibration_modular_v2.bayesian_recommender - INFO - Skipping historical trial: overaspirate_vol=0.001075 outside bounds [0.034272, 0.053920]
+2025-11-18 16:26:45,490 - calibration_modular_v2.bayesian_recommender - INFO - Skipping historical trial: overaspirate_vol=0.005285 outside bounds [0.034272, 0.053920]
+2025-11-18 16:26:45,491 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2025-11-18 16:26:45,627 - calibration_modular_v2.experiment - ERROR - Failed to get suggestion from optimizer: `np.Inf` was removed in the NumPy 2.0 release. Use `np.inf` instead.
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - OPTIMIZATION SUMMARY
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - Status: running
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - Convergence reason: 
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - Total trials: 1
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - Good trials (within tolerance): 0
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - Best accuracy achieved: 28.8% deviation
+2025-11-18 16:26:45,628 - calibration_modular_v2.experiment - INFO - Best overaspirate volume: 44.1uL
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO - Best hardware parameters:
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO -   aspirate_speed: 23.0
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO -   dispense_speed: 27.0
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO -   aspirate_wait_time: 3.9
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO -   dispense_wait_time: 1.7
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO -   retract_speed: 12.4
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO -   blowout_vol: 0.1
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO -   post_asp_air_vol: 0.1
+2025-11-18 16:26:45,629 - calibration_modular_v2.experiment - INFO - ============================================================
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'running', 'convergence_reason': '', 'total_trials': 1, 'good_trials': 0, 'best_accuracy': 28.788961289408427, 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.04409622183032198), hardware=HardwareParameters(parameters={'aspirate_speed': 23, 'dispense_speed': 27, 'aspirate_wait_time': 3.869912093033597, 'dispense_wait_time': 1.6660321406106786, 'retract_speed': 12.447856148180056, 'blowout_vol': 0.09862833110824398, 'post_asp_air_vol': 0.08970383332437848}))}
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 7.5% for 10uL
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO -   Deviation: -28.8% (tolerance: +/-7.5%)
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV (tolerance: <=7.5%)
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO -   Deviation check: False (28.8 <= 7.5)
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO -   Variability check: False (100.0 <= 7.5)
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2025-11-18 16:26:45,630 - calibration_modular_v2.experiment - INFO - Volume 10.0uL calibration completed: 5 measurements, 3 good trials
+2025-11-18 16:26:45,631 - calibration_modular_v2.experiment - WARNING - Protocol cleanup reported issues
+2025-11-18 16:26:45,631 - calibration_modular_v2.experiment - INFO - Exported optimal conditions JSON to output\calibration_v2_runs\run_1763501191\optimal_conditions.json
+2025-11-18 16:26:45,635 - calibration_modular_v2.experiment - INFO - Exported raw measurements JSON to output\calibration_v2_runs\run_1763501191\raw_measurements.json
+2025-11-18 16:26:45,636 - calibration_modular_v2.experiment - INFO - Exported experiment summary to output\calibration_v2_runs\run_1763501191\experiment_summary.json
+2025-11-18 16:26:45,636 - calibration_modular_v2.experiment - INFO - Generating enhanced outputs...
+2025-11-18 16:26:45,637 - calibration_modular_v2.experiment - INFO - Generating calibration plots...
+2025-11-18 16:26:45,637 - calibration_modular_v2.visualization - INFO - Generating calibration visualization plots...
+2025-11-18 16:26:45,724 - calibration_modular_v2.visualization - INFO - Creating Time vs Deviation scatter for 3 volumes: [np.float64(10.0), np.float64(25.0), np.float64(50.0)] uL
+2025-11-18 16:26:45,903 - calibration_modular_v2.visualization - INFO - [OK] Time vs deviation scatter plot saved
+2025-11-18 16:26:46,170 - calibration_modular_v2.visualization - INFO - [OK] Measured volume over time plot saved
+2025-11-18 16:26:46,351 - calibration_modular_v2.visualization - INFO - [OK] Improvement summary saved
+2025-11-18 16:26:46,351 - calibration_modular_v2.visualization - INFO - [SUCCESS] All plots saved to: output\calibration_v2_runs\run_1763501191\plots
+2025-11-18 16:26:46,351 - calibration_modular_v2.experiment - INFO - Exporting clean CSV files...
+2025-11-18 16:26:46,351 - calibration_modular_v2.csv_export - INFO - Exporting clean CSV files...
+2025-11-18 16:26:46,354 - calibration_modular_v2.csv_export - INFO - Exported 17 trial results to trial_results.csv
+2025-11-18 16:26:46,355 - calibration_modular_v2.csv_export - INFO - Exported 3 optimal conditions to optimal_conditions.csv
+2025-11-18 16:26:46,357 - calibration_modular_v2.csv_export - INFO - Exported 31 raw measurements to raw_measurements.csv
+2025-11-18 16:26:46,357 - calibration_modular_v2.csv_export - INFO - [SUCCESS] Clean CSV files exported successfully
+2025-11-18 16:26:46,358 - calibration_modular_v2.csv_export - INFO - Exported experiment summary to experiment_summary.csv
+2025-11-18 16:26:46,358 - calibration_modular_v2.experiment - INFO - Generating analysis insights...
+2025-11-18 16:26:46,359 - calibration_modular_v2.experiment_analysis - INFO - Performing calibration experiment analysis...
+2025-11-18 16:26:46,400 - calibration_modular_v2.experiment_analysis - INFO - [SUCCESS] Experiment analysis completed
+2025-11-18 16:26:46,400 - calibration_modular_v2.experiment - ERROR - Error generating enhanced outputs: 'charmap' codec can't encode character '\u03bc' in position 14: character maps to <undefined>
+2025-11-18 16:26:46,412 - calibration_modular_v2.experiment - INFO - Calibration experiment completed successfully
+2025-11-18 16:26:46,412 - calibration_modular_v2.experiment - INFO - Total measurements: 31
+2025-11-18 16:26:46,412 - calibration_modular_v2.experiment - INFO - Total duration: 13.8s
+2025-11-18 16:26:46,412 - __main__ - INFO - ============================================================
+2025-11-18 16:26:46,412 - __main__ - INFO - CALIBRATION COMPLETED SUCCESSFULLY
+2025-11-18 16:26:46,412 - __main__ - INFO - ============================================================
+2025-11-18 16:26:46,412 - __main__ - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:26:46,412 - __main__ - INFO - Total measurements: 31
+2025-11-18 16:26:46,413 - __main__ - INFO - Total duration: 13.8 seconds
+2025-11-18 16:26:46,413 - __main__ - INFO - Volumes calibrated: 3
+2025-11-18 16:26:46,413 - __main__ - INFO - Success rate: 23.5%
+2025-11-18 16:26:46,413 - __main__ - INFO - Mean score: 1.437
+2025-11-18 16:26:46,413 - __main__ - INFO - High quality trials: 4
+2025-11-18 16:26:46,413 - __main__ - INFO - 
+Results saved to: output\calibration_v2_runs\run_1763501191
+2025-11-18 16:26:46,413 - __main__ - INFO - Files generated:
+2025-11-18 16:26:46,413 - __main__ - INFO -   - optimal_conditions.csv (best parameters for each volume)
+2025-11-18 16:26:46,413 - __main__ - INFO -   - raw_measurements.csv (all measurement data)
+2025-11-18 16:26:46,413 - __main__ - INFO -   - experiment_summary.json (complete statistics)
+2025-11-18 16:26:46,413 - __main__ - INFO - 
+[SUCCESS] Calibration experiment completed successfully!
+2025-11-18 16:41:12,995 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:41:12,996 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:41:13,003 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:41:13,003 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:41:13,003 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:41:13,003 - calibration_modular_v2.config_manager - INFO - Simulation mode: True
+2025-11-18 16:41:13,003 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:41:13,003 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:41:13,003 - __main__ - INFO - Execution mode: Simulation
+2025-11-18 16:41:13,003 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:41:13,004 - __main__ - INFO - Running in simulation mode
+2025-11-18 16:41:13,004 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:41:13,004 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:41:13,004 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763502073
+2025-11-18 16:41:13,004 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:41:13,004 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:41:13,004 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:45:09,994 - __main__ - INFO - Starting Universal Calibration System
+2025-11-18 16:45:09,994 - __main__ - INFO - Loading configuration from c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment_config.yaml
+2025-11-18 16:45:29,549 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-18 16:45:29,549 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:45:29,550 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:45:29,550 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-18 16:45:29,550 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-18 16:45:29,550 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01] mL
+2025-11-18 16:45:29,550 - __main__ - INFO - Execution mode: Hardware
+2025-11-18 16:45:29,550 - __main__ - INFO - Validating protocol interface...
+2025-11-18 16:45:29,550 - __main__ - INFO - Running in hardware mode
+2025-11-18 16:45:29,550 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-18 16:45:29,551 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-18 16:45:29,551 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1763502329
+2025-11-18 16:45:29,551 - __main__ - INFO - Starting experiment execution...
+2025-11-18 16:45:29,551 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-18 16:45:29,551 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-18 16:45:50,225 - calibration_modular_v2.experiment - ERROR - Protocol initialization failed: Hardware initialization failed: [Errno 2] No such file or directory: 'status/experiment_vials.csv'
+2025-11-18 16:45:50,225 - calibration_modular_v2.experiment - ERROR - Error type: RuntimeError
+2025-11-18 16:45:50,226 - calibration_modular_v2.experiment - ERROR - Traceback:   File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 367, in _initialize_protocol
+    self.protocol_state = self.protocol_module.initialize(config_dict)
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 161, in initialize
+    return _protocol_instance.initialize(cfg)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 79, in initialize
+    raise RuntimeError(f"Hardware initialization failed: {e}")
+
+2025-11-18 16:45:50,226 - calibration_modular_v2.experiment - ERROR - Experiment failed: Failed to initialize measurement protocol: Hardware initialization failed: [Errno 2] No such file or directory: 'status/experiment_vials.csv'
+2025-11-18 16:45:50,228 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 58, in initialize
+    lash_e.nr_robot.check_input_file()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\North_Safe.py", line 1104, in check_input_file
+    vial_status = pd.read_csv(self.VIAL_FILE, sep=",")
+  File "C:\Users\Owen\Documents\GitHub\North-Cytation\venv\Lib\site-packages\pandas\io\parsers\readers.py", line 1026, in read_csv
+    return _read(filepath_or_buffer, kwds)
+  File "C:\Users\Owen\Documents\GitHub\North-Cytation\venv\Lib\site-packages\pandas\io\parsers\readers.py", line 620, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+  File "C:\Users\Owen\Documents\GitHub\North-Cytation\venv\Lib\site-packages\pandas\io\parsers\readers.py", line 1620, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\Owen\Documents\GitHub\North-Cytation\venv\Lib\site-packages\pandas\io\parsers\readers.py", line 1880, in _make_engine
+    self.handles = get_handle(
+                   ~~~~~~~~~~^
+        f,
+        ^^
+    ...<6 lines>...
+        storage_options=self.options.get("storage_options", None),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Owen\Documents\GitHub\North-Cytation\venv\Lib\site-packages\pandas\io\common.py", line 873, in get_handle
+    handle = open(
+        handle,
+    ...<3 lines>...
+        newline="",
+    )
+FileNotFoundError: [Errno 2] No such file or directory: 'status/experiment_vials.csv'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 367, in _initialize_protocol
+    self.protocol_state = self.protocol_module.initialize(config_dict)
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 161, in initialize
+    return _protocol_instance.initialize(cfg)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\calibration_protocol_hardware.py", line 79, in initialize
+    raise RuntimeError(f"Hardware initialization failed: {e}")
+RuntimeError: Hardware initialization failed: [Errno 2] No such file or directory: 'status/experiment_vials.csv'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 286, in run
+    self._initialize_protocol()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\Owen\Documents\GitHub\North-Cytation\calibration_modular_v2\experiment.py", line 376, in _initialize_protocol
+    raise RuntimeError(f"Failed to initialize measurement protocol: {e}") from e
+RuntimeError: Failed to initialize measurement protocol: Hardware initialization failed: [Errno 2] No such file or directory: 'status/experiment_vials.csv'
+
+2025-11-18 16:45:50,229 - __main__ - ERROR - Experiment failed: Failed to initialize measurement protocol: Hardware initialization failed: [Errno 2] No such file or directory: 'status/experiment_vials.csv'
+2025-11-18 16:45:50,229 - __main__ - ERROR - Check configuration and try again

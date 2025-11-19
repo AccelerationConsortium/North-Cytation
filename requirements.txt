@@ -1,12 +1,40 @@
-pandas
-numpy
-asyncio
-./north.tar.gz
-pywin32
-mpremote
-pyserial
-baybe
-opencv-python
+# Core Dependencies for North Cytation Calibration System
+# ================================================================
+
+# Data Science & Optimization
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Bayesian Optimization
+ax-platform==1.1.2
+
+# Configuration & File Handling  
+PyYAML>=6.0
+pydantic>=2.0.0
+
+# Logging & Utilities
+colorlog>=6.7.0
+tqdm>=4.65.0
+
+# Development & Testing (optional)
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.0.0
+
+# LLM Integration
 openai
 python-dotenv
-matplotlib
+
+# Computer Vision (for color optimization workflows)
+opencv-python
+
+# NOTE: Hardware-specific dependencies excluded from requirements
+# Install separately on robot hardware:
+# - North Robot SDK (./north.tar.gz)  
+# - Cytation 5 drivers
+# - Hardware communication libraries (pyserial, mpremote, pywin32)
+# - BayBE optimizer (deprecated, replaced by Ax-Platform)
