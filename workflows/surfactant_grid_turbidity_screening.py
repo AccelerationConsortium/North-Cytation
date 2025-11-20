@@ -19,7 +19,7 @@ SIMULATE = True  # Set to False for actual hardware execution
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
 # Pump 1 = Water reservoir pump (carousel angle 45°, height 70)
 
-SURFACTANT_A_NAME = "DTAB"
+SURFACTANT_A_NAME = "TTAB"
 SURFACTANT_B_NAME = "SDS"
 SURFACTANT_A_CONC_MM = 50.0  # mM stock concentration
 SURFACTANT_B_CONC_MM = 50.0   # mM stock concentration

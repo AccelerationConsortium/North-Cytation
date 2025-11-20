@@ -23,10 +23,10 @@ obj3_name = "time"         # Raw time in seconds
 
 # Default parameter bounds for all parameters
 DEFAULT_PARAMETER_BOUNDS = {
-    "aspirate_speed": {"type": "range", "bounds": [5, 20]},
-    "dispense_speed": {"type": "range", "bounds": [5, 20]},
-    "aspirate_wait_time": {"type": "range", "bounds": [0.0, 2.0]},
-    "dispense_wait_time": {"type": "range", "bounds": [0.0, 2.0]},
+    "aspirate_speed": {"type": "range", "bounds": [8, 20]},
+    "dispense_speed": {"type": "range", "bounds": [8, 20]},
+    "aspirate_wait_time": {"type": "range", "bounds": [0.0, 5.0]},
+    "dispense_wait_time": {"type": "range", "bounds": [0.0, 5.0]},
     "retract_speed": {"type": "range", "bounds": [1.0, 15.0]},
     "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},
     "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},

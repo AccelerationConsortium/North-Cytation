@@ -3637,10 +3637,14 @@ if __name__ == "__main__":
     # print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
     # print("   Fixing only post-aspirate air volume for glycerol\n")
     
+    #volumes = [0.01, 0.025, 0.005] Water
+    #volumes = [0.05, 0.025, 0.1] Water DMSO Isopropanol Acetone Glycerol
+    #volumes = [0.2, 0.5, 0.8] Water
+
     try:
         optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
             vial_mode="swap",
-            liquid="water",
+            liquid="DMSO",
             simulate=False,
             use_LLM_for_screening=False,
             volumes=[0.01, 0.025, 0.005],
