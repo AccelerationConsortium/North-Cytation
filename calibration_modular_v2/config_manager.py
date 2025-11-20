@@ -75,9 +75,7 @@ class ExperimentConfig:
     def __init__(self, config_dict: Dict[str, Any]):
         """Initialize from configuration dictionary."""
         self._config = config_dict
-        self._validate_config()
-        
-    @classmethod
+        self._validate_config()    @classmethod
     def from_yaml(cls, config_path: str) -> 'ExperimentConfig':
         """Load configuration from YAML file."""
         path = Path(config_path)
@@ -316,15 +314,19 @@ class ExperimentConfig:
         """Get appropriate protocol module based on execution mode."""
         protocol_config = self._config.get('protocol', {})
         
-        # Check for forced module override
+        # Check for forced module override first
         if 'module' in protocol_config:
             return protocol_config['module']
         
-        # Select based on simulation mode
+        # Select based on simulation mode using config values
         if self.is_simulation():
-            return protocol_config.get('simulation_module', 'calibration_protocol_simulated')
+            if 'simulation_module' not in protocol_config:
+                raise ValueError("Missing 'simulation_module' in protocol configuration")
+            return protocol_config['simulation_module']
         else:
-            return protocol_config.get('hardware_module', 'calibration_protocol_example')
+            if 'hardware_module' not in protocol_config:
+                raise ValueError("Missing 'hardware_module' in protocol configuration")
+            return protocol_config['hardware_module']
     
     # Phase configuration
     def get_screening_trials(self) -> int:
@@ -454,3 +456,11 @@ class ExperimentConfig:
     def get_raw_config(self) -> Dict[str, Any]:
         """Get raw configuration dictionary for advanced use cases."""
         return self._config.copy()
+    
+    def get_hardware_specific_warnings(self) -> str:
+        """Get hardware-specific warnings for LLM prompts."""
+        warnings = self._config.get('hardware', {}).get('parameter_warnings', [])
+        if warnings:
+            return "\\n".join(warnings)
+        # Default warnings if not specified
+        return "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive scaling)\\nNOTE: Speeds are relative units, not absolute velocities\\nCAUTION: Retract speed behaves differently - higher = faster"

@@ -107,6 +107,7 @@ DEFAULT_INITIAL_PARAMETER_SETS = 5
 DEFAULT_USE_LLM_FOR_SCREENING = False
 DEFAULT_BAYESIAN_MODEL_TYPE = 'qNEHVI'  # Use multi-objective optimization for first volume
 DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT = 'qLogEI'  # Single-objective (deviation only) for subsequent volumes
+DEFAULT_INIT_METHOD = "SOBOL"  # Initialization method: "SOBOL", "LATIN_HYPERCUBE", "UNIFORM"
 
 # Overaspirate configuration
 DEFAULT_OVERASPIRATE_BASE_UL = 5.0
@@ -166,6 +167,7 @@ MIN_GOOD_PARAMETER_SETS = DEFAULT_MIN_GOOD_PARAMETER_SETS
 USE_LLM_FOR_SCREENING = DEFAULT_USE_LLM_FOR_SCREENING
 BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
 BAYESIAN_MODEL_TYPE_SUBSEQUENT = DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT
+INIT_METHOD = DEFAULT_INIT_METHOD
 
 # Overaspirate config
 OVERASPIRATE_BASE_UL = DEFAULT_OVERASPIRATE_BASE_UL
@@ -434,6 +436,7 @@ def reset_config_to_defaults():
     USE_LLM_FOR_SCREENING = DEFAULT_USE_LLM_FOR_SCREENING
     BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
     BAYESIAN_MODEL_TYPE_SUBSEQUENT = DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT
+    INIT_METHOD = DEFAULT_INIT_METHOD
     OVERASPIRATE_BASE_UL = DEFAULT_OVERASPIRATE_BASE_UL
     OVERASPIRATE_SCALING_PERCENT = DEFAULT_OVERASPIRATE_SCALING_PERCENT
     AUTO_CALIBRATE_OVERVOLUME = DEFAULT_AUTO_CALIBRATE_OVERVOLUME
@@ -655,8 +658,8 @@ def calculate_efficiency_based_bounds(target_volume_ml, baseline_volume_ml, base
         
         if use_capped_variability:
             # Apply capped variability approach (improved from constraint_calibration)
-            # Use min(actual_variability, 5% of target volume) as +/- bounds
-            max_variability_cap_ml = target_volume_ml * 0.05  # 5% cap
+            # Use min(actual_variability, 10% of target volume) as +/- bounds
+            max_variability_cap_ml = target_volume_ml * 0.10  # 10% cap
             baseline_variability_ml = baseline_volume_ml * (baseline_variability_pct / 100.0)
             capped_variability_ml = min(baseline_variability_ml, max_variability_cap_ml)
             
@@ -665,7 +668,7 @@ def calculate_efficiency_based_bounds(target_volume_ml, baseline_volume_ml, base
             
             print(f"   🎯 Capped variability approach applied:")
             print(f"      Original variability: {baseline_variability_ml*1000:.1f}uL ({baseline_variability_pct:.1f}%)")
-            print(f"      Cap (5% of target): {max_variability_cap_ml*1000:.1f}uL")
+            print(f"      Cap (10% of target): {max_variability_cap_ml*1000:.1f}uL")
             print(f"      Applied adjustment: +/-{capped_variability_ml*1000:.1f}uL")
         else:
             # No variability adjustment - use simple bounds
@@ -828,10 +831,10 @@ def get_tip_volume_for_volume(lash_e, volume):
         if tip_config:
             return tip_config.get('volume', 1.0)
         else:
-            return 1.0 if volume > 0.25 else 0.25
+            return 1.0 if volume >= 0.2 else 0.2
     except Exception as e:
         print(f"Warning: Could not determine tip volume for {volume} mL: {e}")
-        return 1.0 if volume > 0.25 else 0.25
+        return 1.0 if volume >= 0.2 else 0.2
 
 def create_transfer_learning_optimizer():
     """Create a global optimizer for transfer learning across all volumes."""
@@ -865,7 +868,8 @@ def create_transfer_learning_optimizer():
         simulate=SIMULATE,
         max_overaspirate_ul=max_overaspirate_across_volumes,
         transfer_learning=True,
-        volume_bounds=volume_bounds
+        volume_bounds=volume_bounds,
+        init_method=INIT_METHOD
     )
     
     print(f"   ✅ Global optimizer created with volume range {min_volume*1000:.0f}-{max_volume*1000:.0f}μL")
@@ -1700,6 +1704,11 @@ def calculate_first_volume_constraint(best_candidate, volume, lash_e, state, liq
     point2_params = best_candidate.copy()  # Start with all screening parameters
     point2_params['overaspirate_vol'] = point2_overaspirate_ml  # Update only overaspirate
     
+    # DEBUG: Verify the overaspirate update
+    print(f"   🔍 DEBUG: Point 1 overaspirate: {point1_overaspirate_ml*1000:.3f}μL")
+    print(f"   🔍 DEBUG: Point 2 overaspirate: {point2_overaspirate_ml*1000:.3f}μL")
+    print(f"   🔍 DEBUG: Point 2 params['overaspirate_vol']: {point2_params['overaspirate_vol']*1000:.3f}μL")
+    
     # Run Point 2 measurement
     point2_result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
                                             volume, point2_params, expected_mass, expected_time, 
@@ -2333,7 +2342,8 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         fixed_params=FIXED_PARAMETERS,
         simulate=SIMULATE,
         min_overaspirate_ul=0.0,  # Default min constraint for initial optimizer
-        max_overaspirate_ul=max_overaspirate_ul
+        max_overaspirate_ul=max_overaspirate_ul,
+        init_method=INIT_METHOD
     )
     debug_ax_constraints(ax_client, "(INITIAL OPTIMIZER)", autosave_raw_path)
     
@@ -2361,6 +2371,29 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     # Recreate ax_client with updated constraint if it changed  
     if abs(max_overaspirate_ul_updated - max_overaspirate_ul) > 0.01:  # Only recreate if meaningful change (compare in μL)
         print(f"   🔄 Recreating optimizer with updated constraint ({max_overaspirate_ul:.1f} → {max_overaspirate_ul_updated:.1f}μL)...")
+        
+        # CRITICAL: Expand bounds to include all historical data to avoid loading errors
+        historical_overaspirate_values = []
+        for result in all_results:
+            if 'overaspirate_vol' in result and result['overaspirate_vol'] is not None:
+                historical_overaspirate_values.append(result['overaspirate_vol'] * 1000)  # Convert to μL
+        
+        if historical_overaspirate_values:
+            historical_min = min(historical_overaspirate_values)
+            historical_max = max(historical_overaspirate_values)
+            original_min = min_overaspirate_ul_updated
+            original_max = max_overaspirate_ul_updated
+            
+            # Expand bounds to include ALL historical data
+            min_overaspirate_ul_updated = min(min_overaspirate_ul_updated, historical_min)
+            max_overaspirate_ul_updated = max(max_overaspirate_ul_updated, historical_max)
+            
+            if (min_overaspirate_ul_updated != original_min or max_overaspirate_ul_updated != original_max):
+                print(f"   📊 Expanded bounds to include historical data:")
+                print(f"      Original: [{original_min:.3f}, {original_max:.3f}]μL") 
+                print(f"      Expanded: [{min_overaspirate_ul_updated:.3f}, {max_overaspirate_ul_updated:.3f}]μL")
+                print(f"      Historical range: [{historical_min:.3f}, {historical_max:.3f}]μL")
+        
         print(f"   🔧 CONSTRAINT DEBUG: About to pass min/max_overaspirate_ul=[{min_overaspirate_ul_updated:.6f}μL, {max_overaspirate_ul_updated:.6f}μL] to create_model")
         # Remove fixed parameters from optimization list
         optimize_params = [param for param in ALL_PARAMS if param not in FIXED_PARAMETERS]
@@ -2375,7 +2408,8 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
             fixed_params=FIXED_PARAMETERS,
             simulate=SIMULATE,
             min_overaspirate_ul=min_overaspirate_ul_updated,  # Pass min bound
-            max_overaspirate_ul=max_overaspirate_ul_updated   # Pass max bound
+            max_overaspirate_ul=max_overaspirate_ul_updated,   # Pass max bound
+            init_method=INIT_METHOD
         )
         
         # Load screening results into the new optimizer
@@ -2874,7 +2908,8 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
                 fixed_params=fixed_params,
                 simulate=SIMULATE,
                 min_overaspirate_ul=min_overaspirate_ul,
-                max_overaspirate_ul=max_overaspirate_ul
+                max_overaspirate_ul=max_overaspirate_ul,
+                init_method=INIT_METHOD
             )
         else:
             # Multi-objective optimization (deviation + variability)
@@ -2889,7 +2924,8 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
                 fixed_params=fixed_params,
                 simulate=SIMULATE,
                 min_overaspirate_ul=min_overaspirate_ul,
-                max_overaspirate_ul=max_overaspirate_ul
+                max_overaspirate_ul=max_overaspirate_ul,
+                init_method=INIT_METHOD
             )
     except Exception as e:
         print(f"   ⚠️  Could not create optimizer: {e}")
@@ -3199,7 +3235,7 @@ def cleanup_robot_and_vials(lash_e, simulate=False):
             # Origin the robot (return to safe home position)
             try:
                 print(f"   🏠 Originating robot to home position...")
-                lash_e.nr_robot.origin()
+                lash_e.nr_robot.move_home()
                 print(f"   ✅ Robot cleanup complete!")
             except Exception as e:
                 print(f"   ⚠️  Warning: Could not origin robot: {e}")
@@ -3593,16 +3629,21 @@ if __name__ == "__main__":
     
     try:
         optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
-            vial_mode="legacy",
-            liquid="glycerol",
-            simulate=True,
+            vial_mode="swap",
+            liquid="water",
+            simulate=False,
             use_LLM_for_screening=False,
-            volumes=[0.05, 0.025, 0.1],
-            # No fixed_parameters for full optimization
+            volumes=[0.01, 0.025, 0.005],
+            max_measurements=300,  # Overall limit
+            max_measurements_first_volume=200,  # First volume limit
+            precision_measurements=5,  # 5 replicates for precision
+            use_range_for_precision=True,  # Use range instead of std dev
+            initial_parameter_sets=10,  # Longer screening phase
+            init_method="SOBOL"  # Use Sobol sampling
         )
-        print(f"\n✅ Workflow completed successfully!")
-        print(f"📊 Results saved to: {save_dir_water}")
+        print(f"\nSUCCESS: Workflow completed successfully!")
+        print(f"Results saved to: {save_dir_water}")
         
     except Exception as e:
-        print(f"\n❌ WORKFLOW ERROR: {e}")
-        print(f"🧹 Attempting emergency cleanup...")
+        print(f"\nWORKFLOW ERROR: {e}")
+        print(f"Attempting emergency cleanup...")

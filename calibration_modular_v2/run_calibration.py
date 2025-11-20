@@ -63,7 +63,13 @@ def main():
         logger.info(f"Target volumes: {config.get_target_volumes_ml()} mL")
         logger.info(f"Execution mode: {'Simulation' if config.is_simulation() else 'Hardware'}")
         
-        # Create and run experiment
+        # Validate protocol interface compliance
+        logger.info("Validating protocol interface...")
+        # No protocol imports needed - experiment loads its own
+        
+        logger.info(f"Running in {'simulation' if config.is_simulation() else 'hardware'} mode")
+        
+        # Create and run experiment (experiment will load its own protocol from config)
         experiment = CalibrationExperiment(config)
         logger.info("Starting experiment execution...")
         

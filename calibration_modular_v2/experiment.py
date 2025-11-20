@@ -47,7 +47,7 @@ from .data_structures import (
 )
 
 from .config_manager import ExperimentConfig
-from .protocol_loader import create_protocol
+from .protocol_loader import load_hardware_protocol
 from .analysis import CalibrationAnalyzer
 from .external_data import ExternalDataLoader
 from .data_structures import (
@@ -81,9 +81,14 @@ class CalibrationExperiment:
     transfer learning, and result analysis.
     """
     
-    def __init__(self, config: ExperimentConfig):
-        """Initialize experiment with configuration."""
-        self._initialize_core_components(config)
+    def __init__(self, config: ExperimentConfig, protocol=None):
+        """Initialize experiment with configuration and optional protocol.
+        
+        Args:
+            config: Experiment configuration
+            protocol: Optional protocol instance. If None, will be created from config.
+        """
+        self._initialize_core_components(config, protocol)
         self._initialize_experiment_state()
         self._setup_logging()
         self._create_output_directory()
@@ -92,12 +97,16 @@ class CalibrationExperiment:
         logger.info(f"Experiment: {config.get_experiment_name()}")
         logger.info(f"Output directory: {self.output_dir}")
 
-    def _initialize_core_components(self, config: ExperimentConfig):
+    def _initialize_core_components(self, config: ExperimentConfig, protocol=None):
         """Initialize core experiment components."""
         self.config = config
         self.analyzer = CalibrationAnalyzer(config)
         self.external_data_loader = ExternalDataLoader(config)
-        self.protocol = None  # Will be ProtocolWrapper from protocol_loader
+        
+        # Store protocol for direct use
+        self.protocol_instance = protocol  # From abstract base class if provided
+        self.protocol_module = None  # From function-based protocol if needed
+        self.protocol_state = None  # Protocol state
         
     def _initialize_experiment_state(self):
         """Initialize experiment state variables."""
@@ -323,9 +332,9 @@ class CalibrationExperiment:
             logger.error(traceback.format_exc())
             
             # Try to clean up protocol
-            if self.protocol:
+            if self.protocol_module and self.protocol_state:
                 try:
-                    self.protocol.wrapup()
+                    self.protocol_module.wrapup(self.protocol_state)
                 except:
                     pass
             
@@ -333,20 +342,71 @@ class CalibrationExperiment:
     
     def _initialize_protocol(self):
         """Initialize the measurement protocol."""
-        self.protocol = create_protocol(self.config)
-        
-        success = self.protocol.initialize()
-        if not success:
-            raise RuntimeError("Failed to initialize measurement protocol")
-        
-        logger.info(f"Protocol initialized: {type(self.protocol).__name__}")
+        try:
+            logger.info(f"Initializing protocol...")
+            
+            # Convert config to dict format for protocols - FAIL if hardware missing
+            raw_config = self.config.get_raw_config()
+            if 'hardware' not in raw_config:
+                raise ValueError("Missing required 'hardware' configuration section")
+            
+            config_dict = {
+                'experiment': {
+                    'liquid': self.config.get_liquid_name()
+                },
+                'hardware': raw_config['hardware'],  # Fail if missing
+                'random_seed': self.config.get_random_seed()
+            }
+            
+            # Load protocol module from config
+            protocol_name = self.config.get_protocol_module()
+            self.protocol_module = load_hardware_protocol(protocol_name)
+            self.protocol_state = self.protocol_module.initialize(config_dict)
+            logger.info(f"Protocol initialized: {protocol_name}")
+            
+        except Exception as e:
+            logger.error(f"Protocol initialization failed: {e}")
+            logger.error(f"Error type: {type(e).__name__}")
+            if hasattr(e, '__traceback__'):
+                import traceback
+                logger.error(f"Traceback: {''.join(traceback.format_tb(e.__traceback__))}")
+            raise RuntimeError(f"Failed to initialize measurement protocol: {e}") from e
     
     def _finalize_protocol(self):
         """Clean up and finalize the protocol."""
-        if self.protocol:
-            success = self.protocol.wrapup()
+        if self.protocol_module and self.protocol_state:
+            success = self.protocol_module.wrapup(self.protocol_state)
             if not success:
                 logger.warning("Protocol cleanup reported issues")
+    
+    def _execute_protocol_measurement(self, parameters: Dict[str, float], target_volume_ml: float) -> Dict:
+        """Execute a measurement using the protocol module."""
+        # Convert PipettingParameters to dict for protocol compatibility
+        if hasattr(parameters, 'calibration') and hasattr(parameters, 'hardware'):
+            # It's a PipettingParameters object - convert to dict
+            params_dict = {
+                'overaspirate_vol': parameters.overaspirate_vol,
+                **parameters.hardware.__dict__  # Unpack all hardware parameters
+            }
+        else:
+            # It's already a dict
+            params_dict = parameters
+            
+        # Protocol returns a list of measurements (one per replicate)
+        # We're calling with replicates=1, so extract the single measurement
+        measurement_list = self.protocol_module.measure(self.protocol_state, target_volume_ml, params_dict, replicates=1)
+        measurement_dict = measurement_list[0]  # Get single measurement dict
+        
+        # Convert to RawMeasurement object expected by analyzer
+        return RawMeasurement(
+            measurement_id=f"measurement_{int(time.time()*1000000)}_{measurement_dict.get('replicate', 1)}",
+            parameters=parameters,  # Original PipettingParameters object
+            target_volume_ml=target_volume_ml,
+            measured_volume_ml=measurement_dict['volume'],
+            duration_s=measurement_dict['elapsed_s'],
+            replicate_id=measurement_dict.get('replicate', 1),
+            metadata=measurement_dict
+        )
     
     def _calibrate_volume(self, target_volume_ml: float, volume_budget: int) -> VolumeCalibrationResult:
         """
@@ -1250,10 +1310,7 @@ class CalibrationExperiment:
         
         # Execute initial replicates
         for replicate_idx in range(initial_replicates):
-            measurement = self.protocol.measure(
-                parameters, 
-                target_volume_ml
-            )
+            measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
             measurements.append(measurement)
             self.total_measurements += 1
         
@@ -1272,10 +1329,7 @@ class CalibrationExperiment:
             
             # Add another replicate
             replicate_idx = len(measurements)
-            measurement = self.protocol.measure(
-                parameters, 
-                target_volume_ml
-            )
+            measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
             measurements.append(measurement)
             self.total_measurements += 1
             

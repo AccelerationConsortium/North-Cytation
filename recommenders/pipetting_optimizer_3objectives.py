@@ -23,12 +23,12 @@ obj3_name = "time"         # Raw time in seconds
 
 # Default parameter bounds for all parameters
 DEFAULT_PARAMETER_BOUNDS = {
-    "aspirate_speed": {"type": "range", "bounds": [10, 40]},
-    "dispense_speed": {"type": "range", "bounds": [10, 40]},
-    "aspirate_wait_time": {"type": "range", "bounds": [0.0, 45.0]},
-    "dispense_wait_time": {"type": "range", "bounds": [0.0, 45.0]},
+    "aspirate_speed": {"type": "range", "bounds": [5, 20]},
+    "dispense_speed": {"type": "range", "bounds": [5, 20]},
+    "aspirate_wait_time": {"type": "range", "bounds": [0.0, 2.0]},
+    "dispense_wait_time": {"type": "range", "bounds": [0.0, 2.0]},
     "retract_speed": {"type": "range", "bounds": [1.0, 15.0]},
-    "blowout_vol": {"type": "range", "bounds": [0.0, 0.5]},
+    "blowout_vol": {"type": "range", "bounds": [0.0, 0.2]},
     "post_asp_air_vol": {"type": "range", "bounds": [0.0, 0.1]},
     "overaspirate_vol": {"type": "range", "bounds": [0.0, None]},  # Will be set to fixed maximum in create_model()
     "volume": {"type": "range", "bounds": [0.001, 1.0]},  # Volume parameter for transfer learning (mL)
@@ -36,7 +36,7 @@ DEFAULT_PARAMETER_BOUNDS = {
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_volume=1.0, model_type="qNEHVI", 
                  optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0, 
-                 min_overaspirate_ul=0.0, transfer_learning=False, volume_bounds=None):
+                 min_overaspirate_ul=0.0, transfer_learning=False, volume_bounds=None, init_method="SOBOL"):
     """
     Create an Ax client for 3-objective parameter optimization with optional transfer learning.
     
@@ -48,6 +48,13 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
         tip_volume: Tip capacity
         model_type: Model type (SOBOL, qLogEI, etc.)
         optimize_params: List of parameter names to optimize. If None, optimize all parameters.
+        fixed_params: Dict of parameter names and values to fix
+        simulate: Whether running in simulation mode
+        max_overaspirate_ul: Maximum overaspirate volume (μL)
+        min_overaspirate_ul: Minimum overaspirate volume (μL) 
+        transfer_learning: Whether to enable volume as optimization parameter for transfer learning
+        volume_bounds: Optional custom volume bounds for transfer learning
+        init_method: Initialization method - "SOBOL" (default), "UNIFORM", "FACTORIAL" (LATIN_HYPERCUBE not available in this Ax version)
         fixed_params: Dict of parameter names and values to keep fixed
         simulate: Whether in simulation mode
         max_overaspirate_ul: Maximum overaspirate volume in microliters (default 10.0 µL)
@@ -95,13 +102,33 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
             "deduplicate": True,
         }
     
+    
+    # Map initialization method string to Models enum
+    init_model_map = {
+        "SOBOL": Models.SOBOL,
+        "UNIFORM": Models.UNIFORM,
+        "FACTORIAL": Models.FACTORIAL
+    }
+    
+    # LATIN_HYPERCUBE not available in this Ax version - fallback to SOBOL
+    if init_method == "LATIN_HYPERCUBE":
+        print(f"Warning: LATIN_HYPERCUBE not available in this Ax version, falling back to SOBOL")
+        init_method = "SOBOL"
+    
+    if init_method not in init_model_map:
+        print(f"Warning: Unknown init_method '{init_method}', falling back to SOBOL")
+        init_method = "SOBOL"
+    
+    init_model = init_model_map[init_method]
+    print(f"  Using {init_method} initialization with {num_initial_recs} initial points")
+    
     # Create generation strategy
     if not simulate:
         if num_initial_recs > 0:
             gs = GenerationStrategy(
                 steps=[
                     GenerationStep(
-                        model=Models.SOBOL,
+                        model=init_model,
                         num_trials=num_initial_recs,
                         min_trials_observed=num_initial_recs,
                         max_parallelism=num_initial_recs,
@@ -131,7 +158,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_v
         gs = GenerationStrategy(
             steps=[
                 GenerationStep(
-                    model=Models.SOBOL,
+                    model=init_model,
                     num_trials=-1,
                     max_parallelism=5,
                     model_kwargs={"seed": seed},

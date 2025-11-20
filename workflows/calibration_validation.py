@@ -21,6 +21,8 @@ import os
 from datetime import datetime
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend to prevent figure display
 import matplotlib.pyplot as plt
 from pathlib import Path
 import time
@@ -33,22 +35,132 @@ from calibration_sdl_base import (
     pipet_and_measure, LIQUIDS, set_vial_management, 
     normalize_parameters, empty_vial_if_needed, fill_liquid_if_needed
 )
+import calibration_sdl_base as base_module  # Need this for vial management
 from master_usdl_coordinator import Lash_E
 
 # Pipetting wizard integration now handled automatically by North_Safe parameter system
 
 # --- CONFIGURATION ---
-DEFAULT_LIQUID = "glycerol"
+DEFAULT_LIQUID = "water"
 DEFAULT_SIMULATE = False
-DEFAULT_VOLUMES = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15]  # mL
-DEFAULT_REPLICATES = 3
+DEFAULT_VOLUMES = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2, 0.4, 0.6, 0.8]  # mL
+DEFAULT_REPLICATES = 5
 DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 
 # Vial management mode - set to match your calibration setup
 # Options: "legacy" (no vial management), "single", "dual", etc.
 VIAL_MANAGEMENT_MODE = "legacy"  # Change this to match calibration setup
 
-def initialize_experiment(lash_e, liquid):
+
+# --- ESSENTIAL VIAL MANAGEMENT FUNCTIONS (from simplified workflow) ---
+def get_liquid_source_with_vial_management(lash_e, state, minimum_volume=2.0):
+    """Get liquid source with vial management."""
+    try:
+        # Apply vial management first
+        if base_module._VIAL_MANAGEMENT_MODE_OVERRIDE and base_module._VIAL_MANAGEMENT_MODE_OVERRIDE.lower() != "legacy":
+            base_module.manage_vials(lash_e, state)
+            
+            # Get current source from config
+            if base_module._VIAL_MANAGEMENT_CONFIG_OVERRIDE:
+                cfg = {**base_module.VIAL_MANAGEMENT_DEFAULTS, **base_module._VIAL_MANAGEMENT_CONFIG_OVERRIDE}
+            else:
+                cfg = base_module.VIAL_MANAGEMENT_DEFAULTS
+            
+            current_source = cfg.get('source_vial', 'liquid_source_0')
+            print(f"[vial-mgmt] Using current source vial: {current_source}")
+            return current_source
+    except Exception as e:
+        print(f"[vial-mgmt] pre-pipetting management skipped: {e}")
+    
+    # Legacy mode with smart source switching
+    return get_next_available_liquid_source(lash_e, state, minimum_volume)
+
+def get_next_available_liquid_source(lash_e, state, minimum_volume=2.0):
+    """Legacy mode: Find next available liquid source with enough volume."""
+    # Initialize source index if not exists
+    if "current_source_index" not in state:
+        state["current_source_index"] = 0
+    
+    # Try current source first
+    current_index = state["current_source_index"]
+    current_source = f"liquid_source_{current_index}"
+    
+    try:
+        current_vol = lash_e.nr_robot.get_vial_info(current_source, "vial_volume")
+        if current_vol is not None and current_vol >= minimum_volume:
+            return current_source
+        else:
+            print(f"[legacy] {current_source} volume ({current_vol:.1f}mL) below minimum ({minimum_volume:.1f}mL)")
+    except Exception as e:
+        print(f"[legacy] Could not check {current_source} volume: {e}")
+    
+    # Current source is low, try to find next available source
+    for i in range(5):  # Check up to 5 sources
+        next_index = current_index + 1 + i
+        next_source = f"liquid_source_{next_index}"
+        
+        try:
+            next_vol = lash_e.nr_robot.get_vial_info(next_source, "vial_volume")
+            if next_vol is not None and next_vol >= minimum_volume:
+                # Found good source, switch to it
+                state["current_source_index"] = next_index
+                print(f"[legacy] Switching to {next_source} (volume: {next_vol:.1f}mL)")
+                return next_source
+        except Exception as e:
+            continue
+    
+    # No good sources found, stick with current
+    print(f"[legacy] Warning: No liquid sources with ≥{minimum_volume:.1f}mL found, using {current_source}")
+    return current_source
+
+def update_vial_assignments(state):
+    """Update source and dest vials based on current state."""
+    # Get current source vial
+    source_vial = get_liquid_source_with_vial_management(None, state)
+    
+    # Get current measurement vial
+    dest_vial = state.get("measurement_vial_name", "measurement_vial_0")
+    
+    return source_vial, dest_vial
+
+def check_if_measurement_vial_full(lash_e, state, max_volume=7.0):
+    """Check and handle full measurement vial."""
+    current_vial = state["measurement_vial_name"]
+    
+    try:
+        vol = lash_e.nr_robot.get_vial_info(current_vial, "vial_volume")
+        if vol is not None and vol > max_volume:
+            print(f"[legacy] Measurement vial {current_vial} full ({vol:.1f}mL) - switching to next vial")
+            
+            # Remove pipet before vial operations
+            lash_e.nr_robot.remove_pipet()
+            
+            # Return current vial home
+            lash_e.nr_robot.return_vial_home(current_vial)
+            
+            # Ensure measurement_vial_index exists
+            if "measurement_vial_index" not in state:
+                print(f"[legacy] Warning: measurement_vial_index missing from state, initializing to 0")
+                state["measurement_vial_index"] = 0
+            
+            # Switch to next measurement vial
+            state["measurement_vial_index"] += 1
+            new_vial_name = f"measurement_vial_{state['measurement_vial_index']}"
+            state["measurement_vial_name"] = new_vial_name
+            
+            # Move new vial to clamp position
+            lash_e.nr_robot.move_vial_to_location(new_vial_name, "clamp", 0)
+            
+            print(f"[legacy] Switched to new measurement vial: {new_vial_name}")
+            return True
+    except Exception as e:
+        print(f"[legacy] Could not check measurement vial volume: {e}")
+    
+    return False
+
+
+
+def initialize_experiment(lash_e, liquid, initial_measurement_vial="measurement_vial_0"):
     """Initialize experiment with proper vial setup"""
     print(f"🔧 Initializing experiment for {liquid} validation...")
     
@@ -57,23 +169,24 @@ def initialize_experiment(lash_e, liquid):
         set_vial_management(mode=VIAL_MANAGEMENT_MODE)
         print(f"   🧪 Vial management: {VIAL_MANAGEMENT_MODE}")
     else:
-        print(f"   🧪 Vial management: legacy (no vial management)")
+        print(f"   🧪 Vial management: legacy (custom vial switching)")
     
-    # Ensure measurement vial is in clamp position
-    lash_e.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
+    # Ensure measurement vial is in clamp position (use specified vial, not hardcoded)
+    lash_e.nr_robot.move_vial_to_location(initial_measurement_vial, "clamp", 0)
     
     print("✅ Experiment initialized")
 
-def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
+def validate_volumes(lash_e, liquid, volumes, replicates, simulate, liquid_for_params=None, reset_vials=True):
     """
     Validate pipetting accuracy across specified volumes using intelligent parameter optimization
     
     Args:
         lash_e: Lash_E coordinator instance
-        liquid: Liquid type for density calculations and automatic parameter optimization
+        liquid: Liquid type for density calculations and pipet behavior
         volumes: List of volumes to test (mL)
         replicates: Number of replicates per volume
         simulate: Simulation mode flag
+        liquid_for_params: Liquid type for parameter optimization (None = defaults, liquid = optimized)
     
     Returns:
         results_df: Summary results per volume
@@ -82,7 +195,13 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
     """
     print(f"🧪 Starting validation for {len(volumes)} volumes with {replicates} replicates each...")
     
-    # Get liquid properties
+    # Determine which liquid to use for parameter optimization
+    if liquid_for_params is None:
+        param_liquid = None  # Use default parameters
+    else:
+        param_liquid = liquid_for_params  # Use liquid-specific optimization
+    
+    # Get liquid properties for density calculation (always use the actual liquid)
     if liquid not in LIQUIDS:
         raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
     liquid_density = LIQUIDS[liquid]["density"]
@@ -97,34 +216,58 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
     
     # Setup file paths for raw data
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    param_type = "wizard" if liquid else "default"
+    param_type = "wizard" if liquid_for_params else "default"
     output_dir = Path("output") / "validation_runs" / f"validation_{param_type}_{liquid or 'default'}_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_path = output_dir / "raw_validation_data.csv"
     
     # Vial configuration based on vial management mode
     if VIAL_MANAGEMENT_MODE == "legacy":
-        # Legacy mode: separate source and destination vials
+        # Legacy mode: separate source and destination vials (static assignment)
         source_vial = "liquid_source_0"      # Liquid reservoir
         dest_vial = "measurement_vial_0"     # Measurement vial 
         print(f"   🧪 Legacy mode: {source_vial} → {dest_vial}")
     else:
-        # Single vial mode: same vial for source and destination
-        source_vial = "measurement_vial_0"   # Same vial
-        dest_vial = "measurement_vial_0"     # Same vial
-        print(f"   🧪 Single vial mode: {source_vial} (same vial)")
+        # Non-legacy mode: let vial management system handle vial selection
+        # Start with defaults - swap mode will update these automatically as needed
+        source_vial = "liquid_source_0"      # Will be managed by swap system
+        dest_vial = "measurement_vial_0"     # Will be managed by swap system
+        print(f"   🧪 {VIAL_MANAGEMENT_MODE.title()} mode: {source_vial} → {dest_vial} (managed by vial system)")
+    
+    # Initialize vial management state (only if requested or first time)
+    if reset_vials or not hasattr(validate_volumes, '_persistent_state'):
+        validate_volumes._persistent_state = {
+            "measurement_vial_name": "measurement_vial_0",
+            "measurement_vial_index": 0,
+            "current_source_index": 0
+        }
+        print(f"   🔧 {'Resetting' if reset_vials else 'Initializing'} vial state: measurement_vial_0")
+    else:
+        print(f"   🔄 Using existing vial state: {validate_volumes._persistent_state['measurement_vial_name']}")
+    
+    state = validate_volumes._persistent_state
     
     # Process each volume
     for i, volume in enumerate(volumes):
         print(f"\n📏 Testing volume {i+1}/{len(volumes)}: {volume*1000:.1f} μL")
         
         try:
-            # Use intelligent parameter system - liquid=None triggers defaults
-            param_source = "wizard-optimized" if liquid else "default"
+            # Use intelligent parameter system - param_liquid=None triggers defaults
+            param_source = "wizard-optimized" if param_liquid else "default"
             print(f"   Using {param_source} parameters for {volume*1000:.1f} μL")
             
             # Calculate expected mass
             expected_mass = volume * liquid_density
+            
+            # Update vial assignments using vial management
+            if VIAL_MANAGEMENT_MODE != "legacy":
+                source_vial = get_liquid_source_with_vial_management(lash_e, state)
+                dest_vial = state["measurement_vial_name"]
+            else:
+                source_vial = get_next_available_liquid_source(lash_e, state)
+                dest_vial = state["measurement_vial_name"]
+            
+            print(f"   🧪 Using vials: {source_vial} → {dest_vial}")
             
             # Perform measurements
             volume_measurements = []
@@ -138,17 +281,26 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
                     source_vial=source_vial,
                     dest_vial=dest_vial,
                     volume=volume,
-                    params=None,  # Let intelligent parameter system optimize automatically
+                    params=None,  # Not used in wizard mode
                     expected_measurement=expected_mass,
                     expected_time=30.0,  # Placeholder
                     replicate_count=1,  # Single measurement
                     simulate=simulate,
                     raw_path=str(raw_path),
                     raw_measurements=raw_measurements,
-                    liquid=liquid,  # None = defaults, liquid name = wizard optimization
+                    liquid=liquid,  # Always use real liquid for density calculation
                     new_pipet_each_time=new_pipet_each_time_set,  # Use liquid-specific setting
-                    trial_type="VALIDATION"
+                    trial_type="VALIDATION",
+                    liquid_for_params=param_liquid,  # None = defaults, liquid name = optimization
+                    use_wizard_mode=True  # EXPLICIT: Use North_Safe parameter wizard
                 )
+                
+                # Check if measurement vial is getting full and switch if needed
+                vial_switched = check_if_measurement_vial_full(lash_e, state)
+                if vial_switched:
+                    # Update dest_vial for next replicate
+                    dest_vial = state["measurement_vial_name"]
+                    print(f"   🧪 Switched to new measurement vial: {dest_vial}")
                 
                 # Extract the measurement from the raw data
                 latest_measurement = raw_measurements[-1]  # Last added measurement
@@ -187,7 +339,7 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
                 'absolute_accuracy_percent': absolute_accuracy,
                 'mean_absolute_error_percent': mean_absolute_error,
                 'replicates': replicates,
-                'liquid': liquid or 'default',
+                'liquid': param_liquid or 'default',  # Use param_liquid for parameter tracking
                 'parameter_source': param_source
             }
             results.append(volume_result)
@@ -211,7 +363,7 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate):
                 'absolute_accuracy_percent': np.nan,
                 'mean_absolute_error_percent': np.nan,
                 'replicates': replicates,
-                'liquid': liquid or 'default',
+                'liquid': param_liquid or 'default',  # Use param_liquid for parameter tracking
                 'parameter_source': param_source,
                 'error': str(e)
             }
@@ -350,39 +502,84 @@ def compare_validation_results(wizard_csv_path, default_csv_path, output_dir=Non
 
 
 def create_comparison_plot(comparison_df, output_dir):
-    """Create a simple comparison plot"""
+    """Create comparison plots - both full scale and clipped at 5%"""
     if len(comparison_df) == 0:
         return
-        
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
     volumes = comparison_df['volume_target_ul']
+    volume_labels = [f"{v:.0f}" for v in volumes]  # Create clean labels
+    x_positions = range(len(volumes))  # Use sequential positions for bars
+    bar_width = 0.35
     
-    # Accuracy comparison
-    ax1.bar(volumes - 2, comparison_df['wizard_absolute_accuracy_pct'], 
-            width=4, label='Wizard', color='green', alpha=0.7)
-    ax1.bar(volumes + 2, comparison_df['default_absolute_accuracy_pct'], 
-            width=4, label='Default', color='red', alpha=0.7)
+    # Create full-scale version
+    fig1, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # Accuracy comparison (full scale)
+    ax1.bar([x - bar_width/2 for x in x_positions], comparison_df['wizard_absolute_accuracy_pct'], 
+            width=bar_width, label='Wizard', color='green', alpha=0.7)
+    ax1.bar([x + bar_width/2 for x in x_positions], comparison_df['default_absolute_accuracy_pct'], 
+            width=bar_width, label='Default', color='red', alpha=0.7)
     ax1.set_xlabel('Volume (μL)')
     ax1.set_ylabel('Absolute Accuracy Error (%)')
     ax1.set_title('Accuracy Comparison')
+    ax1.set_xticks(x_positions)
+    ax1.set_xticklabels(volume_labels)
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     
-    # Precision comparison
-    ax2.bar(volumes - 2, comparison_df['wizard_cv_pct'], 
-            width=4, label='Wizard', color='green', alpha=0.7)
-    ax2.bar(volumes + 2, comparison_df['default_cv_pct'], 
-            width=4, label='Default', color='red', alpha=0.7)
+    # Precision comparison (full scale)
+    ax2.bar([x - bar_width/2 for x in x_positions], comparison_df['wizard_cv_pct'], 
+            width=bar_width, label='Wizard', color='green', alpha=0.7)
+    ax2.bar([x + bar_width/2 for x in x_positions], comparison_df['default_cv_pct'], 
+            width=bar_width, label='Default', color='red', alpha=0.7)
     ax2.set_xlabel('Volume (μL)')
     ax2.set_ylabel('Precision (CV %)')
     ax2.set_title('Precision Comparison')
+    ax2.set_xticks(x_positions)
+    ax2.set_xticklabels(volume_labels)
     ax2.legend()
     ax2.grid(True, alpha=0.3)
     
     plt.tight_layout()
     plt.savefig(output_dir / "parameter_comparison.png", dpi=300, bbox_inches='tight')
-    print(f"   📈 Comparison plot saved")
+    plt.close(fig1)  # Close to free memory
+    
+    # Create clipped version (5% max)
+    fig2, (ax1_clip, ax2_clip) = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # Accuracy comparison (clipped at 5%)
+    ax1_clip.bar([x - bar_width/2 for x in x_positions], comparison_df['wizard_absolute_accuracy_pct'], 
+                 width=bar_width, label='Wizard', color='green', alpha=0.7)
+    ax1_clip.bar([x + bar_width/2 for x in x_positions], comparison_df['default_absolute_accuracy_pct'], 
+                 width=bar_width, label='Default', color='red', alpha=0.7)
+    ax1_clip.set_xlabel('Volume (μL)')
+    ax1_clip.set_ylabel('Absolute Accuracy Error (%)')
+    ax1_clip.set_title('Accuracy Comparison (Clipped at 5%)')
+    ax1_clip.set_xticks(x_positions)
+    ax1_clip.set_xticklabels(volume_labels)
+    ax1_clip.set_ylim(0, 5)  # Clip at 5%
+    ax1_clip.legend()
+    ax1_clip.grid(True, alpha=0.3)
+    
+    # Precision comparison (clipped at 5%)
+    ax2_clip.bar([x - bar_width/2 for x in x_positions], comparison_df['wizard_cv_pct'], 
+                 width=bar_width, label='Wizard', color='green', alpha=0.7)
+    ax2_clip.bar([x + bar_width/2 for x in x_positions], comparison_df['default_cv_pct'], 
+                 width=bar_width, label='Default', color='red', alpha=0.7)
+    ax2_clip.set_xlabel('Volume (μL)')
+    ax2_clip.set_ylabel('Precision (CV %)')
+    ax2_clip.set_title('Precision Comparison (Clipped at 5%)')
+    ax2_clip.set_xticks(x_positions)
+    ax2_clip.set_xticklabels(volume_labels)
+    ax2_clip.set_ylim(0, 5)  # Clip at 5%
+    ax2_clip.legend()
+    ax2_clip.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / "parameter_comparison_clipped_5pct.png", dpi=300, bbox_inches='tight')
+    plt.close(fig2)  # Close to free memory
+    
+    print(f"   📈 Comparison plots saved (full scale and clipped at 5%)")
 
 
 def print_comparison_summary(comparison_df):
@@ -439,15 +636,16 @@ def run_comparison_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
         print(f"\n🧙 PHASE 1: Testing wizard-optimized parameters...")
         initialize_experiment(lash_e, liquid)
         wizard_results_df, wizard_raw_df, wizard_output_dir = validate_volumes(
-            lash_e, liquid, volumes, replicates, simulate
+            lash_e, liquid, volumes, replicates, simulate, liquid_for_params=liquid
         )
         generate_validation_report(wizard_results_df, wizard_raw_df, wizard_output_dir, f"{liquid}_wizard")
         
         # Run 2: Default parameters  
         print(f"\n⚙️  PHASE 2: Testing default parameters...")
-        initialize_experiment(lash_e, liquid)  # Still need liquid for density calculation
+        # Don't re-initialize - keep current vial state from phase 1
+        print(f"   🧪 Continuing with current vial configuration from Phase 1...")
         default_results_df, default_raw_df, default_output_dir = validate_volumes(
-            lash_e, None, volumes, replicates, simulate  # liquid=None triggers defaults
+            lash_e, liquid, volumes, replicates, simulate, liquid_for_params=None, reset_vials=False  # Don't reset vial state
         )
         generate_validation_report(default_results_df, default_raw_df, default_output_dir, "default")
         
@@ -852,7 +1050,7 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
     
     try:
         # Initialize Lash_E coordinator
-        lash_e = Lash_E(input_vial_file, simulate=simulate)
+        lash_e = Lash_E(input_vial_file, simulate=simulate, initialize_biotek=False)
         lash_e.nr_robot.check_input_file()
         lash_e.nr_track.check_input_file()
         
@@ -876,7 +1074,7 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
             print(f"🔬 Running single validation with {'wizard-optimized' if liquid else 'default'} parameters")
             # Run single validation
             results_df, raw_df, output_dir = validate_volumes(
-                lash_e, liquid, volumes, replicates, simulate
+                lash_e, liquid, volumes, replicates, simulate, liquid_for_params=liquid
             )
             
             # Generate standard report
@@ -891,11 +1089,11 @@ def run_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
 
 def main():
     """Main function for command line execution"""
-    # Default configuration - single validation
-    run_validation()
+    # Default configuration - comparison validation (wizard vs default)
+    run_comparison_validation()
     
-    # Uncomment the line below to run comparison validation instead:
-    # run_comparison_validation()
+    # Uncomment the line below to run single validation instead:
+    # run_validation()
 
 if __name__ == "__main__":
     main()
