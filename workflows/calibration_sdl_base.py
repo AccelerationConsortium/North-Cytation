@@ -253,64 +253,49 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
         lash_e.nr_robot.return_vial_home(liquid_source_name)
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
-def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, trial_type="UNKNOWN", liquid_for_params=None, use_wizard_mode=False):
-    # Determine which liquid to use for parameter optimization
-    # liquid_for_params takes precedence - can be None to force defaults
+def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, trial_type="UNKNOWN", liquid_for_params=None):
+    """
+    Simplified pipetting function - uses explicit parameters provided by caller.
+    Both calibration_sdl_simplified and calibration_validation now determine their own parameters.
+    """
+    # Determine which liquid to use for parameter optimization (mainly for logging)
     param_liquid = liquid_for_params
     
-    # DEBUG: Print parameter resolution only when different from normal case
-    if liquid_for_params != liquid:
-        print(f"[PARAM DEBUG] liquid={liquid}, liquid_for_params={liquid_for_params}, param_liquid={param_liquid}")
-    
-    # EXPLICIT MODE HANDLING - NO FALLBACKS
-    if use_wizard_mode or params is None:
-        # VALIDATION MODE: Let North_Safe parameter wizard handle everything
-        print(f"[WIZARD MODE] Using North_Safe parameter wizard for {param_liquid}")
-        # Don't create PipettingParameters - let robot handle it
-        use_robot_parameters = True
-        params = {}  # Empty dict to avoid crashes below
+    # Handle None params (fallback to basic defaults)
+    if params is None:
+        print(f"[DEFAULT MODE] No parameters provided, using basic defaults")
+        params = {
+            'aspirate_speed': 10, 'dispense_speed': 10, 'aspirate_wait_time': 0.0,
+            'dispense_wait_time': 0.0, 'retract_speed': 10, 'blowout_vol': 0.0,
+            'post_asp_air_vol': 0.0, 'overaspirate_vol': 0.0
+        }
     else:
-        # CALIBRATION MODE: Use exact parameters provided
-        print(f"[CALIBRATION MODE] Using provided parameters: {params}")
-        use_robot_parameters = False
+        print(f"[EXPLICIT MODE] Using provided parameters for {param_liquid or 'default'}")
         # Normalize parameters to handle different naming conventions
         params = normalize_parameters(params)
     
-    # DEBUG: Show final parameters only when investigating parameter issues
-    if liquid_for_params != liquid:
-        print(f"[PARAM DEBUG] Final parameters being used: {params}")
-
-    # PARAMETER OBJECT CREATION - CONDITIONAL ON MODE
-    if use_robot_parameters:
-        # WIZARD MODE: Pass None to let robot choose
-        aspirate_params = None
-        dispense_params = None
-    else:
-        # CALIBRATION MODE: Create specific parameter objects
-        blowout_vol = params.get("blowout_vol", 0.0)  # Default blowout volume
-        post_air = params.get("post_asp_air_vol", 0)
-        over_volume = params.get("overaspirate_vol", 0)
-        air_vol = post_air  # Only post_asp_air_vol contributes to air_vol now
-        
-        # Create PipettingParameters objects instead of kwargs dictionaries
-        aspirate_params = PipettingParameters(
-            aspirate_speed=params["aspirate_speed"],
-            aspirate_wait_time=params["aspirate_wait_time"],
-            retract_speed=params["retract_speed"],
-            pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
-            post_asp_air_vol=post_air,
-            overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for calibration
-
-        )
-        
-        dispense_params = PipettingParameters(
-            dispense_speed=params["dispense_speed"],
-            dispense_wait_time=params["dispense_wait_time"],
-            blowout_vol=blowout_vol,
-            overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for overdispense calculation
-            pre_asp_air_vol=0.0,  # Include for overdispense calculation
-            post_asp_air_vol=post_air,  # Include for overdispense calculation
-        )  
+    # Create PipettingParameters objects from the provided parameters
+    blowout_vol = params.get("blowout_vol", 0.0)
+    post_air = params.get("post_asp_air_vol", 0)
+    over_volume = params.get("overaspirate_vol", 0)
+    
+    aspirate_params = PipettingParameters(
+        aspirate_speed=params["aspirate_speed"],
+        aspirate_wait_time=params["aspirate_wait_time"],
+        retract_speed=params["retract_speed"],
+        pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
+        post_asp_air_vol=post_air,
+        overaspirate_vol=over_volume,
+    )
+    
+    dispense_params = PipettingParameters(
+        dispense_speed=params["dispense_speed"],
+        dispense_wait_time=params["dispense_wait_time"],
+        blowout_vol=blowout_vol,
+        overaspirate_vol=over_volume,
+        pre_asp_air_vol=0.0,
+        post_asp_air_vol=post_air,
+    )  
 
     if simulate:
         # In simulation mode, generate simulated data directly
@@ -674,11 +659,11 @@ def _maintain_vials(lash_e, state, cfg):
                 
                 msg = f"[maintain] Refilled {src} by {top_up:.2f} mL"
                 lash_e.logger.info(msg)
-                print(f"[LOG] {msg}")
+                # print(f"[LOG] {msg}")  # Reduced console logging
     except Exception as e:
         msg = f"[maintain] refill skipped: {e}"
         lash_e.logger.info(msg)
-        print(f"[LOG] {msg}")
+        # print(f"[LOG] {msg}")  # Reduced console logging
 
 def _swap_vials_if_needed(lash_e, state, cfg):
     src = cfg['source_vial']
@@ -690,7 +675,7 @@ def _swap_vials_if_needed(lash_e, state, cfg):
             # Debug log: Show volumes before swap evaluation
             msg = f"[swap] Pre-swap volumes: source({src})={vol_src:.2f}mL, measurement({meas})={vol_meas:.2f}mL, min_threshold={cfg['min_source_ml']}mL"
             lash_e.logger.info(msg)
-            print(f"[LOG] {msg}")
+            # print(f"[LOG] {msg}")  # Reduced console logging - swap is working well
             
             if vol_src < cfg['min_source_ml']:
                 lash_e.nr_robot.remove_pipet()
@@ -715,12 +700,12 @@ def _swap_vials_if_needed(lash_e, state, cfg):
                 
                 msg = f"[swap] Swapped roles: source->{cfg['source_vial']} measurement->{cfg['measurement_vial']}"
                 lash_e.logger.info(msg)
-                print(f"[LOG] {msg}")
+                print(f"[LOG] {msg}")  # Show actual swaps - important info
                 print(f"[LOG] Updated global config: source={_VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial']} measurement={_VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial']}")
     except Exception as e:
         msg = f"[swap] skipped: {e}"
         lash_e.logger.info(msg)
-        print(f"[LOG] {msg}")
+        print(f"[LOG] {msg}")  # Show swap errors - important for debugging
 
 # Track if single mode has been initialized to avoid repeated moves
 _SINGLE_MODE_INITIALIZED = False
@@ -765,7 +750,7 @@ def _single_vial_mode(lash_e, state, cfg):
 def manage_vials(lash_e, state):
     # Only use per-experiment overrides (no environment variables)
     mode = _VIAL_MANAGEMENT_MODE_OVERRIDE
-    print(f"[vial-mgmt] mode = {mode}")
+    # print(f"[vial-mgmt] mode = {mode}")  # Reduced console logging - working well now
     
     # Merge override with defaults
     if _VIAL_MANAGEMENT_CONFIG_OVERRIDE:

@@ -816,6 +816,16 @@ def initialize_experiment():
         print("Reusing existing Lash_E controller...")
         _CACHED_LASH_E.logger.info(f"Reusing Lash_E controller for experiment index {EXPERIMENT_INDEX}")
 
+    # Home robot components for clean start
+    print("🏠 Homing robot components for clean start...")
+    try:
+        _CACHED_LASH_E.nr_robot.move_home()  # Fast move to home position
+        _CACHED_LASH_E.nr_robot.home_robot_components()  # Full homing sequence
+        print("   ✅ Robot homed successfully")
+    except Exception as e:
+        print(f"   ⚠️  Homing warning: {e}")
+        _CACHED_LASH_E.logger.warning(f"Robot homing failed: {e}")
+
     try:
         _CACHED_LASH_E.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
     except Exception as e:

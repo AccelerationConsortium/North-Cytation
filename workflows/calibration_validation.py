@@ -28,7 +28,10 @@ from pathlib import Path
 import time
 
 # Add paths for imports
-sys.path.append("../North-Cytation")
+sys.path.append("../utoronto_demo")
+
+# Import slack functionality
+import slack_agent
 
 # Import base functionality
 from calibration_sdl_base import (
@@ -38,18 +41,19 @@ from calibration_sdl_base import (
 import calibration_sdl_base as base_module  # Need this for vial management
 from master_usdl_coordinator import Lash_E
 
-# Pipetting wizard integration now handled automatically by North_Safe parameter system
+# Import pipetting wizard for direct parameter control
+from pipetting_data.pipetting_wizard import PipettingWizard
 
 # --- CONFIGURATION ---
 DEFAULT_LIQUID = "water"
 DEFAULT_SIMULATE = False
-DEFAULT_VOLUMES = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2, 0.4, 0.6, 0.8]  # mL
+DEFAULT_VOLUMES = [0.008, 0.012, 0.02, 0.04, 0.075, 0.12]  # mL
 DEFAULT_REPLICATES = 5
-DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
-
+DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_overnight.csv"
+COMPENSATE_OVERVOLUME = False  # NEW: Control overvolume compensation in wizard
 # Vial management mode - set to match your calibration setup
 # Options: "legacy" (no vial management), "single", "dual", etc.
-VIAL_MANAGEMENT_MODE = "legacy"  # Change this to match calibration setup
+VIAL_MANAGEMENT_MODE = "swap"  # Change this to match calibration setup
 
 
 # --- ESSENTIAL VIAL MANAGEMENT FUNCTIONS (from simplified workflow) ---
@@ -276,12 +280,62 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, liquid_for_p
             for rep in range(replicates):
                 print(f"   Replicate {rep+1}/{replicates}...", end="")
                 
+                # CRITICAL: Update vial assignments INSIDE the loop after each measurement
+                # Vial management (swap mode) can change vials during pipet_and_measure calls
+                if VIAL_MANAGEMENT_MODE != "legacy":
+                    source_vial = get_liquid_source_with_vial_management(lash_e, state)
+                    dest_vial = state["measurement_vial_name"]
+                else:
+                    source_vial = get_next_available_liquid_source(lash_e, state)
+                    dest_vial = state["measurement_vial_name"]
+                
+                # Get parameters directly from wizard with explicit compensation control
+                validation_params = None
+                if param_liquid:  # Only use wizard if we have a liquid specified
+                    try:
+                        wizard = PipettingWizard()
+                        wizard_params = wizard.get_pipetting_parameters(
+                            param_liquid, 
+                            volume, 
+                            compensate_overvolume=COMPENSATE_OVERVOLUME  # Explicit control!
+                        )
+                        
+                        if wizard_params:
+                            # Convert wizard dict to format expected by calibration_sdl_base
+                            validation_params = {
+                                'aspirate_speed': wizard_params.get('aspirate_speed', 10),
+                                'dispense_speed': wizard_params.get('dispense_speed', 10),
+                                'aspirate_wait_time': wizard_params.get('aspirate_wait_time', 0.0),
+                                'dispense_wait_time': wizard_params.get('dispense_wait_time', 0.0),
+                                'retract_speed': wizard_params.get('retract_speed', 10),
+                                'blowout_vol': wizard_params.get('blowout_vol', 0.0),
+                                'post_asp_air_vol': wizard_params.get('post_asp_air_vol', 0.0),
+                                'overaspirate_vol': wizard_params.get('overaspirate_vol', 0.0)
+                            }
+                            print(f"wizard→", end="")  # Indicate wizard was used
+                        else:
+                            print(f"defaults→", end="")  # Indicate fallback to defaults
+                    except Exception as e:
+                        print(f"error({e})→defaults→", end="")  # Indicate error fallback
+                else:
+                    print(f"no-liquid→defaults→", end="")  # Indicate no liquid specified
+                
+                # DEBUG: Show parameters for first replicate
+                if rep == 0:
+                    if validation_params:
+                        print(f"\n   🔧 Parameters: asp={validation_params.get('aspirate_speed', 'N/A')}, "
+                              f"disp={validation_params.get('dispense_speed', 'N/A')}, "
+                              f"blow={validation_params.get('blowout_vol', 'N/A'):.3f}mL, "
+                              f"over={validation_params.get('overaspirate_vol', 'N/A'):.4f}mL")
+                    else:
+                        print(f"\n   🔧 Parameters: Using robot defaults")
+                
                 result = pipet_and_measure(
                     lash_e=lash_e,
                     source_vial=source_vial,
                     dest_vial=dest_vial,
                     volume=volume,
-                    params=None,  # Not used in wizard mode
+                    params=validation_params,  # Pass explicit params (or None for defaults)
                     expected_measurement=expected_mass,
                     expected_time=30.0,  # Placeholder
                     replicate_count=1,  # Single measurement
@@ -291,8 +345,7 @@ def validate_volumes(lash_e, liquid, volumes, replicates, simulate, liquid_for_p
                     liquid=liquid,  # Always use real liquid for density calculation
                     new_pipet_each_time=new_pipet_each_time_set,  # Use liquid-specific setting
                     trial_type="VALIDATION",
-                    liquid_for_params=param_liquid,  # None = defaults, liquid name = optimization
-                    use_wizard_mode=True  # EXPLICIT: Use North_Safe parameter wizard
+                    liquid_for_params=param_liquid  # Keep for potential future use
                 )
                 
                 # Check if measurement vial is getting full and switch if needed
@@ -501,6 +554,333 @@ def compare_validation_results(wizard_csv_path, default_csv_path, output_dir=Non
     return comparison_df
 
 
+def compare_multiple_validation_results(all_results, output_dir=None):
+    """
+    Compare multiple validation results (N-way comparison) and generate simplified comparison.
+    
+    Args:
+        all_results: Dict of {method_name: {'results_df': df, 'method': config}}
+        output_dir: Directory to save comparison results (optional)
+    
+    Returns:
+        comparison_df: DataFrame with simplified comparison data
+    """
+    print(f"📊 Comparing {len(all_results)} validation methods...")
+    
+    # Create simplified comparison DataFrame
+    comparison_data = []
+    
+    # Get all volumes (assume all methods tested same volumes)
+    first_method = next(iter(all_results.values()))
+    volumes = first_method['results_df']['volume_target_ul'].tolist()
+    
+    for volume in volumes:
+        volume_comparison = {'volume_target_ul': volume}
+        
+        # Extract data for each method at this volume
+        for method_name, result_data in all_results.items():
+            results_df = result_data['results_df']
+            method_config = result_data['method']
+            
+            # Find row for this volume
+            volume_row = results_df[results_df['volume_target_ul'] == volume]
+            
+            if len(volume_row) > 0:
+                row = volume_row.iloc[0]
+                volume_comparison[f'{method_name}_accuracy_pct'] = row.get('accuracy_percent', np.nan)
+                volume_comparison[f'{method_name}_absolute_accuracy_pct'] = row.get('absolute_accuracy_percent', np.nan)
+                volume_comparison[f'{method_name}_cv_pct'] = row.get('cv_percent', np.nan)
+                volume_comparison[f'{method_name}_measured_ul'] = row.get('volume_measured_mean_ul', np.nan)
+                volume_comparison[f'{method_name}_std_ul'] = row.get('volume_measured_std_ul', np.nan)
+            else:
+                # Missing data for this volume
+                volume_comparison[f'{method_name}_accuracy_pct'] = np.nan
+                volume_comparison[f'{method_name}_absolute_accuracy_pct'] = np.nan
+                volume_comparison[f'{method_name}_cv_pct'] = np.nan
+                volume_comparison[f'{method_name}_measured_ul'] = np.nan
+                volume_comparison[f'{method_name}_std_ul'] = np.nan
+        
+        comparison_data.append(volume_comparison)
+    
+    comparison_df = pd.DataFrame(comparison_data)
+    
+    # Save comparison if output directory provided
+    if output_dir:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        comparison_df.to_csv(output_path / "multi_method_comparison.csv", index=False)
+        
+        # Generate comparison plot
+        create_multi_method_comparison_plot(comparison_df, all_results, output_path)
+        
+        # Generate simple summary
+        create_multi_method_summary(comparison_df, all_results, output_path)
+        
+        print(f"   💾 Multi-method comparison saved to: {output_path}")
+    
+    # Print summary
+    print_multi_method_summary(comparison_df, all_results)
+    
+    return comparison_df
+
+
+def create_multi_method_comparison_plot(comparison_df, all_results, output_dir):
+    """Create comparison plots with multiple bars per volume"""
+    if len(comparison_df) == 0:
+        return
+    
+    methods = list(all_results.keys())
+    volumes = comparison_df['volume_target_ul']
+    volume_labels = [f"{v:.0f}" for v in volumes]
+    x_positions = np.arange(len(volumes))
+    
+    n_methods = len(methods)
+    bar_width = 0.8 / n_methods  # Distribute bars evenly
+    colors = ['green', 'blue', 'red', 'orange', 'purple', 'brown'][:n_methods]  # Support up to 6 methods
+    
+    # Create comparison plots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    
+    # Accuracy comparison
+    for i, method in enumerate(methods):
+        accuracy_col = f'{method}_absolute_accuracy_pct'
+        if accuracy_col in comparison_df.columns:
+            offset = (i - (n_methods-1)/2) * bar_width
+            ax1.bar(x_positions + offset, comparison_df[accuracy_col], 
+                   width=bar_width, label=method.replace('_', ' ').title(), 
+                   color=colors[i], alpha=0.7)
+    
+    ax1.set_xlabel('Volume (μL)')
+    ax1.set_ylabel('Absolute Accuracy Error (%)')
+    ax1.set_title('Accuracy Comparison (Lower is Better)')
+    ax1.set_xticks(x_positions)
+    ax1.set_xticklabels(volume_labels)
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    # Precision comparison
+    for i, method in enumerate(methods):
+        cv_col = f'{method}_cv_pct'
+        if cv_col in comparison_df.columns:
+            offset = (i - (n_methods-1)/2) * bar_width
+            ax2.bar(x_positions + offset, comparison_df[cv_col], 
+                   width=bar_width, label=method.replace('_', ' ').title(), 
+                   color=colors[i], alpha=0.7)
+    
+    ax2.set_xlabel('Volume (μL)')
+    ax2.set_ylabel('Precision (CV %)')
+    ax2.set_title('Precision Comparison (Lower is Better)')
+    ax2.set_xticks(x_positions)
+    ax2.set_xticklabels(volume_labels)
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / "multi_method_comparison.png", dpi=300, bbox_inches='tight')
+    
+    # Also create a clipped version (5% max)
+    fig2, (ax1_clip, ax2_clip) = plt.subplots(1, 2, figsize=(15, 6))
+    
+    # Accuracy comparison (clipped)
+    for i, method in enumerate(methods):
+        accuracy_col = f'{method}_absolute_accuracy_pct'
+        if accuracy_col in comparison_df.columns:
+            offset = (i - (n_methods-1)/2) * bar_width
+            ax1_clip.bar(x_positions + offset, comparison_df[accuracy_col], 
+                        width=bar_width, label=method.replace('_', ' ').title(), 
+                        color=colors[i], alpha=0.7)
+    
+    ax1_clip.set_xlabel('Volume (μL)')
+    ax1_clip.set_ylabel('Absolute Accuracy Error (%)')
+    ax1_clip.set_title('Accuracy Comparison (Clipped at 5%)')
+    ax1_clip.set_xticks(x_positions)
+    ax1_clip.set_xticklabels(volume_labels)
+    ax1_clip.set_ylim(0, 5)
+    ax1_clip.legend()
+    ax1_clip.grid(True, alpha=0.3)
+    
+    # Precision comparison (clipped)
+    for i, method in enumerate(methods):
+        cv_col = f'{method}_cv_pct'
+        if cv_col in comparison_df.columns:
+            offset = (i - (n_methods-1)/2) * bar_width
+            ax2_clip.bar(x_positions + offset, comparison_df[cv_col], 
+                        width=bar_width, label=method.replace('_', ' ').title(), 
+                        color=colors[i], alpha=0.7)
+    
+    ax2_clip.set_xlabel('Volume (μL)')
+    ax2_clip.set_ylabel('Precision (CV %)')
+    ax2_clip.set_title('Precision Comparison (Clipped at 5%)')
+    ax2_clip.set_xticks(x_positions)
+    ax2_clip.set_xticklabels(volume_labels)
+    ax2_clip.set_ylim(0, 5)
+    ax2_clip.legend()
+    ax2_clip.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / "multi_method_comparison_clipped_5pct.png", dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    plt.close(fig2)
+    
+    print(f"   📈 Multi-method comparison plots saved")
+
+
+def create_multi_method_summary(comparison_df, all_results, output_dir):
+    """Create text summary of multi-method comparison"""
+    methods = list(all_results.keys())
+    
+    summary_lines = [
+        f"Multi-Method Validation Comparison",
+        "=" * 40,
+        f"Test Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"Methods Compared: {len(methods)}",
+        f"Volumes Tested: {len(comparison_df)}",
+        "",
+        "Methods:",
+    ]
+    
+    for method_name, result_data in all_results.items():
+        method_config = result_data['method']
+        liquid_param = method_config['liquid_for_params']
+        comp_ov = method_config['compensate_overvolume']
+        summary_lines.append(f"  {method_name}: liquid_params={liquid_param}, compensate_overvolume={comp_ov}")
+    
+    summary_lines.extend([
+        "",
+        "Overall Performance (Mean Across All Volumes):",
+    ])
+    
+    for method in methods:
+        acc_col = f'{method}_absolute_accuracy_pct'
+        cv_col = f'{method}_cv_pct'
+        
+        if acc_col in comparison_df.columns and cv_col in comparison_df.columns:
+            mean_acc = comparison_df[acc_col].mean()
+            mean_cv = comparison_df[cv_col].mean()
+            summary_lines.append(f"  {method}: Accuracy {mean_acc:.2f}%, Precision {mean_cv:.2f}% CV")
+    
+    summary_text = "\n".join(summary_lines)
+    
+    with open(output_dir / "multi_method_summary.txt", 'w', encoding='utf-8') as f:
+        f.write(summary_text)
+
+
+def print_multi_method_summary(comparison_df, all_results):
+    """Print summary of multi-method comparison"""
+    methods = list(all_results.keys())
+    
+    if len(comparison_df) == 0:
+        print("   ⚠️  No data for comparison")
+        return
+    
+    print(f"\n📋 MULTI-METHOD COMPARISON SUMMARY:")
+    print(f"   Methods compared: {len(methods)}")
+    print(f"   Volumes tested: {len(comparison_df)}")
+    
+    # Calculate overall performance for each method
+    print(f"\n   Overall Performance (Mean):")
+    best_accuracy_method = None
+    best_accuracy_value = float('inf')
+    best_precision_method = None
+    best_precision_value = float('inf')
+    
+    for method in methods:
+        acc_col = f'{method}_absolute_accuracy_pct'
+        cv_col = f'{method}_cv_pct'
+        
+        if acc_col in comparison_df.columns and cv_col in comparison_df.columns:
+            mean_acc = comparison_df[acc_col].mean()
+            mean_cv = comparison_df[cv_col].mean()
+            
+            print(f"     {method}: Accuracy {mean_acc:.2f}%, Precision {mean_cv:.2f}% CV")
+            
+            if mean_acc < best_accuracy_value:
+                best_accuracy_value = mean_acc
+                best_accuracy_method = method
+            
+            if mean_cv < best_precision_value:
+                best_precision_value = mean_cv
+                best_precision_method = method
+    
+    if best_accuracy_method:
+        print(f"\n   🏆 Best Accuracy: {best_accuracy_method} ({best_accuracy_value:.2f}%)")
+    if best_precision_method:
+        print(f"   🏆 Best Precision: {best_precision_method} ({best_precision_value:.2f}% CV)")
+
+
+def compare_validation_results(wizard_csv_path, default_csv_path, output_dir=None):
+    """
+    Compare two validation result CSV files and generate comparison report.
+    
+    Args:
+        wizard_csv_path: Path to wizard validation results CSV
+        default_csv_path: Path to default validation results CSV  
+        output_dir: Directory to save comparison results (optional)
+    
+    Returns:
+        comparison_df: DataFrame with side-by-side comparison
+    """
+    print(f"📊 Comparing validation results...")
+    print(f"   Wizard results: {wizard_csv_path}")
+    print(f"   Default results: {default_csv_path}")
+    
+    # Load both result files
+    try:
+        wizard_df = pd.read_csv(wizard_csv_path)
+        default_df = pd.read_csv(default_csv_path)
+    except Exception as e:
+        print(f"❌ Error loading result files: {e}")
+        return None
+    
+    # Merge on volume for comparison
+    comparison_data = []
+    
+    for _, wizard_row in wizard_df.iterrows():
+        volume = wizard_row['volume_target_ul']
+        
+        # Find matching default result
+        default_row = default_df[default_df['volume_target_ul'] == volume]
+        
+        if len(default_row) > 0:
+            default_row = default_row.iloc[0]
+            
+            # Calculate improvements
+            accuracy_improvement = default_row['absolute_accuracy_percent'] - wizard_row['absolute_accuracy_percent']
+            precision_improvement = default_row['cv_percent'] - wizard_row['cv_percent']
+            
+            comparison = {
+                'volume_target_ul': volume,
+                'wizard_accuracy_pct': wizard_row['accuracy_percent'],
+                'default_accuracy_pct': default_row['accuracy_percent'],
+                'wizard_absolute_accuracy_pct': wizard_row['absolute_accuracy_percent'],
+                'default_absolute_accuracy_pct': default_row['absolute_accuracy_percent'],
+                'accuracy_improvement_pct': accuracy_improvement,
+                'wizard_cv_pct': wizard_row['cv_percent'],
+                'default_cv_pct': default_row['cv_percent'],
+                'precision_improvement_pct': precision_improvement,
+                'wizard_better_accuracy': wizard_row['absolute_accuracy_percent'] < default_row['absolute_accuracy_percent'],
+                'wizard_better_precision': wizard_row['cv_percent'] < default_row['cv_percent']
+            }
+            comparison_data.append(comparison)
+    
+    comparison_df = pd.DataFrame(comparison_data)
+    
+    # Save comparison if output directory provided
+    if output_dir:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        comparison_df.to_csv(output_path / "parameter_comparison.csv", index=False)
+        
+        # Generate simple comparison plot
+        create_comparison_plot(comparison_df, output_path)
+        print(f"   💾 Comparison saved to: {output_path}")
+    
+    # Print summary
+    print_comparison_summary(comparison_df)
+    
+    return comparison_df
+
+
 def create_comparison_plot(comparison_df, output_dir):
     """Create comparison plots - both full scale and clipped at 5%"""
     if len(comparison_df) == 0:
@@ -609,9 +989,10 @@ def print_comparison_summary(comparison_df):
 
 def run_comparison_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE, 
                              volumes=None, replicates=DEFAULT_REPLICATES,
-                             input_vial_file=DEFAULT_INPUT_VIAL_STATUS_FILE):
+                             input_vial_file=DEFAULT_INPUT_VIAL_STATUS_FILE,
+                             comparison_methods=None):
     """
-    Run validation twice (wizard vs default) and compare results.
+    Run validation with multiple parameter methods and compare results.
     
     Args:
         liquid: Liquid type for wizard optimization
@@ -619,56 +1000,162 @@ def run_comparison_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
         volumes: List of volumes to test
         replicates: Number of replicates per volume
         input_vial_file: Vial configuration file
+        comparison_methods: List of method configurations. If None, defaults to 3-way comparison:
+            [
+                {'name': 'wizard_comp_on', 'liquid_for_params': liquid, 'compensate_overvolume': True},
+                {'name': 'wizard_comp_off', 'liquid_for_params': liquid, 'compensate_overvolume': False}, 
+                {'name': 'default', 'liquid_for_params': None, 'compensate_overvolume': False}
+            ]
     """
     if volumes is None:
         volumes = DEFAULT_VOLUMES.copy()
     
-    print(f"🔬 COMPARISON VALIDATION: Wizard vs Default Parameters")
+    # Default 2-way comparison if not specified: wizard with compensation vs default
+    if comparison_methods is None:
+        comparison_methods = [
+            {'name': 'wizard_comp_on', 'liquid_for_params': liquid, 'compensate_overvolume': True},
+            # {'name': 'wizard_comp_off', 'liquid_for_params': liquid, 'compensate_overvolume': False},  # Commented out for simpler 2-way comparison
+            {'name': 'default', 'liquid_for_params': None, 'compensate_overvolume': False}
+        ]
+    
+    print(f"🔬 MULTI-WAY VALIDATION COMPARISON: {len(comparison_methods)} Methods")
     print(f"   Liquid: {liquid}")
     print(f"   Volumes: {[f'{v*1000:.0f}μL' for v in volumes]}")
     print(f"   Replicates per volume: {replicates}")
+    print(f"   Methods: {[m['name'] for m in comparison_methods]}")
     
     try:
         # Initialize robot
         lash_e = Lash_E(input_vial_file, simulate=simulate, initialize_biotek=False)
         
-        # Run 1: Wizard-optimized parameters
-        print(f"\n🧙 PHASE 1: Testing wizard-optimized parameters...")
-        initialize_experiment(lash_e, liquid)
-        wizard_results_df, wizard_raw_df, wizard_output_dir = validate_volumes(
-            lash_e, liquid, volumes, replicates, simulate, liquid_for_params=liquid
-        )
-        generate_validation_report(wizard_results_df, wizard_raw_df, wizard_output_dir, f"{liquid}_wizard")
+        # Run validation for each method
+        all_results = {}
+        all_output_dirs = {}
         
-        # Run 2: Default parameters  
-        print(f"\n⚙️  PHASE 2: Testing default parameters...")
-        # Don't re-initialize - keep current vial state from phase 1
-        print(f"   🧪 Continuing with current vial configuration from Phase 1...")
-        default_results_df, default_raw_df, default_output_dir = validate_volumes(
-            lash_e, liquid, volumes, replicates, simulate, liquid_for_params=None, reset_vials=False  # Don't reset vial state
-        )
-        generate_validation_report(default_results_df, default_raw_df, default_output_dir, "default")
+        for i, method in enumerate(comparison_methods):
+            method_name = method['name']
+            liquid_for_params = method['liquid_for_params']
+            compensate_overvolume = method['compensate_overvolume']
+            
+            print(f"\n🧪 PHASE {i+1}: Testing {method_name}")
+            print(f"   Liquid for params: {liquid_for_params}")
+            print(f"   Compensate overvolume: {compensate_overvolume}")
+            
+            # Home robot at start of each validation method
+            print(f"   🏠 Homing robot for clean start...")
+            try:
+                lash_e.nr_robot.move_home()  # Fast move to home position
+                lash_e.nr_robot.home_robot_components()  # Full homing sequence
+                print(f"   ✅ Robot homed successfully")
+            except Exception as e:
+                print(f"   ⚠️  Homing warning: {e}")
+            
+            # Set global compensation setting for this method
+            global COMPENSATE_OVERVOLUME
+            COMPENSATE_OVERVOLUME = compensate_overvolume
+            
+            # Initialize only on first run, continue with existing vials after that
+            if i == 0:
+                initialize_experiment(lash_e, liquid)
+                reset_vials = True
+            else:
+                print(f"   🧪 Continuing with current vial configuration...")
+                reset_vials = False
+            
+            # Run validation for this method
+            results_df, raw_df, output_dir = validate_volumes(
+                lash_e, liquid, volumes, replicates, simulate, 
+                liquid_for_params=liquid_for_params, 
+                reset_vials=reset_vials
+            )
+            
+            # Store results
+            all_results[method_name] = {
+                'results_df': results_df,
+                'raw_df': raw_df,
+                'output_dir': output_dir,
+                'method': method
+            }
+            all_output_dirs[method_name] = output_dir
+            
+            # Generate individual report
+            generate_validation_report(results_df, raw_df, output_dir, f"{liquid}_{method_name}")
         
-        # Phase 3: Compare results
-        print(f"\n📊 PHASE 3: Comparing results...")
-        wizard_csv = wizard_output_dir / "validation_summary.csv"
-        default_csv = default_output_dir / "validation_summary.csv"
+        # Phase N+1: Multi-way comparison
+        print(f"\n📊 PHASE {len(comparison_methods)+1}: Comparing all methods...")
         
-        comparison_output = Path("output") / "validation_runs" / f"comparison_{liquid}_vs_default_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        # Create comparison output directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        comparison_output = Path("output") / "validation_runs" / f"comparison_{len(comparison_methods)}way_{liquid}_{timestamp}"
         
-        comparison_df = compare_validation_results(wizard_csv, default_csv, comparison_output)
+        # Generate multi-way comparison
+        comparison_df = compare_multiple_validation_results(all_results, comparison_output)
         
-        print(f"\n🎉 Comparison validation complete!")
-        print(f"   Wizard results: {wizard_output_dir}")
-        print(f"   Default results: {default_output_dir}")
+        # Cleanup: Remove pipet, return vials, and move to home
+        print(f"\n🧹 Cleaning up after validation...")
+        try:
+            # Remove any held pipet
+            if hasattr(lash_e.nr_robot, 'HELD_PIPET_TYPE') and lash_e.nr_robot.HELD_PIPET_TYPE is not None:
+                print(f"   🗑️  Removing {lash_e.nr_robot.HELD_PIPET_TYPE} pipet...")
+                lash_e.nr_robot.remove_pipet()
+            
+            # Return measurement vial from clamp to home position
+            if hasattr(validate_volumes, '_persistent_state') and validate_volumes._persistent_state:
+                current_measurement_vial = validate_volumes._persistent_state.get("measurement_vial_name", "measurement_vial_0")
+                print(f"   � Returning {current_measurement_vial} from clamp to home...")
+                lash_e.nr_robot.return_vial_home(current_measurement_vial)
+            
+            # Move robot to home position (not jnot home)
+            print(f"   🏠 Moving robot to home position...")
+            lash_e.nr_robot.move_home()
+            
+            print(f"   ✅ Cleanup complete")
+            
+        except Exception as e:
+            print(f"   ⚠️  Cleanup warning: {e}")
+        
+        print(f"\n�🎉 {len(comparison_methods)}-way comparison validation complete!")
+        for method_name, output_dir in all_output_dirs.items():
+            print(f"   {method_name}: {output_dir}")
         print(f"   Comparison: {comparison_output}")
         
-        return wizard_results_df, default_results_df, comparison_df
+        # Send Slack notification of successful completion
+        try:
+            method_names = [m['name'] for m in comparison_methods]
+            slack_msg = f"🧪 Validation Complete! {len(comparison_methods)}-way comparison for {liquid}\n"
+            slack_msg += f"Methods: {', '.join(method_names)}\n"
+            slack_msg += f"Volumes tested: {len(volumes)}, Replicates: {replicates}\n"
+            slack_msg += f"Results saved to: {comparison_output.name}"
+            
+            if not simulate:  # Only send Slack in real mode
+                slack_agent.send_slack_message(slack_msg)
+                print(f"   📱 Slack notification sent")
+            else:
+                print(f"   📱 Slack notification skipped (simulation mode)")
+        except Exception as e:
+            print(f"   ⚠️  Slack notification failed: {e}")
+        
+        return all_results, comparison_df
         
     except Exception as e:
-        print(f"❌ Comparison validation failed: {e}")
+        print(f"❌ Multi-way validation failed: {e}")
         import traceback
         traceback.print_exc()
+        
+        # Attempt cleanup even on failure
+        try:
+            print(f"\n🧹 Attempting cleanup after failure...")
+            if 'lash_e' in locals():
+                if hasattr(lash_e.nr_robot, 'HELD_PIPET_TYPE') and lash_e.nr_robot.HELD_PIPET_TYPE is not None:
+                    lash_e.nr_robot.remove_pipet()
+                if hasattr(validate_volumes, '_persistent_state') and validate_volumes._persistent_state:
+                    current_measurement_vial = validate_volumes._persistent_state.get("measurement_vial_name", "measurement_vial_0")
+                    lash_e.nr_robot.return_vial_home(current_measurement_vial)
+                lash_e.nr_robot.move_home()
+                print(f"   ✅ Emergency cleanup complete")
+        except Exception as cleanup_error:
+            print(f"   ⚠️  Emergency cleanup failed: {cleanup_error}")
+        
         return None, None, None
         
         results.append(wizard_results)
