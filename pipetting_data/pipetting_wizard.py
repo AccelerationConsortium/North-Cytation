@@ -210,7 +210,11 @@ class PipettingWizard:
             result = {}
             for param in PIPETTING_PARAMETERS:
                 if param in exact_match.columns:
-                    result[param] = float(exact_match.iloc[0][param])
+                    value = float(exact_match.iloc[0][param])
+                    # Convert speed parameters to integers to avoid conversion warnings
+                    if param in ['aspirate_speed', 'dispense_speed', 'retract_speed']:
+                        value = int(round(value))
+                    result[param] = value
             result['volume_ml'] = target_volume_ml
             return result
         
@@ -223,7 +227,13 @@ class PipettingWizard:
                 
                 # Use numpy interp for linear interpolation (volumes in μL)
                 interpolated_value = np.interp(target_volume_ul, volumes, param_values)
-                result[param] = float(interpolated_value)
+                value = float(interpolated_value)
+                
+                # Convert speed parameters to integers to avoid conversion warnings
+                if param in ['aspirate_speed', 'dispense_speed', 'retract_speed']:
+                    value = int(round(value))
+                
+                result[param] = value
         
         return result
     
