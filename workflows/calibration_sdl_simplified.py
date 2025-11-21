@@ -2553,7 +2553,7 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         
         # Calculate rescue overaspirate constraints based on best candidate shortfall
         min_rescue_overaspirate_ml, max_rescue_overaspirate_ml = calculate_first_volume_constraint(
-            best_candidate, volume, lash_e, state, liquid, raw_measurements, new_pipet_each_time_set)
+            best_candidate, volume, lash_e, state, liquid, raw_measurements, new_pipet_each_time_set, autosave_raw_path)
         rescue_overaspirate_constraint = max_rescue_overaspirate_ml  # Use the max constraint for rescue
         rescue_overaspirate_ul = rescue_overaspirate_constraint * 1000  # Convert to μL
         
@@ -3637,9 +3637,10 @@ if __name__ == "__main__":
     # print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
     # print("   Fixing only post-aspirate air volume for glycerol\n")
     
-    #volumes = [0.01, 0.025, 0.005] Water
+    #volumes = [0.01, 0.025, 0.005] Water DMSO
     #volumes = [0.05, 0.025, 0.1] Water DMSO Isopropanol Acetone Glycerol
     #volumes = [0.2, 0.5, 0.8] Water
+    #Validation Water
 
     try:
         optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
@@ -3647,9 +3648,9 @@ if __name__ == "__main__":
             liquid="DMSO",
             simulate=False,
             use_LLM_for_screening=False,
-            volumes=[0.01, 0.025, 0.005],
-            max_measurements=300,  # Overall limit
-            max_measurements_first_volume=200,  # First volume limit
+            volumes=[0.2, 0.5, 0.8],
+            max_measurements=150,  # Overall limit
+            max_measurements_first_volume=100,  # First volume limit
             precision_measurements=5,  # 5 replicates for precision
             use_range_for_precision=True,  # Use range instead of std dev
             initial_parameter_sets=10,  # Longer screening phase

@@ -36,7 +36,8 @@ DEFAULT_PARAMETER_BOUNDS = {
 
 def create_model(seed, num_initial_recs, bayesian_batch_size, volume=None, tip_volume=1.0, model_type="qNEHVI", 
                  optimize_params=None, fixed_params=None, simulate=False, max_overaspirate_ul=10.0, 
-                 min_overaspirate_ul=0.0, transfer_learning=False, volume_bounds=None, init_method="SOBOL"):
+                 min_overaspirate_ul=0.0, transfer_learning=False, volume_bounds=None, init_method="SOBOL",
+                 min_tip_volume_ml=0.005):
     """
     Create an Ax client for 3-objective parameter optimization with optional transfer learning.
     

@@ -1,6 +1,18 @@
 """
 Surfactant Grid Turbidity Screening Workflow
 Systematic dilution grid of two surfactants with turbidity measurements.
+
+DATA PROTECTION FEATURES:
+- Raw Cytation data is immediately backed up to output/cytation_raw_backups/ (preserves complete original data)
+- Processed measurement data is backed up to output/measurement_backups/ after each interval
+- If processing fails, use recover_raw_cytation_data() and recover_from_measurement_backups() functions
+
+RECOVERY USAGE:
+  # Recover original Cytation data if processing failed:
+  raw_data_list = recover_raw_cytation_data()
+  
+  # Recover processed measurements from crashed workflow:  
+  measurements = recover_from_measurement_backups()
 """
 import sys
 sys.path.append("../utoronto_demo")
@@ -13,7 +25,7 @@ from datetime import datetime
 from master_usdl_coordinator import Lash_E
 
 # WORKFLOW CONSTANTS
-SIMULATE = True  # Set to False for actual hardware execution
+SIMULATE = False  # Set to False for actual hardware execution
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
@@ -25,8 +37,8 @@ SURFACTANT_A_CONC_MM = 50.0  # mM stock concentration
 SURFACTANT_B_CONC_MM = 50.0   # mM stock concentration
 
 # Grid parametersany ch
-MIN_CONC_LOG = -4  # 10^-8 mM minimum
-MAX_CONC_LOG = 1  # 10^-3 mM maximum
+MIN_CONC_LOG = -4  # 10^-7 mM minimum
+MAX_CONC_LOG = 1  # 10^-2 mM maximum
 LOG_STEP = 1       # 10^-1 step size
 N_REPLICATES = 2
 WELL_VOLUME_UL = 200  # μL per well
@@ -281,6 +293,51 @@ def backup_raw_measurement_data(measurement_entry, plate_number, wells_measured)
         print(f"⚠️ Warning: Failed to backup measurement data: {e}")
         # Don't crash the workflow if backup fails
 
+def backup_raw_cytation_data(raw_data, well_indices):
+    """
+    Save the raw Cytation DataFrame immediately after measurement to prevent data loss.
+    This preserves the complete original data before any processing attempts.
+    
+    Args:
+        raw_data: Raw DataFrame from lash_e.measure_wellplate()
+        well_indices: List of well indices that were measured
+    """
+    try:
+        # Create backup directory for raw Cytation data
+        backup_dir = os.path.join("output", "cytation_raw_backups")
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # Create unique backup filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # Include milliseconds
+        backup_filename = f"raw_cytation_wells{well_indices[0]}-{well_indices[-1]}_{timestamp}.pkl"
+        backup_path = os.path.join(backup_dir, backup_filename)
+        
+        # Save raw DataFrame using pickle to preserve structure perfectly
+        raw_data.to_pickle(backup_path)
+        
+        # Also save as CSV for human readability (may lose some structure)
+        csv_path = backup_path.replace('.pkl', '.csv')
+        try:
+            raw_data.to_csv(csv_path)
+        except Exception:
+            # MultiIndex columns might cause CSV issues, try flattening
+            try:
+                flat_data = raw_data.copy()
+                if hasattr(raw_data.columns, 'levels'):
+                    flat_data.columns = ['_'.join(map(str, col)).strip() for col in raw_data.columns]
+                flat_data.to_csv(csv_path)
+            except Exception:
+                # If CSV fails entirely, just save the pickle
+                pass
+        
+        print(f"✅ Raw Cytation data backed up to: {backup_path}")
+        if os.path.exists(csv_path):
+            print(f"   Human-readable version: {csv_path}")
+        
+    except Exception as e:
+        print(f"⚠️ CRITICAL: Failed to backup raw Cytation data: {e}")
+        print(f"   This could result in permanent data loss if processing fails!")
+
 def recover_from_measurement_backups(backup_dir="output/measurement_backups"):
     """
     Recover measurement data from backup files if workflow crashed.
@@ -317,6 +374,43 @@ def recover_from_measurement_backups(backup_dir="output/measurement_backups"):
     
     print(f"Successfully recovered {len(recovered_measurements)} measurements")
     return recovered_measurements
+
+def recover_raw_cytation_data(backup_dir="output/cytation_raw_backups"):
+    """
+    Recover raw Cytation DataFrame files if processing failed and data needs to be reanalyzed.
+    
+    Args:
+        backup_dir: Directory containing raw Cytation backup files
+        
+    Returns:
+        list: List of tuples (filepath, DataFrame) for all recovered raw data
+    """
+    if not os.path.exists(backup_dir):
+        print(f"No raw Cytation backup directory found at {backup_dir}")
+        return []
+    
+    backup_files = glob.glob(os.path.join(backup_dir, "raw_cytation_*.pkl"))
+    if not backup_files:
+        print("No raw Cytation backup files found")
+        return []
+    
+    recovered_data = []
+    print(f"Found {len(backup_files)} raw Cytation backup files:")
+    
+    for backup_file in sorted(backup_files):
+        try:
+            raw_df = pd.read_pickle(backup_file)
+            recovered_data.append((backup_file, raw_df))
+            
+            basename = os.path.basename(backup_file)
+            print(f"  ✅ Recovered: {basename}")
+            print(f"     Shape: {raw_df.shape}, Columns: {len(raw_df.columns)}")
+            
+        except Exception as e:
+            print(f"  ❌ Failed to recover {backup_file}: {e}")
+    
+    print(f"Successfully recovered {len(recovered_data)} raw Cytation datasets")
+    return recovered_data
 
 def manage_wellplate_switching(lash_e, current_well, wellplate_data):
     """
@@ -692,6 +786,10 @@ def measure_turbidity(lash_e, well_indices):
     # Get raw measurement data from Cytation
     raw_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices)
     
+    # CRITICAL: Save raw Cytation data immediately to prevent loss
+    if raw_data is not None:
+        backup_raw_cytation_data(raw_data, well_indices)
+    
     # Handle simulation mode
     if raw_data is None:
         return None
@@ -703,12 +801,16 @@ def measure_turbidity(lash_e, well_indices):
         return processed_data
     
     except Exception as e:
-        print(f"Warning: Failed to process measurement data: {e}")
+        print(f"⚠️  CRITICAL: Failed to process measurement data: {e}")
         print(f"Raw data structure: {type(raw_data)}")
         if hasattr(raw_data, 'columns'):
             print(f"Raw data columns: {raw_data.columns.tolist()}")
         
-        # Fallback: return mock data to prevent crash
+        print(f"🔄 Raw Cytation data was saved to backup before processing failed")
+        print(f"   You can recover the data from output/cytation_raw_backups/")
+        
+        # Fallback: return mock data to prevent workflow crash
+        print(f"⚠️  Using fallback mock data to continue workflow...")
         return {'turbidity': [0.5] * len(well_indices)}
 
 def extract_turbidity_values(raw_data, well_indices):
@@ -809,29 +911,35 @@ def surfactant_grid_screening(simulate=True):
     # 1. Initialize workstation
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
     
-    # 2. Check input files and get new wellplate
+    # 2. Move robot components to home position
+    print("Moving robot components to home positions...")
+    lash_e.nr_robot.move_home()
+    lash_e.nr_track.origin()
+    lash_e.nr_robot.home_robot_components()
+    
+    # 3. Check input files and get new wellplate
     lash_e.nr_robot.check_input_file()
     lash_e.nr_track.check_input_file()
     lash_e.grab_new_wellplate()
     
-    # 3. Create dilution series for both surfactants
+    # 4. Create dilution series for both surfactants
     dilution_vials_a, dilution_steps_a = create_dilution_series(lash_e, "surfactant_a", concentrations, SURFACTANT_A_CONC_MM)
     dilution_vials_b, dilution_steps_b = create_dilution_series(lash_e, "surfactant_b", concentrations, SURFACTANT_B_CONC_MM)
     
-    # 4. Pipette grid into wellplate(s) with interval measurements
+    # 5. Pipette grid into wellplate(s) with interval measurements
     well_map, wellplate_data = pipette_grid_to_wellplate(lash_e, concentrations, concentrations, dilution_vials_a, dilution_vials_b)
     
-    # 5. Combine measurement data from all intervals
+    # 6. Combine measurement data from all intervals
     results_df = combine_measurement_data(well_map, wellplate_data)
     all_measurements = wellplate_data['measurements']
     
-    # 6. Save results to timestamped output folder
+    # 7. Save results to timestamped output folder
     save_results(results_df, well_map, wellplate_data, all_measurements, concentrations, dilution_vials_a, dilution_vials_b, dilution_steps_a, dilution_steps_b, simulate)
     
     print(f"Experiment completed using {wellplate_data['current_plate']} wellplates")
     print(f"Total measurement datasets: {len(all_measurements)}")
     
-    # 7. Final cleanup (last wellplate already measured in pipette_grid_to_wellplate)
+    # 8. Final cleanup (last wellplate already measured in pipette_grid_to_wellplate)
     lash_e.discard_used_wellplate()
     lash_e.nr_robot.move_home()
     
