@@ -98,6 +98,28 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         """Clean up simulation resources."""
         print(f"✅ Simulation cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
 
+    def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
+        """Get hardware-specific parameter constraints for North Robot simulation."""
+        constraints = []
+        
+        # North Robot tip volume constraint (same logic as hardware)
+        # Use 0.2 mL tips for volumes <= 150 µL, otherwise 1.0 mL tips
+        if target_volume_ml <= 0.15:  # 150 µL or less
+            tip_volume_ml = 0.2
+        else:
+            tip_volume_ml = 1.0
+            
+        # Calculate available volume for air and overaspiration
+        available_volume_ml = tip_volume_ml - target_volume_ml
+        
+        # Add tip volume constraint if relevant parameters exist
+        constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        constraints.append(constraint)
+        
+        print(f"📏 Simulated constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}µL, target: {target_volume_ml*1000:.0f}µL)")
+        
+        return constraints
+
     def _simulate_pipetting(self, volume_mL: float, params: Dict[str, Any], state: Dict[str, Any]) -> Tuple[float, float]:
         """Simulate a single pipetting operation."""
         # Get liquid properties
@@ -211,17 +233,5 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         return measured_volume, elapsed
 
 
-# Backward compatibility: maintain function-based interface
-_protocol_instance = SimulatedCalibrationProtocol()
-
-def initialize(cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Backward compatibility function."""
-    return _protocol_instance.initialize(cfg)
-
-def measure(state: Dict[str, Any], volume_mL: float, params: Dict[str, Any], replicates: int = 1) -> List[Dict[str, Any]]:
-    """Backward compatibility function."""
-    return _protocol_instance.measure(state, volume_mL, params, replicates)
-
-def wrapup(state: Dict[str, Any]) -> None:
-    """Backward compatibility function."""
-    return _protocol_instance.wrapup(state)
+# Export the protocol instance for clean importing
+protocol_instance = SimulatedCalibrationProtocol()

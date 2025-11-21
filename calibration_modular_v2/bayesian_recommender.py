@@ -129,15 +129,23 @@ class AxBayesianOptimizer:
         for param_name in hardware_param_names:
             bounds_tuple = hardware_bounds.get(param_name)
             if bounds_tuple:
+                param_type = self.config.experiment_config.get_parameter_type(param_name)
+                ax_param_type = "range" if param_type == "float" else "range"  # Ax uses "range" for both
+                value_type = "int" if param_type == "integer" else "float"
+                
                 default_bounds[param_name] = {
-                    "type": "range", 
-                    "bounds": list(bounds_tuple)
+                    "type": ax_param_type, 
+                    "bounds": list(bounds_tuple),
+                    "value_type": value_type
                 }
         
         # Add calibration parameters
+        overaspirate_type = self.config.experiment_config.get_parameter_type("overaspirate_vol")
+        overaspirate_value_type = "int" if overaspirate_type == "integer" else "float"
         default_bounds["overaspirate_vol"] = {
             "type": "range", 
-            "bounds": [constraints.min_overaspirate_ml, constraints.max_overaspirate_ml]
+            "bounds": [constraints.min_overaspirate_ml, constraints.max_overaspirate_ml],
+            "value_type": overaspirate_value_type
         }
         
         # Build parameters list for Ax
@@ -151,20 +159,51 @@ class AxBayesianOptimizer:
         return parameters
     
     def _get_parameter_constraints(self) -> List[str]:
-        """Get parameter constraints for Ax."""
-        constraints = self.config.constraints
-        optimize_params = self._get_optimize_params()
+        """Get parameter constraints for Ax from protocol and configuration."""
         constraint_list = []
         
-        # Volume constraint: post_asp_air_vol + overaspirate_vol <= tip_volume - target_volume
-        if ("post_asp_air_vol" in optimize_params and 
-            "overaspirate_vol" in optimize_params):
-            available_volume = constraints.get_volume_constraint_ml()
-            constraint_str = f"post_asp_air_vol + overaspirate_vol <= {available_volume}"
-            constraint_list.append(constraint_str)
+        # Get constraints from protocol (hardware-specific dynamic constraints)
+        if hasattr(self.config, 'protocol') and self.config.protocol:
+            if hasattr(self.config.protocol, 'get_parameter_constraints'):
+                try:
+                    protocol_constraints = self.config.protocol.get_parameter_constraints(
+                        self.config.constraints.target_volume_ml
+                    )
+                    constraint_list.extend(protocol_constraints)
+                    
+                    for constraint in protocol_constraints:
+                        logger.info(f"Added protocol constraint: {constraint}")
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to get constraints from protocol: {e}")
+        
+        # Get static constraints from configuration (if any remain)
+        try:
+            constraints_config = self.config.experiment_config.get_parameter_constraints()
             
-            logger.info(f"Added volume constraint: {constraint_str}")
-            logger.info(f"  Available volume: {available_volume*1000:.1f}uL")
+            for constraint_def in constraints_config:
+                constraint_expr = constraint_def.get('constraint')
+                description = constraint_def.get('description', '')
+                
+                if constraint_expr:
+                    # Check if all parameters in constraint are being optimized
+                    optimize_params = self._get_optimize_params()
+                    
+                    # Simple check - if constraint contains parameter names that are being optimized
+                    constraint_applicable = False
+                    for param in optimize_params:
+                        if param in constraint_expr:
+                            constraint_applicable = True
+                            break
+                    
+                    if constraint_applicable:
+                        constraint_list.append(constraint_expr)
+                        logger.info(f"Added config constraint: {constraint_expr}")
+                        if description:
+                            logger.info(f"  Description: {description}")
+        except AttributeError:
+            # No config constraints defined, that's fine
+            pass
         
         return constraint_list
     
@@ -406,14 +445,12 @@ class AxBayesianOptimizer:
         # Add calibration parameters
         ax_params["overaspirate_vol"] = params.calibration.overaspirate_vol
         
-        # Add hardware parameters with type conversions for Ax requirements
+        # Add hardware parameters with correct type conversion
         for name, value in params.hardware.parameters.items():
-            # Convert to appropriate type based on parameter requirements
-            if name in ['aspirate_speed', 'dispense_speed']:
-                # These are integer parameters in Ax
+            param_type = self.config.experiment_config.get_parameter_type(name)
+            if param_type == "integer":
                 ax_params[name] = int(round(value))
             else:
-                # Float parameters
                 ax_params[name] = float(value)
         
         return ax_params
@@ -425,7 +462,8 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
                     fixed_params: Optional[Dict[str, float]] = None,
                     volume_dependent_only: bool = False,
                     constraint_updates: Optional[List['ConstraintBoundsUpdate']] = None,
-                    num_sobol_trials: Optional[int] = None) -> AxBayesianOptimizer:
+                    num_sobol_trials: Optional[int] = None,
+                    protocol_instance=None) -> AxBayesianOptimizer:
     """
     Create Bayesian optimizer with proper constraints.
     
@@ -437,6 +475,7 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         volume_dependent_only: If True, only optimize volume-dependent parameters
         constraint_updates: Optional constraint bounds updates from two-point calibration
         num_sobol_trials: Number of SOBOL trials (5 for screening, 0 for subsequent volumes)
+        protocol_instance: Protocol instance for getting hardware constraints
     """
     # Get default overaspirate bounds from config (not calculated)
     cal_bounds = config.get_calibration_parameter_bounds()
@@ -461,8 +500,16 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         logger.info(f"Using config default overaspirate bounds: "
                    f"[{min_overaspirate_ml*1000:.1f}, {max_overaspirate_ml*1000:.1f}] uL")
     
-    # Volume-dependent parameters (matching calibration_sdl_simplified)
-    volume_dependent_params = ["blowout_vol", "overaspirate_vol"]
+    # Get volume-dependent parameters from configuration
+    # These are parameters that scale with target volume
+    all_params = config.get_optimization_parameters()
+    volume_dependent_params = []
+    for param_name, param_config in all_params.items():
+        # Check if parameter is marked as volume-dependent in config
+        # For now, include overaspirate_vol as it's always volume-dependent
+        if param_name == "overaspirate_vol":
+            volume_dependent_params.append(param_name)
+        # TODO: Add configuration field to mark other parameters as volume-dependent
     
     # Create constraints
     constraints = OptimizationConstraints(
@@ -488,7 +535,8 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         random_seed=config.get_random_seed() or 42,
         num_initial_trials=sobol_count,
         target_volume_ml=target_volume_ml,
-        experiment_config=config
+        experiment_config=config,
+        protocol=protocol_instance  # Pass protocol for constraints
     )
     
     return AxBayesianOptimizer(optimization_config)

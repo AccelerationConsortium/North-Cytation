@@ -597,7 +597,8 @@ class CalibrationExperiment:
                 optimizer_type=OptimizerType.MULTI_OBJECTIVE,
                 fixed_params=None,
                 volume_dependent_only=False,
-                num_sobol_trials=screening_trials  # 5 SOBOL trials for screening
+                num_sobol_trials=screening_trials,  # 5 SOBOL trials for screening
+                protocol_instance=self.protocol_module  # Pass protocol for constraints
             )
             logger.info(f"Created SOBOL optimizer for screening phase ({screening_trials} trials)")
         
@@ -691,7 +692,8 @@ class CalibrationExperiment:
                 fixed_params=fixed_params,
                 volume_dependent_only=not is_first_volume,
                 constraint_updates=[constraint_update] if constraint_update else None,
-                num_sobol_trials=0  # 0 SOBOL trials - go straight to Bayesian optimization
+                num_sobol_trials=0,  # 0 SOBOL trials - go straight to Bayesian optimization
+                protocol_instance=self.protocol_module  # Pass protocol for constraints
             )
             
             logger.info(f"Created {optimizer_type.value} optimizer for volume {target_volume_ml*1000:.0f}uL")

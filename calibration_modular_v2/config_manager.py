@@ -236,6 +236,27 @@ class ExperimentConfig:
         
         return False
     
+    def get_optimization_parameters(self) -> Dict[str, Dict[str, Any]]:
+        """Get all optimization parameters (calibration + hardware) with their configuration."""
+        all_params = {}
+        
+        # Add calibration parameters
+        cal_params = self._config.get('calibration_parameters', {})
+        for name, config in cal_params.items():
+            all_params[name] = config
+            
+        # Add hardware parameters  
+        hw_params = self._config.get('hardware_parameters', {})
+        for name, config in hw_params.items():
+            all_params[name] = config
+            
+        return all_params
+    
+    def get_parameter_type(self, param_name: str) -> str:
+        """Get the optimizer type (integer/float) for a parameter."""
+        all_params = self.get_optimization_parameters()
+        return all_params.get(param_name, {}).get('type', 'float')  # Default to float
+    
     # Tolerance calculation
     def calculate_tolerances_for_volume(self, target_volume_ml: float) -> VolumeTolerances:
         """Calculate volume-specific tolerances using explicit ranges."""

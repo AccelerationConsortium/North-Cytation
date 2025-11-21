@@ -26,10 +26,10 @@ def load_hardware_protocol(protocol_name: str):
     
     Args:
         protocol_name: Name of protocol file (without .py extension)
-                      e.g., 'calibration_protocol_example' or 'calibration_protocol_simulated'
+                      e.g., 'calibration_protocol_hardware' or 'calibration_protocol_simulated'
     
     Returns:
-        Module with initialize(), measure(), and wrapup() functions
+        Protocol instance or module with initialize(), measure(), and wrapup() functions
         
     Raises:
         ImportError: If protocol file doesn't exist or is missing required functions
@@ -38,7 +38,11 @@ def load_hardware_protocol(protocol_name: str):
         # Import the protocol module
         protocol_module = importlib.import_module(protocol_name)
         
-        # Verify it has the required 3 functions
+        # Check if module exports a protocol instance (preferred approach)
+        if hasattr(protocol_module, 'protocol_instance'):
+            return protocol_module.protocol_instance
+        
+        # Fallback: verify it has the required 3 functions (legacy approach)
         required_functions = ['initialize', 'measure', 'wrapup']
         missing_functions = [func for func in required_functions if not hasattr(protocol_module, func)]
         

@@ -11,7 +11,8 @@ This is a next-generation calibration system that uses Bayesian optimization to 
 - **Adaptive Measurements**: Conditional replicates based on measurement quality
 - **Volume-Dependent Parameters**: Automatic re-optimization for different volumes
 - **Type-Safe Configuration**: YAML-based config with comprehensive validation
-- **Transfer Learning**: Parameter inheritance between volumes
+- **Transfer Learning**: Parameter inheritance between volume (Optional)
+- **Transfer Learning**: Load existing data to jump-start learning (Optional)
 - **Optional LLM Integration**: AI-powered parameter suggestions (experimental)
 
 ## Quick Start
@@ -54,15 +55,17 @@ execution:
 #### Parameter Space (Hardware-Specific)
 ```yaml
 hardware_parameters:
-  aspirate_speed:
-    bounds: [5, 35]
-    default: 17
-    description: "Aspiration speed (hardware units)"
+  my_speed_param:
+    bounds: [1.0, 50.0]
+    default: 20.0
+    type: "integer"                     # "integer" or "float"
+    description: "My hardware speed parameter"
     
-  dispense_speed:
-    bounds: [5, 35] 
-    default: 17
-    description: "Dispense speed (hardware units)"
+  my_timing_param:
+    bounds: [0.5, 10.0] 
+    default: 2.0
+    type: "float"                       # "integer" or "float"
+    description: "My hardware timing parameter"
     
   # Add your hardware-specific parameters here
 ```
@@ -82,72 +85,13 @@ optimization:
 
 ### Step 2: Write Your Hardware Protocol
 
-Create a new protocol file (e.g., `calibration_protocol_myrobot.py`) implementing the abstract interface:
+The easiest way to create a new protocol is to copy and modify the template:
 
-```python
-from calibration_protocol_base import CalibrationProtocolBase
-from typing import Dict, Any, List, Optional
+1. **Copy the template**: `cp calibration_protocol_template.py calibration_protocol_myrobot.py`
+2. **Edit the TODO sections** with your hardware-specific code
+3. **Test your protocol** by running the calibration
 
-class MyRobotCalibrationProtocol(CalibrationProtocolBase):
-    """Custom calibration protocol for your liquid handling system."""
-    
-    def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Initialize your hardware."""
-        liquid = cfg['experiment']['liquid']
-        
-        # Initialize your hardware here
-        # my_robot = MyRobot()
-        # my_robot.initialize()
-        
-        return {
-            'initialized_at': datetime.now(),
-            'hardware_type': 'my_robot_system',
-            'liquid': liquid,
-            # Add your hardware state here
-        }
-    
-    def measure(self, state: Dict[str, Any], volume_mL: float, 
-                params: Dict[str, Any], replicates: int = 1) -> List[Dict[str, Any]]:
-        """Perform measurement with given parameters."""
-        results = []
-        
-        for rep in range(replicates):
-            # Extract parameters
-            aspirate_speed = params.get('aspirate_speed', 20)
-            dispense_speed = params.get('dispense_speed', 15)
-            
-            # Perform your pipetting operation
-            # measured_volume_mL = my_robot.pipette_and_measure(
-            #     volume_mL, aspirate_speed, dispense_speed
-            # )
-            
-            # For now, simulate
-            import random
-            measured_volume_mL = volume_mL + random.uniform(-0.01, 0.01) * volume_mL
-            
-            results.append({
-                'replicate': rep + 1,
-                'volume': measured_volume_mL,
-                'elapsed_s': 2.0,  # Your actual timing
-                'target_volume_mL': volume_mL,
-                **params  # Echo back parameters
-            })
-            
-        return results
-    
-    def wrapup(self, state: Dict[str, Any]) -> None:
-        """Clean up hardware resources."""
-        # my_robot.shutdown()
-        print("Hardware cleanup completed")
-
-# Backward compatibility functions
-_protocol_instance = MyRobotCalibrationProtocol()
-
-def initialize(cfg): return _protocol_instance.initialize(cfg)
-def measure(state, volume_mL, params, replicates=1): 
-    return _protocol_instance.measure(state, volume_mL, params, replicates)
-def wrapup(state): return _protocol_instance.wrapup(state)
-```
+See `calibration_protocol_template.py` for a complete, minimal example with TODO comments showing exactly what to replace.
 
 ### Step 3: Update Protocol Configuration
 
@@ -161,7 +105,7 @@ protocol:
 
 ## Protocol Interface Requirements
 
-Your protocol **must** implement these three methods:
+Your protocol **must** implement these four methods:
 
 ### `initialize(cfg) -> Dict[str, Any]`
 - Initialize hardware
@@ -178,6 +122,11 @@ Your protocol **must** implement these three methods:
 - Clean up hardware resources
 - Move to safe positions, close connections, etc.
 
+### `get_parameter_constraints(target_volume_ml) -> List[str]`
+- Return hardware-specific optimization constraints
+- Called for each target volume during optimization
+- Return empty list `[]` if no constraints apply
+
 ## Measurement Result Format
 
 Each measurement result must include:
@@ -189,13 +138,32 @@ Each measurement result must include:
     'elapsed_s': 3.2,                  # Time taken in seconds
     'target_volume_mL': 0.01,          # Target volume
     # Plus any parameters you want to echo back
-    'aspirate_speed': 15,
-    'dispense_speed': 12,
+    'my_hardware_param': 15.5,         # Your hardware-specific parameter
+    'my_timing_param': 2.0,            # Your hardware-specific timing
     # etc.
 }
 ```
 
 ## Advanced Features
+
+### Hardware Constraints
+Define hardware-specific parameter relationships in your protocol file:
+
+```python
+def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
+    """Return constraint strings for the optimizer."""
+    constraints = []
+    
+    # Example: Tip volume constraint
+    tip_volume_ml = 1.0  # Your tip capacity
+    available_volume = tip_volume_ml - target_volume_ml
+    constraints.append(f"my_air_param + overaspirate_vol <= {available_volume}")
+    
+    # Example: Hardware limits
+    constraints.append("my_speed1 * my_speed2 <= 1000")
+    
+    return constraints
+```
 
 ### External Data Integration
 Load existing calibration data to bootstrap optimization:
@@ -237,18 +205,19 @@ adaptive_measurement:
 
 ```
 calibration_modular_v2/
-├── run_calibration.py              # Main entry point
-├── experiment_config.yaml          # Configuration file
+├── run_calibration.py                   # Main entry point
+├── experiment_config.yaml              # Configuration file
+├── calibration_protocol_template.py    # Template for new protocols
 ├── calibration_protocol_hardware.py    # North Robot protocol (example)
 ├── calibration_protocol_simulated.py   # Simulation protocol
 ├── calibration_protocol_base.py        # Abstract base class
-├── experiment.py                   # Main experiment orchestration
-├── config_manager.py              # Configuration loading
-├── data_structures.py             # Type-safe data classes
-├── bayesian_recommender.py        # Optimization engine
-├── analysis.py                    # Statistical analysis
-├── output/                        # Results and plots
-└── INSTRUCTIONS.md                # This file
+├── experiment.py                       # Main experiment orchestration
+├── config_manager.py                   # Configuration loading
+├── data_structures.py                  # Type-safe data classes
+├── bayesian_recommender.py             # Optimization engine
+├── analysis.py                         # Statistical analysis
+├── output/                             # Results and plots
+└── INSTRUCTIONS.md                     # This file
 ```
 
 ## Troubleshooting

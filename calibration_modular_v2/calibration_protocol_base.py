@@ -75,6 +75,22 @@ class CalibrationProtocolBase(ABC):
         """
         pass
     
+    @abstractmethod
+    def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
+        """Get hardware-specific parameter constraints for optimization.
+        
+        Args:
+            target_volume_ml: Target volume for this optimization run
+            
+        Returns:
+            List of constraint strings for the optimizer (Ax format)
+            Example: ["param1 + param2 <= 0.15", "param3 * param4 <= 100"]
+            
+        Note:
+            Return empty list if no constraints apply
+        """
+        pass
+    
     def validate_measurement_result(self, result: Dict[str, Any], replicate_num: int) -> bool:
         """Validate that a measurement result meets interface requirements.
         

@@ -118,6 +118,7 @@ class OptimizationConfig:
     # Experiment context
     liquid: str = "water"            # Liquid being pipetted
     experiment_name: str = "calibration"  # Experiment identifier
+    protocol: Any = None             # Protocol instance for constraints
     
     # Optimization parameters
     num_initial_trials: int = 5      # SOBOL exploration trials

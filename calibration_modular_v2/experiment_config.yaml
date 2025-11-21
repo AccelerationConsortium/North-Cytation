@@ -58,6 +58,7 @@ calibration_parameters:
   overaspirate_vol:
     bounds: [0.0, 0.0075]
     default: 0.004
+    type: "float"                       # Parameter type for optimizer
     description: "Overaspiration volume for volume accuracy (mL)"
     volume_dependent: true              # Re-optimized for each volume
 
@@ -70,36 +71,42 @@ hardware_parameters:
   aspirate_speed:
     bounds: [5, 35]
     default: 17
+    type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Aspiration speed (relative units)"
     
   dispense_speed:
     bounds: [5, 35] 
     default: 17
+    type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Dispense speed (relative units)"
     
   aspirate_wait_time:
     bounds: [0.0, 30.0]
     default: 12.0
+    type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after aspiration (seconds)"
     
   dispense_wait_time:
     bounds: [0.0, 30.0]
     default: 12.0
+    type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after dispensing (seconds)"
     
   retract_speed:
     bounds: [1.0, 15.0]
     default: 8.0
+    type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Minimal timing impact
     description: "Tip retract speed (relative units)"
     
   blowout_vol:
     bounds: [0.0, 0.2]
     default: 0.07
+    type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Blowout volume (mL)"
     volume_dependent: true              # Re-optimized for each volume
@@ -107,6 +114,7 @@ hardware_parameters:
   post_asp_air_vol:
     bounds: [0.0, 0.1]
     default: 0.05
+    type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Post-aspiration air volume (mL)"
 
@@ -199,7 +207,7 @@ screening:
     data_path: null                     # Path to external CSV file
     volume_filter_ml: null              # Only use data for specific volume
     liquid_filter: null                 # Only use data for specific liquid
-    required_columns: ["volume_ml", "aspirate_speed", "dispense_speed", "deviation_pct", "duration_s"]
+    required_columns: ["volume_ml", "deviation_pct", "duration_s"]  # Universal columns only
  
 # Advanced Features
 advanced:
