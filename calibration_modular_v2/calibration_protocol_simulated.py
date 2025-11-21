@@ -128,10 +128,25 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         # Parameter effects on accuracy
         overaspirate_vol = params.get('overaspirate_vol', 0.005)
         
-        # Optimal overaspirate is around 1-3% of volume
-        optimal_overaspirate = volume_mL * 0.02
-        overaspirate_error = abs(overaspirate_vol - optimal_overaspirate) / optimal_overaspirate
-        accuracy_factor = 1.0 - (overaspirate_error * 0.1)  # 10% penalty for poor overaspirate
+        # Overaspirate volume directly affects measured volume
+        # In real pipetting: measured_volume ≈ target_volume + (overaspirate_vol * efficiency)
+        # Efficiency is typically 0.7-0.9 (some overaspirate is lost due to surface tension, etc.)
+        overaspirate_efficiency = 0.8  # 80% of overaspirate volume is retained
+        
+        # Volume-dependent efficiency (smaller volumes have lower efficiency)
+        if volume_ul < 10:
+            overaspirate_efficiency *= 0.6  # Lower efficiency for small volumes
+        elif volume_ul < 25:
+            overaspirate_efficiency *= 0.7
+        
+        # Calculate base measured volume (before overaspirate)
+        base_measured_volume = volume_mL * base_accuracy
+        
+        # Add overaspirate contribution
+        overaspirate_contribution = overaspirate_vol * overaspirate_efficiency
+        
+        # Total measured volume (target + overaspirate contribution)
+        measured_volume_base = base_measured_volume + overaspirate_contribution
         
         # Speed effects (higher speed values = slower operation in North Robot)
         aspirate_speed = params.get('aspirate_speed', 20)
@@ -160,13 +175,19 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         if dispense_wait < 0.5:
             wait_penalty += 0.02
         
-        # Final accuracy
-        final_accuracy = base_accuracy * accuracy_factor * (1.0 - speed_penalty - wait_penalty)
-        final_accuracy = max(0.7, min(1.05, final_accuracy))  # Clamp to reasonable range
+        # Apply parameter penalties to precision (not accuracy)
+        total_penalty = speed_penalty + wait_penalty
+        final_precision_cv = base_precision_cv * (1.0 + total_penalty)
         
-        # Calculate measured volume
-        accuracy_error = np.random.normal(0, base_precision_cv)
-        measured_volume = volume_mL * (final_accuracy + accuracy_error)
+        # Cap precision CV to prevent unrealistic variability
+        final_precision_cv = min(final_precision_cv, 0.1)  # Max 10% CV
+        
+        # Add random variation to the measured volume
+        precision_error = np.random.normal(0, final_precision_cv)
+        # Cap precision error to prevent extreme swings
+        precision_error = np.clip(precision_error, -0.15, 0.15)  # Max ±15% variation
+        
+        measured_volume = measured_volume_base * (1.0 + precision_error)
         measured_volume = max(0, measured_volume)  # No negative volumes
         
         # Calculate timing

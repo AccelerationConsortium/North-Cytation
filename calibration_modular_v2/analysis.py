@@ -15,10 +15,10 @@ Key Features:
 - Transfer learning compatibility
 
 Analysis Pipeline:
-1. Raw measurements → Replicate analysis
-2. Replicate analysis → Quality evaluation
-3. Quality evaluation → Multi-objective scoring
-4. All results → Trial ranking and recommendations
+1. Raw measurements -> Replicate analysis
+2. Replicate analysis -> Quality evaluation
+3. Quality evaluation -> Multi-objective scoring
+4. All results -> Trial ranking and recommendations
 
 Example Usage:
     analyzer = CalibrationAnalyzer(config)
@@ -33,7 +33,7 @@ from typing import List, Dict, Tuple, Optional
 import numpy as np
 from dataclasses import replace
 
-from data_structures import (
+from .data_structures import (
     RawMeasurement, AdaptiveMeasurementResult, TrialResult, 
     QualityEvaluation, VolumeTolerances, PipettingParameters
 )

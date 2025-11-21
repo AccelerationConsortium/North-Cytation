@@ -294,7 +294,7 @@ class AxBayesianOptimizer:
         )
         
         # Update Ax client
-        trial_index, ax_objectives = trial.to_ax_result()
+        trial_index, ax_objectives = trial.to_ax_result(self.config.optimizer_type)
         self.state.ax_client.complete_trial(
             trial_index=trial_index,
             raw_data=ax_objectives
@@ -336,7 +336,7 @@ class AxBayesianOptimizer:
             parameters=parameters,
             objectives=objectives,
             trial_index=-1  # Dummy index for conversion
-        ).to_ax_result()
+        ).to_ax_result(self.config.optimizer_type)
         
         # Attach historical trial to Ax
         _, trial_index = self.state.ax_client.attach_trial(

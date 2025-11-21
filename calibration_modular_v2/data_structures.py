@@ -13,8 +13,8 @@ Key Features:
 - Rich metadata support for extensibility
 
 Data Flow Hierarchy:
-    PipettingParameters → RawMeasurement → AdaptiveMeasurementResult → 
-    TrialResult → VolumeCalibrationResult → ExperimentResults
+    PipettingParameters -> RawMeasurement -> AdaptiveMeasurementResult -> 
+    TrialResult -> VolumeCalibrationResult -> ExperimentResults
 """
 
 import time
@@ -310,7 +310,7 @@ class TwoPointCalibrationResult:
     point_2: TwoPointCalibrationPoint  # Base + shortfall (or +5uL minimum)
     
     # Calculated results
-    volume_efficiency_ul_per_ul: float  # Slope: ΔVolume / ΔOveraspirate
+    volume_efficiency_ul_per_ul: float  # Slope: Delta_Volume / Delta_Overaspirate
     shortfall_ml: float                 # target - measured at point 1
     optimal_overaspirate_ml: float      # Optimal value from linear interpolation
     

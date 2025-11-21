@@ -107,10 +107,10 @@ class ExternalDataLoader:
         # Apply volume filter
         volume_filter = self.config.get_external_data_volume_filter()
         if volume_filter is not None:
-            tolerance = 0.001  # 1μL tolerance for volume matching
+            tolerance = 0.001  # 1uL tolerance for volume matching
             volume_mask = abs(self.data['volume_ml'] - volume_filter) <= tolerance
             self.data = self.data[volume_mask]
-            logger.info(f"Volume filter ({volume_filter} mL): {original_count} → {len(self.data)} rows")
+            logger.info(f"Volume filter ({volume_filter} mL): {original_count} -> {len(self.data)} rows")
         
         # Apply liquid filter
         liquid_filter = self.config.get_external_data_liquid_filter()
@@ -125,7 +125,7 @@ class ExternalDataLoader:
             if col in self.data.columns:
                 self.data = self.data.dropna(subset=[col])
         
-        logger.info(f"Data filtering complete: {original_count} → {len(self.data)} rows")
+        logger.info(f"Data filtering complete: {original_count} -> {len(self.data)} rows")
     
     def has_valid_data(self) -> bool:
         """Check if valid external data is available."""
@@ -148,7 +148,7 @@ class ExternalDataLoader:
             return []
         
         # Filter data for target volume (with tolerance)
-        volume_tolerance = 0.001  # 1μL tolerance
+        volume_tolerance = 0.001  # 1uL tolerance
         volume_mask = abs(self.data['volume_ml'] - target_volume_ml) <= volume_tolerance
         volume_data = self.data[volume_mask]
         
