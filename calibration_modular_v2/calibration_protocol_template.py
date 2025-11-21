@@ -35,7 +35,7 @@ class TemplateCalibrationProtocol(CalibrationProtocolBase):
         
         for rep in range(replicates):
             # Extract parameters - use only what you need for your hardware
-            overaspirate_vol = params.get('overaspirate_vol', 0.004)
+            overaspirate_vol = params.get('overaspirate_vol', 0.004) # You must use this parameter
             
             # TODO: Extract any hardware-specific parameters you need:
             # my_speed_param = params.get('my_speed_param', default_value)
@@ -48,11 +48,12 @@ class TemplateCalibrationProtocol(CalibrationProtocolBase):
             start_time = time.perf_counter()
             
             # Simulate pipetting - replace with real hardware
-            measured_volume_mL = volume_mL + random.uniform(-0.01, 0.01) * volume_mL
+            measured_volume_mL = volume_mL + random.uniform(-0.01, 0.01) * volume_mL + overaspirate_vol
             
             # TODO: Your actual hardware measurement here:
-            # my_robot.aspirate(volume_mL, overaspirate=overaspirate_vol, **other_params)
+            # my_robot.aspirate(volume_mL+overaspirate_vol, **other_params)
             # measured_volume_mL = my_robot.dispense_and_measure()
+            # NOTE: Ensure overaspirate_vol is used to increase your pipetting volume!
             
             elapsed_s = time.perf_counter() - start_time
             

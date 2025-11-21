@@ -69,28 +69,28 @@ hardware_parameters:
   # You can change these to whatever you like
   
   aspirate_speed:
-    bounds: [5, 35]
+    bounds: [5, 20]
     default: 17
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Aspiration speed (relative units)"
     
   dispense_speed:
-    bounds: [5, 35] 
+    bounds: [5, 20] 
     default: 17
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Dispense speed (relative units)"
     
   aspirate_wait_time:
-    bounds: [0.0, 30.0]
+    bounds: [0.0, 2.0]
     default: 12.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after aspiration (seconds)"
     
   dispense_wait_time:
-    bounds: [0.0, 30.0]
+    bounds: [0.0, 2.0]
     default: 12.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
@@ -190,7 +190,7 @@ optimization:
     
   # Stopping criteria (measurement-based)
   stopping_criteria:
-    min_good_trials: 3                  # Stop after this many "good" parameter sets (reduced from 6)
+    min_good_trials: 3                  # Stop after this many "good" parameter sets
 
 # Screening Phase (Initial Exploration)
 screening:

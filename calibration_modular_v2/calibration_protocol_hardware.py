@@ -42,7 +42,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         print(f"Initializing North Robot hardware protocol for {liquid}")
 
         # Use hardware simulation mode (different from our simulation protocol)
-        simulate = True  # This enables North Robot's internal simulation
+        simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
         SWAP = True  # If True, enables vial swapping when needed
