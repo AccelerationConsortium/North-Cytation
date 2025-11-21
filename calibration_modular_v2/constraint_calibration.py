@@ -123,6 +123,23 @@ class ConstraintCalibrator:
         # Slope should always be positive now (higher overaspirate = higher volume)
         slope = volume_diff_ul / overaspirate_diff_ul
         
+        # PHYSICS-BASED EFFICIENCY CONSTRAINTS
+        # Efficiency must be between 0.3-1.5 uL/uL (physical limits)
+        # - Lower bound (0.3): Even inefficient pipetting retains some overaspirate
+        # - Upper bound (1.5): Can't get more volume than aspirated due to noise
+        min_efficiency = 0.3
+        max_efficiency = 1.5
+        
+        if slope < min_efficiency or slope > max_efficiency:
+            logger.warning(f"Unrealistic efficiency detected ({slope:.3f}uL/uL) - likely due to measurement noise")
+            logger.warning(f"Point 1: {low_point.overaspirate_vol_ml*1000:.1f}uL → {low_point.measured_volume_ml*1000:.1f}uL")
+            logger.warning(f"Point 2: {high_point.overaspirate_vol_ml*1000:.1f}uL → {high_point.measured_volume_ml*1000:.1f}uL")
+            
+            # Clamp to physically realistic range
+            original_slope = slope
+            slope = max(min_efficiency, min(max_efficiency, slope))
+            logger.warning(f"Clamping efficiency from {original_slope:.3f} to {slope:.3f}uL/uL")
+        
         # Use low point as reference for interpolation
         ref_overaspirate_ul = low_point.overaspirate_vol_ml * 1000
         ref_volume_ul = low_point.measured_volume_ml * 1000

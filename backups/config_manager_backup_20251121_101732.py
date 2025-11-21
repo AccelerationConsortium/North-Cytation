@@ -17,7 +17,7 @@ Example Usage:
     config = ExperimentConfig.from_yaml("experiment_config.yaml")
     targets = config.get_target_volumes_ml()
     params = config.get_parameter_bounds()
-    tolerances = config.calculate_tolerances_for_volume(0.05)  # 50uL
+    tolerances = config.calculate_tolerances_for_volume(0.05)  # 50μL
 """
 
 import yaml
@@ -75,9 +75,7 @@ class ExperimentConfig:
     def __init__(self, config_dict: Dict[str, Any]):
         """Initialize from configuration dictionary."""
         self._config = config_dict
-        self._validate_config()
-    
-    @classmethod
+        self._validate_config()    @classmethod
     def from_yaml(cls, config_path: str) -> 'ExperimentConfig':
         """Load configuration from YAML file."""
         path = Path(config_path)
@@ -236,32 +234,11 @@ class ExperimentConfig:
         
         return False
     
-    def get_optimization_parameters(self) -> Dict[str, Dict[str, Any]]:
-        """Get all optimization parameters (calibration + hardware) with their configuration."""
-        all_params = {}
-        
-        # Add calibration parameters
-        cal_params = self._config.get('calibration_parameters', {})
-        for name, config in cal_params.items():
-            all_params[name] = config
-            
-        # Add hardware parameters  
-        hw_params = self._config.get('hardware_parameters', {})
-        for name, config in hw_params.items():
-            all_params[name] = config
-            
-        return all_params
-    
-    def get_parameter_type(self, param_name: str) -> str:
-        """Get the optimizer type (integer/float) for a parameter."""
-        all_params = self.get_optimization_parameters()
-        return all_params.get(param_name, {}).get('type', 'float')  # Default to float
-    
     # Tolerance calculation
     def calculate_tolerances_for_volume(self, target_volume_ml: float) -> VolumeTolerances:
         """Calculate volume-specific tolerances using explicit ranges."""
         tolerances = self._config['tolerances']
-        volume_ul = target_volume_ml * 1000  # Convert to uL
+        volume_ul = target_volume_ml * 1000  # Convert to μL
         
         # Find matching volume range
         tolerance_pct = 5.0  # Default fallback
@@ -467,8 +444,16 @@ class ExperimentConfig:
             hardware=params.hardware  # Keep hardware params unchanged
         )
     
+    def get_parameter_exploration_config(self) -> Dict[str, float]:
+        """Get parameter exploration noise factor configuration."""
+        exploration_config = self._config.get('advanced', {}).get('parameter_exploration', {})
+        return {
+            'initial_noise_factor': exploration_config.get('initial_noise_factor', 0.5),
+            'noise_decay_rate': exploration_config.get('noise_decay_rate', 0.05),
+            'minimum_noise_factor': exploration_config.get('minimum_noise_factor', 0.1)
+        }
+    
     def get_raw_config(self) -> Dict[str, Any]:
-        """Get raw configuration dictionary for advanced use cases."""
         """Get raw configuration dictionary for advanced use cases."""
         return self._config.copy()
     

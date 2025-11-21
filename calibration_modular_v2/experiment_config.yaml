@@ -15,61 +15,50 @@ experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
   liquid: "water"                     # Target liquid (water, glycerol, ethanol)
   description: "Testing calibration across 6 volumes: 5μL to 200μL"
-  
+
+# Target Volumes (in mL)
+volumes:
+  targets_ml: [0.05, 0.025, 0.01]       # Test with 3 volumes for faster debugging
+
+# Global Resource Limits
+budget:
+  max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
+  max_measurements_first_volume: 60     # Dedicated budget for first volume
+
 # Execution Mode
 execution:
   simulate: false                         # Use simulation instead of hardware
   random_seed: 7                         # Reproducibility seed
 
-# Hardware Configuration (merged from hardware_config_north_c9.json)
+# Output Configuration
+output:
+  base_directory: "output/calibration_v2_runs"  # Root directory for results
+  save_raw_measurements: true           # Include individual measurement data
+  generate_plots: true                  # Create visualization plots
+  export_optimal_conditions: true      # Generate optimal_conditions.csv
+
+# Protocol Configuration (Hardware Abstraction)
+protocol:
+  hardware_module: "calibration_protocol_hardware"     # Real hardware protocol <---- Change this to yours
+  simulation_module: "calibration_protocol_simulated" # Simulation protocol   <---- Can keep this if you like
+  # Optional: force specific module regardless of simulation mode
+  # module: "custom_protocol"
+
+# Hardware Configuration
 hardware:
-  hardware_type: "north_robot_c9"
-  device_serial: "AU06CNCF"
-  
-  # Hardware-specific parameter warnings
+  # Hardware-specific parameter warnings (used by LLM prompts)
   parameter_warnings:
     - "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter scaling)"
     - "NOTE: Speeds are relative units, not absolute velocities"
     - "CAUTION: Retract speed behaves differently - higher = faster"
   
-  parameter_specifics:
-    aspirate_speed:
-      scaling: "inverse"
-      note: "Higher values = slower aspiration"
-    dispense_speed:
-      scaling: "inverse"
-      note: "Higher values = slower dispensing"
-    retract_speed:
-      scaling: "direct"
-      note: "Higher values = faster retraction"
-  
-  volume_constraints:
-    min_volume_ul: 1
-    max_volume_ul: 1000
-    overaspirate_max_fraction: 0.2
-  
-# Target Volumes (in mL)
-volumes:
-  targets_ml: [0.05, 0.025, 0.01]       # Test with 3 volumes for faster debugging
-  
-# Global Resource Limits
-budget:
-  max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
-  max_measurements_first_volume: 60     # Dedicated budget for first volume
-  
-# Protocol Configuration (Hardware Abstraction)
-protocol:
-  hardware_module: "calibration_protocol_hardware"     # Real hardware protocol
-  simulation_module: "calibration_protocol_simulated" # Simulation protocol  
-  # Optional: force specific module regardless of simulation mode
-  # module: "custom_protocol"
-  
 # Parameter Space Definition
 calibration_parameters:
-  # Mandatory parameters that all hardware must support
+  # Mandatory parameters that all hardware must support. DO NOT DELETE THIS PARAMETER.
   overaspirate_vol:
     bounds: [0.0, 0.0075]
     default: 0.004
+    type: "float"                       # Parameter type for optimizer
     description: "Overaspiration volume for volume accuracy (mL)"
     volume_dependent: true              # Re-optimized for each volume
 
@@ -77,40 +66,47 @@ hardware_parameters:
   # Optional hardware-specific parameters
   # Parameter names and validation rules are defined by hardware configuration
   # These will be passed through to the protocol layer as-is
+  # You can change these to whatever you like
   
   aspirate_speed:
     bounds: [5, 35]
     default: 17
+    type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Aspiration speed (relative units)"
     
   dispense_speed:
     bounds: [5, 35] 
     default: 17
+    type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Dispense speed (relative units)"
     
   aspirate_wait_time:
     bounds: [0.0, 30.0]
     default: 12.0
+    type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after aspiration (seconds)"
     
   dispense_wait_time:
     bounds: [0.0, 30.0]
     default: 12.0
+    type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after dispensing (seconds)"
     
   retract_speed:
     bounds: [1.0, 15.0]
     default: 8.0
+    type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Minimal timing impact
     description: "Tip retract speed (relative units)"
     
   blowout_vol:
     bounds: [0.0, 0.2]
     default: 0.07
+    type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Blowout volume (mL)"
     volume_dependent: true              # Re-optimized for each volume
@@ -118,6 +114,7 @@ hardware_parameters:
   post_asp_air_vol:
     bounds: [0.0, 0.1]
     default: 0.05
+    type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Post-aspiration air volume (mL)"
 
@@ -210,22 +207,9 @@ screening:
     data_path: null                     # Path to external CSV file
     volume_filter_ml: null              # Only use data for specific volume
     liquid_filter: null                 # Only use data for specific liquid
-    required_columns: ["volume_ml", "aspirate_speed", "dispense_speed", "deviation_pct", "duration_s"]
-
-# Output Configuration
-output:
-  base_directory: "output/calibration_v2_runs"  # Root directory for results
-  save_raw_measurements: true           # Include individual measurement data
-  generate_plots: true                  # Create visualization plots
-  export_optimal_conditions: true      # Generate optimal_conditions.csv
-  
+    required_columns: ["volume_ml", "deviation_pct", "duration_s"]  # Universal columns only
+ 
 # Advanced Features
 advanced:
-  # Parameter exploration noise factors (for screening/volume-dependent generation)
-  parameter_exploration:
-    initial_noise_factor: 0.5           # Starting noise level (50% of parameter range)
-    noise_decay_rate: 0.05              # Noise reduction per iteration (5%)
-    minimum_noise_factor: 0.1           # Minimum noise level (10% of parameter range)
-  
   # Variability calculation method
   use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV

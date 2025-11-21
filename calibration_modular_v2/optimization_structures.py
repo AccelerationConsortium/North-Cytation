@@ -31,13 +31,21 @@ class OptimizationObjectives:
     precision: float   # Variability percentage (minimize) 
     time: float        # Duration seconds (minimize)
     
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self, optimizer_type: 'OptimizerType' = None) -> Dict[str, float]:
         """Convert to dictionary for Ax interface."""
-        return {
+        result = {
             "deviation": self.accuracy,
             "variability": self.precision, 
             "time": self.time
         }
+        
+        # Filter objectives based on optimizer type
+        if optimizer_type == OptimizerType.SINGLE_OBJECTIVE:
+            # Single objective only uses deviation (accuracy)
+            return {"deviation": self.accuracy}
+        else:
+            # Multi-objective or None (default) returns all objectives
+            return result
     
     @classmethod
     def from_adaptive_result(cls, result: AdaptiveMeasurementResult) -> 'OptimizationObjectives':
@@ -59,11 +67,11 @@ class OptimizationTrial:
     liquid: str = "water"  # Liquid being pipetted
     metadata: Dict[str, Any] = field(default_factory=dict)
     
-    def to_ax_result(self) -> Tuple[int, Dict[str, float]]:
+    def to_ax_result(self, optimizer_type: 'OptimizerType' = None) -> Tuple[int, Dict[str, float]]:
         """Convert to format expected by Ax optimizer."""
         if self.trial_index is None:
             raise ValueError("trial_index required for Ax feedback")
-        return self.trial_index, self.objectives.to_dict()
+        return self.trial_index, self.objectives.to_dict(optimizer_type)
 
 
 @dataclass
@@ -75,7 +83,7 @@ class OptimizationConstraints:
     
     # Overaspirate bounds (dynamically calculated)
     min_overaspirate_ml: float = 0.0
-    max_overaspirate_ml: float = 0.01  # 10μL default
+    max_overaspirate_ml: float = 0.01  # 10uL default
     
     # Fixed parameters (not optimized)
     fixed_parameters: Dict[str, float] = field(default_factory=dict)
@@ -110,6 +118,7 @@ class OptimizationConfig:
     # Experiment context
     liquid: str = "water"            # Liquid being pipetted
     experiment_name: str = "calibration"  # Experiment identifier
+    protocol: Any = None             # Protocol instance for constraints
     
     # Optimization parameters
     num_initial_trials: int = 5      # SOBOL exploration trials

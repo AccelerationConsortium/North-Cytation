@@ -187,15 +187,6 @@ class CalibrationExperiment:
                    f"{avg_volume_ul:.1f}uL measured ({deviation_pct:.1f}% dev, {avg_time_s:.1f}s), "
                    f"measurements={self.total_measurements}/{max_measurements}")
 
-    def _create_volume_dependent_param_generator(self, base_parameters: 'PipettingParameters', 
-                                                volume_dependent_params: List[str]):
-        """Create a parameter generation function for volume-dependent optimization."""
-        def generate_params(target_volume_ml: float, iteration: int) -> 'PipettingParameters':
-            return self._generate_volume_dependent_parameters(
-                base_parameters, target_volume_ml, volume_dependent_params, iteration
-            )
-        return generate_params
-
     def _create_inherited_parameters(self, target_volume_ml: float, 
                                    optimal_overaspirate_ml: float) -> 'PipettingParameters':
         """Create parameters for inherited trial with optimal overaspirate.
@@ -463,6 +454,9 @@ class CalibrationExperiment:
                 measured_vol = getattr(trial, 'measured_volume_ml', getattr(trial, 'volume_ml', 0.0))
                 logger.info(f"  Trial {i+1}: {trial_name} -> {measured_vol*1000:.1f}uL (target: {trial.target_volume_ml*1000:.1f}uL)")
             logger.info("=" * 60)
+            
+            # Save constraint calibration results to file for permanent record
+            self._save_constraint_calibration_results(target_volume_ml, constraint_update, two_point_trials)
         
         # Phase 2.5: Inherited trial (test optimal overaspirate value) - only for subsequent volumes
         if self.current_volume_index > 0:
@@ -603,7 +597,8 @@ class CalibrationExperiment:
                 optimizer_type=OptimizerType.MULTI_OBJECTIVE,
                 fixed_params=None,
                 volume_dependent_only=False,
-                num_sobol_trials=screening_trials  # 5 SOBOL trials for screening
+                num_sobol_trials=screening_trials,  # 5 SOBOL trials for screening
+                protocol_instance=self.protocol_module  # Pass protocol for constraints
             )
             logger.info(f"Created SOBOL optimizer for screening phase ({screening_trials} trials)")
         
@@ -630,62 +625,12 @@ class CalibrationExperiment:
         
         hw_params = HardwareParameters(parameters=hw_param_dict)
         
-        return PipettingParameters(
+        parameters = PipettingParameters(
             calibration=cal_params,
             hardware=hw_params
         )
         return self.config.apply_volume_constraints(parameters, target_volume_ml)
-    
 
-    
-    def _run_first_volume_optimization(self, target_volume_ml: float, optimizer) -> List[TrialResult]:
-        """
-        Optimize ALL parameters for the first volume.
-        This establishes the baseline parameter set for transfer learning.
-        """
-        logger.info("First volume: optimizing ALL parameters")
-        
-        max_measurements = self.config.get_max_measurements_first_volume()
-        
-        # Use generic optimization loop with first-volume parameter generation
-        return self._run_optimization_loop(
-            target_volume_ml=target_volume_ml,
-            max_measurements=max_measurements,
-            strategy_name="First volume optimization",
-            param_generation_func=self._generate_optimization_parameters
-        )
-    
-    def _run_subsequent_volume_optimization(self, target_volume_ml: float, optimizer) -> List[TrialResult]:
-        """
-        Optimize only VOLUME-DEPENDENT parameters for subsequent volumes.
-        Uses optimized parameters from first volume as base, only varies volume-dependent ones.
-        """
-        logger.info("Subsequent volume: optimizing only volume-dependent parameters")
-        
-        # Get optimized parameters from first volume
-        base_parameters = self._get_transfer_learning_parameters()
-        if not base_parameters:
-            logger.warning("No base parameters available, falling back to full optimization")
-            return self._run_first_volume_optimization(target_volume_ml, optimizer)
-        
-        volume_dependent_params = self.config.get_volume_dependent_parameters()
-        logger.info(f"Volume-dependent parameters: {volume_dependent_params}")
-        
-        max_measurements = self.config.get_max_measurements_per_volume()
-        
-        # Create parameter generator for volume-dependent optimization
-        param_generator = self._create_volume_dependent_param_generator(
-            base_parameters, volume_dependent_params
-        )
-        
-        # Use generic optimization loop with volume-dependent parameter generation
-        return self._run_optimization_loop(
-            target_volume_ml=target_volume_ml,
-            max_measurements=max_measurements,
-            strategy_name="Volume-dependent optimization", 
-            param_generation_func=param_generator
-        )
-    
     def _get_transfer_learning_parameters(self) -> Optional[PipettingParameters]:
         """
         Get the best parameters from the first volume for transfer learning.
@@ -704,99 +649,7 @@ class CalibrationExperiment:
         
         logger.info(f"Using transfer learning from volume {first_volume_result.target_volume_ml} mL")
         return first_volume_result.optimal_parameters
-    
-    def _generate_volume_dependent_parameters(self, 
-                                            base_parameters: PipettingParameters,
-                                            target_volume_ml: float,
-                                            volume_dependent_params: List[str],
-                                            iteration: int) -> PipettingParameters:
-        """
-        Generate parameters with only volume-dependent ones varying - HARDWARE AGNOSTIC.
-        
-        Args:
-            base_parameters: Optimized parameters from first volume
-            target_volume_ml: Current target volume
-            volume_dependent_params: List of parameter names to vary
-            iteration: Current iteration number
-            
-        Returns:
-            Parameters with volume-dependent parameters varied, others fixed
-        """
-        # Get bounds for both calibration and hardware parameters
-        cal_bounds = self.config.get_calibration_parameter_bounds()
-        hw_bounds = self.config.get_hardware_parameter_bounds()
-        
-        # Start with base calibration parameters
-        new_cal_params = CalibrationParameters(
-            overaspirate_vol=base_parameters.overaspirate_vol
-        )
-        
-        # Start with base hardware parameters
-        new_hw_params = dict(base_parameters.hardware.parameters)
-        
-        # Vary only volume-dependent parameters
-        for param_name in volume_dependent_params:
-            if param_name == "overaspirate_vol":
-                # Mandatory calibration parameter
-                new_cal_params = CalibrationParameters(
-                    overaspirate_vol=self._add_parameter_noise(
-                        base_parameters.overaspirate_vol, 
-                        cal_bounds.overaspirate_vol, 
-                        iteration
-                    )
-                )
-            else:
-                # Hardware parameter - check if it exists in config
-                param_bounds = hw_bounds.get(param_name)
-                if param_bounds and param_name in new_hw_params:
-                    base_value = base_parameters.get_hardware_param(param_name)
-                    new_hw_params[param_name] = self._add_parameter_noise(
-                        base_value, param_bounds, iteration
-                    )
-        
-        # Apply volume constraints
-        if new_cal_params.overaspirate_vol != base_parameters.overaspirate_vol:
-            # Apply dynamic constraint for overaspirate_vol
-            max_fraction = self.config.get_overaspirate_max_fraction()
-            max_allowed = min(cal_bounds.overaspirate_vol[1], target_volume_ml * max_fraction)
-            new_cal_params = CalibrationParameters(
-                overaspirate_vol=min(new_cal_params.overaspirate_vol, max_allowed)
-            )
-        
-        return PipettingParameters(
-            calibration=new_cal_params,
-            hardware=HardwareParameters(parameters=new_hw_params)
-        )
-    
-    def _add_parameter_noise(self, base_value: float, bounds: Tuple[float, float], iteration: int) -> float:
-        """
-        Add controlled noise to a parameter value for exploration.
-        
-        Args:
-            base_value: Base parameter value
-            bounds: (min, max) bounds for parameter
-            iteration: Current iteration (affects noise level)
-            
-        Returns:
-            Perturbed parameter value within bounds
-        """
-        min_val, max_val = bounds
-        
-        # Get noise factors from config instead of hardcoded values
-        noise_config = self.config.get_parameter_exploration_config()
-        initial_noise = noise_config['initial_noise_factor']
-        decay_rate = noise_config['noise_decay_rate']
-        min_noise = noise_config['minimum_noise_factor']
-        
-        # Reduce noise over iterations (start broad, get more focused)
-        noise_factor = max(min_noise, initial_noise - iteration * decay_rate)
-        param_range = max_val - min_val
-        noise = np.random.normal(0, param_range * noise_factor)
-        
-        # Apply noise and clamp to bounds
-        new_value = base_value + noise
-        return max(min_val, min(max_val, new_value))
-    
+
     def _run_optimization_phase(
         self, 
         target_volume_ml: float, 
@@ -839,7 +692,8 @@ class CalibrationExperiment:
                 fixed_params=fixed_params,
                 volume_dependent_only=not is_first_volume,
                 constraint_updates=[constraint_update] if constraint_update else None,
-                num_sobol_trials=0  # 0 SOBOL trials - go straight to Bayesian optimization
+                num_sobol_trials=0,  # 0 SOBOL trials - go straight to Bayesian optimization
+                protocol_instance=self.protocol_module  # Pass protocol for constraints
             )
             
             logger.info(f"Created {optimizer_type.value} optimizer for volume {target_volume_ml*1000:.0f}uL")
@@ -1497,3 +1351,61 @@ class CalibrationExperiment:
         except Exception as e:
             logger.error(f"Error generating enhanced outputs: {e}")
             logger.debug(f"Enhanced outputs error details: {traceback.format_exc()}")
+    
+    def _save_constraint_calibration_results(self, target_volume_ml: float, 
+                                           constraint_update: Optional[ConstraintBoundsUpdate],
+                                           two_point_trials: List[TrialResult]) -> None:
+        """Save constraint calibration results to a dedicated text file for visibility."""
+        if not two_point_trials:
+            return
+        
+        calibration_file = self.output_dir / "constraint_calibration_results.txt"
+        
+        with open(calibration_file, "a", encoding="utf-8") as f:
+            f.write("\n" + "=" * 80 + "\n")
+            f.write(f"CONSTRAINT CALIBRATION RESULTS - {target_volume_ml*1000:.1f}uL TARGET\n")
+            f.write(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 80 + "\n\n")
+            
+            if constraint_update:
+                f.write("CONSTRAINT UPDATE:\n")
+                f.write(f"  Parameter: {constraint_update.parameter_name}\n")
+                f.write(f"  Min Value: {constraint_update.min_value*1000:.3f}uL\n")
+                f.write(f"  Max Value: {constraint_update.max_value*1000:.3f}uL\n")
+                f.write(f"  Optimal Value: {constraint_update.optimal_overaspirate_ml*1000:.3f}uL\n")
+                f.write(f"  Justification: {constraint_update.justification}\n\n")
+                
+                if constraint_update.source_calibration:
+                    cal_result = constraint_update.source_calibration
+                    f.write("CALIBRATION DATA:\n")
+                    f.write(f"  Volume Efficiency: {cal_result.volume_efficiency_ul_per_ul:.3f}uL/uL\n")
+                    f.write(f"  Shortfall: {cal_result.shortfall_ml*1000:.3f}uL\n")
+                    f.write(f"  Tolerance Range: +/-{cal_result.tolerance_range_ml*1000:.1f}uL\n\n")
+                    
+                    f.write("  Point 1 (Base):\n")
+                    f.write(f"    Overaspirate: {cal_result.point_1.overaspirate_vol_ml*1000:.3f}uL\n")
+                    f.write(f"    Measured Volume: {cal_result.point_1.measured_volume_ml*1000:.3f}uL\n")
+                    f.write(f"    Variability: {cal_result.point_1.variability_pct:.1f}%\n")
+                    f.write(f"    Measurement Count: {cal_result.point_1.measurement_count}\n\n")
+                    
+                    f.write("  Point 2 (Shortfall Compensation):\n")
+                    f.write(f"    Overaspirate: {cal_result.point_2.overaspirate_vol_ml*1000:.3f}uL\n")
+                    f.write(f"    Measured Volume: {cal_result.point_2.measured_volume_ml*1000:.3f}uL\n")
+                    f.write(f"    Variability: {cal_result.point_2.variability_pct:.1f}%\n")
+                    f.write(f"    Measurement Count: {cal_result.point_2.measurement_count}\n\n")
+            
+            f.write(f"TRIAL DETAILS ({len(two_point_trials)} trials):\n")
+            for i, trial in enumerate(two_point_trials):
+                trial_name = getattr(trial, 'trial_name', f'trial_{i+1}')
+                measured_vol = getattr(trial, 'measured_volume_ml', getattr(trial, 'volume_ml', 0.0))
+                overaspirate = trial.parameters.calibration.overaspirate_vol
+                deviation_ul = getattr(trial.quality, 'measured_accuracy_ul', 0.0)
+                f.write(f"  Trial {i+1} ({trial_name}):\n")
+                f.write(f"    Overaspirate: {overaspirate*1000:.3f}uL\n")
+                f.write(f"    Measured Volume: {measured_vol*1000:.3f}uL\n") 
+                f.write(f"    Target Volume: {trial.target_volume_ml*1000:.1f}uL\n")
+                f.write(f"    Deviation: {deviation_ul:.3f}uL\n\n")
+            
+            f.write("=" * 80 + "\n\n")
+        
+        logger.info(f"Constraint calibration results saved to: {calibration_file}")

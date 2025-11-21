@@ -14,9 +14,8 @@ Key Features:
 - Fallback to normal screening if data unavailable
 
 Expected CSV Format:
-    volume_ml, aspirate_speed, dispense_speed, aspirate_wait_time_s, 
-    dispense_wait_time_s, retract_speed, blowout_vol_ml, post_asp_air_vol_ml,
-    overaspirate_vol_ml, deviation_pct, variability_pct, duration_s
+The CSV should contain universal columns (volume_ml, deviation_pct, duration_s) 
+plus any hardware-specific parameters defined in your configuration.
 
 Example Usage:
     loader = ExternalDataLoader(config)
@@ -33,7 +32,7 @@ from typing import List, Optional, Dict, Any
 import numpy as np
 
 from config_manager import ExperimentConfig
-from data_structures import PipettingParameters, TrialResult, RawMeasurement, AdaptiveMeasurementResult, QualityEvaluation, VolumeTolerances
+from data_structures import PipettingParameters, TrialResult, RawMeasurement, AdaptiveMeasurementResult, QualityEvaluation, VolumeTolerances, HardwareParameters, CalibrationParameters
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +106,10 @@ class ExternalDataLoader:
         # Apply volume filter
         volume_filter = self.config.get_external_data_volume_filter()
         if volume_filter is not None:
-            tolerance = 0.001  # 1μL tolerance for volume matching
+            tolerance = 0.001  # 1uL tolerance for volume matching
             volume_mask = abs(self.data['volume_ml'] - volume_filter) <= tolerance
             self.data = self.data[volume_mask]
-            logger.info(f"Volume filter ({volume_filter} mL): {original_count} → {len(self.data)} rows")
+            logger.info(f"Volume filter ({volume_filter} mL): {original_count} -> {len(self.data)} rows")
         
         # Apply liquid filter
         liquid_filter = self.config.get_external_data_liquid_filter()
@@ -119,13 +118,13 @@ class ExternalDataLoader:
             self.data = self.data[liquid_mask]
             logger.info(f"Liquid filter ({liquid_filter}): filtered to {len(self.data)} rows")
         
-        # Remove rows with missing critical data
-        critical_columns = ['aspirate_speed', 'dispense_speed', 'deviation_pct']
+        # Remove rows with missing critical data (universal columns only)
+        critical_columns = ['deviation_pct']  # Only universal quality metrics required
         for col in critical_columns:
             if col in self.data.columns:
                 self.data = self.data.dropna(subset=[col])
         
-        logger.info(f"Data filtering complete: {original_count} → {len(self.data)} rows")
+        logger.info(f"Data filtering complete: {original_count} -> {len(self.data)} rows")
     
     def has_valid_data(self) -> bool:
         """Check if valid external data is available."""
@@ -148,7 +147,7 @@ class ExternalDataLoader:
             return []
         
         # Filter data for target volume (with tolerance)
-        volume_tolerance = 0.001  # 1μL tolerance
+        volume_tolerance = 0.001  # 1uL tolerance
         volume_mask = abs(self.data['volume_ml'] - target_volume_ml) <= volume_tolerance
         volume_data = self.data[volume_mask]
         
@@ -178,17 +177,42 @@ class ExternalDataLoader:
     def _convert_row_to_trial(self, row: pd.Series, target_volume_ml: float, 
                              trial_id: str) -> Optional[TrialResult]:
         """Convert external data row to TrialResult."""
+    def _convert_row_to_trial(self, row: pd.Series, target_volume_ml: float, 
+                             trial_id: str) -> Optional[TrialResult]:
+        """Convert external data row to TrialResult using only configured parameters."""
         try:
-            # Extract parameters
+            # Build hardware parameters from available columns and configuration
+            hardware_params = {}
+            
+            # Get configured parameter names from config
+            # Only use parameters that exist in both the config and the data
+            config_params = self.config.get_optimization_parameters()
+            
+            for param_name in config_params.keys():
+                if param_name in row and pd.notna(row[param_name]):
+                    # Convert to correct type based on configuration
+                    param_type = self.config.get_parameter_type(param_name)
+                    if param_type == "integer":
+                        hardware_params[param_name] = int(round(float(row[param_name])))
+                    else:
+                        hardware_params[param_name] = float(row[param_name])
+            
+            # Create hardware parameters object
+            hardware = HardwareParameters(parameters=hardware_params)
+            
+            # Handle overaspirate_vol (the only universal calibration parameter)
+            overaspirate_vol = 0.004  # Default
+            if 'overaspirate_vol' in row and pd.notna(row['overaspirate_vol']):
+                overaspirate_vol = float(row['overaspirate_vol'])
+            elif 'overaspirate_vol_ml' in row and pd.notna(row['overaspirate_vol_ml']):
+                overaspirate_vol = float(row['overaspirate_vol_ml'])
+            
+            calibration = CalibrationParameters(overaspirate_vol=overaspirate_vol)
+            
+            # Create combined parameters
             parameters = PipettingParameters(
-                aspirate_speed=float(row['aspirate_speed']),
-                dispense_speed=float(row['dispense_speed']),
-                aspirate_wait_time_s=float(row.get('aspirate_wait_time_s', 12.0)),
-                dispense_wait_time_s=float(row.get('dispense_wait_time_s', 12.0)),
-                retract_speed=float(row.get('retract_speed', 8.0)),
-                blowout_vol_ml=float(row.get('blowout_vol_ml', 0.07)),
-                post_asp_air_vol_ml=float(row.get('post_asp_air_vol_ml', 0.05)),
-                overaspirate_vol_ml=float(row.get('overaspirate_vol_ml', 0.004))
+                hardware=hardware,
+                calibration=calibration
             )
             
             # Apply volume constraints
