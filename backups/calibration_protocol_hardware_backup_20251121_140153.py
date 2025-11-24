@@ -20,20 +20,6 @@ from calibration_protocol_base import CalibrationProtocolBase
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from master_usdl_coordinator import Lash_E
 
-# Liquid densities for mass-to-volume conversion (g/mL)
-LIQUIDS = {
-    "water": {"density": 1.00, "refill_pipets": False},
-    "ethanol": {"density": 0.789, "refill_pipets": False},
-    "toluene": {"density": 0.867, "refill_pipets": False},
-    "2MeTHF": {"density": 0.852, "refill_pipets": False},
-    "isopropanol": {"density": 0.789, "refill_pipets": False},
-    "DMSO": {"density": 1.1, "refill_pipets": False},
-    "acetone": {"density": 0.79, "refill_pipets": False},
-    "glycerol": {"density": 1.26, "refill_pipets": True},
-    "PEG_Water": {"density": 1.05, "refill_pipets": True},
-    "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
-}
-
 
 class HardwareCalibrationProtocol(CalibrationProtocolBase):
     """Hardware calibration protocol implementing the abstract interface."""
@@ -59,12 +45,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
-        SWAP = False  # If True, enables vial swapping when needed
+        SWAP = True  # If True, enables vial swapping when needed
         
         # Initialize hardware
         try:
             # Initialize vial file path
-            vial_file = "status/calibration_vials_short.csv"
+            vial_file = "status/calibration_vials_overnight.csv"
             
             # Initialize Lash_E coordinator
             lash_e = Lash_E(vial_file, simulate=simulate)
@@ -163,7 +149,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             measurement_vial = state['measurement_vial']
             
             # Check if we're in simulation mode
-            simulate = False  # This should match the simulate flag from initialize
+            simulate = True  # This should match the simulate flag from initialize
             
             if not simulate:
                 # Real hardware measurements
@@ -171,25 +157,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
                 
                 # Dispense into measurement vial and measure weight
-                measurement_mass_mg = lash_e.nr_robot.dispense_into_vial(
+                measurement = lash_e.nr_robot.dispense_into_vial(
                     measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True
                 )
-                
-                # Convert mass to volume using liquid density
-                liquid = state['liquid']
-                if liquid not in LIQUIDS:
-                    raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
-                
-                density_g_mL = LIQUIDS[liquid]['density']
-                measured_mass_g = measurement_mass_mg / 1000  # Convert mg to g
-                measured_volume_mL = measured_mass_g / density_g_mL  # mass (g) / density (g/mL) = volume (mL)
-                
-                print(f"    Mass: {measurement_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
-                
-                # Check if pipet removal is needed for this liquid (viscous liquids)
-                if LIQUIDS[liquid]['refill_pipets']:
-                    lash_e.nr_robot.remove_pipet()
-                    print(f"    Removed pipet (refill_pipets=True for {liquid})")
+                measured_volume_mL = measurement  # Real measurement
                 
             else:
                 # Simple simulation: target volume - 20% + overaspirate + noise
