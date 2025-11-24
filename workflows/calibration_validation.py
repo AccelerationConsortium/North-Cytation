@@ -45,7 +45,7 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_wizard import PipettingWizard
 
 # --- CONFIGURATION ---
-DEFAULT_LIQUID = "water"
+DEFAULT_LIQUID = "DMSO"
 DEFAULT_SIMULATE = False
 #DEFAULT_VOLUMES = [0.008, 0.012, 0.02, 0.04, 0.075, 0.12]  # mL
 DEFAULT_VOLUMES = [0.25, 0.45, 0.65, 0.85]  # mL

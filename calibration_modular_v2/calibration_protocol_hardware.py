@@ -45,12 +45,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
-        SWAP = True  # If True, enables vial swapping when needed
+        SWAP = False  # If True, enables vial swapping when needed
         
         # Initialize hardware
         try:
             # Initialize vial file path
-            vial_file = "status/calibration_vials_overnight.csv"
+            vial_file = "status/calibration_vials_short.csv"
             
             # Initialize Lash_E coordinator
             lash_e = Lash_E(vial_file, simulate=simulate)
@@ -149,7 +149,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             measurement_vial = state['measurement_vial']
             
             # Check if we're in simulation mode
-            simulate = True  # This should match the simulate flag from initialize
+            simulate = False  # This should match the simulate flag from initialize
             
             if not simulate:
                 # Real hardware measurements
