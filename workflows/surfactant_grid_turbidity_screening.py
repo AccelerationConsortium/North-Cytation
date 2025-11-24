@@ -15,6 +15,8 @@ RECOVERY USAGE:
   measurements = recover_from_measurement_backups()
 """
 import sys
+
+from sympy import use
 sys.path.append("../utoronto_demo")
 import pandas as pd
 import numpy as np
@@ -113,7 +115,7 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
             # Add water first, then stock
             if water_volume > 0:
                 lash_e.nr_robot.dispense_into_vial_from_reservoir(
-                    reservoir_index=1, vial_index=dilution_vial, volume=water_volume
+                    reservoir_index=1, vial_index=dilution_vial, volume=water_volume, return_home=False
                 )
             
             lash_e.nr_robot.dispense_from_vial_into_vial(
@@ -156,7 +158,7 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
                 
                 # Add water first, then previous dilution
                 lash_e.nr_robot.dispense_into_vial_from_reservoir(
-                    reservoir_index=1, vial_index=dilution_vial, volume=water_volume  # Pump 1 = water reservoir
+                    reservoir_index=1, vial_index=dilution_vial, volume=water_volume, return_home=False  # Pump 1 = water reservoir
                 )
                 
                 previous_vial = dilution_vials[i-1]
@@ -164,8 +166,7 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
                     source_vial_name=previous_vial, 
                     dest_vial_name=dilution_vial, 
                     volume=previous_volume,
-                    liquid='water'
-                )
+                    liquid='water')
             else:
                 # Non-standard dilution: calculate from previous
                 dilution_factor = actual_dilution_factor
@@ -191,7 +192,7 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
                 })
                 
                 lash_e.nr_robot.dispense_into_vial_from_reservoir(
-                    reservoir_index=1, vial_index=dilution_vial, volume=water_volume
+                    reservoir_index=1, vial_index=dilution_vial, volume=water_volume, return_home=False
                 )
                 
                 previous_vial = dilution_vials[i-1]
@@ -203,7 +204,7 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
                 )
         
         # Vortex to mix
-        lash_e.nr_robot.vortex_vial(vial_name=dilution_vial, vortex_time=3)
+        lash_e.nr_robot.vortex_vial(vial_name=dilution_vial, vortex_time=8, vortex_speed=80)
     
     # Return vials in original concentration order (not sorted)
     # Create mapping from 2x concentration to vial name, then map back to target concentrations
@@ -921,6 +922,8 @@ def surfactant_grid_screening(simulate=True):
     lash_e.nr_robot.check_input_file()
     lash_e.nr_track.check_input_file()
     lash_e.grab_new_wellplate()
+
+    lash_e.nr_robot.prime_reservoir_line(1, 'water')
     
     # 4. Create dilution series for both surfactants
     dilution_vials_a, dilution_steps_a = create_dilution_series(lash_e, "surfactant_a", concentrations, SURFACTANT_A_CONC_MM)

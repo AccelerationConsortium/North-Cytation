@@ -45,16 +45,16 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_wizard import PipettingWizard
 
 # --- CONFIGURATION ---
-DEFAULT_LIQUID = "DMSO"
+DEFAULT_LIQUID = "glycerol"
 DEFAULT_SIMULATE = False
 #DEFAULT_VOLUMES = [0.008, 0.012, 0.02, 0.04, 0.075, 0.12]  # mL
-DEFAULT_VOLUMES = [0.25, 0.45, 0.65, 0.85]  # mL
+DEFAULT_VOLUMES = [0.03, 0.06, 0.09]  # mL
 DEFAULT_REPLICATES = 5
-DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_overnight.csv"
+DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
 COMPENSATE_OVERVOLUME = False  # NEW: Control overvolume compensation in wizard
 # Vial management mode - set to match your calibration setup
 # Options: "legacy" (no vial management), "single", "dual", etc.
-VIAL_MANAGEMENT_MODE = "swap"  # Change this to match calibration setup
+VIAL_MANAGEMENT_MODE = "legacy"  # Change this to match calibration setup
 
 
 # --- ESSENTIAL VIAL MANAGEMENT FUNCTIONS (from simplified workflow) ---
@@ -1011,11 +1011,11 @@ def run_comparison_validation(liquid=DEFAULT_LIQUID, simulate=DEFAULT_SIMULATE,
     if volumes is None:
         volumes = DEFAULT_VOLUMES.copy()
     
-    # Default 3-way comparison if not specified: wizard with/without compensation vs default
+    # Default 2-way comparison: wizard with compensation vs default (commented out wizard without compensation)
     if comparison_methods is None:
         comparison_methods = [
             {'name': 'wizard_comp_on', 'liquid_for_params': liquid, 'compensate_overvolume': True},
-            {'name': 'wizard_comp_off', 'liquid_for_params': liquid, 'compensate_overvolume': False},
+            # {'name': 'wizard_comp_off', 'liquid_for_params': liquid, 'compensate_overvolume': False},
             {'name': 'default', 'liquid_for_params': None, 'compensate_overvolume': False}
         ]
     

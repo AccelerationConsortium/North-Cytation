@@ -7,7 +7,7 @@ import numpy as np
 
 
 EXPORT_FILEPATH = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\other\Calibration Data\Calibration Nov 2025\calibration_reservoir_water_small_vol.txt"
-DISPENSE_VOLUMES = [0.1, 0.25, 0.5] #volumes in mL [0.1, 0.25, 0.5, 1, 1.5, 2, 2.5]
+DISPENSE_VOLUMES = [0.1, 0.25, 0.5, 1, 1.5, 2, 2.5] #volumes in mL [0.1, 0.25, 0.5, 1, 1.5, 2, 2.5]
 
 REPLICATES = 3
 VIAL_INDICES = [0, 1, 2, 3]

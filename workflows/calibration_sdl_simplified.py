@@ -3644,16 +3644,14 @@ if __name__ == "__main__":
 
     try:
         optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
-            vial_mode="swap",
-            liquid="DMSO",
+            vial_mode="legacy",
+            liquid="glycerol",
             simulate=False,
             use_LLM_for_screening=False,
-            volumes=[0.2, 0.5, 0.8],
-            max_measurements=150,  # Overall limit
-            max_measurements_first_volume=100,  # First volume limit
-            precision_measurements=5,  # 5 replicates for precision
-            use_range_for_precision=True,  # Use range instead of std dev
-            initial_parameter_sets=10,  # Longer screening phase
+            volumes=[0.05, 0.1, 0.025, 0.01],
+            max_measurements=96,  # Overall limit
+            max_measurements_first_volume=76,  # First volume limit
+            initial_parameter_sets=20,  # Longer screening phase
             init_method="SOBOL"  # Use Sobol sampling
         )
         print(f"\nSUCCESS: Workflow completed successfully!")

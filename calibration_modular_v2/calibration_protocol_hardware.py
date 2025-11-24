@@ -171,7 +171,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
                 
                 # Dispense into measurement vial and measure weight
-                measurement_mass_mg = lash_e.nr_robot.dispense_into_vial(
+                measured_mass_g = lash_e.nr_robot.dispense_into_vial(
                     measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True
                 )
                 
@@ -181,10 +181,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
                 
                 density_g_mL = LIQUIDS[liquid]['density']
-                measured_mass_g = measurement_mass_mg / 1000  # Convert mg to g
                 measured_volume_mL = measured_mass_g / density_g_mL  # mass (g) / density (g/mL) = volume (mL)
+                measured_mass_mg = measured_mass_g * 1000  # Convert g to mg for display
                 
-                print(f"    Mass: {measurement_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
+                print(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
                 
                 # Check if pipet removal is needed for this liquid (viscous liquids)
                 if LIQUIDS[liquid]['refill_pipets']:

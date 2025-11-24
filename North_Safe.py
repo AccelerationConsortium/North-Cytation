@@ -1873,7 +1873,7 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=False):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -1921,7 +1921,7 @@ class North_Robot(North_Base):
             last_run = (i == repeats - 1)
 
             # Aspirate from source
-            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip)
+            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip, use_safe_location=use_safe_location)
 
             # Dispense into destination
             mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid)
@@ -1934,7 +1934,16 @@ class North_Robot(North_Base):
                 # Return whatever vial is currently in the clamp (works for all cases)
                 clamp_vial_index = self.get_vial_in_location('clamp', 0)
                 if clamp_vial_index is not None:
-                    self.recap_clamp_vial()
+                    # Only recap if vial is actually uncapped and robot has the cap
+                    vial_is_capped = self.get_vial_info(clamp_vial_index, 'capped')
+                    robot_has_cap = (self.GRIPPER_STATUS == "Cap")
+                    
+                    if not vial_is_capped and robot_has_cap:
+                        self.recap_clamp_vial()
+                    elif not vial_is_capped and not robot_has_cap:
+                        self.logger.warning(f"Vial {clamp_vial_index} is uncapped but robot doesn't have cap - leaving uncapped")
+                    # If vial is already capped, skip recapping
+                    
                     self.return_vial_home(clamp_vial_index)
 
         return total_mass

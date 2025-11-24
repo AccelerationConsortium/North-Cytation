@@ -557,7 +557,7 @@ class CalibrationExperiment:
             
             # Execute trial
             trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}", 
-                                              strategy="screening", liquid="water")
+                                              strategy="screening", liquid=self.config.get_liquid_name())
             screening_trials.append(trial_result)
             
             # Log meaningful results instead of abstract scores
@@ -764,7 +764,7 @@ class CalibrationExperiment:
                     target_volume_ml=target_volume_ml,
                     trial_id=f"BAYESIAN_OPT_{iteration}",
                     strategy="optimization",
-                    liquid="water"
+                    liquid=self.config.get_liquid_name()
                 )
                 
                 optimization_trials.append(trial)
