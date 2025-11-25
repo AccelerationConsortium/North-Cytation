@@ -61,11 +61,16 @@ SURFACTANT_LIBRARY = {
 }
 
 # WORKFLOW CONSTANTS
-SIMULATE = True  # Set to False for actual hardware execution
+SIMULATE = False  # Set to False for actual hardware execution
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
 # Pump 1 = Water reservoir pump (carousel angle 45°, height 70)
+
+SURFACTANT_A_NAME = "TTAB"
+SURFACTANT_B_NAME = "SDS"
+SURFACTANT_A_CONC_MM = 50.0  # mM stock concentration
+SURFACTANT_B_CONC_MM = 50.0   # mM stock concentration
 
 # Grid parametersany ch
 MIN_CONC_LOG = -4  # 10^-7 mM minimum
@@ -166,13 +171,10 @@ def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tr
     Returns:
         tuple: (dilution_vials, dilution_steps, achievable_concentrations)
     """
-    logger = lash_e.logger
-    logger.debug(f"Checking substocks for {surfactant_name}")
     print(f"Checking substocks for {surfactant_name}...")
     
     # Get achievable concentrations
     achievable_concs = get_achievable_concentrations(surfactant_name, target_concentrations)
-    logger.debug(f"{surfactant_name} achievable concentrations: {[f'{c:.2e}' if c is not None else 'None' for c in achievable_concs]} mM")
     
     dilution_vials = []
     dilution_steps = []
@@ -235,9 +237,6 @@ def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tr
         stock_volume = FINAL_SUBSTOCK_VOLUME / dilution_factor  # mL
         water_volume = FINAL_SUBSTOCK_VOLUME - stock_volume     # mL
         
-        logger.debug(f"Creating {vial_name}: {dilution_factor:.1f}x dilution from {source_vial}")
-        logger.debug(f"Volumes - stock: {stock_volume:.3f}mL, water: {water_volume:.3f}mL")
-        
         print(f"    From {source_vial} ({source_conc:.2e} mM), {dilution_factor:.1f}x dilution")
         print(f"    Volumes: {stock_volume:.3f} mL + {water_volume:.3f} mL = {FINAL_SUBSTOCK_VOLUME} mL")
         
@@ -256,8 +255,6 @@ def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tr
         
         # Update tracking
         tracking[surfactant_name]["dilutions_created"].add(target_conc)
-        
-        logger.debug(f"Successfully created {vial_name} with target concentration {target_conc:.2e} mM")
         
         # Record step
         dilution_steps.append({
@@ -669,9 +666,6 @@ def manage_wellplate_switching(lash_e, current_well, wellplate_data):
 
 def pipette_grid_to_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name):
     """Pipette concentration grid into wellplate(s) with batched measurements for tip efficiency."""
-    logger = lash_e.logger
-    logger.info(f"Starting grid pipetting: {len(concs_a)}x{len(concs_b)} grid with {N_REPLICATES} replicates each")
-    
     well_counter = 0
     well_map = []
     total_wells_added = 0
@@ -1147,19 +1141,9 @@ def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS",
     """
     print("=== Surfactant Grid Turbidity Screening ===")
     
-    # Initialize Lash_E coordinator  
-    INPUT_VIAL_STATUS_FILE = "status/surfactant_grid_vials_expanded.csv"
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
-    logger = lash_e.logger
-    
-    logger.info(f"Starting surfactant grid screening: {surfactant_a_name} vs {surfactant_b_name}")
-    
     # Get surfactant info from library
     surf_a_info = SURFACTANT_LIBRARY[surfactant_a_name]
     surf_b_info = SURFACTANT_LIBRARY[surfactant_b_name]
-    
-    logger.info(f"Surfactant A: {surfactant_a_name} ({surf_a_info['full_name']}, {surf_a_info['stock_conc']} mM stock)")
-    logger.info(f"Surfactant B: {surfactant_b_name} ({surf_b_info['full_name']}, {surf_b_info['stock_conc']} mM stock)")
     
     print(f"Surfactant A: {surfactant_a_name} ({surf_a_info['full_name']}, {surf_a_info['stock_conc']} mM stock)")
     print(f"Surfactant B: {surfactant_b_name} ({surf_b_info['full_name']}, {surf_b_info['stock_conc']} mM stock)")
@@ -1182,20 +1166,14 @@ def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS",
     
     # 1. Initialize workstation
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
-    logger = lash_e.logger
-    
-    logger.info(f"Initialized Lash_E workstation in {'simulation' if simulate else 'hardware'} mode")
-    logger.info(f"Estimated wellplates needed: {num_wellplates_needed}")
     
     # 2. Move robot components to home position
     print("Moving robot components to home positions...")
-    logger.debug("Moving robot components to home positions")
     lash_e.nr_robot.move_home()
     lash_e.nr_track.origin()
     lash_e.nr_robot.home_robot_components()
     
     # 3. Check input files and get new wellplate
-    logger.info("Validating input files and preparing new wellplate")
     lash_e.nr_robot.check_input_file()
     lash_e.nr_track.check_input_file()
     lash_e.grab_new_wellplate()
@@ -1203,16 +1181,13 @@ def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS",
     lash_e.nr_robot.prime_reservoir_line(1, 'water')
     
     # 4. Create or reuse dilution series for both surfactants
-    logger.info(f"Preparing dilution series for {surfactant_a_name} and {surfactant_b_name}")
     dilution_vials_a, dilution_steps_a, achievable_a = check_or_create_substocks(lash_e, surfactant_a_name, concentrations, substock_tracking)
     dilution_vials_b, dilution_steps_b, achievable_b = check_or_create_substocks(lash_e, surfactant_b_name, concentrations, substock_tracking)
     
     # 5. Pipette grid into wellplate(s) with interval measurements
-    logger.info("Starting grid pipetting with interval measurements")
     well_map, wellplate_data = pipette_grid_to_wellplate(lash_e, achievable_a, achievable_b, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name)
     
     # 6. Combine measurement data from all intervals
-    logger.info("Combining measurement data from all intervals")
     results_df = combine_measurement_data(well_map, wellplate_data)
     all_measurements = wellplate_data['measurements']
     
@@ -1220,27 +1195,20 @@ def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS",
     if output_folder is None:
         output_folder = create_output_folder(simulate)
     
-    logger.info(f"Saving results to: {output_folder}")
-    
     # 8. Save substock tracking to output folder
     save_substock_tracking(substock_tracking, output_folder)
     
     # 9. Save results to output folder  
     save_results(results_df, well_map, wellplate_data, all_measurements, concentrations, dilution_vials_a, dilution_vials_b, dilution_steps_a, dilution_steps_b, surfactant_a_name, surfactant_b_name, simulate, output_folder)
     
-    logger.info(f"Experiment completed using {wellplate_data['current_plate']} wellplates")
-    logger.info(f"Total measurement datasets: {len(all_measurements)}")
-    
     print(f"Experiment completed using {wellplate_data['current_plate']} wellplates")
     print(f"Total measurement datasets: {len(all_measurements)}")
     
     # 10. Final cleanup (last wellplate already measured in pipette_grid_to_wellplate)
-    logger.debug("Performing final cleanup")
     if wellplate_data['current_plate'] > 0:
         lash_e.discard_used_wellplate()
     lash_e.nr_robot.move_home()
     
-    logger.info("Surfactant grid screening workflow completed successfully")
     print("=== Workflow Complete ===")
     return results_df, all_measurements, wellplate_data['current_plate']
 
@@ -1368,13 +1336,6 @@ def run_all_surfactant_combinations(simulate=True):
     print(f"Results saved to: {main_output}")
     print(f"{'='*80}")
     
-    # Summary information - detailed logging happens in individual experiments
-    successful_experiments = sum(1 for r in all_results.values() if 'error' not in r)
-    failed_experiments = len(all_results) - successful_experiments
-    
-    if failed_experiments > 0:
-        print(f"WARNING: {failed_experiments} experiments failed - check individual logs for details")
-    
     return all_results
 
 if __name__ == "__main__":
@@ -1388,9 +1349,6 @@ if __name__ == "__main__":
     
     # Choose experiment mode
     RUN_COMPREHENSIVE = True  # Set to False for single experiment
-    
-    print(f"Starting surfactant grid screening in {'comprehensive' if RUN_COMPREHENSIVE else 'single'} mode")
-    print(f"Simulation mode: {SIMULATE}")
     
     if RUN_COMPREHENSIVE:
         # Run all 9 combinations (3 anionic × 3 cationic)
