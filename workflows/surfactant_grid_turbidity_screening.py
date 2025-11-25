@@ -16,7 +16,6 @@ RECOVERY USAGE:
 """
 import sys
 
-from sympy import use
 sys.path.append("../utoronto_demo")
 import pandas as pd
 import numpy as np
@@ -67,19 +66,24 @@ SIMULATE = True  # Set to False for actual hardware execution
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
 # Pump 1 = Water reservoir pump (carousel angle 45°, height 70)
 
-# Grid parametersany ch
-MIN_CONC_LOG = -4  # 10^-7 mM minimum
-MAX_CONC_LOG = 1  # 10^-2 mM maximum
-LOG_STEP = 1       # 10^-1 step size
+# Grid parameters - Updated to better capture turbidity transition region
+MIN_CONC_LOG = -1.5  # 10^-2 = 0.01 mM minimum (focus on higher concentrations)
+MAX_CONC_LOG = 1   # 10^1 = 10 mM maximum (extend into transition region)  
+LOG_STEP = 0.5     # 10^0.5 ≈ 3.16-fold steps for finer resolution
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # μL per well
 MAX_WELLS = 96 #Wellplate size
+
+# Constants
 FINAL_SUBSTOCK_VOLUME = 6  # mL final volume for each dilution
-MEASUREMENT_INTERVAL = 12  # Measure every N wells
+MINIMUM_PIPETTE_VOLUME = 0.2  # mL (200 uL) - minimum volume for accurate pipetting
+MEASUREMENT_INTERVAL = 36    # Measure every N wells to prevent evaporation
+
+# Measurement protocol file for Cytation
+MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
 
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
-MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
 
 def calculate_grid_concentrations():
     """Calculate concentration grid points for both surfactants."""
@@ -95,7 +99,8 @@ def load_substock_tracking():
     for surfactant in SURFACTANT_LIBRARY.keys():
         tracking[surfactant] = {
             "stock_available": True,
-            "dilutions_created": set()  # Set of concentration values that have been created
+            "dilutions_created": set(),  # Set of concentration values that have been created
+            "dilution_recipes": {}  # Dictionary to store full dilution recipe information by concentration
         }
     
     return tracking
@@ -108,7 +113,8 @@ def save_substock_tracking(tracking_data, output_folder):
     for surf, data in tracking_data.items():
         json_data[surf] = {
             "stock_available": data["stock_available"],
-            "dilutions_created": list(data["dilutions_created"])
+            "dilutions_created": list(data["dilutions_created"]),
+            "dilution_recipes": {str(conc): recipe for conc, recipe in data["dilution_recipes"].items()}
         }
     
     with open(tracking_file, 'w') as f:
@@ -155,7 +161,7 @@ def get_achievable_concentrations(surfactant_name, target_concentrations):
 
 def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tracking):
     """
-    Check if substocks exist for a surfactant, create missing ones.
+    Check if substocks exist for a surfactant, create missing ones using multi-pass hierarchical strategy.
     
     Args:
         lash_e: Lash_E coordinator
@@ -176,107 +182,280 @@ def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tr
     
     dilution_vials = []
     dilution_steps = []
+    all_dilution_operations = []  # Store operations for batched execution
     
     stock_conc = SURFACTANT_LIBRARY[surfactant_name]["stock_conc"]
     
-    for i, (target_conc, achievable_conc) in enumerate(zip(target_concentrations, achievable_concs)):
-        vial_name = f"{surfactant_name}_dilution_{i}"
-        dilution_vials.append(vial_name)
+    # Initialize vials list with None for all positions
+    for i in range(len(target_concentrations)):
+        dilution_vials.append(None)
+    
+    # MULTI-PASS APPROACH: Create dilutions that can be made, then use those for harder ones
+    max_passes = 3
+    created_in_this_session = set()
+    
+    for pass_num in range(max_passes):
+        pass_operations = []
+        progress_made = False
         
-        if achievable_conc is None:
-            # Not achievable
+        print(f"  Pass {pass_num + 1}: Checking remaining dilutions...")
+        
+        for i, (target_conc, achievable_conc) in enumerate(zip(target_concentrations, achievable_concs)):
+            vial_name = f"{surfactant_name}_dilution_{i}"
+            
+            if achievable_conc is None:
+                # Not achievable at all
+                if dilution_vials[i] is None:  # Only add step once
+                    dilution_steps.append({
+                        'vial_name': vial_name,
+                        'target_conc_mm': target_conc,
+                        'achievable': False,
+                        'created': False,
+                        'reason': f'Stock concentration ({stock_conc} mM) too low'
+                    })
+                continue
+            
+            # Skip if already created
+            if target_conc in tracking[surfactant_name]["dilutions_created"] or target_conc in created_in_this_session:
+                if dilution_vials[i] is None:  # Only update once
+                    dilution_vials[i] = vial_name
+                    
+                    # Get complete recipe information for reused vials
+                    if target_conc in tracking[surfactant_name]["dilution_recipes"]:
+                        recipe = tracking[surfactant_name]["dilution_recipes"][target_conc]
+                        dilution_steps.append({
+                            'vial_name': vial_name,
+                            'target_conc_mm': target_conc,
+                            'final_conc_mm': target_conc,
+                            'achievable': True,
+                            'created': True,
+                            'reused': True,
+                            # Complete recipe information from tracking
+                            'source_vial': recipe['source_vial'],
+                            'source_conc_mm': recipe['source_conc_mm'],
+                            'dilution_factor': recipe['dilution_factor'],
+                            'stock_volume_ul': recipe['stock_volume_ul'],
+                            'water_volume_ul': recipe['water_volume_ul'],
+                            'total_volume_ml': recipe['total_volume_ml']
+                        })
+                    else:
+                        # Fallback for vials created in current session
+                        dilution_steps.append({
+                            'vial_name': vial_name,
+                            'target_conc_mm': target_conc,
+                            'final_conc_mm': target_conc,
+                            'achievable': True,
+                            'created': True,
+                            'reused': True,
+                            # Minimal info when recipe not stored
+                            'source_vial': 'Unknown (current session)',
+                            'source_conc_mm': 0,
+                            'dilution_factor': 0,
+                            'stock_volume_ul': 0,
+                            'water_volume_ul': 0,
+                            'total_volume_ml': 0
+                        })
+                continue
+            
+            # Skip if already processed in this session
+            if dilution_vials[i] is not None:
+                continue
+                
+            print(f"    {vial_name}: Attempting creation for {target_conc:.2e} mM (pass {pass_num + 1})...")
+            
+            # Calculate dilution with volume constraints and hierarchical strategy
+            required_substock_conc = target_conc * 2
+            
+            # Find best source considering volume constraints
+            best_source = None
+            best_volume = float('inf')
+            
+            # Option 1: From stock
+            stock_dilution_factor = stock_conc / required_substock_conc
+            stock_volume = FINAL_SUBSTOCK_VOLUME / stock_dilution_factor
+            if stock_volume >= MINIMUM_PIPETTE_VOLUME:
+                best_source = (f"{surfactant_name}_stock", stock_conc, stock_dilution_factor, stock_volume)
+                best_volume = stock_volume
+            
+            # Option 2: From previously created dilutions (including this session)
+            for j in range(len(achievable_concs)):
+                if j == i:  # Can't use self
+                    continue
+                    
+                prev_achievable = achievable_concs[j]
+                if prev_achievable is None:
+                    continue
+                    
+                # Check if this dilution exists (either pre-existing or created this session)
+                prev_target = target_concentrations[j]
+                if not (prev_target in tracking[surfactant_name]["dilutions_created"] or prev_target in created_in_this_session):
+                    continue
+                    
+                if (prev_achievable * 2) > required_substock_conc:
+                    prev_dilution_factor = (prev_achievable * 2) / required_substock_conc
+                    prev_volume = FINAL_SUBSTOCK_VOLUME / prev_dilution_factor
+                    
+                    # Use this source if it meets minimum and has smaller volume (more efficient)
+                    if prev_volume >= MINIMUM_PIPETTE_VOLUME and prev_volume < best_volume:
+                        best_source = (f"{surfactant_name}_dilution_{j}", prev_achievable * 2, prev_dilution_factor, prev_volume)
+                        best_volume = prev_volume
+            
+            if best_source is None:
+                # Cannot create with minimum volume constraint in this pass
+                print(f"      DEFERRED: Cannot achieve {target_conc:.2e} mM with minimum {MINIMUM_PIPETTE_VOLUME*1000:.0f} uL volume (pass {pass_num + 1})")
+                continue
+            
+            # Can create in this pass!
+            source_vial, source_conc, dilution_factor, stock_volume = best_source
+            water_volume = FINAL_SUBSTOCK_VOLUME - stock_volume
+            
+            logger.debug(f"Creating {vial_name}: {dilution_factor:.1f}x dilution from {source_vial}")
+            logger.debug(f"Volumes - stock: {stock_volume:.3f}mL, water: {water_volume:.3f}mL")
+            
+            print(f"      SUCCESS: From {source_vial} ({source_conc:.2e} mM), {dilution_factor:.1f}x dilution")
+            print(f"      Volumes: {stock_volume:.3f} mL + {water_volume:.3f} mL = {FINAL_SUBSTOCK_VOLUME} mL")
+            
+            # Store dilution operation for later batching
+            pass_operations.append({
+                'vial_name': vial_name,
+                'source_vial': source_vial,
+                'stock_volume': stock_volume,
+                'water_volume': water_volume,
+                'target_conc': target_conc,
+                'source_conc_mm': source_conc,
+                'dilution_factor': dilution_factor,
+                'stock_volume_ul': stock_volume * 1000,
+                'water_volume_ul': water_volume * 1000,
+                'total_volume_ml': FINAL_SUBSTOCK_VOLUME
+            })
+            
+            # Record step
+            dilution_steps.append({
+                'vial_name': vial_name,
+                'target_conc_mm': target_conc,
+                'final_conc_mm': achievable_conc,
+                'substock_conc_mm': required_substock_conc,
+                'source_vial': source_vial,
+                'source_conc_mm': source_conc,
+                'dilution_factor': dilution_factor,
+                'stock_volume_ul': stock_volume * 1000,
+                'water_volume_ul': water_volume * 1000,
+                'total_volume_ml': FINAL_SUBSTOCK_VOLUME,
+                'achievable': True,
+                'created': True,
+                'reused': False
+            })
+            
+            # Mark as processed
+            dilution_vials[i] = vial_name
+            created_in_this_session.add(target_conc)
+            progress_made = True
+        
+        # Execute this pass's operations
+        if pass_operations:
+            print(f"  Executing {len(pass_operations)} dilutions from pass {pass_num + 1}...")
+            execute_batched_dilutions(lash_e, pass_operations, tracking, surfactant_name, logger)
+            all_dilution_operations.extend(pass_operations)
+        
+        # Stop if no progress made
+        if not progress_made:
+            break
+    
+    # Add failure entries for any remaining None positions
+    for i, (target_conc, achievable_conc) in enumerate(zip(target_concentrations, achievable_concs)):
+        if dilution_vials[i] is None and achievable_conc is not None:
+            vial_name = f"{surfactant_name}_dilution_{i}"
+            print(f"    FINAL SKIP: {vial_name} could not be created with volume constraints")
             dilution_steps.append({
                 'vial_name': vial_name,
                 'target_conc_mm': target_conc,
                 'achievable': False,
                 'created': False,
-                'reason': f'Stock concentration ({stock_conc} mM) too low'
+                'reason': f'Could not achieve minimum {MINIMUM_PIPETTE_VOLUME*1000:.0f} uL volume in {max_passes} passes'
             })
-            continue
-        
-        # Check if already exists
-        if target_conc in tracking[surfactant_name]["dilutions_created"]:
-            print(f"  {vial_name}: Already exists, reusing")
-            dilution_steps.append({
-                'vial_name': vial_name,
-                'target_conc_mm': target_conc,
-                'final_conc_mm': achievable_conc,
-                'achievable': True,
-                'created': True,
-                'reused': True
-            })
-            continue
-        
-        # Need to create this dilution
-        print(f"  {vial_name}: Creating dilution for {target_conc:.2e} mM...")
-        
-        # Calculate dilution (same logic as original)
-        required_substock_conc = target_conc * 2
-        
-        if i == 0:
-            # From stock
-            source_vial = f"{surfactant_name}_stock"
-            source_conc = stock_conc
-            dilution_factor = stock_conc / required_substock_conc
-        else:
-            # Try from previous dilution or stock
-            prev_achievable = achievable_concs[i-1]
-            if prev_achievable and (prev_achievable * 2) > required_substock_conc:
-                source_vial = f"{surfactant_name}_dilution_{i-1}"
-                source_conc = prev_achievable * 2
-                dilution_factor = source_conc / required_substock_conc
-            else:
-                # Go back to stock
-                source_vial = f"{surfactant_name}_stock"
-                source_conc = stock_conc
-                dilution_factor = stock_conc / required_substock_conc
-        
-        # Calculate volumes
-        stock_volume = FINAL_SUBSTOCK_VOLUME / dilution_factor  # mL
-        water_volume = FINAL_SUBSTOCK_VOLUME - stock_volume     # mL
-        
-        logger.debug(f"Creating {vial_name}: {dilution_factor:.1f}x dilution from {source_vial}")
-        logger.debug(f"Volumes - stock: {stock_volume:.3f}mL, water: {water_volume:.3f}mL")
-        
-        print(f"    From {source_vial} ({source_conc:.2e} mM), {dilution_factor:.1f}x dilution")
-        print(f"    Volumes: {stock_volume:.3f} mL + {water_volume:.3f} mL = {FINAL_SUBSTOCK_VOLUME} mL")
-        
-        # Perform dilution
-        if not lash_e.simulate:
-            lash_e.nr_robot.move_vial_to_location(source_vial, "clamp", 0)
-            lash_e.nr_robot.aspirate(stock_volume, 0)
-            lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
-            lash_e.nr_robot.dispense(stock_volume, 0)
-            
-            # Add water
-            lash_e.nr_robot.move_vial_to_location("water", "clamp", 0)
-            lash_e.nr_robot.aspirate(water_volume, 1)
-            lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
-            lash_e.nr_robot.dispense(water_volume, 1)
-        
-        # Update tracking
-        tracking[surfactant_name]["dilutions_created"].add(target_conc)
-        
-        logger.debug(f"Successfully created {vial_name} with target concentration {target_conc:.2e} mM")
-        
-        # Record step
-        dilution_steps.append({
-            'vial_name': vial_name,
-            'target_conc_mm': target_conc,
-            'final_conc_mm': achievable_conc,
-            'substock_conc_mm': required_substock_conc,
-            'source_vial': source_vial,
-            'source_conc_mm': source_conc,
-            'dilution_factor': dilution_factor,
-            'stock_volume_ul': stock_volume * 1000,
-            'water_volume_ul': water_volume * 1000,
-            'total_volume_ml': FINAL_SUBSTOCK_VOLUME,
-            'achievable': True,
-            'created': True,
-            'reused': False
-        })
     
     return dilution_vials, dilution_steps, achievable_concs
+
+def execute_batched_dilutions(lash_e, dilution_operations, tracking, surfactant_name, logger):
+    """
+    Execute dilution operations efficiently by batching operations by source vial.
+    
+    Args:
+        lash_e: Lash_E coordinator
+        dilution_operations: List of dilution operation dictionaries
+        tracking: Tracking dictionary to update
+        surfactant_name: Name of surfactant for tracking
+        logger: Logger instance
+    """
+    logger.info(f"Executing {len(dilution_operations)} dilutions for {surfactant_name} using batched operations")
+    print(f"Executing {len(dilution_operations)} dilutions efficiently...")
+    
+    # Group operations by source vial for batching
+    from collections import defaultdict
+    source_vial_groups = defaultdict(list)
+    for op in dilution_operations:
+        source_vial_groups[op['source_vial']].append(op)
+    
+    # PHASE 1: Batch all stock solution transfers (grouped by source vial)
+    print("Phase 1: Stock solution transfers (batched by source vial)")
+    for source_vial, operations in source_vial_groups.items():
+        print(f"  Processing {len(operations)} transfers from {source_vial}...")
+        
+        # Move source vial to safe position (clamp) once for all transfers
+        lash_e.nr_robot.move_vial_to_location(source_vial, "clamp", 0)
+        
+        # Do all transfers for this source vial using dispense_from_vial_into_vial
+        for i, op in enumerate(operations):
+            is_last_transfer = (i == len(operations) - 1)
+            lash_e.nr_robot.dispense_from_vial_into_vial(
+                source_vial_name=source_vial,
+                dest_vial_name=op['vial_name'],
+                volume=op['stock_volume'],
+                liquid='water',
+                remove_tip=is_last_transfer,  # Only remove tip on last transfer
+              )
+            logger.debug(f"Transferred {op['stock_volume']:.3f} mL from {source_vial} to {op['vial_name']}")
+        
+        # Manual cleanup after all transfers from this source vial
+        lash_e.nr_robot.return_vial_home(source_vial)
+        print(f"  ✓ Completed {len(operations)} transfers from {source_vial} using 1 tip")
+    
+    # PHASE 2: Batch all water additions from reservoir
+    print("Phase 2: Water additions from reservoir")
+    water_operations = [op for op in dilution_operations if op['water_volume'] > 0]
+    
+    if water_operations:
+        print(f"  Adding water to {len(water_operations)} vials from reservoir...")
+        for op in water_operations:
+            lash_e.nr_robot.move_vial_to_location(op['vial_name'], "clamp", 0)
+            lash_e.nr_robot.dispense_into_vial_from_reservoir(1, op['vial_name'], op['water_volume'])
+            logger.debug(f"Added {op['water_volume']:.3f} mL water to {op['vial_name']}")
+        print(f"  ✓ Completed water additions to {len(water_operations)} vials")
+    
+    # PHASE 3: Update tracking for all completed dilutions
+    for op in dilution_operations:
+        tracking[surfactant_name]["dilutions_created"].add(op['target_conc'])
+        
+        # Store complete recipe information for reuse
+        tracking[surfactant_name]["dilution_recipes"][op['target_conc']] = {
+            'vial_name': op['vial_name'],
+            'source_vial': op['source_vial'],
+            'source_conc_mm': op['source_conc_mm'],
+            'dilution_factor': op['dilution_factor'],
+            'stock_volume_ul': op['stock_volume_ul'],
+            'water_volume_ul': op['water_volume_ul'],
+            'total_volume_ml': op['total_volume_ml']
+        }
+        
+        logger.debug(f"Successfully created {op['vial_name']} with target concentration {op['target_conc']:.2e} mM")
+    
+    # Calculate efficiency gains
+    total_tips_old_method = len(dilution_operations)  # 1 tip per dilution
+    total_tips_new_method = len(source_vial_groups)    # 1 tip per source vial
+    tips_saved = total_tips_old_method - total_tips_new_method
+    
+    logger.info(f"Batched dilution complete: {total_tips_new_method} tips used (saved {tips_saved} tips vs sequential method)")
+    print(f"✓ Batched dilution complete: {total_tips_new_method} tips used (saved {tips_saved} tips)")
 
 def calculate_total_wells_needed():
     """Calculate total wells needed for the grid."""
@@ -667,27 +846,34 @@ def manage_wellplate_switching(lash_e, current_well, wellplate_data):
         wellplate_data['wells_used'] = max(wellplate_data['wells_used'], current_well + 1)
         return current_well, wellplate_data
 
-def pipette_grid_to_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name):
-    """Pipette concentration grid into wellplate(s) with batched measurements for tip efficiency."""
+def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name, shared_wellplate_state):
+    """Pipette concentration grid into wellplate(s) using shared wellplate state with batched measurements for tip efficiency."""
     logger = lash_e.logger
     logger.info(f"Starting grid pipetting: {len(concs_a)}x{len(concs_b)} grid with {N_REPLICATES} replicates each")
     
-    well_counter = 0
-    well_map = []
-    total_wells_added = 0
+    well_counter = shared_wellplate_state.get('global_well_counter', 0)
+    well_map = shared_wellplate_state.get('global_well_map', [])
+    total_wells_added = shared_wellplate_state.get('total_wells_added', 0)
     
-    # Initialize wellplate tracking
+    # Use existing wellplate tracking from shared state
     wellplate_data = {
-        'current_plate': 1,
-        'wells_used': 0,
-        'measurements': [],
-        'last_measured_well': -1
+        'current_plate': shared_wellplate_state.get('current_plate', 1),
+        'wells_used': shared_wellplate_state.get('wells_used', 0),
+        'measurements': shared_wellplate_state.get('measurements', []),
+        'last_measured_well': shared_wellplate_state.get('last_measured_well', -1)
     }
     
-    # Generate all well requirements first
+    # Generate all well requirements first (skip combinations where vials don't exist)
     all_well_requirements = []
     for i, conc_a in enumerate(concs_a):
         for j, conc_b in enumerate(concs_b):
+            # Skip if either concentration is not achievable (vial is None)
+            if dilution_vials_a[i] is None or dilution_vials_b[j] is None:
+                conc_a_str = f"{conc_a:.2e}" if conc_a is not None else "None"
+                conc_b_str = f"{conc_b:.2e}" if conc_b is not None else "None"
+                logger.debug(f"Skipping combination [{i},{j}]: {conc_a_str} + {conc_b_str} mM (vial not available)")
+                continue
+                
             for rep in range(N_REPLICATES):
                 all_well_requirements.append({
                     'conc_a': concs_a[i],
@@ -698,6 +884,17 @@ def pipette_grid_to_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, diluti
                     'dilution_b_vial': dilution_vials_b[j],
                     'replicate': rep + 1
                 })
+    
+    # Report on achievable vs total combinations
+    total_possible_wells = len(concs_a) * len(concs_b) * N_REPLICATES
+    achievable_wells = len(all_well_requirements)
+    skipped_wells = total_possible_wells - achievable_wells
+    
+    logger.info(f"Grid summary: {achievable_wells}/{total_possible_wells} wells achievable ({skipped_wells} skipped due to non-achievable concentrations)")
+    
+    if achievable_wells == 0:
+        logger.warning("No achievable concentration combinations found! Check stock concentrations and target ranges.")
+        return [], shared_wellplate_state
     
     # Process wells in batches of MEASUREMENT_INTERVAL
     for batch_start in range(0, len(all_well_requirements), MEASUREMENT_INTERVAL):
@@ -723,8 +920,9 @@ def pipette_grid_to_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, diluti
             vial_a_groups[req['dilution_a_vial']].append((batch_idx, actual_well, req))
         
         # Sort vial groups by concentration (low→high to prevent contamination)
+        # Handle None concentrations by treating them as 0
         sorted_vial_groups_a = sorted(vial_a_groups.items(), 
-                                     key=lambda x: current_batch[x[1][0][0]]['conc_a'])
+                                     key=lambda x: current_batch[x[1][0][0]]['conc_a'] or 0)
         
         print(f"  Phase 1: Adding surfactant A (low→high concentration, grouped by vial)")
         for vial_name, well_list in sorted_vial_groups_a:
@@ -751,8 +949,9 @@ def pipette_grid_to_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, diluti
             vial_b_groups[req['dilution_b_vial']].append((batch_idx, actual_well, req))
         
         # Sort vial groups by concentration (low→high to prevent contamination)
+        # Handle None concentrations by treating them as 0
         sorted_vial_groups_b = sorted(vial_b_groups.items(), 
-                                     key=lambda x: current_batch[x[1][0][0]]['conc_b'])
+                                     key=lambda x: current_batch[x[1][0][0]]['conc_b'] or 0)
         
         print(f"  Phase 2: Adding surfactant B (low→high concentration, grouped by vial)")
         for vial_name, well_list in sorted_vial_groups_b:
@@ -809,7 +1008,19 @@ def pipette_grid_to_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, diluti
         
         print(f"  ✓ Completed batch with {len(current_batch)} wells using 2 tips")
     
-    return well_map, wellplate_data
+    # Update shared state before returning
+    updated_shared_state = {
+        'global_well_counter': well_counter,
+        'global_well_map': well_map,
+        'total_wells_added': total_wells_added,
+        'current_plate': wellplate_data['current_plate'],
+        'wells_used': wellplate_data['wells_used'],
+        'measurements': wellplate_data['measurements'],
+        'last_measured_well': wellplate_data['last_measured_well'],
+        'plates_used_this_combo': shared_wellplate_state.get('plates_used_this_combo', 0) + (wellplate_data['current_plate'] - shared_wellplate_state.get('current_plate', 1))
+    }
+    
+    return well_map, updated_shared_state
 
 def combine_measurement_data(well_map, wellplate_data):
     """
@@ -884,6 +1095,60 @@ def create_output_folder(simulate=True):
     print(f"Created output folder: {output_dir}")
     return output_dir
 
+def create_concentration_grid_summary(concentrations, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name):
+    """
+    Create a text-based visual summary showing which concentration combinations are achievable.
+    Uses 'X' for achievable combinations and '·' for missing/non-achievable ones.
+    
+    Args:
+        concentrations: List of target concentrations
+        dilution_vials_a: List of vial names for surfactant A (None for non-achievable)
+        dilution_vials_b: List of vial names for surfactant B (None for non-achievable)
+        surfactant_a_name: Name of surfactant A
+        surfactant_b_name: Name of surfactant B
+        
+    Returns:
+        str: Text grid showing achievable combinations
+    """
+    grid_lines = []
+    grid_lines.append(f"CONCENTRATION GRID SUMMARY: {surfactant_a_name} + {surfactant_b_name}")
+    grid_lines.append("=" * 60)
+    grid_lines.append("Legend: X = achievable combination, · = not achievable")
+    grid_lines.append("")
+    
+    # Create header with surfactant B concentrations (columns)
+    header = f"{'':>12}"  # Space for row labels
+    for j, conc_b in enumerate(concentrations):
+        if dilution_vials_b[j] is not None:
+            header += f"{conc_b:.1e}".rjust(12)
+        else:
+            header += f"{'(N/A)':<12}"
+    grid_lines.append(f"{surfactant_b_name} (mM) ->")
+    grid_lines.append(header)
+    grid_lines.append("-" * len(header))
+    
+    # Create rows for each surfactant A concentration
+    for i, conc_a in enumerate(concentrations):
+        if dilution_vials_a[i] is not None:
+            row_label = f"{conc_a:.1e}".rjust(10) + " |"
+        else:
+            row_label = f"{'(N/A)':<10} |"
+        
+        row = row_label
+        for j, conc_b in enumerate(concentrations):
+            # Check if both concentrations are achievable
+            if dilution_vials_a[i] is not None and dilution_vials_b[j] is not None:
+                symbol = "X"
+            else:
+                symbol = "·"
+            row += f"{symbol:>12}"
+        grid_lines.append(row)
+    
+    grid_lines.append("")
+    grid_lines.append(f"Total combinations: {len([1 for a in dilution_vials_a for b in dilution_vials_b if a is not None and b is not None])}/{len(concentrations)**2}")
+    
+    return "\\n".join(grid_lines)
+
 def save_results(results_df, well_map, wellplate_data, all_measurements, concentrations, dilution_vials_a, dilution_vials_b, dilution_steps_a, dilution_steps_b, surfactant_a_name, surfactant_b_name, simulate=True, output_folder=None):
     """
     Save results and metadata to output folder.
@@ -907,22 +1172,50 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
         if simulate:
             f.write("NOTE: This is a SIMULATION - no actual pipetting was performed\n\n")
         
+        # Add concentration grid summary
+        grid_summary = create_concentration_grid_summary(concentrations, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name)
+        f.write(grid_summary + "\n\n")
+        f.write("=" * 50 + "\n\n")
+        
         # Surfactant A dilutions
         surf_a_info = SURFACTANT_LIBRARY[surfactant_a_name]
         f.write(f"SURFACTANT A: {surfactant_a_name}\n")
         f.write(f"Stock concentration: {surf_a_info['stock_conc']} mM\n")
         f.write("-" * 40 + "\n")
+        
+        print(f"DEBUG: Processing {len(dilution_steps_a)} dilution steps for {surfactant_a_name}")
         for i, step in enumerate(dilution_steps_a):
-            f.write(f"Step {i+1}: {step['vial_name']}\n")
-            f.write(f"  Target concentration: {step['target_conc_mm']:.2e} mM (dilution stock)\n")
-            f.write(f"  Final concentration: {step['final_conc_mm']:.2e} mM (after 1:1 mixing)\n")
-            f.write(f"  Source: {step['source_vial']} ({step['source_conc_mm']:.2e} mM)\n")
-            f.write(f"  Dilution factor: {step['dilution_factor']:.1f}x\n")
-            f.write(f"  Volumes added:\n")
-            f.write(f"    - Source solution: {step['stock_volume_ul']} uL\n")
-            f.write(f"    - Water: {step['water_volume_ul']} uL\n")
-            f.write(f"    - Total final volume: {step['total_volume_ml']} mL\n")
-            f.write("\n")
+            print(f"DEBUG: Step {i}: {list(step.keys())}")
+            try:
+                f.write(f"Step {i+1}: {step['vial_name']}\n")
+                f.write(f"  Target concentration: {step['target_conc_mm']:.2e} mM (dilution stock)\n")
+                
+                if not step.get('achievable', True):
+                    f.write(f"  STATUS: NOT ACHIEVABLE - {step.get('reason', 'Unknown reason')}\n")
+                    f.write("\n")
+                    continue
+                    
+                # Check for required fields before accessing
+                if 'source_vial' not in step:
+                    print(f"ERROR: Step {i} missing 'source_vial' field: {step}")
+                    f.write(f"  STATUS: INCOMPLETE DATA - missing source_vial field\n")
+                    f.write("\n")
+                    continue
+                    
+                f.write(f"  Final concentration: {step['final_conc_mm']:.2e} mM (after 1:1 mixing)\n")
+                f.write(f"  Source: {step['source_vial']} ({step['source_conc_mm']:.2e} mM)\n")
+                f.write(f"  Dilution factor: {step['dilution_factor']:.1f}x\n")
+                f.write(f"  Volumes added:\n")
+                f.write(f"    - Source solution: {step['stock_volume_ul']} uL\n")
+                f.write(f"    - Water: {step['water_volume_ul']} uL\n")
+                f.write(f"    - Total final volume: {step['total_volume_ml']} mL\n")
+                f.write("\n")
+                
+            except KeyError as e:
+                print(f"ERROR: KeyError in step {i} for {surfactant_a_name}: {e}")
+                print(f"ERROR: Step contents: {step}")
+                f.write(f"  ERROR: Missing field {e} in dilution step\n")
+                f.write("\n")
         
         f.write("\n" + "=" * 50 + "\n\n")
         
@@ -931,17 +1224,40 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
         f.write(f"SURFACTANT B: {surfactant_b_name}\n")
         f.write(f"Stock concentration: {surf_b_info['stock_conc']} mM\n")
         f.write("-" * 40 + "\n")
+        
+        print(f"DEBUG: Processing {len(dilution_steps_b)} dilution steps for {surfactant_b_name}")
         for i, step in enumerate(dilution_steps_b):
-            f.write(f"Step {i+1}: {step['vial_name']}\n")
-            f.write(f"  Target concentration: {step['target_conc_mm']:.2e} mM (dilution stock)\n")
-            f.write(f"  Final concentration: {step['final_conc_mm']:.2e} mM (after 1:1 mixing)\n")
-            f.write(f"  Source: {step['source_vial']} ({step['source_conc_mm']:.2e} mM)\n")
-            f.write(f"  Dilution factor: {step['dilution_factor']:.1f}x\n")
-            f.write(f"  Volumes added:\n")
-            f.write(f"    - Source solution: {step['stock_volume_ul']} uL\n")
-            f.write(f"    - Water: {step['water_volume_ul']} uL\n")
-            f.write(f"    - Total final volume: {step['total_volume_ml']} mL\n")
-            f.write("\n")
+            print(f"DEBUG: Step {i}: {list(step.keys())}")
+            try:
+                f.write(f"Step {i+1}: {step['vial_name']}\n")
+                f.write(f"  Target concentration: {step['target_conc_mm']:.2e} mM (dilution stock)\n")
+                
+                if not step.get('achievable', True):
+                    f.write(f"  STATUS: NOT ACHIEVABLE - {step.get('reason', 'Unknown reason')}\n")
+                    f.write("\n")
+                    continue
+                    
+                # Check for required fields before accessing  
+                if 'source_vial' not in step:
+                    print(f"ERROR: Step {i} missing 'source_vial' field: {step}")
+                    f.write(f"  STATUS: INCOMPLETE DATA - missing source_vial field\n")
+                    f.write("\n")
+                    continue
+                    
+                f.write(f"  Final concentration: {step['final_conc_mm']:.2e} mM (after 1:1 mixing)\n")
+                f.write(f"  Source: {step['source_vial']} ({step['source_conc_mm']:.2e} mM)\n")
+                f.write(f"  Dilution factor: {step['dilution_factor']:.1f}x\n")
+                f.write(f"  Volumes added:\n")
+                f.write(f"    - Source solution: {step['stock_volume_ul']} uL\n")
+                f.write(f"    - Water: {step['water_volume_ul']} uL\n")
+                f.write(f"    - Total final volume: {step['total_volume_ml']} mL\n")
+                f.write("\n")
+                
+            except KeyError as e:
+                print(f"ERROR: KeyError in step {i} for {surfactant_b_name}: {e}")
+                print(f"ERROR: Step contents: {step}")
+                f.write(f"  ERROR: Missing field {e} in dilution step\n")
+                f.write("\n")
         
         f.write("\n" + "=" * 50 + "\n")
         f.write("WELL PLATE MIXING:\n")
@@ -953,16 +1269,47 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
     surf_a_info = SURFACTANT_LIBRARY[surfactant_a_name]
     surf_b_info = SURFACTANT_LIBRARY[surfactant_b_name]
     
+    # Filter dilution steps to only include successfully created ones (with all required fields)
+    print(f"DEBUG: Filtering {len(dilution_steps_a)} steps for {surfactant_a_name}")
+    successful_steps_a = []
+    for i, step in enumerate(dilution_steps_a):
+        if step.get('achievable', False) and step.get('created', False):
+            # Check if all required fields are present
+            required_fields = ['source_vial', 'source_conc_mm', 'dilution_factor', 'stock_volume_ul']
+            missing_fields = [field for field in required_fields if field not in step]
+            if missing_fields:
+                print(f"WARNING: Skipping step {i} for {surfactant_a_name} - missing fields: {missing_fields}")
+                continue
+            successful_steps_a.append(step)
+        else:
+            print(f"DEBUG: Skipping step {i} for {surfactant_a_name} - not achievable or created")
+    
+    print(f"DEBUG: Filtering {len(dilution_steps_b)} steps for {surfactant_b_name}")
+    successful_steps_b = []
+    for i, step in enumerate(dilution_steps_b):
+        if step.get('achievable', False) and step.get('created', False):
+            # Check if all required fields are present
+            required_fields = ['source_vial', 'source_conc_mm', 'dilution_factor', 'stock_volume_ul']
+            missing_fields = [field for field in required_fields if field not in step]
+            if missing_fields:
+                print(f"WARNING: Skipping step {i} for {surfactant_b_name} - missing fields: {missing_fields}")
+                continue
+            successful_steps_b.append(step)
+        else:
+            print(f"DEBUG: Skipping step {i} for {surfactant_b_name} - not achievable or created")
+    
+    print(f"DEBUG: Final counts - {surfactant_a_name}: {len(successful_steps_a)}, {surfactant_b_name}: {len(successful_steps_b)}")
+    
     dilution_info = {
         'surfactant_a': {
             'name': surfactant_a_name,
             'stock_conc_mm': surf_a_info['stock_conc'],
-            'dilution_steps': dilution_steps_a
+            'dilution_steps': successful_steps_a
         },
         'surfactant_b': {
             'name': surfactant_b_name,
             'stock_conc_mm': surf_b_info['stock_conc'],
-            'dilution_steps': dilution_steps_b
+            'dilution_steps': successful_steps_b
         },
         'well_mixing': {
             'volume_each_ul': WELL_VOLUME_UL / 2,
@@ -971,7 +1318,20 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
     }
     
     with open(dilutions_file, 'w') as f:
-        json.dump(dilution_info, f, indent=2)
+        try:
+            json.dump(dilution_info, f, indent=2)
+            print(f"DEBUG: Successfully saved dilution JSON with {len(successful_steps_a)} + {len(successful_steps_b)} steps")
+        except Exception as e:
+            print(f"ERROR: Failed to save dilution JSON: {e}")
+            print(f"ERROR: dilution_info contents: {dilution_info}")
+            # Try saving a minimal version
+            minimal_info = {
+                'surfactant_a': {'name': surfactant_a_name, 'stock_conc_mm': surf_a_info['stock_conc'], 'dilution_steps': []},
+                'surfactant_b': {'name': surfactant_b_name, 'stock_conc_mm': surf_b_info['stock_conc'], 'dilution_steps': []},
+                'well_mixing': dilution_info['well_mixing'],
+                'error': f'Original save failed: {str(e)}'
+            }
+            json.dump(minimal_info, f, indent=2)
     
     # Save experiment metadata
     metadata = {
@@ -1135,32 +1495,130 @@ def extract_turbidity_values(raw_data, well_indices):
     
     return {'turbidity': measurement_values[:len(well_indices)]}
 
-def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS", simulate=True, output_folder=None):
+def initialize_screening_session(simulate=True):
     """
-    Main workflow for surfactant grid turbidity screening.
+    Initialize a shared screening session with Lash_E coordinator and input validation.
+    Call this once at the start of a multi-combination screening session.
     
     Args:
-        surfactant_a_name (str): Name of first surfactant (cationic)
-        surfactant_b_name (str): Name of second surfactant (anionic)
         simulate (bool): Run in simulation mode
-        output_folder (str): Optional output folder path
+        
+    Returns:
+        tuple: (lash_e, shared_substock_tracking, shared_wellplate_state)
     """
-    print("=== Surfactant Grid Turbidity Screening ===")
+    print("=== Initializing Surfactant Screening Session ===")
     
-    # Initialize Lash_E coordinator  
+    # 1. Initialize Lash_E coordinator (ONCE per session)
     INPUT_VIAL_STATUS_FILE = "status/surfactant_grid_vials_expanded.csv"
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
     logger = lash_e.logger
     
-    logger.info(f"Starting surfactant grid screening: {surfactant_a_name} vs {surfactant_b_name}")
+    logger.info(f"Initialized Lash_E workstation in {'simulation' if simulate else 'hardware'} mode")
+    
+    # 2. Check input files ONCE (requires manual ENTER)
+    print("Validating input files (manual interaction required)...")
+    logger.info("Validating input files - manual interaction required")
+    lash_e.nr_robot.check_input_file()
+    lash_e.nr_track.check_input_file()
+    
+    # 3. Initial robot setup
+    print("Setting up robot components...")
+    lash_e.nr_robot.move_home()
+    lash_e.nr_track.origin()
+    lash_e.nr_robot.home_robot_components()
+    
+    # 4. Get initial wellplate
+    logger.info("Preparing initial wellplate")
+    lash_e.grab_new_wellplate()
+    
+    # 5. Prime water lines
+    lash_e.nr_robot.prime_reservoir_line(1, 'water')
+    
+    # 6. Initialize shared tracking
+    shared_substock_tracking = load_substock_tracking()
+    shared_wellplate_state = {
+        'global_well_counter': 0,
+        'global_well_map': [],
+        'total_wells_added': 0,
+        'current_plate': 1,
+        'wells_used': 0,
+        'measurements': [],
+        'last_measured_well': -1,
+        'total_plates_used': 1,
+        'plates_used_this_combo': 0
+    }
+    
+    logger.info("Session initialization complete")
+    print("✓ Session ready for surfactant combinations")
+    return lash_e, shared_substock_tracking, shared_wellplate_state
+
+def finalize_screening_session(lash_e, shared_wellplate_state):
+    """
+    Clean up and finalize the screening session.
+    
+    Args:
+        lash_e: Lash_E coordinator
+        shared_wellplate_state: Final wellplate state
+    """
+    logger = lash_e.logger
+    logger.info("Finalizing screening session")
+    
+    # Final cleanup
+    if shared_wellplate_state['current_plate'] > 0 and shared_wellplate_state['wells_used'] > 0:
+        logger.info("Discarding final wellplate")
+        lash_e.discard_used_wellplate()
+    
+    lash_e.nr_robot.move_home()
+    
+    logger.info(f"Session complete - used {shared_wellplate_state['total_plates_used']} total wellplates")
+    print(f"✓ Session complete - {shared_wellplate_state['total_plates_used']} plates used")
+
+def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS", simulate=True, output_folder=None):
+    """
+    Backward compatibility wrapper - single combination with full session setup.
+    For multi-combination workflows, use initialize_screening_session + execute_single_combination.
+    """
+    print("=== Single Combination Screening (Legacy Mode) ===")
+    
+    # Initialize session
+    lash_e, shared_substock_tracking, shared_wellplate_state = initialize_screening_session(simulate)
+    
+    try:
+        # Execute single combination
+        results_df, measurements, plates_used = execute_single_combination(
+            lash_e, surfactant_a_name, surfactant_b_name, 
+            shared_substock_tracking, shared_wellplate_state, output_folder
+        )
+        
+        return results_df, measurements, plates_used
+        
+    finally:
+        # Always clean up
+        finalize_screening_session(lash_e, shared_wellplate_state)
+
+def execute_single_combination(lash_e, surfactant_a_name, surfactant_b_name, shared_substock_tracking, shared_wellplate_state, output_folder=None):
+    """
+    Execute surfactant grid screening for a single combination using shared session resources.
+    
+    Args:
+        lash_e: Shared Lash_E coordinator instance
+        surfactant_a_name (str): Name of first surfactant (cationic)
+        surfactant_b_name (str): Name of second surfactant (anionic)
+        shared_substock_tracking: Shared dilution tracking across experiments
+        shared_wellplate_state: Shared wellplate state management
+        output_folder (str): Optional output folder path
+        
+    Returns:
+        tuple: (results_df, measurements, plates_used_this_combination)
+    """
+    logger = lash_e.logger
+    logger.info(f"Starting surfactant combination: {surfactant_a_name} vs {surfactant_b_name}")
     
     # Get surfactant info from library
     surf_a_info = SURFACTANT_LIBRARY[surfactant_a_name]
     surf_b_info = SURFACTANT_LIBRARY[surfactant_b_name]
     
-    logger.info(f"Surfactant A: {surfactant_a_name} ({surf_a_info['full_name']}, {surf_a_info['stock_conc']} mM stock)")
-    logger.info(f"Surfactant B: {surfactant_b_name} ({surf_b_info['full_name']}, {surf_b_info['stock_conc']} mM stock)")
-    
+    print(f"\n=== {surfactant_a_name} + {surfactant_b_name} ===")
     print(f"Surfactant A: {surfactant_a_name} ({surf_a_info['full_name']}, {surf_a_info['stock_conc']} mM stock)")
     print(f"Surfactant B: {surfactant_b_name} ({surf_b_info['full_name']}, {surf_b_info['stock_conc']} mM stock)")
     
@@ -1169,80 +1627,49 @@ def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS",
     total_wells, grid_dimension = calculate_total_wells_needed()
     
     print(f"Grid: {grid_dimension}x{grid_dimension} = {grid_dimension**2} conditions")
-    print(f"Replicates: {N_REPLICATES}")
-    print(f"Total wells needed: {total_wells}")
-    print(f"Measurement interval: every {MEASUREMENT_INTERVAL} wells")
-    print(f"Concentration range: {concentrations[0]:.2e} to {concentrations[-1]:.2e} mM")
+    print(f"Wells needed: {total_wells}")
     
-    num_wellplates_needed = (total_wells + MAX_WELLS - 1) // MAX_WELLS  # Ceiling division
-    print(f"Wellplates needed: {num_wellplates_needed}")
-    
-    # Initialize tracking
-    substock_tracking = load_substock_tracking()
-    
-    # 1. Initialize workstation
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
-    logger = lash_e.logger
-    
-    logger.info(f"Initialized Lash_E workstation in {'simulation' if simulate else 'hardware'} mode")
-    logger.info(f"Estimated wellplates needed: {num_wellplates_needed}")
-    
-    # 2. Move robot components to home position
-    print("Moving robot components to home positions...")
-    logger.debug("Moving robot components to home positions")
+    # Periodic re-homing and priming (good for automation)
+    print("Performing periodic robot maintenance...")
     lash_e.nr_robot.move_home()
-    lash_e.nr_track.origin()
     lash_e.nr_robot.home_robot_components()
-    
-    # 3. Check input files and get new wellplate
-    logger.info("Validating input files and preparing new wellplate")
-    lash_e.nr_robot.check_input_file()
-    lash_e.nr_track.check_input_file()
-    lash_e.grab_new_wellplate()
-
     lash_e.nr_robot.prime_reservoir_line(1, 'water')
     
-    # 4. Create or reuse dilution series for both surfactants
+    # Create or reuse dilution series for both surfactants
     logger.info(f"Preparing dilution series for {surfactant_a_name} and {surfactant_b_name}")
-    dilution_vials_a, dilution_steps_a, achievable_a = check_or_create_substocks(lash_e, surfactant_a_name, concentrations, substock_tracking)
-    dilution_vials_b, dilution_steps_b, achievable_b = check_or_create_substocks(lash_e, surfactant_b_name, concentrations, substock_tracking)
+    dilution_vials_a, dilution_steps_a, achievable_a = check_or_create_substocks(lash_e, surfactant_a_name, concentrations, shared_substock_tracking)
+    dilution_vials_b, dilution_steps_b, achievable_b = check_or_create_substocks(lash_e, surfactant_b_name, concentrations, shared_substock_tracking)
     
-    # 5. Pipette grid into wellplate(s) with interval measurements
+    # Display concentration grid summary
+    print("\n" + create_concentration_grid_summary(concentrations, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name))
+    print("")
+    
+    # Pipette grid using shared wellplate state
     logger.info("Starting grid pipetting with interval measurements")
-    well_map, wellplate_data = pipette_grid_to_wellplate(lash_e, achievable_a, achievable_b, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name)
+    well_map, updated_wellplate_state = pipette_grid_to_shared_wellplate(lash_e, achievable_a, achievable_b, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name, shared_wellplate_state)
     
-    # 6. Combine measurement data from all intervals
+    # Update shared state
+    shared_wellplate_state.update(updated_wellplate_state)
+    
+    # Combine measurement data
     logger.info("Combining measurement data from all intervals")
-    results_df = combine_measurement_data(well_map, wellplate_data)
-    all_measurements = wellplate_data['measurements']
+    results_df = combine_measurement_data(well_map, updated_wellplate_state)
+    all_measurements = updated_wellplate_state['measurements']
     
-    # 7. Create output folder if not provided
+    # Create output folder if not provided
     if output_folder is None:
-        output_folder = create_output_folder(simulate)
+        output_folder = create_output_folder(lash_e.simulate)
     
     logger.info(f"Saving results to: {output_folder}")
     
-    # 8. Save substock tracking to output folder
-    save_substock_tracking(substock_tracking, output_folder)
+    # Save results to output folder  
+    save_results(results_df, well_map, updated_wellplate_state, all_measurements, concentrations, dilution_vials_a, dilution_vials_b, dilution_steps_a, dilution_steps_b, surfactant_a_name, surfactant_b_name, lash_e.simulate, output_folder)
     
-    # 9. Save results to output folder  
-    save_results(results_df, well_map, wellplate_data, all_measurements, concentrations, dilution_vials_a, dilution_vials_b, dilution_steps_a, dilution_steps_b, surfactant_a_name, surfactant_b_name, simulate, output_folder)
+    plates_used_this_combo = updated_wellplate_state.get('plates_used_this_combo', 0)
+    logger.info(f"Combination completed, plates used for this combination: {plates_used_this_combo}")
     
-    logger.info(f"Experiment completed using {wellplate_data['current_plate']} wellplates")
-    logger.info(f"Total measurement datasets: {len(all_measurements)}")
-    
-    print(f"Experiment completed using {wellplate_data['current_plate']} wellplates")
-    print(f"Total measurement datasets: {len(all_measurements)}")
-    
-    # 10. Final cleanup (last wellplate already measured in pipette_grid_to_wellplate)
-    logger.debug("Performing final cleanup")
-    if wellplate_data['current_plate'] > 0:
-        lash_e.discard_used_wellplate()
-    lash_e.nr_robot.move_home()
-    
-    logger.info("Surfactant grid screening workflow completed successfully")
-    print("=== Workflow Complete ===")
-    return results_df, all_measurements, wellplate_data['current_plate']
+    print(f"✓ {surfactant_a_name}+{surfactant_b_name}: {len(results_df)} wells")
+    return results_df, all_measurements, plates_used_this_combo
 
 def run_all_surfactant_combinations(simulate=True):
     """
@@ -1289,94 +1716,100 @@ def run_all_surfactant_combinations(simulate=True):
     wells_used_total = 0
     all_results = {}
     
-    print(f"\\nStarting comprehensive screening...")
     print(f"Results will be saved to: {main_output}")
     
-    for i, anionic in enumerate(anionic_surfactants):
-        for j, cationic in enumerate(cationic_surfactants):
-            combo_num = i * len(cationic_surfactants) + j + 1
-            print(f"\\n{'='*60}")
-            print(f"COMBINATION {combo_num}/{total_combinations}: {anionic} + {cationic}")
-            print(f"{'='*60}")
+    # Initialize shared session (ONCE - handles input file checking)
+    lash_e, shared_substock_tracking, shared_wellplate_state = initialize_screening_session(simulate)
+    
+    try:
+        all_results = {}
+        
+        print(f"\\nStarting comprehensive screening with shared session...")
+        
+        for i, anionic in enumerate(anionic_surfactants):
+            for j, cationic in enumerate(cationic_surfactants):
+                combo_num = i * len(cationic_surfactants) + j + 1
+                print(f"\\n{'='*60}")
+                print(f"COMBINATION {combo_num}/{total_combinations}: {anionic} + {cationic}")
+                print(f"Current wellplate: {shared_wellplate_state['current_plate']}, wells used: {shared_wellplate_state['wells_used']}/96")
+                print(f"{'='*60}")
+                
+                # Create subfolder for this combination
+                combo_folder = os.path.join(main_output, f"{combo_num:02d}_{anionic}_{cationic}")
+                os.makedirs(combo_folder, exist_ok=True)
+                
+                try:
+                    # Execute combination using shared session
+                    results_df, measurements, plates_used_this_combo = execute_single_combination(
+                        lash_e, cationic, anionic,  # Cationic first, anionic second
+                        shared_substock_tracking, shared_wellplate_state, combo_folder
+                    )
+                    
+                    all_results[f"{anionic}_{cationic}"] = {
+                        'anionic': anionic,
+                        'cationic': cationic,
+                        'results_df': results_df,
+                        'measurements': measurements,
+                        'plates_used_this_combo': plates_used_this_combo,
+                        'wells_count': len(results_df),
+                        'output_folder': combo_folder,
+                        'completed': True
+                    }
+                    
+                    print(f"\u2713 Completed {anionic} + {cationic}: {len(results_df)} wells")
+                    
+                except Exception as e:
+                    print(f"\u274c Failed {anionic} + {cationic}: {e}")
+                    lash_e.logger.error(f"Combination {anionic} + {cationic} failed: {e}")
+                    all_results[f"{anionic}_{cationic}"] = {
+                        'anionic': anionic,
+                        'cationic': cationic,
+                        'error': str(e),
+                        'completed': False
+                    }
+        
+        # Save session-level tracking
+        save_substock_tracking(shared_substock_tracking, main_output)
+        
+        # Create comprehensive summary
+        successful_experiments = sum(1 for r in all_results.values() if r.get('completed', False))
+        total_wells_used = sum(r.get('wells_count', 0) for r in all_results.values() if r.get('completed', False))
+        
+        summary_file = os.path.join(main_output, "comprehensive_screening_summary.txt")
+        with open(summary_file, 'w') as f:
+            f.write("COMPREHENSIVE SURFACTANT SCREENING SUMMARY\\n")
+            f.write("=" * 50 + "\\n\\n")
             
-            # Create subfolder for this combination
-            combo_folder = os.path.join(main_output, f"{combo_num:02d}_{anionic}_{cationic}")
-            os.makedirs(combo_folder, exist_ok=True)
+            if simulate:
+                f.write("NOTE: This was a SIMULATION - no actual hardware was used\\n\\n")
             
-            try:
-                # Run the experiment for this combination
-                results_df, measurements, plates_used = surfactant_grid_screening(
-                    surfactant_a_name=cationic,  # Cationic first
-                    surfactant_b_name=anionic,   # Anionic second  
-                    simulate=simulate,
-                    output_folder=combo_folder
-                )
-                
-                all_results[f"{anionic}_{cationic}"] = {
-                    'anionic': anionic,
-                    'cationic': cationic,
-                    'results_df': results_df,
-                    'measurements': measurements,
-                    'plates_used': plates_used,
-                    'wells_count': len(results_df),
-                    'output_folder': combo_folder
-                }
-                
-                wells_used_total += len(results_df)
-                current_plate += plates_used
-                
-                print(f"✅ Completed {anionic} + {cationic}: {len(results_df)} wells, {plates_used} plates")
-                
-            except Exception as e:
-                print(f"❌ Failed {anionic} + {cationic}: {e}")
-                all_results[f"{anionic}_{cationic}"] = {
-                    'anionic': anionic,
-                    'cationic': cationic,
-                    'error': str(e),
-                    'completed': False
-                }
-    
-    # Save global tracking and summary
-    save_substock_tracking(global_substock_tracking, main_output)
-    
-    # Create summary report
-    summary_file = os.path.join(main_output, "comprehensive_screening_summary.txt")
-    with open(summary_file, 'w') as f:
-        f.write("COMPREHENSIVE SURFACTANT SCREENING SUMMARY\\n")
-        f.write("=" * 50 + "\\n\\n")
+            f.write(f"Total combinations attempted: {total_combinations}\\n")
+            f.write(f"Successful combinations: {successful_experiments}\\n")
+            f.write(f"Total wells used: {total_wells_used}\\n")
+            f.write(f"Total wellplates used: {shared_wellplate_state['total_plates_used']}\\n\\n")
+            
+            f.write("SURFACTANT COMBINATIONS:\\n")
+            f.write("-" * 30 + "\\n")
+            
+            for combo_name, result in all_results.items():
+                if result.get('completed', False):
+                    f.write(f"{result['anionic']} + {result['cationic']}: {result['wells_count']} wells\\n")
+                else:
+                    f.write(f"{result['anionic']} + {result['cationic']}: FAILED - {result.get('error', 'Unknown error')}\\n")
         
-        if simulate:
-            f.write("NOTE: This was a SIMULATION - no actual hardware was used\\n\\n")
+        print(f"\\n{'='*80}")
+        print("COMPREHENSIVE SCREENING COMPLETE")
+        print(f"Successful combinations: {successful_experiments}/{total_combinations}")
+        print(f"Total wells used: {total_wells_used}")
+        print(f"Total wellplates used: {shared_wellplate_state['total_plates_used']}")
+        print(f"Results saved to: {main_output}")
+        print(f"{'='*80}")
         
-        f.write(f"Total combinations tested: {total_combinations}\\n")
-        f.write(f"Total wells used: {wells_used_total}\\n")
-        f.write(f"Total wellplates used: {current_plate - 1}\\n\\n")
+        return all_results
         
-        f.write("SURFACTANT COMBINATIONS:\\n")
-        f.write("-" * 30 + "\\n")
-        
-        for combo_name, result in all_results.items():
-            if 'error' in result:
-                f.write(f"{result['anionic']} + {result['cationic']}: FAILED - {result['error']}\\n")
-            else:
-                f.write(f"{result['anionic']} + {result['cationic']}: {result['wells_count']} wells, {result['plates_used']} plates\\n")
-    
-    print(f"\\n{'='*80}")
-    print("COMPREHENSIVE SCREENING COMPLETE")
-    print(f"Total wells used: {wells_used_total}")
-    print(f"Total wellplates used: {current_plate - 1}")
-    print(f"Results saved to: {main_output}")
-    print(f"{'='*80}")
-    
-    # Summary information - detailed logging happens in individual experiments
-    successful_experiments = sum(1 for r in all_results.values() if 'error' not in r)
-    failed_experiments = len(all_results) - successful_experiments
-    
-    if failed_experiments > 0:
-        print(f"WARNING: {failed_experiments} experiments failed - check individual logs for details")
-    
-    return all_results
-
+    finally:
+        # Always finalize session
+        finalize_screening_session(lash_e, shared_wellplate_state)
 if __name__ == "__main__":
     """
     Run surfactant grid screening.
