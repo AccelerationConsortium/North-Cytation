@@ -1724,13 +1724,20 @@ class North_Robot(North_Base):
 
                 # Check if clamp is occupied
                 clamp_vial_index = self.get_vial_in_location('clamp', 0)
-                if clamp_vial_index is not None:
+                vial_index = self.get_vial_index_from_name(vial_name)
+                if clamp_vial_index is not None and clamp_vial_index != vial_index:
                     self.logger.debug(f"Clamp occupied by vial {clamp_vial_index}, returning it home first")
                     self.return_vial_home(clamp_vial_index)
                 
-                # Move vial to clamp and uncap
+                # Move vial to clamp and uncap only if it has a closed cap
                 self.move_vial_to_location(vial_num, location='clamp', location_index=0)
-                self.uncap_clamp_vial()
+                
+                # Only uncap if vial has a closed cap (not open caps)
+                vial_cap_type = self.get_vial_info(vial_num, 'cap_type')
+                if vial_cap_type != 'open':
+                    self.uncap_clamp_vial()
+                else:
+                    self.logger.debug(f"Vial {vial_name} has open cap, skipping uncap operation")
                 
             else:
                 self.pause_after_error(f"Vial {vial_name} cannot be moved to a safe pipetting location")

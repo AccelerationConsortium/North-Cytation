@@ -50,7 +50,7 @@ MEASUREMENT_INTERVAL = 12  # Measure every N wells
 
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials.csv"
-MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance.prt"
+MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
 
 def calculate_grid_concentrations():
     """Calculate concentration grid points for both surfactants."""
@@ -206,16 +206,10 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
         # Vortex to mix
         lash_e.nr_robot.vortex_vial(vial_name=dilution_vial, vortex_time=8, vortex_speed=80)
     
-    # Return vials in original concentration order (not sorted)
-    # Create mapping from 2x concentration to vial name, then map back to target concentrations
-    conc_to_vial = dict(zip(sorted_concs, dilution_vials))
-    ordered_vials = [conc_to_vial[conc * 2] for conc in target_concs_mm]
-    
-    # Also reorder dilution steps to match
-    conc_to_step = dict(zip(sorted_concs, dilution_steps))
-    ordered_steps = [conc_to_step[conc * 2] for conc in target_concs_mm]
-    
-    return ordered_vials, ordered_steps
+    # FIXED: Return vials in decreasing concentration order to match physical reality
+    # Physical dilution creates: vial_0 = highest, vial_1 = 2nd highest, etc.
+    # This matches the actual serial dilution process (highest → lowest)
+    return dilution_vials, dilution_steps
 
 def check_measurement_interval(lash_e, current_well, wellplate_data, total_wells_added):
     """
@@ -497,42 +491,62 @@ def pipette_grid_to_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, diluti
             wells_in_batch.append(well_counter)
             well_counter += 1
         
-        # PHASE 1: Add all surfactant A solutions (sorted by concentration low→high to prevent contamination)
-        # Create concentration-sorted list for surfactant A
-        batch_a_sorted = sorted(enumerate(current_batch), key=lambda x: x[1]['conc_a'])
-        
-        print(f"  Phase 1: Adding surfactant A (low→high concentration)")
-        for batch_idx, req in batch_a_sorted:
+        # PHASE 1: Add all surfactant A solutions (grouped by vial to minimize movements)
+        # Group by vial to aspirate multiple wells from same vial without moving it back
+        from collections import defaultdict
+        vial_a_groups = defaultdict(list)
+        for batch_idx, req in enumerate(current_batch):
             actual_well = wells_in_batch[batch_idx]
-            volume_each = WELL_VOLUME_UL / 2000  # Convert μL to mL
+            vial_a_groups[req['dilution_a_vial']].append((batch_idx, actual_well, req))
+        
+        # Sort vial groups by concentration (low→high to prevent contamination)
+        sorted_vial_groups_a = sorted(vial_a_groups.items(), 
+                                     key=lambda x: current_batch[x[1][0][0]]['conc_a'])
+        
+        print(f"  Phase 1: Adding surfactant A (low→high concentration, grouped by vial)")
+        for vial_name, well_list in sorted_vial_groups_a:
+            print(f"    Using vial {vial_name} for {len(well_list)} wells")
+            for batch_idx, actual_well, req in well_list:
+                volume_each = WELL_VOLUME_UL / 2000  # Convert μL to mL
+                
+                # Use safe location (handles vial movement properly)
+                lash_e.nr_robot.aspirate_from_vial(req['dilution_a_vial'], volume_each, liquid='water', use_safe_location=True)
+                lash_e.nr_robot.dispense_into_wellplate(
+                    dest_wp_num_array=[actual_well], 
+                    amount_mL_array=[volume_each],
+                    liquid='water'
+                )
+            # Return vial home and remove tip after each vial to allow safe movement
+            lash_e.nr_robot.remove_pipet()  # Remove tip to allow next vial movement
+            lash_e.nr_robot.return_vial_home(vial_name)
             
-            lash_e.nr_robot.aspirate_from_vial(req['dilution_a_vial'], volume_each, liquid='water')
-            lash_e.nr_robot.dispense_into_wellplate(
-                dest_wp_num_array=[actual_well], 
-                amount_mL_array=[volume_each],
-                liquid='water'
-            )
         
-        # Remove tip after all A aspirations
-        lash_e.nr_robot.remove_pipet()
-        
-        # PHASE 2: Add all surfactant B solutions (sorted by concentration low→high)  
-        batch_b_sorted = sorted(enumerate(current_batch), key=lambda x: x[1]['conc_b'])
-        
-        print(f"  Phase 2: Adding surfactant B (low→high concentration)")
-        for batch_idx, req in batch_b_sorted:
+        # PHASE 2: Add all surfactant B solutions (grouped by vial to minimize movements)
+        vial_b_groups = defaultdict(list)
+        for batch_idx, req in enumerate(current_batch):
             actual_well = wells_in_batch[batch_idx]
-            volume_each = WELL_VOLUME_UL / 2000  # Convert μL to mL
-            
-            lash_e.nr_robot.aspirate_from_vial(req['dilution_b_vial'], volume_each, liquid='water')
-            lash_e.nr_robot.dispense_into_wellplate(
-                dest_wp_num_array=[actual_well], 
-                amount_mL_array=[volume_each],
-                liquid='water'
-            )
+            vial_b_groups[req['dilution_b_vial']].append((batch_idx, actual_well, req))
         
-        # Remove tip after all B aspirations
-        lash_e.nr_robot.remove_pipet()
+        # Sort vial groups by concentration (low→high to prevent contamination)
+        sorted_vial_groups_b = sorted(vial_b_groups.items(), 
+                                     key=lambda x: current_batch[x[1][0][0]]['conc_b'])
+        
+        print(f"  Phase 2: Adding surfactant B (low→high concentration, grouped by vial)")
+        for vial_name, well_list in sorted_vial_groups_b:
+            print(f"    Using vial {vial_name} for {len(well_list)} wells")
+            for batch_idx, actual_well, req in well_list:
+                volume_each = WELL_VOLUME_UL / 2000  # Convert μL to mL
+                
+                # Use safe location (handles vial movement properly)
+                lash_e.nr_robot.aspirate_from_vial(req['dilution_b_vial'], volume_each, liquid='water', use_safe_location=True)
+                lash_e.nr_robot.dispense_into_wellplate(
+                    dest_wp_num_array=[actual_well], 
+                    amount_mL_array=[volume_each],
+                    liquid='water'
+                )
+            # Remove tip first, then return vial home to allow safe movement
+            lash_e.nr_robot.remove_pipet()  # Remove tip to allow next vial movement
+            lash_e.nr_robot.return_vial_home(vial_name)
         
         # Record well information for this batch
         for i, req in enumerate(current_batch):
@@ -875,8 +889,27 @@ def extract_turbidity_values(raw_data, well_indices):
                 break
         
         if measurement_col is not None:
-            measurement_values = raw_data[measurement_col].tolist()[:len(well_indices)]
+            measurement_values = []
+            for well_idx in well_indices:
+                try:
+                    # Convert well index to well name (0->A1, 1->A2, 12->B1, etc.)
+                    row = well_idx // 12  # 0=A, 1=B, 2=C, etc.
+                    col_num = (well_idx % 12) + 1  # 1-12
+                    well_name = f"{chr(ord('A') + row)}{col_num}"
+                    
+                    # Get value for this well
+                    if well_name in raw_data.index:
+                        value = raw_data.loc[well_name, measurement_col]
+                        measurement_values.append(float(value))
+                    else:
+                        print(f"Warning: Well {well_name} (index {well_idx}) not found in data")
+                        measurement_values.append(0.5)  # Fallback
+                        
+                except (IndexError, ValueError, KeyError) as e:
+                    print(f"Warning: Could not extract value for well {well_idx}: {e}")
+                    measurement_values.append(0.5)  # Fallback value
         else:
+            print(f"Warning: No measurement column found. Available columns: {raw_data.columns.tolist()}")
             measurement_values = [0.5] * len(well_indices)
     
     # Ensure we have the right number of values
@@ -930,13 +963,15 @@ def surfactant_grid_screening(simulate=True):
     dilution_vials_b, dilution_steps_b = create_dilution_series(lash_e, "surfactant_b", concentrations, SURFACTANT_B_CONC_MM)
     
     # 5. Pipette grid into wellplate(s) with interval measurements
+    # Now the automated dilution concentrations correctly match physical reality
     well_map, wellplate_data = pipette_grid_to_wellplate(lash_e, concentrations, concentrations, dilution_vials_a, dilution_vials_b)
     
     # 6. Combine measurement data from all intervals
     results_df = combine_measurement_data(well_map, wellplate_data)
     all_measurements = wellplate_data['measurements']
     
-    # 7. Save results to timestamped output folder
+    # 7. Save results to timestamped output folder  
+    # Use concentrations for accurate reporting (now that dilution creation is fixed)
     save_results(results_df, well_map, wellplate_data, all_measurements, concentrations, dilution_vials_a, dilution_vials_b, dilution_steps_a, dilution_steps_b, simulate)
     
     print(f"Experiment completed using {wellplate_data['current_plate']} wellplates")
