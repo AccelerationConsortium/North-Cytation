@@ -1172,6 +1172,7 @@ class North_Robot(North_Base):
         Args:
             max_retries (int): Maximum number of retry attempts for homing-related errors (default: 2)
         """
+        self.load_pumps()
         self.logger.debug("Physical initialization of North Robot...")
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         self.c9.open_clamp()
@@ -1184,7 +1185,6 @@ class North_Robot(North_Base):
         
         while retry_count < max_retries:
             try:
-                self.load_pumps()
                 self._perform_physical_cleanup()
                 break  # Success, exit retry loop
                 
@@ -1197,8 +1197,6 @@ class North_Robot(North_Base):
                 self.logger.info("Homing robot components before pump initialization...")
                 try:
                     self.home_robot_components()
-                    # Load pumps after homing
-
                 except Exception as e:
                     self.logger.error(f"Failed to home robot components during initialization: {e}")
                     raise
@@ -1882,7 +1880,7 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=True, return_vial_home=True, move_speed=None):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=False, return_vial_home=True):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -1932,20 +1930,9 @@ class North_Robot(North_Base):
             # Aspirate from source
             self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip, use_safe_location=use_safe_location)
 
-            # Set custom movement speed if specified
-            original_vel = None
-            if move_speed is not None:
-                original_vel = self.c9.default_vel
-                self.c9.default_vel = move_speed
-
             # Dispense into destination
-            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed)
+            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid)
             total_mass += mass_increment if mass_increment is not None else 0
-
-            # Restore original movement speed if changed
-            if move_speed is not None and original_vel is not None:
-                self.c9.default_vel = original_vel
-
 
             # Return vials and remove pipet on last run
             if last_run:
@@ -1965,7 +1952,6 @@ class North_Robot(North_Base):
                     # If vial is already capped, skip recapping
                     
                     self.return_vial_home(clamp_vial_index)
-
 
         return total_mass
 
@@ -2080,7 +2066,7 @@ class North_Robot(North_Base):
 
     #Dispense an amount into a vial
     def dispense_into_vial(self, dest_vial_name, amount_mL, parameters=None, liquid=None,
-                          initial_move=True, measure_weight=False, move_speed=None):
+                          initial_move=True, measure_weight=False):
         """
         Dispense liquid into a vial.
         
@@ -2141,12 +2127,12 @@ class North_Robot(North_Base):
 
         #Move to the location if told to (Could change this to an auto-check)
         if initial_move:               
-            self.c9.goto_xy_safe(location, vel=move_speed if move_speed is not None else self.get_speed('standard_xy'))
+            self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))   
         
         #Pipet into the vial
         #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
         if initial_move:
-            self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
+            self.c9.move_z(height)
         self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
 
         #Track the added volume in the dataframe

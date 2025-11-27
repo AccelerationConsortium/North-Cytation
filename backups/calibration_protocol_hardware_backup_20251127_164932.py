@@ -67,7 +67,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             vial_file = "status/calibration_vials_overnight.csv"
             
             # Initialize Lash_E coordinator
-            lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
+            lash_e = Lash_E(vial_file, simulate=simulate)
             
             # Validate hardware files
             lash_e.nr_robot.check_input_file()
@@ -105,29 +105,18 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             measurement_vial = state['measurement_vial']
             source_vial = state['source_vial']
             
-            # Check current volume in both vials
+            # Check current volume in measurement vial
             measurement_volume = lash_e.nr_robot.get_vial_info(measurement_vial, 'vial_volume')
-            source_volume = lash_e.nr_robot.get_vial_info(source_vial, 'vial_volume')
-            min_source_volume = 2.0  # mL - threshold for swapping when source gets low
+            max_measurement_volume = 7.0  # mL - threshold for swapping
             
-            # DEBUG: Always print current volumes
-            print(f"🔍 VIAL STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
-            
-            # Swap when source vial gets too low (< 2 mL)
-            # AND measurement vial has accumulated enough liquid to become the new source (> 1 mL)
-            should_swap = (source_volume is not None and 
-                          source_volume < min_source_volume and
-                          measurement_volume is not None and 
-                          measurement_volume > 1.0)
-            
-            if should_swap:
-                print(f"🔄 SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL (< {min_source_volume}mL), measurement vial ({measurement_vial}) has {measurement_volume:.2f}mL")
+            if measurement_volume is not None and measurement_volume >= max_measurement_volume:
+                print(f"🔄 SWAP: Measurement vial ({measurement_vial}) volume {measurement_volume:.2f}mL >= {max_measurement_volume}mL")
                 
                 # First: Return the old measurement vial (at clamp) to its home position
                 lash_e.nr_robot.remove_pipet()
                 lash_e.nr_robot.return_vial_home(measurement_vial)
                 
-                # Swap the vial roles in state
+                # Swap the vial roles in stateok 
                 state['source_vial'] = measurement_vial  # Old measurement becomes new source
                 state['measurement_vial'] = source_vial   # Old source becomes new measurement
                 
@@ -135,8 +124,6 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 lash_e.nr_robot.move_vial_to_location(state['measurement_vial'], "clamp", 0)
                 
                 print(f"✅ SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
-            else:
-                print(f"✋ NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
                 
         except Exception as e:
             print(f"⚠️ Vial swap check failed: {e}")
@@ -157,24 +144,18 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             # Convert volume to microliters
             volume_uL = volume_mL * 1000
             
-            # Extract parameters from nested structure
-            hw_params = params.get('parameters', {}) if isinstance(params.get('parameters'), dict) else params
-            
-            # Extract pipetting parameters with safe fallbacks
-            try:
-                pipet_params = {
-                    'aspirate_speed': hw_params.get('aspirate_speed', 10),
-                    'dispense_speed': hw_params.get('dispense_speed', 10), 
-                    'aspirate_wait_time': hw_params.get('aspirate_wait_time', 0.0),
-                    'dispense_wait_time': hw_params.get('dispense_wait_time', 0.0),
-                    'pre_asp_air_vol': hw_params.get('pre_asp_air_vol', 0.0),
-                    'retract_speed': hw_params.get('retract_speed', 5.0),
-                    'blowout_vol': hw_params.get('blowout_vol', 0.0),
-                    'post_asp_air_vol': hw_params.get('post_asp_air_vol', 0.0),
-                    'overaspirate_vol': params.get('overaspirate_vol', 0.0)  # This is at top level
-                }
-            except KeyError as e:
-                raise ValueError(f"Missing required parameter structure - params dict malformed: {e}") from e
+            # Extract pipetting parameters
+            pipet_params = {
+                'aspirate_speed': params.get('aspirate_speed', 20),
+                'dispense_speed': params.get('dispense_speed', 15),
+                'aspirate_wait_time': params.get('aspirate_wait_time', 2.0),
+                'dispense_wait_time': params.get('dispense_wait_time', 1.0),
+                'pre_asp_air_vol': params.get('pre_asp_air_vol', 0.1),
+                'retract_speed': params.get('retract_speed', 5.0),
+                'blowout_vol': params.get('blowout_vol', 0.02),
+                'post_asp_air_vol': params.get('post_asp_air_vol', 0.01),
+                'overaspirate_vol': params.get('overaspirate_vol', 0.004)
+            }
             
             print(f"  Rep {rep+1}/{replicates}: {volume_uL:.1f}uL with params {pipet_params}")
             
@@ -256,7 +237,6 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             
             results.append(result)
             print(f"    Measured: {measured_volume_uL:.1f}uL (target: {volume_uL:.1f}uL) in {elapsed_s:.2f}s")
-            print()  # Add visual separation between measurement cycles
         
         return results
 

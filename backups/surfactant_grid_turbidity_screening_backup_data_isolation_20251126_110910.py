@@ -67,7 +67,7 @@ SURFACTANT_LIBRARY = {
 }
 
 # WORKFLOW CONSTANTS
-SIMULATE = False # Set to False for actual hardware execution
+SIMULATE = False  # Set to False for actual hardware execution
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
@@ -454,26 +454,23 @@ def execute_batched_dilutions(lash_e, dilution_operations, tracking, surfactant_
     for source_vial, operations in source_vial_groups.items():
         print(f"  Processing {len(operations)} transfers from {source_vial}...")
         
-        # Move source vial to clamp ONCE for all transfers
+        # Move source vial to safe position (clamp) once for all transfers
         lash_e.nr_robot.move_vial_to_location(source_vial, "clamp", 0)
         
-        # Do all transfers keeping source vial at clamp
+        # Do all transfers for this source vial using dispense_from_vial_into_vial
         for i, op in enumerate(operations):
             is_last_transfer = (i == len(operations) - 1)
-            
-            # Use dispense_from_vial_into_vial with conditional vial return
             lash_e.nr_robot.dispense_from_vial_into_vial(
                 source_vial_name=source_vial,
                 dest_vial_name=op['vial_name'],
                 volume=op['stock_volume'],
                 liquid='water',
                 remove_tip=is_last_transfer,  # Only remove tip on last transfer
-                use_safe_location=False,  # Source vial already at clamp
-                return_vial_home=is_last_transfer  # Only return home on last transfer
-            )
-            
+              )
             logger.debug(f"Transferred {op['stock_volume']:.3f} mL from {source_vial} to {op['vial_name']}")
         
+        # Manual cleanup after all transfers from this source vial
+        lash_e.nr_robot.return_vial_home(source_vial)
         print(f"  OK Completed {len(operations)} transfers from {source_vial} using 1 tip")
     
     # PHASE 2: Batch all water additions from reservoir
@@ -916,14 +913,14 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a,
     logger.info(f"Starting grid pipetting: {len(concs_a)}x{len(concs_b)} grid with {N_REPLICATES} replicates each")
     
     well_counter = shared_wellplate_state.get('global_well_counter', 0)
-    well_map = []  # FIX: Fresh well map for each experiment (don't accumulate old mappings)
+    well_map = shared_wellplate_state.get('global_well_map', [])
     total_wells_added = shared_wellplate_state.get('total_wells_added', 0)
     
-    # Use existing wellplate tracking from shared state (but isolate measurements per experiment)
+    # Use existing wellplate tracking from shared state
     wellplate_data = {
         'current_plate': shared_wellplate_state.get('current_plate', 1),
         'wells_used': shared_wellplate_state.get('wells_used', 0),
-        'measurements': [],  # FIX: Fresh measurements list for each experiment
+        'measurements': shared_wellplate_state.get('measurements', []),
         'last_measured_well': shared_wellplate_state.get('last_measured_well', -1)
     }
     
@@ -1107,13 +1104,12 @@ def combine_measurement_data(well_map, wellplate_data):
         
         # Handle simulation mode where measurement_data might be None
         if measurement_data is None:
-            print(f"ERROR: No measurement data for wells {wells_measured} - measurement failed!")
-            continue  # FIX: Skip missing measurements instead of padding with 0.5
+            measurement_data = {'turbidity': [0.5] * len(wells_measured)}  # Mock data
         
         # Extract turbidity values for measured wells
         for batch_idx, well_idx in enumerate(wells_measured):
-            if batch_idx < len(well_map):  # FIX: Use batch position instead of absolute well number
-                well_info = well_map[batch_idx]  # FIX: Index by position, not well number
+            if well_idx < len(well_map):
+                well_info = well_map[well_idx]
                 # Find turbidity value for this well using batch position, not absolute well index
                 if batch_idx < len(measurement_data.get('turbidity', [])):
                     turbidity = measurement_data['turbidity'][batch_idx]
@@ -1889,20 +1885,9 @@ def run_all_surfactant_combinations(simulate=True):
         
         print(f"\\nStarting comprehensive screening with shared session...")
         
-        # Filter experiments to run only 6-8 
-        START_EXPERIMENT = 6  # 0-based: experiment 6 = index 5   
-        END_EXPERIMENT = 8    # 0-based: experiment 8 = index 7
-        print(f"Running experiments {START_EXPERIMENT+1} to {END_EXPERIMENT+1} only")
-        
         for i, anionic in enumerate(anionic_surfactants):
             for j, cationic in enumerate(cationic_surfactants):
                 combo_num = i * len(cationic_surfactants) + j + 1
-                
-                # Skip experiments not in our target range
-                if combo_num < START_EXPERIMENT + 1 or combo_num > END_EXPERIMENT + 1:
-                    print(f"\\nSKIPPING combination {combo_num}: {anionic} + {cationic}")
-                    continue
-                    
                 print(f"\\n{'='*60}")
                 print(f"COMBINATION {combo_num}/{total_combinations}: {anionic} + {cationic}")
                 print(f"Current wellplate: {shared_wellplate_state['current_plate']}, wells used: {shared_wellplate_state['wells_used']}/96")

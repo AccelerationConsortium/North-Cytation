@@ -119,46 +119,6 @@ class CalibrationExperiment:
         """Create timestamped output directory."""
         self.output_dir = Path(self.config.get_output_directory()) / f"run_{int(time.time())}"
         self.output_dir.mkdir(parents=True, exist_ok=True)
-    
-    def _save_incremental_data(self):
-        """Save current trial data incrementally (for crash recovery)."""
-        try:
-            # Save current progress to incremental file
-            incremental_path = self.output_dir / "incremental_results.json"
-            
-            # Collect all trials so far
-            all_trials = []
-            for volume_result in self.volume_results:
-                for trial in volume_result.trials:
-                    all_trials.append(trial)
-            
-            # Also add trials from current volume if in progress
-            if hasattr(self, 'all_trials'):
-                all_trials.extend(self.all_trials)
-            
-            # Convert to simple format for JSON serialization
-            incremental_data = {
-                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-                'completed_trials': len(all_trials),
-                'total_measurements': self.total_measurements,
-                'trials': [
-                    {
-                        'volume_ml': trial.target_volume_ml,
-                        'parameters': trial.parameters.to_dict() if hasattr(trial.parameters, 'to_dict') else str(trial.parameters),
-                        'measured_volume_ml': trial.analysis.mean_volume_ml,
-                        'deviation_pct': trial.analysis.deviation_pct,
-                        'duration_s': trial.analysis.mean_duration_s,
-                        'measurements': len(trial.measurements)
-                    } for trial in all_trials
-                ]
-            }
-            
-            import json
-            with open(incremental_path, 'w') as f:
-                json.dump(incremental_data, f, indent=2)
-                
-        except Exception as e:
-            logger.warning(f"Failed to save incremental data: {e}")
 
     def _run_optimization_loop(self, target_volume_ml: float, max_measurements: int, 
                               strategy_name: str, param_generation_func) -> List[TrialResult]:
@@ -193,9 +153,6 @@ class CalibrationExperiment:
                 strategy="optimization", liquid=self.config.get_liquid_name()
             )
             optimization_trials.append(trial_result)
-            
-            # Save incremental data after each trial
-            self._save_incremental_data()
             
             # Check if this is a good trial
             trial_passed = self._is_trial_successful(trial_result, target_volume_ml)
@@ -595,10 +552,6 @@ class CalibrationExperiment:
         num_trials = self.config.get_screening_trials()
         
         for trial_idx in range(num_trials):
-            # Clear progress display
-            print(f"\n🧪 TRIAL {trial_idx + 1}/{num_trials} - Screening Phase ({target_volume_ml*1000:.0f}uL)")
-            print("=" * 60)
-            
             # Generate screening parameters (would use SOBOL or LLM suggestions)
             parameters = self._generate_screening_parameters(target_volume_ml, trial_idx)
             
@@ -606,9 +559,6 @@ class CalibrationExperiment:
             trial_result = self._execute_trial(parameters, target_volume_ml, f"screening_{trial_idx}", 
                                               strategy="screening", liquid=self.config.get_liquid_name())
             screening_trials.append(trial_result)
-            
-            # Save incremental data after each trial
-            self._save_incremental_data()
             
             # Log meaningful results instead of abstract scores
             avg_volume_ul = trial_result.analysis.mean_volume_ml * 1000
@@ -657,9 +607,7 @@ class CalibrationExperiment:
         logger.info(f"Using SOBOL-generated parameters for screening trial {trial_idx}")
         
         # Apply volume constraints
-        constrained_params = self.config.apply_volume_constraints(parameters, target_volume_ml)
-        
-        return constrained_params
+        return self.config.apply_volume_constraints(parameters, target_volume_ml)
     
     def _generate_parameters_from_config(self, target_volume_ml: float) -> PipettingParameters:
         """Generate parameters using config-driven names - hardware agnostic."""
@@ -1226,11 +1174,7 @@ class CalibrationExperiment:
             trial_result = self.analyzer.analyze_trial(measurements, target_volume_ml, strategy, liquid)
             
             if not trial_result.needs_additional_replicates:
-                logger.info(f"✅ No more replicates needed - deviation {trial_result.absolute_deviation_pct:.1f}% > 10% threshold or max replicates reached")
                 break
-            
-            # Log why we're adding another replicate
-            logger.info(f"🔄 Adding replicate {len(measurements)+1} - deviation {trial_result.absolute_deviation_pct:.1f}% ≤ 10% threshold (good accuracy, worth optimizing)")
             
             # Check budget
             if self.total_measurements >= self.config.get_max_total_measurements():

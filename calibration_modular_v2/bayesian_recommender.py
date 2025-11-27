@@ -169,9 +169,12 @@ class AxBayesianOptimizer:
                     protocol_constraints = self.config.protocol.get_parameter_constraints(
                         self.config.constraints.target_volume_ml
                     )
-                    constraint_list.extend(protocol_constraints)
                     
-                    for constraint in protocol_constraints:
+                    # Process constraints to handle fixed parameters
+                    processed_constraints = self._process_constraints_with_fixed_params(protocol_constraints)
+                    constraint_list.extend(processed_constraints)
+                    
+                    for constraint in processed_constraints:
                         logger.info(f"Added protocol constraint: {constraint}")
                         
                 except Exception as e:
@@ -206,6 +209,53 @@ class AxBayesianOptimizer:
             pass
         
         return constraint_list
+    
+    def _process_constraints_with_fixed_params(self, constraints: List[str]) -> List[str]:
+        """Process constraints by substituting fixed parameter values."""
+        processed_constraints = []
+        fixed_params = self.config.constraints.fixed_parameters
+        
+        for constraint in constraints:
+            processed_constraint = constraint
+            
+            # Substitute fixed parameter values in the constraint
+            for param_name, fixed_value in fixed_params.items():
+                if param_name in constraint:
+                    # Replace parameter name with its fixed value
+                    processed_constraint = processed_constraint.replace(param_name, str(fixed_value))
+            
+            # Simplify the constraint if possible (basic arithmetic)
+            try:
+                processed_constraint = self._simplify_constraint(processed_constraint)
+            except Exception as e:
+                logger.warning(f"Could not simplify constraint '{processed_constraint}': {e}")
+            
+            processed_constraints.append(processed_constraint)
+            
+            if constraint != processed_constraint:
+                logger.info(f"Rewrote constraint: '{constraint}' -> '{processed_constraint}'")
+        
+        return processed_constraints
+    
+    def _simplify_constraint(self, constraint: str) -> str:
+        """Simplify constraints with arithmetic (e.g., '0.075 + x <= 0.190' -> 'x <= 0.115')."""
+        import re
+        
+        # Handle constraints of the form: "number + variable <= number"
+        # Example: "0.075 + overaspirate_vol <= 0.190"
+        pattern = r'(\d+\.?\d*)\s*\+\s*(\w+)\s*<=\s*(\d+\.?\d*)'
+        match = re.match(pattern, constraint.strip())
+        
+        if match:
+            fixed_value = float(match.group(1))
+            variable = match.group(2)
+            limit = float(match.group(3))
+            new_limit = limit - fixed_value
+            
+            return f"{variable} <= {new_limit:.6f}"
+        
+        # If we can't simplify, return as-is
+        return constraint
     
     def _create_ax_client(self) -> None:
         """Create Ax client with custom generation strategy (Ax 0.4.0 API pattern)."""

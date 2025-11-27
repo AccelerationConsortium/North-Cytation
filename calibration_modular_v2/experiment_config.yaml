@@ -13,17 +13,17 @@
 # Experiment Identification
 experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
-  liquid: "glycerol"                     # Target liquid (water, glycerol, ethanol)
+  liquid: "water"                     # Target liquid (water, glycerol, ethanol)
   description: "Testing calibration across 4 volumes: 10μL to 100μL"
 
 # Target Volumes (in mL)
 volumes:
-  targets_ml: [0.05, 0.1, 0.025, 0.01]       # Test with 3 volumes for faster debugging
+  targets_ml: [0.025, 0.01, 0.005]       # Test with 3 volumes for faster debugging
 
 # Global Resource Limits
 budget:
-  max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
-  max_measurements_first_volume: 76     # Dedicated budget for first volume
+  max_total_measurements: 200           # Hard limit across entire experiment (increased for 6 volumes)
+  max_measurements_first_volume: 150     # Dedicated budget for first volume
 
 # Execution Mode
 execution:
@@ -69,32 +69,32 @@ hardware_parameters:
   # You can change these to whatever you like
   
   aspirate_speed:
-    bounds: [5, 35]
+    bounds: [10, 25]
     default: 17
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Aspiration speed (relative units)"
     
   dispense_speed:
-    bounds: [5, 35] 
+    bounds: [5, 25] 
     default: 17
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Dispense speed (relative units)"
     
   aspirate_wait_time:
-    bounds: [0.0, 30.0]
+    bounds: [0.0, 2.0]
     default: 12.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after aspiration (seconds)"
     
-  dispense_wait_time:
-    bounds: [0.0, 30.0]
-    default: 12.0
-    type: "float"                       # Parameter type for optimizer
-    time_affecting: true                # Directly affects timing
-    description: "Wait time after dispensing (seconds)"
+  # dispense_wait_time:
+  #   bounds: [0.0, 2.0]
+  #   default: 12.0
+  #   type: "float"                       # Parameter type for optimizer
+  #   time_affecting: true                # Directly affects timing
+  #   description: "Wait time after dispensing (seconds)"
     
   retract_speed:
     bounds: [1.0, 15.0]
@@ -117,6 +117,13 @@ hardware_parameters:
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Post-aspiration air volume (mL)"
+
+  pre_asp_air_vol:
+    bounds: [0.0, 0.1]
+    default: 0.02
+    type: "float"                       # Parameter type for optimizer
+    time_affecting: false               # Volume parameter, not timing
+    description: "Pre-aspiration air volume (mL)"
 
 # Volume Tolerance Ranges (matches original system VOLUME_TOLERANCE_RANGES)
 tolerances:
@@ -152,7 +159,7 @@ adaptive_measurement:
   enabled: true                         # Use conditional replicates
   deviation_threshold_pct: 10.0         # Threshold for running additional replicates
   base_replicates: 1                    # Initial measurement count
-  additional_replicates: 2              # Extra replicates for good accuracy
+  additional_replicates: 4              # Extra replicates for good accuracy
   penalty_variability_pct: 100.0        # Penalty for poor single measurements
   
 # Multi-Objective Optimization
@@ -190,12 +197,12 @@ optimization:
     
   # Stopping criteria (measurement-based)
   stopping_criteria:
-    min_good_trials: 3                  # Stop after this many "good" parameter sets
+    min_good_trials: 6                  # Stop after this many "good" parameter sets
 
 # Screening Phase (Initial Exploration)
 screening:
   # Manual screening trials (when external data not available)
-  num_trials: 20                         # Number of exploratory trials if no external data
+  num_trials: 10                         # Number of exploratory trials if no external data
   
   # LLM-based screening (separate from optimization LLM)
   use_llm_suggestions: false             # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)

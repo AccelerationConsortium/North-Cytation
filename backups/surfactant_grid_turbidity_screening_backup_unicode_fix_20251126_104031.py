@@ -67,18 +67,18 @@ SURFACTANT_LIBRARY = {
 }
 
 # WORKFLOW CONSTANTS
-SIMULATE = False # Set to False for actual hardware execution
+SIMULATE = False  # Set to False for actual hardware execution
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
-# Pump 1 = Water reservoir pump (carousel angle 45 deg, height 70)
+# Pump 1 = Water reservoir pump (carousel angle 45°, height 70)
 
 # Grid parameters - Updated to better capture turbidity transition region
 MIN_CONC_LOG = -1.5  # 10^-2 = 0.01 mM minimum (focus on higher concentrations)
 MAX_CONC_LOG = 1   # 10^1 = 10 mM maximum (extend into transition region)  
-LOG_STEP = 0.5     # 10^0.5 ~= 3.16-fold steps for finer resolution
+LOG_STEP = 0.5     # 10^0.5 ≈ 3.16-fold steps for finer resolution
 N_REPLICATES = 1
-WELL_VOLUME_UL = 200  # uL per well
+WELL_VOLUME_UL = 200  # μL per well
 MAX_WELLS = 96 #Wellplate size
 
 # Constants
@@ -454,27 +454,24 @@ def execute_batched_dilutions(lash_e, dilution_operations, tracking, surfactant_
     for source_vial, operations in source_vial_groups.items():
         print(f"  Processing {len(operations)} transfers from {source_vial}...")
         
-        # Move source vial to clamp ONCE for all transfers
+        # Move source vial to safe position (clamp) once for all transfers
         lash_e.nr_robot.move_vial_to_location(source_vial, "clamp", 0)
         
-        # Do all transfers keeping source vial at clamp
+        # Do all transfers for this source vial using dispense_from_vial_into_vial
         for i, op in enumerate(operations):
             is_last_transfer = (i == len(operations) - 1)
-            
-            # Use dispense_from_vial_into_vial with conditional vial return
             lash_e.nr_robot.dispense_from_vial_into_vial(
                 source_vial_name=source_vial,
                 dest_vial_name=op['vial_name'],
                 volume=op['stock_volume'],
                 liquid='water',
                 remove_tip=is_last_transfer,  # Only remove tip on last transfer
-                use_safe_location=False,  # Source vial already at clamp
-                return_vial_home=is_last_transfer  # Only return home on last transfer
-            )
-            
+              )
             logger.debug(f"Transferred {op['stock_volume']:.3f} mL from {source_vial} to {op['vial_name']}")
         
-        print(f"  OK Completed {len(operations)} transfers from {source_vial} using 1 tip")
+        # Manual cleanup after all transfers from this source vial
+        lash_e.nr_robot.return_vial_home(source_vial)
+        print(f"  ✓ Completed {len(operations)} transfers from {source_vial} using 1 tip")
     
     # PHASE 2: Batch all water additions from reservoir
     print("Phase 2: Water additions from reservoir")
@@ -486,7 +483,7 @@ def execute_batched_dilutions(lash_e, dilution_operations, tracking, surfactant_
             lash_e.nr_robot.move_vial_to_location(op['vial_name'], "clamp", 0)
             lash_e.nr_robot.dispense_into_vial_from_reservoir(1, op['vial_name'], op['water_volume'])
             logger.debug(f"Added {op['water_volume']:.3f} mL water to {op['vial_name']}")
-        print(f"  OK Completed water additions to {len(water_operations)} vials")
+        print(f"  ✓ Completed water additions to {len(water_operations)} vials")
 
     # PHASE 3: Vortex mixing for all created dilutions
     print("Phase 3: Vortex mixing for proper homogenization")
@@ -494,7 +491,7 @@ def execute_batched_dilutions(lash_e, dilution_operations, tracking, surfactant_
     for op in dilution_operations:
         lash_e.nr_robot.vortex_vial(vial_name=op['vial_name'], vortex_time=8, vortex_speed=80)
         logger.debug(f"Vortexed {op['vial_name']} for 8s at speed 80")
-    print(f"  OK Completed vortex mixing of {len(dilution_operations)} dilutions")
+    print(f"  ✓ Completed vortex mixing of {len(dilution_operations)} dilutions")
 
     # PHASE 4: Update tracking for all completed dilutions
     for op in dilution_operations:
@@ -519,7 +516,7 @@ def execute_batched_dilutions(lash_e, dilution_operations, tracking, surfactant_
     tips_saved = total_tips_old_method - total_tips_new_method
     
     logger.info(f"Batched dilution complete: {total_tips_new_method} tips used (saved {tips_saved} tips vs sequential method)")
-    print(f"OK Batched dilution complete: {total_tips_new_method} tips used (saved {tips_saved} tips)")
+    print(f"✓ Batched dilution complete: {total_tips_new_method} tips used (saved {tips_saved} tips)")
 
 def calculate_total_wells_needed():
     """Calculate total wells needed for the grid."""
@@ -671,7 +668,7 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
     
     # FIXED: Return vials in decreasing concentration order to match physical reality
     # Physical dilution creates: vial_0 = highest, vial_1 = 2nd highest, etc.
-    # This matches the actual serial dilution process (highest -> lowest)
+    # This matches the actual serial dilution process (highest → lowest)
     return dilution_vials, dilution_steps
 
 def check_measurement_interval(lash_e, current_well, wellplate_data, total_wells_added):
@@ -745,10 +742,10 @@ def backup_raw_measurement_data(measurement_entry, plate_number, wells_measured)
         with open(backup_path, 'w') as f:
             json.dump(backup_data, f, indent=2, default=str)  # default=str handles datetime objects
         
-        print(f"OK Backed up measurement data to: {backup_path}")
+        print(f"✓ Backed up measurement data to: {backup_path}")
         
     except Exception as e:
-        print(f"WARNING: Failed to backup measurement data: {e}")
+        print(f"⚠️ Warning: Failed to backup measurement data: {e}")
         # Don't crash the workflow if backup fails
 
 def backup_raw_cytation_data(raw_data, well_indices):
@@ -788,12 +785,12 @@ def backup_raw_cytation_data(raw_data, well_indices):
                 # If CSV fails entirely, just save the pickle
                 pass
         
-        print(f"SUCCESS: Raw Cytation data backed up to: {backup_path}")
+        print(f"✅ Raw Cytation data backed up to: {backup_path}")
         if os.path.exists(csv_path):
             print(f"   Human-readable version: {csv_path}")
         
     except Exception as e:
-        print(f"CRITICAL: Failed to backup raw Cytation data: {e}")
+        print(f"⚠️ CRITICAL: Failed to backup raw Cytation data: {e}")
         print(f"   This could result in permanent data loss if processing fails!")
 
 def recover_from_measurement_backups(backup_dir="output/measurement_backups"):
@@ -825,10 +822,10 @@ def recover_from_measurement_backups(backup_dir="output/measurement_backups"):
             
             measurement_entry = backup_data['measurement_entry']
             recovered_measurements.append(measurement_entry)
-            print(f"OK Recovered measurement from: {os.path.basename(backup_file)}")
+            print(f"✓ Recovered measurement from: {os.path.basename(backup_file)}")
             
         except Exception as e:
-            print(f"WARNING: Failed to recover from {backup_file}: {e}")
+            print(f"⚠️ Failed to recover from {backup_file}: {e}")
     
     print(f"Successfully recovered {len(recovered_measurements)} measurements")
     return recovered_measurements
@@ -861,11 +858,11 @@ def recover_raw_cytation_data(backup_dir="output/cytation_raw_backups"):
             recovered_data.append((backup_file, raw_df))
             
             basename = os.path.basename(backup_file)
-            print(f"  SUCCESS: Recovered: {basename}")
+            print(f"  ✅ Recovered: {basename}")
             print(f"     Shape: {raw_df.shape}, Columns: {len(raw_df.columns)}")
             
         except Exception as e:
-            print(f"  ERROR: Failed to recover {backup_file}: {e}")
+            print(f"  ❌ Failed to recover {backup_file}: {e}")
     
     print(f"Successfully recovered {len(recovered_data)} raw Cytation datasets")
     return recovered_data
@@ -916,14 +913,14 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a,
     logger.info(f"Starting grid pipetting: {len(concs_a)}x{len(concs_b)} grid with {N_REPLICATES} replicates each")
     
     well_counter = shared_wellplate_state.get('global_well_counter', 0)
-    well_map = []  # FIX: Fresh well map for each experiment (don't accumulate old mappings)
+    well_map = shared_wellplate_state.get('global_well_map', [])
     total_wells_added = shared_wellplate_state.get('total_wells_added', 0)
     
-    # Use existing wellplate tracking from shared state (but isolate measurements per experiment)
+    # Use existing wellplate tracking from shared state
     wellplate_data = {
         'current_plate': shared_wellplate_state.get('current_plate', 1),
         'wells_used': shared_wellplate_state.get('wells_used', 0),
-        'measurements': [],  # FIX: Fresh measurements list for each experiment
+        'measurements': shared_wellplate_state.get('measurements', []),
         'last_measured_well': shared_wellplate_state.get('last_measured_well', -1)
     }
     
@@ -983,16 +980,16 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a,
             actual_well = wells_in_batch[batch_idx]
             vial_a_groups[req['dilution_a_vial']].append((batch_idx, actual_well, req))
         
-        # Sort vial groups by concentration (low->high to prevent contamination)
+        # Sort vial groups by concentration (low→high to prevent contamination)
         # Handle None concentrations by treating them as 0
         sorted_vial_groups_a = sorted(vial_a_groups.items(), 
                                      key=lambda x: current_batch[x[1][0][0]]['conc_a'] or 0)
         
-        print(f"  Phase 1: Adding surfactant A (low->high concentration, grouped by vial)")
+        print(f"  Phase 1: Adding surfactant A (low→high concentration, grouped by vial)")
         for vial_name, well_list in sorted_vial_groups_a:
             print(f"    Using vial {vial_name} for {len(well_list)} wells")
             for batch_idx, actual_well, req in well_list:
-                volume_each = WELL_VOLUME_UL / 2000  # Convert uL to mL
+                volume_each = WELL_VOLUME_UL / 2000  # Convert μL to mL
                 
                 # Use safe location (handles vial movement properly)
                 lash_e.nr_robot.aspirate_from_vial(req['dilution_a_vial'], volume_each, liquid='water', use_safe_location=True)
@@ -1012,16 +1009,16 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a,
             actual_well = wells_in_batch[batch_idx]
             vial_b_groups[req['dilution_b_vial']].append((batch_idx, actual_well, req))
         
-        # Sort vial groups by concentration (low->high to prevent contamination)
+        # Sort vial groups by concentration (low→high to prevent contamination)
         # Handle None concentrations by treating them as 0
         sorted_vial_groups_b = sorted(vial_b_groups.items(), 
                                      key=lambda x: current_batch[x[1][0][0]]['conc_b'] or 0)
         
-        print(f"  Phase 2: Adding surfactant B (low->high concentration, grouped by vial)")
+        print(f"  Phase 2: Adding surfactant B (low→high concentration, grouped by vial)")
         for vial_name, well_list in sorted_vial_groups_b:
             print(f"    Using vial {vial_name} for {len(well_list)} wells")
             for batch_idx, actual_well, req in well_list:
-                volume_each = WELL_VOLUME_UL / 2000  # Convert uL to mL
+                volume_each = WELL_VOLUME_UL / 2000  # Convert μL to mL
                 
                 # Use safe location (handles vial movement properly)
                 lash_e.nr_robot.aspirate_from_vial(req['dilution_b_vial'], volume_each, liquid='water', use_safe_location=True)
@@ -1070,7 +1067,7 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a,
         wellplate_data['last_measured_well'] = wells_in_batch[-1]
         total_wells_added += len(current_batch)
         
-        print(f"  OK Completed batch with {len(current_batch)} wells using 2 tips")
+        print(f"  ✓ Completed batch with {len(current_batch)} wells using 2 tips")
     
     # Update shared state before returning
     updated_shared_state = {
@@ -1107,13 +1104,12 @@ def combine_measurement_data(well_map, wellplate_data):
         
         # Handle simulation mode where measurement_data might be None
         if measurement_data is None:
-            print(f"ERROR: No measurement data for wells {wells_measured} - measurement failed!")
-            continue  # FIX: Skip missing measurements instead of padding with 0.5
+            measurement_data = {'turbidity': [0.5] * len(wells_measured)}  # Mock data
         
         # Extract turbidity values for measured wells
         for batch_idx, well_idx in enumerate(wells_measured):
-            if batch_idx < len(well_map):  # FIX: Use batch position instead of absolute well number
-                well_info = well_map[batch_idx]  # FIX: Index by position, not well number
+            if well_idx < len(well_map):
+                well_info = well_map[well_idx]
                 # Find turbidity value for this well using batch position, not absolute well index
                 if batch_idx < len(measurement_data.get('turbidity', [])):
                     turbidity = measurement_data['turbidity'][batch_idx]
@@ -1163,7 +1159,7 @@ def create_output_folder(simulate=True):
 def create_concentration_grid_summary(concentrations, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name):
     """
     Create a text-based visual summary showing which concentration combinations are achievable.
-    Uses 'X' for achievable combinations and '.' for missing/non-achievable ones.
+    Uses 'X' for achievable combinations and '·' for missing/non-achievable ones.
     
     Args:
         concentrations: List of target concentrations
@@ -1178,7 +1174,7 @@ def create_concentration_grid_summary(concentrations, dilution_vials_a, dilution
     grid_lines = []
     grid_lines.append(f"CONCENTRATION GRID SUMMARY: {surfactant_a_name} + {surfactant_b_name}")
     grid_lines.append("=" * 60)
-    grid_lines.append("Legend: X = achievable combination, . = not achievable")
+    grid_lines.append("Legend: X = achievable combination, · = not achievable")
     grid_lines.append("")
     
     # Create header with surfactant B concentrations (columns)
@@ -1205,7 +1201,7 @@ def create_concentration_grid_summary(concentrations, dilution_vials_a, dilution
             if dilution_vials_a[i] is not None and dilution_vials_b[j] is not None:
                 symbol = "X"
             else:
-                symbol = "."
+                symbol = "·"
             row += f"{symbol:>12}"
         grid_lines.append(row)
     
@@ -1556,7 +1552,7 @@ def measure_turbidity(lash_e, well_indices):
         return processed_data
     
     except Exception as e:
-        print(f"CRITICAL: Failed to process measurement data: {e}")
+        print(f"⚠️  CRITICAL: Failed to process measurement data: {e}")
         print(f"Raw data structure: {type(raw_data)}")
         if hasattr(raw_data, 'columns'):
             print(f"Raw data columns: {raw_data.columns.tolist()}")
@@ -1565,7 +1561,7 @@ def measure_turbidity(lash_e, well_indices):
         print(f"   You can recover the data from output/cytation_raw_backups/")
         
         # Fallback: return mock data to prevent workflow crash
-        print(f"WARNING: Using fallback mock data to continue workflow...")
+        print(f"⚠️  Using fallback mock data to continue workflow...")
         return {'turbidity': [0.5] * len(well_indices)}
 
 def extract_turbidity_values(raw_data, well_indices):
@@ -1712,7 +1708,7 @@ def initialize_screening_session(simulate=True):
     }
     
     logger.info("Session initialization complete")
-    print("OK Session ready for surfactant combinations")
+    print("✓ Session ready for surfactant combinations")
     return lash_e, shared_substock_tracking, shared_wellplate_state
 
 def finalize_screening_session(lash_e, shared_wellplate_state):
@@ -1734,7 +1730,7 @@ def finalize_screening_session(lash_e, shared_wellplate_state):
     lash_e.nr_robot.move_home()
     
     logger.info(f"Session complete - used {shared_wellplate_state['total_plates_used']} total wellplates")
-    print(f"OK Session complete - {shared_wellplate_state['total_plates_used']} plates used")
+    print(f"✓ Session complete - {shared_wellplate_state['total_plates_used']} plates used")
 
 def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS", simulate=True, output_folder=None):
     """
@@ -1831,7 +1827,7 @@ def execute_single_combination(lash_e, surfactant_a_name, surfactant_b_name, sha
     plates_used_this_combo = updated_wellplate_state.get('plates_used_this_combo', 0)
     logger.info(f"Combination completed, plates used for this combination: {plates_used_this_combo}")
     
-    print(f"OK {surfactant_a_name}+{surfactant_b_name}: {len(results_df)} wells")
+    print(f"✓ {surfactant_a_name}+{surfactant_b_name}: {len(results_df)} wells")
     return results_df, all_measurements, plates_used_this_combo
 
 def run_all_surfactant_combinations(simulate=True):
@@ -1889,20 +1885,9 @@ def run_all_surfactant_combinations(simulate=True):
         
         print(f"\\nStarting comprehensive screening with shared session...")
         
-        # Filter experiments to run only 6-8 
-        START_EXPERIMENT = 6  # 0-based: experiment 6 = index 5   
-        END_EXPERIMENT = 8    # 0-based: experiment 8 = index 7
-        print(f"Running experiments {START_EXPERIMENT+1} to {END_EXPERIMENT+1} only")
-        
         for i, anionic in enumerate(anionic_surfactants):
             for j, cationic in enumerate(cationic_surfactants):
                 combo_num = i * len(cationic_surfactants) + j + 1
-                
-                # Skip experiments not in our target range
-                if combo_num < START_EXPERIMENT + 1 or combo_num > END_EXPERIMENT + 1:
-                    print(f"\\nSKIPPING combination {combo_num}: {anionic} + {cationic}")
-                    continue
-                    
                 print(f"\\n{'='*60}")
                 print(f"COMBINATION {combo_num}/{total_combinations}: {anionic} + {cationic}")
                 print(f"Current wellplate: {shared_wellplate_state['current_plate']}, wells used: {shared_wellplate_state['wells_used']}/96")
