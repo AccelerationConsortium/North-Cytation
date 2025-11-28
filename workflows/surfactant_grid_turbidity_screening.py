@@ -1112,23 +1112,34 @@ def combine_measurement_data(well_map, wellplate_data):
         
         # Extract turbidity values for measured wells
         for batch_idx, well_idx in enumerate(wells_measured):
-            if batch_idx < len(well_map):  # FIX: Use batch position instead of absolute well number
-                well_info = well_map[batch_idx]  # FIX: Index by position, not well number
-                # Find turbidity value for this well using batch position, not absolute well index
-                if batch_idx < len(measurement_data.get('turbidity', [])):
-                    turbidity = measurement_data['turbidity'][batch_idx]
-                    
-                    combined_results.append({
-                        'plate': plate_num,
-                        'well': well_idx,
-                        'surfactant_a': well_info['surfactant_a'],
-                        'surfactant_b': well_info['surfactant_b'],
-                        'conc_a_mm': well_info['conc_a_mm'],
-                        'conc_b_mm': well_info['conc_b_mm'],
-                        'replicate': well_info['replicate'],
-                        'turbidity': turbidity,
-                        'measurement_type': measurement.get('measurement_type', 'interval')
-                    })
+            # Find the well_info by matching the actual well number, not batch position
+            well_info = None
+            for well_entry in well_map:
+                if well_entry['well'] == well_idx:
+                    well_info = well_entry
+                    break
+            
+            if well_info is None:
+                print(f"ERROR: Could not find well info for well {well_idx} in well_map")
+                continue
+                
+            # Find turbidity value for this well using batch position in measurement data
+            if batch_idx < len(measurement_data.get('turbidity', [])):
+                turbidity = measurement_data['turbidity'][batch_idx]
+                
+                combined_results.append({
+                    'plate': plate_num,
+                    'well': well_idx,
+                    'surfactant_a': well_info['surfactant_a'],
+                    'surfactant_b': well_info['surfactant_b'],
+                    'conc_a_mm': well_info['conc_a_mm'],
+                    'conc_b_mm': well_info['conc_b_mm'],
+                    'replicate': well_info['replicate'],
+                    'turbidity': turbidity,
+                    'measurement_type': measurement.get('measurement_type', 'interval')
+                })
+            else:
+                print(f"ERROR: No turbidity data for well {well_idx} at batch position {batch_idx}")
     
     print(f"Combined {len(combined_results)} measurements from {len(wellplate_data['measurements'])} intervals")
     return pd.DataFrame(combined_results)

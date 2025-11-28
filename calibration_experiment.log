@@ -13747,3 +13747,171 @@ AssertionError: Parameter post_asp_air_vol not in dict_keys(['overaspirate_vol']
 
 2025-11-27 17:41:13,104 - __main__ - ERROR - Experiment failed: Parameter post_asp_air_vol not in dict_keys(['overaspirate_vol']).
 2025-11-27 17:41:13,104 - __main__ - ERROR - Check configuration and try again
+2025-11-28 13:06:57,170 - __main__ - INFO - Starting Universal Calibration System
+2025-11-28 13:06:57,170 - __main__ - INFO - Loading configuration from c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment_config.yaml
+2025-11-28 13:06:57,201 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-28 13:06:57,201 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:06:57,201 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:06:57,201 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-28 13:06:57,201 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-28 13:06:57,201 - __main__ - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:06:57,201 - __main__ - INFO - Execution mode: Hardware
+2025-11-28 13:06:57,201 - __main__ - INFO - Validating protocol interface...
+2025-11-28 13:06:57,201 - __main__ - INFO - Running in hardware mode
+2025-11-28 13:06:57,201 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-28 13:06:57,201 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:06:57,201 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1764353217
+2025-11-28 13:06:57,201 - __main__ - INFO - Starting experiment execution...
+2025-11-28 13:06:57,201 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-28 13:06:57,201 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-28 13:07:01,518 - calibration_modular_v2.experiment - ERROR - Protocol initialization failed: Hardware initialization failed: Read timeout
+2025-11-28 13:07:01,518 - calibration_modular_v2.experiment - ERROR - Error type: RuntimeError
+2025-11-28 13:07:01,518 - calibration_modular_v2.experiment - ERROR - Traceback:   File "c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment.py", line 398, in _initialize_protocol
+    self.protocol_state = self.protocol_module.initialize(config_dict)
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\calibration_protocol_hardware.py", line 96, in initialize
+    raise RuntimeError(f"Hardware initialization failed: {e}") from e
+
+2025-11-28 13:07:01,518 - calibration_modular_v2.experiment - ERROR - Experiment failed: Failed to initialize measurement protocol: Hardware initialization failed: Read timeout
+2025-11-28 13:07:01,518 - calibration_modular_v2.experiment - ERROR - Traceback (most recent call last):
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\calibration_protocol_hardware.py", line 70, in initialize
+    lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\master_usdl_coordinator.py", line 65, in __init__
+    self.nr_robot = North_Robot(c9, vial_file,simulate=simulate, logger=self.logger)
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\North_Safe.py", line 855, in __init__
+    self.reset_after_initialization() #Reset everything that may not be as desired, eg return to "Home"
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\North_Safe.py", line 1177, in reset_after_initialization
+    self.c9.open_clamp()
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\north\north_c9.py", line 844, in open_clamp
+    self.send_packet('CLMP', [0])
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\north\north_c9.py", line 504, in send_packet
+    raise error
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\north\north_c9.py", line 452, in send_packet
+    response_bytes = self.network.send(request_bytes, expect_response=expect_response)
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\north\north_c9.py", line 1575, in send
+    packet_len = self.network.read(1, self.TIMEOUT)
+  File "C:\Users\Imaging Controller\anaconda3\envs\north_env\lib\site-packages\ftdi_serial.py", line 596, in read
+    raise SerialReadTimeoutException('Read timeout')
+ftdi_serial.SerialReadTimeoutException: Read timeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment.py", line 398, in _initialize_protocol
+    self.protocol_state = self.protocol_module.initialize(config_dict)
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\calibration_protocol_hardware.py", line 96, in initialize
+    raise RuntimeError(f"Hardware initialization failed: {e}") from e
+RuntimeError: Hardware initialization failed: Read timeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment.py", line 320, in run
+    self._initialize_protocol()
+  File "c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment.py", line 407, in _initialize_protocol
+    raise RuntimeError(f"Failed to initialize measurement protocol: {e}") from e
+RuntimeError: Failed to initialize measurement protocol: Hardware initialization failed: Read timeout
+
+2025-11-28 13:07:01,518 - __main__ - ERROR - Experiment failed: Failed to initialize measurement protocol: Hardware initialization failed: Read timeout
+2025-11-28 13:07:01,518 - __main__ - ERROR - Check configuration and try again
+2025-11-28 13:07:25,189 - __main__ - INFO - Starting Universal Calibration System
+2025-11-28 13:07:25,189 - __main__ - INFO - Loading configuration from c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment_config.yaml
+2025-11-28 13:07:25,220 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-28 13:07:25,220 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:07:25,220 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:07:25,220 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-28 13:07:25,221 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-28 13:07:25,221 - __main__ - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:07:25,221 - __main__ - INFO - Execution mode: Hardware
+2025-11-28 13:07:25,221 - __main__ - INFO - Validating protocol interface...
+2025-11-28 13:07:25,221 - __main__ - INFO - Running in hardware mode
+2025-11-28 13:07:25,222 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-28 13:07:25,222 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:07:25,222 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1764353245
+2025-11-28 13:07:25,222 - __main__ - INFO - Starting experiment execution...
+2025-11-28 13:07:25,222 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-28 13:07:25,222 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-28 13:16:50,239 - __main__ - INFO - Starting Universal Calibration System
+2025-11-28 13:16:50,239 - __main__ - INFO - Loading configuration from c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment_config.yaml
+2025-11-28 13:16:50,261 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-28 13:16:50,261 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:16:50,261 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:16:50,261 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-28 13:16:50,261 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-28 13:16:50,261 - __main__ - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:16:50,261 - __main__ - INFO - Execution mode: Hardware
+2025-11-28 13:16:50,261 - __main__ - INFO - Validating protocol interface...
+2025-11-28 13:16:50,270 - __main__ - INFO - Running in hardware mode
+2025-11-28 13:16:50,270 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-28 13:16:50,271 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:16:50,271 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1764353810
+2025-11-28 13:16:50,271 - __main__ - INFO - Starting experiment execution...
+2025-11-28 13:16:50,272 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-28 13:16:50,272 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-28 13:17:38,462 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_hardware
+2025-11-28 13:17:38,462 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.025 mL (1/3) - Budget: 150 measurements
+2025-11-28 13:17:38,462 - calibration_modular_v2.experiment - INFO - Starting calibration for 25.0uL
+2025-11-28 13:17:38,462 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-28 13:17:38,462 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-28 13:17:38,462 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-28 13:17:38,462 - calibration_modular_v2.bayesian_recommender - INFO - Added protocol constraint: post_asp_air_vol + overaspirate_vol <= 0.175000
+2025-11-28 13:17:38,462 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 10 SOBOL trials
+2025-11-28 13:17:38,462 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 10 SOBOL trials -> Bayesian optimization
+2025-11-28 13:17:38,462 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-28 13:17:38,462 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol', 'pre_asp_air_vol']
+2025-11-28 13:17:38,462 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-28 13:17:38,462 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (10 trials)
+2025-11-28 13:17:38,498 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-28 13:17:38,498 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-28 13:19:17,830 - __main__ - INFO - Starting Universal Calibration System
+2025-11-28 13:19:17,830 - __main__ - INFO - Loading configuration from c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment_config.yaml
+2025-11-28 13:19:17,854 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-28 13:19:17,854 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:19:17,854 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:19:17,854 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-28 13:19:17,854 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-28 13:19:17,854 - __main__ - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:19:17,855 - __main__ - INFO - Execution mode: Hardware
+2025-11-28 13:19:17,855 - __main__ - INFO - Validating protocol interface...
+2025-11-28 13:19:17,855 - __main__ - INFO - Running in hardware mode
+2025-11-28 13:19:17,855 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-28 13:19:17,855 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:19:17,856 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1764353957
+2025-11-28 13:19:17,856 - __main__ - INFO - Starting experiment execution...
+2025-11-28 13:19:17,856 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-28 13:19:17,856 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-28 13:20:01,074 - __main__ - INFO - Starting Universal Calibration System
+2025-11-28 13:20:01,074 - __main__ - INFO - Loading configuration from c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment_config.yaml
+2025-11-28 13:20:01,097 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2025-11-28 13:20:01,097 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:20:01,097 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:20:01,097 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2025-11-28 13:20:01,097 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2025-11-28 13:20:01,099 - __main__ - INFO - Target volumes: [0.025, 0.01, 0.005] mL
+2025-11-28 13:20:01,099 - __main__ - INFO - Execution mode: Hardware
+2025-11-28 13:20:01,099 - __main__ - INFO - Validating protocol interface...
+2025-11-28 13:20:01,099 - __main__ - INFO - Running in hardware mode
+2025-11-28 13:20:01,100 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2025-11-28 13:20:01,100 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2025-11-28 13:20:01,100 - calibration_modular_v2.experiment - INFO - Output directory: output\calibration_v2_runs\run_1764354001
+2025-11-28 13:20:01,100 - __main__ - INFO - Starting experiment execution...
+2025-11-28 13:20:01,100 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2025-11-28 13:20:01,100 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2025-11-28 13:20:11,712 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_hardware
+2025-11-28 13:20:11,712 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.025 mL (1/3) - Budget: 150 measurements
+2025-11-28 13:20:11,712 - calibration_modular_v2.experiment - INFO - Starting calibration for 25.0uL
+2025-11-28 13:20:11,712 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2025-11-28 13:20:11,712 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2025-11-28 13:20:11,712 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2025-11-28 13:20:11,712 - calibration_modular_v2.bayesian_recommender - INFO - Added protocol constraint: post_asp_air_vol + overaspirate_vol <= 0.175000
+2025-11-28 13:20:11,712 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 10 SOBOL trials
+2025-11-28 13:20:11,712 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 10 SOBOL trials -> Bayesian optimization
+2025-11-28 13:20:11,712 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2025-11-28 13:20:11,712 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'retract_speed', 'blowout_vol', 'post_asp_air_vol', 'pre_asp_air_vol']
+2025-11-28 13:20:11,712 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2025-11-28 13:20:11,712 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (10 trials)
+2025-11-28 13:20:11,730 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2025-11-28 13:20:11,730 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2025-11-28 13:20:38,951 - calibration_modular_v2.analysis - INFO - High deviation (11.6% > 10.0%) - applying precision penalty: 100.0%
+2025-11-28 13:20:38,951 - calibration_modular_v2.experiment - ERROR - Experiment failed: 'TrialResult' object has no attribute 'absolute_deviation_pct'
+2025-11-28 13:20:42,023 - __main__ - ERROR - Experiment failed: 'TrialResult' object has no attribute 'absolute_deviation_pct'
+2025-11-28 13:20:42,023 - __main__ - ERROR - Check configuration and try again
