@@ -759,20 +759,19 @@ class North_Temp:
     t8 = None
     c8 = None
 
-    def __init__(self,c9,simulate = False, logger=None):
+    def __init__(self,c9,c8, simulate = False, logger=None):
         self.simulate = simulate
         self.c9 = c9
+        self.c8 = c8
         self.logger = logger
 
         self.logger.debug("Initializing temperature controller...")
 
         if not self.simulate:
             from north import NorthC9
-            self.t8 = NorthC9('B', network=c9.network)
-            self.c8 = NorthC9('D', network=c9.network)
+            self.t8 = NorthC9('B', network=c9.network)  
         else:
             self.t8 = MagicMock()
-            self.c8 = MagicMock()
     
     def autotune(self,target_temp,channel=0):
         self.logger.debug(f"Autotuning channel {channel} to target temperature {target_temp}C")
@@ -800,6 +799,40 @@ class North_Temp:
     def turn_off_stirring(self):
         self.logger.debug("Turning off stirring")
         self.c8.spin_axis(1,0)
+
+class North_Spin:
+    c8 = None
+    c9 = None
+    def __init__(self,c9,c8, simulate = False, logger=None):
+        self.simulate = simulate
+        self.c9 = c9
+        self.c8 = c8
+        self.logger = logger
+        self.logger.debug("Initializing centrifuge controller...")
+    
+    def set_speed(self,speed):
+        self.logger.debug(f"Setting centrifuge speed to {speed} RPM")
+        self.c8.spin_axis(3, speed)
+
+    def stop_spin(self):
+        self.logger.debug("Stopping centrifuge spin")
+        self.c8.spin_axis(3,0)
+
+    def open_lid(self):
+        self.logger.debug("Opening centrifuge lid")
+        self.c9.set_output(3, True)  # Open lid pneumatic
+
+    def close_lid(self):
+        self.logger.debug("Closing centrifuge lid")
+        self.c9.set_output(3, False)  # Close lid pneumatic
+
+    def turn_on_vacuum(self):
+        self.logger.debug("Turning on centrifuge vacuum")
+        self.c9.set_output(2, True)  # Turn on vacuum pneumatic
+
+    def turn_off_vacuum(self):
+        self.logger.debug("Turning off centrifuge vacuum")
+        self.c9.set_output(2, False)  # Turn off vacuum pneumatic
 
 class North_Robot(North_Base):
     """
@@ -837,9 +870,10 @@ class North_Robot(North_Base):
     # ====================================================================
     
     #Initialize the status of the robot. 
-    def __init__(self,c9,vial_file=None,simulate=False, logger=None):
+    def __init__(self,c9,c8,vial_file=None,simulate=False, logger=None):
 
         self.c9 = c9
+        self.c8 = c8
         self.logger = logger
         self.VIAL_FILE = vial_file #File that we save the vial data in 
         self.simulate = simulate

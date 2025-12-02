@@ -338,89 +338,19 @@ class CalibrationExperiment:
                 volume_result = self._calibrate_volume(target_volume_ml, volume_budget)
                 
                 # Optional: Final overaspirate calibration for first volume only
-                # Reuse existing two-point + inherited trial workflow (no subsequent optimization)
                 if (volume_index == 0 and 
                     self.config.is_first_volume_final_calibration_enabled() and
                     volume_result.optimal_parameters is not None):
                     
-                    logger.info("Running first volume final overaspirate calibration using two-point + inherited trial workflow...")
-                    
-                    # Store current state to restore later
-                    original_current_volume_index = self.current_volume_index
-                    original_volume_results = self.volume_results.copy()
-                    
-                    # Temporarily add the current volume result so _get_calibration_baseline_parameters can find the optimal parameters
-                    # This makes the two-point calibration use the optimized parameters instead of screening candidates
-                    self.volume_results.append(volume_result)
-                    
-                    # Run two-point constraint calibration followed by inherited trial
-                    try:
-                        # Run two-point constraint calibration using the optimized parameters
-                        constraint_update, two_point_trials = self._run_two_point_constraint_calibration(target_volume_ml, 10)  # Budget: 10 measurements for final calibration
-                        final_calibration_trials = two_point_trials.copy()
-                        
-                        # Run inherited trial to test the optimal overaspirate value
-                        if constraint_update:
-                            inherited_trial = self._run_inherited_trial(target_volume_ml, constraint_update)
-                            if inherited_trial:
-                                final_calibration_trials.append(inherited_trial)
-                        
-                        # Add final calibration trials to volume result and global trial list
-                        if final_calibration_trials:
-                            volume_result.trials.extend(final_calibration_trials)
-                            self.all_trials.extend(final_calibration_trials)
-                            logger.info(f"Added {len(final_calibration_trials)} final calibration trials (two-point + inherited)")
-                            
-                            # Update optimal parameters only if inherited trial was successful AND better than original
-                            if inherited_trial and self._is_trial_successful(inherited_trial, target_volume_ml):
-                                # Extract inherited trial accuracy - must have analysis.absolute_deviation_pct
-                                if not hasattr(inherited_trial.analysis, 'absolute_deviation_pct'):
-                                    logger.error("Inherited trial missing absolute_deviation_pct - cannot compare performance")
-                                    logger.info("Keeping original parameters due to comparison failure")
-                                    return
-                                    
-                                inherited_deviation_pct = inherited_trial.analysis.absolute_deviation_pct
-                                
-                                # Get original best trial accuracy - must exist and be valid
-                                original_deviation_pct = None
-                                if volume_result.best_trials:
-                                    best_trial = volume_result.best_trials[0]
-                                    if hasattr(best_trial.analysis, 'absolute_deviation_pct'):
-                                        original_deviation_pct = best_trial.analysis.absolute_deviation_pct
-                                        logger.info(f"Using best_trials[0] for comparison: {original_deviation_pct:.1f}% deviation")
-                                    else:
-                                        logger.error("Best trial missing absolute_deviation_pct attribute")
-                                else:
-                                    logger.error("No best_trials available in volume_result")
-                                
-                                # If we couldn't get original accuracy, don't proceed
-                                if original_deviation_pct is None:
-                                    logger.error("Cannot determine original trial accuracy - keeping original parameters")
-                                    logger.info("This indicates a data structure issue that should be investigated")
-                                    return
-                                
-                                logger.info(f"Performance comparison:")
-                                logger.info(f"  Original best: {original_deviation_pct:.1f}% deviation")  
-                                logger.info(f"  Final calibration: {inherited_deviation_pct:.1f}% deviation")
-                                
-                                if inherited_deviation_pct < original_deviation_pct:
-                                    # Inherited trial is better - update parameters
-                                    volume_result.optimal_parameters = inherited_trial.parameters
-                                    logger.info("Final calibration improved accuracy - parameters updated")
-                                    logger.info(f"Improvement: {original_deviation_pct - inherited_deviation_pct:.1f} percentage points better")
-                                else:
-                                    # Original was better - keep it
-                                    logger.info("Original optimization was better - keeping original parameters")
-                                    logger.info(f"Original better by: {inherited_deviation_pct - original_deviation_pct:.1f} percentage points")
-                            else:
-                                logger.info("Final calibration trial did not meet success criteria - keeping original parameters")
-                        
-                    except Exception as e:
-                        logger.warning(f"Final calibration failed: {e} - using original volume result")
-                    finally:
-                        # Restore original state
-                        self.current_volume_index = original_current_volume_index
-                        self.volume_results = original_volume_results
+                    logger.info("Running first volume final overaspirate calibration...")
+                    updated_volume_result = self._run_first_volume_final_overaspirate_calibration(
+                        volume_result, target_volume_ml
+                    )
+                    if updated_volume_result is not None:
+                        volume_result = updated_volume_result
+                        logger.info("First volume parameters updated with final calibration results")
+                    else:
+                        logger.warning("Final calibration failed - using original volume result")
                 
                 self.volume_results.append(volume_result)
                 
@@ -1552,3 +1482,133 @@ class CalibrationExperiment:
         
         logger.info(f"Constraint calibration results saved to: {calibration_file}")
     
+    def _run_first_volume_final_overaspirate_calibration(self, 
+                                                       volume_result: 'VolumeCalibrationResult',
+                                                       target_volume_ml: float) -> Optional['VolumeCalibrationResult']:
+        """
+        Run final 2-point overaspirate calibration on first volume to optimize volume accuracy.
+        
+        This uses the best optimized parameters from first volume optimization, tests 2 different
+        overaspirate values, calculates the linear efficiency relationship, and directly computes
+        the optimal overaspirate for exact target volume delivery.
+        
+        Args:
+            volume_result: Results from first volume optimization
+            target_volume_ml: Target volume (should match volume_result.target_volume_ml)
+            
+        Returns:
+            Updated volume_result with corrected optimal_parameters, or None if calibration fails
+        """
+        if not volume_result.optimal_parameters:
+            logger.warning("No optimal parameters found in volume result - skipping final calibration")
+            return volume_result
+        
+        logger.info(f"=" * 80)
+        logger.info(f"STARTING FIRST VOLUME FINAL OVERASPIRATE CALIBRATION")
+        logger.info(f"Target Volume: {target_volume_ml*1000:.1f}uL")
+        logger.info(f"Current Optimal Overaspirate: {volume_result.optimal_parameters.calibration.overaspirate_vol*1000:.1f}uL")
+        logger.info(f"=" * 80)
+        
+        # Check measurement budget
+        measurements_needed = 2
+        if self.total_measurements + measurements_needed > self.config.get_max_total_measurements():
+            logger.warning(f"Insufficient budget for final calibration ({measurements_needed} measurements needed)")
+            return volume_result
+        
+        try:
+            # Execute 2-point measurements using existing infrastructure
+            calibration_trials, _ = self._execute_two_point_measurement(
+                volume_result.optimal_parameters, 
+                target_volume_ml
+            )
+            
+            if len(calibration_trials) != 2:
+                logger.error(f"Expected 2 calibration trials, got {len(calibration_trials)}")
+                return volume_result
+            
+            # Extract measurement data from trials
+            trial_1 = calibration_trials[0]
+            trial_2 = calibration_trials[1]
+            
+            point_1_overaspirate_ml = trial_1.parameters.calibration.overaspirate_vol
+            point_1_measured_ml = trial_1.analysis.mean_volume_ml
+            
+            point_2_overaspirate_ml = trial_2.parameters.calibration.overaspirate_vol
+            point_2_measured_ml = trial_2.analysis.mean_volume_ml
+            
+            logger.info(f"Calibration measurements completed:")
+            logger.info(f"  Point 1: {point_1_overaspirate_ml*1000:.1f}uL overaspirate -> {point_1_measured_ml*1000:.1f}uL measured")
+            logger.info(f"  Point 2: {point_2_overaspirate_ml*1000:.1f}uL overaspirate -> {point_2_measured_ml*1000:.1f}uL measured")
+            
+            # Calculate linear efficiency (slope)
+            volume_diff_ul = (point_2_measured_ml - point_1_measured_ml) * 1000
+            overaspirate_diff_ul = (point_2_overaspirate_ml - point_1_overaspirate_ml) * 1000
+            
+            if abs(overaspirate_diff_ul) < 0.1:
+                logger.error(f"Overaspirate difference too small for reliable calculation: {overaspirate_diff_ul:.3f}uL")
+                return volume_result
+            
+            efficiency_ul_per_ul = volume_diff_ul / overaspirate_diff_ul
+            logger.info(f"Calculated efficiency: {efficiency_ul_per_ul:.3f}uL delivered per uL overaspirate")
+            
+            # Physics-based efficiency validation
+            if efficiency_ul_per_ul < 0.3 or efficiency_ul_per_ul > 1.5:
+                logger.warning(f"Efficiency ({efficiency_ul_per_ul:.3f}) outside realistic range [0.3-1.5] - possible measurement noise")
+                efficiency_ul_per_ul = max(0.3, min(1.5, efficiency_ul_per_ul))  # Clamp to realistic range
+                logger.warning(f"Clamped efficiency to: {efficiency_ul_per_ul:.3f}uL/uL")
+            
+            # Calculate optimal overaspirate for exact target volume
+            # Linear relationship: measured_volume = ref_volume + efficiency * (overaspirate - ref_overaspirate)
+            # Solve for target: target_volume = ref_volume + efficiency * (optimal_overaspirate - ref_overaspirate)
+            # optimal_overaspirate = ref_overaspirate + (target_volume - ref_volume) / efficiency
+            
+            ref_overaspirate_ul = point_1_overaspirate_ml * 1000
+            ref_volume_ul = point_1_measured_ml * 1000
+            target_volume_ul = target_volume_ml * 1000
+            
+            volume_adjustment_needed_ul = target_volume_ul - ref_volume_ul
+            overaspirate_adjustment_needed_ul = volume_adjustment_needed_ul / efficiency_ul_per_ul
+            optimal_overaspirate_ul = ref_overaspirate_ul + overaspirate_adjustment_needed_ul
+            optimal_overaspirate_ml = optimal_overaspirate_ul / 1000
+            
+            logger.info(f"Volume adjustment calculation:")
+            logger.info(f"  Target: {target_volume_ul:.1f}uL, Current: {ref_volume_ul:.1f}uL")
+            logger.info(f"  Need: {volume_adjustment_needed_ul:+.1f}uL volume change")
+            logger.info(f"  Need: {overaspirate_adjustment_needed_ul:+.1f}uL overaspirate change")
+            logger.info(f"  Optimal overaspirate: {optimal_overaspirate_ul:.1f}uL")
+            
+            # Create updated parameters with optimal overaspirate
+            from .data_structures import PipettingParameters, CalibrationParameters
+            updated_optimal_parameters = PipettingParameters(
+                calibration=CalibrationParameters(overaspirate_vol=optimal_overaspirate_ml),
+                hardware=volume_result.optimal_parameters.hardware  # Keep same hardware parameters
+            )
+            
+            # Update volume result with corrected parameters
+            updated_volume_result = VolumeCalibrationResult(
+                target_volume_ml=volume_result.target_volume_ml,
+                trials=volume_result.trials + calibration_trials,  # Include final calibration trials
+                best_trials=volume_result.best_trials,  # Keep original best trials for reference
+                optimal_parameters=updated_optimal_parameters,  # Use corrected parameters
+                statistics=volume_result.statistics,
+                duration_s=volume_result.duration_s + sum(trial.analysis.mean_duration_s for trial in calibration_trials),
+                measurement_count=volume_result.measurement_count + len([m for trial in calibration_trials for m in trial.measurements])
+            )
+            
+            # Update global measurement count
+            self.total_measurements += measurements_needed
+            
+            logger.info(f"=" * 80)
+            logger.info(f"FINAL OVERASPIRATE CALIBRATION COMPLETE")
+            logger.info(f"Original overaspirate: {volume_result.optimal_parameters.calibration.overaspirate_vol*1000:.1f}uL")
+            logger.info(f"Optimal overaspirate: {optimal_overaspirate_ul:.1f}uL")
+            logger.info(f"Adjustment: {(optimal_overaspirate_ml - volume_result.optimal_parameters.calibration.overaspirate_vol)*1000:+.1f}uL")
+            logger.info(f"Expected volume improvement: {volume_adjustment_needed_ul:+.1f}uL")
+            logger.info(f"=" * 80)
+            
+            return updated_volume_result
+            
+        except Exception as e:
+            logger.error(f"Final overaspirate calibration failed: {e}")
+            logger.error(traceback.format_exc())
+            return volume_result  # Return original result on failure

@@ -22,8 +22,8 @@ volumes:
 
 # Global Resource Limits
 budget:
-  max_total_measurements: 200           # Hard limit across entire experiment (increased for 6 volumes)
-  max_measurements_first_volume: 150     # Dedicated budget for first volume
+  max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
+  max_measurements_first_volume: 76     # Dedicated budget for first volume
 
 # Execution Mode
 execution:
@@ -32,7 +32,7 @@ execution:
 
 # Output Configuration
 output:
-  base_directory: "output/"  # Root directory for results
+  base_directory: "output/calibration_v2_runs"  # Root directory for results
   save_raw_measurements: true           # Include individual measurement data
   generate_plots: true                  # Create visualization plots
   export_optimal_conditions: true      # Generate optimal_conditions.csv
@@ -190,11 +190,6 @@ optimization:
       - "overaspirate_vol"
     carry_optimizer_state: false       # Maintain optimizer state across volumes (advanced)
     
-  # Final overaspirate calibration for first volume
-  first_volume_final_calibration:
-    enabled: true                      # Run 2-point calibration after first volume optimization to fine-tune overaspirate
-    description: "Performs final 2-point overaspirate calibration on first volume before proceeding to next volume"
-    
   # LLM-based optimization suggestions (experimental feature)
   llm_optimization:
     enabled: false                      # Use LLM suggestions for Bayesian optimization
@@ -202,12 +197,12 @@ optimization:
     
   # Stopping criteria (measurement-based)
   stopping_criteria:
-    min_good_trials: 10                  # Stop after this many "good" parameter sets
+    min_good_trials: 15                  # Stop after this many "good" parameter sets
 
 # Screening Phase (Initial Exploration)
 screening:
   # Manual screening trials (when external data not available)
-  num_trials: 15                         # Number of exploratory trials if no external data
+  num_trials: 10                         # Number of exploratory trials if no external data
   
   # LLM-based screening (separate from optimization LLM)
   use_llm_suggestions: false             # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)

@@ -132,8 +132,8 @@ class ConstraintCalibrator:
         
         if slope < min_efficiency or slope > max_efficiency:
             logger.warning(f"Unrealistic efficiency detected ({slope:.3f}uL/uL) - likely due to measurement noise")
-            logger.warning(f"Point 1: {low_point.overaspirate_vol_ml*1000:.1f}uL → {low_point.measured_volume_ml*1000:.1f}uL")
-            logger.warning(f"Point 2: {high_point.overaspirate_vol_ml*1000:.1f}uL → {high_point.measured_volume_ml*1000:.1f}uL")
+            logger.warning(f"Point 1: {low_point.overaspirate_vol_ml*1000:.1f}uL -> {low_point.measured_volume_ml*1000:.1f}uL")
+            logger.warning(f"Point 2: {high_point.overaspirate_vol_ml*1000:.1f}uL -> {high_point.measured_volume_ml*1000:.1f}uL")
             
             # Clamp to physically realistic range
             original_slope = slope

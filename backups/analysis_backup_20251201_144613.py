@@ -163,18 +163,10 @@ class CalibrationAnalyzer:
             stdev_volume_ml = 0.0
             cv_volume_pct = 0.0
         
-        # Accuracy calculation - use average absolute deviation across all replicates
-        # This properly accounts for individual measurement scatter, not just mean vs target
-        if target_volume_ml > 0:
-            individual_deviations_pct = [abs(vol - target_volume_ml) / target_volume_ml * 100 for vol in volumes_ml]
-            absolute_deviation_pct = statistics.mean(individual_deviations_pct)
-            # Keep the mean-based deviation for compatibility/logging
-            deviation_ml = mean_volume_ml - target_volume_ml
-            deviation_pct = (deviation_ml / target_volume_ml) * 100
-        else:
-            deviation_ml = 0.0
-            deviation_pct = 0.0
-            absolute_deviation_pct = 0.0
+        # Accuracy calculation
+        deviation_ml = mean_volume_ml - target_volume_ml
+        deviation_pct = (deviation_ml / target_volume_ml) * 100 if target_volume_ml > 0 else 0
+        absolute_deviation_pct = abs(deviation_pct)
         
         # Apply precision penalty for high deviation (like calibration_sdl_simplified)
         deviation_threshold_pct = getattr(self.config, 'deviation_threshold_pct', 10.0)

@@ -72,10 +72,9 @@ class ExperimentConfig:
     convenient access to all configuration values.
     """
     
-    def __init__(self, config_dict: Dict[str, Any], config_path: Optional[str] = None):
+    def __init__(self, config_dict: Dict[str, Any]):
         """Initialize from configuration dictionary."""
         self._config = config_dict
-        self._config_path = config_path  # Store config file path for relative path resolution
         self._validate_config()
     
     @classmethod
@@ -88,7 +87,7 @@ class ExperimentConfig:
         with open(path, 'r') as f:
             config_dict = yaml.safe_load(f)
             
-        return cls(config_dict, str(path.absolute()))
+        return cls(config_dict)
     
     def _validate_config(self):
         """Validate required configuration sections and values."""
@@ -418,17 +417,8 @@ class ExperimentConfig:
     
     # Output configuration
     def get_output_directory(self) -> str:
-        """Get base output directory, resolved relative to config file location."""
-        base_directory = self._config.get('output', {}).get('base_directory', 'output/calibration_v2_runs')
-        
-        # If we have a config file path, make base_directory relative to it
-        if self._config_path:
-            config_dir = Path(self._config_path).parent
-            resolved_path = config_dir / base_directory
-            return str(resolved_path.absolute())
-        else:
-            # Fallback to relative path (for programmatically created configs)
-            return base_directory
+        """Get base output directory."""
+        return self._config.get('output', {}).get('base_directory', 'output/calibration_v2_runs')
     
     def should_save_raw_measurements(self) -> bool:
         """Check if raw measurements should be saved."""

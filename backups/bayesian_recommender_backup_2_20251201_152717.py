@@ -586,8 +586,7 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         num_initial_trials=sobol_count,
         target_volume_ml=target_volume_ml,
         experiment_config=config,
-        protocol=protocol_instance,  # Pass protocol for constraints
-        min_good_trials=config.get_min_good_trials()  # Use configured value instead of default
+        protocol=protocol_instance  # Pass protocol for constraints
     )
     
     return AxBayesianOptimizer(optimization_config)
