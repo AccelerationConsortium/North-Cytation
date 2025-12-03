@@ -267,6 +267,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         if lash_e:
             try:
                 # Move robot to safe position
+                lash_e.nr_robot.remove_pipet()
+                lash_e.nr_robot.return_vial_home(state['measurement_vial'])
                 lash_e.nr_robot.move_home()
                 
                 print(f"✅ Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")

@@ -383,6 +383,10 @@ class ExperimentConfig:
         """Check if final overaspirate calibration is enabled for first volume."""
         return self._config.get('optimization', {}).get('first_volume_final_calibration', {}).get('enabled', False)
     
+    def should_skip_final_calibration_if_good_trial(self) -> bool:
+        """Check if final calibration should be skipped when current best trial is already good."""
+        return self._config.get('optimization', {}).get('first_volume_final_calibration', {}).get('skip_if_good_trial', True)
+    
     # External data (now under screening section)
     def is_external_data_enabled(self) -> bool:
         """Check if external data integration is enabled."""

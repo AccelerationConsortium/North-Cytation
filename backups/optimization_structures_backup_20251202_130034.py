@@ -62,7 +62,6 @@ class OptimizationTrial:
     """Single trial result for optimization feedback."""
     parameters: PipettingParameters
     objectives: OptimizationObjectives
-    measurement_count: int = 1  # Number of measurements in this trial
     trial_index: Optional[int] = None
     strategy: str = "optimization"  # "screening" or "optimization" 
     liquid: str = "water"  # Liquid being pipetted
@@ -126,7 +125,8 @@ class OptimizationConfig:
     bayesian_batch_size: int = 1     # Parallel suggestions
     random_seed: int = 42
     
-    # Stopping criteria - ONLY min_good_trials, measurement budget handled elsewhere
+    # Stopping criteria
+    max_trials: int = 20
     min_good_trials: int = 3  # Default changed to match common config usage
     
     # Objective thresholds (for "good" trial evaluation)
@@ -142,6 +142,8 @@ class OptimizationConfig:
         """Validate configuration."""
         if self.num_initial_trials < 0:
             raise ValueError("num_initial_trials must be non-negative")
+        if self.max_trials <= 0:
+            raise ValueError("max_trials must be positive")
         if self.min_good_trials <= 0:
             raise ValueError("min_good_trials must be positive")
 
@@ -176,10 +178,6 @@ class OptimizationState:
     
     def _is_good_trial(self, trial: OptimizationTrial, config: OptimizationConfig) -> bool:
         """Check if trial meets volume-specific tolerance thresholds."""
-        # Exclude single-measurement trials (precision cannot be reliably assessed)
-        if trial.measurement_count < 2:  # Need at least 2 measurements for meaningful precision
-            return False
-        
         # Use volume-specific tolerance instead of hardcoded threshold
         target_volume_ml = getattr(config, 'target_volume_ml', 0.05)  # Default to 50uL if not set
         
@@ -204,7 +202,9 @@ class OptimizationState:
         if len(self.good_trials) >= config.min_good_trials:
             self.is_converged = True
             self.convergence_reason = f"Found {len(self.good_trials)} good trials"
-        # max_trials check removed - measurement budget system handles stopping
+        elif len(self.trials) >= config.max_trials:
+            self.is_converged = True  
+            self.convergence_reason = f"Reached maximum {config.max_trials} trials"
     
     def get_summary(self) -> Dict[str, Any]:
         """Get optimization summary with dynamically calculated best trial."""
@@ -279,16 +279,12 @@ class OptimizationState:
         print("TOP TRIALS RANKED BY SDL SCORE (End of Optimization)")
         print(f"{'='*60}")
         
-        # Calculate scores for all trials, excluding penalty precision trials and single-replicate trials
+        # Calculate scores for all trials, excluding penalty precision trials
         trial_scores = []
         for i, trial in enumerate(self.trials):
             # Exclude trials with 100% precision (penalty values)
             if trial.objectives.precision >= 99.9:  # Allow for floating point precision
                 continue  # Skip penalty trials from ranking
-                
-            # Exclude single-replicate trials from ranking display (precision cannot be reliably assessed)
-            if trial.measurement_count < 2:  # Need at least 2 measurements for meaningful precision
-                continue  # Skip single-measurement trials from ranking
                 
             score = self._calculate_sdl_simplified_score(trial, config)
             trial_scores.append((i + 1, trial, score))
@@ -376,7 +372,7 @@ if __name__ == "__main__":
     objectives = OptimizationObjectives(accuracy=5.2, precision=3.1, time=45.0)
     
     # Create test trial
-    trial = OptimizationTrial(parameters=pipetting_params, objectives=objectives, measurement_count=3, trial_index=1)
+    trial = OptimizationTrial(parameters=pipetting_params, objectives=objectives, trial_index=1)
     
     # Create constraints
     constraints = OptimizationConstraints(

@@ -18,12 +18,12 @@ experiment:
 
 # Target Volumes (in mL)
 volumes:
-  targets_ml: [0.025, 0.01, 0.005]       # Test with 3 volumes for faster debugging
+  targets_ml: [0.05, 0.1, 0.025]       # Test with 3 volumes for faster debugging
 
 # Global Resource Limits
 budget:
-  max_total_measurements: 200           # Hard limit across entire experiment (increased for 6 volumes)
-  max_measurements_first_volume: 150     # Dedicated budget for first volume
+  max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
+  max_measurements_first_volume: 60     # Dedicated budget for first volume
 
 # Execution Mode
 execution:
@@ -61,6 +61,7 @@ calibration_parameters:
     type: "float"                       # Parameter type for optimizer
     description: "Overaspiration volume for volume accuracy (mL)"
     volume_dependent: true              # Re-optimized for each volume
+    round_to_nearest: 0.001             # Round to nearest 1 µL
 
 hardware_parameters:
   # Optional hardware-specific parameters
@@ -74,6 +75,7 @@ hardware_parameters:
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Aspiration speed (relative units)"
+    round_to_nearest: 1                 # Round to nearest integer
     
   dispense_speed:
     bounds: [5, 25] 
@@ -81,6 +83,7 @@ hardware_parameters:
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Dispense speed (relative units)"
+    round_to_nearest: 1                 # Round to nearest integer
     
   aspirate_wait_time:
     bounds: [0.0, 2.0]
@@ -88,6 +91,7 @@ hardware_parameters:
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after aspiration (seconds)"
+    round_to_nearest: 0.1               # Round to nearest 0.1 seconds
     
   # dispense_wait_time:
   #   bounds: [0.0, 2.0]
@@ -102,6 +106,7 @@ hardware_parameters:
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Minimal timing impact
     description: "Tip retract speed (relative units)"
+    round_to_nearest: 0.1               # Round to nearest 0.1 units
     
   blowout_vol:
     bounds: [0.0, 0.3]
@@ -110,6 +115,7 @@ hardware_parameters:
     time_affecting: false               # Volume parameter, not timing
     description: "Blowout volume (mL)"
     volume_dependent: true              # Re-optimized for each volume
+    round_to_nearest: 0.001             # Round to nearest 1 µL
     
   post_asp_air_vol:
     bounds: [0.0, 0.1]
@@ -117,6 +123,7 @@ hardware_parameters:
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Post-aspiration air volume (mL)"
+    round_to_nearest: 0.001             # Round to nearest 1 µL
 
   pre_asp_air_vol:
     bounds: [0.0, 0.1]
@@ -124,6 +131,7 @@ hardware_parameters:
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Pre-aspiration air volume (mL)"
+    round_to_nearest: 0.001             # Round to nearest 1 µL
 
 # Volume Tolerance Ranges (matches original system VOLUME_TOLERANCE_RANGES)
 tolerances:
@@ -159,7 +167,7 @@ adaptive_measurement:
   enabled: true                         # Use conditional replicates
   deviation_threshold_pct: 10.0         # Threshold for running additional replicates
   base_replicates: 1                    # Initial measurement count
-  additional_replicates: 4              # Extra replicates for good accuracy
+  additional_replicates: 2              # Extra replicates for good accuracy
   penalty_variability_pct: 100.0        # Penalty for poor single measurements
   
 # Multi-Objective Optimization
@@ -193,6 +201,7 @@ optimization:
   # Final overaspirate calibration for first volume
   first_volume_final_calibration:
     enabled: true                      # Run 2-point calibration after first volume optimization to fine-tune overaspirate
+    skip_if_good_trial: true           # Skip final calibration if current best trial already meets success criteria
     description: "Performs final 2-point overaspirate calibration on first volume before proceeding to next volume"
     
   # LLM-based optimization suggestions (experimental feature)
@@ -202,12 +211,12 @@ optimization:
     
   # Stopping criteria (measurement-based)
   stopping_criteria:
-    min_good_trials: 10                  # Stop after this many "good" parameter sets
+    min_good_trials: 5                  # Stop after this many "good" parameter sets
 
 # Screening Phase (Initial Exploration)
 screening:
   # Manual screening trials (when external data not available)
-  num_trials: 15                         # Number of exploratory trials if no external data
+  num_trials: 10                         # Number of exploratory trials if no external data
   
   # LLM-based screening (separate from optimization LLM)
   use_llm_suggestions: false             # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)

@@ -406,105 +406,89 @@ class CalibrationExperiment:
                 volume_result = self._calibrate_volume(target_volume_ml, volume_budget)
                 
                 # Optional: Final overaspirate calibration for first volume only
-                # Skip if we already have a good trial - no point in extra calibration
+                # Reuse existing two-point + inherited trial workflow (no subsequent optimization)
                 if (volume_index == 0 and 
                     self.config.is_first_volume_final_calibration_enabled() and
                     volume_result.optimal_parameters is not None):
                     
-                    # Check if current best trial is already good - skip extra calibration if so
-                    current_best_is_good = False
-                    if volume_result.best_trials and self.config.should_skip_final_calibration_if_good_trial():
-                        current_best_trial = volume_result.best_trials[0]
-                        # Convert to TrialResult format to check if it's successful
-                        current_best_is_good = self._is_trial_successful(current_best_trial, target_volume_ml)
+                    logger.info("Running first volume final overaspirate calibration using two-point + inherited trial workflow...")
+                    
+                    # Store current state to restore later
+                    original_current_volume_index = self.current_volume_index
+                    original_volume_results = self.volume_results.copy()
+                    
+                    # Temporarily add the current volume result so _get_calibration_baseline_parameters can find the optimal parameters
+                    # This makes the two-point calibration use the optimized parameters instead of screening candidates
+                    self.volume_results.append(volume_result)
+                    
+                    # Run two-point constraint calibration followed by inherited trial
+                    try:
+                        # Run two-point constraint calibration using the optimized parameters
+                        constraint_update, two_point_trials = self._run_two_point_constraint_calibration(target_volume_ml, 10)  # Budget: 10 measurements for final calibration
+                        final_calibration_trials = two_point_trials.copy()
                         
-                    if current_best_is_good:
-                        logger.info("Skipping first volume final calibration - current best trial already meets success criteria")
-                        logger.info(f"Current best: {current_best_trial.analysis.absolute_deviation_pct:.1f}% deviation, "
-                                   f"{current_best_trial.analysis.cv_volume_pct:.1f}% CV")
-                    else:
-                        logger.info("Running first volume final overaspirate calibration using two-point + inherited trial workflow...")
-                        if current_best_is_good is False and volume_result.best_trials:
-                            logger.info("Current best trial doesn't meet success criteria - attempting refinement")
-                        else:
-                            logger.info("No good trials found - attempting final calibration")
+                        # Run inherited trial to test the optimal overaspirate value
+                        if constraint_update:
+                            inherited_trial = self._run_inherited_trial(target_volume_ml, constraint_update)
+                            if inherited_trial:
+                                final_calibration_trials.append(inherited_trial)
                         
-                        # Store current state to restore later
-                        original_current_volume_index = self.current_volume_index
-                        original_volume_results = self.volume_results.copy()
-                        
-                        # Temporarily add the current volume result so _get_calibration_baseline_parameters can find the optimal parameters
-                        # This makes the two-point calibration use the optimized parameters instead of screening candidates
-                        self.volume_results.append(volume_result)
-                        
-                        # Run two-point constraint calibration followed by inherited trial
-                        try:
-                            # Run two-point constraint calibration using the optimized parameters
-                            constraint_update, two_point_trials = self._run_two_point_constraint_calibration(target_volume_ml, 10)  # Budget: 10 measurements for final calibration
-                            final_calibration_trials = two_point_trials.copy()
+                        # Add final calibration trials to volume result and global trial list
+                        if final_calibration_trials:
+                            volume_result.trials.extend(final_calibration_trials)
+                            self.all_trials.extend(final_calibration_trials)
+                            logger.info(f"Added {len(final_calibration_trials)} final calibration trials (two-point + inherited)")
                             
-                            # Run inherited trial to test the optimal overaspirate value
-                            if constraint_update:
-                                inherited_trial = self._run_inherited_trial(target_volume_ml, constraint_update)
-                                if inherited_trial:
-                                    final_calibration_trials.append(inherited_trial)
-                            
-                            # Add final calibration trials to volume result and global trial list
-                            if final_calibration_trials:
-                                volume_result.trials.extend(final_calibration_trials)
-                                self.all_trials.extend(final_calibration_trials)
-                                logger.info(f"Added {len(final_calibration_trials)} final calibration trials (two-point + inherited)")
+                            # Update optimal parameters only if inherited trial was successful AND better than original
+                            if inherited_trial and self._is_trial_successful(inherited_trial, target_volume_ml):
+                                # Extract inherited trial accuracy - must have analysis.absolute_deviation_pct
+                                if not hasattr(inherited_trial.analysis, 'absolute_deviation_pct'):
+                                    logger.error("Inherited trial missing absolute_deviation_pct - cannot compare performance")
+                                    logger.info("Keeping original parameters due to comparison failure")
+                                    return
+                                    
+                                inherited_deviation_pct = inherited_trial.analysis.absolute_deviation_pct
                                 
-                                # Update optimal parameters only if inherited trial was successful AND better than original
-                                if inherited_trial and self._is_trial_successful(inherited_trial, target_volume_ml):
-                                    # Extract inherited trial accuracy - must have analysis.absolute_deviation_pct
-                                    if not hasattr(inherited_trial.analysis, 'absolute_deviation_pct'):
-                                        logger.error("Inherited trial missing absolute_deviation_pct - cannot compare performance")
-                                        logger.info("Keeping original parameters due to comparison failure")
-                                        return
-                                        
-                                    inherited_deviation_pct = inherited_trial.analysis.absolute_deviation_pct
-                                
-                                    # Get original best trial accuracy - must exist and be valid
-                                    original_deviation_pct = None
-                                    if volume_result.best_trials:
-                                        best_trial = volume_result.best_trials[0]
-                                        if hasattr(best_trial.analysis, 'absolute_deviation_pct'):
-                                            original_deviation_pct = best_trial.analysis.absolute_deviation_pct
-                                            logger.info(f"Using best_trials[0] for comparison: {original_deviation_pct:.1f}% deviation")
-                                        else:
-                                            logger.error("Best trial missing absolute_deviation_pct attribute")
+                                # Get original best trial accuracy - must exist and be valid
+                                original_deviation_pct = None
+                                if volume_result.best_trials:
+                                    best_trial = volume_result.best_trials[0]
+                                    if hasattr(best_trial.analysis, 'absolute_deviation_pct'):
+                                        original_deviation_pct = best_trial.analysis.absolute_deviation_pct
+                                        logger.info(f"Using best_trials[0] for comparison: {original_deviation_pct:.1f}% deviation")
                                     else:
-                                        logger.error("No best_trials available in volume_result")
-                                    
-                                    # If we couldn't get original accuracy, don't proceed
-                                    if original_deviation_pct is None:
-                                        logger.error("Cannot determine original trial accuracy - keeping original parameters")
-                                        logger.info("This indicates a data structure issue that should be investigated")
-                                        return
-                                    
-                                    logger.info(f"Performance comparison:")
-                                    logger.info(f"  Original best: {original_deviation_pct:.1f}% deviation")  
-                                    logger.info(f"  Final calibration: {inherited_deviation_pct:.1f}% deviation")
-                                    
-                                    if inherited_deviation_pct < original_deviation_pct:
-                                        # Inherited trial is better - update parameters
-                                        volume_result.optimal_parameters = inherited_trial.parameters
-                                        logger.info("Final calibration improved accuracy - parameters updated")
-                                        logger.info(f"Improvement: {original_deviation_pct - inherited_deviation_pct:.1f} percentage points better")
-                                    else:
-                                        # Original was better - keep it
-                                        logger.info("Original optimization was better - keeping original parameters")
-                                        logger.info(f"Original better by: {inherited_deviation_pct - original_deviation_pct:.1f} percentage points")
+                                        logger.error("Best trial missing absolute_deviation_pct attribute")
                                 else:
-                                    logger.info("Final calibration trial did not meet success criteria - keeping original parameters")
-                            
-                        except Exception as e:
-                            logger.warning(f"Final calibration failed: {e} - using original volume result")
-                        finally:
-                            # Restore original state
-                            self.current_volume_index = original_current_volume_index
-                            self.volume_results = original_volume_results
+                                    logger.error("No best_trials available in volume_result")
+                                
+                                # If we couldn't get original accuracy, don't proceed
+                                if original_deviation_pct is None:
+                                    logger.error("Cannot determine original trial accuracy - keeping original parameters")
+                                    logger.info("This indicates a data structure issue that should be investigated")
+                                    return
+                                
+                                logger.info(f"Performance comparison:")
+                                logger.info(f"  Original best: {original_deviation_pct:.1f}% deviation")  
+                                logger.info(f"  Final calibration: {inherited_deviation_pct:.1f}% deviation")
+                                
+                                if inherited_deviation_pct < original_deviation_pct:
+                                    # Inherited trial is better - update parameters
+                                    volume_result.optimal_parameters = inherited_trial.parameters
+                                    logger.info("Final calibration improved accuracy - parameters updated")
+                                    logger.info(f"Improvement: {original_deviation_pct - inherited_deviation_pct:.1f} percentage points better")
+                                else:
+                                    # Original was better - keep it
+                                    logger.info("Original optimization was better - keeping original parameters")
+                                    logger.info(f"Original better by: {inherited_deviation_pct - original_deviation_pct:.1f} percentage points")
+                            else:
+                                logger.info("Final calibration trial did not meet success criteria - keeping original parameters")
+                        
+                    except Exception as e:
+                        logger.warning(f"Final calibration failed: {e} - using original volume result")
+                    finally:
+                        # Restore original state
+                        self.current_volume_index = original_current_volume_index
+                        self.volume_results = original_volume_results
                 
                 self.volume_results.append(volume_result)
                 
@@ -688,19 +672,11 @@ class CalibrationExperiment:
         all_volume_trials = screening_trials + two_point_trials + inherited_trials + optimization_trials
         self.all_trials.extend(all_volume_trials)
         
-        # Analyze results - if inherited trial succeeded, use it as optimal but show optimization best in logs
+        # Analyze results - if inherited trial succeeded, use it as the only best trial
         if inherited_trial and self._is_trial_successful(inherited_trial, target_volume_ml):
             logger.info("Using successful inherited trial as optimal result")
             best_trials = [inherited_trial]
             optimal_parameters = inherited_trial.parameters
-            
-            # However, for logging accuracy, show what the optimization actually found as best
-            if optimization_trials:
-                optimization_best = self.analyzer.find_best_trials(optimization_trials, max_results=1)
-                if optimization_best:
-                    logger.info(f"[DISPLAY CONTEXT] Best optimization trial was: "
-                               f"{optimization_best[0].analysis.absolute_deviation_pct:.1f}% deviation, "
-                               f"{optimization_best[0].analysis.cv_volume_pct:.1f}% CV")
         else:
             # Standard analysis for failed inherited trial or when no inherited trial
             best_trials = self.analyzer.find_best_trials(all_volume_trials, max_results=5)
@@ -903,8 +879,7 @@ class CalibrationExperiment:
         fixed_params = {}
         if not is_first_volume and self.config.is_transfer_learning_enabled():
             # For subsequent volumes, fix non-volume-dependent parameters
-            # Get volume-dependent parameters from config instead of hardcoding
-            volume_dependent_params = self.config.get_volume_dependent_parameters()
+            volume_dependent_params = ["blowout_vol", "overaspirate_vol"]
             previous_best = self.volume_results[-1].optimal_parameters
             
             if previous_best:
@@ -947,13 +922,13 @@ class CalibrationExperiment:
             logger.info(f"Loading {len(screening_trials)} screening trials into optimizer")
             for trial in screening_trials:
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                optimizer.seed_with_historical_data(trial.parameters, objectives, len(trial.measurements))
+                optimizer.seed_with_historical_data(trial.parameters, objectives)
         
         # Load inherited trial if it failed (so we can learn from it)
         if inherited_trial:
             logger.info("Loading inherited trial into optimizer for learning")
             objectives = OptimizationObjectives.from_adaptive_result(inherited_trial.analysis)
-            optimizer.seed_with_historical_data(inherited_trial.parameters, objectives, len(inherited_trial.measurements))
+            optimizer.seed_with_historical_data(inherited_trial.parameters, objectives)
         
         # Load two-point calibration trials for subsequent volumes only
         # (First volume does multi-objective optimization including precision, 
@@ -963,7 +938,7 @@ class CalibrationExperiment:
             logger.info("Note: Only using for subsequent volumes (single-objective accuracy optimization)")
             for trial in self._current_two_point_trials:
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                optimizer.seed_with_historical_data(trial.parameters, objectives, len(trial.measurements))
+                optimizer.seed_with_historical_data(trial.parameters, objectives)
                 logger.debug(f"Added two-point trial: overaspirate={trial.parameters.calibration.overaspirate_vol*1000:.1f}uL, "
                            f"measured={trial.analysis.mean_volume_ml*1000:.1f}uL, deviation={trial.analysis.deviation_pct:.1f}%")
         
@@ -1007,7 +982,7 @@ class CalibrationExperiment:
                 
                 # Update optimizer with result
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                optimizer.update_with_result(trial.parameters, objectives, len(trial.measurements))
+                optimizer.update_with_result(trial.parameters, objectives)
                 
                 # Log progress
                 summary = optimizer.get_summary()
@@ -1351,11 +1326,6 @@ class CalibrationExperiment:
         """
         if not trial or not trial.analysis:
             return False
-        
-        # Exclude single-measurement trials (0.0% CV is meaningless for precision assessment)
-        if len(trial.measurements) < 2:  # Need at least 2 measurements for meaningful precision
-            logger.info(f"[EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)")
-            return False
             
         # Get tolerance for this volume
         tolerances = self.config.calculate_tolerances_for_volume(target_volume_ml)
@@ -1373,9 +1343,9 @@ class CalibrationExperiment:
         success = deviation_within_tolerance and variability_within_tolerance
         
         logger.info(f"Trial success evaluation:")
-        logger.info(f"  Deviation: {trial.analysis.absolute_deviation_pct:.1f}% (tolerance: +/-{tolerance_pct:.1f}%)")
+        logger.info(f"  Deviation: {trial.analysis.deviation_pct:.1f}% (tolerance: +/-{tolerance_pct:.1f}%)")
         logger.info(f"  Variability: {trial.analysis.cv_volume_pct:.1f}% CV (tolerance: <={tolerances.precision_tolerance_pct:.1f}%)")
-        logger.info(f"  Deviation check: {deviation_within_tolerance} ({trial.analysis.absolute_deviation_pct:.1f} <= {tolerance_pct:.1f})")
+        logger.info(f"  Deviation check: {deviation_within_tolerance} ({abs(trial.analysis.deviation_pct):.1f} <= {tolerance_pct:.1f})")
         logger.info(f"  Variability check: {variability_within_tolerance} ({trial.analysis.cv_volume_pct:.1f} <= {tolerances.precision_tolerance_pct:.1f})")
         logger.info(f"  Result: {'PASS' if success else 'FAIL'}")
         

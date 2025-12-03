@@ -365,6 +365,9 @@ class CalibrationAnalyzer:
         if quality_filter:
             filtered_trials = [t for t in trials if t.quality.overall_quality == quality_filter]
         
+        # Filter out trials with fewer than 2 measurements (can't calculate valid precision)
+        filtered_trials = [t for t in filtered_trials if len(t.measurements) >= 2]
+        
         ranked_trials = self.rank_trials(filtered_trials)
         return ranked_trials[:max_results]
     
