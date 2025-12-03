@@ -260,7 +260,16 @@ class LLMRecommender:
             "liquid": self.config.experiment.liquid,
             "target_volume": previous_results[-1].target_volume_ml,  # Most recent volume
             "results_summary": results_summary,
-            "best_parameters": best_trial.parameters.to_protocol_dict()  # Hardware-agnostic parameter access
+            "best_parameters": {
+                "aspirate_speed": best_trial.parameters.aspirate_speed,
+                "dispense_speed": best_trial.parameters.dispense_speed,
+                "aspirate_wait_time": best_trial.parameters.aspirate_wait_time,
+                "dispense_wait_time": best_trial.parameters.dispense_wait_time,
+                "retract_speed": best_trial.parameters.retract_speed,
+                "blowout_vol": best_trial.parameters.blowout_vol,
+                "post_asp_air_vol": best_trial.parameters.post_asp_air_vol,
+                "overaspirate_vol": best_trial.parameters.overaspirate_vol
+            }
         }
     
     def _generate_prompt(self, n_suggestions: int, context: Dict[str, Any]) -> str:

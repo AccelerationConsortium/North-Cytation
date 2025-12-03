@@ -13,7 +13,7 @@
 # Experiment Identification
 experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
-  liquid: "water"                     # Target liquid (water, glycerol, ethanol)
+  liquid: "glycerol"                     # Target liquid (water, glycerol, ethanol)
   description: "Testing calibration across 4 volumes: 10μL to 100μL"
 
 # Target Volumes (in mL)
@@ -70,7 +70,7 @@ hardware_parameters:
   # You can change these to whatever you like
   
   aspirate_speed:
-    bounds: [10, 25]
+    bounds: [10, 35]
     default: 17
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
@@ -78,7 +78,7 @@ hardware_parameters:
     round_to_nearest: 1                 # Round to nearest integer
     
   dispense_speed:
-    bounds: [5, 25] 
+    bounds: [5, 35] 
     default: 17
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
@@ -86,19 +86,19 @@ hardware_parameters:
     round_to_nearest: 1                 # Round to nearest integer
     
   aspirate_wait_time:
-    bounds: [0.0, 2.0]
+    bounds: [0.0, 30]
     default: 12.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after aspiration (seconds)"
     round_to_nearest: 0.1               # Round to nearest 0.1 seconds
     
-  # dispense_wait_time:
-  #   bounds: [0.0, 2.0]
-  #   default: 12.0
-  #   type: "float"                       # Parameter type for optimizer
-  #   time_affecting: true                # Directly affects timing
-  #   description: "Wait time after dispensing (seconds)"
+  dispense_wait_time:
+    bounds: [0.0, 30]
+    default: 12.0
+    type: "float"                       # Parameter type for optimizer
+    time_affecting: true                # Directly affects timing
+    description: "Wait time after dispensing (seconds)"
     
   retract_speed:
     bounds: [1.0, 15.0]

@@ -539,8 +539,9 @@ class CalibrationExperiment:
             if self.protocol_module and self.protocol_state:
                 try:
                     self.protocol_module.wrapup(self.protocol_state)
-                except:
-                    pass
+                except Exception as cleanup_error:
+                    logger.warning(f"Protocol cleanup failed (non-critical): {cleanup_error}")
+                    # Continue anyway - cleanup failure shouldn't mask main error
             
             raise
     

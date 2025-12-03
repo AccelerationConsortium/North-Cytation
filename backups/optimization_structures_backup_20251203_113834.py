@@ -311,13 +311,11 @@ class OptimizationState:
             
             if hasattr(trial.parameters, 'hardware') and hasattr(trial.parameters.hardware, 'parameters'):
                 hw_params = trial.parameters.hardware.parameters
-                # Show ALL hardware parameters (hardware-agnostic approach)
+                key_params = ['aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time']
                 param_summary = []
-                for param_name, param_value in hw_params.items():
-                    if isinstance(param_value, (int, float)):
-                        param_summary.append(f"{param_name}={param_value:.1f}")
-                    else:
-                        param_summary.append(f"{param_name}={param_value}")
+                for param in key_params:
+                    if param in hw_params:
+                        param_summary.append(f"{param}={hw_params[param]:.1f}")
                 if param_summary:
                     print(f"  Hardware: {', '.join(param_summary)}")
         

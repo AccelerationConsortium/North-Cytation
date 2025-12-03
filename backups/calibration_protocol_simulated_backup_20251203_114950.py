@@ -22,74 +22,6 @@ from calibration_protocol_base import CalibrationProtocolBase
 class SimulatedCalibrationProtocol(CalibrationProtocolBase):
     """Simulated calibration protocol implementing the abstract interface."""
     
-    def _calculate_generic_parameter_penalty(self, param_name: str, param_value: float, all_params: Dict[str, float]) -> float:
-        """Calculate generic penalty for any hardware parameter.
-        
-        Applies subtle effects based on parameter value relative to typical ranges.
-        This works with any parameter names - hardware agnostic.
-        """
-        if not isinstance(param_value, (int, float)):
-            return 0.0
-            
-        # Skip overaspirate_vol - it's handled separately in main simulation logic
-        if param_name == 'overaspirate_vol':
-            return 0.0
-            
-        # For parameters that look like speeds (higher usually = slower/more precise)
-        if any(keyword in param_name.lower() for keyword in ['speed', 'rate', 'velocity']):
-            # Assume reasonable speed range is 10-30, with optimal around 20
-            optimal = 20.0
-            if param_value < 10:
-                return 0.02  # Too fast - small precision penalty
-            elif param_value > 30:
-                return 0.01  # Too slow - tiny penalty
-            else:
-                return 0.0  # In good range
-                
-        # For parameters that look like wait times (more usually = better but diminishing returns)
-        elif any(keyword in param_name.lower() for keyword in ['wait', 'time', 'delay', 'pause']):
-            # Assume reasonable wait range is 0.5-5s
-            if param_value < 0.5:
-                return 0.015  # Too fast - small penalty
-            elif param_value > 5.0:
-                return 0.005  # Too slow - tiny penalty  
-            else:
-                return 0.0  # In good range
-                
-        # For volume parameters (usually small effects, excluding overaspirate_vol)
-        elif any(keyword in param_name.lower() for keyword in ['vol', 'volume', 'air']):
-            # Small effect for extreme values
-            if param_value < 0 or param_value > 0.01:  # Outside 0-10uL range
-                return 0.005  # Very small penalty
-            else:
-                return 0.0
-                
-        # Generic parameters - minimal effect
-        else:
-            return 0.001  # Tiny generic penalty for any parameter
-    
-    def _calculate_generic_timing_effect(self, param_name: str, param_value: float) -> float:
-        """Calculate generic timing effect for any hardware parameter."""
-        if not isinstance(param_value, (int, float)):
-            return 0.0
-            
-        # Speed parameters affect timing more
-        if any(keyword in param_name.lower() for keyword in ['speed', 'rate', 'velocity']):
-            # Higher speed values = slower operation (North Robot style)
-            return (param_value / 20.0) * 0.5  # Small timing effect
-            
-        # Wait parameters add directly to timing
-        elif any(keyword in param_name.lower() for keyword in ['wait', 'time', 'delay', 'pause']):
-            return param_value * 0.3  # Partial contribution
-            
-        # Volume parameters have minimal timing effect
-        elif any(keyword in param_name.lower() for keyword in ['vol', 'volume', 'air']):
-            return param_value * 10.0  # Convert mL to minimal timing effect
-            
-        # Generic parameters
-        else:
-            return param_value * 0.01  # Minimal timing contribution
-    
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Initialize simulation protocol."""
         # Deterministic seeding precedence: cfg.random_seed > env CAL_SIM_SEED > no seed
@@ -239,20 +171,34 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         measured_volume_base = base_measured_volume + overaspirate_contribution
         
         # Speed effects (higher speed values = slower operation in North Robot)
-        # Generic hardware parameter effects (works with any parameter names)
-        hardware_penalty = 0.0
-        hardware_timing_effect = 0.0
+        aspirate_speed = params.get('aspirate_speed', 20)
+        dispense_speed = params.get('dispense_speed', 15)
         
-        for param_name, param_value in params.items():
-            if param_name != 'overaspirate_vol':  # Skip overaspirate_vol (handled separately)
-                penalty = self._calculate_generic_parameter_penalty(param_name, param_value, params)
-                hardware_penalty += penalty
-                
-                timing_effect = self._calculate_generic_timing_effect(param_name, param_value)
-                hardware_timing_effect += timing_effect
+        # Optimal speeds are around 15-25 (slower is better for accuracy)
+        speed_penalty = 0
+        if aspirate_speed < 10:  # Too fast
+            speed_penalty += 0.05
+        elif aspirate_speed > 30:  # Too slow (no benefit)
+            speed_penalty += 0.02
+            
+        if dispense_speed < 8:  # Too fast
+            speed_penalty += 0.05
+        elif dispense_speed > 25:  # Too slow
+            speed_penalty += 0.02
+        
+        # Wait time effects
+        aspirate_wait = params.get('aspirate_wait_time', 2.0)
+        dispense_wait = params.get('dispense_wait_time', 1.0)
+        
+        # Optimal wait times: aspirate 1-3s, dispense 0.5-2s
+        wait_penalty = 0
+        if aspirate_wait < 1.0:
+            wait_penalty += 0.03
+        if dispense_wait < 0.5:
+            wait_penalty += 0.02
         
         # Apply parameter penalties to precision (not accuracy)
-        total_penalty = hardware_penalty  # Use generic hardware penalty
+        total_penalty = speed_penalty + wait_penalty
         final_precision_cv = base_precision_cv * (1.0 + total_penalty)
         
         # Cap precision CV to prevent unrealistic variability
@@ -269,14 +215,18 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         # Calculate timing
         base_time = 8.0  # Base operation time
         
-        # Generic hardware timing effects (replaces hardcoded speed/wait calculations)
+        # Speed effects on timing (higher speed = slower operation)
+        speed_time = (aspirate_speed / 20.0) * 2.0 + (dispense_speed / 15.0) * 2.0
+        wait_time = aspirate_wait + dispense_wait
+        
+        # Volume effects
         volume_time = volume_ul / 100.0  # Larger volumes take longer
         
         # Parameter-dependent timing noise
         timing_noise_std = 0.5
         
-        # Apply generic hardware timing and noise
-        total_time = base_time + hardware_timing_effect + volume_time
+        # Apply parameter-dependent timing noise
+        total_time = base_time + speed_time + wait_time + volume_time
         total_time += np.random.normal(0, timing_noise_std)
         elapsed = max(total_time, 2.0)  # Minimum 2 seconds
         
