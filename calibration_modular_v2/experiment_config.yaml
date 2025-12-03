@@ -234,3 +234,29 @@ screening:
 advanced:
   # Variability calculation method
   use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV
+
+# Validation Configuration
+validation:
+  # Source calibration data
+  optimal_conditions_file: "output/optimal_conditions.csv"  # Path to calibration results
+  
+  # Validation volumes (in mL)
+  volumes_ml: [0.01, 0.025, 0.05, 0.075, 0.1]  # Volumes to validate (can be different from calibration)
+  
+  # Measurement settings
+  replicates_per_volume: 5              # Number of replicate measurements per volume
+  
+  # Output settings
+  output_directory: "validation/"        # Directory for validation results
+  generate_plots: true                  # Create target vs measured plots
+  save_raw_data: true                   # Export individual measurements
+  
+  # Validation criteria
+  success_criteria:
+    max_deviation_pct: 10.0             # Maximum acceptable deviation percentage
+    max_cv_pct: 5.0                     # Maximum acceptable coefficient of variation
+    min_pass_rate: 0.8                  # Minimum pass rate for overall validation success (80%)
+    
+  # Optional: Override protocol settings for validation
+  # protocol_override:
+  #   hardware_module: "different_protocol"  # Use different protocol for validation
