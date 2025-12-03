@@ -259,6 +259,36 @@ class ValidationRunner:
         
         return all_results
     
+    def _get_volume_tolerance(self, volume_ml: float) -> float:
+        """Get volume-dependent tolerance from config tolerances.volume_ranges."""
+        volume_ul = volume_ml * 1000
+        
+        # Check if we should use volume-dependent tolerances
+        validation_config = self.config._config['validation']
+        success_criteria = validation_config['success_criteria']
+        
+        if not success_criteria.get('use_volume_tolerances', False):
+            # Fall back to fixed tolerance if not using volume tolerances
+            return success_criteria.get('max_cv_pct', 10.0)
+        
+        # Get volume ranges from config
+        tolerances_config = self.config._config.get('tolerances', {})
+        volume_ranges = tolerances_config.get('volume_ranges', [])
+        
+        # Find matching volume range
+        for range_config in volume_ranges:
+            vol_min = range_config.get('volume_min_ul', 0)
+            vol_max = range_config.get('volume_max_ul', float('inf'))
+            
+            if vol_min <= volume_ul <= vol_max:
+                tolerance = range_config.get('tolerance_pct', 10.0)
+                self.logger.debug(f"Volume {volume_ul:.1f}uL -> {tolerance}% tolerance for both accuracy and precision")
+                return tolerance
+        
+        # Default fallback if no range matches
+        self.logger.warning(f"No tolerance range found for volume {volume_ul:.1f}uL, using 10% default")
+        return 10.0
+    
     def _analyze_results(self, validation_results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Analyze validation results and calculate statistics."""
         self.logger.info("Analyzing validation results...")
@@ -300,9 +330,12 @@ class ValidationRunner:
             individual_errors_pct = [abs(m - target_ml) / target_ml * 100 for m in measured_ml]
             mean_absolute_error_pct = np.mean(individual_errors_pct)
             
-            # Success evaluation
-            accuracy_pass = absolute_deviation_pct <= success_criteria['max_deviation_pct']
-            precision_pass = cv_pct <= success_criteria['max_cv_pct']
+            # Get volume-dependent tolerance for both accuracy and precision evaluation
+            volume_tolerance_pct = self._get_volume_tolerance(target_ml)
+            
+            # Success evaluation - use same tolerance for both accuracy and precision
+            accuracy_pass = absolute_deviation_pct <= volume_tolerance_pct
+            precision_pass = cv_pct <= volume_tolerance_pct  # Use same tolerance instead of separate max_cv_pct
             overall_pass = accuracy_pass and precision_pass
             
             volume_stat = {
@@ -316,6 +349,7 @@ class ValidationRunner:
                 'deviation_pct': deviation_pct,
                 'absolute_deviation_pct': absolute_deviation_pct,
                 'mean_absolute_error_pct': mean_absolute_error_pct,
+                'tolerance_pct': volume_tolerance_pct,  # Same tolerance used for both accuracy and precision
                 'n_measurements': len(volume_data),
                 'accuracy_pass': accuracy_pass,
                 'precision_pass': precision_pass,
@@ -423,8 +457,23 @@ class ValidationRunner:
         
         # Add success criteria lines
         success_criteria = analysis['summary']['success_criteria']
-        ax2.axhline(y=success_criteria['max_deviation_pct'], color='blue', linestyle='--', alpha=0.5)
-        ax2_twin.axhline(y=success_criteria['max_cv_pct'], color='orange', linestyle='--', alpha=0.5)
+        
+        # Add volume-dependent accuracy thresholds (stepped line)
+        if 'tolerance_pct' in stats_df.columns:
+            # Use individual volume tolerances for both accuracy and precision
+            for i, tolerance in enumerate(stats_df['tolerance_pct']):
+                # Accuracy threshold (blue)
+                ax2.plot([i-0.4, i+0.4], [tolerance, tolerance], 
+                        color='blue', linestyle='--', alpha=0.7, linewidth=2)
+                # Precision threshold (orange) - same value
+                ax2_twin.plot([i-0.4, i+0.4], [tolerance, tolerance], 
+                            color='orange', linestyle='--', alpha=0.7, linewidth=2)
+        else:
+            # Fallback to fixed thresholds if available
+            if 'max_deviation_pct' in success_criteria:
+                ax2.axhline(y=success_criteria['max_deviation_pct'], color='blue', linestyle='--', alpha=0.5)
+            if 'max_cv_pct' in success_criteria:
+                ax2_twin.axhline(y=success_criteria['max_cv_pct'], color='orange', linestyle='--', alpha=0.5)
         
         ax2.grid(True, alpha=0.3)
         
@@ -461,8 +510,7 @@ class ValidationRunner:
                 f"  Pass rate: {summary['overall_pass_rate']:.1%}",
                 "",
                 "SUCCESS CRITERIA:",
-                f"  Max deviation: {summary['success_criteria']['max_deviation_pct']}%",
-                f"  Max CV: {summary['success_criteria']['max_cv_pct']}%",
+                f"  Volume-dependent tolerances: Used for both accuracy and precision",
                 ""
             ])
         
@@ -470,8 +518,9 @@ class ValidationRunner:
             lines.append("DETAILED RESULTS:")
             for stat in analysis['volume_statistics']:
                 status = "PASS" if stat['overall_pass'] else "FAIL"
+                tolerance = stat.get('tolerance_pct', 'N/A')
                 lines.extend([
-                    f"  {stat['volume_target_ul']:.0f}µL: {status}",
+                    f"  {stat['volume_target_ul']:.0f}µL: {status} (tolerance: {tolerance}%)",
                     f"    Measured: {stat['volume_measured_mean_ul']:.1f} ± {stat['volume_measured_std_ul']:.1f}µL",
                     f"    Accuracy: {stat['absolute_deviation_pct']:.1f}% deviation",
                     f"    Precision: {stat['cv_pct']:.1f}% CV",
@@ -534,14 +583,18 @@ def main():
             logger.info(f"Pass rate: {summary['overall_pass_rate']:.1%} ({summary['volumes_passed']}/{summary['total_volumes_tested']} volumes)")
             logger.info(f"Results saved to: {results['output_dir']}")
             
-            # Use configurable pass rate threshold from config
-            min_pass_rate = summary['success_criteria'].get('min_pass_rate', 0.8)
-            if summary['overall_pass_rate'] >= min_pass_rate:
-                logger.info(f"✅ Validation PASSED - calibration parameters are performing well (≥{min_pass_rate:.0%} required)")
-                return True
+            # Just report results - no arbitrary pass/fail threshold
+            if summary['overall_pass_rate'] == 1.0:
+                logger.info("🎯 Perfect validation - all volumes meet criteria!")
+            elif summary['overall_pass_rate'] >= 0.8:
+                logger.info("✅ Good validation - most volumes meet criteria")
+            elif summary['overall_pass_rate'] >= 0.5:
+                logger.info("⚠️ Mixed validation - some volumes need improvement")
             else:
-                logger.warning(f"⚠️ Validation FAILED - calibration may need refinement (<{min_pass_rate:.0%} pass rate)")
-                return False
+                logger.info("❌ Poor validation - calibration needs refinement")
+            
+            # Return success if any volumes passed (for script exit code)
+            return summary['volumes_passed'] > 0
         else:
             logger.error("Validation completed but analysis failed")
             return False

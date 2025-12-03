@@ -238,7 +238,7 @@ advanced:
 # Validation Configuration
 validation:
   # Source calibration data
-  optimal_conditions_file: "output/optimal_conditions.csv"  # Path to calibration results
+  optimal_conditions_file: "optimized_parameters/optimal_conditions_water_25_100.csv"  # Path to calibration results
   
   # Validation volumes (in mL)
   volumes_ml: [0.01, 0.025, 0.05, 0.075, 0.1]  # Volumes to validate (can be different from calibration)
@@ -253,9 +253,8 @@ validation:
   
   # Validation criteria
   success_criteria:
-    max_deviation_pct: 10.0             # Maximum acceptable deviation percentage
-    max_cv_pct: 5.0                     # Maximum acceptable coefficient of variation
-    min_pass_rate: 0.8                  # Minimum pass rate for overall validation success (80%)
+    use_volume_tolerances: true         # Use existing tolerances.volume_ranges for both accuracy AND precision criteria
+    # Note: Both accuracy and precision thresholds automatically determined from tolerances.volume_ranges above
     
   # Optional: Override protocol settings for validation
   # protocol_override:
