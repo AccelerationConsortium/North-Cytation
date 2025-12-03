@@ -259,6 +259,10 @@ class ExperimentConfig:
         """Get list of available hardware parameter names."""
         return list(self._config.get('hardware_parameters', {}).keys())
     
+    def get_hardware_config(self) -> Dict[str, Any]:
+        """Get raw hardware configuration section for protocol initialization."""
+        return self._config.get('hardware', {})
+    
     def get_optimization_parameters(self) -> Dict[str, Dict[str, Any]]:
         """Get all optimization parameters (calibration + hardware) with their configuration."""
         all_params = {}

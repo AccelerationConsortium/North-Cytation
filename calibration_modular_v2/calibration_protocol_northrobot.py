@@ -40,11 +40,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
     
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Initialize hardware protocol with North Robot's internal simulation."""
-        
-        # Extract hardware configuration - FAIL if missing required values
-        if not cfg or 'hardware' not in cfg:
-            raise ValueError("Missing required 'hardware' configuration section")
-        
+               
         # Get liquid from experiment config - FAIL if missing
         if not cfg or 'experiment' not in cfg:
             raise ValueError("Missing required 'experiment' configuration section")
@@ -291,7 +287,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         available_volume_ml = tip_volume_ml - target_volume_ml
         
         # Add tip volume constraint if relevant parameters exist
-        constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        #constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
         print(f"📏 North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}µL, target: {target_volume_ml*1000:.0f}µL)")

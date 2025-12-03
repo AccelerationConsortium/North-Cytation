@@ -16,8 +16,11 @@ No complex classes, inheritance, or abstractions - just simple function imports.
 """
 
 import importlib
+import logging
 import os
 from typing import Dict, Any, List
+
+logger = logging.getLogger(__name__)
 
 
 def load_hardware_protocol(protocol_name: str):
@@ -138,48 +141,56 @@ class ProtocolWrapper:
             # Don't silently return False - let the error bubble up!
             raise RuntimeError(f"Protocol initialization failed: {e}") from e
     
-    def measure(self, parameters, target_volume_ml: float):
+    def measure(self, protocol_state, target_volume_ml: float, parameters, replicates=1):
         """
         Execute measurement and return results.
         
         Args:
-            parameters: PipettingParameters object
+            protocol_state: Protocol state (should match self.state)
             target_volume_ml: Target volume in mL
+            parameters: PipettingParameters object or dict
+            replicates: Number of replicates (default 1)
             
         Returns:
-            RawMeasurement object (converted from protocol results)
+            List of measurement dicts (for compatibility with protocol interface)
         """
         if self.state is None:
             raise RuntimeError("Protocol not initialized - call initialize() first")
         
-        # Convert parameters to dict format
-        params_dict = self._parameters_to_dict(parameters)
+        # Verify protocol_state matches our state (for safety)
+        if protocol_state is not self.state:
+            logger.warning("Protocol state mismatch - using wrapper's state")
         
-        # Call protocol measure function/method (single replicate)
+        # Convert parameters to dict format if needed
+        if hasattr(parameters, 'to_dict'):
+            params_dict = parameters.to_dict()
+        else:
+            params_dict = parameters
+        
+        # Call protocol measure function/method
         if self.is_instance:
             # Class instance - call method
-            results = self.protocol.measure(self.state, target_volume_ml, params_dict, replicates=1)
+            results = self.protocol.measure(self.state, target_volume_ml, params_dict, replicates=replicates)
         else:
             # Module - call function
-            results = self.protocol.measure(self.state, target_volume_ml, params_dict, replicates=1)
+            results = self.protocol.measure(self.state, target_volume_ml, params_dict, replicates=replicates)
         
-        # Convert back to expected format
-        if results and len(results) > 0:
-            result = results[0]
-            return self._create_raw_measurement(result, parameters, target_volume_ml)
-        else:
-            raise RuntimeError("Protocol measure() returned no results")
+        # Return raw protocol results (list of dicts)
+        return results if results else []
     
-    def wrapup(self) -> bool:
+    def wrapup(self, protocol_state=None) -> bool:
         """Clean up the hardware protocol."""
         try:
             if self.state is not None:
+                # Use provided state or fall back to wrapper's state
+                state_to_use = protocol_state if protocol_state is not None else self.state
+                
                 if self.is_instance:
                     # Class instance - call method
-                    self.protocol.wrapup(self.state)
+                    self.protocol.wrapup(state_to_use)
                 else:
                     # Module - call function
-                    self.protocol.wrapup(self.state)
+                    self.protocol.wrapup(state_to_use)
             return True
         except Exception as e:
             print(f"Protocol cleanup failed: {e}")
@@ -189,7 +200,9 @@ class ProtocolWrapper:
         """Convert ExperimentConfig to dict format expected by protocols."""
         # Basic config conversion - add more fields as needed
         return {
-            'liquid': self.config.get_liquid_name() if hasattr(self.config, 'get_liquid_name') else 'water',
+            'experiment': {
+                'liquid': self.config.get_liquid_name() if hasattr(self.config, 'get_liquid_name') else 'water'
+            },
             'random_seed': self.config.get_random_seed() if hasattr(self.config, 'get_random_seed') else None
         }
     

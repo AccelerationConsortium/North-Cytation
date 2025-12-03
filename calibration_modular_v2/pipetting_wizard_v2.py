@@ -337,15 +337,15 @@ class PipettingWizardV2:
                 df.at[idx, 'calibration_overaspirate_vol'] = new_overasp
                 compensated_count += 1
                 
-                logging.debug(f"  {volume_target_ul}uL: error {volume_error_ml*1000:+.2f}uL → overasp {current_overasp:.4f}→{new_overasp:.4f}mL "
-                      f"(Δ{actual_adjustment_ul:+.2f}uL)")
+                logging.info(f"  {volume_target_ul}uL: error {volume_error_ml*1000:+.2f}uL -> overasp {current_overasp:.4f}->{new_overasp:.4f}mL "
+                      f"(change: {actual_adjustment_ul:+.2f}uL)")
             else:
-                logging.debug(f"  {volume_target_ul}uL: error {volume_error_ml*1000:+.2f}uL → no adjustment needed (negligible)")
+                logging.debug(f"  {volume_target_ul}uL: error {volume_error_ml*1000:+.2f}uL -> no adjustment needed (negligible)")
         
         if compensated_count > 0:
             logging.info(f"Applied overvolume compensation to {compensated_count}/{len(df)} parameter sets")
         else:
-            logging.debug("No overvolume compensation applied - all volume errors were negligible (<0.01uL)")
+            logging.info("No overvolume compensation applied - all volume errors were negligible (<0.01uL)")
             
         return df
     

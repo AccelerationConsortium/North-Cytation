@@ -60,16 +60,25 @@ def setup_logging():
 class ValidationRunner:
     """Hardware-agnostic validation system using the modular protocol framework."""
     
-    def __init__(self, config: ExperimentConfig):
+    def __init__(self, config: ExperimentConfig, config_file_path: Path = None):
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.protocol = None
         self.protocol_state = None
         self.pipetting_wizard = PipettingWizardV2()
         
-        # Set up output directory
+        # Set up output directory relative to config file location
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_dir = Path(config._config['validation']['output_directory'])
+        output_dir_name = config._config['validation']['output_directory']
+        
+        if config_file_path:
+            # Make output directory relative to config file location
+            config_dir = config_file_path.parent
+            base_dir = config_dir / output_dir_name
+        else:
+            # Fallback to relative path from current directory
+            base_dir = Path(output_dir_name)
+            
         self.output_dir = base_dir / f"validation_run_{timestamp}"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -121,20 +130,19 @@ class ValidationRunner:
         # Create protocol instance using same system as calibration
         self.protocol = create_protocol(self.config, simulate=self.config.is_simulation())
         
-        # Initialize protocol with config
-        config_dict = {
-            'experiment': {
-                'liquid': self.config.get_liquid_name()
-            }
-        }
-        
-        self.protocol_state = self.protocol.initialize(config_dict)
+        # Initialize protocol (wrapper handles config internally)
+        self.protocol_state = self.protocol.initialize()
         self.logger.info("Protocol initialized successfully")
     
     def _load_calibration_results(self) -> pd.DataFrame:
         """Load optimal conditions from calibration results."""
         validation_config = self.config._config['validation']
         optimal_conditions_file = Path(validation_config['optimal_conditions_file'])
+        
+        # Make path absolute relative to the config file directory if it's relative
+        if not optimal_conditions_file.is_absolute():
+            config_dir = Path(__file__).parent  # Directory containing this script
+            optimal_conditions_file = config_dir / optimal_conditions_file
         
         if not optimal_conditions_file.exists():
             raise FileNotFoundError(f"Calibration results file not found: {optimal_conditions_file}")
@@ -146,14 +154,27 @@ class ValidationRunner:
         return optimal_conditions
     
     def _get_parameters_for_volume(self, target_volume_ml: float, optimal_conditions: pd.DataFrame) -> Dict[str, float]:
-        """Get optimal parameters for a target volume using pipetting wizard."""
+        """Get optimal parameters for a target volume using pipetting wizard with overvolume compensation."""
         try:
-            # Use pipetting wizard to get parameters for this volume
-            # The wizard will interpolate from the optimal_conditions data
-            parameters = self.pipetting_wizard.interpolate_parameters(optimal_conditions, target_volume_ml)
+            # Apply overvolume compensation to the optimal conditions before interpolation
+            # This mimics what get_pipetting_parameters() does but works with in-memory data
+            compensated_conditions = optimal_conditions.copy()
+            
+            # Check if we have the V2 format columns needed for compensation
+            required_cols = ['volume_target_ul', 'volume_measured_ml', 'calibration_overaspirate_vol']
+            if all(col in compensated_conditions.columns for col in required_cols):
+                self.logger.debug(f"Applying overvolume compensation for {target_volume_ml*1000:.1f}uL parameters")
+                compensated_conditions = self.pipetting_wizard.apply_overvolume_compensation(compensated_conditions)
+                compensation_note = " (with overvolume compensation)"
+            else:
+                self.logger.warning(f"V2 format columns not available for overvolume compensation: missing {[c for c in required_cols if c not in compensated_conditions.columns]}")
+                compensation_note = " (no compensation - missing V2 columns)"
+            
+            # Use pipetting wizard to interpolate from the compensated data
+            parameters = self.pipetting_wizard.interpolate_parameters(compensated_conditions, target_volume_ml)
             
             if parameters:
-                self.logger.debug(f"Parameters for {target_volume_ml*1000:.1f}uL: {parameters}")
+                self.logger.debug(f"Parameters for {target_volume_ml*1000:.1f}uL{compensation_note}: {parameters}")
                 return parameters
             else:
                 self.logger.warning(f"No parameters found for volume {target_volume_ml*1000:.1f}uL, using minimal defaults")
@@ -391,9 +412,10 @@ class ValidationRunner:
             stats_df = pd.DataFrame(analysis['volume_statistics'])
             stats_df.to_csv(self.output_dir / "validation_summary.csv", index=False)
         
-        # Save analysis report
+        # Save analysis report (convert numpy types to native Python types for JSON)
+        analysis_for_json = self._convert_numpy_types(analysis)
         with open(self.output_dir / "validation_analysis.json", 'w') as f:
-            json.dump(analysis, f, indent=2)
+            json.dump(analysis_for_json, f, indent=2)
         
         # Generate plots if requested
         validation_config = self.config._config['validation']
@@ -404,6 +426,25 @@ class ValidationRunner:
         self._generate_text_report(analysis)
         
         self.logger.info(f"Validation outputs saved to: {self.output_dir}")
+    
+    def _convert_numpy_types(self, obj):
+        """Recursively convert numpy types to native Python types for JSON serialization."""
+        import numpy as np
+        
+        if isinstance(obj, dict):
+            return {key: self._convert_numpy_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_numpy_types(item) for item in obj]
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return obj
     
     def _generate_validation_plots(self, validation_results: List[Dict[str, Any]], analysis: Dict[str, Any]):
         """Generate target vs measured volume plots."""
@@ -431,8 +472,8 @@ class ValidationRunner:
         max_vol = max(target_ul.max(), measured_ul.max())
         ax1.plot([min_vol, max_vol], [min_vol, max_vol], 'r--', label='Perfect Accuracy')
         
-        ax1.set_xlabel('Target Volume (µL)')
-        ax1.set_ylabel('Measured Volume (µL)')
+        ax1.set_xlabel('Target Volume (uL)')
+        ax1.set_ylabel('Measured Volume (uL)')
         ax1.set_title('Validation: Target vs Measured Volume')
         ax1.legend()
         ax1.grid(True, alpha=0.3)
@@ -448,7 +489,7 @@ class ValidationRunner:
         bars2 = ax2_twin.bar(x_pos + width/2, stats_df['cv_pct'], width,
                             label='Precision (% CV)', alpha=0.7, color='orange')
         
-        ax2.set_xlabel('Target Volume (µL)')
+        ax2.set_xlabel('Target Volume (uL)')
         ax2.set_ylabel('Accuracy (% Deviation)', color='blue')
         ax2_twin.set_ylabel('Precision (% CV)', color='orange')
         ax2.set_title('Accuracy and Precision by Volume')
@@ -520,8 +561,8 @@ class ValidationRunner:
                 status = "PASS" if stat['overall_pass'] else "FAIL"
                 tolerance = stat.get('tolerance_pct', 'N/A')
                 lines.extend([
-                    f"  {stat['volume_target_ul']:.0f}µL: {status} (tolerance: {tolerance}%)",
-                    f"    Measured: {stat['volume_measured_mean_ul']:.1f} ± {stat['volume_measured_std_ul']:.1f}µL",
+                    f"  {stat['volume_target_ul']:.0f}uL: {status} (tolerance: {tolerance}%)",
+                    f"    Measured: {stat['volume_measured_mean_ul']:.1f} +/- {stat['volume_measured_std_ul']:.1f}uL",
                     f"    Accuracy: {stat['absolute_deviation_pct']:.1f}% deviation",
                     f"    Precision: {stat['cv_pct']:.1f}% CV",
                     f"    Measurements: {stat['n_measurements']}",
@@ -570,7 +611,7 @@ def main():
         logger.info(f"Execution mode: {'Simulation' if config.is_simulation() else 'Hardware'}")
         
         # Create and run validation
-        validator = ValidationRunner(config)
+        validator = ValidationRunner(config, config_path)
         results = validator.run_validation()
         
         # Display summary
@@ -585,13 +626,13 @@ def main():
             
             # Just report results - no arbitrary pass/fail threshold
             if summary['overall_pass_rate'] == 1.0:
-                logger.info("🎯 Perfect validation - all volumes meet criteria!")
+                logger.info("PERFECT: All volumes meet validation criteria!")
             elif summary['overall_pass_rate'] >= 0.8:
-                logger.info("✅ Good validation - most volumes meet criteria")
+                logger.info("GOOD: Most volumes meet validation criteria")
             elif summary['overall_pass_rate'] >= 0.5:
-                logger.info("⚠️ Mixed validation - some volumes need improvement")
+                logger.info("WARNING: Mixed validation - some volumes need improvement")
             else:
-                logger.info("❌ Poor validation - calibration needs refinement")
+                logger.info("POOR: Validation failed - calibration needs refinement")
             
             # Return success if any volumes passed (for script exit code)
             return summary['volumes_passed'] > 0
