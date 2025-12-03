@@ -10,31 +10,51 @@
 #   optimization, transfer learning, external data integration
 # ==============================================================================
 
-# Experiment Configuration
+# Experiment Identification
 experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
   liquid: "glycerol"                     # Target liquid (water, glycerol, ethanol)
   description: "Testing calibration across 4 volumes: 10μL to 100μL"
-  
-  # Target Volumes and Measurements
-  volume_targets_ml: [0.1, 0.05, 0.025]       # Test with 3 volumes for faster debugging
+
+# Target Volumes (in mL)
+volumes:
+  targets_ml: [0.05, 0.1, 0.025]       # Test with 3 volumes for faster debugging
+
+# Global Resource Limits
+budget:
   max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
   max_measurements_first_volume: 60     # Dedicated budget for first volume
-  
-  # Frequently Adjusted Parameters
-  num_screening_trials: 10             # Number of exploratory trials if no external data available
-  replicates_for_accurate_measurements: 2  # Extra replicates beyond base replicate for good accuracy. Keep in mind your maximum measurement budget!
-  
-  # Execution Mode
-  simulate: false                         # Use simulation instead of hardware. Set to true for dry runs.
-  random_seed: 7                         # Reproducibility seed for pseudo-random seeding
-  
-  # Protocol Configuration (Hardware Abstraction)
-  hardware_protocol: "calibration_protocol_northrobot"     # Real hardware protocol <---- Change this to yours
-  simulation_protocol: "calibration_protocol_simulated"    # Simulation protocol   <---- Can keep this if you like
 
+# Execution Mode
+execution:
+  simulate: false                         # Use simulation instead of hardware
+  random_seed: 7                         # Reproducibility seed
+
+# Output Configuration
+output:
+  base_directory: "output/"  # Root directory for results
+  save_raw_measurements: true           # Include individual measurement data
+  generate_plots: true                  # Create visualization plots
+  export_optimal_conditions: true      # Generate optimal_conditions.csv
+
+# Protocol Configuration (Hardware Abstraction)
+protocol:
+  hardware_module: "calibration_protocol_northrobot"     # Real hardware protocol <---- Change this to yours
+  simulation_module: "calibration_protocol_simulated" # Simulation protocol   <---- Can keep this if you like
+  # Optional: force specific module regardless of simulation mode
+  # module: "custom_protocol"
+
+# Hardware Configuration
+hardware:
+  # Hardware-specific parameter warnings (used by LLM prompts)
+  parameter_warnings:
+    - "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter scaling)"
+    - "NOTE: Speeds are relative units, not absolute velocities"
+    - "CAUTION: Retract speed behaves differently - higher = faster"
+  
 # Parameter Space Definition
-calibration_parameters: # Mandatory parameters that all hardware must support. DO NOT DELETE THIS PARAMETER.
+calibration_parameters:
+  # Mandatory parameters that all hardware must support. DO NOT DELETE THIS PARAMETER.
   overaspirate_vol:
     bounds: [0.0, 0.0075]
     default: 0.004
@@ -113,21 +133,6 @@ hardware_parameters:
     description: "Pre-aspiration air volume (mL)"
     round_to_nearest: 0.001             # Round to nearest 1 µL
 
-# Output Configuration
-output:
-  base_directory: "output/"  # Root directory for results
-  save_raw_measurements: true           # Include individual measurement data
-  generate_plots: true                  # Create visualization plots
-  export_optimal_conditions: true      # Generate optimal_conditions.csv
-
-# Hardware Configuration
-hardware:
-  # Hardware-specific parameter warnings (used by LLM prompts)
-  parameter_warnings:
-    - "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter scaling)"
-    - "NOTE: Speeds are relative units, not absolute velocities"
-    - "CAUTION: Retract speed behaves differently - higher = faster"
-
 # Volume Tolerance Ranges (matches original system VOLUME_TOLERANCE_RANGES)
 tolerances:
   # Explicit volume-based tolerance ranges (inclusive bounds)
@@ -162,24 +167,24 @@ adaptive_measurement:
   enabled: true                         # Use conditional replicates
   deviation_threshold_pct: 10.0         # Threshold for running additional replicates
   base_replicates: 1                    # Initial measurement count
+  additional_replicates: 2              # Extra replicates for good accuracy
   penalty_variability_pct: 100.0        # Penalty for poor single measurements
-  # Note: additional_replicates moved to experiment.replicates_for_accurate_measurements
   
 # Multi-Objective Optimization
 optimization:
-  #For evaluating overall trial quality, based on weighted objectives
+  # Objective weighting (must sum to 1.0)
   objectives:
     accuracy_weight: 0.4                # Weight for accuracy (deviation)
     precision_weight: 0.5               # Weight for precision (variability)
     time_weight: 0.1                    # Weight for speed (duration)
     
-  # Objective thresholds for gradient learning... Maximum acceptable values... Affects the optimizer's perception of "bad" values
+  # Objective thresholds for gradient learning
   objective_thresholds:
     deviation_threshold_pct: 50.0       # Values above this treated equally bad
     variability_threshold_pct: 25.0     # Values above this treated equally bad
     time_threshold_s: 120.0             # Values above this treated equally bad
     
-  # Optimizer configuration. Usually qNEHVI to qLogEI from first to subsequent volumes
+  # Optimizer configuration
   optimizer:
     type: "multi_objective"             # "multi_objective" or "single_objective"
     backend: "qNEHVI"                   # For first volume: qNEHVI, qLogEI
@@ -201,19 +206,18 @@ optimization:
     enabled: false                      # Use LLM suggestions for Bayesian optimization
     config_path: null                   # Path to LLM configuration
     
-  # Stopping criteria for the first volume optimization phase
+  # Stopping criteria (measurement-based)
   stopping_criteria:
-    min_good_trials: 5                  # Stop after this many parameter sets that meet acceptable tolerances
-    
-  # Variability calculation method
-  use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV
+    min_good_trials: 5                  # Stop after this many "good" parameter sets
 
 # Screening Phase (Initial Exploration)
 screening:
+  # Manual screening trials (when external data not available)
+  num_trials: 10                         # Number of exploratory trials if no external data
+  
   # LLM-based screening (separate from optimization LLM)
   use_llm_suggestions: false             # Use LLM for initial parameter suggestions (matches USE_LLM_FOR_SCREENING)
   llm_config_path: "calibration_screening_llm_template.json" # Path to LLM configuration template for hardware-agnostic prompts
-  # Note: num_trials moved to experiment.num_screening_trials
   
   # External data integration (replaces manual screening if available)
   external_data:
@@ -222,6 +226,11 @@ screening:
     volume_filter_ml: null              # Only use data for specific volume
     liquid_filter: null                 # Only use data for specific liquid
     required_columns: ["volume_ml", "deviation_pct", "duration_s"]  # Universal columns only
+ 
+# Advanced Features
+advanced:
+  # Variability calculation method
+  use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV
 
 # Validation Configuration
 validation:
@@ -229,7 +238,7 @@ validation:
   optimal_conditions_file: "optimized_parameters/optimal_conditions_water_25_100.csv"  # Path to calibration results
   
   # Validation volumes (in mL)
-  volumes_ml: [0.030, 0.060, 0.090]  # Volumes to validate (can be different from calibration)
+  volumes_ml: [0.01, 0.025, 0.05, 0.075, 0.1]  # Volumes to validate (can be different from calibration)
   
   # Measurement settings
   replicates_per_volume: 5              # Number of replicate measurements per volume

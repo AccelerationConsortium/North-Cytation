@@ -93,8 +93,7 @@ class ExperimentConfig:
     def _validate_config(self):
         """Validate required configuration sections and values."""
         required_sections = [
-            'experiment', 'execution', 'volumes', 'budget', 
-            'tolerances', 'optimization'
+            'experiment', 'tolerances', 'optimization'
         ]
         
         for section in required_sections:
@@ -119,7 +118,7 @@ class ExperimentConfig:
             raise ValueError(f"Objective weights must sum to 1.0, got {total_weight}")
             
         # Validate volume targets
-        volumes = self._config['volumes']['targets_ml']
+        volumes = self._config['experiment']['volume_targets_ml']
         if not volumes or not isinstance(volumes, list):
             raise ValueError("Must specify at least one target volume")
         if any(v <= 0 for v in volumes):
@@ -146,30 +145,52 @@ class ExperimentConfig:
     # Execution configuration
     def is_simulation(self) -> bool:
         """Check if running in simulation mode."""
-        return self._config['execution']['simulate']
+        return self._config['experiment']['simulate']
     
     def get_random_seed(self) -> Optional[int]:
         """Get random seed for reproducibility."""
-        return self._config['execution'].get('random_seed')
+        return self._config['experiment'].get('random_seed')
     
     # Volume configuration
     def get_target_volumes_ml(self) -> List[float]:
         """Get list of target volumes in mL."""
-        return self._config['volumes']['targets_ml']
+        return self._config['experiment']['volume_targets_ml']
     
     def get_max_total_measurements(self) -> int:
         """Get maximum total measurements across experiment."""
-        return self._config['budget']['max_total_measurements']
+        return self._config['experiment']['max_total_measurements']
     
     def get_max_measurements_first_volume(self) -> int:
         """Get maximum measurements for first volume."""
-        return self._config['budget']['max_measurements_first_volume']
+        return self._config['experiment']['max_measurements_first_volume']
     
     def get_max_measurements_per_volume(self) -> int:
         """Get maximum measurements for subsequent volumes (volume-dependent optimization)."""
         # Default to 1/3 of first volume budget for subsequent volumes
-        return self._config['budget'].get('max_measurements_per_volume', 
+        return self._config['experiment'].get('max_measurements_per_volume', 
                                          self.get_max_measurements_first_volume() // 3)
+    
+    # Protocol configuration
+    def get_hardware_protocol(self) -> str:
+        """Get hardware protocol module name."""
+        return self._config['experiment']['hardware_protocol']
+    
+    def get_simulation_protocol(self) -> str:
+        """Get simulation protocol module name."""
+        return self._config['experiment']['simulation_protocol']
+    
+    def get_protocol_override(self) -> Optional[str]:
+        """Get protocol override (if specified)."""
+        return self._config['experiment'].get('protocol_override')
+    
+    # Frequently adjusted experimental parameters
+    def get_num_screening_trials(self) -> int:
+        """Get number of screening trials for initial exploration."""
+        return self._config['experiment'].get('num_screening_trials', 10)
+    
+    def get_replicates_for_accurate_measurements(self) -> int:
+        """Get additional replicates to run for accurate measurements."""
+        return self._config['experiment'].get('replicates_for_accurate_measurements', 2)
     
     # Parameter bounds - NEW ARCHITECTURE ONLY
     # Use get_calibration_parameter_bounds() and get_hardware_parameter_bounds() instead
@@ -183,7 +204,21 @@ class ExperimentConfig:
         param_inheritance = self._config.get('optimization', {}).get('parameter_inheritance', {})
         if not param_inheritance.get('enabled', False):
             return []
-        return param_inheritance.get('volume_dependent_params', [])
+            
+        # Collect parameters marked with volume_dependent: true
+        volume_dependent_params = []
+        
+        # Check calibration parameters
+        for param_name, param_config in self._config.get('calibration_parameters', {}).items():
+            if param_config.get('volume_dependent', False):
+                volume_dependent_params.append(param_name)
+        
+        # Check hardware parameters
+        for param_name, param_config in self._config.get('hardware_parameters', {}).items():
+            if param_config.get('volume_dependent', False):
+                volume_dependent_params.append(param_name)
+                
+        return volume_dependent_params
     
     def get_overaspirate_max_fraction(self) -> float:
         """Get maximum overaspirate volume as fraction of target."""
@@ -223,19 +258,6 @@ class ExperimentConfig:
     def get_hardware_parameter_names(self) -> List[str]:
         """Get list of available hardware parameter names."""
         return list(self._config.get('hardware_parameters', {}).keys())
-    
-    def is_volume_dependent_parameter(self, param_name: str) -> bool:
-        """Check if a parameter should be re-optimized for each volume."""
-        # Check calibration parameters
-        if param_name == 'overaspirate_vol':
-            return self._config['calibration_parameters']['overaspirate_vol'].get('volume_dependent', False)
-        
-        # Check hardware parameters
-        hw_params = self._config.get('hardware_parameters', {})
-        if param_name in hw_params:
-            return hw_params[param_name].get('volume_dependent', False)
-        
-        return False
     
     def get_optimization_parameters(self) -> Dict[str, Dict[str, Any]]:
         """Get all optimization parameters (calibration + hardware) with their configuration."""
@@ -336,26 +358,28 @@ class ExperimentConfig:
     # Protocol selection
     def get_protocol_module(self) -> str:
         """Get appropriate protocol module based on execution mode."""
-        protocol_config = self._config.get('protocol', {})
+        experiment_config = self._config.get('experiment', {})
         
         # Check for forced module override first
-        if 'module' in protocol_config:
-            return protocol_config['module']
+        protocol_override = experiment_config.get('protocol_override')
+        if protocol_override:
+            return protocol_override
         
         # Select based on simulation mode using config values
         if self.is_simulation():
-            if 'simulation_module' not in protocol_config:
-                raise ValueError("Missing 'simulation_module' in protocol configuration")
-            return protocol_config['simulation_module']
+            if 'simulation_protocol' not in experiment_config:
+                raise ValueError("Missing 'simulation_protocol' in experiment configuration")
+            return experiment_config['simulation_protocol']
         else:
-            if 'hardware_module' not in protocol_config:
-                raise ValueError("Missing 'hardware_module' in protocol configuration")
-            return protocol_config['hardware_module']
+            if 'hardware_protocol' not in experiment_config:
+                raise ValueError("Missing 'hardware_protocol' in experiment configuration")
+            return experiment_config['hardware_protocol']
     
     # Phase configuration
     def get_screening_trials(self) -> int:
         """Get number of screening trials."""
-        return self._config.get('screening', {}).get('num_trials', 5)
+        # Use new location in experiment section
+        return self.get_num_screening_trials()
     
     def get_min_good_trials(self) -> int:
         """Get minimum good trials for stopping criteria."""
@@ -418,7 +442,7 @@ class ExperimentConfig:
     # Advanced features
     def use_range_based_variability(self) -> bool:
         """Check if range-based variability calculation should be used."""
-        return self._config.get('advanced', {}).get('use_range_based_variability', False)
+        return self._config.get('optimization', {}).get('use_range_based_variability', False)
     
     # Output configuration
     def get_output_directory(self) -> str:

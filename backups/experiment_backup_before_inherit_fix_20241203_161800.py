@@ -23,18 +23,21 @@ experiment:
   
   # Frequently Adjusted Parameters
   num_screening_trials: 10             # Number of exploratory trials if no external data available
-  replicates_for_accurate_measurements: 2  # Extra replicates beyond base replicate for good accuracy. Keep in mind your maximum measurement budget!
+  replicates_for_accurate_measurements: 2  # Extra replicates beyond base replicate for good accuracy
   
   # Execution Mode
-  simulate: false                         # Use simulation instead of hardware. Set to true for dry runs.
-  random_seed: 7                         # Reproducibility seed for pseudo-random seeding
+  simulate: false                         # Use simulation instead of hardware
+  random_seed: 7                         # Reproducibility seed
   
   # Protocol Configuration (Hardware Abstraction)
   hardware_protocol: "calibration_protocol_northrobot"     # Real hardware protocol <---- Change this to yours
   simulation_protocol: "calibration_protocol_simulated"    # Simulation protocol   <---- Can keep this if you like
+  # Optional: force specific module regardless of simulation mode
+  # protocol_override: "custom_protocol"
 
 # Parameter Space Definition
-calibration_parameters: # Mandatory parameters that all hardware must support. DO NOT DELETE THIS PARAMETER.
+calibration_parameters:
+  # Mandatory parameters that all hardware must support. DO NOT DELETE THIS PARAMETER.
   overaspirate_vol:
     bounds: [0.0, 0.0075]
     default: 0.004
@@ -167,19 +170,19 @@ adaptive_measurement:
   
 # Multi-Objective Optimization
 optimization:
-  #For evaluating overall trial quality, based on weighted objectives
+  # Objective weighting (must sum to 1.0)
   objectives:
     accuracy_weight: 0.4                # Weight for accuracy (deviation)
     precision_weight: 0.5               # Weight for precision (variability)
     time_weight: 0.1                    # Weight for speed (duration)
     
-  # Objective thresholds for gradient learning... Maximum acceptable values... Affects the optimizer's perception of "bad" values
+  # Objective thresholds for gradient learning
   objective_thresholds:
     deviation_threshold_pct: 50.0       # Values above this treated equally bad
     variability_threshold_pct: 25.0     # Values above this treated equally bad
     time_threshold_s: 120.0             # Values above this treated equally bad
     
-  # Optimizer configuration. Usually qNEHVI to qLogEI from first to subsequent volumes
+  # Optimizer configuration
   optimizer:
     type: "multi_objective"             # "multi_objective" or "single_objective"
     backend: "qNEHVI"                   # For first volume: qNEHVI, qLogEI
@@ -201,9 +204,9 @@ optimization:
     enabled: false                      # Use LLM suggestions for Bayesian optimization
     config_path: null                   # Path to LLM configuration
     
-  # Stopping criteria for the first volume optimization phase
+  # Stopping criteria (measurement-based)
   stopping_criteria:
-    min_good_trials: 5                  # Stop after this many parameter sets that meet acceptable tolerances
+    min_good_trials: 5                  # Stop after this many "good" parameter sets
     
   # Variability calculation method
   use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV
@@ -222,14 +225,14 @@ screening:
     volume_filter_ml: null              # Only use data for specific volume
     liquid_filter: null                 # Only use data for specific liquid
     required_columns: ["volume_ml", "deviation_pct", "duration_s"]  # Universal columns only
-
+ 
 # Validation Configuration
 validation:
   # Source calibration data
   optimal_conditions_file: "optimized_parameters/optimal_conditions_water_25_100.csv"  # Path to calibration results
   
   # Validation volumes (in mL)
-  volumes_ml: [0.030, 0.060, 0.090]  # Volumes to validate (can be different from calibration)
+  volumes_ml: [0.01, 0.025, 0.05, 0.075, 0.1]  # Volumes to validate (can be different from calibration)
   
   # Measurement settings
   replicates_per_volume: 5              # Number of replicate measurements per volume

@@ -589,15 +589,7 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
                    f"[{min_overaspirate_ml*1000:.1f}, {max_overaspirate_ml*1000:.1f}] uL")
     
     # Get volume-dependent parameters from configuration
-    # These are parameters that scale with target volume
-    all_params = config.get_optimization_parameters()
-    volume_dependent_params = []
-    for param_name, param_config in all_params.items():
-        # Check if parameter is marked as volume-dependent in config
-        # For now, include overaspirate_vol as it's always volume-dependent
-        if param_name == "overaspirate_vol":
-            volume_dependent_params.append(param_name)
-        # TODO: Add configuration field to mark other parameters as volume-dependent
+    volume_dependent_params = config.get_volume_dependent_parameters()
     
     # Create constraints
     constraints = OptimizationConstraints(

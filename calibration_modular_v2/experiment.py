@@ -705,7 +705,18 @@ class CalibrationExperiment:
         else:
             # Standard analysis for failed inherited trial or when no inherited trial
             best_trials = self.analyzer.find_best_trials(all_volume_trials, max_results=5)
-            optimal_parameters = best_trials[0].parameters if best_trials else None
+            
+            # Fallback: if no trials meet the >=2 measurement criteria, rank by accuracy
+            if not best_trials and all_volume_trials:
+                logger.warning("No trials with >=2 measurements found for optimal parameters")
+                logger.info("Falling back to best accuracy trial (ranked by deviation)")
+                
+                # Sort all trials by accuracy (lower deviation is better)
+                accuracy_ranked = sorted(all_volume_trials, key=lambda t: t.objectives.accuracy)
+                optimal_parameters = accuracy_ranked[0].parameters
+                logger.info(f"Selected most accurate trial: {accuracy_ranked[0].objectives.accuracy:.1f}% deviation")
+            else:
+                optimal_parameters = best_trials[0].parameters if best_trials else None
         
         volume_statistics = self.analyzer.calculate_trial_statistics(all_volume_trials)
         

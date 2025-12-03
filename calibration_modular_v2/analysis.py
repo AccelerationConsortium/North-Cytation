@@ -317,7 +317,7 @@ class CalibrationAnalyzer:
         
         adaptive_config = self.config.get_adaptive_measurement_config()
         base_replicates = adaptive_config.get('base_replicates', 1)
-        max_additional = adaptive_config.get('additional_replicates', 2)
+        max_additional = self.config.get_replicates_for_accurate_measurements()
         deviation_threshold_pct = adaptive_config.get('deviation_threshold_pct', 10.0)
         
         # Don't add replicates if we already have enough
