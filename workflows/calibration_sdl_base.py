@@ -8,6 +8,10 @@ import pandas as pd
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Global variable to track last vial management call to prevent spam
+_last_vial_mgmt_call = 0
+_VIAL_MGMT_THROTTLE_SEC = 1.0  # Minimum time between calls
 sys.path.append("../utoronto_demo")
 
 from pipetting_data.pipetting_parameters import PipettingParameters
@@ -25,7 +29,11 @@ except ImportError as e:
 LIQUIDS = {
     "water": {"density": 1.00, "refill_pipets": False},
     "ethanol": {"density": 0.789, "refill_pipets": False},
+    "toluene": {"density": 0.867, "refill_pipets": False},
+    "2MeTHF": {"density": 0.852, "refill_pipets": False},
+    "isopropanol": {"density": 0.789, "refill_pipets": False},
     "DMSO": {"density": 1.1, "refill_pipets": False},
+    "acetone": {"density": 0.79, "refill_pipets": False},
     "glycerol": {"density": 1.26, "refill_pipets": True},
     "PEG_Water": {"density": 1.05, "refill_pipets": True},
     "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
@@ -39,6 +47,10 @@ def normalize_parameters(params):
     Sometimes we get 'blowout_vol', sometimes 'pre_asp_air_vol'.
     This function ensures consistent parameter names for simulation.
     """
+    # Handle None params by creating empty dict
+    if params is None:
+        params = {}
+    
     normalized = params.copy()
     
     # Handle blowout_vol vs pre_asp_air_vol (only map if both are missing)
@@ -72,121 +84,147 @@ def pipet_and_measure_simulated(volume, params, expected_mass, expected_time):
     # Normalize parameters to handle different naming conventions
     params = normalize_parameters(params)
     
-    # More realistic simulation that considers ALL parameters, especially volume-dependent ones
-    mass_error_factor = 0.0
+    # ENHANCED SIMULATION BASED ON calibration_protocol_simulated.py
+    # More realistic physics with improved overaspirate effectiveness
     
-    # Speed parameters: Faster speeds (lower numbers) may be less accurate but faster
-    # Higher speeds (higher numbers) are more accurate but slower
-    # No single "optimal" - it's a tradeoff between speed and accuracy
-    min_speed_penalty = 0.002  # Penalty for very fast speeds (accuracy issues)
-    fast_speed_penalty_aspirate = max(0, (15 - params["aspirate_speed"])) * min_speed_penalty
-    fast_speed_penalty_dispense = max(0, (15 - params["dispense_speed"])) * min_speed_penalty
-    mass_error_factor += fast_speed_penalty_aspirate + fast_speed_penalty_dispense
+    # Extract parameters with fallbacks
+    asp_speed = params.get("aspirate_speed", 15)
+    dsp_speed = params.get("dispense_speed", 15)
+    asp_wait = params.get("aspirate_wait_time", 5)
+    dsp_wait = params.get("dispense_wait_time", 5)
+    blowout_vol = params.get("blowout_vol", 0.06)
+    post_asp_air_vol = params.get("post_asp_air_vol", 0.06)
+    retract_speed = params.get("retract_speed", 10)
+    overasp_vol = params.get("overaspirate_vol", 0.0)
     
-    # Wait time parameters: Longer waits generally improve accuracy (settling time)
-    # Very short waits can cause accuracy issues, very long waits waste time but don't help much
-    wait_accuracy_benefit = -0.001  # Slight accuracy improvement with longer waits
-    mass_error_factor += max(0, (5 - params["aspirate_wait_time"])) * 0.002  # Penalty for very short waits
-    mass_error_factor += max(0, (5 - params["dispense_wait_time"])) * 0.002  # Penalty for very short waits
-    mass_error_factor += params["aspirate_wait_time"] * wait_accuracy_benefit  # Small benefit from longer waits
-    mass_error_factor += params["dispense_wait_time"] * wait_accuracy_benefit  # Small benefit from longer waits
+    # 1. Systematic under-delivery bias (5%)
+    underdelivery_bias = -0.05  # 5% systematic underdelivery
     
-    # VOLUME-DEPENDENT PARAMETERS - These are HIGHLY critical for selective optimization!
-    # Make these parameters much more volume-sensitive so optimization is forced
+    # 2. Overaspirate compensation: IMPROVED 80% effectiveness (was 70%)
+    overasp_absolute_compensation = overasp_vol * 0.8  # 80% effectiveness in absolute terms
+    overasp_relative_compensation = overasp_absolute_compensation / volume if volume > 0 else 0
     
-    # blowout_vol: bounds [0.0, 0.2] - VERY volume dependent
-    # Different optimal values for different volumes to force re-optimization
-    if volume <= 0.03:  # Small volumes (0.025 mL)
-        optimal_blowout = 0.03  # Very specific optimal value
-    elif volume <= 0.06:  # Medium-small volumes (0.05 mL)  
-        optimal_blowout = 0.07  # Different optimal value
-    elif volume <= 0.15:  # Medium volumes (0.1 mL)
-        optimal_blowout = 0.11  # Yet another optimal value
-    else:  # Large volumes (0.5 mL)
-        optimal_blowout = 0.15  # High optimal value
+    # 3. Parameter effects - both penalties AND bonuses
+    parameter_effect = 0.0
     
-    # STRICT penalty - if you're more than 0.03 away from optimal, big penalty
-    blowout_error = np.abs(params["blowout_vol"] - optimal_blowout)
-    if blowout_error > 0.03:  # Sharp penalty threshold (adjusted for new range)
-        mass_error_factor += blowout_error * 0.4  # Very high penalty
-    else:
-        mass_error_factor += blowout_error * 0.1  # Small penalty if close
+    # Speed effects: optimal speeds provide accuracy bonus
+    if 20 <= asp_speed <= 25:  # Optimal aspirate speed range
+        parameter_effect += 0.015  # Accuracy bonus for optimal speed
+    elif asp_speed < 18 or asp_speed > 28:
+        parameter_effect -= 0.02  # Poor aspirate speed penalty
+        
+    if 16 <= dsp_speed <= 20:  # Optimal dispense speed range  
+        parameter_effect += 0.012  # Accuracy bonus for optimal speed
+    elif dsp_speed < 14 or dsp_speed > 22:
+        parameter_effect -= 0.015  # Poor dispense speed penalty
+        
+    # Wait time effects: optimal waits provide bonus
+    if 4 <= asp_wait <= 6:  # Optimal aspirate wait range
+        parameter_effect += 0.008  # Accuracy bonus
+    elif asp_wait < 3:
+        parameter_effect -= 0.01  # Too short penalty
+        
+    if 2.5 <= dsp_wait <= 4:  # Optimal dispense wait range
+        parameter_effect += 0.006  # Accuracy bonus  
+    elif dsp_wait < 2:
+        parameter_effect -= 0.008  # Too short penalty
+        
+    # Volume parameter effects: optimal values provide bonuses
+    if abs(blowout_vol - 0.06) < 0.02:  # Near optimal ~0.06
+        parameter_effect += 0.008  # Accuracy bonus
+    elif abs(blowout_vol - 0.06) > 0.04:  # Far from optimal
+        parameter_effect -= 0.01  # Penalty
+        
+    if abs(post_asp_air_vol - 0.06) < 0.02:  # Near optimal ~0.06
+        parameter_effect += 0.010  # Accuracy bonus
+    elif abs(post_asp_air_vol - 0.06) > 0.03:  # Far from optimal
+        parameter_effect -= 0.012  # Penalty
+        
+    if abs(retract_speed - 10) < 2:  # Near optimal ~10
+        parameter_effect += 0.006  # Accuracy bonus
+    elif abs(retract_speed - 10) > 4:  # Far from optimal
+        parameter_effect -= 0.008  # Penalty
     
-    # overaspirate_vol: Also VERY volume-dependent, bounds [0.0, volume*0.75]
-    # Different optimal fractions for different volumes
-    if volume <= 0.03:  # Small volumes need higher fraction
-        optimal_overasp = volume * 0.08  # 8% of volume
-    elif volume <= 0.06:  # Medium-small volumes
-        optimal_overasp = volume * 0.04  # 4% of volume  
-    elif volume <= 0.15:  # Medium volumes
-        optimal_overasp = volume * 0.02  # 2% of volume
-    else:  # Large volumes need very small fraction
-        optimal_overasp = volume * 0.01  # 1% of volume
+    # 4. Total error: bias + overaspirate compensation + parameter effects  
+    total_error = underdelivery_bias + overasp_relative_compensation + parameter_effect
     
-    # STRICT penalty for overaspirate_vol too
-    overasp_error = np.abs(params["overaspirate_vol"] - optimal_overasp)
-    relative_error = overasp_error / volume  # Error as fraction of volume
-    if relative_error > 0.03:  # More than 3% of volume off
-        mass_error_factor += relative_error * 0.3  # High penalty
-    else:
-        mass_error_factor += relative_error * 0.05  # Small penalty if close
-    
-    # Other parameters
-    mass_error_factor += np.abs(params["retract_speed"] - 8) * 0.002  # bounds [1, 15], optimal ~8
-    mass_error_factor += np.abs(params["post_asp_air_vol"] - 0.05) * 0.04  # bounds [0, 0.1], optimal ~0.05
-    
-    # Add base random noise
-    mass_error_factor += np.random.normal(0, 0.01)
-    
-    # REALISTIC SIMULATION: Pipetting typically under-delivers due to surface tension, viscosity
-    # Add systematic underdelivery bias based on volume (stronger bias)
-    underdelivery_bias = -0.05 - (0.008 * volume)  # 5% + 0.8% per mL systematic underdelivery
-    
-    # Overaspirate compensation: partially compensates but not perfectly
-    overasp_compensation = params["overaspirate_vol"] * 0.7 / volume if volume > 0 else 0  # 70% effectiveness
-    
-    # Apply realistic scaling - start with the underdelivery bias, then add parameter effects
-    total_error = underdelivery_bias + (mass_error_factor * 0.3) + overasp_compensation
-    
-    # Apply non-linear scaling but bias toward underdelivery
+    # 5. Soft saturation: use tanh to prevent extreme values but preserve differences
+    # Allow wider range (-50% to +50%) but compress extreme values
     if total_error > 0:
-        # Over-pipetting: rare and capped at ~5%
-        final_error = 0.05 * np.tanh(total_error / 0.05)
+        final_error = 0.5 * np.tanh(total_error / 0.3)  # Positive errors compressed more gently
     else:
-        # Under-pipetting: more common and can be up to ~12%
-        final_error = -0.12 * np.tanh(-total_error / 0.12)
+        final_error = 0.5 * np.tanh(total_error / 0.3)  # Negative errors same treatment
     
-    # Use the final calculated error
-    mass_error_factor = final_error
+    # 6. Parameter-dependent replicate noise instead of fixed noise
+    # Better parameters = more consistent results, worse parameters = more variable
+    replicate_noise_std = 0.003  # Reduced base noise
     
-    # Generate simulated mass with parameter-dependent error
-    simulated_mass = expected_mass * (1 + mass_error_factor)
+    # Speed consistency: extreme speeds reduce replicate consistency  
+    if asp_speed < 18 or asp_speed > 28:
+        replicate_noise_std += 0.004
+    if dsp_speed < 14 or dsp_speed > 22:
+        replicate_noise_std += 0.003
+        
+    # Wait time consistency: too short = inconsistent results
+    if asp_wait < 5:
+        replicate_noise_std += 0.003
+    if dsp_wait < 3:
+        replicate_noise_std += 0.002
+        
+    # Volume parameter consistency
+    if abs(blowout_vol - 0.06) > 0.04:  # Far from optimal ~0.06
+        replicate_noise_std += 0.002
+    if abs(post_asp_air_vol - 0.06) > 0.03:  # Far from optimal ~0.06
+        replicate_noise_std += 0.003
+    if abs(retract_speed - 10) > 4:  # Far from optimal ~10
+        replicate_noise_std += 0.002
+    
+    # Apply parameter-dependent replicate noise
+    replicate_noise = np.random.normal(0, replicate_noise_std)
+    final_error_with_noise = final_error + replicate_noise
+    
+    # Generate simulated mass with enhanced error model
+    simulated_mass = expected_mass * (1 + final_error_with_noise)
     simulated_mass = max(simulated_mass, 0)  # Can't have negative mass
     
-    # NOTE: Deviation will be calculated later after volume conversion in pipet_and_measure
-    # Don't calculate deviation here from mass - it should be from volume vs target volume
-       
-    # Time simulation: More realistic model
-    # Start with a reasonable baseline (8-15 seconds for typical pipetting)
+    # ENHANCED Realistic time simulation with stronger parameter effects
     baseline = 12.0  # Base pipetting time in seconds
     
-    # Wait times ALWAYS add to the time (no "optimal" value)
-    wait_time_penalty = params["aspirate_wait_time"] + params["dispense_wait_time"]
+    # Wait times ALWAYS add to the time (no "optimal" value for time)
+    wait_time_penalty = asp_wait + dsp_wait
     
-    # Speed penalties: Higher numbers (like 35) are SLOWER, lower numbers (like 10) are FASTER
-    # Speed range is [10, 35], with 10 being fastest and 35 being slowest
-    # Convert speed to time penalty: higher speed = more time
-    aspirate_time_penalty = (params["aspirate_speed"] - 10) * 0.3  # 0.3s per speed unit above 10
-    dispense_time_penalty = (params["dispense_speed"] - 10) * 0.3  # 0.3s per speed unit above 10
+    # ENHANCED Speed penalties: Higher numbers (like 35) are SLOWER, lower numbers (like 10) are FASTER
+    # More realistic time differences to make speed optimization meaningful
+    aspirate_time_penalty = (asp_speed - 10) * 0.8  # Increased from 0.3 to 0.8s per speed unit
+    dispense_time_penalty = (dsp_speed - 10) * 0.6  # Increased from 0.3 to 0.6s per speed unit
     
-    # Small random variation (±2 seconds)
-    noise = np.random.normal(0, 2.0)
+    # Retract speed also affects time
+    retract_time_penalty = (retract_speed - 8) * 0.4  # 0.4s per speed unit above 8
     
-    # Total time = baseline + wait times + speed penalties + noise
-    time_score = baseline + wait_time_penalty + aspirate_time_penalty + dispense_time_penalty + noise
+    # Calculate total time with enhanced parameter sensitivity
+    total_time = baseline + wait_time_penalty + aspirate_time_penalty + dispense_time_penalty + retract_time_penalty
     
-    # Enforce realistic bounds: minimum 3 seconds, maximum 150 seconds
-    time_score = np.clip(time_score, 3.0, 150.0)
+    # Parameter-dependent timing variability instead of fixed noise
+    # Poor parameters = more inconsistent timing
+    timing_noise_std = 0.3  # Reduced base timing noise
+    
+    # Extreme speeds create more timing variability
+    if asp_speed < 15 or asp_speed > 30:
+        timing_noise_std += 0.4
+    if dsp_speed < 12 or dsp_speed > 25:
+        timing_noise_std += 0.3
+    if retract_speed < 6 or retract_speed > 15:
+        timing_noise_std += 0.2
+        
+    # Very short wait times create timing inconsistency
+    if asp_wait < 3:
+        timing_noise_std += 0.3
+    if dsp_wait < 2:
+        timing_noise_std += 0.2
+    
+    # Apply parameter-dependent timing noise
+    total_time += np.random.normal(0, timing_noise_std)
+    time_score = max(total_time, 2.0)  # Minimum 2 seconds
     
     # Ensure no NaN values are returned
     time_score = np.nan_to_num(time_score, nan=50.0)
@@ -215,34 +253,48 @@ def fill_liquid_if_needed(lash_e, vial_name, liquid_source_name):
         lash_e.nr_robot.return_vial_home(liquid_source_name)
         lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
 
-def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, trial_type="UNKNOWN"):
-    # Normalize parameters to handle different naming conventions
-    params = normalize_parameters(params)
+def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_measurement, expected_time, replicate_count, simulate, raw_path, raw_measurements, liquid, new_pipet_each_time, trial_type="UNKNOWN", liquid_for_params=None):
+    """
+    Simplified pipetting function - uses explicit parameters provided by caller.
+    Both calibration_sdl_simplified and calibration_validation now determine their own parameters.
+    """
+    # Determine which liquid to use for parameter optimization (mainly for logging)
+    param_liquid = liquid_for_params
     
-    blowout_vol = params.get("blowout_vol", 0.0)  # Default blowout volume
+    # Handle None params (fallback to basic defaults)
+    if params is None:
+        print(f"[DEFAULT MODE] No parameters provided, using basic defaults")
+        params = {
+            'aspirate_speed': 10, 'dispense_speed': 10, 'aspirate_wait_time': 0.0,
+            'dispense_wait_time': 0.0, 'retract_speed': 10, 'blowout_vol': 0.0,
+            'post_asp_air_vol': 0.0, 'overaspirate_vol': 0.0
+        }
+    else:
+        print(f"[EXPLICIT MODE] Using provided parameters for {param_liquid or 'default'}")
+        # Normalize parameters to handle different naming conventions
+        params = normalize_parameters(params)
+    
+    # Create PipettingParameters objects from the provided parameters
+    blowout_vol = params.get("blowout_vol", 0.0)
     post_air = params.get("post_asp_air_vol", 0)
     over_volume = params.get("overaspirate_vol", 0)
-    #over_volume = 0
-    air_vol = post_air  # Only post_asp_air_vol contributes to air_vol now
-
-    print(params)
     
-    # Create PipettingParameters objects instead of kwargs dictionaries
     aspirate_params = PipettingParameters(
         aspirate_speed=params["aspirate_speed"],
         aspirate_wait_time=params["aspirate_wait_time"],
         retract_speed=params["retract_speed"],
         pre_asp_air_vol=0.0,  # Set to 0 since we're using blowout_vol now
         post_asp_air_vol=post_air,
-        overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for calibration
+        overaspirate_vol=over_volume,
     )
+    
     dispense_params = PipettingParameters(
         dispense_speed=params["dispense_speed"],
         dispense_wait_time=params["dispense_wait_time"],
         blowout_vol=blowout_vol,
-        overaspirate_vol=over_volume,  # CRITICAL: Add overaspirate_vol for overdispense calculation
-        pre_asp_air_vol=0.0,  # Include for overdispense calculation
-        post_asp_air_vol=post_air,  # Include for overdispense calculation
+        overaspirate_vol=over_volume,
+        pre_asp_air_vol=0.0,
+        post_asp_air_vol=post_air,
     )  
 
     if simulate:
@@ -250,11 +302,20 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         simulated_result = pipet_and_measure_simulated(volume, params, expected_measurement, expected_time)
         
         # Get liquid density for volume calculation - FAIL if not found
+        print(f"[DEBUG] About to look up liquid density for: '{liquid}' (type: {type(liquid).__name__})")
+        print(f"[DEBUG] Available liquids: {list(LIQUIDS.keys())}")
+        print(f"[DEBUG] liquid == None: {liquid is None}")
+        print(f"[DEBUG] liquid == 'None': {liquid == 'None'}")
+        
         if liquid not in LIQUIDS:
+            print(f"[DEBUG] ERROR: liquid '{liquid}' not found in LIQUIDS dictionary!")
             raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
         if "density" not in LIQUIDS[liquid]:
+            print(f"[DEBUG] ERROR: no density key for liquid '{liquid}'!")
             raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
         liquid_density = LIQUIDS[liquid]["density"]
+        print(f"[DEBUG] Successfully got liquid_density: {liquid_density}")
+        print(f"=== PIPET_AND_MEASURE DEBUG END ===\n")
 
         # Simple debug for simulation mode
         if simulate:
@@ -263,8 +324,10 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
         for replicate_idx in range(replicate_count):
             # Generate a slightly different mass for each replicate to simulate real variability
             
-            lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params)
-            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True)
+            # For robot calls: use param_liquid to control optimization, but disable user parameters
+            # to prevent double optimization (once in pipet_and_measure, once in robot methods)
+            lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params, liquid=param_liquid)
+            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True, liquid=param_liquid)
             if new_pipet_each_time:
                 lash_e.nr_robot.remove_pipet()
 
@@ -273,7 +336,10 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             replicate_mass = max(replicate_mass, 0)  # Can't be negative
             
             # Calculate volume from mass and density
+            print(f"[DEBUG] SIM: About to calculate volume: {replicate_mass} / {liquid_density}")
+            print(f"[DEBUG] SIM: replicate_mass type: {type(replicate_mass).__name__}, liquid_density type: {type(liquid_density).__name__}")
             calculated_volume = replicate_mass / liquid_density
+            print(f"[DEBUG] SIM: Calculated volume: {calculated_volume}")
             
             # Calculate deviation AFTER volume conversion - this is the correct place!
             target_volume = volume  # Target volume we were trying to pipette
@@ -350,13 +416,17 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             raise ValueError(f"No density specified for liquid '{liquid}' in LIQUIDS dictionary")
         liquid_density = LIQUIDS[liquid]["density"]
         
-        # Vial management hook - only use per-experiment overrides
+        # Vial management hook - only use per-experiment overrides (throttled to prevent spam)
         try:
             # Use only the global overrides set by set_vial_management()
             if _VIAL_MANAGEMENT_MODE_OVERRIDE and _VIAL_MANAGEMENT_MODE_OVERRIDE.lower() != "legacy":
-                # state may be managed higher level; create minimal state if absent
-                _state = {'measurement_vial_name': dest_vial}
-                manage_vials(lash_e, _state)
+                global _last_vial_mgmt_call
+                current_time = time.time()
+                if current_time - _last_vial_mgmt_call > _VIAL_MGMT_THROTTLE_SEC:
+                    # state may be managed higher level; create minimal state if absent
+                    _state = {'measurement_vial_name': dest_vial}
+                    manage_vials(lash_e, _state)
+                    _last_vial_mgmt_call = current_time
         except Exception as _e:
             lash_e.logger.info(f"[vial-mgmt] skipped: {_e}")
 
@@ -364,8 +434,11 @@ def pipet_and_measure(lash_e, source_vial, dest_vial, volume, params, expected_m
             replicate_start_time = time.time()
             replicate_start = datetime.now().isoformat()
             
-            lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params)
-            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True)
+            # For robot calls: use param_liquid to control optimization, but disable user parameters
+            # to prevent double optimization (once in pipet_and_measure, once in robot methods)
+            lash_e.nr_robot.aspirate_from_vial(source_vial, volume, parameters=aspirate_params, liquid=param_liquid)
+            measurement = lash_e.nr_robot.dispense_into_vial(dest_vial, volume, parameters=dispense_params, measure_weight=True, liquid=param_liquid)
+            
             if new_pipet_each_time:
                 lash_e.nr_robot.remove_pipet()
                 
@@ -586,11 +659,11 @@ def _maintain_vials(lash_e, state, cfg):
                 
                 msg = f"[maintain] Refilled {src} by {top_up:.2f} mL"
                 lash_e.logger.info(msg)
-                print(f"[LOG] {msg}")
+                # print(f"[LOG] {msg}")  # Reduced console logging
     except Exception as e:
         msg = f"[maintain] refill skipped: {e}"
         lash_e.logger.info(msg)
-        print(f"[LOG] {msg}")
+        # print(f"[LOG] {msg}")  # Reduced console logging
 
 def _swap_vials_if_needed(lash_e, state, cfg):
     src = cfg['source_vial']
@@ -599,7 +672,12 @@ def _swap_vials_if_needed(lash_e, state, cfg):
         vol_src = lash_e.nr_robot.get_vial_info(src, 'vial_volume')
         vol_meas = lash_e.nr_robot.get_vial_info(meas, 'vial_volume')
         if vol_src is not None and vol_meas is not None:
-            if vol_src < cfg['min_source_ml'] and vol_meas > cfg['min_source_ml']:
+            # Debug log: Show volumes before swap evaluation
+            msg = f"[swap] Pre-swap volumes: source({src})={vol_src:.2f}mL, measurement({meas})={vol_meas:.2f}mL, min_threshold={cfg['min_source_ml']}mL"
+            lash_e.logger.info(msg)
+            # print(f"[LOG] {msg}")  # Reduced console logging - swap is working well
+            
+            if vol_src < cfg['min_source_ml']:
                 lash_e.nr_robot.remove_pipet()
                 
                 # Physically swap the vials if measurement vial is in clamp
@@ -620,14 +698,14 @@ def _swap_vials_if_needed(lash_e, state, cfg):
                 _VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial'] = cfg['source_vial']
                 _VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial'] = cfg['measurement_vial']
                 
-                msg = f"[swap] Swapped roles: source→{cfg['source_vial']} measurement→{cfg['measurement_vial']}"
+                msg = f"[swap] Swapped roles: source->{cfg['source_vial']} measurement->{cfg['measurement_vial']}"
                 lash_e.logger.info(msg)
-                print(f"[LOG] {msg}")
+                print(f"[LOG] {msg}")  # Show actual swaps - important info
                 print(f"[LOG] Updated global config: source={_VIAL_MANAGEMENT_CONFIG_OVERRIDE['source_vial']} measurement={_VIAL_MANAGEMENT_CONFIG_OVERRIDE['measurement_vial']}")
     except Exception as e:
         msg = f"[swap] skipped: {e}"
         lash_e.logger.info(msg)
-        print(f"[LOG] {msg}")
+        print(f"[LOG] {msg}")  # Show swap errors - important for debugging
 
 # Track if single mode has been initialized to avoid repeated moves
 _SINGLE_MODE_INITIALIZED = False
@@ -672,7 +750,7 @@ def _single_vial_mode(lash_e, state, cfg):
 def manage_vials(lash_e, state):
     # Only use per-experiment overrides (no environment variables)
     mode = _VIAL_MANAGEMENT_MODE_OVERRIDE
-    print(f"[vial-mgmt] mode = {mode}")
+    # print(f"[vial-mgmt] mode = {mode}")  # Reduced console logging - working well now
     
     # Merge override with defaults
     if _VIAL_MANAGEMENT_CONFIG_OVERRIDE:
@@ -687,8 +765,6 @@ def manage_vials(lash_e, state):
     # Log activation with configuration keys
     cfg_keys = list(cfg.keys()) if cfg else []
     lash_e.logger.info(f"[vial-mgmt] manage_vials called: mode={mode} cfg_keys={cfg_keys}")
-    # Force to console as well in case of handler issues
-    print(f"[LOG] [vial-mgmt] manage_vials called: mode={mode} cfg_keys={cfg_keys}")
     
     if mode == 'maintain':
         _maintain_vials(lash_e, state, cfg)

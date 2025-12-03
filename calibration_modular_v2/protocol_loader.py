@@ -26,10 +26,10 @@ def load_hardware_protocol(protocol_name: str):
     
     Args:
         protocol_name: Name of protocol file (without .py extension)
-                      e.g., 'calibration_protocol_example' or 'calibration_protocol_simulated'
+                      e.g., 'calibration_protocol_hardware' or 'calibration_protocol_simulated'
     
     Returns:
-        Module with initialize(), measure(), and wrapup() functions
+        Protocol instance or module with initialize(), measure(), and wrapup() functions
         
     Raises:
         ImportError: If protocol file doesn't exist or is missing required functions
@@ -38,7 +38,11 @@ def load_hardware_protocol(protocol_name: str):
         # Import the protocol module
         protocol_module = importlib.import_module(protocol_name)
         
-        # Verify it has the required 3 functions
+        # Check if module exports a protocol instance (preferred approach)
+        if hasattr(protocol_module, 'protocol_instance'):
+            return protocol_module.protocol_instance
+        
+        # Fallback: verify it has the required 3 functions (legacy approach)
         required_functions = ['initialize', 'measure', 'wrapup']
         missing_functions = [func for func in required_functions if not hasattr(protocol_module, func)]
         
@@ -83,11 +87,8 @@ def create_protocol(config, simulate: bool = True):
     Returns:
         ProtocolWrapper object that provides the same interface as old protocol classes
     """
-    # Determine which protocol to use based on config
-    if hasattr(config, 'is_simulation') and config.is_simulation():
-        protocol_name = 'calibration_protocol_simulated'
-    else:
-        protocol_name = 'calibration_protocol_example'  # Default hardware protocol
+    # Use config manager to determine protocol name - no hardcoded fallbacks
+    protocol_name = config.get_protocol_module()
     
     # Load the protocol module
     protocol_module = load_hardware_protocol(protocol_name)
@@ -104,21 +105,38 @@ class ProtocolWrapper:
     3-function hardware protocols underneath.
     """
     
-    def __init__(self, protocol_module, config):
-        self.protocol_module = protocol_module
+    def __init__(self, protocol_module_or_instance, config):
+        """Initialize wrapper with protocol module or instance.
+        
+        Args:
+            protocol_module_or_instance: Either a module with functions or a protocol class instance
+            config: Experiment configuration
+        """
+        self.protocol = protocol_module_or_instance
         self.config = config
         self.state = None
+        
+        # Determine if we're dealing with a module (functions) or instance (methods)
+        self.is_instance = (hasattr(protocol_module_or_instance, '__class__') and 
+                           not hasattr(protocol_module_or_instance, '__file__'))
     
     def initialize(self) -> bool:
         """Initialize the hardware protocol."""
         try:
             # Convert config to dict format expected by protocols
             config_dict = self._config_to_dict()
-            self.state = self.protocol_module.initialize(config_dict)
+            
+            if self.is_instance:
+                # Class instance - call method
+                self.state = self.protocol.initialize(config_dict)
+            else:
+                # Module - call function
+                self.state = self.protocol.initialize(config_dict)
+                
             return True
         except Exception as e:
-            print(f"Protocol initialization failed: {e}")
-            return False
+            # Don't silently return False - let the error bubble up!
+            raise RuntimeError(f"Protocol initialization failed: {e}") from e
     
     def measure(self, parameters, target_volume_ml: float):
         """
@@ -137,8 +155,13 @@ class ProtocolWrapper:
         # Convert parameters to dict format
         params_dict = self._parameters_to_dict(parameters)
         
-        # Call protocol measure function (single replicate)
-        results = self.protocol_module.measure(self.state, target_volume_ml, params_dict, replicates=1)
+        # Call protocol measure function/method (single replicate)
+        if self.is_instance:
+            # Class instance - call method
+            results = self.protocol.measure(self.state, target_volume_ml, params_dict, replicates=1)
+        else:
+            # Module - call function
+            results = self.protocol.measure(self.state, target_volume_ml, params_dict, replicates=1)
         
         # Convert back to expected format
         if results and len(results) > 0:
@@ -151,7 +174,12 @@ class ProtocolWrapper:
         """Clean up the hardware protocol."""
         try:
             if self.state is not None:
-                self.protocol_module.wrapup(self.state)
+                if self.is_instance:
+                    # Class instance - call method
+                    self.protocol.wrapup(self.state)
+                else:
+                    # Module - call function
+                    self.protocol.wrapup(self.state)
             return True
         except Exception as e:
             print(f"Protocol cleanup failed: {e}")
@@ -167,8 +195,24 @@ class ProtocolWrapper:
     
     def _parameters_to_dict(self, parameters) -> Dict[str, Any]:
         """Convert PipettingParameters to dict format."""
-        # Convert dataclass to dict, handling different parameter formats
-        if hasattr(parameters, '__dict__'):
+        # Handle PipettingParameters with nested structure
+        if hasattr(parameters, 'calibration') and hasattr(parameters, 'hardware'):
+            # Flatten nested parameters structure
+            params_dict = {}
+            
+            # Add calibration parameters (overaspirate_vol, etc.)
+            if hasattr(parameters.calibration, '__dict__'):
+                params_dict.update(parameters.calibration.__dict__)
+                
+            # Add hardware parameters
+            if hasattr(parameters.hardware, 'parameters') and isinstance(parameters.hardware.parameters, dict):
+                params_dict.update(parameters.hardware.parameters)
+            elif hasattr(parameters.hardware, '__dict__'):
+                params_dict.update(parameters.hardware.__dict__)
+                
+            return params_dict
+        elif hasattr(parameters, '__dict__'):
+            # Fallback for simple dict-like objects
             return {k: v for k, v in parameters.__dict__.items()}
         else:
             # Fallback for other parameter formats
@@ -184,7 +228,7 @@ class ProtocolWrapper:
             measurement_id=f"measurement_{int(time.time() * 1000)}",
             parameters=parameters,
             target_volume_ml=target_volume_ml,
-            actual_volume_ml=protocol_result['volume'],
+            measured_volume_ml=protocol_result['volume'],
             duration_s=protocol_result['elapsed_s'],
             timestamp=time.time(),
             metadata=protocol_result  # Include all protocol data as metadata

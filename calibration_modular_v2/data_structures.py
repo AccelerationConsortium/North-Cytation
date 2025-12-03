@@ -13,14 +13,17 @@ Key Features:
 - Rich metadata support for extensibility
 
 Data Flow Hierarchy:
-    PipettingParameters → RawMeasurement → AdaptiveMeasurementResult → 
-    TrialResult → VolumeCalibrationResult → ExperimentResults
+    PipettingParameters -> RawMeasurement -> AdaptiveMeasurementResult -> 
+    TrialResult -> VolumeCalibrationResult -> ExperimentResults
 """
 
 import time
+import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -34,8 +37,9 @@ class CalibrationParameters:
     
     def __post_init__(self):
         """Validate mandatory parameters."""
-        if not (0 <= self.overaspirate_vol <= 0.5):
-            raise ValueError(f"overaspirate_vol must be 0-0.5 mL, got {self.overaspirate_vol}")
+        # Note: Physical limits for overaspirate_vol should be validated by hardware-specific config
+        # Removed hardcoded limits (-0.02 to 1.0 mL) to support different hardware systems
+        pass
 
 
 @dataclass(frozen=True)
@@ -96,7 +100,6 @@ class VolumeTolerances:
     """Volume-dependent tolerance thresholds."""
     accuracy_tolerance_ul: float
     precision_tolerance_pct: float 
-    time_tolerance_s: float
     
     def __post_init__(self):
         """Validate tolerance values."""
@@ -104,8 +107,6 @@ class VolumeTolerances:
             raise ValueError(f"accuracy_tolerance_ul must be positive, got {self.accuracy_tolerance_ul}")
         if self.precision_tolerance_pct <= 0:
             raise ValueError(f"precision_tolerance_pct must be positive, got {self.precision_tolerance_pct}")
-        if self.time_tolerance_s <= 0:
-            raise ValueError(f"time_tolerance_s must be positive, got {self.time_tolerance_s}")
 
 
 @dataclass  
@@ -116,7 +117,7 @@ class RawMeasurement:
     measurement_id: str
     parameters: PipettingParameters
     target_volume_ml: float
-    actual_volume_ml: float
+    measured_volume_ml: float  # What was actually measured (not "actual")
     duration_s: float
     
     # Optional fields with defaults
@@ -128,8 +129,9 @@ class RawMeasurement:
         """Validate measurement data."""
         if self.target_volume_ml <= 0:
             raise ValueError(f"target_volume_ml must be positive, got {self.target_volume_ml}")
-        if self.actual_volume_ml < 0:
-            raise ValueError(f"actual_volume_ml cannot be negative, got {self.actual_volume_ml}")
+        if self.measured_volume_ml < 0:
+            logging.warning(f"Negative volume measurement detected: {self.measured_volume_ml*1000:.1f}uL (target: {self.target_volume_ml*1000:.1f}uL) - converting to 0.0uL for processing")
+            self.measured_volume_ml = 0.0
         if self.duration_s <= 0:
             raise ValueError(f"duration_s must be positive, got {self.duration_s}")
         if not self.measurement_id.strip():
@@ -180,13 +182,11 @@ class QualityEvaluation:
     # Quality flags
     accuracy_good: bool
     precision_good: bool
-    time_good: bool
-    overall_quality: str  # "excellent", "good", "acceptable", "poor"
+    overall_quality: str  # "within_tolerance", "partial_tolerance", "outside_tolerance"
     
     # Tolerance thresholds used
     accuracy_tolerance_ul: float
     precision_tolerance_pct: float
-    time_tolerance_s: float
     
     # Measured values
     measured_accuracy_ul: float
@@ -195,7 +195,7 @@ class QualityEvaluation:
     
     def __post_init__(self):
         """Validate quality evaluation."""
-        valid_qualities = {"excellent", "good", "acceptable", "poor"}
+        valid_qualities = {"within_tolerance", "partial_tolerance", "outside_tolerance"}
         if self.overall_quality not in valid_qualities:
             raise ValueError(f"overall_quality must be one of {valid_qualities}, got {self.overall_quality}")
 
@@ -212,6 +212,10 @@ class TrialResult:
     quality: QualityEvaluation
     composite_score: float
     tolerances_used: VolumeTolerances
+    
+    # Experiment context
+    strategy: str = "optimization"  # "screening" or "optimization"
+    liquid: str = "water"          # Liquid being pipetted
     
     # Adaptive measurement state
     needs_additional_replicates: bool = False
@@ -277,3 +281,80 @@ class ExperimentResults:
         calculated_measurements = sum(vol.measurement_count for vol in self.volume_results)
         if self.total_measurements != calculated_measurements:
             raise ValueError(f"total_measurements {self.total_measurements} != calculated {calculated_measurements}")
+
+
+# === TWO-POINT CALIBRATION DATA STRUCTURES ===
+
+@dataclass(frozen=True)
+class TwoPointCalibrationPoint:
+    """Single data point from two-point calibration measurement."""
+    
+    overaspirate_vol_ml: float
+    measured_volume_ml: float
+    measurement_count: int
+    variability_pct: float
+    parameters_used: PipettingParameters
+    
+    def __post_init__(self):
+        """Validate calibration point."""
+        if self.measured_volume_ml < 0:
+            logging.warning(f"Negative calibration measurement: {self.measured_volume_ml*1000:.1f}uL - converting to 0.0uL")
+            self.measured_volume_ml = 0.0
+        if self.measurement_count < 1:
+            raise ValueError(f"measurement_count must be >= 1, got {self.measurement_count}")
+        if not (0 <= self.variability_pct <= 100):
+            raise ValueError(f"variability_pct must be 0-100%, got {self.variability_pct}")
+
+
+@dataclass(frozen=True)
+class TwoPointCalibrationResult:
+    """Complete two-point calibration results with constraint bounds."""
+    
+    target_volume_ml: float
+    point_1: TwoPointCalibrationPoint  # Base overvolume from previous optimization
+    point_2: TwoPointCalibrationPoint  # Base + shortfall (or +5uL minimum)
+    
+    # Calculated results
+    volume_efficiency_ul_per_ul: float  # Slope: Delta_Volume / Delta_Overaspirate
+    shortfall_ml: float                 # target - measured at point 1
+    optimal_overaspirate_ml: float      # Optimal value from linear interpolation
+    
+    # Constraint bounds for next optimization
+    min_overaspirate_ml: float
+    max_overaspirate_ml: float
+    tolerance_range_ml: float  # +/-tolerance for target volume
+    
+    def __post_init__(self):
+        """Validate two-point calibration results."""
+        if self.target_volume_ml <= 0:
+            raise ValueError(f"target_volume_ml must be positive, got {self.target_volume_ml}")
+        
+        # Validate points have different overaspirate values
+        overaspirate_diff = abs(self.point_2.overaspirate_vol_ml - self.point_1.overaspirate_vol_ml)
+        if overaspirate_diff < 0.001:  # 1uL minimum difference
+            raise ValueError(f"Two points must have different overaspirate values (diff: {overaspirate_diff:.4f})")
+        
+        # Validate bounds are reasonable
+        if self.tolerance_range_ml <= 0:
+            raise ValueError(f"tolerance_range_ml must be positive, got {self.tolerance_range_ml}")
+
+
+@dataclass
+class ConstraintBoundsUpdate:
+    """Request to update optimization constraint bounds."""
+    
+    parameter_name: str
+    min_value: float
+    max_value: float
+    justification: str  # Why these bounds were chosen
+    source_calibration: Optional[TwoPointCalibrationResult] = None
+    optimal_overaspirate_ml: Optional[float] = None  # Optimal value from linear interpolation
+    
+    def __post_init__(self):
+        """Validate constraint update."""
+        if not self.parameter_name.strip():
+            raise ValueError("parameter_name cannot be empty")
+        if self.min_value >= self.max_value:
+            raise ValueError(f"min_value {self.min_value} must be < max_value {self.max_value}")
+        if not self.justification.strip():
+            raise ValueError("justification cannot be empty")

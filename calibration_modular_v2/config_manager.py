@@ -17,7 +17,7 @@ Example Usage:
     config = ExperimentConfig.from_yaml("experiment_config.yaml")
     targets = config.get_target_volumes_ml()
     params = config.get_parameter_bounds()
-    tolerances = config.calculate_tolerances_for_volume(0.05)  # 50μL
+    tolerances = config.calculate_tolerances_for_volume(0.05)  # 50uL
 """
 
 import yaml
@@ -72,11 +72,12 @@ class ExperimentConfig:
     convenient access to all configuration values.
     """
     
-    def __init__(self, config_dict: Dict[str, Any]):
+    def __init__(self, config_dict: Dict[str, Any], config_path: Optional[str] = None):
         """Initialize from configuration dictionary."""
         self._config = config_dict
+        self._config_path = config_path  # Store config file path for relative path resolution
         self._validate_config()
-        
+    
     @classmethod
     def from_yaml(cls, config_path: str) -> 'ExperimentConfig':
         """Load configuration from YAML file."""
@@ -87,7 +88,7 @@ class ExperimentConfig:
         with open(path, 'r') as f:
             config_dict = yaml.safe_load(f)
             
-        return cls(config_dict)
+        return cls(config_dict, str(path.absolute()))
     
     def _validate_config(self):
         """Validate required configuration sections and values."""
@@ -236,11 +237,32 @@ class ExperimentConfig:
         
         return False
     
+    def get_optimization_parameters(self) -> Dict[str, Dict[str, Any]]:
+        """Get all optimization parameters (calibration + hardware) with their configuration."""
+        all_params = {}
+        
+        # Add calibration parameters
+        cal_params = self._config.get('calibration_parameters', {})
+        for name, config in cal_params.items():
+            all_params[name] = config
+            
+        # Add hardware parameters  
+        hw_params = self._config.get('hardware_parameters', {})
+        for name, config in hw_params.items():
+            all_params[name] = config
+            
+        return all_params
+    
+    def get_parameter_type(self, param_name: str) -> str:
+        """Get the optimizer type (integer/float) for a parameter."""
+        all_params = self.get_optimization_parameters()
+        return all_params.get(param_name, {}).get('type', 'float')  # Default to float
+    
     # Tolerance calculation
     def calculate_tolerances_for_volume(self, target_volume_ml: float) -> VolumeTolerances:
         """Calculate volume-specific tolerances using explicit ranges."""
         tolerances = self._config['tolerances']
-        volume_ul = target_volume_ml * 1000  # Convert to μL
+        volume_ul = target_volume_ml * 1000  # Convert to uL
         
         # Find matching volume range
         tolerance_pct = 5.0  # Default fallback
@@ -261,13 +283,9 @@ class ExperimentConfig:
             accuracy_tolerance_ul = target_volume_ml * 1000 * tolerance_pct / 100
             precision_tolerance_pct = tolerance_pct
         
-        # Note: time_tolerance_s was deprecated - speed optimization handled by optimizer weights
-        time_tolerance_s = 60.0  # Default fallback for compatibility
-        
         return VolumeTolerances(
             accuracy_tolerance_ul=accuracy_tolerance_ul,
-            precision_tolerance_pct=precision_tolerance_pct,
-            time_tolerance_s=time_tolerance_s
+            precision_tolerance_pct=precision_tolerance_pct
         )
     
     # Optimization configuration
@@ -320,15 +338,19 @@ class ExperimentConfig:
         """Get appropriate protocol module based on execution mode."""
         protocol_config = self._config.get('protocol', {})
         
-        # Check for forced module override
+        # Check for forced module override first
         if 'module' in protocol_config:
             return protocol_config['module']
         
-        # Select based on simulation mode
+        # Select based on simulation mode using config values
         if self.is_simulation():
-            return protocol_config.get('simulation_module', 'calibration_protocol_simulated')
+            if 'simulation_module' not in protocol_config:
+                raise ValueError("Missing 'simulation_module' in protocol configuration")
+            return protocol_config['simulation_module']
         else:
-            return protocol_config.get('hardware_module', 'calibration_protocol_example')
+            if 'hardware_module' not in protocol_config:
+                raise ValueError("Missing 'hardware_module' in protocol configuration")
+            return protocol_config['hardware_module']
     
     # Phase configuration
     def get_screening_trials(self) -> int:
@@ -337,7 +359,7 @@ class ExperimentConfig:
     
     def get_min_good_trials(self) -> int:
         """Get minimum good trials for stopping criteria."""
-        return self._config.get('optimization', {}).get('stopping_criteria', {}).get('min_good_trials', 6)
+        return self._config.get('optimization', {}).get('stopping_criteria', {}).get('min_good_trials', 3)
     
     def use_llm_for_screening(self) -> bool:
         """Check if LLM should be used for screening phase."""
@@ -355,6 +377,15 @@ class ExperimentConfig:
     def carry_optimizer_history(self) -> bool:
         """Check if optimizer state should be carried across volumes."""
         return self._config.get('optimization', {}).get('parameter_inheritance', {}).get('carry_optimizer_state', False)
+    
+    # First volume final calibration
+    def is_first_volume_final_calibration_enabled(self) -> bool:
+        """Check if final overaspirate calibration is enabled for first volume."""
+        return self._config.get('optimization', {}).get('first_volume_final_calibration', {}).get('enabled', False)
+    
+    def should_skip_final_calibration_if_good_trial(self) -> bool:
+        """Check if final calibration should be skipped when current best trial is already good."""
+        return self._config.get('optimization', {}).get('first_volume_final_calibration', {}).get('skip_if_good_trial', True)
     
     # External data (now under screening section)
     def is_external_data_enabled(self) -> bool:
@@ -391,8 +422,17 @@ class ExperimentConfig:
     
     # Output configuration
     def get_output_directory(self) -> str:
-        """Get base output directory."""
-        return self._config.get('output', {}).get('base_directory', 'output/calibration_v2_runs')
+        """Get base output directory, resolved relative to config file location."""
+        base_directory = self._config.get('output', {}).get('base_directory', 'output/calibration_v2_runs')
+        
+        # If we have a config file path, make base_directory relative to it
+        if self._config_path:
+            config_dir = Path(self._config_path).parent
+            resolved_path = config_dir / base_directory
+            return str(resolved_path.absolute())
+        else:
+            # Fallback to relative path (for programmatically created configs)
+            return base_directory
     
     def should_save_raw_measurements(self) -> bool:
         """Check if raw measurements should be saved."""
@@ -448,4 +488,13 @@ class ExperimentConfig:
     
     def get_raw_config(self) -> Dict[str, Any]:
         """Get raw configuration dictionary for advanced use cases."""
+        """Get raw configuration dictionary for advanced use cases."""
         return self._config.copy()
+    
+    def get_hardware_specific_warnings(self) -> str:
+        """Get hardware-specific warnings for LLM prompts."""
+        warnings = self._config.get('hardware', {}).get('parameter_warnings', [])
+        if warnings:
+            return "\\n".join(warnings)
+        # Default warnings if not specified
+        return "IMPORTANT: Higher speed values = SLOWER operation (counterintuitive scaling)\\nNOTE: Speeds are relative units, not absolute velocities\\nCAUTION: Retract speed behaves differently - higher = faster"

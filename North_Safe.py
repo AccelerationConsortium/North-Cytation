@@ -759,20 +759,19 @@ class North_Temp:
     t8 = None
     c8 = None
 
-    def __init__(self,c9,simulate = False, logger=None):
+    def __init__(self,c9,c8, simulate = False, logger=None):
         self.simulate = simulate
         self.c9 = c9
+        self.c8 = c8
         self.logger = logger
 
         self.logger.debug("Initializing temperature controller...")
 
         if not self.simulate:
             from north import NorthC9
-            self.t8 = NorthC9('B', network=c9.network)
-            self.c8 = NorthC9('D', network=c9.network)
+            self.t8 = NorthC9('B', network=c9.network)  
         else:
             self.t8 = MagicMock()
-            self.c8 = MagicMock()
     
     def autotune(self,target_temp,channel=0):
         self.logger.debug(f"Autotuning channel {channel} to target temperature {target_temp}C")
@@ -800,6 +799,40 @@ class North_Temp:
     def turn_off_stirring(self):
         self.logger.debug("Turning off stirring")
         self.c8.spin_axis(1,0)
+
+class North_Spin:
+    c8 = None
+    c9 = None
+    def __init__(self,c9,c8, simulate = False, logger=None):
+        self.simulate = simulate
+        self.c9 = c9
+        self.c8 = c8
+        self.logger = logger
+        self.logger.debug("Initializing centrifuge controller...")
+    
+    def set_speed(self,speed):
+        self.logger.debug(f"Setting centrifuge speed to {speed} RPM")
+        self.c8.spin_axis(3, speed)
+
+    def stop_spin(self):
+        self.logger.debug("Stopping centrifuge spin")
+        self.c8.spin_axis(3,0)
+
+    def open_lid(self):
+        self.logger.debug("Opening centrifuge lid")
+        self.c9.set_output(3, True)  # Open lid pneumatic
+
+    def close_lid(self):
+        self.logger.debug("Closing centrifuge lid")
+        self.c9.set_output(3, False)  # Close lid pneumatic
+
+    def turn_on_vacuum(self):
+        self.logger.debug("Turning on centrifuge vacuum")
+        self.c9.set_output(2, True)  # Turn on vacuum pneumatic
+
+    def turn_off_vacuum(self):
+        self.logger.debug("Turning off centrifuge vacuum")
+        self.c9.set_output(2, False)  # Turn off vacuum pneumatic
 
 class North_Robot(North_Base):
     """
@@ -837,9 +870,10 @@ class North_Robot(North_Base):
     # ====================================================================
     
     #Initialize the status of the robot. 
-    def __init__(self,c9,vial_file=None,simulate=False, logger=None):
+    def __init__(self,c9,c8,vial_file=None,simulate=False, logger=None):
 
         self.c9 = c9
+        self.c8 = c8
         self.logger = logger
         self.VIAL_FILE = vial_file #File that we save the vial data in 
         self.simulate = simulate
@@ -1172,7 +1206,6 @@ class North_Robot(North_Base):
         Args:
             max_retries (int): Maximum number of retry attempts for homing-related errors (default: 2)
         """
-        self.load_pumps()
         self.logger.debug("Physical initialization of North Robot...")
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         self.c9.open_clamp()
@@ -1185,6 +1218,7 @@ class North_Robot(North_Base):
         
         while retry_count < max_retries:
             try:
+                self.load_pumps()
                 self._perform_physical_cleanup()
                 break  # Success, exit retry loop
                 
@@ -1197,6 +1231,8 @@ class North_Robot(North_Base):
                 self.logger.info("Homing robot components before pump initialization...")
                 try:
                     self.home_robot_components()
+                    # Load pumps after homing
+
                 except Exception as e:
                     self.logger.error(f"Failed to home robot components during initialization: {e}")
                     raise
@@ -1216,12 +1252,14 @@ class North_Robot(North_Base):
         Separated for cleaner retry logic.
         """
         # Handle leftover liquid in pipet tip
-        if self.PIPET_FLUID_VIAL_INDEX is not None:
-            self.logger.warning("The robot reports having liquid in its tip... Returning that liquid...")
+        if self.PIPET_FLUID_VIAL_INDEX is not None and self.PIPET_FLUID_VOLUME > 0:
+            self.logger.warning(f"The robot reports having {self.PIPET_FLUID_VOLUME:.3f} mL liquid in its tip... Returning that liquid...")
             vial_index = self.PIPET_FLUID_VIAL_INDEX 
             volume_existing = self.get_vial_info(vial_index, 'vial_volume')
-            self.dispense_into_vial(vial_index, 1.0) #Dispense all liquid back into the vial (hopefully no issues here)
+            self.dispense_into_vial(vial_index, 1.0) #Dispense 1.0 mL to fully empty the pipet
             self.VIAL_DF.loc[self.VIAL_DF['vial_index'] == vial_index, 'vial_volume'] = volume_existing + self.PIPET_FLUID_VOLUME
+        elif self.PIPET_FLUID_VIAL_INDEX is not None:
+            self.logger.info(f"Robot reports having a vial index for liquid but only {self.PIPET_FLUID_VOLUME:.3f} mL volume - skipping dispense")
 
         # Remove pipet tip if present
         if self.HELD_PIPET_TYPE is not None:
@@ -1611,11 +1649,21 @@ class North_Robot(North_Base):
         
         # Apply user overrides (highest priority)
         if user_parameters is not None:
-            for param_name in dir(user_parameters):
-                if not param_name.startswith('_'):  # Skip private attributes
-                    user_value = getattr(user_parameters, param_name)
-                    if user_value is not None:  # Only override if user explicitly set a value
+            # Handle both dictionary and object formats
+            if isinstance(user_parameters, dict):
+                # Dictionary format: {'param_name': value}
+                for param_name, user_value in user_parameters.items():
+                    if hasattr(optimized, param_name) and user_value is not None:
                         setattr(optimized, param_name, user_value)
+                        self.logger.debug(f"Applied dict param {param_name}={user_value}")
+            else:
+                # Object format with attributes
+                for param_name in dir(user_parameters):
+                    if not param_name.startswith('_'):  # Skip private attributes
+                        user_value = getattr(user_parameters, param_name)
+                        if user_value is not None:  # Only override if user explicitly set a value
+                            setattr(optimized, param_name, user_value)
+                            self.logger.debug(f"Applied object param {param_name}={user_value}")
                         
         return optimized
     
@@ -1712,13 +1760,20 @@ class North_Robot(North_Base):
 
                 # Check if clamp is occupied
                 clamp_vial_index = self.get_vial_in_location('clamp', 0)
-                if clamp_vial_index is not None:
+                vial_index = self.get_vial_index_from_name(vial_name)
+                if clamp_vial_index is not None and clamp_vial_index != vial_index:
                     self.logger.debug(f"Clamp occupied by vial {clamp_vial_index}, returning it home first")
                     self.return_vial_home(clamp_vial_index)
                 
-                # Move vial to clamp and uncap
+                # Move vial to clamp and uncap only if it has a closed cap
                 self.move_vial_to_location(vial_num, location='clamp', location_index=0)
-                self.uncap_clamp_vial()
+                
+                # Only uncap if vial has a closed cap (not open caps)
+                vial_cap_type = self.get_vial_info(vial_num, 'cap_type')
+                if vial_cap_type != 'open':
+                    self.uncap_clamp_vial()
+                else:
+                    self.logger.debug(f"Vial {vial_name} has open cap, skipping uncap operation")
                 
             else:
                 self.pause_after_error(f"Vial {vial_name} cannot be moved to a safe pipetting location")
@@ -1802,8 +1857,8 @@ class North_Robot(North_Base):
         if source_vial_volume < amount_mL:
             self.pause_after_error("Cannot aspirate more volume than in vial")
 
-        self.logger.info(f"Pipetting from vial {self.get_vial_info(source_vial_num, 'vial_name')}, amount: {round(amount_mL, 3)} mL")
-        self.logger.info(f"Additional volume from calibration, amount: {round(overaspirate_vol, 3)} mL")
+        self.logger.info(f"Pipetting from vial {self.get_vial_info(source_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
+        self.logger.info(f"Additional volume from calibration, amount: {overaspirate_vol:.3f} mL")
 
         #Adjust the height based on the volume, then pipet type
         if move_to_aspirate:
@@ -1861,7 +1916,7 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=True, return_vial_home=True, move_speed=None):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -1909,11 +1964,22 @@ class North_Robot(North_Base):
             last_run = (i == repeats - 1)
 
             # Aspirate from source
-            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip)
+            self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip, use_safe_location=use_safe_location)
+
+            # Set custom movement speed if specified
+            original_vel = None
+            if move_speed is not None:
+                original_vel = self.c9.default_vel
+                self.c9.default_vel = move_speed
 
             # Dispense into destination
-            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid)
+            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed)
             total_mass += mass_increment if mass_increment is not None else 0
+
+            # Restore original movement speed if changed
+            if move_speed is not None and original_vel is not None:
+                self.c9.default_vel = original_vel
+
 
             # Return vials and remove pipet on last run
             if last_run:
@@ -1921,9 +1987,19 @@ class North_Robot(North_Base):
                     self.remove_pipet()
                 # Return whatever vial is currently in the clamp (works for all cases)
                 clamp_vial_index = self.get_vial_in_location('clamp', 0)
-                if clamp_vial_index is not None:
-                    self.recap_clamp_vial()
+                if clamp_vial_index is not None and return_vial_home:
+                    # Only recap if vial is actually uncapped and robot has the cap
+                    vial_is_capped = self.get_vial_info(clamp_vial_index, 'capped')
+                    robot_has_cap = (self.GRIPPER_STATUS == "Cap")
+                    
+                    if not vial_is_capped and robot_has_cap:
+                        self.recap_clamp_vial()
+                    elif not vial_is_capped and not robot_has_cap:
+                        self.logger.warning(f"Vial {clamp_vial_index} is uncapped but robot doesn't have cap - leaving uncapped")
+                    # If vial is already capped, skip recapping
+                    
                     self.return_vial_home(clamp_vial_index)
+
 
         return total_mass
 
@@ -2038,7 +2114,7 @@ class North_Robot(North_Base):
 
     #Dispense an amount into a vial
     def dispense_into_vial(self, dest_vial_name, amount_mL, parameters=None, liquid=None,
-                          initial_move=True, measure_weight=False):
+                          initial_move=True, measure_weight=False, move_speed=None):
         """
         Dispense liquid into a vial.
         
@@ -2071,7 +2147,7 @@ class North_Robot(North_Base):
 
         measured_mass = None
 
-        self.logger.info(f"Pipetting into vial {self.get_vial_info(dest_vial_num, 'vial_name')}, amount: {round(amount_mL, 3)} mL")
+        self.logger.info(f"Pipetting into vial {self.get_vial_info(dest_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
         
         dest_vial_clamped = self.get_vial_info(dest_vial_num,'location')=='clamp' #Is the destination vial clamped?
         dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
@@ -2079,6 +2155,8 @@ class North_Robot(North_Base):
         #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
         if measure_weight and dest_vial_clamped:
             if not self.simulate:
+                # Zero the scale before measurement to prevent baseline drift
+                self.c9.zero_scale()
                 initial_mass = self.c9.read_steady_scale()
             else:
                 initial_mass = 0
@@ -2097,12 +2175,12 @@ class North_Robot(North_Base):
 
         #Move to the location if told to (Could change this to an auto-check)
         if initial_move:               
-            self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))   
+            self.c9.goto_xy_safe(location, vel=move_speed if move_speed is not None else self.get_speed('standard_xy'))
         
         #Pipet into the vial
         #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
         if initial_move:
-            self.c9.move_z(height)
+            self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
         self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
 
         #Track the added volume in the dataframe

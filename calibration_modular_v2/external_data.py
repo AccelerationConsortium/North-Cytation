@@ -14,9 +14,8 @@ Key Features:
 - Fallback to normal screening if data unavailable
 
 Expected CSV Format:
-    volume_ml, aspirate_speed, dispense_speed, aspirate_wait_time_s, 
-    dispense_wait_time_s, retract_speed, blowout_vol_ml, post_asp_air_vol_ml,
-    overaspirate_vol_ml, deviation_pct, variability_pct, duration_s
+The CSV should contain universal columns (volume_ml, deviation_pct, duration_s) 
+plus any hardware-specific parameters defined in your configuration.
 
 Example Usage:
     loader = ExternalDataLoader(config)
@@ -33,7 +32,7 @@ from typing import List, Optional, Dict, Any
 import numpy as np
 
 from config_manager import ExperimentConfig
-from data_structures import PipettingParameters, TrialResult, RawMeasurement, AdaptiveMeasurementResult, QualityEvaluation, VolumeTolerances
+from data_structures import PipettingParameters, TrialResult, RawMeasurement, AdaptiveMeasurementResult, QualityEvaluation, VolumeTolerances, HardwareParameters, CalibrationParameters
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +106,10 @@ class ExternalDataLoader:
         # Apply volume filter
         volume_filter = self.config.get_external_data_volume_filter()
         if volume_filter is not None:
-            tolerance = 0.001  # 1μL tolerance for volume matching
+            tolerance = 0.001  # 1uL tolerance for volume matching
             volume_mask = abs(self.data['volume_ml'] - volume_filter) <= tolerance
             self.data = self.data[volume_mask]
-            logger.info(f"Volume filter ({volume_filter} mL): {original_count} → {len(self.data)} rows")
+            logger.info(f"Volume filter ({volume_filter} mL): {original_count} -> {len(self.data)} rows")
         
         # Apply liquid filter
         liquid_filter = self.config.get_external_data_liquid_filter()
@@ -119,13 +118,13 @@ class ExternalDataLoader:
             self.data = self.data[liquid_mask]
             logger.info(f"Liquid filter ({liquid_filter}): filtered to {len(self.data)} rows")
         
-        # Remove rows with missing critical data
-        critical_columns = ['aspirate_speed', 'dispense_speed', 'deviation_pct']
+        # Remove rows with missing critical data (universal columns only)
+        critical_columns = ['deviation_pct']  # Only universal quality metrics required
         for col in critical_columns:
             if col in self.data.columns:
                 self.data = self.data.dropna(subset=[col])
         
-        logger.info(f"Data filtering complete: {original_count} → {len(self.data)} rows")
+        logger.info(f"Data filtering complete: {original_count} -> {len(self.data)} rows")
     
     def has_valid_data(self) -> bool:
         """Check if valid external data is available."""
@@ -148,7 +147,7 @@ class ExternalDataLoader:
             return []
         
         # Filter data for target volume (with tolerance)
-        volume_tolerance = 0.001  # 1μL tolerance
+        volume_tolerance = 0.001  # 1uL tolerance
         volume_mask = abs(self.data['volume_ml'] - target_volume_ml) <= volume_tolerance
         volume_data = self.data[volume_mask]
         
@@ -178,17 +177,42 @@ class ExternalDataLoader:
     def _convert_row_to_trial(self, row: pd.Series, target_volume_ml: float, 
                              trial_id: str) -> Optional[TrialResult]:
         """Convert external data row to TrialResult."""
+    def _convert_row_to_trial(self, row: pd.Series, target_volume_ml: float, 
+                             trial_id: str) -> Optional[TrialResult]:
+        """Convert external data row to TrialResult using only configured parameters."""
         try:
-            # Extract parameters
+            # Build hardware parameters from available columns and configuration
+            hardware_params = {}
+            
+            # Get configured parameter names from config
+            # Only use parameters that exist in both the config and the data
+            config_params = self.config.get_optimization_parameters()
+            
+            for param_name in config_params.keys():
+                if param_name in row and pd.notna(row[param_name]):
+                    # Convert to correct type based on configuration
+                    param_type = self.config.get_parameter_type(param_name)
+                    if param_type == "integer":
+                        hardware_params[param_name] = int(round(float(row[param_name])))
+                    else:
+                        hardware_params[param_name] = float(row[param_name])
+            
+            # Create hardware parameters object
+            hardware = HardwareParameters(parameters=hardware_params)
+            
+            # Handle overaspirate_vol (the only universal calibration parameter)
+            overaspirate_vol = 0.004  # Default
+            if 'overaspirate_vol' in row and pd.notna(row['overaspirate_vol']):
+                overaspirate_vol = float(row['overaspirate_vol'])
+            elif 'overaspirate_vol_ml' in row and pd.notna(row['overaspirate_vol_ml']):
+                overaspirate_vol = float(row['overaspirate_vol_ml'])
+            
+            calibration = CalibrationParameters(overaspirate_vol=overaspirate_vol)
+            
+            # Create combined parameters
             parameters = PipettingParameters(
-                aspirate_speed=float(row['aspirate_speed']),
-                dispense_speed=float(row['dispense_speed']),
-                aspirate_wait_time_s=float(row.get('aspirate_wait_time_s', 12.0)),
-                dispense_wait_time_s=float(row.get('dispense_wait_time_s', 12.0)),
-                retract_speed=float(row.get('retract_speed', 8.0)),
-                blowout_vol_ml=float(row.get('blowout_vol_ml', 0.07)),
-                post_asp_air_vol_ml=float(row.get('post_asp_air_vol_ml', 0.05)),
-                overaspirate_vol_ml=float(row.get('overaspirate_vol_ml', 0.004))
+                hardware=hardware,
+                calibration=calibration
             )
             
             # Apply volume constraints
@@ -199,15 +223,15 @@ class ExternalDataLoader:
             variability_pct = float(row.get('variability_pct', 5.0))
             duration_s = float(row.get('duration_s', 10.0))
             
-            # Calculate actual volume from deviation
-            actual_volume_ml = target_volume_ml * (1 + deviation_pct / 100.0)
+            # Calculate measured volume from deviation
+            measured_volume_ml = target_volume_ml * (1 + deviation_pct / 100.0)
             
             # Create raw measurement
             measurement = RawMeasurement(
                 measurement_id=f"{trial_id}_external",
                 parameters=parameters,
                 target_volume_ml=target_volume_ml,
-                actual_volume_ml=actual_volume_ml,
+                measured_volume_ml=measured_volume_ml,
                 duration_s=duration_s,
                 replicate_id=0,
                 metadata={'source': 'external_data', 'original_index': str(row.name)}
@@ -217,17 +241,17 @@ class ExternalDataLoader:
             analysis = AdaptiveMeasurementResult(
                 target_volume_ml=target_volume_ml,
                 num_replicates=1,
-                mean_volume_ml=actual_volume_ml,
+                mean_volume_ml=measured_volume_ml,
                 stdev_volume_ml=0.0,  # Unknown for external data
                 cv_volume_pct=variability_pct,
-                deviation_ml=actual_volume_ml - target_volume_ml,
+                deviation_ml=measured_volume_ml - target_volume_ml,
                 deviation_pct=deviation_pct,
                 absolute_deviation_pct=abs(deviation_pct),
                 mean_duration_s=duration_s,
                 stdev_duration_s=0.0,
-                min_volume_ml=actual_volume_ml,
-                max_volume_ml=actual_volume_ml,
-                median_volume_ml=actual_volume_ml
+                min_volume_ml=measured_volume_ml,
+                max_volume_ml=measured_volume_ml,
+                median_volume_ml=measured_volume_ml
             )
             
             # Evaluate quality
@@ -237,11 +261,9 @@ class ExternalDataLoader:
             quality = QualityEvaluation(
                 accuracy_good=deviation_ul <= tolerances.accuracy_tolerance_ul,
                 precision_good=variability_pct <= tolerances.precision_tolerance_pct,
-                time_good=duration_s <= tolerances.time_tolerance_s,
-                overall_quality="good",  # Mark external data as good quality
+                overall_quality="within_tolerance",  # Mark external data as within tolerance
                 accuracy_tolerance_ul=tolerances.accuracy_tolerance_ul,
                 precision_tolerance_pct=tolerances.precision_tolerance_pct,
-                time_tolerance_s=tolerances.time_tolerance_s,
                 measured_accuracy_ul=deviation_ul,
                 measured_precision_pct=variability_pct,
                 measured_time_s=duration_s

@@ -98,7 +98,7 @@ DEFAULT_EXTERNAL_DATA_LIQUID_FILTER = None  # Filter external data by liquid, No
 # Measurement amount hyperparameters
 DEFAULT_MAX_MEASUREMENTS = 96  # Total measurements for entire calibration
 DEFAULT_MAX_MEASUREMENTS_INITIAL_VOLUME = 60  # Maximum measurements for first volume
-DEFAULT_MIN_GOOD_PARAMETER_SETS = 6  # Minimum "good" parameter sets before stopping
+DEFAULT_MIN_GOOD_PARAMETER_SETS = 3  # Minimum "good" parameter sets before stopping - reduced from 6 for faster convergence
 DEFAULT_PARAMETER_SETS_PER_RECOMMENDATION = 1  # Number of parameter sets requested per optimization round
 DEFAULT_PRECISION_MEASUREMENTS = 3
 DEFAULT_INITIAL_PARAMETER_SETS = 5
@@ -107,11 +107,12 @@ DEFAULT_INITIAL_PARAMETER_SETS = 5
 DEFAULT_USE_LLM_FOR_SCREENING = False
 DEFAULT_BAYESIAN_MODEL_TYPE = 'qNEHVI'  # Use multi-objective optimization for first volume
 DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT = 'qLogEI'  # Single-objective (deviation only) for subsequent volumes
+DEFAULT_INIT_METHOD = "SOBOL"  # Initialization method: "SOBOL", "LATIN_HYPERCUBE", "UNIFORM"
 
 # Overaspirate configuration
 DEFAULT_OVERASPIRATE_BASE_UL = 5.0
 DEFAULT_OVERASPIRATE_SCALING_PERCENT = 5.0
-DEFAULT_AUTO_CALIBRATE_OVERVOLUME = True
+DEFAULT_AUTO_CALIBRATE_OVERVOLUME = False  # Changed to False - cross-volume calibration disabled by default to save budget
 DEFAULT_OVERVOLUME_CALIBRATION_BUFFER_UL = 5.0  # Fixed: Was 2.0, should be 5.0μL
 DEFAULT_OVERVOLUME_MAX_BASE_UL = 50.0
 DEFAULT_OVERVOLUME_MAX_PERCENT = 100.0
@@ -166,6 +167,7 @@ MIN_GOOD_PARAMETER_SETS = DEFAULT_MIN_GOOD_PARAMETER_SETS
 USE_LLM_FOR_SCREENING = DEFAULT_USE_LLM_FOR_SCREENING
 BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
 BAYESIAN_MODEL_TYPE_SUBSEQUENT = DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT
+INIT_METHOD = DEFAULT_INIT_METHOD
 
 # Overaspirate config
 OVERASPIRATE_BASE_UL = DEFAULT_OVERASPIRATE_BASE_UL
@@ -224,6 +226,42 @@ def pipet_and_measure_tracked(*args, **kwargs):
     if global_measurement_count >= MAX_MEASUREMENTS:
         print(f"🛑 HARD BUDGET LIMIT: Skipping measurement {global_measurement_count + 1}/{MAX_MEASUREMENTS}")
         return None  # Return None instead of raising exception
+    
+    # VIAL MANAGEMENT: Check vials before every pipetting operation
+    # Extract lash_e from arguments (always first parameter)
+    if len(args) > 0:
+        lash_e = args[0]
+        
+        # Get current vial assignments from vial management config
+        if base_module._VIAL_MANAGEMENT_CONFIG_OVERRIDE:
+            cfg = {**base_module.VIAL_MANAGEMENT_DEFAULTS, **base_module._VIAL_MANAGEMENT_CONFIG_OVERRIDE}
+            current_measurement_vial = cfg.get('measurement_vial', args[2] if len(args) > 2 else "measurement_vial_0")
+        else:
+            current_measurement_vial = args[2] if len(args) > 2 else "measurement_vial_0"
+            
+        state = {"measurement_vial_name": current_measurement_vial}
+        
+        # Apply vial management and get correct liquid source
+        try:
+            liquid_source = get_liquid_source_with_vial_management(lash_e, state)
+            
+            # Update both source and measurement vials if they changed
+            source_changed = len(args) >= 2 and liquid_source != args[1]
+            measurement_changed = len(args) >= 3 and state["measurement_vial_name"] != args[2]
+            
+            if source_changed or measurement_changed:
+                # Update parameters to match vial management changes
+                args_list = list(args)
+                
+                if source_changed:
+                    args_list[1] = liquid_source
+                    
+                if measurement_changed:
+                    args_list[2] = state["measurement_vial_name"]
+                    
+                args = tuple(args_list)
+        except Exception as e:
+            print(f"⚠️ Vial management error: {e}")
     
     # Call the original function
     result = pipet_and_measure(*args, **kwargs)
@@ -398,6 +436,7 @@ def reset_config_to_defaults():
     USE_LLM_FOR_SCREENING = DEFAULT_USE_LLM_FOR_SCREENING
     BAYESIAN_MODEL_TYPE = DEFAULT_BAYESIAN_MODEL_TYPE
     BAYESIAN_MODEL_TYPE_SUBSEQUENT = DEFAULT_BAYESIAN_MODEL_TYPE_SUBSEQUENT
+    INIT_METHOD = DEFAULT_INIT_METHOD
     OVERASPIRATE_BASE_UL = DEFAULT_OVERASPIRATE_BASE_UL
     OVERASPIRATE_SCALING_PERCENT = DEFAULT_OVERASPIRATE_SCALING_PERCENT
     AUTO_CALIBRATE_OVERVOLUME = DEFAULT_AUTO_CALIBRATE_OVERVOLUME
@@ -444,7 +483,7 @@ def get_current_config_summary():
     if USE_EXTERNAL_DATA and EXTERNAL_DATA_PATH:
         print(f"     Path: {EXTERNAL_DATA_PATH}")
         if EXTERNAL_DATA_VOLUME_FILTER:
-            print(f"     Volume filter: {EXTERNAL_DATA_VOLUME_FILTER*1000:.0f}μL")
+            print(f"     Volume filter: {EXTERNAL_DATA_VOLUME_FILTER*1000:.0f}uL")
         if EXTERNAL_DATA_LIQUID_FILTER:
             print(f"     Liquid filter: {EXTERNAL_DATA_LIQUID_FILTER}")
     print(f"   Adaptive threshold: {ADAPTIVE_DEVIATION_THRESHOLD}% deviation")
@@ -508,6 +547,164 @@ def get_max_overaspirate_ul(volume_ml):
     
     return max_overaspirate
 
+def calculate_overaspirate_efficiency(baseline_params, test_params, baseline_volume_ml, test_volume_ml):
+    """
+    Calculate overaspirate efficiency: μL volume gained per μL overaspirate added.
+    
+    Args:
+        baseline_params: Parameters used for baseline measurement
+        test_params: Parameters used for test measurement  
+        baseline_volume_ml: Actual volume measured with baseline parameters (mL)
+        test_volume_ml: Actual volume measured with test parameters (mL)
+        
+    Returns:
+        float: Efficiency ratio (volume_gained_ul / overaspirate_added_ul)
+    """
+    baseline_overaspirate_ul = baseline_params.get('overaspirate_vol', 0) * 1000  # Convert to μL
+    test_overaspirate_ul = test_params.get('overaspirate_vol', 0) * 1000  # Convert to μL
+    
+    overaspirate_added_ul = test_overaspirate_ul - baseline_overaspirate_ul
+    volume_gained_ul = (test_volume_ml - baseline_volume_ml) * 1000  # Convert to μL
+    
+    # Fixed: Handle both increases AND decreases in overaspirate
+    if abs(overaspirate_added_ul) > 0.1:  # Need at least 0.1μL change to calculate efficiency
+        efficiency = volume_gained_ul / overaspirate_added_ul
+        print(f"   📈 Efficiency calculation: {volume_gained_ul:.1f}uL gained / {overaspirate_added_ul:+.1f}uL change = {efficiency:.3f}")
+        return efficiency
+    else:
+        print(f"   ⚠️  Overaspirate change too small ({overaspirate_added_ul:+.1f}uL) - cannot calculate efficiency")
+        return 0.0
+
+def calculate_efficiency_based_bounds(target_volume_ml, baseline_volume_ml, baseline_overaspirate_ml, 
+                                    efficiency, baseline_variability_pct=None, tolerance_percent=None, 
+                                    guess_volume_ml=None, guess_overaspirate_ml=None):
+    """
+    Calculate smart overaspirate bounds that span the tolerance range using linear interpolation
+    with proper uncertainty propagation from the two calibration points.
+    
+    Uses uncertainty in the two measurement points to estimate confidence intervals for the
+    efficiency, then propagates this uncertainty when extrapolating to tolerance bounds.
+    
+    Args:
+        target_volume_ml: Desired target volume (mL)
+        baseline_volume_ml: Actually measured baseline volume (mL)  
+        baseline_overaspirate_ml: Overaspirate used for baseline measurement (mL)
+        efficiency: Measured efficiency (volume_gained_ul / overaspirate_added_ul)
+        baseline_variability_pct: Measurement uncertainty as % for each point
+        tolerance_percent: Override tolerance % (if None, uses volume-dependent config)
+        guess_volume_ml: Second calibration point volume (for uncertainty propagation)
+        guess_overaspirate_ml: Second calibration point overaspirate (for uncertainty propagation)
+        
+    Returns:
+        tuple: (min_overaspirate_ml, max_overaspirate_ml) - can be negative
+    """
+    target_volume_ul = target_volume_ml * 1000  # Convert to μL
+    baseline_volume_ul = baseline_volume_ml * 1000  # Convert to μL
+    baseline_overaspirate_ul = baseline_overaspirate_ml * 1000  # Convert to μL
+    
+    # Get volume-dependent tolerance from config if not specified
+    if tolerance_percent is None:
+        tolerances = get_volume_dependent_tolerances(target_volume_ml)
+        tolerance_percent = tolerances['tolerance_percent']
+    
+    # Calculate tolerance range endpoints - this is what we want to span
+    tolerance_ul = target_volume_ul * (tolerance_percent / 100.0)
+    min_target_ul = target_volume_ul - tolerance_ul  # Lower tolerance bound (e.g., 48.5μL)
+    max_target_ul = target_volume_ul + tolerance_ul  # Upper tolerance bound (e.g., 51.5μL)
+    
+    print(f"   📏 Target tolerance range: {min_target_ul:.1f}uL to {max_target_ul:.1f}uL ({tolerance_percent}%)")
+    
+    # Check if we have both calibration points for improved error incorporation
+    if (guess_volume_ml is not None and guess_overaspirate_ml is not None and 
+        baseline_variability_pct is not None and baseline_variability_pct > 0):
+        
+        # Convert guess point to uL
+        guess_volume_ul = guess_volume_ml * 1000
+        guess_overaspirate_ul = guess_overaspirate_ml * 1000
+        
+        print(f"   📊 Two-point calibration with capped variability approach:")
+        print(f"      Point 1: {baseline_volume_ul:.1f}uL (overaspirate: {baseline_overaspirate_ul:.1f}uL)")
+        print(f"      Point 2: {guess_volume_ul:.1f}uL (overaspirate: {guess_overaspirate_ul:.1f}uL)")
+        print(f"      Nominal efficiency: {efficiency:.3f} uL/uL")
+        
+        use_capped_variability = True
+    else:
+        print(f"   📊 Single point estimation (no uncertainty buffer)")
+        use_capped_variability = False
+    
+    if efficiency > 0:
+        # Calculate overaspirate needed for tolerance bounds using simple linear interpolation
+        
+        # Volume changes needed from baseline to reach tolerance bounds
+        volume_change_min = min_target_ul - baseline_volume_ul  # e.g., 48.5 - 46 = 2.5μL
+        volume_change_max = max_target_ul - baseline_volume_ul  # e.g., 51.5 - 46 = 5.5μL
+        
+        # Calculate simple bounds using nominal efficiency
+        overasp_change_min = volume_change_min / efficiency
+        overasp_change_max = volume_change_max / efficiency
+        
+        simple_min_overaspirate_ul = baseline_overaspirate_ul + overasp_change_min
+        simple_max_overaspirate_ul = baseline_overaspirate_ul + overasp_change_max
+        
+        print(f"   📐 Simple bounds calculation:")
+        print(f"      Lower target: {min_target_ul:.1f}uL (change: {volume_change_min:+.1f}uL)")
+        print(f"      Upper target: {max_target_ul:.1f}uL (change: {volume_change_max:+.1f}uL)")
+        print(f"      Efficiency: {efficiency:.3f} uL/uL")
+        print(f"      Simple bounds: [{simple_min_overaspirate_ul:.1f}uL, {simple_max_overaspirate_ul:.1f}uL]")
+        
+        # Convert back to mL for error application
+        min_overaspirate_ml = simple_min_overaspirate_ul / 1000
+        max_overaspirate_ml = simple_max_overaspirate_ul / 1000
+        
+        if use_capped_variability:
+            # Apply capped variability approach (improved from constraint_calibration)
+            # Use min(actual_variability, 10% of target volume) as +/- bounds
+            max_variability_cap_ml = target_volume_ml * 0.10  # 10% cap
+            baseline_variability_ml = baseline_volume_ml * (baseline_variability_pct / 100.0)
+            capped_variability_ml = min(baseline_variability_ml, max_variability_cap_ml)
+            
+            min_overaspirate_ml -= capped_variability_ml
+            max_overaspirate_ml += capped_variability_ml
+            
+            print(f"   🎯 Capped variability approach applied:")
+            print(f"      Original variability: {baseline_variability_ml*1000:.1f}uL ({baseline_variability_pct:.1f}%)")
+            print(f"      Cap (10% of target): {max_variability_cap_ml*1000:.1f}uL")
+            print(f"      Applied adjustment: +/-{capped_variability_ml*1000:.1f}uL")
+        else:
+            # No variability adjustment - use simple bounds
+            print(f"   📊 No variability adjustment applied")
+        
+        # Convert back to uL for final processing
+        min_overaspirate_ul = min_overaspirate_ml * 1000
+        max_overaspirate_ul = max_overaspirate_ml * 1000
+        
+        # Apply reasonable physical limits (allow negative, but not extreme values)
+        max_negative_ul = target_volume_ul * 0.5  # Don't go more negative than 50% of target volume
+        min_overaspirate_ul = max(-max_negative_ul, min_overaspirate_ul)
+        
+        # Ensure minimum range for optimization (at least 1uL span)
+        min_range_ul = 1.0
+        if abs(max_overaspirate_ul - min_overaspirate_ul) < min_range_ul:
+            # Expand around the midpoint
+            midpoint_ul = (min_overaspirate_ul + max_overaspirate_ul) / 2.0
+            min_overaspirate_ul = midpoint_ul - min_range_ul / 2.0
+            max_overaspirate_ul = midpoint_ul + min_range_ul / 2.0
+            print(f"   🔧 Expanded narrow range to ensure {min_range_ul:.1f}uL minimum span")
+        
+        print(f"   🎯 Final bounds: [{min_overaspirate_ul:.1f}uL, {max_overaspirate_ul:.1f}uL]")
+        print(f"   📊 Range: {max_overaspirate_ul - min_overaspirate_ul:.1f}uL")
+        print(f"   💡 Bounds span from {min_target_ul:.1f}uL to {max_target_ul:.1f}uL delivery targets")
+        
+        if min_overaspirate_ul < 0:
+            print(f"   🔻 Negative overaspirate enabled: allows under-aspiration for over-delivery correction")
+        
+        return float(min_overaspirate_ul / 1000), float(max_overaspirate_ul / 1000)  # Convert back to mL
+    else:
+        # Fallback to traditional approach if efficiency calculation failed
+        print(f"   ⚠️  Invalid efficiency ({efficiency:.3f}), using fallback bounds")
+        fallback_max_ul = baseline_overaspirate_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
+        return 0.0, float(fallback_max_ul / 1000)  # Convert back to mL
+
 def debug_ax_constraints(ax_client, label="", autosave_raw_path=None):
     """Debug function to check what constraints Ax actually has."""
     debug_lines = []
@@ -536,7 +733,7 @@ def debug_ax_constraints(ax_client, label="", autosave_raw_path=None):
                     lower_ul = lower_ml * 1000  # Convert mL to μL
                     upper_ul = upper_ml * 1000  # Convert mL to μL
                     print(f"   Parameter '{param_name}': range = [{lower_ml:.6f}, {upper_ml:.6f}] mL")
-                    print(f"   → In μL: [{lower_ul:.6f}, {upper_ul:.6f}]μL")
+                    print(f"   → In uL: [{lower_ul:.6f}, {upper_ul:.6f}]uL")
                     print(f"   ✅ CONSTRAINT ACTIVE: Ax will limit overaspirate_vol to {upper_ul:.1f}μL")
                     
                     debug_lines.append(f"Parameter '{param_name}': range = [{lower_ml:.6f}, {upper_ml:.6f}] mL")
@@ -619,6 +816,16 @@ def initialize_experiment():
         print("Reusing existing Lash_E controller...")
         _CACHED_LASH_E.logger.info(f"Reusing Lash_E controller for experiment index {EXPERIMENT_INDEX}")
 
+    # Home robot components for clean start
+    print("🏠 Homing robot components for clean start...")
+    try:
+        _CACHED_LASH_E.nr_robot.move_home()  # Fast move to home position
+        _CACHED_LASH_E.nr_robot.home_robot_components()  # Full homing sequence
+        print("   ✅ Robot homed successfully")
+    except Exception as e:
+        print(f"   ⚠️  Homing warning: {e}")
+        _CACHED_LASH_E.logger.warning(f"Robot homing failed: {e}")
+
     try:
         _CACHED_LASH_E.nr_robot.move_vial_to_location("measurement_vial_0", "clamp", 0)
     except Exception as e:
@@ -634,10 +841,10 @@ def get_tip_volume_for_volume(lash_e, volume):
         if tip_config:
             return tip_config.get('volume', 1.0)
         else:
-            return 1.0 if volume > 0.25 else 0.25
+            return 1.0 if volume >= 0.2 else 0.2
     except Exception as e:
         print(f"Warning: Could not determine tip volume for {volume} mL: {e}")
-        return 1.0 if volume > 0.25 else 0.25
+        return 1.0 if volume >= 0.2 else 0.2
 
 def create_transfer_learning_optimizer():
     """Create a global optimizer for transfer learning across all volumes."""
@@ -671,7 +878,8 @@ def create_transfer_learning_optimizer():
         simulate=SIMULATE,
         max_overaspirate_ul=max_overaspirate_across_volumes,
         transfer_learning=True,
-        volume_bounds=volume_bounds
+        volume_bounds=volume_bounds,
+        init_method=INIT_METHOD
     )
     
     print(f"   ✅ Global optimizer created with volume range {min_volume*1000:.0f}-{max_volume*1000:.0f}μL")
@@ -738,7 +946,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
     all_times.append(initial_time)
     all_measurements.append(initial_measured_volume)
     
-    print(f"{initial_deviation:.1f}% deviation")
+    print(f"{initial_deviation:.1f}% deviation | Target: {volume*1000:.1f}μL → Measured: {initial_measured_volume*1000:.1f}μL")
     
     # Step 2: Decision based on initial deviation
     if initial_deviation > deviation_threshold:
@@ -781,7 +989,7 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             all_times.append(time_taken)
             all_measurements.append(measured_volume)
             
-            print(f"{deviation:.1f}% dev")
+            print(f"Target: {volume*1000:.1f}μL → Measured: {measured_volume*1000:.1f}μL ({deviation:+.1f}% dev)")
         
         replicate_count = total_replicates
         
@@ -796,9 +1004,16 @@ def run_adaptive_measurement(lash_e, liquid_source, measurement_vial, volume, pa
             avg_vol = np.mean(all_measurements)
             
             # Use range-based variability: (max_vol - min_vol) / (2 * avg_vol) * 100
-            variability = (max_vol - min_vol) / (2 * avg_vol) * 100
+            # Safeguard against negative measurements causing impossible negative variability
+            if avg_vol > 0 and max_vol >= min_vol:
+                variability = (max_vol - min_vol) / (2 * avg_vol) * 100
+                variability = max(0.0, variability)  # Ensure non-negative
+            else:
+                print(f"⚠️  WARNING: Invalid measurement data for variability - avg_vol: {avg_vol}, min: {min_vol}, max: {max_vol}")
+                print(f"    Setting variability to penalty value ({ADAPTIVE_PENALTY_VARIABILITY}%) due to invalid measurements")
+                variability = ADAPTIVE_PENALTY_VARIABILITY
             
-            print(f"      📊 Final averages: {avg_deviation:.1f}% dev, {variability:.1f}% var, {avg_time:.1f}s")
+            print(f"      📊 Final averages: Target: {volume:.1f}μL → Avg Measured: {avg_vol:.1f}μL ({avg_deviation:+.1f}% dev, {variability:.1f}% var, {avg_time:.1f}s)")
         else:
             variability = 0.0  # Single measurement somehow
     
@@ -1066,7 +1281,7 @@ def get_llm_suggestions(ax_client, n, all_results, volume=None, liquid=None):
         print("   📊 Using optimization config - data-driven improvements")
     
     # Load config and sync parameter ranges with actual Ax search space
-    optimizer = llm_opt.LLMOptimizer()
+    optimizer = llm_opt.LLMOptimizer(backend="ollama", ollama_model="online_server")
     config = optimizer.load_config(config_path)
     
     # Update config with current experimental context
@@ -1076,18 +1291,30 @@ def get_llm_suggestions(ax_client, n, all_results, volume=None, liquid=None):
     
     if liquid is not None:
         config['experimental_setup']['current_liquid'] = liquid
+        print(f"   🧪 Setting current_liquid to: {liquid}")
+        
+        # Debug material properties lookup
+        material_props = config.get('material_properties', {})
+        print(f"   🔍 Available materials in config: {list(material_props.keys())}")
+        print(f"   🔍 Looking for liquid: '{liquid.lower()}'")
+        
         # For initial exploration, add liquid context to system message if available in config
-        if not all_results and liquid.lower() in config.get('material_properties', {}):
-            liquid_info = config['material_properties'][liquid.lower()]
-            liquid_context = f"LIQUID CONTEXT: You are optimizing for {liquid.upper()}. {liquid_info.get('exploration_notes', '')} {liquid_info.get('recommended_focus', '')}"
+        if not all_results and liquid.lower() in material_props:
+            liquid_info = material_props[liquid.lower()]
+            liquid_context = f"LIQUID CONTEXT: You are optimizing for {liquid.upper()}. {liquid_info.get('description', '')} Focus: {liquid_info.get('focus', '')}"
             
             # Insert liquid-specific guidance at the beginning of system message
             original_message = config['system_message']
             enhanced_message = [liquid_context, ""] + original_message
             config['system_message'] = enhanced_message
             print(f"   🧪 Enhanced config for {liquid}")
-        elif liquid.lower() not in config.get('material_properties', {}):
-            print(f"   ⚠️  No material properties found for {liquid} in config")
+            print(f"   📝 Added liquid context: {liquid_context}")
+        elif liquid.lower() not in material_props:
+            print(f"   ⚠️  No material properties found for '{liquid}' in config")
+        else:
+            print(f"   ℹ️  Skipping liquid context (not initial exploration)")
+    else:
+        print(f"   ⚠️  No liquid specified")
     
     # Update config parameters with actual search space bounds from Ax client
     if hasattr(ax_client, 'experiment') and hasattr(ax_client.experiment, 'search_space'):
@@ -1107,9 +1334,16 @@ def get_llm_suggestions(ax_client, n, all_results, volume=None, liquid=None):
     
     if not all_results:
         # Create empty DataFrame with expected columns for initial exploration
+        # Include the current liquid type so LLM knows what material to optimize for
         empty_df = pd.DataFrame(columns=['liquid', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 
                                         'dispense_wait_time', 'retract_speed', 'blowout_vol', 
                                         'post_asp_air_vol', 'overaspirate_vol', 'deviation', 'time', 'trial_type'])
+        
+        # Add a single row with the current liquid type for material properties detection
+        if liquid:
+            empty_df.loc[0] = [liquid] + [None] * (len(empty_df.columns) - 1)
+            print(f"   🧪 Added liquid type '{liquid}' to LLM input for material properties detection")
+        
         empty_df.to_csv(llm_input_file, index=False)
     else:
         pd.DataFrame(all_results).to_csv(llm_input_file, index=False)
@@ -1125,18 +1359,27 @@ def get_llm_suggestions(ax_client, n, all_results, volume=None, liquid=None):
             expected_params = set(ax_client.experiment.search_space.parameters.keys())
             filtered_params = {}
             
-            # Apply proper type casting based on Ax search space parameter types
+            # Apply proper type casting and bounds enforcement based on Ax search space parameter types
             for k, v in llm_params.items():
                 if k in expected_params:
                     ax_param = ax_client.experiment.search_space.parameters[k]
                     if hasattr(ax_param, 'parameter_type'):
                         # Cast to appropriate type based on Ax parameter type
                         if ax_param.parameter_type.name == 'INT':
-                            filtered_params[k] = int(round(float(v)))
+                            casted_value = int(round(float(v)))
                         elif ax_param.parameter_type.name == 'FLOAT':
-                            filtered_params[k] = float(v)
+                            casted_value = float(v)
                         else:
-                            filtered_params[k] = v
+                            casted_value = v
+                        
+                        # Enforce bounds for RangeParameter types
+                        if hasattr(ax_param, 'lower') and hasattr(ax_param, 'upper'):
+                            original_value = casted_value
+                            casted_value = max(ax_param.lower, min(ax_param.upper, casted_value))
+                            if casted_value != original_value:
+                                print(f"     🔧 Clamped {k}: {original_value} → {casted_value} (bounds: [{ax_param.lower}, {ax_param.upper}])")
+                        
+                        filtered_params[k] = casted_value
                     else:
                         filtered_params[k] = v
             
@@ -1307,21 +1550,25 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
     print(f"\n🔍 SCREENING PHASE: {INITIAL_PARAMETER_SETS} initial parameter sets...")
     
     screening_results = []
+    llm_suggestions = []
+    
+    # Get all LLM suggestions upfront if using LLM
+    if USE_LLM_FOR_SCREENING and LLM_AVAILABLE:
+        print(f"   🤖 Requesting {INITIAL_PARAMETER_SETS} LLM suggestions...")
+        llm_suggestions = get_llm_suggestions(ax_client, INITIAL_PARAMETER_SETS, screening_results, volume, liquid)
+        print(f"   📝 Received {len(llm_suggestions)} LLM suggestions")
     
     for i in range(INITIAL_PARAMETER_SETS):
         print(f"   Screening trial {i+1}/{INITIAL_PARAMETER_SETS}...")
         
-        if USE_LLM_FOR_SCREENING and LLM_AVAILABLE:
-            # Get LLM suggestion
-            suggestions = get_llm_suggestions(ax_client, 1, screening_results, volume, liquid)
-            if suggestions:
-                params, trial_index = suggestions[0]
-            else:
-                # Fallback to Ax suggestion
-                params, trial_index = ax_client.get_next_trial()
+        if USE_LLM_FOR_SCREENING and LLM_AVAILABLE and i < len(llm_suggestions):
+            # Use pre-generated LLM suggestion
+            params, trial_index = llm_suggestions[i]
+            print(f"     Using LLM suggestion {i+1}")
         else:
-            # Get Ax suggestion (SOBOL)
+            # Get Ax suggestion (SOBOL) as fallback
             params, trial_index = ax_client.get_next_trial()
+            print(f"     Using Ax/SOBOL suggestion {i+1}")
         
         # Enforce fixed parameters - override any values Ax suggested
         for param_name, fixed_value in FIXED_PARAMETERS.items():
@@ -1374,118 +1621,223 @@ def run_screening_phase(ax_client, lash_e, state, volume, expected_mass, expecte
 
 # --- OVERASPIRATE CALIBRATION (REUSE FROM MODULAR) ---
 
-def calculate_first_volume_constraint(best_candidate, volume, autosave_raw_path=None):
+def calculate_first_volume_constraint(best_candidate, volume, lash_e, state, liquid, 
+                                     raw_measurements, new_pipet_each_time_set, autosave_raw_path=None):
     """
-    Calculate overaspirate constraint for first volume based on screening shortfall.
+    Calculate overaspirate constraint for first volume using true 2-point calibration.
+    
+    Uses the best screening candidate as Point 1, runs a real Point 2 measurement,
+    calculates actual efficiency, and determines smart bounds that span the tolerance range.
     
     Args:
         best_candidate: Best screening candidate with deviation and parameters
         volume: Target volume in mL
+        lash_e: Hardware controller for running measurements
+        state: Robot state for vial management
+        liquid: Liquid type for measurements  
+        raw_measurements: List to store measurement data
+        new_pipet_each_time_set: Whether to use new pipet for each measurement
         autosave_raw_path: Path to save constraint log file
         
     Returns:
         tuple: (min_overaspirate_ml, max_overaspirate_ml) constraint bounds
     """
-    # Calculate shortfall from the screening result using actual measured volume
-    target_volume_ul = volume * 1000
+    print(f"   🧪 TRUE 2-POINT CALIBRATION: Running actual measurements for first volume constraint...")
+    global global_measurement_count
     
-    # Use actual average measured volume if available, otherwise fall back to deviation calculation
-    raw_measurements = best_candidate.get('raw_measurements', [])
-    if raw_measurements:
-        # Use actual average measured volume (handles both over- and under-delivery)
-        avg_measured_volume_ml = np.mean(raw_measurements)  # raw_measurements are in mL
-        measured_volume_ul = avg_measured_volume_ml * 1000  # Convert to μL
-        print(f"   📏 Using actual measured volume: {measured_volume_ul:.1f}μL from {len(raw_measurements)} measurements")
+    # Check budget first
+    if global_measurement_count >= MAX_MEASUREMENTS:
+        print(f"   🛑 BUDGET EXHAUSTED: Cannot run 2-point calibration - using estimation fallback")
+        # Use the old estimation approach as fallback
+        point1_measured_volume_ml = np.mean(best_candidate.get('raw_measurements', [volume]))
+        point1_overaspirate_ml = best_candidate.get('overaspirate_vol', 0)
+        point1_variability_pct = best_candidate.get('raw_precision', 5.0)
+        
+        min_overaspirate_ml, max_overaspirate_ml = calculate_efficiency_based_bounds(
+            target_volume_ml=volume,
+            baseline_volume_ml=point1_measured_volume_ml,
+            baseline_overaspirate_ml=point1_overaspirate_ml,
+            efficiency=0.8,  # Conservative estimate
+            baseline_variability_pct=point1_variability_pct
+        )
+        return float(min_overaspirate_ml), float(max_overaspirate_ml)
+    
+    # Extract Point 1 data from best screening candidate
+    raw_measurements_p1 = best_candidate.get('raw_measurements', [])
+    if raw_measurements_p1:
+        point1_measured_volume_ml = np.mean(raw_measurements_p1)
+        print(f"   📏 Point 1 (screening): {point1_measured_volume_ml*1000:.1f}μL from {len(raw_measurements_p1)} measurements")
     else:
-        # Fallback: calculate from deviation (assuming under-delivery)
+        # Fallback: calculate from deviation
         deviation_pct = best_candidate.get('deviation', 0)
-        measured_volume_ul = target_volume_ul * (1 - deviation_pct / 100)
-        print(f"   📏 Using deviation-calculated volume: {measured_volume_ul:.1f}μL (deviation: {deviation_pct:.1f}%)")
+        point1_measured_volume_ml = volume * (1 - deviation_pct / 100)
+        print(f"   📏 Point 1 (from deviation): {point1_measured_volume_ml*1000:.1f}μL ({deviation_pct:.1f}% dev)")
     
-    shortfall_ul = target_volume_ul - measured_volume_ul  # Positive = under-delivery, Negative = over-delivery
+    point1_overaspirate_ml = best_candidate.get('overaspirate_vol', 0)  # Already in mL
+    point1_variability_pct = best_candidate.get('raw_precision', 5.0)  # Default 5% if missing
     
-    # Get existing overaspirate from screening parameters
-    existing_overaspirate_ul = best_candidate.get('overaspirate_vol', 0) * 1000
+    # Now run Point 2 measurement with adaptive direction (from our existing logic)
+    target_volume_ul = volume * 1000
+    baseline_volume_ul = point1_measured_volume_ml * 1000
+    shortfall_ul = target_volume_ul - baseline_volume_ul
+    existing_overaspirate_ul = point1_overaspirate_ml * 1000
     
-    # Calculate constraint: existing + shortfall + buffer
-    # Logic: Need baseline amount already tried + additional to cover shortfall + safety buffer
-    # Note: shortfall can be negative (over-delivery), which would reduce total overaspirate needed
-    raw_max_overaspirate_ul = existing_overaspirate_ul + shortfall_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
-    print(f"   📊 Constraint calc: {existing_overaspirate_ul:.1f} + {shortfall_ul:.1f} + {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f} = {raw_max_overaspirate_ul:.1f}μL")
+    # Adaptive direction: cross over the target volume 
+    tolerance_buffer_ul = 2.0  # Minimum tolerance buffer
+    spread_ul = max(abs(shortfall_ul) + tolerance_buffer_ul, 2.0)  # Minimum 2uL spread
     
-    # Apply consistent constraint logic (same as subsequent volumes)
-    if raw_max_overaspirate_ul < 0:
-        # Negative overaspirate means we need LESS volume than target
-        # Set constraint to allow negative overaspirate values down to the calculated minimum
-        min_overaspirate_ul = raw_max_overaspirate_ul  # e.g., -6.2μL
-        max_overaspirate_ul = OVERVOLUME_CALIBRATION_BUFFER_UL  # Use configured buffer as max
-        print(f"   🎯 Using NEGATIVE overaspirate range for first volume: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
-        print(f"   🔍 DEBUG: Screening suggests under-aspiration needed")
-    elif raw_max_overaspirate_ul < OVERVOLUME_CALIBRATION_BUFFER_UL:
-        # Positive but very small overaspirate - ensure at least buffer range
-        min_overaspirate_ul = 0.0
-        max_overaspirate_ul = OVERVOLUME_CALIBRATION_BUFFER_UL  # Use configured buffer
-        print(f"   🎯 Using minimum buffer range for first volume: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
-        print(f"   🔍 DEBUG: Small calculated value ({raw_max_overaspirate_ul:.1f}μL) increased to configured buffer")
+    if shortfall_ul > 0:
+        # Under-delivering: increase overaspirate to cross over target
+        point2_overaspirate_ul = existing_overaspirate_ul + spread_ul
+        direction = "increased"
+        direction_sign = "+"
     else:
-        # Normal positive overaspirate
-        min_overaspirate_ul = 0.0
-        max_overaspirate_ul = raw_max_overaspirate_ul
-        print(f"   🎯 Using calculated overaspirate constraint for first volume: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
+        # Over-delivering: decrease overaspirate to cross under target
+        point2_overaspirate_ul = existing_overaspirate_ul - spread_ul
+        direction = "decreased"  
+        direction_sign = "-"
     
-    max_overaspirate_ml = max_overaspirate_ul / 1000  # Convert back to mL
-    min_overaspirate_ml = min_overaspirate_ul / 1000  # Convert back to mL
+    # Allow negative overaspirate but set reasonable bound
+    point2_overaspirate_ul = max(-10.0, point2_overaspirate_ul)
+    point2_overaspirate_ml = point2_overaspirate_ul / 1000  # Convert to mL
     
-    print(f"   📊 First volume constraint calculation:")
-    if shortfall_ul >= 0:
-        print(f"     Target: {target_volume_ul:.1f}μL, Measured: {measured_volume_ul:.1f}μL → Under-delivery: {shortfall_ul:.1f}μL")
+    print(f"   📏 Point 2: Testing {direction} overaspirate ({point2_overaspirate_ul:.1f}μL, {direction_sign}{spread_ul:.1f}μL from baseline)...")
+    
+    # Set up Point 2 measurement  
+    expected_mass = volume * LIQUIDS[liquid]["density"]
+    expected_time = volume * 10.146 + 9.5813
+    
+    check_if_measurement_vial_full(lash_e, state)
+    liquid_source = get_liquid_source_with_vial_management(lash_e, state)
+    
+    # Create Point 2 parameters (copy from screening candidate but change overaspirate)
+    point2_params = best_candidate.copy()  # Start with all screening parameters
+    point2_params['overaspirate_vol'] = point2_overaspirate_ml  # Update only overaspirate
+    
+    # DEBUG: Verify the overaspirate update
+    print(f"   🔍 DEBUG: Point 1 overaspirate: {point1_overaspirate_ml*1000:.3f}μL")
+    print(f"   🔍 DEBUG: Point 2 overaspirate: {point2_overaspirate_ml*1000:.3f}μL")
+    print(f"   🔍 DEBUG: Point 2 params['overaspirate_vol']: {point2_params['overaspirate_vol']*1000:.3f}μL")
+    
+    # Run Point 2 measurement
+    point2_result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
+                                            volume, point2_params, expected_mass, expected_time, 
+                                            1, SIMULATE, autosave_raw_path, raw_measurements, 
+                                            liquid, new_pipet_each_time_set, "2PT_CONSTRAINT_P2")
+    
+    # Check if measurement succeeded
+    if point2_result is None:
+        print("   🛑 Point 2 measurement failed - using estimation fallback")
+        min_overaspirate_ml, max_overaspirate_ml = calculate_efficiency_based_bounds(
+            target_volume_ml=volume,
+            baseline_volume_ml=point1_measured_volume_ml,
+            baseline_overaspirate_ml=point1_overaspirate_ml,
+            efficiency=0.8,  # Conservative estimate
+            baseline_variability_pct=point1_variability_pct
+        )
+        return float(min_overaspirate_ml), float(max_overaspirate_ml)
+    
+    # Get Point 2 measured volume
+    if raw_measurements:
+        point2_mass = raw_measurements[-1]['mass']
+        point2_measured_volume_ml = point2_mass / LIQUIDS[liquid]["density"]
     else:
-        print(f"     Target: {target_volume_ul:.1f}μL, Measured: {measured_volume_ul:.1f}μL → Over-delivery: {abs(shortfall_ul):.1f}μL")
-    print(f"     Existing overaspirate: {existing_overaspirate_ul:.1f}μL")
-    print(f"     Buffer: {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f}μL")
-    print(f"     → Overaspirate constraint range: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL] ([{min_overaspirate_ml:.4f}mL, {max_overaspirate_ml:.4f}mL])")
+        point2_measured_volume_ml = volume  # Fallback for simulation
     
+    point2_deviation = point2_result.get('deviation', 0)
+    print(f"   📏 Point 2 result: {point2_measured_volume_ml*1000:.1f}μL ({point2_deviation:+.1f}% dev)")
+    
+    # Calculate REAL efficiency from the two points
+    volume_change_ul = (point2_measured_volume_ml - point1_measured_volume_ml) * 1000
+    overaspirate_change_ul = point2_overaspirate_ul - existing_overaspirate_ul
+    
+    if abs(overaspirate_change_ul) > 0.1:  # Need at least 0.1μL change
+        real_efficiency = volume_change_ul / overaspirate_change_ul
+        print(f"   ⚡ REAL efficiency calculated: {volume_change_ul:+.1f}μL / {overaspirate_change_ul:+.1f}μL = {real_efficiency:.3f}uL/uL")
+    else:
+        print(f"   ⚠️  Overaspirate change too small ({overaspirate_change_ul:+.1f}μL) - using conservative estimate")
+        real_efficiency = 0.8
+    
+    # Now use smart bounds calculation with the REAL calculated efficiency
+    min_overaspirate_ml, max_overaspirate_ml = calculate_efficiency_based_bounds(
+        target_volume_ml=volume,
+        baseline_volume_ml=point1_measured_volume_ml,
+        baseline_overaspirate_ml=point1_overaspirate_ml,
+        efficiency=real_efficiency,
+        baseline_variability_pct=point1_variability_pct
+    )
+    
+    # Add variability-based expansion for uncertainty
+    variability_pct = point1_variability_pct
+    if variability_pct > 50.0:  # High variability - use fallback
+        print(f"   ⚠️  High variability ({variability_pct:.1f}%) - using 5% fallback")
+        variability_pct = 5.0
+    
+    # Convert variability percentage to volume units for bounds expansion
+    target_volume_ul = volume * 1000
+    variability_ul = (variability_pct / 100) * target_volume_ul
+    variability_ml = variability_ul / 1000
+    
+    # Apply variability adjustment
+    min_overaspirate_ml -= variability_ml
+    max_overaspirate_ml += variability_ml
+    
+    print(f"   🎯 Smart bounds with {variability_pct:.1f}% variability adjustment:")
+    print(f"      Before: [{(min_overaspirate_ml + variability_ml)*1000:.1f}, {(max_overaspirate_ml - variability_ml)*1000:.1f}]uL")
+    print(f"      After:  [{min_overaspirate_ml*1000:.1f}, {max_overaspirate_ml*1000:.1f}]uL")
+    
+    # Store the real efficiency for logging
+    efficiency = real_efficiency
+    
+    # Summary output
+    min_overaspirate_ul = min_overaspirate_ml * 1000
+    max_overaspirate_ul = max_overaspirate_ml * 1000
+    
+    print(f"   📊 First volume 2-point constraint calculation:")
+    print(f"     Point 1: {point1_measured_volume_ml*1000:.1f}μL (overaspirate: {point1_overaspirate_ml*1000:.1f}μL)")
+    print(f"     Efficiency: {efficiency:.3f}uL/uL")
+    print(f"     Variability: {point1_variability_pct:.1f}%")
+    print(f"     → Smart constraint range: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL] ([{min_overaspirate_ml:.4f}mL, {max_overaspirate_ml:.4f}mL])")
+
     # Log constraint calculation to file
     if autosave_raw_path:
         log_file = os.path.join(os.path.dirname(autosave_raw_path), "constraint_log.txt")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"\n[{timestamp}] FIRST VOLUME CONSTRAINT CALCULATION\n")
+            f.write(f"\n[{timestamp}] FIRST VOLUME 2-POINT CONSTRAINT CALCULATION\n")
             f.write(f"Volume: {volume*1000:.1f}μL\n")
-            f.write(f"Target: {target_volume_ul:.1f}μL, Measured: {measured_volume_ul:.1f}μL\n")
-            if shortfall_ul >= 0:
-                f.write(f"Under-delivery: {shortfall_ul:.1f}μL\n")
-            else:
-                f.write(f"Over-delivery: {abs(shortfall_ul):.1f}μL\n")
-            f.write(f"Existing overaspirate: {existing_overaspirate_ul:.1f}μL\n")
-            f.write(f"Buffer: {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f}μL\n")
-            f.write(f"Overaspirate constraint range: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]\n")
+            f.write(f"Point 1: {point1_measured_volume_ml*1000:.1f}μL (overaspirate: {point1_overaspirate_ml*1000:.1f}μL)\n")
+            f.write(f"Efficiency: {efficiency:.3f}uL/uL\n")
+            f.write(f"Variability: {point1_variability_pct:.1f}%\n")
+            f.write(f"Smart constraint range: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]\n")
             f.write(f"Min overaspirate constraint: {min_overaspirate_ul:.1f}μL ({min_overaspirate_ml:.4f}mL)\n")
             f.write(f"Max overaspirate constraint: {max_overaspirate_ul:.1f}μL ({max_overaspirate_ml:.4f}mL)\n")
     
-    return min_overaspirate_ml, max_overaspirate_ml
+    return float(min_overaspirate_ml), float(max_overaspirate_ml)
 
 def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, lash_e, state, 
                                          autosave_raw_path, raw_measurements, liquid, new_pipet_each_time_set):
     """
-    Calibrate overvolume parameters using final optimized parameters from first volume.
-    Tests optimized parameters on remaining volumes and calculates volume-specific shortfalls.
+    Calibrate overvolume parameters using two-point efficiency testing approach.
+    
+    For each remaining volume:
+    1. Test baseline (inherited parameters) 
+    2. Test calculated guess overvolume
+    3. Calculate efficiency and set smart bounds
     
     Args:
         optimized_params: Final optimized parameters from first volume
         remaining_volumes: List of volumes to test (excluding first volume)
         
     Returns:
-        dict: {volume_ml: {'guess_ml': X, 'max_ml': Y}} for each remaining volume
+        dict: {volume_ml: {'min_ml': X, 'max_ml': Y, 'efficiency': Z}} for each remaining volume
     """
-    import statistics  # For calculating precision from replicates
-    
     if not remaining_volumes:
         print("⚠️  No remaining volumes for post-optimization overaspirate calibration")
         return {}
     
-    print(f"\n🔬 POST-OPTIMIZATION OVERASPIRATE CALIBRATION")
-    print(f"   Testing optimized parameters on {len(remaining_volumes)} volumes...")
+    print(f"\n🔬 POST-OPTIMIZATION OVERASPIRATE CALIBRATION (Two-Point Efficiency)")
+    print(f"   Testing optimized parameters on {len(remaining_volumes)} volumes with 2-point strategy...")
     
     volume_calibrations = {}
     
@@ -1495,7 +1847,7 @@ def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, 
             print(f"🛑 BUDGET EXHAUSTED: Cannot continue overaspirate calibration")
             break
             
-        print(f"   🧪 Testing {volume*1000:.0f}μL...", end=" ")
+        print(f"   🧪 Testing {volume*1000:.0f}μL with two-point approach...")
         
         expected_mass = volume * LIQUIDS[liquid]["density"]
         expected_time = volume * 10.146 + 9.5813
@@ -1503,89 +1855,166 @@ def calibrate_overvolume_post_optimization(optimized_params, remaining_volumes, 
         check_if_measurement_vial_full(lash_e, state)
         liquid_source = get_liquid_source_with_vial_management(lash_e, state)
         
-        # Multiple measurements using optimized parameters for better reliability
-        print(f"   📏 Running {PRECISION_MEASUREMENTS} replicate measurements for overaspirate calibration...")
-        all_measurements = []
-        all_times = []
+        # Test Point 1: Baseline (inherited parameters)
+        print(f"      Point 1: Testing baseline parameters...", end=" ")
         
-        for rep in range(PRECISION_MEASUREMENTS):
-            print(f"      Replicate {rep+1}/{PRECISION_MEASUREMENTS}...", end=" ")
-            
-            result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
-                                              volume, optimized_params, expected_mass, expected_time, 
-                                              1, SIMULATE, autosave_raw_path, raw_measurements, 
-                                              liquid, new_pipet_each_time_set, "POST_OPT_OVERVOLUME_ASSAY")
-            
-            # Get actual measured volume from this replicate
-            if raw_measurements:
-                actual_mass = raw_measurements[-1]['mass']
-                actual_volume_ml = actual_mass / LIQUIDS[liquid]["density"]
-                all_measurements.append(actual_volume_ml)
-                all_times.append(result.get('time', 0))
-                
-                # Show individual result
-                measured_ul = actual_volume_ml * 1000
-                target_ul = volume * 1000
-                deviation_pct = abs(measured_ul - target_ul) / target_ul * 100
-                print(f"{measured_ul:.1f}μL ({deviation_pct:.1f}% dev)")
-            else:
-                all_measurements.append(volume)  # Fallback
-                all_times.append(result.get('time', 0))
-                print(f"sim")
+        baseline_result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
+                                                  volume, optimized_params, expected_mass, expected_time, 
+                                                  1, SIMULATE, autosave_raw_path, raw_measurements, 
+                                                  liquid, new_pipet_each_time_set, "OVERVOLUME_BASELINE")
         
-        # Calculate averages from all replicates
-        if all_measurements:
-            actual_volume_ml = sum(all_measurements) / len(all_measurements)
-            avg_time = sum(all_times) / len(all_times)
-            
-            # Calculate precision from replicates
-            if len(all_measurements) > 1:
-                volume_std = statistics.stdev(all_measurements)
-                precision_pct = (volume_std / actual_volume_ml) * 100
-            else:
-                precision_pct = 0
-                
-            print(f"   📊 Average: {actual_volume_ml*1000:.1f}μL ±{precision_pct:.1f}% ({len(all_measurements)} reps)")
+        # Check if budget was exceeded
+        if baseline_result is None:
+            print("🛑 Budget exhausted during baseline test")
+            break
+        
+        # Get actual measured volume from baseline test
+        if raw_measurements:
+            baseline_mass = raw_measurements[-1]['mass']
+            baseline_volume_ml = baseline_mass / LIQUIDS[liquid]["density"]
         else:
-            actual_volume_ml = volume  # Fallback
+            baseline_volume_ml = volume  # Fallback for simulation
         
-        # Calculate shortfall and overaspirate adjustments
+        baseline_deviation = baseline_result.get('deviation', 0)
+        print(f"{baseline_volume_ml*1000:.1f}uL ({baseline_deviation:.1f}% dev)")
+        
+        # Calculate shortfall and adaptive overvolume selection
         target_volume_ul = volume * 1000
-        measured_volume_ul = actual_volume_ml * 1000
-        shortfall_ul = target_volume_ul - measured_volume_ul
-        
+        baseline_volume_ul = baseline_volume_ml * 1000
+        shortfall_ul = target_volume_ul - baseline_volume_ul
         existing_overaspirate_ul = optimized_params.get('overaspirate_vol', 0) * 1000
         
-        # Calculate guess (no buffer) and max constraint (with buffer)
-        guess_overaspirate_ul = existing_overaspirate_ul + shortfall_ul
-        max_overaspirate_ul = guess_overaspirate_ul + OVERVOLUME_CALIBRATION_BUFFER_UL
+        # Adaptive direction: cross over the target volume (improved from constraint_calibration)
+        tolerance_buffer_ul = 2.0  # Minimum tolerance buffer
+        spread_ul = max(abs(shortfall_ul) + tolerance_buffer_ul, 2.0)  # Minimum 2uL spread
         
-        # Convert to mL and store
-        volume_calibrations[volume] = {
-            'guess_ml': guess_overaspirate_ul / 1000,
-            'max_ml': max_overaspirate_ul / 1000,
-            'shortfall_ul': shortfall_ul,
-            'measured_volume_ul': measured_volume_ul
-        }
+        if shortfall_ul > 0:
+            # Under-delivering: increase overaspirate to cross over target
+            guess_overaspirate_ul = existing_overaspirate_ul + spread_ul
+            direction = "increased"
+            direction_sign = "+"
+        else:
+            # Over-delivering: decrease overaspirate to cross under target
+            guess_overaspirate_ul = existing_overaspirate_ul - spread_ul
+            direction = "decreased"
+            direction_sign = "-"
         
-        print(f"{measured_volume_ul:.1f}μL measured (shortfall: {shortfall_ul:+.1f}μL)")
-        print(f"     → Guess: {guess_overaspirate_ul:.1f}μL, Max: {max_overaspirate_ul:.1f}μL")
+        # Allow negative overaspirate but set reasonable bound
+        guess_overaspirate_ul = max(-10.0, guess_overaspirate_ul)
         
-        # Log subsequent volume constraint to file
+        # Test Point 2: Adaptive overvolume selection
+        print(f"      Point 2: Testing {direction} overvolume ({guess_overaspirate_ul:.1f}uL, {direction_sign}{spread_ul:.1f}uL)...", end=" ")
+        
+        guess_params = optimized_params.copy()
+        guess_params['overaspirate_vol'] = guess_overaspirate_ul / 1000  # Convert to mL
+        
+        check_if_measurement_vial_full(lash_e, state)
+        
+        guess_result = pipet_and_measure_tracked(lash_e, liquid_source, state["measurement_vial_name"], 
+                                                volume, guess_params, expected_mass, expected_time, 
+                                                1, SIMULATE, autosave_raw_path, raw_measurements, 
+                                                liquid, new_pipet_each_time_set, "OVERVOLUME_GUESS")
+        
+        # Check if budget was exceeded
+        if guess_result is None:
+            print("🛑 Budget exhausted during guess test")
+            break
+        
+        # Get actual measured volume from guess test
+        if raw_measurements:
+            guess_mass = raw_measurements[-1]['mass']
+            guess_volume_ml = guess_mass / LIQUIDS[liquid]["density"]
+        else:
+            guess_volume_ml = volume  # Fallback for simulation
+        
+        guess_deviation = guess_result.get('deviation', 0)
+        print(f"{guess_volume_ml*1000:.1f}uL ({guess_deviation:.1f}% dev)")
+        
+        # Calculate efficiency and smart bounds
+        efficiency = calculate_overaspirate_efficiency(optimized_params, guess_params, 
+                                                     baseline_volume_ml, guess_volume_ml)
+        
+        # DEBUG: Detailed efficiency calculation breakdown
+        print(f"\n🔍 EFFICIENCY DEBUG:")
+        print(f"   Baseline: {baseline_volume_ml*1000:.1f}uL (overaspirate: {optimized_params.get('overaspirate_vol', 0)*1000:.1f}uL)")
+        print(f"   Guess:    {guess_volume_ml*1000:.1f}uL (overaspirate: {guess_params.get('overaspirate_vol', 0)*1000:.1f}uL)")
+        
+        baseline_overaspirate_ul = optimized_params.get('overaspirate_vol', 0) * 1000
+        guess_overaspirate_ul = guess_params.get('overaspirate_vol', 0) * 1000
+        overaspirate_change_ul = guess_overaspirate_ul - baseline_overaspirate_ul
+        volume_change_ul = (guess_volume_ml - baseline_volume_ml) * 1000
+        
+        print(f"   Volume change: {guess_volume_ml*1000:.1f} - {baseline_volume_ml*1000:.1f} = {volume_change_ul:+.1f}uL")
+        print(f"   Overasp change: {guess_overaspirate_ul:.1f} - {baseline_overaspirate_ul:.1f} = {overaspirate_change_ul:+.1f}uL")
+        
+        if abs(overaspirate_change_ul) > 0.1:
+            expected_efficiency = volume_change_ul / overaspirate_change_ul
+            print(f"   Expected efficiency: {volume_change_ul:+.1f} / {overaspirate_change_ul:+.1f} = {expected_efficiency:.3f}")
+        else:
+            print(f"   Expected efficiency: Cannot calculate (change too small: {overaspirate_change_ul:+.1f}uL)")
+            
+        print(f"   ACTUAL efficiency returned: {efficiency:.3f}")
+        
+        if efficiency > 0:
+            # Estimate baseline variability for uncertainty expansion
+            # Since we only have single measurements, use default uncertainty estimate
+            # This could be enhanced to use first volume's measured variability
+            baseline_variability_pct = 3.0  # Conservative 3% uncertainty estimate for single measurements
+            
+            print(f"      📊 Efficiency calculation details:")
+            print(f"         Baseline: {baseline_volume_ml*1000:.1f}uL with {optimized_params.get('overaspirate_vol', 0)*1000:.1f}uL overaspirate")
+            print(f"         Guess: {guess_volume_ml*1000:.1f}uL with {guess_params.get('overaspirate_vol', 0)*1000:.1f}uL overaspirate")
+            print(f"         Volume change: {(guess_volume_ml - baseline_volume_ml)*1000:.1f}uL")
+            print(f"         Overaspirate change: {(guess_params.get('overaspirate_vol', 0) - optimized_params.get('overaspirate_vol', 0))*1000:.1f}uL")
+            print(f"         Efficiency: {efficiency:.3f} (volume gained per uL overaspirate added)")
+            
+            # Use efficiency-based bounds with uncertainty propagation
+            min_overaspirate_ml, max_overaspirate_ml = calculate_efficiency_based_bounds(
+                volume, baseline_volume_ml, optimized_params.get('overaspirate_vol', 0), 
+                efficiency, baseline_variability_pct, None,
+                guess_volume_ml, guess_params.get('overaspirate_vol', 0)
+            )
+            
+            volume_calibrations[volume] = {
+                'min_ml': min_overaspirate_ml,
+                'max_ml': max_overaspirate_ml,
+                'efficiency': efficiency,
+                'baseline_volume_ml': baseline_volume_ml,
+                'guess_volume_ml': guess_volume_ml,
+                'shortfall_ul': shortfall_ul
+            }
+            
+            print(f"      → Efficiency: {efficiency:.3f}, Bounds: [{min_overaspirate_ml*1000:.1f}μL, {max_overaspirate_ml*1000:.1f}μL]")
+        else:
+            # Fallback to traditional approach
+            fallback_max_ml = guess_overaspirate_ul / 1000
+            volume_calibrations[volume] = {
+                'min_ml': 0.0,
+                'max_ml': fallback_max_ml,
+                'efficiency': 0.0,
+                'baseline_volume_ml': baseline_volume_ml,
+                'guess_volume_ml': guess_volume_ml,
+                'shortfall_ul': shortfall_ul
+            }
+            
+            print(f"      → Fallback bounds: [0.0μL, {fallback_max_ml*1000:.1f}μL] (efficiency calculation failed)")
+        
+        # Log calibration to file
         if autosave_raw_path:
             log_file = os.path.join(os.path.dirname(autosave_raw_path), "constraint_log.txt")
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            calib_data = volume_calibrations[volume]
             with open(log_file, "a", encoding="utf-8") as f:
-                f.write(f"\n[{timestamp}] SUBSEQUENT VOLUME CONSTRAINT CALCULATION\n")
+                f.write(f"\n[{timestamp}] TWO-POINT EFFICIENCY CALIBRATION\n")
                 f.write(f"Volume: {volume*1000:.1f}μL\n")
-                f.write(f"Target: {target_volume_ul:.1f}μL, Measured: {measured_volume_ul:.1f}μL\n")
-                f.write(f"Shortfall: {shortfall_ul:+.1f}μL\n")
-                f.write(f"Existing overaspirate: {existing_overaspirate_ul:.1f}μL\n")
-                f.write(f"Buffer: {OVERVOLUME_CALIBRATION_BUFFER_UL:.1f}μL\n")
-                f.write(f"Guess overaspirate: {guess_overaspirate_ul:.1f}μL\n")
-                f.write(f"Max overaspirate constraint: {max_overaspirate_ul:.1f}μL\n")
+                f.write(f"Baseline: {baseline_volume_ul:.1f}μL (overaspirate: {existing_overaspirate_ul:.1f}μL)\n")
+                f.write(f"Guess: {guess_volume_ml*1000:.1f}μL (overaspirate: {guess_overaspirate_ul:.1f}μL)\n")
+                f.write(f"Efficiency: {calib_data['efficiency']:.3f}\n")
+                f.write(f"Smart bounds: [{calib_data['min_ml']*1000:.1f}μL, {calib_data['max_ml']*1000:.1f}μL]\n")
     
-    print(f"   ✅ Post-optimization overaspirate calibration complete for {len(volume_calibrations)} volumes")
+    print(f"   ✅ Two-point calibration complete for {len(volume_calibrations)} volumes")
+    print(f"   💡 Budget saved: {(len(remaining_volumes) - len(volume_calibrations)) * 1} measurements vs old approach")
+    
     return volume_calibrations
 
 def get_liquid_source_with_vial_management(lash_e, state, minimum_volume=2.0):
@@ -1607,8 +2036,49 @@ def get_liquid_source_with_vial_management(lash_e, state, minimum_volume=2.0):
     except Exception as e:
         lash_e.logger.info(f"[vial-mgmt] pre-pipetting management skipped: {e}")
     
-    # Fallback to default source
-    return "liquid_source_0"
+    # Legacy mode with smart source switching
+    return get_next_available_liquid_source(lash_e, state, minimum_volume)
+
+def get_next_available_liquid_source(lash_e, state, minimum_volume=2.0):
+    """Legacy mode: Find next available liquid source with enough volume."""
+    # Initialize source index if not exists
+    if "current_source_index" not in state:
+        state["current_source_index"] = 0
+    
+    # Try current source first
+    current_index = state["current_source_index"]
+    current_source = f"liquid_source_{current_index}"
+    
+    try:
+        current_vol = lash_e.nr_robot.get_vial_info(current_source, "vial_volume")
+        if current_vol is not None and current_vol >= minimum_volume:
+            # Current source is still good
+            return current_source
+        else:
+            print(f"[legacy] {current_source} volume ({current_vol:.1f}mL) below minimum ({minimum_volume:.1f}mL)")
+    except Exception as e:
+        print(f"[legacy] Could not check {current_source} volume: {e}")
+    
+    # Current source is low, try to find next available source
+    max_sources_to_check = 10  # Reasonable limit to avoid infinite loop
+    for i in range(max_sources_to_check):
+        next_index = current_index + 1 + i
+        next_source = f"liquid_source_{next_index}"
+        
+        try:
+            next_vol = lash_e.nr_robot.get_vial_info(next_source, "vial_volume")
+            if next_vol is not None and next_vol >= minimum_volume:
+                # Found good source, switch to it
+                state["current_source_index"] = next_index
+                print(f"[legacy] Switching to {next_source} (volume: {next_vol:.1f}mL)")
+                return next_source
+        except Exception as e:
+            # Source doesn't exist or error accessing it
+            continue
+    
+    # No good sources found, stick with current (will likely cause error downstream)
+    print(f"[legacy] Warning: No liquid sources with ≥{minimum_volume:.1f}mL found, using {current_source}")
+    return current_source
 
 def check_if_measurement_vial_full(lash_e, state):
     """Check and handle full measurement vial."""
@@ -1882,7 +2352,8 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         fixed_params=FIXED_PARAMETERS,
         simulate=SIMULATE,
         min_overaspirate_ul=0.0,  # Default min constraint for initial optimizer
-        max_overaspirate_ul=max_overaspirate_ul
+        max_overaspirate_ul=max_overaspirate_ul,
+        init_method=INIT_METHOD
     )
     debug_ax_constraints(ax_client, "(INITIAL OPTIMIZER)", autosave_raw_path)
     
@@ -1900,7 +2371,8 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     best_candidate = ranked_candidates[0] if ranked_candidates else screening_results[0]
     print(f"   🏆 Selected best screening candidate: {best_candidate.get('deviation', 0):.1f}% deviation")
     
-    min_overaspirate_ml_updated, max_overaspirate_ml_updated = calculate_first_volume_constraint(best_candidate, volume, autosave_raw_path)
+    min_overaspirate_ml_updated, max_overaspirate_ml_updated = calculate_first_volume_constraint(
+        best_candidate, volume, lash_e, state, liquid, raw_measurements, new_pipet_each_time_set, autosave_raw_path)
     min_overaspirate_ul_updated = min_overaspirate_ml_updated * 1000  # Convert to μL for display and optimizer
     max_overaspirate_ul_updated = max_overaspirate_ml_updated * 1000  # Convert to μL for display and optimizer
     print(f"   ✅ Updated overaspirate constraint range: [{min_overaspirate_ul_updated:.1f}μL, {max_overaspirate_ul_updated:.1f}μL]")
@@ -1909,6 +2381,29 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
     # Recreate ax_client with updated constraint if it changed  
     if abs(max_overaspirate_ul_updated - max_overaspirate_ul) > 0.01:  # Only recreate if meaningful change (compare in μL)
         print(f"   🔄 Recreating optimizer with updated constraint ({max_overaspirate_ul:.1f} → {max_overaspirate_ul_updated:.1f}μL)...")
+        
+        # CRITICAL: Expand bounds to include all historical data to avoid loading errors
+        historical_overaspirate_values = []
+        for result in all_results:
+            if 'overaspirate_vol' in result and result['overaspirate_vol'] is not None:
+                historical_overaspirate_values.append(result['overaspirate_vol'] * 1000)  # Convert to μL
+        
+        if historical_overaspirate_values:
+            historical_min = min(historical_overaspirate_values)
+            historical_max = max(historical_overaspirate_values)
+            original_min = min_overaspirate_ul_updated
+            original_max = max_overaspirate_ul_updated
+            
+            # Expand bounds to include ALL historical data
+            min_overaspirate_ul_updated = min(min_overaspirate_ul_updated, historical_min)
+            max_overaspirate_ul_updated = max(max_overaspirate_ul_updated, historical_max)
+            
+            if (min_overaspirate_ul_updated != original_min or max_overaspirate_ul_updated != original_max):
+                print(f"   📊 Expanded bounds to include historical data:")
+                print(f"      Original: [{original_min:.3f}, {original_max:.3f}]μL") 
+                print(f"      Expanded: [{min_overaspirate_ul_updated:.3f}, {max_overaspirate_ul_updated:.3f}]μL")
+                print(f"      Historical range: [{historical_min:.3f}, {historical_max:.3f}]μL")
+        
         print(f"   🔧 CONSTRAINT DEBUG: About to pass min/max_overaspirate_ul=[{min_overaspirate_ul_updated:.6f}μL, {max_overaspirate_ul_updated:.6f}μL] to create_model")
         # Remove fixed parameters from optimization list
         optimize_params = [param for param in ALL_PARAMS if param not in FIXED_PARAMETERS]
@@ -1923,7 +2418,8 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
             fixed_params=FIXED_PARAMETERS,
             simulate=SIMULATE,
             min_overaspirate_ul=min_overaspirate_ul_updated,  # Pass min bound
-            max_overaspirate_ul=max_overaspirate_ul_updated   # Pass max bound
+            max_overaspirate_ul=max_overaspirate_ul_updated,   # Pass max bound
+            init_method=INIT_METHOD
         )
         
         # Load screening results into the new optimizer
@@ -2056,7 +2552,8 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         print(f"   Accuracy: {quality['accuracy_deviation_ul']:.2f}μL > {quality['accuracy_tolerance_ul']:.2f}μL tolerance")
         
         # Calculate rescue overaspirate constraints based on best candidate shortfall
-        min_rescue_overaspirate_ml, max_rescue_overaspirate_ml = calculate_first_volume_constraint(best_candidate, volume)
+        min_rescue_overaspirate_ml, max_rescue_overaspirate_ml = calculate_first_volume_constraint(
+            best_candidate, volume, lash_e, state, liquid, raw_measurements, new_pipet_each_time_set, autosave_raw_path)
         rescue_overaspirate_constraint = max_rescue_overaspirate_ml  # Use the max constraint for rescue
         rescue_overaspirate_ul = rescue_overaspirate_constraint * 1000  # Convert to μL
         
@@ -2064,10 +2561,12 @@ def optimize_first_volume(volume, lash_e, state, autosave_raw_path, raw_measurem
         global volume_overaspirate_calibrations  
         volume_overaspirate_calibrations = {
             volume: {
-                'guess_ml': rescue_overaspirate_constraint,
-                'max_ml': rescue_overaspirate_constraint,  # Use same value for both
-                'shortfall_ul': 0,  # Placeholder
-                'measured_volume_ul': 0  # Placeholder
+                'min_ml': 0.0,  # Use 0 for lower bound in rescue
+                'max_ml': rescue_overaspirate_constraint,
+                'efficiency': 0.0,  # No efficiency data for rescue
+                'baseline_volume_ml': 0,  # Placeholder
+                'guess_volume_ml': 0,  # Placeholder
+                'shortfall_ul': 0  # Placeholder
             }
         }
         
@@ -2166,10 +2665,15 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
     if volume in volume_overaspirate_calibrations:
         old_overaspirate = test_params.get('overaspirate_vol', 0) * 1000  # Convert to μL
         calib_data = volume_overaspirate_calibrations[volume]
-        new_overaspirate_ml = calib_data['guess_ml']
+        
+        # For inherited test, use the midpoint between min and max bounds as starting guess
+        min_overaspirate_ml = calib_data['min_ml']
+        max_overaspirate_ml = calib_data['max_ml']
+        new_overaspirate_ml = (min_overaspirate_ml + max_overaspirate_ml) / 2.0
+        
         test_params['overaspirate_vol'] = new_overaspirate_ml  # Already in mL
-        print(f"   🎯 Using calibrated overaspirate guess: {old_overaspirate:.1f}μL → {new_overaspirate_ml*1000:.1f}μL")
-        print(f"   🔍 DEBUG: Calibration data: guess={calib_data['guess_ml']*1000:.1f}μL, max={calib_data['max_ml']*1000:.1f}μL")
+        print(f"   🎯 Using calibrated overaspirate guess: {old_overaspirate:.1f}μL → {new_overaspirate_ml*1000:.1f}μL (midpoint)")
+        print(f"   🔍 DEBUG: Calibration bounds: [{min_overaspirate_ml*1000:.1f}μL, {max_overaspirate_ml*1000:.1f}μL], efficiency={calib_data.get('efficiency', 0):.3f}")
     else:
         print(f"   🎯 Using inherited overaspirate: {test_params.get('overaspirate_vol', 0)*1000:.1f}μL")
         print(f"   🔍 DEBUG: No calibration found for {volume} mL")
@@ -2233,8 +2737,15 @@ def optimize_subsequent_volume_budget_aware(volume, lash_e, state, autosave_raw_
         avg_measured_volume = np.mean(all_measurements) if all_measurements else 0
         
         if len(all_measurements) > 1:
-            volume_std = np.std(all_measurements)
-            variability = volume_std / np.mean(all_measurements) * 100
+            # Safeguard against negative measurements causing invalid variability
+            if all(m >= 0 for m in all_measurements) and np.mean(all_measurements) > 0:
+                volume_std = np.std(all_measurements)
+                variability = volume_std / np.mean(all_measurements) * 100
+                variability = max(0.0, variability)  # Ensure non-negative
+            else:
+                print(f"⚠️  WARNING: Invalid measurements for variability - negative values detected: {all_measurements}")
+                print(f"    Setting variability to penalty value ({ADAPTIVE_PENALTY_VARIABILITY}%) due to invalid measurements")
+                variability = ADAPTIVE_PENALTY_VARIABILITY
         else:
             variability = ADAPTIVE_PENALTY_VARIABILITY
         
@@ -2379,34 +2890,18 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
     # Use volume in mL for lookup (that's how calibration data is stored)
     if volume in volume_overaspirate_calibrations:
         calib_data = volume_overaspirate_calibrations[volume]
-        raw_max_overaspirate_ul = calib_data['max_ml'] * 1000  # Convert to μL
+        min_overaspirate_ul = calib_data['min_ml'] * 1000  # Convert to μL
+        max_overaspirate_ul = calib_data['max_ml'] * 1000  # Convert to μL
+        efficiency = calib_data.get('efficiency', 0)
         
-        # Handle negative overaspirate constraints properly
-        if raw_max_overaspirate_ul < 0:
-            # Negative overaspirate means we need LESS volume than target
-            # Set constraint to allow negative overaspirate values down to the calibrated minimum
-            min_overaspirate_ul = raw_max_overaspirate_ul  # e.g., -6.2μL
-            max_overaspirate_ul = OVERVOLUME_CALIBRATION_BUFFER_UL  # Use configured buffer as max
-            print(f"   🎯 Using calibrated NEGATIVE overaspirate range: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
-            print(f"   🔍 DEBUG: Calibration suggests under-aspiration - guess={calib_data['guess_ml']*1000:.1f}μL, max={raw_max_overaspirate_ul:.1f}μL")
-            print(f"   📏 Range spans {max_overaspirate_ul - min_overaspirate_ul:.1f}μL to give optimizer meaningful choices")
-        elif raw_max_overaspirate_ul < OVERVOLUME_CALIBRATION_BUFFER_UL:
-            # Positive but very small overaspirate - ensure at least buffer range
-            min_overaspirate_ul = 0.0
-            max_overaspirate_ul = OVERVOLUME_CALIBRATION_BUFFER_UL  # Use configured buffer
-            print(f"   🎯 Using minimum buffer overaspirate range: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
-            print(f"   🔍 DEBUG: Small calibrated value ({raw_max_overaspirate_ul:.1f}μL) increased to configured buffer ({OVERVOLUME_CALIBRATION_BUFFER_UL:.1f}μL)")
-        else:
-            # Positive overaspirate - normal case
-            min_overaspirate_ul = 0.0
-            max_overaspirate_ul = raw_max_overaspirate_ul
-            print(f"   🎯 Using calibrated overaspirate constraint: {max_overaspirate_ul:.1f}μL")
-            print(f"   🔍 DEBUG: From calibration - guess={calib_data['guess_ml']*1000:.1f}μL, max={calib_data['max_ml']*1000:.1f}μL")
+        print(f"   🎯 Using efficiency-based overaspirate constraint: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
+        print(f"   🔍 DEBUG: From two-point calibration - efficiency={efficiency:.3f}, range={max_overaspirate_ul - min_overaspirate_ul:.1f}μL")
+        print(f"   💡 Smart bounds eliminate dead zones and focus optimizer on productive region")
     else:
         # Default case - always positive
         min_overaspirate_ul = 0.0
         max_overaspirate_ul = get_max_overaspirate_ul(volume)
-        print(f"   🎯 Using default overaspirate constraint: {max_overaspirate_ul:.1f}μL")
+        print(f"   🎯 Using default overaspirate constraint: [{min_overaspirate_ul:.1f}μL, {max_overaspirate_ul:.1f}μL]")
         print(f"   🔍 DEBUG: No calibration data found for volume {volume} mL")
     
     try:
@@ -2423,7 +2918,8 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
                 fixed_params=fixed_params,
                 simulate=SIMULATE,
                 min_overaspirate_ul=min_overaspirate_ul,
-                max_overaspirate_ul=max_overaspirate_ul
+                max_overaspirate_ul=max_overaspirate_ul,
+                init_method=INIT_METHOD
             )
         else:
             # Multi-objective optimization (deviation + variability)
@@ -2438,7 +2934,8 @@ def run_budget_constrained_optimization(volume, lash_e, state, autosave_raw_path
                 fixed_params=fixed_params,
                 simulate=SIMULATE,
                 min_overaspirate_ul=min_overaspirate_ul,
-                max_overaspirate_ul=max_overaspirate_ul
+                max_overaspirate_ul=max_overaspirate_ul,
+                init_method=INIT_METHOD
             )
     except Exception as e:
         print(f"   ⚠️  Could not create optimizer: {e}")
@@ -2715,18 +3212,78 @@ def generate_experimental_summary(all_results, optimal_conditions, raw_measureme
 
 # --- MAIN WORKFLOW ---
 
-def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
+def cleanup_robot_and_vials(lash_e, simulate=False):
+    """
+    Clean up robot state at end of workflow:
+    - Return any vial in clamp to home position
+    - Remove pipet tip
+    - Origin the robot
+    """
+    try:
+        print(f"\n🧹 CLEANUP: Starting robot and vial cleanup...")
+        
+        if not simulate:
+            # Remove any pipet tip
+            try:
+                print(f"   🗑️  Removing pipet tip...")
+                lash_e.nr_robot.remove_pipet()
+            except Exception as e:
+                print(f"   ⚠️  Warning: Could not remove pipet: {e}")
+
+            # Check if there's a vial in the clamp and return it home
+            try:
+                clamp_vial = lash_e.nr_robot.get_vial_in_location('clamp', 0)
+                if clamp_vial is not None:
+                    vial_name = lash_e.nr_robot.get_vial_info(clamp_vial, 'vial_name')
+                    print(f"   🏠 Returning vial '{vial_name}' from clamp to home position...")
+                    lash_e.nr_robot.return_vial_home(clamp_vial)
+                else:
+                    print(f"   ✅ No vial in clamp - clamp is clear")
+            except Exception as e:
+                print(f"   ⚠️  Warning: Could not return clamp vial home: {e}")
+            
+            # Origin the robot (return to safe home position)
+            try:
+                print(f"   🏠 Originating robot to home position...")
+                lash_e.nr_robot.move_home()
+                print(f"   ✅ Robot cleanup complete!")
+            except Exception as e:
+                print(f"   ⚠️  Warning: Could not origin robot: {e}")
+        else:
+            print(f"   🎭 SIMULATION: Skipping physical robot cleanup")
+            print(f"   ✅ Cleanup complete!")
+            
+    except Exception as e:
+        print(f"   ❌ Cleanup failed: {e}")
+        print(f"   ⚠️  Manual cleanup may be required!")
+
+def run_simplified_calibration_workflow(vial_mode="legacy", input_vial_status_file=None, **config_overrides):
     """
     Main simplified calibration workflow.
     
     Args:
         vial_mode: Vial management mode ('legacy', 'maintain', 'swap', 'single')
+        input_vial_status_file: Path to vial status CSV file (overrides automatic selection)
         **config_overrides: Configuration parameters to override
     """
     
     # Reset config and measurement counter
     reset_config_to_defaults()
     reset_global_measurement_count()
+    
+    # Select appropriate vial file based on mode (if not explicitly provided)
+    if input_vial_status_file is None:
+        if vial_mode in ["swap", "maintain"]:
+            input_vial_status_file = "status/calibration_vials_overnight.csv"
+            print(f"   🧪 Auto-selected vial file for {vial_mode} mode: {input_vial_status_file}")
+        else:  # legacy, single
+            input_vial_status_file = "status/calibration_vials_short.csv"
+            print(f"   🧪 Auto-selected vial file for {vial_mode} mode: {input_vial_status_file}")
+    else:
+        print(f"   🧪 Using specified vial file: {input_vial_status_file}")
+    
+    # Override the global vial file setting
+    globals()['INPUT_VIAL_STATUS_FILE'] = input_vial_status_file
     
     for key, value in config_overrides.items():
         if key.upper() in globals():
@@ -3039,6 +3596,9 @@ def run_simplified_calibration_workflow(vial_mode="legacy", **config_overrides):
         except Exception as e:
             print(f"Warning: Failed to send completion Slack message: {e}")
     
+    # CLEANUP: Return vials to home, remove pipet, origin robot
+    cleanup_robot_and_vials(lash_e, simulate=SIMULATE)
+    
     print(f"\n🎉 SIMPLIFIED CALIBRATION WORKFLOW COMPLETE!")
     return optimal_conditions, autosave_dir
 
@@ -3052,54 +3612,51 @@ if __name__ == "__main__":
     # optimal_conditions, save_dir = run_simplified_calibration_workflow(
     #     vial_mode="legacy",
     #     liquid="glycerol",
-    #     simulate=True,
+    #     simulate=False,
     #     volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
     #     use_llm_for_screening=True
     # )
     
     # Example 2: Fixed parameters for water - fast parameters
-    print("\n⚡ FIXED PARAMETERS EXPERIMENT - Water with fast parameters")
-    print("   Fixing wait times to 0 and post-aspirate air volume for water\n")
+    # print("\n⚡ FIXED PARAMETERS EXPERIMENT - Water with fast parameters")
+    # print("   Fixing wait times to 0 and post-aspirate air volume for water\n")
     
-    optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
-        vial_mode="legacy",
-        liquid="water",
-        simulate=True,
-        volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-        use_LLM_for_screening = True,
-        # Fix timing parameters for speed and post-aspirate air volume
-        fixed_parameters={
-            'post_asp_air_vol': 0.05
-        }
-    )
-    
-    # # Example 3: Fixed parameters for glycerol - just post-aspirate air volume
-    # print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
-    # print("   Fixing only post-aspirate air volume for glycerol\n")
-    
-    # optimal_conditions_glycerol, save_dir_glycerol = run_simplified_calibration_workflow(
+    # optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
     #     vial_mode="legacy",
-    #     liquid="glycerol",
+    #     liquid="water",
     #     simulate=True,
     #     volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-    #     # Fix only post-aspirate air volume
+    #     use_LLM_for_screening = True,
+    #     # Fix timing parameters for speed and post-aspirate air volume
     #     fixed_parameters={
     #         'post_asp_air_vol': 0.05
     #     }
     # )
     
-    # Example 4: Hot start experiment using unified dataset
-    # print("\n🔥 HOT START EXPERIMENT - Using unified dataset for faster convergence")
-    # print("   This experiment loads prior knowledge from previous calibration data\n")
+    # Example 3: Fixed parameters for glycerol - just post-aspirate air volume
+    # print("\n🔧 FIXED PARAMETERS EXPERIMENT - Glycerol with fixed air volume")
+    # print("   Fixing only post-aspirate air volume for glycerol\n")
     
-    # optimal_conditions_hot, save_dir_hot = run_simplified_calibration_workflow(
-    #     vial_mode="legacy",
-    #     liquid="water",  # Match the dataset
-    #     simulate=True,
-    #     volumes=[0.05, 0.025, 0.1],  # Test with 3 volumes
-    #     # Hot start configuration - load prior knowledge
-    #     use_external_data=True,
-    #     external_data_path="pipetting_data/unified_dataset_water.csv",
-    #     external_data_liquid_filter="water"
-    #     # This should converge much faster than cold start!
-    # )
+    #volumes = [0.01, 0.025, 0.005] Water DMSO
+    #volumes = [0.05, 0.025, 0.1] Water DMSO Isopropanol Acetone Glycerol
+    #volumes = [0.2, 0.5, 0.8] Water
+    #Validation Water
+
+    try:
+        optimal_conditions_water, save_dir_water = run_simplified_calibration_workflow(
+            vial_mode="legacy",
+            liquid="glycerol",
+            simulate=False,
+            use_LLM_for_screening=False,
+            volumes=[0.05, 0.1, 0.025, 0.01],
+            max_measurements=96,  # Overall limit
+            max_measurements_first_volume=76,  # First volume limit
+            initial_parameter_sets=20,  # Longer screening phase
+            init_method="SOBOL"  # Use Sobol sampling
+        )
+        print(f"\nSUCCESS: Workflow completed successfully!")
+        print(f"Results saved to: {save_dir_water}")
+        
+    except Exception as e:
+        print(f"\nWORKFLOW ERROR: {e}")
+        print(f"Attempting emergency cleanup...")

@@ -150,10 +150,10 @@ class PipettingWizard:
                     continue
                 self.cache[cache_key] = df
             
-            volumes = df['volume_target'].values  # These are in μL
+            volumes = df['volume_target'].values  # These are in uL
             min_vol, max_vol = volumes.min(), volumes.max()
             
-            # Convert target from mL to μL for comparison
+            # Convert target from mL to uL for comparison
             target_volume_ul = target_volume_ml * 1000
             
             # Scoring: prefer interpolation over extrapolation
@@ -192,17 +192,17 @@ class PipettingWizard:
         Returns:
             Dictionary of interpolated parameters
         """
-        # Convert target from mL to μL to match volume_target column
+        # Convert target from mL to uL to match volume_target column
         target_volume_ul = target_volume_ml * 1000
         
-        volumes = df['volume_target'].values  # These are in μL
+        volumes = df['volume_target'].values  # These are in uL
         min_vol, max_vol = volumes.min(), volumes.max()
         
         # Check if we need to extrapolate and warn user
         if target_volume_ul < min_vol:
-            logging.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}μL) is below available range ({min_vol}-{max_vol}μL). Extrapolating...")
+            logging.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}uL) is below available range ({min_vol}-{max_vol}uL). Extrapolating...")
         elif target_volume_ul > max_vol:
-            logging.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}μL) is above available range ({min_vol}-{max_vol}μL). Extrapolating...")
+            logging.warning(f"Target volume {target_volume_ml}mL ({target_volume_ul}uL) is above available range ({min_vol}-{max_vol}uL). Extrapolating...")
         
         # If exact match exists, return it
         exact_match = df[df['volume_target'] == target_volume_ul]
@@ -210,7 +210,11 @@ class PipettingWizard:
             result = {}
             for param in PIPETTING_PARAMETERS:
                 if param in exact_match.columns:
-                    result[param] = float(exact_match.iloc[0][param])
+                    value = float(exact_match.iloc[0][param])
+                    # Convert speed parameters to integers to avoid conversion warnings
+                    if param in ['aspirate_speed', 'dispense_speed', 'retract_speed']:
+                        value = int(round(value))
+                    result[param] = value
             result['volume_ml'] = target_volume_ml
             return result
         
@@ -221,9 +225,15 @@ class PipettingWizard:
             if param in df.columns:
                 param_values = df[param].values
                 
-                # Use numpy interp for linear interpolation (volumes in μL)
+                # Use numpy interp for linear interpolation (volumes in uL)
                 interpolated_value = np.interp(target_volume_ul, volumes, param_values)
-                result[param] = float(interpolated_value)
+                value = float(interpolated_value)
+                
+                # Convert speed parameters to integers to avoid conversion warnings
+                if param in ['aspirate_speed', 'dispense_speed', 'retract_speed']:
+                    value = int(round(value))
+                
+                result[param] = value
         
         return result
     
@@ -250,15 +260,15 @@ class PipettingWizard:
         adjustment_details = []
         
         for idx, row in df.iterrows():
-            volume_target = row['volume_target']  # μL
-            volume_measured = row['volume_measured']  # μL  
+            volume_target = row['volume_target']  # uL
+            volume_measured = row['volume_measured']  # uL  
             current_overasp = row['overaspirate_vol']  # mL
             
-            # Calculate volume error in μL
+            # Calculate volume error in uL
             volume_error = volume_measured - volume_target  # Positive = over-target, Negative = under-target
             
             # Convert error to mL to match overaspirate units
-            volume_error_ml = volume_error / 1000  # Convert μL to mL
+            volume_error_ml = volume_error / 1000  # Convert uL to mL
             
             # Adjust overaspirate: if over-target, decrease overasp; if under-target, increase overasp
             # Apply full compensation for the measured error
@@ -267,9 +277,11 @@ class PipettingWizard:
             
             new_overasp = current_overasp + adjustment
             
-            # Ensure overaspirate stays within reasonable bounds (0 to 20% of target volume)
-            max_overasp = volume_target / 1000 * 0.2  # 20% of target volume in mL
-            new_overasp = max(0.0, min(new_overasp, max_overasp))
+            # Apply reasonable bounds: -100% to +100% of target volume
+            target_volume_ml = volume_target / 1000  # Convert uL to mL
+            min_overasp = -target_volume_ml  # -100% of target volume
+            max_overasp = target_volume_ml   # +100% of target volume
+            new_overasp = max(min_overasp, min(new_overasp, max_overasp))
             
             # Calculate the actual adjustment that would be applied
             actual_adjustment_ml = new_overasp - current_overasp
@@ -284,24 +296,24 @@ class PipettingWizard:
                 'new_overasp': new_overasp
             })
             
-            # Always apply compensation if there's any volume error >0.01μL
+            # Always apply compensation if there's any volume error >0.01uL
             if abs(volume_error) > 0.01:  # Only skip truly negligible errors
                 df.at[idx, 'overaspirate_vol'] = new_overasp
                 compensated_count += 1
                 
-                logging.debug(f"  {volume_target}μL: error {volume_error:+.2f}μL → overasp {current_overasp:.4f}→{new_overasp:.4f}mL "
-                      f"(Δ{actual_adjustment_ul:+.2f}μL)")
+                logging.debug(f"  {volume_target}uL: error {volume_error:+.2f}uL → overasp {current_overasp:.4f}→{new_overasp:.4f}mL "
+                      f"(Δ{actual_adjustment_ul:+.2f}uL)")
             else:
-                logging.debug(f"  {volume_target}μL: error {volume_error:+.2f}μL → no adjustment needed (negligible)")
+                logging.debug(f"  {volume_target}uL: error {volume_error:+.2f}uL → no adjustment needed (negligible)")
         
         if compensated_count > 0:
             logging.info(f"Applied overvolume compensation to {compensated_count}/{len(df)} parameter sets")
         else:
-            logging.debug("No overvolume compensation applied - all volume errors were negligible (<0.01μL)")
+            logging.debug("No overvolume compensation applied - all volume errors were negligible (<0.01uL)")
             
         return df
     
-    def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = False) -> Optional[Dict[str, float]]:
+    def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = True) -> Optional[Dict[str, float]]:
         """
         Get pipetting parameters for a specific liquid and volume.
         

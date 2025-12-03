@@ -63,7 +63,7 @@ class CalibrationAnalyzer:
             'recommendations': self._generate_recommendations(trial_results, optimal_conditions)
         }
         
-        logger.info("✅ Experiment analysis completed")
+        logger.info("[SUCCESS] Experiment analysis completed")
         return insights
     
     def _analyze_experiment_overview(self, trial_results: List[Dict], 
@@ -394,7 +394,7 @@ class CalibrationAnalyzer:
             
             if max(vol_deviations) > 10:
                 worst_vol = volumes[np.argmax(vol_deviations)]
-                recommendations.append(f"Volume {worst_vol}μL shows high deviation (>{max(vol_deviations):.1f}%). Consider additional trials or parameter adjustment for this volume.")
+                recommendations.append(f"Volume {worst_vol}uL shows high deviation (>{max(vol_deviations):.1f}%). Consider additional trials or parameter adjustment for this volume.")
         
         # Analyze parameter sensitivity
         param_data = []

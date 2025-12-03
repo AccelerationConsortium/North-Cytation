@@ -5,6 +5,7 @@ from North_Safe import North_Robot
 from North_Safe import North_Track
 from North_Safe import North_Temp
 from North_Safe import North_Powder
+from North_Safe import North_Spin
 import pandas as pd
 import os
 from datetime import datetime
@@ -14,6 +15,7 @@ class Lash_E:
     nr_robot = None
     nr_track = None
     cytation = None
+    spinner = None
     photoreactor = None
     temp_controller = None
     powder_dispenser = None
@@ -57,12 +59,15 @@ class Lash_E:
         if not simulate:
             from north import NorthC9
             c9 = NorthC9("A", network_serial="AU06CNCF")
+            c8 = NorthC9('D', network=c9.network)
         else:
             from unittest.mock import MagicMock
             c9 = MagicMock()
+            c8 = MagicMock()
 
         if initialize_robot:
-            self.nr_robot = North_Robot(c9, vial_file,simulate=simulate, logger=self.logger)
+            self.nr_robot = North_Robot(c9, c8, vial_file,simulate=simulate, logger=self.logger)
+            self.spinner = North_Spin(c9, c8, simulate=simulate, logger=self.logger)
 
         if initialize_biotek:
             from biotek_new import Biotek_Wrapper
@@ -80,7 +85,7 @@ class Lash_E:
             if initialize_p2:
                 self.powder_dispenser = North_Powder(c9, simulate=simulate, logger=self.logger)
             if initialize_t8:
-                self.temp_controller = North_Temp(c9, simulate=simulate, logger=self.logger)
+                self.temp_controller = North_Temp(c9, c8, simulate=simulate, logger=self.logger)
 
         else:
             from unittest.mock import MagicMock
