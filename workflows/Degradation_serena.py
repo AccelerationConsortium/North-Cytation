@@ -6,10 +6,11 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 from pathlib import Path
 
-# Take aliquot -> Wellplate measurement (1 replicate)-> Put sample back to wellplate
-def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_protocol_file_path, simulate, sample_name, used_wells, replicates=1):
+# Take aliquot -> Wellplate measurement (3 replicate)-> Put sample back to wellplate
+def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_protocol_file_path, simulate, sample_name, used_wells, replicates=3):
     create_samples_in_wellplate(lash_e, sample_name=sample_name, first_well_index=first_well_index, well_volume=0.2, replicates=replicates)
     wells = list(range(first_well_index, first_well_index + replicates))
+    pipet_sample_from_well_to_vial(lash_e, wells, sample_name, replicates)
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
     save_data(data_out, output_dir, first_well_index, simulate)
     used_wells.extend(wells)
@@ -86,6 +87,7 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, wash_vial, waste_state, sol
         for well in used_wells:
             lash_e.nr_robot.aspirate_from_vial(solvent_vial,volume,track_height=True)
             lash_e.nr_robot.dispense_into_wellplate([well],[volume], well_plate_type="96 WELL PLATE") #Added by OAM
+            # add this: _dispense_wellplate_batched(well_plate_df, parameters, liquid, low_volume_cutoff, buffer_vol, well_plate_type)
         lash_e.nr_robot.move_vial_to_location(solvent_vial, location='main_8mL_rack', location_index=5)
         for well in used_wells:
             lash_e.nr_robot.mix_well_in_wellplate(well,volume,repeats=2,well_plate_type="96 WELL PLATE")
@@ -164,18 +166,20 @@ def degradation_workflow():
     sample_volume = 2.0 # Total volume of each polymer sample (mL)
     df = pd.read_csv(INPUT_VIAL_STATUS_FILE)
     sample_col = 'vial_name'  # Use vial_name column from CSV
-    
+
     # Get stock concentration
-    stock_conc = df.loc[df[sample_col] == 'polymer_stock', 'concentration'].iloc[0]
+    stock_conc = df.loc[df[sample_col] == 'polymer_stock', 'concentration(mg/mL)'].iloc[0]
     print(f"Stock concentration: {stock_conc} mg/mL")
     
     # Calculate dilution volumes for each sample
     samples = df[df[sample_col].str.contains("sample", case=False, na=False)].copy()
-    samples['stock_volume'] = (samples['concentration'] / stock_conc) * sample_volume
+    samples['stock_volume'] = (samples['concentration(mg/mL)'] / stock_conc) * sample_volume
     samples['solvent_volume'] = sample_volume - samples['stock_volume']
     print("Calculated volumes for each sample:")
-    print(samples[[sample_col, 'concentration', 'stock_volume', 'solvent_volume']])
+    print(samples[[sample_col, 'concentration(mg/mL)', 'stock_volume', 'solvent_volume']])
 
+    # Acid volume to add calculation
+    acid_concentration = 
     # e. Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_t8=True)
 
