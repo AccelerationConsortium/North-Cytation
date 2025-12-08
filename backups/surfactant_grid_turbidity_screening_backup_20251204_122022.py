@@ -1,6 +1,6 @@
 """
-Surfactant Grid Turbidity + Fluorescence Screening Workflow
-Systematic dilution grid of two surfactants with turbidity measurements followed by pyrene fluorescence.
+Surfactant Grid Turbidity Screening Workflow
+Systematic dilution grid of two surfactants with turbidity measurements.
 
 DATA PROTECTION FEATURES:
 - Raw Cytation data is immediately backed up to output/cytation_raw_backups/ (preserves complete original data)
@@ -67,7 +67,7 @@ SURFACTANT_LIBRARY = {
 }
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
+SIMULATE = False # Set to False for actual hardware execution
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
@@ -79,7 +79,6 @@ MAX_CONC_LOG = 1   # 10^1 = 10 mM maximum (extend into transition region)
 LOG_STEP = 0.5     # 10^0.5 ~= 3.16-fold steps for finer resolution
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
-PYRENE_VOLUME_UL = 10  # uL pyrene_DMSO to add per well
 MAX_WELLS = 96 #Wellplate size
 
 # Constants
@@ -87,9 +86,8 @@ FINAL_SUBSTOCK_VOLUME = 6  # mL final volume for each dilution
 MINIMUM_PIPETTE_VOLUME = 0.2  # mL (200 uL) - minimum volume for accurate pipetting
 MEASUREMENT_INTERVAL = 36    # Measure every N wells to prevent evaporation
 
-# Measurement protocol files for Cytation
-TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
-FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
+# Measurement protocol file for Cytation
+MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
 
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
@@ -1051,60 +1049,28 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a,
                 'vial_b': req['dilution_b_vial']
             })
         
-        # PHASE 3: Measure initial turbidity
-        print(f"  Phase 3: Measuring initial turbidity for wells {wells_in_batch[0]}-{wells_in_batch[-1]}")
-        turbidity_data = measure_turbidity(lash_e, wells_in_batch)
+        # PHASE 3: Measure the completed batch
+        print(f"  Phase 3: Measuring batch wells {wells_in_batch[0]}-{wells_in_batch[-1]}")
+        measurement_data = measure_turbidity(lash_e, wells_in_batch)
         
-        # Store turbidity measurement data
-        turbidity_entry = {
+        # Store measurement data
+        measurement_entry = {
             'plate_number': wellplate_data['current_plate'],
             'wells_measured': wells_in_batch,
-            'measurement_type': 'turbidity_batch',
-            'data': turbidity_data,
+            'measurement_type': 'batch',
+            'data': measurement_data,
             'timestamp': datetime.now().isoformat()
         }
-        wellplate_data['measurements'].append(turbidity_entry)
+        wellplate_data['measurements'].append(measurement_entry)
         
-        # BACKUP: Save raw turbidity data immediately
-        backup_raw_measurement_data(turbidity_entry, wellplate_data['current_plate'], wells_in_batch)
-        
-        # PHASE 4: Add pyrene_DMSO to all wells
-        print(f"  Phase 4: Adding pyrene_DMSO ({PYRENE_VOLUME_UL} uL) to wells {wells_in_batch[0]}-{wells_in_batch[-1]}")
-        pyrene_volume_ml = PYRENE_VOLUME_UL / 1000  # Convert to mL
-        
-        # Add pyrene to all wells in batch using single tip
-        lash_e.nr_robot.aspirate_from_vial('pyrene_DMSO', pyrene_volume_ml * len(wells_in_batch), liquid='DMSO', use_safe_location=True)
-        for well_idx in wells_in_batch:
-            lash_e.nr_robot.dispense_into_wellplate(
-                dest_wp_num_array=[well_idx], 
-                amount_mL_array=[pyrene_volume_ml],
-                liquid='DMSO'
-            )
-        lash_e.nr_robot.remove_pipet()  # Remove tip after pyrene addition
-        lash_e.nr_robot.return_vial_home('pyrene_DMSO')
-        
-        # PHASE 5: Measure fluorescence after pyrene addition
-        print(f"  Phase 5: Measuring fluorescence for wells {wells_in_batch[0]}-{wells_in_batch[-1]}")
-        fluorescence_data = measure_fluorescence(lash_e, wells_in_batch)
-        
-        # Store fluorescence measurement data
-        fluorescence_entry = {
-            'plate_number': wellplate_data['current_plate'],
-            'wells_measured': wells_in_batch,
-            'measurement_type': 'fluorescence_batch',
-            'data': fluorescence_data,
-            'timestamp': datetime.now().isoformat()
-        }
-        wellplate_data['measurements'].append(fluorescence_entry)
-        
-        # BACKUP: Save raw fluorescence data immediately
-        backup_raw_measurement_data(fluorescence_entry, wellplate_data['current_plate'], wells_in_batch)
+        # BACKUP: Save raw measurement data immediately
+        backup_raw_measurement_data(measurement_entry, wellplate_data['current_plate'], wells_in_batch)
         
         # Update tracking
         wellplate_data['last_measured_well'] = wells_in_batch[-1]
         total_wells_added += len(current_batch)
         
-        print(f"  ✓ Completed batch with {len(current_batch)} wells using 3 tips (2 surfactants + 1 pyrene)")
+        print(f"  OK Completed batch with {len(current_batch)} wells using 2 tips")
     
     # Update shared state before returning
     updated_shared_state = {
@@ -1123,43 +1089,30 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a,
 def combine_measurement_data(well_map, wellplate_data):
     """
     Combine measurement data from all intervals into a single DataFrame.
-    Now handles both turbidity and fluorescence measurements and structures 
-    data for CMC analysis compatibility.
     
     Args:
         well_map: List of well information dictionaries
         wellplate_data: Dictionary containing measurement data from all intervals
         
     Returns:
-        pd.DataFrame: Combined results with both turbidity and fluorescence measurements
+        pd.DataFrame: Combined results with turbidity measurements
     """
     print("\nCombining measurement data from all intervals...")
-    
-    # Group measurements by well to combine turbidity and fluorescence
-    well_measurements = {}
+    combined_results = []
     
     for measurement in wellplate_data['measurements']:
         plate_num = measurement['plate_number']
         measurement_data = measurement['data']
         wells_measured = measurement['wells_measured']
-        measurement_type = measurement.get('measurement_type', 'interval')
         
         # Handle simulation mode where measurement_data might be None
         if measurement_data is None:
-            if 'turbidity' in measurement_type:
-                measurement_data = {'turbidity': [-1] * len(wells_measured)}
-            elif 'fluorescence' in measurement_type:
-                measurement_data = {
-                    '334_373': [-1] * len(wells_measured),
-                    '334_384': [-1] * len(wells_measured)
-                }
-            else:
-                print(f"WARNING: Unknown measurement type {measurement_type}, skipping")
-                continue
+            print(f"ERROR: No measurement data for wells {wells_measured} - measurement failed!")
+            continue  # FIX: Skip missing measurements instead of padding with 0.5
         
-        # Process each well in this measurement
+        # Extract turbidity values for measured wells
         for batch_idx, well_idx in enumerate(wells_measured):
-            # Find well info by matching well number
+            # Find the well_info by matching the actual well number, not batch position
             well_info = None
             for well_entry in well_map:
                 if well_entry['well'] == well_idx:
@@ -1170,9 +1123,11 @@ def combine_measurement_data(well_map, wellplate_data):
                 print(f"ERROR: Could not find well info for well {well_idx} in well_map")
                 continue
                 
-            # Initialize well entry if not exists
-            if well_idx not in well_measurements:
-                well_measurements[well_idx] = {
+            # Find turbidity value for this well using batch position in measurement data
+            if batch_idx < len(measurement_data.get('turbidity', [])):
+                turbidity = measurement_data['turbidity'][batch_idx]
+                
+                combined_results.append({
                     'plate': plate_num,
                     'well': well_idx,
                     'surfactant_a': well_info['surfactant_a'],
@@ -1180,89 +1135,14 @@ def combine_measurement_data(well_map, wellplate_data):
                     'conc_a_mm': well_info['conc_a_mm'],
                     'conc_b_mm': well_info['conc_b_mm'],
                     'replicate': well_info['replicate'],
-                    # CMC analysis compatible column names
-                    '600': None,           # Turbidity/absorbance at 600nm
-                    '334_373': None,       # Fluorescence excitation 334, emission 373
-                    '334_384': None,       # Fluorescence excitation 334, emission 384 
-                    'turbidity': None      # Raw turbidity value
-                }
-            
-            # Add measurement data based on type
-            if 'turbidity' in measurement_type and batch_idx < len(measurement_data.get('turbidity', [])):
-                turbidity_val = measurement_data['turbidity'][batch_idx]
-                well_measurements[well_idx]['turbidity'] = turbidity_val
-                well_measurements[well_idx]['600'] = turbidity_val  # CMC analysis expects '600' column
-                
-            elif 'fluorescence' in measurement_type and batch_idx < len(measurement_data.get('334_373', [])):
-                # Store only the two wavelength values needed for CMC analysis
-                if '334_373' in measurement_data and '334_384' in measurement_data:
-                    # Real fluorescence data with wavelength specificity
-                    well_measurements[well_idx]['334_373'] = measurement_data['334_373'][batch_idx]
-                    well_measurements[well_idx]['334_384'] = measurement_data['334_384'][batch_idx]
-                else:
-                    # Invalid/missing fluorescence data - use -1 to indicate failure
-                    well_measurements[well_idx]['334_373'] = -1
-                    well_measurements[well_idx]['334_384'] = -1
+                    'turbidity': turbidity,
+                    'measurement_type': measurement.get('measurement_type', 'interval')
+                })
+            else:
+                print(f"ERROR: No turbidity data for well {well_idx} at batch position {batch_idx}")
     
-    # Convert to list for DataFrame creation and filter out incomplete entries
-    combined_results = []
-    for well_idx, well_data in well_measurements.items():
-        # Only include wells that have both turbidity and fluorescence data
-        if well_data['600'] is not None and well_data['334_373'] is not None:
-            combined_results.append(well_data)
-        else:
-            print(f"WARNING: Well {well_idx} missing data - turbidity: {well_data['600']}, fluorescence: {well_data['334_373']}")
-    
-    print(f"Combined {len(combined_results)} complete wells with both turbidity and fluorescence from {len(wellplate_data['measurements'])} measurements")
+    print(f"Combined {len(combined_results)} measurements from {len(wellplate_data['measurements'])} intervals")
     return pd.DataFrame(combined_results)
-
-def validate_measurement_data(results_df):
-    """
-    Detect and flag wells with fallback/fake measurement data.
-    
-    Args:
-        results_df: DataFrame with measurement results
-        
-    Returns:
-        tuple: (results_df_with_flags, clean_data_df)
-    """
-    print("\nValidating measurement data for fallback values...")
-    
-    fake_data_flags = []
-    fake_count = 0
-    
-    for idx, row in results_df.iterrows():
-        flags = []
-        
-        # Check for -1 fallback values (indicates measurement failure)
-        if row['600'] == -1:
-            flags.append('turbidity_failed')
-        if row['334_373'] == -1:
-            flags.append('fluorescence_334_373_failed')
-        if row['334_384'] == -1:
-            flags.append('fluorescence_334_384_failed')
-            
-        if flags:
-            fake_count += 1
-            
-        fake_data_flags.append(flags)
-    
-    # Add validation column
-    results_df_flagged = results_df.copy()
-    results_df_flagged['data_quality_flags'] = fake_data_flags
-    
-    # Create clean dataset (no fallback values)
-    clean_data = results_df_flagged[results_df_flagged['data_quality_flags'].apply(len) == 0].copy()
-    
-    print(f"Data validation complete:")
-    print(f"  Total wells: {len(results_df)}")
-    print(f"  Wells with real data: {len(clean_data)}")
-    print(f"  Wells with fallback data: {fake_count}")
-    if fake_count > 0:
-        print(f"  ⚠️  WARNING: {fake_count} wells have fallback values (-1) indicating measurement failures")
-        print(f"     Use only clean_data for CMC analysis to avoid invalid results")
-    
-    return results_df_flagged, clean_data
 
 def create_output_folder(simulate=True):
     """
@@ -1276,7 +1156,7 @@ def create_output_folder(simulate=True):
     """
     # Create timestamped folder name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_type = "surfactant_grid_turbidity_fluorescence"
+    experiment_type = "surfactant_grid_turbidity"
     
     if simulate:
         folder_name = f"SIMULATION_{experiment_type}_{timestamp}"
@@ -1432,120 +1312,6 @@ def create_turbidity_heatmap(results_df, concentrations, surfactant_a_name, surf
         
     except Exception as e:
         error_msg = f"Failed to create turbidity heatmap: {e}"
-        if logger:
-            logger.warning(error_msg)
-        else:
-            print(f"Warning: {error_msg}")
-        return None
-
-def create_ratio_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger=None):
-    """
-    Create and save a pyrene fluorescence ratio heatmap visualization from experimental data.
-    
-    Args:
-        results_df: DataFrame with experimental results including fluorescence measurements
-        concentrations: List of concentration values used in the grid
-        surfactant_a_name: Name of surfactant A (cationic)
-        surfactant_b_name: Name of surfactant B (anionic) 
-        output_folder: Directory to save the heatmap
-        logger: Logger instance for error reporting
-        
-    Returns:
-        str: Path to saved heatmap file, or None if visualization failed
-    """
-    if not MATPLOTLIB_AVAILABLE:
-        if logger:
-            logger.warning("Matplotlib not available - skipping ratio heatmap visualization")
-        print("Warning: matplotlib not available - skipping ratio heatmap visualization")
-        return None
-    
-    try:
-        if logger:
-            logger.info(f"Creating pyrene ratio heatmap for {surfactant_a_name} vs {surfactant_b_name}")
-        
-        # Check if fluorescence data is available
-        if '334_373' not in results_df.columns or '334_384' not in results_df.columns:
-            error_msg = "No fluorescence data available (missing 334_373 or 334_384 columns) - skipping ratio heatmap"
-            if logger:
-                logger.warning(error_msg)
-            print(f"Warning: {error_msg}")
-            return None
-        
-        # Create heatmap data matrix (no replicates - single values)
-        n_concs = len(concentrations)
-        heatmap_data = np.full((n_concs, n_concs), np.nan)
-        
-        # Populate the matrix from results_df
-        for _, row in results_df.iterrows():
-            # Calculate ratio (I3/I1) - lower values indicate more hydrophobic environment
-            if row['334_373'] > 0 and row['334_384'] > 0:  # Avoid division by zero
-                ratio = row['334_373'] / row['334_384']
-            else:
-                ratio = np.nan  # Mark failed measurements as NaN
-            
-            # Find the concentration indices
-            conc_a_idx = None
-            conc_b_idx = None
-            
-            # Match concentrations with some tolerance for floating point comparison
-            for i, conc in enumerate(concentrations):
-                if abs(row['conc_a_mm'] - conc) < 1e-10:
-                    conc_a_idx = i
-                if abs(row['conc_b_mm'] - conc) < 1e-10:
-                    conc_b_idx = i
-            
-            if conc_a_idx is not None and conc_b_idx is not None:
-                heatmap_data[conc_a_idx, conc_b_idx] = ratio
-        
-        # Create the heatmap plot
-        plt.figure(figsize=(10, 8))
-        
-        # Use 'viridis' colormap for ratio data (lower values = more hydrophobic = darker)
-        # Set vmin/vmax to focus on the main data range excluding outliers
-        data_min = np.nanmin(heatmap_data)
-        data_max = np.nanmax(heatmap_data)
-        
-        if logger:
-            logger.debug(f"Ratio heatmap data range: {data_min:.4f} to {data_max:.4f}")
-        
-        # Use reasonable bounds for pyrene ratio (typically 0.6-1.8)
-        # Dynamic scaling based on actual data for optimal contrast
-        vmin = max(0.5, np.nanpercentile(heatmap_data, 5)) if not np.isnan(data_min) else 0.5
-        vmax = min(2.0, np.nanpercentile(heatmap_data, 95)) if not np.isnan(data_max) else 2.0
-        
-        # Ensure minimum contrast range for small variations
-        if vmax - vmin < 0.1:  # If data range is very tight, expand slightly
-            center = (vmax + vmin) / 2
-            vmin = center - 0.05
-            vmax = center + 0.05
-        
-        c = plt.imshow(heatmap_data, aspect='auto', cmap='plasma', origin='lower', 
-                      vmin=vmin, vmax=vmax, interpolation='nearest')
-        
-        plt.colorbar(c, label='Pyrene Ratio (I₃/I₁) - 334_373/334_384')
-        
-        # Set axis labels with concentration values
-        plt.xticks(range(len(concentrations)), [f'{c:.1e}' for c in concentrations], rotation=45)
-        plt.yticks(range(len(concentrations)), [f'{c:.1e}' for c in concentrations])
-        
-        plt.xlabel(f'{surfactant_b_name} concentration (mM)')
-        plt.ylabel(f'{surfactant_a_name} concentration (mM)')
-        plt.title(f'Pyrene Ratio Heatmap: {surfactant_a_name} vs {surfactant_b_name}\n(Lower ratio = more hydrophobic environment)')
-        plt.tight_layout()
-        
-        # Save the heatmap
-        heatmap_file = os.path.join(output_folder, f"ratio_heatmap_{surfactant_a_name}_{surfactant_b_name}.png")
-        plt.savefig(heatmap_file, dpi=300, bbox_inches='tight')
-        plt.close()  # Close to free memory
-        
-        if logger:
-            logger.info(f"Pyrene ratio heatmap saved: {heatmap_file}")
-        print(f"Pyrene ratio heatmap saved: {heatmap_file}")
-        
-        return heatmap_file
-        
-    except Exception as e:
-        error_msg = f"Failed to create ratio heatmap: {e}"
         if logger:
             logger.warning(error_msg)
         else:
@@ -1738,7 +1504,7 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
     
     # Save experiment metadata
     metadata = {
-        'workflow': 'surfactant_grid_turbidity_fluorescence_screening',
+        'workflow': 'surfactant_grid_turbidity_screening',
         'simulation_mode': simulate,
         'surfactant_a': surfactant_a_name,
         'surfactant_b': surfactant_b_name,
@@ -1751,10 +1517,7 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
         'wellplates_used': wellplate_data['current_plate'],
         'measurement_intervals': len(all_measurements),
         'concentration_range_mm': [float(concentrations[0]), float(concentrations[-1])],
-        'well_volume_ul': WELL_VOLUME_UL,
-        'pyrene_volume_ul': PYRENE_VOLUME_UL,
-        'measurement_types': ['turbidity', 'fluorescence'],
-        'protocols_used': [TURBIDITY_PROTOCOL_FILE, FLUORESCENCE_PROTOCOL_FILE]
+        'well_volume_ul': WELL_VOLUME_UL
     }
     
     if simulate:
@@ -1764,19 +1527,14 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
         json.dump(metadata, f, indent=2)
     
     # Create turbidity heatmap visualization
-    turbidity_heatmap_file = create_turbidity_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger)
-    
-    # Create pyrene ratio heatmap visualization  
-    ratio_heatmap_file = create_ratio_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger)
+    heatmap_file = create_turbidity_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger)
     
     print(f"Results saved to: {results_file}")
     print(f"Dilution report saved to: {dilution_report_file}")
     print(f"Dilution series info saved to: {dilutions_file}")
     print(f"Metadata saved to: {metadata_file}")
-    if turbidity_heatmap_file:
-        print(f"Turbidity heatmap saved to: {turbidity_heatmap_file}")
-    if ratio_heatmap_file:
-        print(f"Pyrene ratio heatmap saved to: {ratio_heatmap_file}")
+    if heatmap_file:
+        print(f"Turbidity heatmap saved to: {heatmap_file}")
 
 def measure_turbidity(lash_e, well_indices):
     """
@@ -1792,7 +1550,7 @@ def measure_turbidity(lash_e, well_indices):
     print(f"Measuring turbidity in wells {well_indices}...")
     
     # Get raw measurement data from Cytation
-    raw_data = lash_e.measure_wellplate(TURBIDITY_PROTOCOL_FILE, well_indices)
+    raw_data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices)
     
     # CRITICAL: Save raw Cytation data immediately to prevent loss
     if raw_data is not None:
@@ -1819,185 +1577,7 @@ def measure_turbidity(lash_e, well_indices):
         
         # Fallback: return mock data to prevent workflow crash
         print(f"WARNING: Using fallback mock data to continue workflow...")
-        return {'turbidity': [-1] * len(well_indices)}
-
-def measure_fluorescence(lash_e, well_indices):
-    """
-    Measure fluorescence in specified wells using Cytation plate reader.
-    
-    Args:
-        lash_e: Lash_E coordinator instance
-        well_indices: List of well indices to measure
-        
-    Returns:
-        dict: Processed measurement data with 'fluorescence' values, or None if simulation
-    """
-    print(f"Measuring fluorescence in wells {well_indices}...")
-    
-    # Get raw measurement data from Cytation
-    raw_data = lash_e.measure_wellplate(FLUORESCENCE_PROTOCOL_FILE, well_indices)
-    
-    # CRITICAL: Save raw Cytation data immediately to prevent loss
-    if raw_data is not None:
-        backup_raw_cytation_data(raw_data, well_indices)
-    
-    # Handle simulation mode
-    if raw_data is None:
-        return None
-    
-    # Process the complex DataFrame structure from Cytation
-    try:
-        # Extract fluorescence data (similar to turbidity but different column names)
-        processed_data = extract_fluorescence_values(raw_data, well_indices)
-        return processed_data
-    
-    except Exception as e:
-        print(f"⚠️  CRITICAL: Failed to process fluorescence data: {e}")
-        print(f"Raw data structure: {type(raw_data)}")
-        if hasattr(raw_data, 'columns'):
-            print(f"Raw data columns: {raw_data.columns.tolist()}")
-        
-        print(f"🔄 Raw Cytation data was saved to backup before processing failed")
-        print(f"   You can recover the data from output/cytation_raw_backups/")
-        
-        # Fallback: return mock data to prevent workflow crash
-        print(f"⚠️  Using fallback mock data to continue workflow...")
-        return {
-            '334_373': [-1] * len(well_indices),
-            '334_384': [-1] * len(well_indices)
-        }
-
-def extract_fluorescence_values(raw_data, well_indices):
-    """
-    Extract fluorescence values from Cytation measurement DataFrame.
-    Looks for CMC-specific wavelengths: 334_373 and 334_384 excitation/emission pairs.
-    
-    Args:
-        raw_data: DataFrame returned from lash_e.measure_wellplate()
-        well_indices: List of well indices that were measured
-        
-    Returns:
-        dict: {'334_373': [...], '334_384': [...]} aligned with well_indices
-    """
-    if raw_data is None or raw_data.empty:
-        return {
-            '334_373': [-1] * len(well_indices),
-            '334_384': [-1] * len(well_indices)
-        }
-    
-    # Handle MultiIndex columns structure from Cytation
-    if hasattr(raw_data.columns, 'levels'):
-        measurement_values_373 = []
-        measurement_values_384 = []
-        measurement_values_general = []
-        
-        for well_idx in well_indices:
-            try:
-                # Use first available column group
-                top_level = raw_data.columns.levels[0][0]
-                sub_columns = raw_data[top_level].columns
-                
-                # Look for specific CMC fluorescence wavelengths
-                col_373 = None
-                col_384 = None
-                col_general = None
-                
-                for col in sub_columns:
-                    col_str = str(col).lower()
-                    if '373' in col_str or ('334' in col_str and '373' in col_str):
-                        col_373 = col
-                    elif '384' in col_str or ('334' in col_str and '384' in col_str):
-                        col_384 = col
-                    elif any(keyword in col_str for keyword in ['fluorescence', 'emission', 'excitation']):
-                        col_general = col
-                    elif str(col).replace('.', '').isdigit():
-                        col_general = col  # Fallback to first numeric column
-                
-                # Extract values for each wavelength
-                if well_idx < len(raw_data):
-                    if col_373 is not None:
-                        val_373 = float(raw_data[top_level][col_373].iloc[well_idx])
-                    else:
-                        val_373 = 80.0  # Default value
-                    
-                    if col_384 is not None:
-                        val_384 = float(raw_data[top_level][col_384].iloc[well_idx])
-                    else:
-                        val_384 = 100.0  # Default value
-                    
-                    if col_general is not None:
-                        val_general = float(raw_data[top_level][col_general].iloc[well_idx])
-                    else:
-                        val_general = (val_373 + val_384) / 2  # Average of specific wavelengths
-                        
-                    measurement_values_373.append(val_373)
-                    measurement_values_384.append(val_384)
-                    measurement_values_general.append(val_general)
-                else:
-                    measurement_values_373.append(80.0)
-                    measurement_values_384.append(100.0)
-                    measurement_values_general.append(90.0)
-                    
-            except (IndexError, ValueError, KeyError) as e:
-                print(f"Warning: Could not extract fluorescence for well {well_idx}: {e}")
-                measurement_values_373.append(80.0)
-                measurement_values_384.append(100.0)
-                measurement_values_general.append(90.0)
-    
-    else:
-        # Simple DataFrame structure
-        measurement_values_373 = []
-        measurement_values_384 = []
-        measurement_values_general = []
-        
-        # Look for wavelength-specific columns
-        col_373 = None
-        col_384 = None
-        col_general = None
-        
-        for col in raw_data.columns:
-            col_str = str(col).lower()
-            if '373' in col_str:
-                col_373 = col
-            elif '384' in col_str:
-                col_384 = col
-            elif any(keyword in col_str for keyword in ['fluorescence', 'emission', 'excitation']):
-                col_general = col
-        
-        for well_idx in well_indices:
-            try:
-                row = well_idx // 12
-                col_num = (well_idx % 12) + 1
-                well_name = f"{chr(ord('A') + row)}{col_num}"
-                
-                if well_name in raw_data.index:
-                    val_373 = float(raw_data.loc[well_name, col_373]) if col_373 else 80.0
-                    val_384 = float(raw_data.loc[well_name, col_384]) if col_384 else 100.0
-                    val_general = float(raw_data.loc[well_name, col_general]) if col_general else (val_373 + val_384) / 2
-                else:
-                    print(f"Warning: Well {well_name} (index {well_idx}) not found in fluorescence data")
-                    val_373, val_384, val_general = 80.0, 100.0, 90.0
-                    
-                measurement_values_373.append(val_373)
-                measurement_values_384.append(val_384)
-                measurement_values_general.append(val_general)
-                        
-            except (IndexError, ValueError, KeyError) as e:
-                print(f"Warning: Could not extract fluorescence for well {well_idx}: {e}")
-                measurement_values_373.append(80.0)
-                measurement_values_384.append(100.0)
-                measurement_values_general.append(90.0)
-    
-    # Ensure we have the right number of values
-    while len(measurement_values_373) < len(well_indices):
-        measurement_values_373.append(80.0)
-        measurement_values_384.append(100.0)
-        measurement_values_general.append(90.0)
-    
-    return {
-        '334_373': measurement_values_373[:len(well_indices)],
-        '334_384': measurement_values_384[:len(well_indices)]
-    }
+        return {'turbidity': [0.5] * len(well_indices)}
 
 def extract_turbidity_values(raw_data, well_indices):
     """
@@ -2425,7 +2005,7 @@ if __name__ == "__main__":
     """
     
     # Choose experiment mode
-    RUN_COMPREHENSIVE = False  # Set to False for single experiment
+    RUN_COMPREHENSIVE = True  # Set to False for single experiment
     
     print(f"Starting surfactant grid screening in {'comprehensive' if RUN_COMPREHENSIVE else 'single'} mode")
     print(f"Simulation mode: {SIMULATE}")
@@ -2440,8 +2020,8 @@ if __name__ == "__main__":
         
     else:
         # Run single experiment
-        SURFACTANT_A = "SDS"  # Cationic
-        SURFACTANT_B = "DTAB"   # Anionic
+        SURFACTANT_A = "TTAB"  # Cationic
+        SURFACTANT_B = "SDS"   # Anionic
         
         print(f"Running single experiment: {SURFACTANT_A} + {SURFACTANT_B}")
         results, measurements, plates_used = surfactant_grid_screening(
