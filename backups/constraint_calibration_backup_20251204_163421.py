@@ -125,10 +125,10 @@ class ConstraintCalibrator:
         slope = volume_diff_ul / overaspirate_diff_ul
         
         # PHYSICS-BASED EFFICIENCY CONSTRAINTS
-        # Efficiency must be between 0.5-1.5 uL/uL (physical limits)
-        # - Lower bound (0.5): More realistic minimum for reasonable pipetting efficiency
+        # Efficiency must be between 0.3-1.5 uL/uL (physical limits)
+        # - Lower bound (0.3): Even inefficient pipetting retains some overaspirate
         # - Upper bound (1.5): Can't get more volume than aspirated due to noise
-        min_efficiency = 0.5
+        min_efficiency = 0.3
         max_efficiency = 1.5
         
         if slope < min_efficiency or slope > max_efficiency:
@@ -136,15 +136,7 @@ class ConstraintCalibrator:
             logger.warning(f"Point 1: {low_point.overaspirate_vol_ml*1000:.1f}uL -> {low_point.measured_volume_ml*1000:.1f}uL")
             logger.warning(f"Point 2: {high_point.overaspirate_vol_ml*1000:.1f}uL -> {high_point.measured_volume_ml*1000:.1f}uL")
             
-            # For severely unrealistic efficiency (negative or very low), use conservative single-point approach
-            if slope < 0.1:
-                logger.warning(f"Two-point calibration failed due to impossible efficiency ({slope:.3f}uL/uL)")
-                logger.warning("Falling back to conservative single-point approach with 5% safety margins")
-                return self._calculate_conservative_fallback_bounds(
-                    target_volume_ml, low_point, high_point
-                )
-            
-            # For moderately unrealistic efficiency, clamp to physically realistic range
+            # Clamp to physically realistic range
             original_slope = slope
             slope = max(min_efficiency, min(max_efficiency, slope))
             logger.warning(f"Clamping efficiency from {original_slope:.3f} to {slope:.3f}uL/uL")
@@ -244,73 +236,6 @@ class ConstraintCalibrator:
             min_overaspirate_ml=min_overaspirate_ml,
             max_overaspirate_ml=max_overaspirate_ml,
             tolerance_range_ml=tolerance_range_ml
-        )
-    
-    def _calculate_conservative_fallback_bounds(self, 
-                                              target_volume_ml: float,
-                                              low_point: 'TwoPointCalibrationPoint', 
-                                              high_point: 'TwoPointCalibrationPoint') -> 'TwoPointCalibrationResult':
-        """
-        Calculate conservative bounds when two-point calibration fails due to impossible efficiency.
-        Uses averaged reference point with fixed efficiency assumption and 5% safety margins.
-        """
-        from .data_structures import TwoPointCalibrationResult
-        
-        # Use averaged reference point to incorporate both measurements
-        avg_overaspirate_ml = (low_point.overaspirate_vol_ml + high_point.overaspirate_vol_ml) / 2
-        avg_measured_ml = (low_point.measured_volume_ml + high_point.measured_volume_ml) / 2
-        
-        logger.info(f"Creating averaged reference point from both measurements:")
-        logger.info(f"  Point 1: {low_point.overaspirate_vol_ml*1000:.1f}uL -> {low_point.measured_volume_ml*1000:.1f}uL")
-        logger.info(f"  Point 2: {high_point.overaspirate_vol_ml*1000:.1f}uL -> {high_point.measured_volume_ml*1000:.1f}uL") 
-        logger.info(f"  Averaged: {avg_overaspirate_ml*1000:.1f}uL -> {avg_measured_ml*1000:.1f}uL")
-        
-        target_volume_ul = target_volume_ml * 1000
-        avg_error_ul = abs(target_volume_ul - avg_measured_ml * 1000)
-        logger.info(f"Averaged reference error: {avg_error_ul:.1f}uL from target")
-        
-        # Conservative efficiency assumption (reasonable middle ground)
-        conservative_efficiency = 0.7  # uL/uL
-        logger.info(f"Using conservative efficiency assumption: {conservative_efficiency}uL/uL")
-        
-        # Calculate optimal overaspirate using conservative efficiency and averaged reference
-        ref_overaspirate_ul = avg_overaspirate_ml * 1000
-        ref_volume_ul = avg_measured_ml * 1000
-        volume_needed_ul = target_volume_ul - ref_volume_ul
-        overaspirate_needed_ul = volume_needed_ul / conservative_efficiency
-        optimal_overaspirate_ul = ref_overaspirate_ul + overaspirate_needed_ul
-        
-        # Use 5% safety margins instead of normal tolerance
-        safety_margin_pct = 5.0
-        safety_margin_ul = target_volume_ul * safety_margin_pct / 100
-        logger.info(f"Using {safety_margin_pct}% safety margins: +/-{safety_margin_ul:.1f}uL")
-        
-        # Calculate bounds for target ± safety margin
-        min_target_ul = target_volume_ul - safety_margin_ul
-        max_target_ul = target_volume_ul + safety_margin_ul
-        
-        min_volume_needed_ul = min_target_ul - ref_volume_ul
-        max_volume_needed_ul = max_target_ul - ref_volume_ul
-        
-        min_overaspirate_needed_ul = min_volume_needed_ul / conservative_efficiency
-        max_overaspirate_needed_ul = max_volume_needed_ul / conservative_efficiency
-        
-        min_overaspirate_ul = ref_overaspirate_ul + min_overaspirate_needed_ul
-        max_overaspirate_ul = ref_overaspirate_ul + max_overaspirate_needed_ul
-        
-        logger.info(f"Conservative bounds: [{min_overaspirate_ul:.1f}, {max_overaspirate_ul:.1f}]uL")
-        logger.info(f"Optimal overaspirate: {optimal_overaspirate_ul:.1f}uL")
-        
-        return TwoPointCalibrationResult(
-            target_volume_ml=target_volume_ml,
-            point_1=low_point,
-            point_2=high_point,
-            volume_efficiency_ul_per_ul=conservative_efficiency,
-            shortfall_ml=(target_volume_ml - avg_measured_ml),
-            optimal_overaspirate_ml=optimal_overaspirate_ul / 1000,
-            min_overaspirate_ml=min_overaspirate_ul / 1000,
-            max_overaspirate_ml=max_overaspirate_ul / 1000,
-            tolerance_range_ml=safety_margin_ul / 1000  # Convert back to mL
         )
     
     def create_constraint_update(self, calibration_result: TwoPointCalibrationResult) -> ConstraintBoundsUpdate:

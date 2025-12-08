@@ -160,7 +160,7 @@ class CalibrationExperiment:
         except Exception as e:
             logger.warning(f"Failed to save incremental data: {e}")
 
-    def _save_measurement_immediately(self, measurement, target_volume_ml: float, strategy: str, parameters=None):
+    def _save_measurement_immediately(self, measurement, target_volume_ml: float, strategy: str):
         """Save individual measurement to CSV immediately after it's taken."""
         try:
             import csv
@@ -172,25 +172,12 @@ class CalibrationExperiment:
             # Check if file exists to determine if we need header
             file_exists = emergency_file.exists()
             
-            # Base fieldnames (always present)
-            base_fieldnames = [
-                'timestamp', 'target_volume_ml', 'measured_volume_ml', 
-                'measured_volume_ul', 'deviation_pct', 'duration_s', 
-                'strategy', 'total_measurement_count'
-            ]
-            
-            # Get parameter names dynamically if parameters provided
-            param_fieldnames = []
-            param_dict = {}
-            if parameters:
-                protocol_params = parameters.to_protocol_dict()
-                param_fieldnames = sorted(protocol_params.keys())  # Sort for consistent column order
-                param_dict = protocol_params
-            
-            # Combine all fieldnames
-            fieldnames = base_fieldnames + param_fieldnames
-            
             with open(emergency_file, 'a', newline='') as csvfile:
+                fieldnames = [
+                    'timestamp', 'target_volume_ml', 'measured_volume_ml', 
+                    'measured_volume_ul', 'deviation_pct', 'duration_s', 
+                    'strategy', 'total_measurement_count'
+                ]
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 
                 if not file_exists:
@@ -200,8 +187,7 @@ class CalibrationExperiment:
                 measured_ml = measurement.measured_volume_ml
                 deviation_pct = abs((measured_ml - target_volume_ml) / target_volume_ml) * 100
                 
-                # Build row data
-                row_data = {
+                writer.writerow({
                     'timestamp': measurement.timestamp,
                     'target_volume_ml': target_volume_ml,
                     'measured_volume_ml': measured_ml,
@@ -209,13 +195,10 @@ class CalibrationExperiment:
                     'deviation_pct': deviation_pct,
                     'duration_s': measurement.duration_s,
                     'strategy': strategy,
-                    'total_measurement_count': self.total_measurements,
-                    **param_dict  # Spread parameter values dynamically
-                }
+                    'total_measurement_count': self.total_measurements
+                })
                 
-                writer.writerow(row_data)
-                
-            logger.debug(f"Emergency saved measurement with parameters: {measured_ml*1000:.1f}uL (target: {target_volume_ml*1000:.1f}uL)")
+            logger.debug(f"Emergency saved measurement: {measured_ml*1000:.1f}uL (target: {target_volume_ml*1000:.1f}uL)")
             
         except Exception as e:
             logger.warning(f"Failed to emergency save measurement: {e}")
@@ -935,27 +918,13 @@ class CalibrationExperiment:
             # For subsequent volumes, fix non-volume-dependent parameters
             # Get volume-dependent parameters from config instead of hardcoding
             volume_dependent_params = self.config.get_volume_dependent_parameters()
-            logger.info(f"DEBUG: Volume dependent parameters from config: {volume_dependent_params}")
-            
             previous_best = self.volume_results[-1].optimal_parameters
             
             if previous_best:
                 logger.info("Using transfer learning - fixing non-volume-dependent parameters")
                 all_params = previous_best.to_protocol_dict()
-                logger.info(f"DEBUG: All parameters from previous best: {all_params}")
-                logger.info(f"DEBUG: Previous best overaspirate_vol: {all_params.get('overaspirate_vol', 'NOT_FOUND')}")
-                
                 fixed_params = {k: v for k, v in all_params.items() 
                               if k not in volume_dependent_params}
-                logger.info(f"DEBUG: Parameters being fixed by transfer learning: {fixed_params}")
-                
-                # Check specifically for overaspirate_vol
-                if 'overaspirate_vol' in fixed_params:
-                    logger.warning(f"BUG DETECTED: overaspirate_vol={fixed_params['overaspirate_vol']} is being FIXED despite volume_dependent=true!")
-                    logger.warning(f"Volume dependent params: {volume_dependent_params}")
-                    logger.warning(f"overaspirate_vol in volume_dependent? {'overaspirate_vol' in volume_dependent_params}")
-                else:
-                    logger.info("GOOD: overaspirate_vol correctly NOT being fixed by transfer learning")
         
         # Create optimizer with volume-dependent stopping criteria
         optimizer_type = OptimizerType.MULTI_OBJECTIVE if is_first_volume else OptimizerType.SINGLE_OBJECTIVE
@@ -991,15 +960,13 @@ class CalibrationExperiment:
             logger.info(f"Loading {len(screening_trials)} screening trials into optimizer")
             for trial in screening_trials:
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                is_successful = self._is_trial_successful(trial, target_volume_ml)
-                optimizer.seed_with_historical_data(trial.parameters, objectives, len(trial.measurements), is_successful=is_successful)
+                optimizer.seed_with_historical_data(trial.parameters, objectives, len(trial.measurements))
         
         # Load inherited trial if it failed (so we can learn from it)
         if inherited_trial:
             logger.info("Loading inherited trial into optimizer for learning")
             objectives = OptimizationObjectives.from_adaptive_result(inherited_trial.analysis)
-            is_successful = self._is_trial_successful(inherited_trial, target_volume_ml)
-            optimizer.seed_with_historical_data(inherited_trial.parameters, objectives, len(inherited_trial.measurements), is_successful=is_successful)
+            optimizer.seed_with_historical_data(inherited_trial.parameters, objectives, len(inherited_trial.measurements))
         
         # Load two-point calibration trials for subsequent volumes only
         # (First volume does multi-objective optimization including precision, 
@@ -1009,8 +976,7 @@ class CalibrationExperiment:
             logger.info("Note: Only using for subsequent volumes (single-objective accuracy optimization)")
             for trial in self._current_two_point_trials:
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                is_successful = self._is_trial_successful(trial, target_volume_ml)
-                optimizer.seed_with_historical_data(trial.parameters, objectives, len(trial.measurements), is_successful=is_successful)
+                optimizer.seed_with_historical_data(trial.parameters, objectives, len(trial.measurements))
                 logger.debug(f"Added two-point trial: overaspirate={trial.parameters.calibration.overaspirate_vol*1000:.1f}uL, "
                            f"measured={trial.analysis.mean_volume_ml*1000:.1f}uL, deviation={trial.analysis.deviation_pct:.1f}%")
         
@@ -1054,12 +1020,7 @@ class CalibrationExperiment:
                 
                 # Update optimizer with result
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                
-                # Check if trial is successful using the standard method
-                is_successful = self._is_trial_successful(trial, target_volume_ml)
-                
-                optimizer.update_with_result(trial.parameters, objectives, len(trial.measurements), 
-                                           is_successful=is_successful)
+                optimizer.update_with_result(trial.parameters, objectives, len(trial.measurements))
                 
                 # Log progress
                 summary = optimizer.get_summary()
@@ -1461,7 +1422,7 @@ class CalibrationExperiment:
             self.total_measurements += 1
             
             # EMERGENCY DATA SAVE - Write measurement immediately
-            self._save_measurement_immediately(measurement, target_volume_ml, strategy, parameters)
+            self._save_measurement_immediately(measurement, target_volume_ml, strategy)
         
         # Analyze and determine if more replicates are needed
         while use_adaptive and len(measurements) < force_replicates if force_replicates else 10:
@@ -1487,7 +1448,7 @@ class CalibrationExperiment:
             self.total_measurements += 1
             
             # EMERGENCY DATA SAVE - Write measurement immediately
-            self._save_measurement_immediately(measurement, target_volume_ml, strategy, parameters)
+            self._save_measurement_immediately(measurement, target_volume_ml, strategy)
             
             logger.debug(f"Added replicate {replicate_idx + 1} for trial {trial_id}")
         

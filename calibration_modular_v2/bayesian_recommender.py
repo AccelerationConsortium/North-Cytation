@@ -331,9 +331,15 @@ class AxBayesianOptimizer:
 
         # Get suggestion from Ax
         params, trial_index = self.state.ax_client.get_next_trial()
+        
+        # DEBUG: Log raw Ax parameters before any processing
+        logger.info(f"RAW AX PARAMETERS: {params}")
 
         # Apply parameter rounding IMMEDIATELY to prevent floating-point precision issues
         params = self._apply_parameter_rounding(params)
+        
+        # DEBUG: Log parameters after rounding
+        logger.info(f"AFTER ROUNDING: {params}")
 
         # Check which generation method is being used (Ax 0.4.0 API)
         method = "Unknown"
@@ -366,7 +372,11 @@ class AxBayesianOptimizer:
         # Apply fixed parameters (now using clean rounded values)
         for param_name, fixed_value in self.config.constraints.fixed_parameters.items():
             if param_name in params:
+                logger.info(f"FIXING PARAMETER: {param_name} = {fixed_value} (was {params[param_name]})")
                 params[param_name] = fixed_value
+                
+        # DEBUG: Log final parameters before creating PipettingParameters
+        logger.info(f"FINAL PARAMETERS: {params}")
 
         # Create PipettingParameters from Ax suggestion
         pipetting_params = self._ax_params_to_pipetting_parameters(params)
@@ -378,7 +388,8 @@ class AxBayesianOptimizer:
     
     def update_with_result(self, parameters: PipettingParameters, 
                           objectives: OptimizationObjectives,
-                          measurement_count: int = 1) -> None:
+                          measurement_count: int = 1,
+                          is_successful: bool = False) -> None:
         """Update optimizer with trial result."""
         if not self.state.ax_client:
             raise RuntimeError("Ax client not initialized")
@@ -398,14 +409,15 @@ class AxBayesianOptimizer:
             raw_data=ax_objectives
         )
         
-        # Update state
-        self.state.add_trial(trial, self.config)
+        # Update state - use the success flag from experiment instead of _is_good_trial
+        self.state.add_trial(trial, self.config, is_successful=is_successful)
         
         logger.info(f"Updated with result: deviation={objectives.accuracy:.1f}%, trial={trial_index}")
     
     def seed_with_historical_data(self, parameters: PipettingParameters, 
                                  objectives: OptimizationObjectives,
-                                 measurement_count: int = 1) -> None:
+                                 measurement_count: int = 1,
+                                 is_successful: bool = False) -> None:
         """Add historical trial data to the optimizer for training AND ranking."""
         if not self.state.ax_client:
             raise RuntimeError("Ax client not initialized")
@@ -459,7 +471,7 @@ class AxBayesianOptimizer:
         )
         
         # Add to state for ranking consideration
-        self.state.add_trial(historical_trial, self.config)
+        self.state.add_trial(historical_trial, self.config, is_successful=is_successful)
         
         logger.info(f"Seeded optimizer with historical data: deviation={objectives.accuracy:.1f}% (included in ranking)")
     

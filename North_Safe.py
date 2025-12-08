@@ -1827,6 +1827,7 @@ class North_Robot(North_Base):
         pre_asp_air_vol = parameters.pre_asp_air_vol
         post_asp_air_vol = parameters.post_asp_air_vol
         overaspirate_vol = parameters.overaspirate_vol
+        post_retract_wait_time = parameters.post_retract_wait_time
         total_tip_vol = post_asp_air_vol + amount_mL + overaspirate_vol
 
         
@@ -1871,7 +1872,7 @@ class North_Robot(North_Base):
         else:
             asp_height = disp_height = self.get_current_height() #IF we aren't moving, everything stays the same
 
-        self.adjust_pump_speed(0,aspirate_speed) #Adjust the pump speed if needed
+        self.adjust_pump_speed(0,10)
 
         #Move to the correct location in xy
         if move_to_aspirate:
@@ -1882,6 +1883,8 @@ class North_Robot(North_Base):
             self.c9.move_z(disp_height)
             self.pipet_aspirate(pre_asp_air_vol, wait_time=0)
         
+        self.adjust_pump_speed(0,aspirate_speed) #Adjust the pump speed if needed
+
         #Step 2: Move to inside the site and aspirate liquid
         self.c9.move_z(asp_height)
         for i in range (0, asp_disp_cycles):
@@ -1892,6 +1895,7 @@ class North_Robot(North_Base):
         #Step 3: Retract and aspirate air if needed
         if move_up:
             self.c9.move_z(disp_height, vel=retract_speed) #Retract with a specific speed
+            time.sleep(post_retract_wait_time) #Wait after retracting
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
 

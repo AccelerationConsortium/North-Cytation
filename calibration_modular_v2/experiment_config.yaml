@@ -41,7 +41,7 @@ calibration_parameters: # Mandatory parameters that all hardware must support. D
     type: "float"                       # Parameter type for optimizer
     description: "Overaspiration volume for volume accuracy (mL)"
     volume_dependent: true              # Re-optimized for each volume
-    round_to_nearest: 0.001             # Round to nearest 1 µL
+    round_to_nearest: 0.0005             # Round to nearest 0.5 µL
 
 hardware_parameters:
   # Optional hardware-specific parameters
@@ -51,7 +51,7 @@ hardware_parameters:
   
   aspirate_speed:
     bounds: [10, 35]
-    default: 17
+    default: 10
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Aspiration speed (relative units)"
@@ -59,7 +59,7 @@ hardware_parameters:
     
   dispense_speed:
     bounds: [5, 35] 
-    default: 17
+    default: 10
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
     description: "Dispense speed (relative units)"
@@ -67,22 +67,30 @@ hardware_parameters:
     
   aspirate_wait_time:
     bounds: [0.0, 45]
-    default: 12.0
+    default: 10.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
-    description: "Wait time after aspiration (seconds)"
+    description: "Wait time after aspiration in liquid (seconds)"
     round_to_nearest: 0.1               # Round to nearest 0.1 seconds
-    
-  # dispense_wait_time:
-  #   bounds: [0.0, 30]
-  #   default: 12.0
-  #   type: "float"                       # Parameter type for optimizer
-  #   time_affecting: true                # Directly affects timing
-  #   description: "Wait time after dispensing (seconds)"
+
+  post_retract_wait_time:
+    bounds: [0.0, 10]
+    default: 0.0
+    type: "float"                       # Parameter type for optimizer
+    time_affecting: true                # Directly affects timing
+    description: "Wait time after withdrawal during aspiration (seconds)"
+    round_to_nearest: 0.1               # Round to nearest 0.1 seconds
+
+  dispense_wait_time:
+    bounds: [0.0, 10]
+    default: 0.0
+    type: "float"                       # Parameter type for optimizer
+    time_affecting: true                # Directly affects timing
+    description: "Wait time after dispensing (seconds)"
     
   # retract_speed:
   #   bounds: [1.0, 15.0]
-  #   default: 8.0
+  #   default: 5.0
   #   type: "float"                       # Parameter type for optimizer
   #   time_affecting: false               # Minimal timing impact
   #   description: "Tip retract speed (relative units)"
@@ -90,7 +98,7 @@ hardware_parameters:
     
   blowout_vol:
     bounds: [0.0, 0.3]
-    default: 0.07
+    default: 0.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Blowout volume (mL)"
@@ -107,7 +115,7 @@ hardware_parameters:
 
   pre_asp_air_vol:
     bounds: [0.0, 0.3]
-    default: 0.02
+    default: 0.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Pre-aspiration air volume (mL)"
@@ -226,7 +234,7 @@ screening:
 # Validation Configuration
 validation:
   # Source calibration data
-  optimal_conditions_file: "optimized_parameters/optimal_conditions_glycerol_25_100.csv"  # Path to calibration results
+  optimal_conditions_file: "optimized_parameters/optimal_conditions_glycerol_constrained.csv"  # Path to calibration results
   
   # Validation volumes (in mL)
   volumes_ml: [0.030, 0.060, 0.090]  # Volumes to validate (can be different from calibration)

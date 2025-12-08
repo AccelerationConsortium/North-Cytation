@@ -29,6 +29,7 @@ class PipettingParameters:
     # === TIMING PARAMETERS ===
     aspirate_wait_time: float = 0.0         # Wait time after aspiration (seconds)
     dispense_wait_time: float = 0.0         # Wait time after dispensing (seconds)
+    post_retract_wait_time: float = 0.0     # Wait time after retracting from liquid (seconds)
     
     # === AIR GAP PARAMETERS ===
     overaspirate_vol: float = 0.0               # Extra volume to aspirate above target (mL)

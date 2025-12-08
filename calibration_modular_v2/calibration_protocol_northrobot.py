@@ -76,7 +76,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             # Move measurement vial to clamp position for pipetting operations
             lash_e.nr_robot.move_vial_to_location(measurement_vial, "clamp", 0)
             
-            print("✅ Hardware initialized successfully")
+            print("READY: Hardware initialized successfully")
             
             return {
                 'initialized_at': datetime.now(),
@@ -107,7 +107,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             min_source_volume = 2.0  # mL - threshold for swapping when source gets low
             
             # DEBUG: Always print current volumes
-            print(f"🔍 VIAL STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
+            print(f"STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
             
             # Swap when source vial gets too low (< 2 mL)
             # AND measurement vial has accumulated enough liquid to become the new source (> 1 mL)
@@ -130,12 +130,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 # Finally: Move the new measurement vial to clamp position
                 lash_e.nr_robot.move_vial_to_location(state['measurement_vial'], "clamp", 0)
                 
-                print(f"✅ SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
+                print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
             else:
                 print(f"✋ NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
                 
         except Exception as e:
-            print(f"⚠️ Vial swap check failed: {e}")
+            print(f"WARNING: Vial swap check failed: {e}")
 
     def measure(self, state: Dict[str, Any], volume_mL: float, params: Dict[str, Any], replicates: int = 1) -> List[Dict[str, Any]]:
         """Perform hardware measurement with given parameters."""
@@ -167,6 +167,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     'retract_speed': hw_params.get('retract_speed', 5.0),
                     'blowout_vol': hw_params.get('blowout_vol', 0.0),
                     'post_asp_air_vol': hw_params.get('post_asp_air_vol', 0.0),
+                    'post_retract_wait_time': hw_params.get('post_retract_wait_time', 0.0),
                     'overaspirate_vol': params.get('overaspirate_vol', 0.0)  # This is at top level
                 }
             except KeyError as e:
@@ -267,18 +268,18 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 lash_e.nr_robot.return_vial_home(state['measurement_vial'])
                 lash_e.nr_robot.move_home()
                 
-                print(f"✅ Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
+                print(f"COMPLETE: Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
                 
             except Exception as e:
-                print(f"⚠️ Hardware cleanup warning: {e}")
+                print(f"WARNING: Hardware cleanup warning: {e}")
 
     def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
         """Get hardware-specific parameter constraints for North Robot system."""
         constraints = []
         
         # North Robot tip volume constraint
-        # Use 0.2 mL tips for volumes <= 150 µL, otherwise 1.0 mL tips
-        if target_volume_ml <= 0.15:  # 150 µL or less
+        # Use 0.2 mL tips for volumes <= 150 uL, otherwise 1.0 mL tips
+        if target_volume_ml <= 0.15:  # 150 uL or less
             tip_volume_ml = 0.2
         else:
             tip_volume_ml = 1.0
@@ -291,7 +292,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
-        print(f"📏 North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}µL, target: {target_volume_ml*1000:.0f}µL)")
+        print(f"CONSTRAINT: North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}uL, target: {target_volume_ml*1000:.0f}uL)")
         
         return constraints
 

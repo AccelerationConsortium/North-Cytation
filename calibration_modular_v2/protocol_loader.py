@@ -123,7 +123,7 @@ class ProtocolWrapper:
         self.is_instance = (hasattr(protocol_module_or_instance, '__class__') and 
                            not hasattr(protocol_module_or_instance, '__file__'))
     
-    def initialize(self) -> bool:
+    def initialize(self) -> Dict[str, Any]:
         """Initialize the hardware protocol."""
         try:
             # Convert config to dict format expected by protocols
@@ -136,7 +136,7 @@ class ProtocolWrapper:
                 # Module - call function
                 self.state = self.protocol.initialize(config_dict)
                 
-            return True
+            return self.state  # Return the actual state, not just True
         except Exception as e:
             # Don't silently return False - let the error bubble up!
             raise RuntimeError(f"Protocol initialization failed: {e}") from e

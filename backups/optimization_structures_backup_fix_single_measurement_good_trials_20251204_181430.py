@@ -160,12 +160,12 @@ class OptimizationState:
     is_converged: bool = False
     convergence_reason: str = ""
     
-    def add_trial(self, trial: OptimizationTrial, config: OptimizationConfig, is_successful: bool = False) -> None:
+    def add_trial(self, trial: OptimizationTrial, config: OptimizationConfig) -> None:
         """Add trial and update state."""
         self.trials.append(trial)
         
-        # Use the success flag from experiment instead of internal evaluation
-        if is_successful:
+        # Check if trial is "good"
+        if self._is_good_trial(trial, config):
             self.good_trials.append(trial)
         
         # Simple trial tracking - no real-time best trial updates
@@ -173,6 +173,31 @@ class OptimizationState:
         
         # Check convergence
         self._check_convergence(config)
+    
+    def _is_good_trial(self, trial: OptimizationTrial, config: OptimizationConfig) -> bool:
+        """Check if trial meets volume-specific tolerance thresholds."""
+        # Exclude single-measurement trials (precision cannot be reliably assessed)
+        if trial.measurement_count < 2:  # Need at least 2 measurements for meaningful precision
+            return False
+        
+        # Use volume-specific tolerance instead of hardcoded threshold
+        target_volume_ml = getattr(config, 'target_volume_ml', 0.05)  # Default to 50uL if not set
+        
+        # Calculate volume-specific tolerance (same logic as experiment._is_trial_successful)
+        tolerances = config.experiment_config.calculate_tolerances_for_volume(target_volume_ml) if hasattr(config, 'experiment_config') else None
+        
+        if tolerances:
+            target_volume_ul = target_volume_ml * 1000
+            accuracy_threshold_pct = (tolerances.accuracy_tolerance_ul / target_volume_ul) * 100
+            precision_threshold_pct = tolerances.precision_tolerance_pct
+        else:
+            # Fallback to config thresholds if volume-specific calculation fails
+            accuracy_threshold_pct = config.accuracy_threshold_pct
+            precision_threshold_pct = config.precision_threshold_pct
+        
+        return (trial.objectives.accuracy <= accuracy_threshold_pct and
+                trial.objectives.precision <= precision_threshold_pct and
+                trial.objectives.time <= config.time_threshold_s)
     
     def _check_convergence(self, config: OptimizationConfig) -> None:
         """Check if optimization should stop."""
