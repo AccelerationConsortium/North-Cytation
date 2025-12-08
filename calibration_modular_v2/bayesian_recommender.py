@@ -252,6 +252,10 @@ class AxBayesianOptimizer:
             limit = float(match.group(3))
             new_limit = limit - fixed_value
             
+            # Handle floating-point precision errors - treat very small numbers as zero
+            if abs(new_limit) < 1e-10:
+                new_limit = 0.0
+            
             return f"{variable} <= {new_limit:.6f}"
         
         # If we can't simplify, return as-is
@@ -324,10 +328,13 @@ class AxBayesianOptimizer:
         """Get next parameter suggestion from Ax."""
         if not self.state.ax_client:
             raise RuntimeError("Ax client not initialized")
-        
+
         # Get suggestion from Ax
         params, trial_index = self.state.ax_client.get_next_trial()
-        
+
+        # Apply parameter rounding IMMEDIATELY to prevent floating-point precision issues
+        params = self._apply_parameter_rounding(params)
+
         # Check which generation method is being used (Ax 0.4.0 API)
         method = "Unknown"
         gs = self.state.ax_client.generation_strategy
@@ -353,24 +360,25 @@ class AxBayesianOptimizer:
                         method = "SOBOL"
                     else:
                         method = "Bayesian"
-        
+
         logger.info(f"Generated suggestion (trial {trial_index}) using {method}")
-        
-        # Apply fixed parameters
+
+        # Apply fixed parameters (now using clean rounded values)
         for param_name, fixed_value in self.config.constraints.fixed_parameters.items():
             if param_name in params:
                 params[param_name] = fixed_value
-        
+
         # Create PipettingParameters from Ax suggestion
         pipetting_params = self._ax_params_to_pipetting_parameters(params)
-        
+
         # Store trial index for feedback
         self.state.trial_counter = trial_index
-        
+
         return pipetting_params
     
     def update_with_result(self, parameters: PipettingParameters, 
-                          objectives: OptimizationObjectives) -> None:
+                          objectives: OptimizationObjectives,
+                          measurement_count: int = 1) -> None:
         """Update optimizer with trial result."""
         if not self.state.ax_client:
             raise RuntimeError("Ax client not initialized")
@@ -379,6 +387,7 @@ class AxBayesianOptimizer:
         trial = OptimizationTrial(
             parameters=parameters,
             objectives=objectives, 
+            measurement_count=measurement_count,
             trial_index=self.state.trial_counter
         )
         
@@ -395,7 +404,8 @@ class AxBayesianOptimizer:
         logger.info(f"Updated with result: deviation={objectives.accuracy:.1f}%, trial={trial_index}")
     
     def seed_with_historical_data(self, parameters: PipettingParameters, 
-                                 objectives: OptimizationObjectives) -> None:
+                                 objectives: OptimizationObjectives,
+                                 measurement_count: int = 1) -> None:
         """Add historical trial data to the optimizer for training AND ranking."""
         if not self.state.ax_client:
             raise RuntimeError("Ax client not initialized")
@@ -424,6 +434,7 @@ class AxBayesianOptimizer:
         _, ax_objectives = OptimizationTrial(
             parameters=parameters,
             objectives=objectives,
+            measurement_count=measurement_count,
             trial_index=-1  # Dummy index for conversion
         ).to_ax_result(self.config.optimizer_type)
         
@@ -443,6 +454,7 @@ class AxBayesianOptimizer:
         historical_trial = OptimizationTrial(
             parameters=parameters,
             objectives=objectives,
+            measurement_count=measurement_count,
             trial_index=len(self.state.trials)  # Assign proper index
         )
         
@@ -504,6 +516,31 @@ class AxBayesianOptimizer:
                 ax_params[name] = float(value)
         
         return ax_params
+    
+    def _apply_parameter_rounding(self, ax_params: Dict[str, float]) -> Dict[str, float]:
+        """Apply configured rounding to prevent floating-point precision issues."""
+        rounded_params = {}
+        
+        # Get all parameter configurations (calibration + hardware)
+        all_params_config = self.config.experiment_config.get_optimization_parameters()
+        
+        for param_name, value in ax_params.items():
+            param_config = all_params_config.get(param_name, {})
+            round_to = param_config.get('round_to_nearest')
+            
+            if round_to is not None and round_to > 0:
+                # Round to nearest specified precision
+                rounded_value = round(value / round_to) * round_to
+                rounded_params[param_name] = rounded_value
+                
+                # Log significant rounding (difference > 1% of rounding precision)
+                if abs(value - rounded_value) > round_to * 0.01:
+                    logger.debug(f"Rounded {param_name}: {value:.8f} -> {rounded_value:.8f}")
+            else:
+                # No rounding specified, use original value
+                rounded_params[param_name] = value
+        
+        return rounded_params
 
 
 # Factory function for creating optimizers
@@ -513,7 +550,8 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
                     volume_dependent_only: bool = False,
                     constraint_updates: Optional[List['ConstraintBoundsUpdate']] = None,
                     num_sobol_trials: Optional[int] = None,
-                    protocol_instance=None) -> AxBayesianOptimizer:
+                    protocol_instance=None,
+                    min_good_trials: Optional[int] = None) -> AxBayesianOptimizer:
     """
     Create Bayesian optimizer with proper constraints.
     
@@ -551,15 +589,7 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
                    f"[{min_overaspirate_ml*1000:.1f}, {max_overaspirate_ml*1000:.1f}] uL")
     
     # Get volume-dependent parameters from configuration
-    # These are parameters that scale with target volume
-    all_params = config.get_optimization_parameters()
-    volume_dependent_params = []
-    for param_name, param_config in all_params.items():
-        # Check if parameter is marked as volume-dependent in config
-        # For now, include overaspirate_vol as it's always volume-dependent
-        if param_name == "overaspirate_vol":
-            volume_dependent_params.append(param_name)
-        # TODO: Add configuration field to mark other parameters as volume-dependent
+    volume_dependent_params = config.get_volume_dependent_parameters()
     
     # Create constraints
     constraints = OptimizationConstraints(
@@ -586,7 +616,8 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         num_initial_trials=sobol_count,
         target_volume_ml=target_volume_ml,
         experiment_config=config,
-        protocol=protocol_instance  # Pass protocol for constraints
+        protocol=protocol_instance,  # Pass protocol for constraints
+        min_good_trials=min_good_trials if min_good_trials is not None else config.get_min_good_trials()  # Use volume-specific value
     )
     
     return AxBayesianOptimizer(optimization_config)

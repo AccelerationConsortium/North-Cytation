@@ -18,9 +18,12 @@ Data Flow Hierarchy:
 """
 
 import time
+import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -127,7 +130,8 @@ class RawMeasurement:
         if self.target_volume_ml <= 0:
             raise ValueError(f"target_volume_ml must be positive, got {self.target_volume_ml}")
         if self.measured_volume_ml < 0:
-            raise ValueError(f"measured_volume_ml cannot be negative, got {self.measured_volume_ml}")
+            logging.warning(f"Negative volume measurement detected: {self.measured_volume_ml*1000:.1f}uL (target: {self.target_volume_ml*1000:.1f}uL) - converting to 0.0uL for processing")
+            self.measured_volume_ml = 0.0
         if self.duration_s <= 0:
             raise ValueError(f"duration_s must be positive, got {self.duration_s}")
         if not self.measurement_id.strip():
@@ -293,8 +297,9 @@ class TwoPointCalibrationPoint:
     
     def __post_init__(self):
         """Validate calibration point."""
-        if self.measured_volume_ml <= 0:
-            raise ValueError(f"measured_volume_ml must be positive, got {self.measured_volume_ml}")
+        if self.measured_volume_ml < 0:
+            logging.warning(f"Negative calibration measurement: {self.measured_volume_ml*1000:.1f}uL - converting to 0.0uL")
+            self.measured_volume_ml = 0.0
         if self.measurement_count < 1:
             raise ValueError(f"measurement_count must be >= 1, got {self.measurement_count}")
         if not (0 <= self.variability_pct <= 100):

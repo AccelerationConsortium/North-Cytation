@@ -81,17 +81,14 @@ class CleanCSVExporter:
                 'duration_mean_s': trial.get('analysis', {}).get('mean_duration_s', 0),
                 'composite_score': trial.get('composite_score', 0),
                 'quality_overall': trial.get('quality', {}).get('overall_quality', ''),
-                'measurement_count': trial.get('analysis', {}).get('measurement_count', 0),
+                'measurement_count': len(trial.get('measurements', [])),
             }
             
-            # Add quality metrics
+            # Add quality metrics (only the fields that actually exist and work)
             quality = trial.get('quality', {})
             row.update({
-                'accuracy_quality': quality.get('accuracy_quality', ''),
-                'precision_quality': quality.get('precision_quality', ''),
-                'time_quality': quality.get('time_quality', ''),
-                'meets_accuracy_threshold': quality.get('meets_accuracy_threshold', False),
-                'meets_precision_threshold': quality.get('meets_precision_threshold', False),
+                'meets_accuracy_threshold': quality.get('accuracy_good', False),
+                'meets_precision_threshold': quality.get('precision_good', False),
             })
             
             # Flatten parameters (hardware-agnostic)

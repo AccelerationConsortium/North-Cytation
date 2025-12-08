@@ -40,11 +40,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
     
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Initialize hardware protocol with North Robot's internal simulation."""
-        
-        # Extract hardware configuration - FAIL if missing required values
-        if not cfg or 'hardware' not in cfg:
-            raise ValueError("Missing required 'hardware' configuration section")
-        
+               
         # Get liquid from experiment config - FAIL if missing
         if not cfg or 'experiment' not in cfg:
             raise ValueError("Missing required 'experiment' configuration section")
@@ -59,12 +55,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
-        SWAP = True  # If True, enables vial swapping when needed
+        SWAP = False  # If True, enables vial swapping when needed
         
         # Initialize hardware
         try:
             # Initialize vial file path
-            vial_file = "status/calibration_vials_overnight.csv"
+            vial_file = "status/calibration_vials_short.csv"
             
             # Initialize Lash_E coordinator
             lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
@@ -267,6 +263,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         if lash_e:
             try:
                 # Move robot to safe position
+                lash_e.nr_robot.remove_pipet()
+                lash_e.nr_robot.return_vial_home(state['measurement_vial'])
                 lash_e.nr_robot.move_home()
                 
                 print(f"✅ Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
@@ -289,7 +287,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         available_volume_ml = tip_volume_ml - target_volume_ml
         
         # Add tip volume constraint if relevant parameters exist
-        constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        #constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
         print(f"📏 North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}µL, target: {target_volume_ml*1000:.0f}µL)")
