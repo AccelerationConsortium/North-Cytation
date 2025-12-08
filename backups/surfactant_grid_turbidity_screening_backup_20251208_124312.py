@@ -1438,120 +1438,6 @@ def create_turbidity_heatmap(results_df, concentrations, surfactant_a_name, surf
             print(f"Warning: {error_msg}")
         return None
 
-def create_ratio_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger=None):
-    """
-    Create and save a pyrene fluorescence ratio heatmap visualization from experimental data.
-    
-    Args:
-        results_df: DataFrame with experimental results including fluorescence measurements
-        concentrations: List of concentration values used in the grid
-        surfactant_a_name: Name of surfactant A (cationic)
-        surfactant_b_name: Name of surfactant B (anionic) 
-        output_folder: Directory to save the heatmap
-        logger: Logger instance for error reporting
-        
-    Returns:
-        str: Path to saved heatmap file, or None if visualization failed
-    """
-    if not MATPLOTLIB_AVAILABLE:
-        if logger:
-            logger.warning("Matplotlib not available - skipping ratio heatmap visualization")
-        print("Warning: matplotlib not available - skipping ratio heatmap visualization")
-        return None
-    
-    try:
-        if logger:
-            logger.info(f"Creating pyrene ratio heatmap for {surfactant_a_name} vs {surfactant_b_name}")
-        
-        # Check if fluorescence data is available
-        if '334_373' not in results_df.columns or '334_384' not in results_df.columns:
-            error_msg = "No fluorescence data available (missing 334_373 or 334_384 columns) - skipping ratio heatmap"
-            if logger:
-                logger.warning(error_msg)
-            print(f"Warning: {error_msg}")
-            return None
-        
-        # Create heatmap data matrix (no replicates - single values)
-        n_concs = len(concentrations)
-        heatmap_data = np.full((n_concs, n_concs), np.nan)
-        
-        # Populate the matrix from results_df
-        for _, row in results_df.iterrows():
-            # Calculate ratio (I3/I1) - lower values indicate more hydrophobic environment
-            if row['334_373'] > 0 and row['334_384'] > 0:  # Avoid division by zero
-                ratio = row['334_373'] / row['334_384']
-            else:
-                ratio = np.nan  # Mark failed measurements as NaN
-            
-            # Find the concentration indices
-            conc_a_idx = None
-            conc_b_idx = None
-            
-            # Match concentrations with some tolerance for floating point comparison
-            for i, conc in enumerate(concentrations):
-                if abs(row['conc_a_mm'] - conc) < 1e-10:
-                    conc_a_idx = i
-                if abs(row['conc_b_mm'] - conc) < 1e-10:
-                    conc_b_idx = i
-            
-            if conc_a_idx is not None and conc_b_idx is not None:
-                heatmap_data[conc_a_idx, conc_b_idx] = ratio
-        
-        # Create the heatmap plot
-        plt.figure(figsize=(10, 8))
-        
-        # Use 'viridis' colormap for ratio data (lower values = more hydrophobic = darker)
-        # Set vmin/vmax to focus on the main data range excluding outliers
-        data_min = np.nanmin(heatmap_data)
-        data_max = np.nanmax(heatmap_data)
-        
-        if logger:
-            logger.debug(f"Ratio heatmap data range: {data_min:.4f} to {data_max:.4f}")
-        
-        # Use reasonable bounds for pyrene ratio (typically 0.6-1.8)
-        # Dynamic scaling based on actual data for optimal contrast
-        vmin = max(0.5, np.nanpercentile(heatmap_data, 5)) if not np.isnan(data_min) else 0.5
-        vmax = min(2.0, np.nanpercentile(heatmap_data, 95)) if not np.isnan(data_max) else 2.0
-        
-        # Ensure minimum contrast range for small variations
-        if vmax - vmin < 0.1:  # If data range is very tight, expand slightly
-            center = (vmax + vmin) / 2
-            vmin = center - 0.05
-            vmax = center + 0.05
-        
-        c = plt.imshow(heatmap_data, aspect='auto', cmap='plasma', origin='lower', 
-                      vmin=vmin, vmax=vmax, interpolation='nearest')
-        
-        plt.colorbar(c, label='Pyrene Ratio (I₃/I₁) - 334_373/334_384')
-        
-        # Set axis labels with concentration values
-        plt.xticks(range(len(concentrations)), [f'{c:.1e}' for c in concentrations], rotation=45)
-        plt.yticks(range(len(concentrations)), [f'{c:.1e}' for c in concentrations])
-        
-        plt.xlabel(f'{surfactant_b_name} concentration (mM)')
-        plt.ylabel(f'{surfactant_a_name} concentration (mM)')
-        plt.title(f'Pyrene Ratio Heatmap: {surfactant_a_name} vs {surfactant_b_name}\n(Lower ratio = more hydrophobic environment)')
-        plt.tight_layout()
-        
-        # Save the heatmap
-        heatmap_file = os.path.join(output_folder, f"ratio_heatmap_{surfactant_a_name}_{surfactant_b_name}.png")
-        plt.savefig(heatmap_file, dpi=300, bbox_inches='tight')
-        plt.close()  # Close to free memory
-        
-        if logger:
-            logger.info(f"Pyrene ratio heatmap saved: {heatmap_file}")
-        print(f"Pyrene ratio heatmap saved: {heatmap_file}")
-        
-        return heatmap_file
-        
-    except Exception as e:
-        error_msg = f"Failed to create ratio heatmap: {e}"
-        if logger:
-            logger.warning(error_msg)
-        else:
-            print(f"Warning: {error_msg}")
-        return None
-
 def save_results(results_df, well_map, wellplate_data, all_measurements, concentrations, dilution_vials_a, dilution_vials_b, dilution_steps_a, dilution_steps_b, surfactant_a_name, surfactant_b_name, simulate=True, output_folder=None, logger=None):
     """
     Save results and metadata to output folder.
@@ -1764,19 +1650,14 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
         json.dump(metadata, f, indent=2)
     
     # Create turbidity heatmap visualization
-    turbidity_heatmap_file = create_turbidity_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger)
-    
-    # Create pyrene ratio heatmap visualization  
-    ratio_heatmap_file = create_ratio_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger)
+    heatmap_file = create_turbidity_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger)
     
     print(f"Results saved to: {results_file}")
     print(f"Dilution report saved to: {dilution_report_file}")
     print(f"Dilution series info saved to: {dilutions_file}")
     print(f"Metadata saved to: {metadata_file}")
-    if turbidity_heatmap_file:
-        print(f"Turbidity heatmap saved to: {turbidity_heatmap_file}")
-    if ratio_heatmap_file:
-        print(f"Pyrene ratio heatmap saved to: {ratio_heatmap_file}")
+    if heatmap_file:
+        print(f"Turbidity heatmap saved to: {heatmap_file}")
 
 def measure_turbidity(lash_e, well_indices):
     """
@@ -2425,7 +2306,7 @@ if __name__ == "__main__":
     """
     
     # Choose experiment mode
-    RUN_COMPREHENSIVE = False  # Set to False for single experiment
+    RUN_COMPREHENSIVE = True  # Set to False for single experiment
     
     print(f"Starting surfactant grid screening in {'comprehensive' if RUN_COMPREHENSIVE else 'single'} mode")
     print(f"Simulation mode: {SIMULATE}")
@@ -2440,8 +2321,8 @@ if __name__ == "__main__":
         
     else:
         # Run single experiment
-        SURFACTANT_A = "SDS"  # Cationic
-        SURFACTANT_B = "DTAB"   # Anionic
+        SURFACTANT_A = "TTAB"  # Cationic
+        SURFACTANT_B = "SDS"   # Anionic
         
         print(f"Running single experiment: {SURFACTANT_A} + {SURFACTANT_B}")
         results, measurements, plates_used = surfactant_grid_screening(
