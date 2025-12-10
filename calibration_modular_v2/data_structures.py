@@ -15,6 +15,21 @@ Key Features:
 Data Flow Hierarchy:
     PipettingParameters -> RawMeasurement -> AdaptiveMeasurementResult -> 
     TrialResult -> VolumeCalibrationResult -> ExperimentResults
+
+⚠️  CRITICAL: Two Different Trial Types ⚠️
+===========================================
+
+1. TrialResult (THIS FILE): Main experiment data structure
+   - Used throughout experiment.py 
+   - Access accuracy: trial.analysis.absolute_deviation_pct
+   - Access precision: trial.analysis.cv_volume_pct
+   
+2. OptimizationTrial (optimization_structures.py): Bayesian optimizer interface
+   - Used only in bayesian_recommender.py
+   - Access accuracy: trial.objectives.accuracy  
+   - Access precision: trial.objectives.precision
+   
+DO NOT mix these up! Use helper methods below for conversion.
 """
 
 import time
@@ -234,6 +249,21 @@ class TrialResult:
                 raise ValueError("All measurements must use same parameters")
             if abs(measurement.target_volume_ml - self.target_volume_ml) > 1e-6:
                 raise ValueError("All measurements must have same target volume")
+    
+    # Helper methods to prevent data structure confusion
+    def get_accuracy_pct(self) -> float:
+        """Get accuracy (absolute deviation %) - prevents .objectives confusion."""
+        return self.analysis.absolute_deviation_pct
+    
+    def get_precision_pct(self) -> float:
+        """Get precision (CV %) - prevents .objectives confusion."""
+        return self.analysis.cv_volume_pct
+    
+    def to_optimization_objectives(self):
+        """Convert to OptimizationObjectives for Bayesian optimizer."""
+        # Import here to avoid circular dependency
+        from optimization_structures import OptimizationObjectives
+        return OptimizationObjectives.from_adaptive_result(self.analysis)
 
 
 @dataclass
