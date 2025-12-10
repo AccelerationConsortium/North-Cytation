@@ -67,16 +67,16 @@ SURFACTANT_LIBRARY = {
 }
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
+SIMULATE = False # Set to False for actual hardware execution
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
 # Pump 1 = Water reservoir pump (carousel angle 45 deg, height 70)
 
 # Grid parameters - Updated to better capture turbidity transition region
-MIN_CONC_LOG = -1.5  # 10^-2 = 0.01 mM minimum (focus on higher concentrations)
-MAX_CONC_LOG = 1   # 10^1 = 10 mM maximum (extend into transition region)  
-LOG_STEP = 0.5     # 10^0.5 ~= 3.16-fold steps for finer resolution
+MIN_CONC_LOG = -4  # 10^-2 = 0.01 mM minimum (focus on higher concentrations)
+MAX_CONC_LOG = 1   # 10^1 = 10 mM maximum (extend into asdtransition region)  
+LOG_STEP = 1     # 10^0.5 ~= 3.16-fold steps for finer resolution
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
 PYRENE_VOLUME_UL = 10  # uL pyrene_DMSO to add per well
