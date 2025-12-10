@@ -14,12 +14,8 @@ RECOVERY USAGE:
   # Recover processed measurements from crashed workflow:  
   measurements = recover_from_measurement_backups()
 """
-
-# ================================================================================
-# IMPORTS AND DEPENDENCIES
-# ================================================================================
-
 import sys
+
 sys.path.append("../utoronto_demo")
 import pandas as pd
 import numpy as np
@@ -35,10 +31,6 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
     print("Warning: matplotlib not available - heatmap visualization will be skipped")
-
-# ================================================================================
-# GLOBAL CONFIGURATION AND CONSTANTS
-# ================================================================================
 
 # Surfactant library with stock concentrations (from cmc_exp_new.py)
 SURFACTANT_LIBRARY = {
@@ -76,7 +68,6 @@ SURFACTANT_LIBRARY = {
 
 # WORKFLOW CONSTANTS
 SIMULATE = True # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
@@ -88,7 +79,7 @@ MAX_CONC_LOG = 1   # 10^1 = 10 mM maximum (extend into transition region)
 LOG_STEP = 0.5     # 10^0.5 ~= 3.16-fold steps for finer resolution
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
-PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
+PYRENE_VOLUME_UL = 10  # uL pyrene_DMSO to add per well
 
 # Buffer addition settings
 ADD_BUFFER = True  # Set to False to skip buffer addition
@@ -102,12 +93,6 @@ if ADD_BUFFER:
     EFFECTIVE_SURFACTANT_VOLUME = (WELL_VOLUME_UL - BUFFER_VOLUME_UL) / 2  # Split remaining volume
 else:
     EFFECTIVE_SURFACTANT_VOLUME = WELL_VOLUME_UL / 2  # Original 50/50 split
-
-# CRITICAL: Concentration correction factor for buffer dilution
-# When buffer is added, stock concentrations must be higher to compensate for dilution
-# This ensures final concentrations match intended values
-CONCENTRATION_CORRECTION_FACTOR = WELL_VOLUME_UL / (2 * EFFECTIVE_SURFACTANT_VOLUME)
-print(f"Concentration correction factor: {CONCENTRATION_CORRECTION_FACTOR:.3f} (buffer={ADD_BUFFER}, buffer_vol={BUFFER_VOLUME_UL if ADD_BUFFER else 0}uL)")
 MAX_WELLS = 96 #Wellplate size
 
 # Constants
@@ -122,20 +107,12 @@ FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
 
-# ================================================================================
-# SECTION 1: CONCENTRATION AND GRID CALCULATION FUNCTIONS
-# ================================================================================
-
-#DESCRIPTION: Calculate logarithmic concentration grid for surfactant dilution series
-#RATING: 9/10 - Simple, well-defined mathematical calculation with clear parameters
 def calculate_grid_concentrations():
     """Calculate concentration grid points for both surfactants."""
     log_range = np.arange(MIN_CONC_LOG, MAX_CONC_LOG + LOG_STEP, LOG_STEP, dtype=float)
     concentrations = 10.0 ** log_range  # Convert log to actual concentrations
     return concentrations
 
-#DESCRIPTION: Load existing substock dilutions from CSV and track what's already prepared
-#RATING: 7/10 - Comprehensive but complex parsing logic, handles edge cases well
 def load_substock_tracking(logger=None):
     """Create substock tracking, detecting existing dilutions from CSV file."""
     tracking = {}
@@ -196,8 +173,6 @@ def load_substock_tracking(logger=None):
     
     return tracking
 
-#DESCRIPTION: Save substock tracking data to JSON file for persistence
-#RATING: 8/10 - Simple serialization with proper set-to-list conversion
 def save_substock_tracking(tracking_data, output_folder):
     """Save substock tracking data to output folder."""
     tracking_file = os.path.join(output_folder, "substock_tracking.json")
@@ -213,8 +188,6 @@ def save_substock_tracking(tracking_data, output_folder):
     with open(tracking_file, 'w') as f:
         json.dump(json_data, f, indent=2)
 
-#DESCRIPTION: Initialize wellplate tracking state for managing multiple plates
-#RATING: 9/10 - Clean state initialization with all necessary fields
 def load_wellplate_state():
     """Create simple in-memory wellplate tracking."""
     return {
@@ -224,14 +197,10 @@ def load_wellplate_state():
         "total_plates_used": 0
     }
 
-#DESCRIPTION: Save wellplate state to JSON file for crash recovery
-#RATING: 8/10 - Straightforward persistence function
 def save_wellplate_state(state_data):
     """Wellplate state doesn't need to be saved - North system handles it."""
     pass  # No file saving needed
 
-#DESCRIPTION: Calculate achievable concentrations based on stock concentration and dilution limits
-#RATING: 8/10 - Good validation logic with clear constraints, handles edge cases
 def get_achievable_concentrations(surfactant_name, target_concentrations):
     """
     Get which concentrations are achievable for a surfactant.
@@ -247,28 +216,17 @@ def get_achievable_concentrations(surfactant_name, target_concentrations):
     
     achievable = []
     for target in target_concentrations:
-        if target is None:
-            achievable.append(None)
-            continue
+        # Target is final concentration after 1:1 mixing
+        # So substock needs to be 2x higher
+        required_substock = target * 2
         
-        # Apply concentration correction factor for buffer dilution
-        required_stock_conc = target * CONCENTRATION_CORRECTION_FACTOR
-        
-        # Check if this concentration is achievable given stock concentration and dilution limits  
-        dilution_factor = stock_conc / required_stock_conc
-        if dilution_factor >= 1.0:  # Only check that we're not trying to concentrate (dilution_factor >= 1)
+        if required_substock <= stock_conc:
             achievable.append(target)
         else:
             achievable.append(None)
     
     return achievable
 
-# ================================================================================
-# SECTION 2: DILUTION SERIES CREATION AND MANAGEMENT
-# ================================================================================
-
-#DESCRIPTION: Check existing substocks and create missing dilutions using hierarchical strategy
-#RATING: 6/10 - Complex logic with multiple edge cases, works but could be cleaner
 def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tracking):
     """
     Check if substocks exist for a surfactant, create missing ones using multi-pass hierarchical strategy.
@@ -486,8 +444,6 @@ def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tr
     
     return dilution_vials, dilution_steps, achievable_concs
 
-#DESCRIPTION: Execute batch dilution operations with error handling and progress tracking
-#RATING: 7/10 - Robust batch processing with good error recovery, verbose but functional
 def execute_batched_dilutions(lash_e, dilution_operations, tracking, surfactant_name, logger):
     """
     Execute dilution operations efficiently by batching operations by source vial.
@@ -580,8 +536,6 @@ def execute_batched_dilutions(lash_e, dilution_operations, tracking, surfactant_
     logger.info(f"Batched dilution complete: {total_tips_new_method} tips used (saved {tips_saved} tips vs sequential method)")
     print(f"OK Batched dilution complete: {total_tips_new_method} tips used (saved {tips_saved} tips)")
 
-#DESCRIPTION: Calculate total wells needed for concentration grid with replicates
-#RATING: 10/10 - Simple, exact calculation with clear formula
 def calculate_total_wells_needed():
     """Calculate total wells needed for the grid."""
     concs = calculate_grid_concentrations()
@@ -589,8 +543,6 @@ def calculate_total_wells_needed():
     total_wells = grid_size * N_REPLICATES
     return total_wells, len(concs)
 
-#DESCRIPTION: Create dilution series vials for a surfactant with target concentrations
-#RATING: 8/10 - Well-structured with clear separation of concerns, good error handling
 def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_mm):
     """
     Create systematic serial dilutions of a surfactant.
@@ -602,12 +554,8 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
     """
     print(f"Creating serial dilution series for {surfactant_vial}")
     
-    # Apply concentration correction factor for final well composition  
-    # This accounts for buffer dilution automatically - no more fixed 2x assumption
-    dilution_concs = [conc * CONCENTRATION_CORRECTION_FACTOR for conc in target_concs_mm]
-    print(f"Concentration correction factor: {CONCENTRATION_CORRECTION_FACTOR:.3f}")
-    print(f"Original targets: {[f'{c:.3e}' for c in target_concs_mm]} mM")
-    print(f"Corrected dilution stocks: {[f'{c:.3e}' for c in dilution_concs]} mM")
+    # Prepare dilutions at 2x target concentrations (since mixing 1:1 halves concentrations)
+    dilution_concs = [conc * 2 for conc in target_concs_mm]
     
     # Sort concentrations from highest to lowest for serial dilution
     sorted_concs = sorted(dilution_concs, reverse=True)
@@ -624,13 +572,13 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
             stock_volume = FINAL_SUBSTOCK_VOLUME / dilution_factor
             water_volume = FINAL_SUBSTOCK_VOLUME - stock_volume
             
-            print(f"  Creating {target_conc:.2e} mM (final = {target_conc/CONCENTRATION_CORRECTION_FACTOR:.2e} mM) from stock (dilution factor: {dilution_factor:.1f})")
+            print(f"  Creating {target_conc:.2e} mM (2x = {target_conc/2:.2e} mM final) from stock (dilution factor: {dilution_factor:.1f})")
             
             # Record dilution step
             dilution_steps.append({
                 'vial_name': dilution_vial,
                 'target_conc_mm': target_conc,
-                'final_conc_mm': target_conc / CONCENTRATION_CORRECTION_FACTOR,  # Actual final concentration in well
+                'final_conc_mm': target_conc / 2,  # After 1:1 mixing
                 'source': 'stock',
                 'source_vial': surfactant_vial,
                 'source_conc_mm': stock_conc_mm,
@@ -668,13 +616,13 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
                 previous_volume = FINAL_SUBSTOCK_VOLUME / expected_dilution_factor
                 water_volume = FINAL_SUBSTOCK_VOLUME - previous_volume
                 
-                print(f"  Creating {current_conc:.2e} mM (final = {current_conc/CONCENTRATION_CORRECTION_FACTOR:.2e} mM) from previous dilution (10-fold)")
+                print(f"  Creating {current_conc:.2e} mM (2x = {current_conc/2:.2e} mM final) from previous dilution (10-fold)")
                 
                 # Record dilution step
                 dilution_steps.append({
                     'vial_name': dilution_vial,
                     'target_conc_mm': current_conc,
-                    'final_conc_mm': current_conc / CONCENTRATION_CORRECTION_FACTOR,  # Actual final concentration in well
+                    'final_conc_mm': current_conc / 2,  # After 1:1 mixing
                     'source': 'serial_dilution',
                     'source_vial': dilution_vials[i-1],
                     'source_conc_mm': previous_conc,
@@ -703,13 +651,13 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
                 previous_volume = FINAL_SUBSTOCK_VOLUME / dilution_factor
                 water_volume = FINAL_SUBSTOCK_VOLUME - previous_volume
                 
-                print(f"  Creating {current_conc:.2e} mM (final = {current_conc/CONCENTRATION_CORRECTION_FACTOR:.2e} mM) from previous (factor: {dilution_factor:.1f})")
+                print(f"  Creating {current_conc:.2e} mM (2x = {current_conc/2:.2e} mM final) from previous (factor: {dilution_factor:.1f})")
                 
                 # Record dilution step
                 dilution_steps.append({
                     'vial_name': dilution_vial,
                     'target_conc_mm': current_conc,
-                    'final_conc_mm': current_conc / CONCENTRATION_CORRECTION_FACTOR,  # Actual final concentration in well
+                    'final_conc_mm': current_conc / 2,  # After 1:1 mixing
                     'source': 'custom_dilution',
                     'source_vial': dilution_vials[i-1],
                     'source_conc_mm': previous_conc,
@@ -741,12 +689,6 @@ def create_dilution_series(lash_e, surfactant_vial, target_concs_mm, stock_conc_
     # This matches the actual serial dilution process (highest -> lowest)
     return dilution_vials, dilution_steps
 
-# ================================================================================
-# SECTION 3: MEASUREMENT TIMING AND DATA BACKUP FUNCTIONS
-# ================================================================================
-
-#DESCRIPTION: Check if measurement interval reached and trigger turbidity/fluorescence measurements
-#RATING: 8/10 - Good interval management with clear triggering logic
 def check_measurement_interval(lash_e, current_well, wellplate_data, total_wells_added):
     """
     Check if it's time to measure based on MEASUREMENT_INTERVAL.
@@ -787,8 +729,6 @@ def check_measurement_interval(lash_e, current_well, wellplate_data, total_wells
     
     return wellplate_data
 
-#DESCRIPTION: Backup processed measurement data with timestamp for crash recovery
-#RATING: 9/10 - Essential crash recovery feature with proper file handling
 def backup_raw_measurement_data(measurement_entry, plate_number, wells_measured):
     """
     Immediately backup raw measurement data to prevent data loss if processing crashes.
@@ -826,8 +766,6 @@ def backup_raw_measurement_data(measurement_entry, plate_number, wells_measured)
         print(f"WARNING: Failed to backup measurement data: {e}")
         # Don't crash the workflow if backup fails
 
-#DESCRIPTION: Backup raw Cytation instrument data before processing for data protection
-#RATING: 10/10 - Critical data protection feature, preserves original instrument output
 def backup_raw_cytation_data(raw_data, well_indices):
     """
     Save the raw Cytation DataFrame immediately after measurement to prevent data loss.
@@ -873,8 +811,6 @@ def backup_raw_cytation_data(raw_data, well_indices):
         print(f"CRITICAL: Failed to backup raw Cytation data: {e}")
         print(f"   This could result in permanent data loss if processing fails!")
 
-#DESCRIPTION: Recover processed measurement data from backup files after workflow crash
-#RATING: 8/10 - Good recovery logic with error handling, essential for data continuity
 def recover_from_measurement_backups(backup_dir="output/measurement_backups"):
     """
     Recover measurement data from backup files if workflow crashed.
@@ -912,8 +848,6 @@ def recover_from_measurement_backups(backup_dir="output/measurement_backups"):
     print(f"Successfully recovered {len(recovered_measurements)} measurements")
     return recovered_measurements
 
-#DESCRIPTION: Recover original Cytation data from backup files if processing failed
-#RATING: 8/10 - Important data recovery tool with comprehensive error handling
 def recover_raw_cytation_data(backup_dir="output/cytation_raw_backups"):
     """
     Recover raw Cytation DataFrame files if processing failed and data needs to be reanalyzed.
@@ -951,8 +885,6 @@ def recover_raw_cytation_data(backup_dir="output/cytation_raw_backups"):
     print(f"Successfully recovered {len(recovered_data)} raw Cytation datasets")
     return recovered_data
 
-#DESCRIPTION: Manage automatic wellplate switching when current plate fills up
-#RATING: 7/10 - Handles plate transitions well but complex state management
 def manage_wellplate_switching(lash_e, current_well, wellplate_data):
     """
     Handle wellplate switching when MAX_WELLS is reached.
@@ -993,12 +925,6 @@ def manage_wellplate_switching(lash_e, current_well, wellplate_data):
         wellplate_data['wells_used'] = max(wellplate_data['wells_used'], current_well + 1)
         return current_well, wellplate_data
 
-# ================================================================================
-# SECTION 4: MAIN EXPERIMENTAL WORKFLOW - PIPETTING AND GRID CREATION
-# ================================================================================
-
-#DESCRIPTION: Main pipetting workflow - create complete surfactant concentration grid in wellplates
-#RATING: 6/10 - Complex but essential function, handles 4-phase workflow with measurements
 def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name, shared_wellplate_state):
     """Pipette concentration grid into wellplate(s) using shared wellplate state with batched measurements for tip efficiency."""
     logger = lash_e.logger
@@ -1231,12 +1157,6 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, dilution_vials_a,
     
     return well_map, updated_shared_state
 
-# ================================================================================
-# SECTION 5: DATA ANALYSIS AND PROCESSING FUNCTIONS
-# ================================================================================
-
-#DESCRIPTION: Combine well mapping with measurement data to create comprehensive results
-#RATING: 8/10 - Good data integration logic with proper error handling
 def combine_measurement_data(well_map, wellplate_data):
     """
     Combine measurement data from all intervals into a single DataFrame.
@@ -1333,8 +1253,6 @@ def combine_measurement_data(well_map, wellplate_data):
     print(f"Combined {len(combined_results)} complete wells with both turbidity and fluorescence from {len(wellplate_data['measurements'])} measurements")
     return pd.DataFrame(combined_results)
 
-#DESCRIPTION: Validate measurement data quality and identify failed measurements
-#RATING: 9/10 - Comprehensive validation with clear pass/fail criteria
 def validate_measurement_data(results_df):
     """
     Detect and flag wells with fallback/fake measurement data.
@@ -1383,8 +1301,6 @@ def validate_measurement_data(results_df):
     
     return results_df_flagged, clean_data
 
-#DESCRIPTION: Create timestamped output folder for experiment results
-#RATING: 10/10 - Simple, reliable folder creation with clear naming
 def create_output_folder(simulate=True):
     """
     Create timestamped output folder for results.
@@ -1412,8 +1328,6 @@ def create_output_folder(simulate=True):
     print(f"Created output folder: {output_dir}")
     return output_dir
 
-#DESCRIPTION: Create human-readable concentration grid summary for documentation
-#RATING: 8/10 - Good documentation feature with clear formatting
 def create_concentration_grid_summary(concentrations, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name):
     """
     Create a text-based visual summary showing which concentration combinations are achievable.
@@ -1468,12 +1382,6 @@ def create_concentration_grid_summary(concentrations, dilution_vials_a, dilution
     
     return "\\n".join(grid_lines)
 
-# ================================================================================
-# SECTION 6: VISUALIZATION AND HEATMAP GENERATION
-# ================================================================================
-
-#DESCRIPTION: Create turbidity heatmap visualization for concentration grid analysis
-#RATING: 8/10 - Good visualization with proper axis labeling and color scaling
 def create_turbidity_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger=None):
     """
     Create and save a turbidity heatmap visualization from experimental data.
@@ -1567,8 +1475,6 @@ def create_turbidity_heatmap(results_df, concentrations, surfactant_a_name, surf
             print(f"Warning: {error_msg}")
         return None
 
-#DESCRIPTION: Create pyrene I3/I1 fluorescence ratio heatmap for CMC analysis
-#RATING: 8/10 - Specialized CMC visualization with plasma colormap, good axis handling
 def create_ratio_heatmap(results_df, concentrations, surfactant_a_name, surfactant_b_name, output_folder, logger=None):
     """
     Create and save a pyrene fluorescence ratio heatmap visualization from experimental data.
@@ -1683,8 +1589,6 @@ def create_ratio_heatmap(results_df, concentrations, surfactant_a_name, surfacta
             print(f"Warning: {error_msg}")
         return None
 
-#DESCRIPTION: Save all experimental results, visualizations, and metadata to output folder
-#RATING: 7/10 - Comprehensive data saving with multiple output formats, slightly complex
 def save_results(results_df, well_map, wellplate_data, all_measurements, concentrations, dilution_vials_a, dilution_vials_b, dilution_steps_a, dilution_steps_b, surfactant_a_name, surfactant_b_name, simulate=True, output_folder=None, logger=None):
     """
     Save results and metadata to output folder.
@@ -1920,12 +1824,6 @@ def save_results(results_df, well_map, wellplate_data, all_measurements, concent
     if ratio_heatmap_file:
         print(f"Pyrene ratio heatmap saved to: {ratio_heatmap_file}")
 
-# ================================================================================
-# SECTION 7: CYTATION MEASUREMENT AND DATA EXTRACTION
-# ================================================================================
-
-#DESCRIPTION: Measure turbidity using Cytation plate reader with absorbance protocol
-#RATING: 9/10 - Clean measurement interface with proper error handling
 def measure_turbidity(lash_e, well_indices):
     """
     Measure turbidity in specified wells using Cytation plate reader.
@@ -1969,8 +1867,6 @@ def measure_turbidity(lash_e, well_indices):
         print(f"WARNING: Using fallback mock data to continue workflow...")
         return {'turbidity': [-1] * len(well_indices)}
 
-#DESCRIPTION: Measure pyrene fluorescence using Cytation with dual wavelength protocol
-#RATING: 9/10 - Clean fluorescence measurement with proper protocol handling
 def measure_fluorescence(lash_e, well_indices):
     """
     Measure fluorescence in specified wells using Cytation plate reader.
@@ -2017,8 +1913,6 @@ def measure_fluorescence(lash_e, well_indices):
             '334_384': [-1] * len(well_indices)
         }
 
-#DESCRIPTION: Extract fluorescence intensities at 373nm and 384nm from raw Cytation data
-#RATING: 7/10 - Complex parsing logic but handles edge cases, critical for CMC analysis
 def extract_fluorescence_values(raw_data, well_indices):
     """
     Extract fluorescence values from Cytation measurement DataFrame.
@@ -2151,8 +2045,6 @@ def extract_fluorescence_values(raw_data, well_indices):
         '334_384': measurement_values_384[:len(well_indices)]
     }
 
-#DESCRIPTION: Extract turbidity/absorbance values from raw Cytation measurement data
-#RATING: 8/10 - Robust data extraction with good error handling for missing wells
 def extract_turbidity_values(raw_data, well_indices):
     """
     Extract turbidity values from Cytation measurement DataFrame.
@@ -2243,29 +2135,18 @@ def extract_turbidity_values(raw_data, well_indices):
     
     return {'turbidity': measurement_values[:len(well_indices)]}
 
-# ================================================================================
-# SECTION 8: MAIN WORKFLOW ORCHESTRATION AND SESSION MANAGEMENT
-# ================================================================================
-
-#DESCRIPTION: Initialize robot and hardware for screening session with proper validation
-#RATING: 9/10 - Excellent initialization with comprehensive error checking
-def initialize_screening_session(simulate=True, validate_liquids=None):
+def initialize_screening_session(simulate=True):
     """
     Initialize a shared screening session with Lash_E coordinator and input validation.
     Call this once at the start of a multi-combination screening session.
     
     Args:
         simulate (bool): Run in simulation mode
-        validate_liquids (bool, optional): Run pipetting validation. Uses VALIDATE_LIQUIDS if None
         
     Returns:
         tuple: (lash_e, shared_substock_tracking, shared_wellplate_state)
     """
     print("=== Initializing Surfactant Screening Session ===")
-    
-    # Use global setting if not specified
-    if validate_liquids is None:
-        validate_liquids = VALIDATE_LIQUIDS
     
     # 1. Initialize Lash_E coordinator (ONCE per session)
     INPUT_VIAL_STATUS_FILE = "status/surfactant_grid_vials_expanded.csv"
@@ -2293,116 +2174,7 @@ def initialize_screening_session(simulate=True, validate_liquids=None):
     # 5. Prime water lines
     lash_e.nr_robot.prime_reservoir_line(1, 'water')
     
-    # 6. Pipetting validation (if enabled and not simulation)
-    if validate_liquids:
-        print("\\n=== Running Pipetting Validation ===")
-        logger.info("Starting pipetting validation for all liquid types")
-        
-        from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
-        
-        validation_folder = f"output/pipetting_validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        # Validate pyrene_DMSO vials (both vials) as 'DMSO'
-        pyrene_vials = ["pyrene_DMSO"] 
-        for vial_name in pyrene_vials:
-            try:
-                print(f"Validating {vial_name} (DMSO)...")
-                results = validate_pipetting_accuracy(
-                    lash_e=lash_e,
-                    source_vial=vial_name,
-                    destination_vial=vial_name,
-                    liquid_type="DMSO",
-                    volumes_ml=[PYRENE_VOLUME_UL / 1000],  # Convert 10 µL to 0.01 mL
-                    replicates=5,
-                    output_folder=validation_folder,
-                    plot_title=f"Pipetting Validation - {vial_name}",
-                    switch_pipet=False
-                )
-                logger.info(f"{vial_name} validation: R²={results['r_squared']:.4f}, "
-                           f"Accuracy={results['mean_accuracy_pct']:.2f}%")
-            except Exception as e:
-                logger.warning(f"Could not validate {vial_name}: {e}")
-        
-        # Validate surfactant stock solutions as 'water' 
-        surfactant_stocks = [f"{name}_stock" for name in SURFACTANT_LIBRARY.keys()]
-        for stock_vial in surfactant_stocks:
-            try:
-                print(f"Validating {stock_vial} (aqueous surfactant)...")
-                results = validate_pipetting_accuracy(
-                    lash_e=lash_e,
-                    source_vial=stock_vial,
-                    destination_vial=stock_vial,
-                    liquid_type="water", 
-                    volumes_ml=[MINIMUM_PIPETTE_VOLUME, 0.5, 0.8],  # Start at minimum (200 µL)
-                    replicates=5,
-                    output_folder=validation_folder,
-                    plot_title=f"Pipetting Validation - {stock_vial}",
-                    switch_pipet=False
-                )
-                logger.info(f"{stock_vial} validation: R²={results['r_squared']:.4f}, "
-                           f"Accuracy={results['mean_accuracy_pct']:.2f}%")
-            except Exception as e:
-                logger.warning(f"Could not validate {stock_vial}: {e}")
-        
-        # Validate buffer solution (if buffer is being used)
-        if ADD_BUFFER:
-            buffer_vial = f"{SELECTED_BUFFER}_buffer"
-            try:
-                print(f"Validating {buffer_vial} (buffer solution)...")
-                results = validate_pipetting_accuracy(
-                    lash_e=lash_e,
-                    source_vial=buffer_vial,
-                    destination_vial=buffer_vial,
-                    liquid_type="water",  # Treat buffer as water for density
-                    volumes_ml=[BUFFER_VOLUME_UL / 1000],  # Convert buffer volume to mL (typically 20 µL = 0.02 mL)
-                    replicates=5,
-                    output_folder=validation_folder,
-                    plot_title=f"Pipetting Validation - {buffer_vial}",
-                    switch_pipet=False
-                )
-                logger.info(f"{buffer_vial} validation: R²={results['r_squared']:.4f}, "
-                           f"Accuracy={results['mean_accuracy_pct']:.2f}%")
-            except Exception as e:
-                logger.warning(f"Could not validate {buffer_vial}: {e}")
-        else:
-            print("Buffer validation skipped - ADD_BUFFER is False")
-            logger.info("Buffer validation skipped - not using buffer in this workflow")
-        
-        print(f"Pipetting validation complete. Results saved to: {validation_folder}")
-        
-        # 7. Water reservoir validation (if enabled and not simulation)
-        if not simulate:
-            print(f"\\nValidating water reservoir dispensing...")
-            
-            from pipetting_data.embedded_calibration_validation import validate_reservoir_accuracy
-            
-            try:
-                results = validate_reservoir_accuracy(
-                    lash_e=lash_e,
-                    reservoir_index=1,  # Water reservoir
-                    target_vial="water",
-                    liquid_type="water",
-                    volumes_ml=[0.5, 1.0, 2.0],  # 0.5, 1.0, and 2.0 mL
-                    replicates=1,  # Only 1 replicate to avoid overfilling
-                    output_folder=validation_folder,
-                    plot_title="Water Reservoir Validation",
-                    save_raw_data=True
-                )
-                logger.info(f"Water reservoir validation: R²={results['r_squared']:.4f}, "
-                           f"Accuracy={results['mean_accuracy_pct']:.2f}%")
-            except Exception as e:
-                logger.warning(f"Could not validate water reservoir: {e}")
-        
-        print(f"All validation complete. Results saved to: {validation_folder}")
-        logger.info("All validation complete for pipetting and reservoir accuracy")
-    elif validate_liquids and simulate:
-        print("Skipping pipetting validation in simulation mode")
-        logger.info("Pipetting validation skipped - simulation mode")
-    else:
-        print("Pipetting validation disabled")
-        logger.info("Pipetting validation disabled by configuration")
-    
-    # 7. Initialize shared tracking
+    # 6. Initialize shared tracking
     shared_substock_tracking = load_substock_tracking(lash_e.logger)
     shared_wellplate_state = {
         'global_well_counter': 0,
@@ -2420,8 +2192,6 @@ def initialize_screening_session(simulate=True, validate_liquids=None):
     print("OK Session ready for surfactant combinations")
     return lash_e, shared_substock_tracking, shared_wellplate_state
 
-#DESCRIPTION: Clean shutdown and finalization of screening session
-#RATING: 8/10 - Good cleanup with proper robot state management
 def finalize_screening_session(lash_e, shared_wellplate_state):
     """
     Clean up and finalize the screening session.
@@ -2443,8 +2213,6 @@ def finalize_screening_session(lash_e, shared_wellplate_state):
     logger.info(f"Session complete - used {shared_wellplate_state['total_plates_used']} total wellplates")
     print(f"OK Session complete - {shared_wellplate_state['total_plates_used']} plates used")
 
-#DESCRIPTION: Main entry point for single surfactant pair screening experiment
-#RATING: 8/10 - Well-orchestrated main workflow with comprehensive error handling
 def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS", simulate=True, output_folder=None):
     """
     Backward compatibility wrapper - single combination with full session setup.
@@ -2453,7 +2221,7 @@ def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS",
     print("=== Single Combination Screening (Legacy Mode) ===")
     
     # Initialize session
-    lash_e, shared_substock_tracking, shared_wellplate_state = initialize_screening_session(simulate, VALIDATE_LIQUIDS)
+    lash_e, shared_substock_tracking, shared_wellplate_state = initialize_screening_session(simulate)
     
     try:
         # Execute single combination
@@ -2468,8 +2236,6 @@ def surfactant_grid_screening(surfactant_a_name="TTAB", surfactant_b_name="SDS",
         # Always clean up
         finalize_screening_session(lash_e, shared_wellplate_state)
 
-#DESCRIPTION: Execute screening for one surfactant combination using shared session
-#RATING: 7/10 - Good modular design for batch processing, handles state well
 def execute_single_combination(lash_e, surfactant_a_name, surfactant_b_name, shared_substock_tracking, shared_wellplate_state, output_folder=None):
     """
     Execute surfactant grid screening for a single combination using shared session resources.
@@ -2545,8 +2311,6 @@ def execute_single_combination(lash_e, surfactant_a_name, surfactant_b_name, sha
     print(f"OK {surfactant_a_name}+{surfactant_b_name}: {len(results_df)} wells")
     return results_df, all_measurements, plates_used_this_combo
 
-#DESCRIPTION: Run comprehensive screening for all 9 anionic/cationic surfactant combinations
-#RATING: 8/10 - Excellent batch processing with error recovery and detailed reporting
 def run_all_surfactant_combinations(simulate=True):
     """
     Run screening for all anionic/cationic surfactant combinations.
@@ -2587,7 +2351,7 @@ def run_all_surfactant_combinations(simulate=True):
     os.makedirs(main_output, exist_ok=True)
     
     # Initialize shared session (ONCE - handles input file checking)
-    lash_e, shared_substock_tracking, shared_wellplate_state = initialize_screening_session(simulate, VALIDATE_LIQUIDS)
+    lash_e, shared_substock_tracking, shared_wellplate_state = initialize_screening_session(simulate)
     
     # Initialize tracking with logger
     global_substock_tracking = load_substock_tracking(lash_e.logger)
