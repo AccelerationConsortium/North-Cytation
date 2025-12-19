@@ -4,6 +4,7 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 import numpy as np
 import time
+from datetime import datetime
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/color_mixing_vials.csv"
 
@@ -93,6 +94,30 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
 
     input("Waiting...")
 
+    # Validate pyrene_DMSO vials (both vials) as 'DMSO'
+    from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
+    validation_folder = f"output/pipetting_validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    vials = ['water', 'yellow', 'red', 'blue']
+    for vial_name in vials:
+        try:
+            print(f"Validating {vial_name} (DMSO)...")
+            results = validate_pipetting_accuracy(
+                lash_e=lash_e,
+                source_vial=vial_name,
+                destination_vial=vial_name,
+                liquid_type="water",
+                volumes_ml=[0.15, 0.1, 0.05, 0.02, 0.01],  # Convert 10 µL to 0.01 mL
+                replicates=5,
+                output_folder=validation_folder,
+                plot_title=f"Pipetting Validation - {vial_name}",
+                switch_pipet=False
+            )
+            lash_e.logger.info(f"{vial_name} validation: R²={results['r_squared']:.4f}, "
+                        f"Accuracy={results['mean_accuracy_pct']:.2f}%")
+        except Exception as e:
+            lash_e.logger.warning(f"Could not validate {vial_name}: {e}")
+
+
     start_time = time.perf_counter()
 
     for color in ['water','red','blue','yellow']:
@@ -103,7 +128,7 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
         data_pd.columns = [color]
         
         lash_e.nr_robot.move_vial_to_location(color, 'main_8mL_rack', 44)
-        lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd, strategy="serial", low_volume_cutoff=0.200)
+        lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd, strategy="serial", low_volume_cutoff=0.150, liquid='water')
 
         lash_e.nr_robot.return_vial_home(color)
 
