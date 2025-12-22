@@ -7,6 +7,21 @@ the proven patterns from calibration_sdl_simplified.py.
 
 These structures bridge between the modular experiment framework and 
 the Ax optimization system.
+
+⚠️  CRITICAL: OptimizationTrial vs TrialResult ⚠️
+==============================================
+
+OptimizationTrial (THIS FILE): For Bayesian optimizer interface ONLY
+- Used in bayesian_recommender.py
+- Access accuracy: trial.objectives.accuracy
+- Access precision: trial.objectives.precision
+
+TrialResult (data_structures.py): Main experiment data structure  
+- Used throughout experiment.py
+- Access accuracy: trial.analysis.absolute_deviation_pct
+- Access precision: trial.analysis.cv_volume_pct
+
+DO NOT confuse these! They have different attribute names for the same data.
 """
 
 from dataclasses import dataclass, field
@@ -73,6 +88,15 @@ class OptimizationTrial:
         if self.trial_index is None:
             raise ValueError("trial_index required for Ax feedback")
         return self.trial_index, self.objectives.to_dict(optimizer_type)
+    
+    # Helper methods to prevent data structure confusion
+    def get_accuracy_pct(self) -> float:
+        """Get accuracy (absolute deviation %) - prevents .analysis confusion."""
+        return self.objectives.accuracy
+    
+    def get_precision_pct(self) -> float:
+        """Get precision (CV %) - prevents .analysis confusion."""
+        return self.objectives.precision
 
 
 @dataclass

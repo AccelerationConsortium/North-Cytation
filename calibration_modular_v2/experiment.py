@@ -1137,12 +1137,12 @@ class CalibrationExperiment:
                 logger.warning("No valid screening trials found (all have precision penalties)")
                 logger.info("Falling back to best accuracy trial for two-point calibration")
                 
-                penalty_trials = [trial for trial in self._current_screening_trials if trial.objectives.precision >= 99.9]
+                penalty_trials = [trial for trial in self._current_screening_trials if trial.analysis.cv_volume_pct >= 99.9]
                 if penalty_trials:
                     # Sort by accuracy (lower deviation is better)
-                    penalty_trials.sort(key=lambda t: t.objectives.accuracy)
+                    penalty_trials.sort(key=lambda t: t.analysis.absolute_deviation_pct)
                     best_trial = penalty_trials[0]
-                    logger.info(f"Selected most accurate trial: {best_trial.objectives.accuracy:.1f}% deviation (vs 100% precision penalty)")
+                    logger.info(f"Selected most accurate trial: {best_trial.analysis.absolute_deviation_pct:.1f}% deviation (vs 100% precision penalty)")
                 else:
                     logger.error("No screening trials available at all for two-point calibration")
                     return None

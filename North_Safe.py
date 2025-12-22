@@ -2276,7 +2276,7 @@ class North_Robot(North_Base):
         self.save_robot_status()    
         return True
 
-    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, liquid=None, strategy="auto", 
+    def dispense_from_vials_into_wellplate(self, well_plate_df, vial_names=None, parameters=None, liquid=None, strategy="serial", 
                                           low_volume_cutoff=0.05, buffer_vol=0.02, well_plate_type="96 WELL PLATE"):
         """
         Dispense from multiple vials into wellplate wells using strategy pattern.
@@ -2302,22 +2302,10 @@ class North_Robot(North_Base):
         if vial_names is not None:
             self.logger.warning("vial_names parameter is deprecated. Use DataFrame columns for vial names.")
         
-        if parameters is None:
-            parameters = PipettingParameters()
-        
         # Extract vial names from DataFrame columns
         vial_names = well_plate_df.columns.tolist()
         
         self.logger.info(f"Dispensing from vials {vial_names} into wellplate using {strategy} strategy")
-        
-        # Auto-select strategy based on parameter complexity
-        if strategy == "auto":
-            needs_precision = (parameters.pre_asp_air_vol > 0 or 
-                              parameters.post_asp_air_vol > 0 or 
-                              parameters.asp_disp_cycles > 0 or
-                              parameters.blowout_vol > 0)
-            strategy = "serial" if needs_precision else "batched"
-            self.logger.debug(f"Auto-selected {strategy} strategy (precision needed: {needs_precision})")
         
         # Dispatch to appropriate strategy
         if strategy == "serial":
@@ -2325,7 +2313,7 @@ class North_Robot(North_Base):
         elif strategy == "batched":
             return self._dispense_wellplate_batched(well_plate_df, parameters, liquid, low_volume_cutoff, buffer_vol, well_plate_type)
         else:
-            raise ValueError(f"Unknown strategy: {strategy}. Use 'serial', 'batched', or 'auto'")
+            raise ValueError(f"Unknown strategy: {strategy}. Use 'serial' or 'batched'")
 
     def _dispense_wellplate_serial(self, well_plate_df, parameters, liquid, well_plate_type):
         """
