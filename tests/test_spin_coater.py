@@ -19,13 +19,13 @@ def sample_workflow():
 
     #lash_e.spinner.open_lid()
     # time.sleep(2)
-    lash_e.spinner.close_lid()
+    #lash_e.spinner.close_lid()
 
-    # # lash_e.temp_controller.turn_on_stirring()
-    # # time.sleep(3)
-    # # lash_e.temp_controller.turn_off_stirring()
+    lash_e.temp_controller.turn_on_stirring()
+    time.sleep(3)
+    lash_e.temp_controller.turn_off_stirring()
 
-    # lash_e.spinner.set_speed(10000)
+    # lash_e.spinner.set_speed(1000)
     # time.sleep(3)
     # lash_e.spinner.stop_spin()
 

@@ -414,8 +414,28 @@ class ValidationRunner:
         
         # Save analysis report (convert numpy types to native Python types for JSON)
         analysis_for_json = self._convert_numpy_types(analysis)
+        
+        # Add simulation flag and config info to analysis
+        analysis_for_json['simulation_mode'] = self.config.is_simulation()
+        analysis_for_json['config_info'] = {
+            'experiment_name': self.config.get_experiment_name(),
+            'target_volumes': self.config.get_target_volumes_ml(),
+            'simulation_mode': self.config.is_simulation()
+        }
+        
         with open(self.output_dir / "validation_analysis.json", 'w') as f:
             json.dump(analysis_for_json, f, indent=2)
+        
+        # Save the exact config file that was used for this validation
+        try:
+            import shutil
+            original_config_path = Path(__file__).parent / "experiment_config.yaml"
+            config_backup_path = self.output_dir / "experiment_config_used.yaml"
+            if original_config_path.exists():
+                shutil.copy2(original_config_path, config_backup_path)
+                self.logger.info(f"Saved config file used for this validation to {config_backup_path}")
+        except Exception as e:
+            self.logger.warning(f"Failed to save config file: {e}")
         
         # Generate plots if requested
         validation_config = self.config._config['validation']

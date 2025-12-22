@@ -138,6 +138,8 @@ class CalibrationExperiment:
             
             # Convert to simple format for JSON serialization
             incremental_data = {
+                'experiment_name': self.config.get_experiment_name(),
+                'simulation_mode': self.config.is_simulation(),
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
                 'completed_trials': len(all_trials),
                 'total_measurements': self.total_measurements,
@@ -1560,6 +1562,7 @@ class CalibrationExperiment:
         with open(summary_path, 'w') as f:
             summary_data = {
                 'experiment_name': results.experiment_name,
+                'simulation_mode': self.config.is_simulation(),
                 'total_measurements': results.total_measurements,
                 'total_duration_s': results.total_duration_s,
                 'overall_statistics': results.overall_statistics,
@@ -1568,6 +1571,20 @@ class CalibrationExperiment:
             json.dump(summary_data, f, indent=2)
         
         logger.info(f"Exported experiment summary to {summary_path}")
+        
+        # Save the exact config file that was used for this run
+        config_path = self.output_dir / "experiment_config_used.yaml"
+        import shutil
+        try:
+            # Copy the original config file to the output directory
+            original_config_path = Path(__file__).parent / "experiment_config.yaml"
+            if original_config_path.exists():
+                shutil.copy2(original_config_path, config_path)
+                logger.info(f"Saved config file used for this run to {config_path}")
+            else:
+                logger.warning("Could not find original config file to save")
+        except Exception as e:
+            logger.warning(f"Failed to save config file: {e}")
     
     def _generate_enhanced_outputs(self, results: ExperimentResults) -> None:
         """Generate enhanced visualization and analysis outputs."""

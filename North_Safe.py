@@ -812,11 +812,11 @@ class North_Spin:
     
     def set_speed(self,speed):
         self.logger.debug(f"Setting centrifuge speed to {speed} RPM")
-        self.c8.spin_axis(3, speed)
+        self.c8.spin_axis(2, speed)
 
     def stop_spin(self):
         self.logger.debug("Stopping centrifuge spin")
-        self.c8.spin_axis(3,0)
+        self.c8.spin_axis(2,0)
 
     def open_lid(self):
         self.logger.debug("Opening centrifuge lid")
