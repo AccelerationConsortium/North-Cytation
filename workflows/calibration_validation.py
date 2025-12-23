@@ -45,16 +45,16 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_wizard import PipettingWizard
 
 # --- CONFIGURATION ---
-DEFAULT_LIQUID = "glycerol"
+DEFAULT_LIQUID = "water"
 DEFAULT_SIMULATE = False
 #DEFAULT_VOLUMES = [0.008, 0.012, 0.02, 0.04, 0.075, 0.12]  # mL
-DEFAULT_VOLUMES = [0.03, 0.06, 0.09]  # mL
+DEFAULT_VOLUMES = [0.025, 0.020, 0.015, 0.010, 0.005]  # mL
 DEFAULT_REPLICATES = 5
-DEFAULT_INPUT_VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
+DEFAULT_INPUT_VIAL_STATUS_FILE = "status/color_mixing_vials.csv"
 COMPENSATE_OVERVOLUME = False  # NEW: Control overvolume compensation in wizard
 # Vial management mode - set to match your calibration setup
 # Options: "legacy" (no vial management), "single", "dual", etc.
-VIAL_MANAGEMENT_MODE = "legacy"  # Change this to match calibration setup
+VIAL_MANAGEMENT_MODE = "single"  # Change this to match calibration setup
 
 
 # --- ESSENTIAL VIAL MANAGEMENT FUNCTIONS (from simplified workflow) ---

@@ -68,10 +68,10 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
     check_input_file(INPUT_VIAL_STATUS_FILE)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=False)
 
-    data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
-    #data_colors_uL = pd.read_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition.txt", sep=',',index_col=0)/1000
+    #data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
+    data_colors_uL = pd.read_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition_orig.txt", sep=',',index_col=0)/1000
 
     print(data_colors_uL)
 
@@ -100,7 +100,7 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
     vials = ['water', 'yellow', 'red', 'blue']
     for vial_name in vials:
         try:
-            print(f"Validating {vial_name} (DMSO)...")
+            print(f"Validating {vial_name} (water)...")
             results = validate_pipetting_accuracy(
                 lash_e=lash_e,
                 source_vial=vial_name,
@@ -127,7 +127,7 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
         # Set proper column name for new interface
         data_pd.columns = [color]
         
-        lash_e.nr_robot.move_vial_to_location(color, 'main_8mL_rack', 44)
+        lash_e.nr_robot.move_vial_to_location(color, 'clamp', 0)
         lash_e.nr_robot.dispense_from_vials_into_wellplate(data_pd, strategy="serial", low_volume_cutoff=0.150, liquid='water')
 
         lash_e.nr_robot.return_vial_home(color)

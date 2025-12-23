@@ -314,10 +314,7 @@ class PipettingWizardV2:
             
             new_overasp = current_overasp + adjustment
             
-            # Apply reasonable bounds: -100% to +100% of target volume
-            min_overasp = -volume_target_ml  # -100% of target volume
-            max_overasp = volume_target_ml   # +100% of target volume
-            new_overasp = max(min_overasp, min(new_overasp, max_overasp))
+            # No bounds - let the system find whatever overaspirate values work best
             
             # Calculate the actual adjustment that would be applied
             actual_adjustment_ml = new_overasp - current_overasp

@@ -1206,9 +1206,11 @@ class North_Robot(North_Base):
         Args:
             max_retries (int): Maximum number of retry attempts for homing-related errors (default: 2)
         """
-        self.logger.debug("Physical initialization of North Robot...")
+        self.logger.info("Physical initialization of North Robot...")
         self.c9.default_vel = self.get_speed('default_robot')  # Set the default speed of the robot
         self.c9.open_clamp()
+        self.c9.zero_scale()
+        self.c9.delay(3)
        
         
         
@@ -1977,7 +1979,7 @@ class North_Robot(North_Base):
                 self.c9.default_vel = move_speed
 
             # Dispense into destination
-            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed)
+            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=True)
             total_mass += mass_increment if mass_increment is not None else 0
 
             # Restore original movement speed if changed
@@ -2160,10 +2162,11 @@ class North_Robot(North_Base):
         if measure_weight and dest_vial_clamped:
             if not self.simulate:
                 # Zero the scale before measurement to prevent baseline drift
-                self.c9.zero_scale()
                 initial_mass = self.c9.read_steady_scale()
+                self.logger.info(f"Initial mass reading: {initial_mass:.6f} g")
             else:
                 initial_mass = 0
+                self.logger.info("Simulation mode - initial mass set to 0")
 
         # Determine dispense speed (can be done safely here since no pipet acquisition needed for dispense)
         dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
@@ -2196,9 +2199,12 @@ class North_Robot(North_Base):
         if measure_weight and dest_vial_clamped:
             if not self.simulate:
                 final_mass = self.c9.read_steady_scale()
+                self.logger.info(f"Final mass reading: {final_mass:.6f} g")
             else:
                 final_mass = 0
+                self.logger.info("Simulation mode - final mass set to 0")
             measured_mass = final_mass - initial_mass  
+            self.logger.info(f"Mass difference: {measured_mass:.6f} g (target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water)")
 
         return measured_mass
 

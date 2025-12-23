@@ -55,7 +55,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
-        SWAP = False  # If True, enables vial swapping when needed
+        SWAP = True  # If True, enables vial swapping when needed
         
         # Initialize hardware
         try:

@@ -142,15 +142,8 @@ def validate_pipetting_accuracy(
         for rep in range(replicates):
             print(f"  Replicate {rep + 1}/{replicates}...")
             
-            # Get initial mass
-            if not lash_e.simulate:
-                lash_e.nr_robot.c9.zero_scale()  # Zero scale before measurement
-                initial_mass = lash_e.nr_robot.c9.read_steady_scale()
-            else:
-                initial_mass = 0.0
-            
             # Pipette using wizard (automatically optimizes parameters)
-            lash_e.nr_robot.dispense_from_vial_into_vial(
+            mass_difference = lash_e.nr_robot.dispense_from_vial_into_vial(
                 source_vial_name=source_vial,
                 dest_vial_name=destination_vial,
                 volume=volume_ml,
@@ -160,14 +153,7 @@ def validate_pipetting_accuracy(
                 return_vial_home=False    # Keep destination vial in clamp for mass measurement
             )
                        
-            # Get final mass
-            if not lash_e.simulate:
-                final_mass = lash_e.nr_robot.c9.read_steady_scale()
-            else:
-                final_mass = initial_mass + (volume_ml * density)  # Simulate perfect transfer
-            
-            # Calculate transferred volume
-            mass_difference = final_mass - initial_mass
+
             measured_volume_ml = mass_difference / density  # mass(g) / density(g/mL) = volume(mL)
             
             # Store result
@@ -178,8 +164,6 @@ def validate_pipetting_accuracy(
                 'density_used': density,
                 'liquid_type': liquid_type,
                 'replicate': rep + 1,
-                'initial_mass': initial_mass,
-                'final_mass': final_mass,
                 'timestamp': datetime.now().isoformat(),
                 'source_vial': source_vial,
                 'destination_vial': destination_vial,
