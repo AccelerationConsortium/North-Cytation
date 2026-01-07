@@ -325,7 +325,7 @@ class Biotek_Wrapper:
                 grouped_wells = self.group_wells(wells, plate_type)
             else:
                 # Use all wells if none specified
-                if plate_type == "96 WELL PLATE":
+                if plate_type == "96 WELL PLATE" or plate_type == "96 QUARTZ LID":
                     grouped_wells = [self.well_index_to_label(i, 12) for i in range(96)]
                 else:  # 48 WELL PLATE
                     grouped_wells = [self.well_index_to_label(i, 8) for i in range(48)]
@@ -403,7 +403,7 @@ class Biotek_Wrapper:
         self._log('debug', f"Grouping wells for plate type: {plate_type}")
 
         # Determine wells per row based on plate type
-        if plate_type == "96 WELL PLATE":
+        if plate_type == "96 WELL PLATE" or plate_type == "96 QUARTZ LID":
             nums_per_letter = 12  # A1-A12, B1-B12, etc.
         elif plate_type == "48 WELL PLATE":
             nums_per_letter = 8   # A1-A8, B1-B8, etc.

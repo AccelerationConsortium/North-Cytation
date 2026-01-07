@@ -1976,7 +1976,7 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=True, return_vial_home=True, move_speed=None, compensate_overvolume=True, smooth_overvolume=False):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=True, return_vial_home=True, move_speed=None, compensate_overvolume=True, smooth_overvolume=False, measure_weight=False):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -2035,7 +2035,7 @@ class North_Robot(North_Base):
                 self.c9.default_vel = move_speed
 
             # Dispense into destination
-            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=True)
+            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=measure_weight)
             total_mass += mass_increment if mass_increment is not None else 0
 
             # Restore original movement speed if changed
