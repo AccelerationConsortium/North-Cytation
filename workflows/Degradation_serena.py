@@ -30,8 +30,6 @@ def pipet_sample_from_well_to_vial(lash_e, wells, sample_name, well_volume=0.15,
     lash_e.nr_robot.remove_pipet()
     if heater_slot is not None:
         lash_e.nr_robot.move_vial_to_location(vial_name=sample_name, location='heater', location_index=heater_slot)
-    else:
-        lash_e.nr_robot.return_vial_home(sample_name)
 
 
 def safe_pipet(source_vial, dest_vial, volume, lash_e):
@@ -111,9 +109,10 @@ def save_data(data_out,output_dir,first_well_index,simulate):
 
 
 # Clean well plate = Solvent wash *1 + Acetone wash *2 <- DO it serially (ie wash 5 wells at a time, and wash all wells w solvent first before moving on to acetone)
-def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state,well_volume=0.2, solvent_repeats=1, acetone_repeats=2):
+def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state,well_volume=0.19, solvent_repeats=1, acetone_repeats=2):
     print(f"\nWashing wellplate wells: {used_wells}")
 
+    move_lid_to_storage(lash_e)
     current_waste = check_and_switch_waste_vial(lash_e, waste_state)
 
     def chunk(used_wells, n=4):
@@ -402,7 +401,7 @@ def degradation_workflow():
     lash_e.nr_robot.move_home()
 
     # 3. Clean the well plate after all measurements are done
-    wash_wellplate(lash_e, used_wells, solvent_vial='2MeTHF', acetone_vial='acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=2, well_volume=0.2)
+    wash_wellplate(lash_e, used_wells, solvent_vial='2MeTHF', acetone_vial='acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=2, well_volume=0.19)
 
     if not SIMULATE:   
         slack_agent.send_slack_message("Degradation workflow completed!")
