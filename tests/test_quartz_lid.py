@@ -15,6 +15,10 @@ def move_lid_to_wellplate():
     lash_e.nr_track.grab_wellplate_from_location('lid_storage', wellplate_type='quartz_lid', waypoint_locations=['cytation_safe_area'])
     lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type='quartz_lid')
 
+def remove_lid_from_wellplate():
+    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='quartz_lid', waypoint_locations=['cytation_safe_area'])
+    lash_e.nr_track.release_wellplate_in_location('lid_storage', wellplate_type='quartz_lid')
+
 for i in range (0, 1):
     move_lid_to_wellplate()
 

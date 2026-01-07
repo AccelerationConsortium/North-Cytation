@@ -77,7 +77,9 @@ def validate_pipetting_accuracy(
     output_folder: str = "output",
     plot_title: Optional[str] = None,
     save_raw_data: bool = True,
-    switch_pipet: bool = False
+    switch_pipet: bool = False,
+    compensate_overvolume: bool = True,
+    smooth_overvolume: bool = False
 ) -> Dict:
     """
     Validate pipetting accuracy for specified volumes and generate analysis.
@@ -93,6 +95,8 @@ def validate_pipetting_accuracy(
         plot_title: Optional custom title for plots
         save_raw_data: Whether to save raw measurement data (default: True)
         switch_pipet: Whether to change pipet tip between measurements (default: False)
+        compensate_overvolume: Apply overvolume compensation based on measured accuracy (default: True)
+        smooth_overvolume: Apply local smoothing to remove overvolume outliers (default: False)
         
     Returns:
         dict: Results summary containing accuracy metrics, file paths, and statistics
@@ -150,7 +154,9 @@ def validate_pipetting_accuracy(
                 liquid=liquid_type,
                 remove_tip=switch_pipet,  # Use built-in pipet removal control
                 use_safe_location=False,
-                return_vial_home=False    # Keep destination vial in clamp for mass measurement
+                return_vial_home=False,   # Keep destination vial in clamp for mass measurement
+                compensate_overvolume=compensate_overvolume,
+                smooth_overvolume=smooth_overvolume
             )
                        
 

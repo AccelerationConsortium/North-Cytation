@@ -314,84 +314,7 @@ class PipettingWizard:
             
         return df
     
-    def apply_local_smoothing(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Apply local smoothing to overvolume values within volume groups.
-        Smooths outliers that create non-physical "bumps" in the overvolume function.
-        
-        Args:
-            df: Calibration dataframe with volume_target and overaspirate_vol columns
-            
-        Returns:
-            DataFrame with smoothed overaspirate_vol values
-        """
-        if 'overaspirate_vol' not in df.columns:
-            logging.warning("Cannot apply local smoothing - missing overaspirate_vol column")
-            return df
-        
-        df_smoothed = df.copy()
-        df_smoothed['overaspirate_vol_original'] = df['overaspirate_vol']  # Preserve original
-        
-        # Define volume groups based on parameter regimes
-        group1_mask = (df['volume_target'] >= 1) & (df['volume_target'] <= 150)
-        group2_mask = df['volume_target'] >= 200
-        
-        smoothed_count = 0
-        
-        # Group 1: Small volumes (1-150uL) - use quadratic smoothing
-        if group1_mask.sum() >= 3:  # Need at least 3 points for quadratic fit
-            group1 = df[group1_mask]
-            volumes = group1['volume_target'].values
-            overvolumes = group1['overaspirate_vol'].values
-            
-            # Fit quadratic polynomial
-            poly_coeffs = np.polyfit(volumes, overvolumes, 2)
-            smoothed_overvolumes = np.polyval(poly_coeffs, volumes)
-            
-            # Update the dataframe
-            for i, (idx, row) in enumerate(group1.iterrows()):
-                original_val = row['overaspirate_vol']
-                smoothed_val = smoothed_overvolumes[i]
-                df_smoothed.at[idx, 'overaspirate_vol'] = smoothed_val
-                
-                # Log significant changes
-                change = smoothed_val - original_val
-                if abs(change) > 0.0005:  # >0.5uL equivalent change
-                    logging.debug(f"Smoothed {row['volume_target']}uL overvolume: "
-                                f"{original_val:.6f} -> {smoothed_val:.6f} (change: {change:+.6f})")
-                    smoothed_count += 1
-        
-        # Group 2: Large volumes (200+uL) - use linear smoothing
-        if group2_mask.sum() >= 2:  # Need at least 2 points for linear fit
-            group2 = df[group2_mask]
-            volumes = group2['volume_target'].values
-            overvolumes = group2['overaspirate_vol'].values
-            
-            # Fit linear polynomial
-            poly_coeffs = np.polyfit(volumes, overvolumes, 1)
-            smoothed_overvolumes = np.polyval(poly_coeffs, volumes)
-            
-            # Update the dataframe
-            for i, (idx, row) in enumerate(group2.iterrows()):
-                original_val = row['overaspirate_vol']
-                smoothed_val = smoothed_overvolumes[i]
-                df_smoothed.at[idx, 'overaspirate_vol'] = smoothed_val
-                
-                # Log significant changes
-                change = smoothed_val - original_val
-                if abs(change) > 0.0005:
-                    logging.debug(f"Smoothed {row['volume_target']}uL overvolume: "
-                                f"{original_val:.6f} -> {smoothed_val:.6f} (change: {change:+.6f})")
-                    smoothed_count += 1
-        
-        if smoothed_count > 0:
-            logging.info(f"Applied local smoothing to {smoothed_count} overvolume values")
-        else:
-            logging.debug("Local smoothing applied - no significant changes needed")
-        
-        return df_smoothed
-    
-    def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = True, smooth_overvolume: bool = False) -> Optional[Dict[str, float]]:
+    def get_pipetting_parameters(self, liquid: str, volume_ml: float, compensate_overvolume: bool = True) -> Optional[Dict[str, float]]:
         """
         Get pipetting parameters for a specific liquid and volume.
         
@@ -399,7 +322,6 @@ class PipettingWizard:
             liquid: Liquid name (e.g., 'water', 'glycerol')
             volume_ml: Target volume in mL
             compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
-            smooth_overvolume: If True, apply local smoothing to remove overvolume outliers
             
         Returns:
             Dictionary with pipetting parameters, or None if not available
@@ -415,10 +337,6 @@ class PipettingWizard:
         if compensate_overvolume:
             df = self.apply_overvolume_compensation(df.copy())
         
-        # Apply local smoothing if requested
-        if smooth_overvolume:
-            df = self.apply_local_smoothing(df.copy())
-        
         # Interpolate parameters
         parameters = self.interpolate_parameters(df, volume_ml)
         
@@ -426,15 +344,9 @@ class PipettingWizard:
         parameters['_source_file'] = str(file_path)
         parameters['_liquid'] = liquid
         parameters['_compensated'] = compensate_overvolume
-        parameters['_smoothed'] = smooth_overvolume
         
-        processing_notes = []
-        if compensate_overvolume:
-            processing_notes.append("compensation")
-        if smooth_overvolume:
-            processing_notes.append("smoothing")
-        processing_note = f" (with {', '.join(processing_notes)})" if processing_notes else ""
-        logging.debug(f"Parameters for {liquid} {volume_ml}mL from {file_path.name}{processing_note}:")
+        compensation_note = " (with overvolume compensation)" if compensate_overvolume else ""
+        logging.debug(f"Parameters for {liquid} {volume_ml}mL from {file_path.name}{compensation_note}:")
         for key, value in parameters.items():
             if not key.startswith('_'):
                 logging.debug(f"  {key}: {value:.6f}")
@@ -455,7 +367,7 @@ def create_wizard(search_directory: str = None) -> PipettingWizard:
     return PipettingWizard(search_directory)
 
 
-def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: str = None, compensate_overvolume: bool = False, smooth_overvolume: bool = False) -> Optional[Dict[str, float]]:
+def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: str = None, compensate_overvolume: bool = False) -> Optional[Dict[str, float]]:
     """
     Convenience function to get pipetting parameters without creating a wizard instance.
     
@@ -464,13 +376,12 @@ def get_pipetting_parameters(liquid: str, volume_ml: float, search_directory: st
         volume_ml: Target volume in mL
         search_directory: Directory to search for calibration files
         compensate_overvolume: If True, adjust overaspirate_vol based on measured accuracy
-        smooth_overvolume: If True, apply local smoothing to remove overvolume outliers
         
     Returns:
         Dictionary with pipetting parameters, or None if not available
     """
     wizard = PipettingWizard(search_directory)
-    return wizard.get_pipetting_parameters(liquid, volume_ml, compensate_overvolume, smooth_overvolume)
+    return wizard.get_pipetting_parameters(liquid, volume_ml, compensate_overvolume)
 
 
 # Example usage
@@ -478,26 +389,14 @@ if __name__ == "__main__":
     # Create wizard instance
     wizard = PipettingWizard()
     
-    # Test 1: Get parameters for water at 0.020 mL with different options
-    print("=== Test 1: Water 20uL (raw) ===")
-    params1 = wizard.get_pipetting_parameters("water", 0.020, compensate_overvolume=False, smooth_overvolume=False)
+    # Test 1: Get parameters for glycerol at 0.035 mL (should interpolate)
+    print("=== Test 1: Glycerol 0.035 mL (interpolation) ===")
+    params = wizard.get_pipetting_parameters("glycerol", 0.035)
     
-    # Test 2: With compensation only
-    print("\n=== Test 2: Water 20uL (compensated) ===")
-    params2 = wizard.get_pipetting_parameters("water", 0.020, compensate_overvolume=True, smooth_overvolume=False)
+    # Test 2: Get parameters for glycerol at 0.15 mL (should extrapolate)  
+    print("\n=== Test 2: Glycerol 0.15 mL (extrapolation) ===")
+    params2 = wizard.get_pipetting_parameters("glycerol", 0.15)
     
-    # Test 3: With smoothing only
-    print("\n=== Test 3: Water 20uL (smoothed) ===")
-    params3 = wizard.get_pipetting_parameters("water", 0.020, compensate_overvolume=False, smooth_overvolume=True)
-    
-    # Test 4: With both compensation and smoothing
-    print("\n=== Test 4: Water 20uL (compensated + smoothed) ===")
-    params4 = wizard.get_pipetting_parameters("water", 0.020, compensate_overvolume=True, smooth_overvolume=True)
-    
-    # Compare overvolume values
-    if all([params1, params2, params3, params4]):
-        print("\nOvervolume comparison for 20uL:")
-        print(f"  Raw:                    {params1.get('overaspirate_vol', 'N/A'):.6f}")
-        print(f"  Compensated only:       {params2.get('overaspirate_vol', 'N/A'):.6f}")
-        print(f"  Smoothed only:          {params3.get('overaspirate_vol', 'N/A'):.6f}")
-        print(f"  Compensated + Smoothed: {params4.get('overaspirate_vol', 'N/A'):.6f}")
+    # Test 3: Try a liquid that doesn't exist
+    print("\n=== Test 3: Water (should fail) ===")
+    params3 = wizard.get_pipetting_parameters("water", 0.05)

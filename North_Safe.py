@@ -227,6 +227,27 @@ class North_Track(North_Base):
 
         if visualize:
             self.logger.info("Visualizing wellplate status...")
+            
+            # Debug matplotlib backend
+            try:
+                import matplotlib
+                self.logger.debug(f"Matplotlib backend: {matplotlib.get_backend()}")
+                
+                # Try to set an interactive backend for Windows
+                if matplotlib.get_backend() == 'Agg':
+                    try:
+                        matplotlib.use('TkAgg')
+                        self.logger.info("Switched matplotlib backend to TkAgg")
+                    except:
+                        try:
+                            matplotlib.use('Qt5Agg')
+                            self.logger.info("Switched matplotlib backend to Qt5Agg") 
+                        except:
+                            self.logger.warning("Could not set interactive backend, using default")
+                
+            except Exception as e:
+                self.logger.warning(f"Matplotlib backend check failed: {e}")
+            
             fig, ax = plt.subplots(figsize=(10, 6))
 
             plate_width = 2.5
@@ -266,7 +287,13 @@ class North_Track(North_Base):
             ax.axis('off')
             ax.set_title("-- Please Confirm Wellplate Status --", fontsize=14, weight='bold')
             plt.tight_layout()
-            plt.show()
+            
+            try:
+                plt.show(block=True)
+                self.logger.debug("Wellplate visualization displayed successfully")
+            except Exception as e:
+                self.logger.error(f"Failed to display wellplate visualization: {e}")
+                self.logger.info("Continuing without visualization...")
 
         if pause_after_check and not self.simulate:
             input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
@@ -1023,6 +1050,27 @@ class North_Robot(North_Base):
 
     def visualize_racks(self, vial_status, fig_size_x=16, fig_size_y=10, xlim=12, ylim=6):
         self.logger.info("Visualizing vial racks...")
+        
+        # Debug matplotlib backend
+        try:
+            import matplotlib
+            self.logger.debug(f"Matplotlib backend: {matplotlib.get_backend()}")
+            
+            # Try to set an interactive backend for Windows
+            if matplotlib.get_backend() == 'Agg':
+                try:
+                    matplotlib.use('TkAgg')
+                    self.logger.info("Switched matplotlib backend to TkAgg")
+                except:
+                    try:
+                        matplotlib.use('Qt5Agg')
+                        self.logger.info("Switched matplotlib backend to Qt5Agg") 
+                    except:
+                        self.logger.warning("Could not set interactive backend, using default")
+            
+        except Exception as e:
+            self.logger.warning(f"Matplotlib backend check failed: {e}")
+        
         fig, ax = plt.subplots(figsize=(fig_size_x, fig_size_y))
         ax.set_aspect('equal')
         ax.set_xticks([])
@@ -1061,7 +1109,13 @@ class North_Robot(North_Base):
         )
 
         plt.tight_layout()
-        plt.show()
+        
+        try:
+            plt.show(block=True)
+            self.logger.debug("Vial visualization displayed successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to display vial visualization: {e}")
+            self.logger.info("Continuing without visualization...")
 
     def visualize_rack(self,ax,rack_data,rack_name,location_filter,num_cols,num_rows,filled_color='lightgreen',offset_x=0,offset_y=0,title=None):
         self.logger.debug(f"Visualizing rack: {rack_name} with filter: {location_filter}")
@@ -1616,7 +1670,7 @@ class North_Robot(North_Base):
         self.logger.debug(f"Selected {selected_tip} for volume {volume:.3f} mL")
         return selected_tip
     
-    def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None):
+    def _get_optimized_parameters(self, volume, liquid=None, user_parameters=None, compensate_overvolume=True, smooth_overvolume=False):
         """
         Get optimized pipetting parameters using intelligent hierarchy:
         defaults → liquid-calibrated → user overrides
@@ -1636,7 +1690,7 @@ class North_Robot(North_Base):
         if liquid is not None:
             try:
                 wizard = PipettingWizard()
-                calibrated_params = wizard.get_pipetting_parameters(liquid, volume)
+                calibrated_params = wizard.get_pipetting_parameters(liquid, volume, compensate_overvolume, smooth_overvolume)
                 
                 if calibrated_params is not None:
                     # Update only the parameters that were successfully calibrated
@@ -1922,7 +1976,7 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=True, return_vial_home=True, move_speed=None):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=True, return_vial_home=True, move_speed=None, compensate_overvolume=True, smooth_overvolume=False):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -1933,9 +1987,11 @@ class North_Robot(North_Base):
             parameters (PipettingParameters, optional): Standardized parameters
             liquid (str, optional): Liquid type for calibrated parameter optimization
             specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
+            compensate_overvolume (bool): Apply overvolume compensation based on measured accuracy (default: True)
+            smooth_overvolume (bool): Apply local smoothing to remove overvolume outliers (default: False)
         """
         # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
-        parameters = self._get_optimized_parameters(volume, liquid, parameters)
+        parameters = self._get_optimized_parameters(volume, liquid, parameters, compensate_overvolume, smooth_overvolume)
 
         self.logger.info(f"Dispensing {volume:.3f} mL from {source_vial_name} to {dest_vial_name}")
 
