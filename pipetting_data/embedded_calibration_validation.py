@@ -79,7 +79,7 @@ def validate_pipetting_accuracy(
     save_raw_data: bool = True,
     switch_pipet: bool = False,
     compensate_overvolume: bool = True,
-    smooth_overvolume: bool = False
+    smooth_overvolume: bool = True
 ) -> Dict:
     """
     Validate pipetting accuracy for specified volumes and generate analysis.
