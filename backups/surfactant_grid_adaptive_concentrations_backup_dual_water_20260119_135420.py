@@ -1458,14 +1458,12 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
             water_original_index = lash_e.nr_robot.get_vial_info('water', 'location_index')
             optimal_position = 46  # Use rack position for optimal access
             lash_e.nr_robot.move_vial_to_location('water', 'main_8mL_rack', optimal_position)
-            lash_e.nr_robot.move_vial_to_location('water_2', 'main_8mL_rack', optimal_position-1)
             lash_e.logger.info(f"    Moved water vial from {water_original_location} to position {optimal_position}")
         except Exception as e:
             lash_e.logger.info(f"    Warning: Could not move water vial to optimal position: {e}")
             water_original_location = None
         
         # Calculate water needed for each well individually
-        current_water_vial = 'water'  # Track which water vial is currently in use
         for well_idx in wells_in_batch:
             batch_idx = wells_in_batch.index(well_idx)
             req = current_batch[batch_idx]
@@ -1482,14 +1480,7 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                     batch_water_dispensed_ul += control_water_ul
                     total_water_dispensed_ul += control_water_ul
                     
-                    # Check if we need to switch water vials
-                    needed_water_vial = 'water_2' if batch_water_dispensed_ul > 6000 else 'water'
-                    if needed_water_vial != current_water_vial:
-                        lash_e.nr_robot.remove_pipet()  # Remove pipet before switching
-                        current_water_vial = needed_water_vial
-                        lash_e.logger.info(f"    Switched to {current_water_vial} vial")
-                    
-                    lash_e.nr_robot.aspirate_from_vial(current_water_vial, 0.2, liquid='water', use_safe_location=True)
+                    lash_e.nr_robot.aspirate_from_vial('water', 0.2, liquid='water', use_safe_location=True)
                     lash_e.nr_robot.dispense_into_wellplate(
                         dest_wp_num_array=[well_idx], 
                         amount_mL_array=[0.2],
@@ -1530,18 +1521,8 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                 batch_water_dispensed_ul += water_needed_ul
                 total_water_dispensed_ul += water_needed_ul
                 
-                # Check if we need to switch water vials
-                needed_water_vial = 'water_2' if batch_water_dispensed_ul > 6000 else 'water'
-                if needed_water_vial != current_water_vial:
-                    lash_e.nr_robot.remove_pipet()  # Remove pipet before switching
-                    current_water_vial = needed_water_vial
-                    lash_e.nr_robot.return_vial_home('water')
-                    lash_e.nr_robot.move_vial_to_location('water_2', 'clamp', 0)
-                    condition_tip(lash_e, current_water_vial)
-                    lash_e.logger.info(f"    Switched to {current_water_vial} vial")
-                
                 # Add water to this specific well
-                lash_e.nr_robot.aspirate_from_vial(current_water_vial, water_volume_ml, liquid='water')
+                lash_e.nr_robot.aspirate_from_vial('water', water_volume_ml, liquid='water', use_safe_location=True)
                 lash_e.nr_robot.dispense_into_wellplate(
                     dest_wp_num_array=[well_idx], 
                     amount_mL_array=[water_volume_ml],
@@ -1556,13 +1537,14 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
         
         # Return water vial to original position after all wells processed
         lash_e.nr_robot.remove_pipet()
-        try:
-            lash_e.nr_robot.return_vial_home('water_2')
+        if water_original_location:
+            try:
+                lash_e.nr_robot.move_vial_to_location('water', water_original_location, water_original_index)
+                lash_e.logger.info(f"    Restored water vial to original position {water_original_location}")
+            except Exception as e:
+                lash_e.logger.info(f"    Warning: Could not restore water vial position: {e}")
+        else:
             lash_e.nr_robot.return_vial_home('water')
-            lash_e.logger.info(f"    Restored water vial to original position {water_original_location}")
-        except Exception as e:
-            lash_e.logger.info(f"    Warning: Could not restore water vial position: {e}")
-
         
         # Log batch water consumption summary
         lash_e.logger.info(f"  BATCH WATER SUMMARY: {batch_water_dispensed_ul:.1f} uL dispensed this batch")
@@ -1694,13 +1676,12 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
             pyrene_original_location = None
         
         # Condition tip with DMSO before first use
-        lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)  # Ensure vial is in position
         condition_tip(lash_e, 'pyrene_DMSO')
         
         # Add pyrene to each well individually using back-and-forth with small tips
         lash_e.logger.info(f"    Dispensing to {len(wells_in_batch)} wells individually for accuracy...")
         for well_idx in wells_in_batch:
-            lash_e.nr_robot.aspirate_from_vial('pyrene_DMSO', pyrene_volume_ml, liquid='DMSO')
+            lash_e.nr_robot.aspirate_from_vial('pyrene_DMSO', pyrene_volume_ml, liquid='DMSO', use_safe_location=True)
             lash_e.nr_robot.dispense_into_wellplate(
                 dest_wp_num_array=[well_idx], 
                 amount_mL_array=[pyrene_volume_ml],
