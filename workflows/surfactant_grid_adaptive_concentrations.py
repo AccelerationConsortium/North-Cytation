@@ -87,7 +87,7 @@ WELL_VOLUME_UL = 200  # uL per well
 PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
 
 # Buffer addition settings
-ADD_BUFFER = False  # Set to False to skip buffer addition
+ADD_BUFFER = True  # Set to False to skip buffer addition
 BUFFER_VOLUME_UL = 20  # uL buffer to add per well
 BUFFER_OPTIONS = ['MES', 'HEPES', 'CAPS']  # Available buffers
 SELECTED_BUFFER = 'HEPES'  # Choose from BUFFER_OPTIONS
@@ -1510,8 +1510,8 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
             total_dispensed_ul = (volume_tracking['volume_a_dispensed'] + 
                                 volume_tracking['volume_b_dispensed'])
             
-            # Calculate remaining volume needed (excluding pyrene which comes later)
-            target_volume_before_pyrene = WELL_VOLUME_UL - PYRENE_VOLUME_UL
+            # Calculate remaining volume needed (pyrene will be added on top, not included in target)
+            target_volume_before_pyrene = WELL_VOLUME_UL  # Fill to 200 uL, then add pyrene on top
             # Only exclude buffer volume if buffer will actually be added
             if ADD_BUFFER:
                 target_volume_before_buffer = target_volume_before_pyrene - BUFFER_VOLUME_UL
