@@ -225,6 +225,34 @@ def track_pipette_usage(lash_e, operation_description="pipette operation"):
             lash_e.logger.info(f"    [Simulated Pipette {lash_e.pipette_count}]: {operation_description}")
     # In hardware mode, the robot automatically tracks usage in robot_status.yaml
 
+def fill_water_vial(lash_e, vial_name):
+    """
+    Fill a water vial to maximum capacity (8mL) by moving it to reservoir,
+    calculating needed volume, dispensing from reservoir, and returning home.
+    
+    Args:
+        lash_e: The Lash_E coordinator instance
+        vial_name (str): Name of water vial to fill ('water' or 'water_2')
+    """
+    # Get current volume and vial capacity
+    current_volume_ml = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
+    max_volume_ml = 8
+    
+    # Calculate volume needed to fill to max capacity
+    fill_volume_ml = max_volume_ml - current_volume_ml
+    
+    if fill_volume_ml <= 0.1:  # Already nearly full (within 100μL)
+        lash_e.logger.info(f"    Water vial '{vial_name}' already full ({current_volume_ml:.2f}mL), skipping fill")
+        return
+        
+    lash_e.logger.info(f"    Filling water vial '{vial_name}': {current_volume_ml:.2f}mL -> {max_volume_ml:.2f}mL (adding {fill_volume_ml:.2f}mL)")
+    
+    # Fill vial from reservoir
+    lash_e.nr_robot.dispense_into_vial_from_reservoir(1, vial_name, fill_volume_ml)
+    
+    
+    lash_e.logger.info(f"    Water vial '{vial_name}' filled successfully to {max_volume_ml:.2f}mL")
+
 # ================================================================================
 # SECTION 1: SMART SUBSTOCK MANAGEMENT
 # ================================================================================
@@ -1582,17 +1610,7 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                 logger.warning(f"Buffer vial '{SELECTED_BUFFER}' not found in vial status")
                 lash_e.logger.info(f"Warning: Buffer vial '{SELECTED_BUFFER}' not found - continuing without buffer")
             
-            if buffer_found:
-                # Move buffer vial to optimal position before dispensing
-                try:
-                    buffer_original_location = lash_e.nr_robot.get_vial_info(SELECTED_BUFFER, 'location')
-                    buffer_original_index = lash_e.nr_robot.get_vial_info(SELECTED_BUFFER, 'location_index')
-                    lash_e.logger.info(f"    Moving {SELECTED_BUFFER} to optimal position for small-tip access...")
-                    lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, 'main_8mL_rack', 47)  # Last position
-                except Exception as e:
-                    lash_e.logger.info(f"    Warning: Could not move {SELECTED_BUFFER} vial: {e}")
-                    buffer_original_location = None
-                
+            if buffer_found:              
                 # Condition tip with buffer before first use
                 condition_tip(lash_e, SELECTED_BUFFER)
                 
@@ -1636,14 +1654,7 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                 lash_e.nr_robot.remove_pipet()
                 
                 # Return buffer vial to home position
-                if buffer_original_location:
-                    try:
-                        lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, buffer_original_location, buffer_original_index)
-                        lash_e.logger.info(f"    Returned {SELECTED_BUFFER} to home position")
-                    except Exception as e:
-                        lash_e.logger.info(f"    Warning: Could not return {SELECTED_BUFFER}: {e}")
-                else:
-                    lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
+                lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
         
         # Record well information for this batch
         for i, req in enumerate(current_batch):
@@ -1921,6 +1932,11 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     lash_e.nr_robot.check_input_file()
     lash_e.nr_track.check_input_file()
     
+    # Fill water vials to maximum capacity before workflow
+    lash_e.logger.info("  Ensuring water vials are full before workflow...")
+    fill_water_vial(lash_e, "water")
+    fill_water_vial(lash_e, "water_2")
+    
     # Validate pipetting capability if enabled
     if VALIDATE_LIQUIDS:
         lash_e.logger.info("  Validating pipetting capability using embedded validation...")
@@ -1930,7 +1946,6 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
             from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
             
             # Define test volumes for different liquid types
-            water_test_volumes = [0.01, 0.05, 0.1, 0.2, 0.5, 0.9]  # 10-900 uL in mL
             dmso_test_volume = [0.005]  # 5 uL in mL
             
             validation_results = {}
@@ -1940,7 +1955,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
             # Split into two separate tests as requested
             
             # Test 1a: Small water volumes with conditioning
-            small_volumes = [0.01, 0.05, 0.1]
+            small_volumes = [0.01, 0.025, 0.05, 0.1]
             lash_e.logger.info("      Testing small water volumes (10-100 uL) with conditioning...")
             condition_tip(lash_e, 'water', conditioning_volume_ul=100, liquid_type='water')  # Condition for small volumes
             
