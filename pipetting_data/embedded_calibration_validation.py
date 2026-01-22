@@ -160,7 +160,10 @@ def validate_pipetting_accuracy(
     # === SETUP OUTPUT DIRECTORY ===
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     calib_folder = os.path.join(output_folder, "calibration_validation", f"validation_{timestamp}")
-    os.makedirs(calib_folder, exist_ok=True)
+    
+    # Only create directories and prepare file operations in non-simulation mode
+    if save_raw_data:
+        os.makedirs(calib_folder, exist_ok=True)
     
     print(f"\\n=== Pipetting Validation ===")
     print(f"Source: {source_vial}")
@@ -169,7 +172,10 @@ def validate_pipetting_accuracy(
     print(f"Volumes: {volumes_ml} mL")
     print(f"Replicates: {replicates}")
     print(f"Switch pipet: {switch_pipet}")
-    print(f"Output: {calib_folder}")
+    if save_raw_data:
+        print(f"Output: {calib_folder}")
+    else:
+        print("Output: Simulation mode - no files saved")
     
     # === DATA COLLECTION ===
     all_results = []
@@ -306,27 +312,34 @@ def validate_pipetting_accuracy(
     }
     
     # === GENERATE PLOTS ===
-    plot_file = _create_validation_plots(df, stats_df, overall_stats, calib_folder, plot_title, liquid_type)
+    try:
+        plot_file = _create_validation_plots(df, stats_df, overall_stats, calib_folder, plot_title, liquid_type)
+    except Exception as e:
+        print(f"Warning: Could not create validation plots: {e}")
+        plot_file = None
     
     # === SAVE DATA ===
     data_files = {}
     
     if save_raw_data:
-        # Raw data
-        raw_file = os.path.join(calib_folder, "raw_measurements.csv")
-        df.to_csv(raw_file, index=False)
-        data_files['raw_data'] = raw_file
-        
-        # Statistics summary
-        stats_file = os.path.join(calib_folder, "volume_statistics.csv")
-        stats_df.to_csv(stats_file, index=False)
-        data_files['volume_stats'] = stats_file
-        
-        # Overall summary
-        summary_file = os.path.join(calib_folder, "validation_summary.json")
-        with open(summary_file, 'w') as f:
-            json.dump(overall_stats, f, indent=2)
-        data_files['summary'] = summary_file
+        try:
+            # Raw data
+            raw_file = os.path.join(calib_folder, "raw_measurements.csv")
+            df.to_csv(raw_file, index=False)
+            data_files['raw_data'] = raw_file
+            
+            # Statistics summary
+            stats_file = os.path.join(calib_folder, "volume_statistics.csv")
+            stats_df.to_csv(stats_file, index=False)
+            data_files['volume_stats'] = stats_file
+            
+            # Overall summary
+            summary_file = os.path.join(calib_folder, "validation_summary.json")
+            with open(summary_file, 'w') as f:
+                json.dump(overall_stats, f, indent=2)
+            data_files['summary'] = summary_file
+        except Exception as e:
+            print(f"Warning: Could not save some data files: {e}")
     
     # === PREPARE RETURN DATA ===
     results = {
@@ -561,27 +574,34 @@ def validate_reservoir_accuracy(
     }
     
     # === GENERATE PLOTS ===
-    plot_file = _create_validation_plots(df, stats_df, overall_stats, calib_folder, plot_title, liquid_type)
+    try:
+        plot_file = _create_validation_plots(df, stats_df, overall_stats, calib_folder, plot_title, liquid_type)
+    except Exception as e:
+        print(f"Warning: Could not create validation plots: {e}")
+        plot_file = None
     
     # === SAVE DATA ===
     data_files = {}
     
     if save_raw_data:
-        # Raw data
-        raw_file = os.path.join(calib_folder, "raw_measurements.csv")
-        df.to_csv(raw_file, index=False)
-        data_files['raw_data'] = raw_file
-        
-        # Statistics summary
-        stats_file = os.path.join(calib_folder, "volume_statistics.csv")
-        stats_df.to_csv(stats_file, index=False)
-        data_files['volume_stats'] = stats_file
-        
-        # Overall summary
-        summary_file = os.path.join(calib_folder, "validation_summary.json")
-        with open(summary_file, 'w') as f:
-            json.dump(overall_stats, f, indent=2)
-        data_files['summary'] = summary_file
+        try:
+            # Raw data
+            raw_file = os.path.join(calib_folder, "raw_measurements.csv")
+            df.to_csv(raw_file, index=False)
+            data_files['raw_data'] = raw_file
+            
+            # Statistics summary
+            stats_file = os.path.join(calib_folder, "volume_statistics.csv")
+            stats_df.to_csv(stats_file, index=False)
+            data_files['volume_stats'] = stats_file
+            
+            # Overall summary
+            summary_file = os.path.join(calib_folder, "validation_summary.json")
+            with open(summary_file, 'w') as f:
+                json.dump(overall_stats, f, indent=2)
+            data_files['summary'] = summary_file
+        except Exception as e:
+            print(f"Warning: Could not save some data files: {e}")
     
     # === PREPARE RETURN DATA ===
     results = {
