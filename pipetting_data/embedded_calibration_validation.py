@@ -67,6 +67,40 @@ LIQUID_DENSITIES = {
     "4%_hyaluronic_acid_water": 1.01,
 }
 
+def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) -> bool:
+    """Evaluate if a measurement is acceptable based on stability criteria.
+    
+    A baseline is considered stable if:
+    - Stable readings percentage > 50%, OR
+    - Standard deviation < threshold
+    
+    Both baselines must be stable for measurement to be trustworthy.
+    
+    Args:
+        stability_info: Dictionary with stability metrics from dispense_into_vial
+        std_threshold: Maximum acceptable standard deviation in grams (default: 0.001g = 1.0mg)
+        
+    Returns:
+        bool: True if measurement is acceptable, False if should be retried
+    """
+    # Check pre-baseline stability
+    pre_stable_pct = (stability_info['pre_stable_count'] / max(stability_info['pre_total_count'], 1)) * 100
+    pre_stable = (pre_stable_pct > 50.0) or (stability_info['pre_baseline_std'] < std_threshold)
+    
+    # Check post-baseline stability  
+    post_stable_pct = (stability_info['post_stable_count'] / max(stability_info['post_total_count'], 1)) * 100
+    post_stable = (post_stable_pct > 50.0) or (stability_info['post_baseline_std'] < std_threshold)
+    
+    # Both baselines must be stable
+    is_acceptable = pre_stable and post_stable
+    
+    print(f"    Quality check: pre={pre_stable_pct:.1f}% stable (std={stability_info['pre_baseline_std']:.6f}g), "
+          f"post={post_stable_pct:.1f}% stable (std={stability_info['post_baseline_std']:.6f}g)")
+    print(f"    Result: {'ACCEPTABLE' if is_acceptable else 'RETRY NEEDED'} (threshold: {std_threshold:.6f}g)")
+    
+    
+    return is_acceptable
+
 def validate_pipetting_accuracy(
     lash_e,
     source_vial: str,
@@ -79,8 +113,11 @@ def validate_pipetting_accuracy(
     save_raw_data: bool = True,
     switch_pipet: bool = False,
     compensate_overvolume: bool = True,
-    smooth_overvolume: bool = False
+    smooth_overvolume: bool = False,
+    quality_std_threshold: float = 0.001
 ) -> Dict:
+    
+
     """
     Validate pipetting accuracy for specified volumes and generate analysis.
     
@@ -146,19 +183,47 @@ def validate_pipetting_accuracy(
         for rep in range(replicates):
             print(f"  Replicate {rep + 1}/{replicates}...")
             
-            # Pipette using wizard (automatically optimizes parameters)
-            mass_difference = lash_e.nr_robot.dispense_from_vial_into_vial(
-                source_vial_name=source_vial,
-                dest_vial_name=destination_vial,
-                volume=volume_ml,
-                liquid=liquid_type,
-                remove_tip=switch_pipet,  # Use built-in pipet removal control
-                use_safe_location=False,
-                return_vial_home=False,   # Keep destination vial in clamp for mass measurement
-                compensate_overvolume=compensate_overvolume,
-                smooth_overvolume=smooth_overvolume
-            )
-                       
+            # Quality-controlled retry loop for calibration/validation
+            max_retries = 3
+            retry_count = 0
+            measurement_acceptable = False
+            
+            while not measurement_acceptable and retry_count <= max_retries:
+                if retry_count > 0:
+                    print(f"    Retry attempt {retry_count}/{max_retries}")
+                
+                # Pipette using optimized parameters with continuous mass monitoring
+                transfer_result = lash_e.nr_robot.dispense_from_vial_into_vial(
+                    source_vial_name=source_vial,
+                    dest_vial_name=destination_vial,
+                    volume=volume_ml,
+                    liquid=liquid_type,
+                    remove_tip=switch_pipet,  # Use built-in pipet removal control
+                    use_safe_location=False,
+                    return_vial_home=False,   # Keep destination vial in clamp for mass measurement
+                    compensate_overvolume=compensate_overvolume,
+                    smooth_overvolume=smooth_overvolume,
+                    measure_weight=True  # Enable mass measurement with continuous monitoring
+                )
+                
+                # Handle new return format (mass, stability_info)
+                if isinstance(transfer_result, tuple):
+                    mass_difference, stability_info = transfer_result
+                    # Evaluate measurement quality for calibration/validation
+                    measurement_acceptable = _evaluate_measurement(stability_info, quality_std_threshold)
+                else:
+                    # Backwards compatibility - old format returns just mass
+                    mass_difference = transfer_result
+                    stability_info = None
+                    measurement_acceptable = True
+                
+                retry_count += 1
+                
+                if not measurement_acceptable and retry_count <= max_retries:
+                    print(f"    Measurement quality insufficient, retrying...")
+            
+            if not measurement_acceptable:
+                print(f"    WARNING: Measurement still poor quality after {max_retries} retries")
 
             measured_volume_ml = mass_difference / density  # mass(g) / density(g/mL) = volume(mL)
             
@@ -173,11 +238,13 @@ def validate_pipetting_accuracy(
                 'timestamp': datetime.now().isoformat(),
                 'source_vial': source_vial,
                 'destination_vial': destination_vial,
-                'switch_pipet': switch_pipet
+                'switch_pipet': switch_pipet,
+                'retry_count': retry_count,
+                'stability_info': stability_info
             }
             all_results.append(result)
             
-            print(f"    Target: {volume_ml*1000:.1f} µL → Measured: {measured_volume_ml*1000:.1f} µL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:.1f}%)")
+            print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:.1f}%)")
     
     # === DATA ANALYSIS ===
     df = pd.DataFrame(all_results)
@@ -319,7 +386,8 @@ def validate_reservoir_accuracy(
     replicates: int = 3,
     output_folder: str = "output",
     plot_title: Optional[str] = None,
-    save_raw_data: bool = True
+    save_raw_data: bool = True,
+    quality_std_threshold: float = 0.001
 ) -> Dict:
     """
     Validate reservoir dispensing accuracy for specified volumes and generate analysis.
@@ -334,6 +402,7 @@ def validate_reservoir_accuracy(
         output_folder: Base output directory (creates reservoir_validation subfolder)
         plot_title: Optional custom title for plots
         save_raw_data: Whether to save raw measurement data (default: True)
+        quality_std_threshold: Standard deviation threshold for quality control (default: 0.001g = 1mg)
         
     Returns:
         dict: Results summary containing accuracy metrics, file paths, and statistics
@@ -378,33 +447,40 @@ def validate_reservoir_accuracy(
         for rep in range(replicates):
             print(f"  Replicate {rep + 1}/{replicates}...")
             
-            # Get initial mass
-            if not lash_e.simulate:
-                lash_e.nr_robot.c9.zero_scale()  # Zero scale before measurement
-                initial_mass = lash_e.nr_robot.c9.read_steady_scale()
-            else:
-                initial_mass = 0.0
+            # Quality control retry loop
+            max_retries = 3
+            retry_count = 0
+            measurement_acceptable = False
             
-            # Dispense from reservoir
-            lash_e.nr_robot.dispense_into_vial_from_reservoir(
-                reservoir_index=reservoir_index,
-                vial_index=target_vial,
-                volume=volume_ml,
-                measure_weight=False  # We handle weight measurement ourselves
-            )
+            while not measurement_acceptable and retry_count <= max_retries:
+                # Dispense from reservoir with continuous monitoring
+                transfer_result = lash_e.nr_robot.dispense_into_vial_from_reservoir(
+                    reservoir_index=reservoir_index,
+                    vial_index=target_vial,
+                    volume=volume_ml,
+                    measure_weight=True,
+                    continuous_mass_monitoring=True,
+                    save_mass_data=True
+                )
+                
+                # Handle new return format with quality control
+                if isinstance(transfer_result, tuple) and len(transfer_result) == 2:
+                    mass_difference, stability_info = transfer_result
+                    measurement_acceptable = _evaluate_measurement(stability_info, quality_std_threshold)
+                else:
+                    # Backwards compatibility - old format returns just mass
+                    mass_difference = transfer_result
+                    stability_info = None
+                    measurement_acceptable = True
+                
+                retry_count += 1
+                
+                if not measurement_acceptable and retry_count <= max_retries:
+                    print(f"    Measurement quality insufficient, retrying...")
             
-            # Wait for stabilization (only in hardware mode)
-            if not lash_e.simulate:
-                time.sleep(0.5)
-            
-            # Get final mass
-            if not lash_e.simulate:
-                final_mass = lash_e.nr_robot.c9.read_steady_scale()
-            else:
-                final_mass = initial_mass + (volume_ml * density)  # Simulate perfect transfer
-            
-            # Calculate transferred volume
-            mass_difference = final_mass - initial_mass
+            if not measurement_acceptable:
+                print(f"    WARNING: Measurement still poor quality after {max_retries} retries")
+
             measured_volume_ml = mass_difference / density  # mass(g) / density(g/mL) = volume(mL)
             
             # Store result
@@ -415,15 +491,15 @@ def validate_reservoir_accuracy(
                 'density_used': density,
                 'liquid_type': liquid_type,
                 'replicate': rep + 1,
-                'initial_mass': initial_mass,
-                'final_mass': final_mass,
                 'timestamp': datetime.now().isoformat(),
                 'reservoir_index': reservoir_index,
-                'target_vial': target_vial
+                'target_vial': target_vial,
+                'retry_count': retry_count,
+                'stability_info': stability_info
             }
             all_results.append(result)
             
-            print(f"    Target: {volume_ml*1000:.1f} µL → Measured: {measured_volume_ml*1000:.1f} µL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:.1f}%)")
+            print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:.1f}%)")
     
     # === DATA ANALYSIS ===
     df = pd.DataFrame(all_results)
@@ -568,7 +644,7 @@ def _create_validation_plots(df: pd.DataFrame, stats_df: pd.DataFrame, overall_s
     else:
         fig.suptitle(f"Pipetting Validation - {liquid_type.title()}", fontsize=16)
     
-    # Convert to µL for plotting
+    # Convert to uL for plotting
     df['target_ul'] = df['target_volume_ml'] * 1000
     df['measured_ul'] = df['measured_volume_ml'] * 1000
     
@@ -583,11 +659,11 @@ def _create_validation_plots(df: pd.DataFrame, stats_df: pd.DataFrame, overall_s
     # Add regression line
     slope, intercept = overall_stats['slope'], overall_stats['intercept']
     x_fit = np.array([min_vol, max_vol]) / 1000  # Convert back to mL for calculation
-    y_fit = (slope * x_fit + intercept) * 1000  # Convert result to µL
+    y_fit = (slope * x_fit + intercept) * 1000  # Convert result to uL
     ax1.plot(x_fit * 1000, y_fit, 'b-', label=f'Linear fit (R² = {overall_stats["r_squared"]:.4f})', linewidth=2)
     
-    ax1.set_xlabel('Target Volume (µL)')
-    ax1.set_ylabel('Measured Volume (µL)')
+    ax1.set_xlabel('Target Volume (uL)')
+    ax1.set_ylabel('Measured Volume (uL)')
     ax1.set_title('Accuracy')
     ax1.legend()
     ax1.grid(True, alpha=0.3)
@@ -595,14 +671,14 @@ def _create_validation_plots(df: pd.DataFrame, stats_df: pd.DataFrame, overall_s
     # Plot 2: Accuracy per volume
     ax2.bar(stats_df['target_volume_ul'], stats_df['accuracy_pct'])
     ax2.axhline(y=0, color='r', linestyle='--', alpha=0.7)
-    ax2.set_xlabel('Target Volume (µL)')
+    ax2.set_xlabel('Target Volume (uL)')
     ax2.set_ylabel('Accuracy (%)')
     ax2.set_title('Accuracy by Volume')
     ax2.grid(True, alpha=0.3)
     
     # Plot 3: Precision (CV) per volume
     ax3.bar(stats_df['target_volume_ul'], stats_df['precision_cv_pct'])
-    ax3.set_xlabel('Target Volume (µL)')
+    ax3.set_xlabel('Target Volume (uL)')
     ax3.set_ylabel('Precision CV (%)')
     ax3.set_title('Precision by Volume')
     ax3.grid(True, alpha=0.3)

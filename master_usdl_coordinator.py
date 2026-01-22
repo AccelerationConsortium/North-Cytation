@@ -37,6 +37,9 @@ class Lash_E:
         log_filename = f"experiment_log{timestamp}{suffix}.log"
         log_path = os.path.join(logging_folder, log_filename)
         os.makedirs(logging_folder, exist_ok=True)
+        
+        # Store log filename for use by North_Robot for organizing mass measurement files
+        self.log_filename = log_filename
 
         # File handler (DEBUG and up)
         file_handler = logging.FileHandler(log_path)
@@ -67,6 +70,8 @@ class Lash_E:
 
         if initialize_robot:
             self.nr_robot = North_Robot(c9, c8, vial_file,simulate=simulate, logger=self.logger)
+            # Pass log filename to robot for organized mass measurement file storage
+            self.nr_robot.log_filename = self.log_filename
             self.spinner = North_Spin(c9, c8, simulate=simulate, logger=self.logger)
 
         if initialize_biotek:

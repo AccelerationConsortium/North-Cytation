@@ -251,7 +251,32 @@ class PipettingWizardV2:
         
         # Interpolate overaspirate_vol (special case)
         overasp_values = df['calibration_overaspirate_vol'].values
-        interpolated_overasp = np.interp(target_volume_ul, volumes, overasp_values)
+        
+        # DEBUG: Log interpolation data
+        logging.info(f"DEBUG: Interpolating for {target_volume_ul}uL")
+        logging.info(f"DEBUG: Available volumes: {volumes}")
+        logging.info(f"DEBUG: Available overaspirate values (mL): {overasp_values}")
+        
+        # Sort arrays for proper interpolation (np.interp requires sorted x-values)
+        sort_indices = np.argsort(volumes)
+        volumes_sorted = volumes[sort_indices]
+        overasp_sorted = overasp_values[sort_indices]
+        
+        # Find bounding volumes for debug
+        lower_idx = np.searchsorted(volumes_sorted, target_volume_ul, side='right') - 1
+        upper_idx = min(lower_idx + 1, len(volumes_sorted) - 1)
+        if lower_idx < 0:
+            lower_idx = 0
+        
+        logging.info(f"DEBUG: After sorting, volumes: {volumes_sorted}")
+        logging.info(f"DEBUG: After sorting, overasp: {overasp_sorted}")
+        logging.info(f"DEBUG: Target {target_volume_ul}uL bounds:")
+        logging.info(f"  Lower: {volumes_sorted[lower_idx]}uL -> {overasp_sorted[lower_idx]*1000:.2f}uL")
+        logging.info(f"  Upper: {volumes_sorted[upper_idx]}uL -> {overasp_sorted[upper_idx]*1000:.2f}uL")
+        
+        interpolated_overasp = np.interp(target_volume_ul, volumes_sorted, overasp_sorted)
+        logging.info(f"DEBUG: np.interp result: {interpolated_overasp*1000:.2f}uL")
+        
         result['overaspirate_vol'] = float(interpolated_overasp)
         
         # Interpolate all hardware parameters dynamically
@@ -261,8 +286,11 @@ class PipettingWizardV2:
             if col_name in df.columns:
                 param_values = df[col_name].values
                 
+                # Sort arrays for proper interpolation (np.interp requires sorted x-values)
+                param_sorted = param_values[sort_indices]
+                
                 # Use numpy interp for linear interpolation
-                interpolated_value = np.interp(target_volume_ul, volumes, param_values)
+                interpolated_value = np.interp(target_volume_ul, volumes_sorted, param_sorted)
                 value = float(interpolated_value)
                 
                 # Convert speed parameters to integers to avoid conversion warnings

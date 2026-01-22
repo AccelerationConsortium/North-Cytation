@@ -17,4 +17,4 @@ def move_vials(input_vial_status_file, repeats=3):
         lash_e.nr_robot.return_vial_home(2)
         lash_e.nr_robot.move_home()
 
-move_vials("../utoronto_demo/status/sample_input_vials.csv", repeats=2)
+move_vials("../utoronto_demo/status/sample_input_vials.csv", repeats=1)

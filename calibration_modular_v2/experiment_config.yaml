@@ -13,17 +13,19 @@
 # Experiment Configuration
 experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
-  liquid: "water"                     # Target liquid (water, glycerol, ethanol)
+  liquid: "agar_water"                     # Target liquid (water, glycerol, ethanol)
   description: "Testing calibration across 4 volumes: 10μL to 100μL"
   
   # Target Volumes and Measurements
-  volume_targets_ml: [0.025, 0.020, 0.015, 0.010, 0.005]       # Test with 3 volumes for faster debugging
-  max_total_measurements: 250           # Hard limit across entire experiment (increased for 6 volumes)
-  max_measurements_first_volume: 150     # Dedicated budget for first volume
+  #Small volumes [0.025, 0.020, 0.015, 0.010, 0.005]  
+  #Medium volumes [0.150, 0.100, 0.050, 0.030] 
+  volume_targets_ml: [0.05, 0.025, 0.010, 0.005, 0.002]      # Test with 3 volumes for faster debugging
+  max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
+  max_measurements_first_volume: 72     # Dedicated budget for first volume
   
   # Frequently Adjusted Parameters
   num_screening_trials: 10             # Number of exploratory trials if no external data available
-  replicates_for_accurate_measurements: 4  # Extra replicates beyond base replicate for good accuracy. Keep in mind your maximum measurement budget!
+  replicates_for_accurate_measurements: 2  # Extra replicates beyond base replicate for good accuracy. Keep in mind your maximum measurement budget!
   
   # Execution Mode
   simulate: false                         # Use simulation instead of hardware. Set to true for dry runs.
@@ -41,7 +43,7 @@ calibration_parameters: # Mandatory parameters that all hardware must support. D
     type: "float"                       # Parameter type for optimizer
     description: "Overaspiration volume for volume accuracy (mL)"
     volume_dependent: true              # Re-optimized for each volume
-    round_to_nearest: 0.0005             # Round to nearest 0.5 µL
+    round_to_nearest: 0.0001             # Round to nearest 0.5 µL
 
 hardware_parameters:
   # Optional hardware-specific parameters
@@ -50,7 +52,7 @@ hardware_parameters:
   # You can change these to whatever you like
   
   aspirate_speed:
-    bounds: [10, 25]
+    bounds: [5, 35]
     default: 10
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
@@ -58,7 +60,7 @@ hardware_parameters:
     round_to_nearest: 1                 # Round to nearest integer
     
   dispense_speed:
-    bounds: [5, 25] 
+    bounds: [5, 35] 
     default: 10
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
@@ -66,27 +68,27 @@ hardware_parameters:
     round_to_nearest: 1                 # Round to nearest integer
     
   aspirate_wait_time:
-    bounds: [0.0, 10]
+    bounds: [0.0, 30]
     default: 10.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after aspiration in liquid (seconds)"
     round_to_nearest: 0.1               # Round to nearest 0.1 seconds
 
-  # post_retract_wait_time:
-  #   bounds: [0.0, 10]
-  #   default: 0.0
-  #   type: "float"                       # Parameter type for optimizer
-  #   time_affecting: true                # Directly affects timing
-  #   description: "Wait time after withdrawal during aspiration (seconds)"
-  #   round_to_nearest: 0.1               # Round to nearest 0.1 seconds
-
-  dispense_wait_time:
-    bounds: [0.0, 5]
+  post_retract_wait_time:
+    bounds: [0.0, 10]
     default: 0.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
-    description: "Wait time after dispensing (seconds)"
+    description: "Wait time after withdrawal during aspiration (seconds)"
+    round_to_nearest: 0.1               # Round to nearest 0.1 seconds
+
+  # dispense_wait_time:
+  #   bounds: [0.0, 30]
+  #   default: 0.0
+  #   type: "float"                       # Parameter type for optimizer
+  #   time_affecting: true                # Directly affects timing
+  #   description: "Wait time after dispensing (seconds)"
     
   # retract_speed:
   #   bounds: [1.0, 15.0]
@@ -96,14 +98,14 @@ hardware_parameters:
   #   description: "Tip retract speed (relative units)"
   #   round_to_nearest: 0.1               # Round to nearest 0.1 units
     
-  blowout_vol:
-    bounds: [0.0, 0.3]
-    default: 0.0
-    type: "float"                       # Parameter type for optimizer
-    time_affecting: false               # Volume parameter, not timing
-    description: "Blowout volume (mL)"
-    volume_dependent: true              # Re-optimized for each volume
-    round_to_nearest: 0.001             # Round to nearest 1 µL
+  # blowout_vol:
+  #   bounds: [0.0, 0.3]
+  #   default: 0.0
+  #   type: "float"                       # Parameter type for optimizer
+  #   time_affecting: false               # Volume parameter, not timing
+  #   description: "Blowout volume (mL)"
+  #   volume_dependent: true              # Re-optimized for each volume
+  #   round_to_nearest: 0.001             # Round to nearest 1 µL
     
   post_asp_air_vol:
     bounds: [0.0, 0.1]
@@ -112,6 +114,7 @@ hardware_parameters:
     time_affecting: false               # Volume parameter, not timing
     description: "Post-aspiration air volume (mL)"
     round_to_nearest: 0.001             # Round to nearest 1 µL
+    volume_dependent: true   
 
   pre_asp_air_vol:
     bounds: [0.0, 0.3]
@@ -119,6 +122,7 @@ hardware_parameters:
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Pre-aspiration air volume (mL)"
+    volume_dependent: true   
     round_to_nearest: 0.001             # Round to nearest 1 µL
 
 # Output Configuration
@@ -234,10 +238,10 @@ screening:
 # Validation Configuration
 validation:
   # Source calibration data
-  optimal_conditions_file: "optimized_parameters/optimal_conditions_water_5_25_calib2.csv"  # Path to calibration results
+  optimal_conditions_file: "optimized_parameters/optimal_conditions_continuous_150.csv"  # Path to calibration results
   
   # Validation volumes (in mL)
-  volumes_ml: [0.025, 0.020, 0.015, 0.010, 0.005]   # Volumes to validate (can be different from calibration)
+  volumes_ml: [0.150, 0.100, 0.050, 0.030]    # Volumes to validate (can be different from calibration)
   
   # Measurement settings
   replicates_per_volume: 5              # Number of replicate measurements per volume

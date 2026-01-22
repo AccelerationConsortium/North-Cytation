@@ -32,7 +32,7 @@ def pipet_sample_from_well_to_vial(lash_e, wells, sample_name, well_volume=0.15,
         lash_e.nr_robot.move_vial_to_location(vial_name=sample_name, location='heater', location_index=heater_slot)
 
 
-def safe_pipet(source_vial, dest_vial, volume, lash_e):
+def safe_pipet(source_vial, dest_vial, volume, lash_e, return_home=True):
     source_home_location_index = lash_e.nr_robot.get_vial_info(source_vial, 'location_index')
     dest_home_location_index = lash_e.nr_robot.get_vial_info(dest_vial, 'location_index')
     move_source = (source_home_location_index > 5)
@@ -49,7 +49,7 @@ def safe_pipet(source_vial, dest_vial, volume, lash_e):
         lash_e.nr_robot.VIAL_DF.at[vial_index, 'home_location_index'] = 5
         lash_e.logger.info(f"Setting home location of {dest_vial} to 5 for safe pipetting")
 
-    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial, dest_vial, volume, liquid='water') #Change liquid later
+    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial, dest_vial, volume, liquid='water', return_vial_home=return_home) #Change liquid later
 
     if move_source: 
         vial_index = lash_e.nr_robot.get_vial_info(source_vial, 'vial_index')
@@ -78,6 +78,7 @@ def restore_vial_home(lash_e, vial_name, original_home_index): #restore original
 def move_lid_to_wellplate(lash_e):
     lash_e.nr_track.grab_wellplate_from_location('lid_storage', wellplate_type='quartz_lid', waypoint_locations=['cytation_safe_area'])
     lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type='quartz_lid')
+    lash_e.nr_track.origin()
 
 def move_lid_to_storage(lash_e):
     lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='quartz_lid')
@@ -141,11 +142,11 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state,w
                 lash_e.nr_robot.mix_well_in_wellplate(w, well_volume, repeats=2, well_plate_type=PLATE)
         # 4) Empty each well into waste
             for w in wells:
-                lash_e.nr_robot.pipet_from_wellplate(w, well_volume, aspirate=True, move_to_aspirate=False, well_plate_type=PLATE)
+                lash_e.nr_robot.pipet_from_wellplate(w, well_volume, aspirate=True, well_plate_type=PLATE)
                 lash_e.nr_robot.dispense_into_vial(current_waste, well_volume)
 
     lash_e.nr_robot.remove_pipet()
-    lash_e.nr_robot.recap_clamp_vial(current_waste)
+    lash_e.nr_robot.recap_clamp_vial()  # Recaps whatever vial is currently in clamp
     restore_vial_home(lash_e, solvent_vial, solvent_temp_home)
     restore_vial_home(lash_e, current_waste, waste_temp_home)
 
@@ -165,11 +166,11 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state,w
             for w in wells:
                 lash_e.nr_robot.mix_well_in_wellplate(w, well_volume, repeats=2, well_plate_type=PLATE)
             for w in wells:
-                lash_e.nr_robot.pipet_from_wellplate(w, well_volume, aspirate=True, move_to_aspirate=False, well_plate_type=PLATE)
+                lash_e.nr_robot.pipet_from_wellplate(w, well_volume, aspirate=True, move_to_aspirate=True, well_plate_type=PLATE)
                 lash_e.nr_robot.dispense_into_vial(current_waste, well_volume)
     
     lash_e.nr_robot.remove_pipet()
-    lash_e.nr_robot.recap_clamp_vial(current_waste)
+    lash_e.nr_robot.recap_clamp_vial()  # Recaps whatever vial is currently in clamp
     restore_vial_home(lash_e, acetone_vial, acetone_temp_home) 
     restore_vial_home(lash_e, current_waste, waste_temp_home) 
   
@@ -275,7 +276,7 @@ def degradation_workflow():
         }
 
     # Water volume to add for hydrolysis (note: could be a variable in the future)
-    water_volume = 0.025
+    water_volume = 0.010
 
 
     # input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")    
@@ -296,17 +297,17 @@ def degradation_workflow():
 
     # -------------------------------------------------------------- Workflow starts from here! ---------------------------------------------------
 
-    # # 1. Polymer sample preparation: Add solvent then stock to each sample vial.
-    # for sample in sample_solutions:
-    #     solvent_vol = volume_lookup[sample]['solvent_volume']
-    #     lash_e.logger.info(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
-    #     safe_pipet('2MeTHF',sample,solvent_vol, lash_e) 
+    # 1. Polymer sample preparation: Add solvent then stock to each sample vial.
+    for sample in sample_solutions:
+        solvent_vol = volume_lookup[sample]['solvent_volume']
+        lash_e.logger.info(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
+        safe_pipet('2MeTHF',sample,solvent_vol, lash_e) 
     
-    # for sample in sample_solutions:
-    #     stock_vol = volume_lookup[sample]['stock_volume']
-    #     lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
-    #     safe_pipet('polymer_stock',sample,stock_vol, lash_e)
-    #     lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
+    for sample in sample_solutions:
+        stock_vol = volume_lookup[sample]['stock_volume']
+        lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
+        safe_pipet('polymer_stock',sample,stock_vol, lash_e)
+        lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
 
 
     # 2. Add acid and water to the polymer samples to initiate degradation and take scheduled UV-VIS measurements.
@@ -321,8 +322,10 @@ def degradation_workflow():
 
     for sample in sample_solutions:
         lash_e.logger.info("\nAdding acid to sample: %s", sample)
-        acid_volume = volume_lookup[sample]['acid_volume']
-        safe_pipet('6M_HCl',sample,acid_volume, lash_e)
+        acid_volume = round(float(volume_lookup[sample]['acid_volume']), 4)
+        print("Acid Volume:", acid_volume)
+        #acid_volume = 0.011
+        safe_pipet('6M_HCl',sample,acid_volume, lash_e, return_home=False)
         lash_e.nr_robot.remove_pipet()
         lash_e.logger.info("\nAdding water to sample: %s", sample)
         lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
@@ -407,6 +410,9 @@ def degradation_workflow():
     # 3. Clean the well plate after all measurements are done
     wash_wellplate(lash_e, used_wells, solvent_vial='2MeTHF', acetone_vial='acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=2, well_volume=0.19)
 
+    # 4. Home all components at the end of the workflow
+    lash_e.nr_robot.move_home()
+    
     if not SIMULATE:   
         slack_agent.send_slack_message("Degradation workflow completed!")
 
