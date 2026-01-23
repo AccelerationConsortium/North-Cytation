@@ -218,7 +218,7 @@ def degradation_workflow():
     SCHEDULE_FILE = "../utoronto_demo/status/degradation_vial_schedule.csv"
 
     # d. Simulate mode True or False
-    SIMULATE = False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+    SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
     
     # e. Number of replicate measurements per timepoint
     REPLICATES = 3  # Number of wells to use for each measurement (default: 3)
