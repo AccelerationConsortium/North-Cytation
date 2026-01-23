@@ -15,7 +15,7 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
     lash_e.nr_robot.remove_pipet()
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
     lash_e.nr_robot.move_home()
-    lash_e.nr_robot.home_robot()
+    lash_e.nr_robot.home_robot_components()
     print()
 
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=False,well_volume=0.2):
@@ -235,7 +235,7 @@ def peroxide_workflow(reagent_incubation_time=20*60,sample_incubation_time=18*60
     #Step 5: Add 200 µL "reaction mixture" (vial in the photoreactor) to "Diluted Working Reagent" (vial_index 0-5). 
     # Six aliquots added at 0, 5, 10, 15, 20, 25 min time marks for incubation (incubation=18 min).
     
-    SCHEDULE_FILE = r"C:\Users\Imaging Controller\Desktop\SQ\schedule.csv"
+    SCHEDULE_FILE = r"c:\Users\owenm\OneDrive\Desktop\North Robotics\utoronto_demo\utoronto_demo\schedule.csv"  # Hardcoded path to schedule file
     schedule = pd.read_csv(SCHEDULE_FILE, sep=",") #Read the schedule file
 
     schedule = schedule.sort_values(by='start_time') #sort in ascending time order
