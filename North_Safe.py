@@ -1621,8 +1621,7 @@ class North_Robot(North_Base):
             self.logger.warning("Dispense exceeded limit: Dispensing all liquid")
             self.c9.move_pump(0, 0)
 
-        if not self.simulate:
-            time.sleep(wait_time)
+       
 
         if blowout_vol > 0: #Adjust this later into pipetting parameter
             #blow_speed = 5
@@ -1632,6 +1631,9 @@ class North_Robot(North_Base):
             self.c9.aspirate_ml(0, blowout_vol)
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)
             self.c9.dispense_ml(0, blowout_vol)
+
+        if not self.simulate:
+            time.sleep(wait_time)
 
     #Select appropriate tip type based on volume or use specified tip type
     def select_pipet_tip(self, volume, specified_tip_type=None):
