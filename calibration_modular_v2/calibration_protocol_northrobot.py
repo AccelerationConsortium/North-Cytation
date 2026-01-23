@@ -19,6 +19,7 @@ from calibration_protocol_base import CalibrationProtocolBase
 # Add parent directory to path for North Robot imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from master_usdl_coordinator import Lash_E
+from pipetting_data.pipetting_parameters import PipettingParameters
 
 # Liquid densities for mass-to-volume conversion (g/mL)
 LIQUIDS = {
@@ -36,6 +37,8 @@ LIQUIDS = {
     "agar_water_refill": {"density": 1.01, "refill_pipets": True},
 }
 
+
+from pipetting_data.pipetting_parameters import PipettingParameters
 
 class HardwareCalibrationProtocol(CalibrationProtocolBase):
     """Hardware calibration protocol implementing the abstract interface."""
@@ -90,11 +93,17 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
 
             #Tip Conditioning: Pre-wet tips with 4 aspirate/dispense cycles
             if liquid in LIQUIDS and LIQUIDS[liquid]['refill_pipets'] == False:
-                lash_e.nr_robot.aspirate_from_vial(source_vial, 0.1, liquid='water', move_up=False)
-                lash_e.nr_robot.dispense_into_vial(source_vial, 0.1, liquid='water', initial_move=False)
+                conditioning_params = PipettingParameters(
+                    aspirate_speed=15,
+                    dispense_speed=5,
+                    dispense_wait_time=0.0,
+                    blowout_vol=0.5
+                )
+                lash_e.nr_robot.aspirate_from_vial(source_vial, 0.18, move_up=False, parameters=conditioning_params)
+                lash_e.nr_robot.dispense_into_vial(source_vial, 0.18, initial_move=False, parameters=conditioning_params)
                 for i in range (0, 3):
-                    lash_e.nr_robot.aspirate_from_vial(source_vial, 0.1, liquid='water', move_to_aspirate=False)
-                    lash_e.nr_robot.dispense_into_vial(source_vial, 0.1, liquid='water', initial_move=False)
+                    lash_e.nr_robot.aspirate_from_vial(source_vial, 0.18,  move_to_aspirate=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(source_vial, 0.18, initial_move=False, parameters=conditioning_params)
                 lash_e.nr_robot.move_home()
             
             print("READY: Hardware initialized successfully")
@@ -155,11 +164,17 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 #Tip Conditioning: Pre-wet tips with 4 aspirate/dispense cycles
                 liquid = state['liquid']  # Get liquid from state
                 if liquid in LIQUIDS and LIQUIDS[liquid]['refill_pipets'] == False:
-                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], 0.1, liquid=liquid, move_up=False)
-                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], 0.1, liquid=liquid, initial_move=False)
+                    conditioning_params = PipettingParameters(
+                        aspirate_speed=15,
+                        dispense_speed=5,
+                        dispense_wait_time=0.0,
+                        blowout_vol=0.5
+                    )
+                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], 0.18, move_up=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], 0.18, initial_move=False, parameters=conditioning_params)
                     for i in range (0, 3):
-                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], 0.1, liquid=liquid, move_to_aspirate=False)
-                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], 0.1, liquid=liquid, initial_move=False)
+                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], 0.18, move_to_aspirate=False, parameters=conditioning_params)
+                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], 0.18, initial_move=False, parameters=conditioning_params)
                     lash_e.nr_robot.move_home()
                 
                 print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
