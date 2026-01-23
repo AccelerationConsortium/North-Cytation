@@ -13,7 +13,7 @@
 # Experiment Configuration
 experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
-  liquid: "agar_water"                     # Target liquid (water, glycerol, ethanol)
+  liquid: "agar_water_refill"                     # Target liquid (water, glycerol, ethanol)
   description: "Testing calibration across 4 volumes: 10μL to 100μL"
   
   # Target Volumes and Measurements
@@ -52,7 +52,7 @@ hardware_parameters:
   # You can change these to whatever you like
   
   aspirate_speed:
-    bounds: [5, 35]
+    bounds: [10, 30]
     default: 10
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
@@ -68,20 +68,20 @@ hardware_parameters:
     round_to_nearest: 1                 # Round to nearest integer
     
   aspirate_wait_time:
-    bounds: [0.0, 30]
+    bounds: [0.0, 20]
     default: 10.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
     description: "Wait time after aspiration in liquid (seconds)"
     round_to_nearest: 0.1               # Round to nearest 0.1 seconds
 
-  post_retract_wait_time:
-    bounds: [0.0, 10]
-    default: 0.0
-    type: "float"                       # Parameter type for optimizer
-    time_affecting: true                # Directly affects timing
-    description: "Wait time after withdrawal during aspiration (seconds)"
-    round_to_nearest: 0.1               # Round to nearest 0.1 seconds
+  # post_retract_wait_time:
+  #   bounds: [0.0, 10]
+  #   default: 0.0
+  #   type: "float"                       # Parameter type for optimizer
+  #   time_affecting: true                # Directly affects timing
+  #   description: "Wait time after withdrawal during aspiration (seconds)"
+  #   round_to_nearest: 0.1               # Round to nearest 0.1 seconds
 
   # dispense_wait_time:
   #   bounds: [0.0, 30]
@@ -98,23 +98,23 @@ hardware_parameters:
   #   description: "Tip retract speed (relative units)"
   #   round_to_nearest: 0.1               # Round to nearest 0.1 units
     
-  # blowout_vol:
-  #   bounds: [0.0, 0.3]
-  #   default: 0.0
-  #   type: "float"                       # Parameter type for optimizer
-  #   time_affecting: false               # Volume parameter, not timing
-  #   description: "Blowout volume (mL)"
-  #   volume_dependent: true              # Re-optimized for each volume
-  #   round_to_nearest: 0.001             # Round to nearest 1 µL
-    
-  post_asp_air_vol:
-    bounds: [0.0, 0.1]
-    default: 0.05
+  blowout_vol:
+    bounds: [0.0, 0.3]
+    default: 0.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
-    description: "Post-aspiration air volume (mL)"
+    description: "Blowout volume (mL)"
+    volume_dependent: true              # Re-optimized for each volume
     round_to_nearest: 0.001             # Round to nearest 1 µL
-    volume_dependent: true   
+    
+  # post_asp_air_vol:
+  #   bounds: [0.0, 0.1]
+  #   default: 0.05
+  #   type: "float"                       # Parameter type for optimizer
+  #   time_affecting: false               # Volume parameter, not timing
+  #   description: "Post-aspiration air volume (mL)"
+  #   round_to_nearest: 0.001             # Round to nearest 1 µL
+  #   volume_dependent: true   
 
   pre_asp_air_vol:
     bounds: [0.0, 0.3]
@@ -156,12 +156,12 @@ tolerances:
       volume_max_ul: 59
       tolerance_pct: 3.0
       
-    - volume_min_ul: 1                 # 1-19μL range
+    - volume_min_ul: 2.5                 # 7.5-19μL range
       volume_max_ul: 19
       tolerance_pct: 5.0
       
     - volume_min_ul: 0                 # 0-0.999μL range
-      volume_max_ul: 0.999
+      volume_max_ul: 2.499
       tolerance_pct: 10.0
   
   # Simulation multipliers (matches original DEFAULT_SIM_*_MULTIPLIER)
@@ -238,10 +238,10 @@ screening:
 # Validation Configuration
 validation:
   # Source calibration data
-  optimal_conditions_file: "optimized_parameters/optimal_conditions_continuous_150.csv"  # Path to calibration results
+  optimal_conditions_file: "optimized_parameters/optimal_conditions_agar_switch.csv"  # Path to calibration results
   
   # Validation volumes (in mL)
-  volumes_ml: [0.150, 0.100, 0.050, 0.030]    # Volumes to validate (can be different from calibration)
+  volumes_ml: [0.05, 0.025, 0.010, 0.005, 0.002]    # Volumes to validate (can be different from calibration)
   
   # Measurement settings
   replicates_per_volume: 5              # Number of replicate measurements per volume

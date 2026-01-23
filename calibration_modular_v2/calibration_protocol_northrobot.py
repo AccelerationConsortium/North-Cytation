@@ -33,6 +33,7 @@ LIQUIDS = {
     "PEG_Water": {"density": 1.05, "refill_pipets": True},
     "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
     "agar_water": {"density": 1.01, "refill_pipets": False},
+    "agar_water_refill": {"density": 1.01, "refill_pipets": True},
 }
 
 
@@ -64,7 +65,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
-        self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
+        self.quality_std_threshold = 0.001  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
 
         
@@ -89,11 +90,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
 
             #Tip Conditioning: Pre-wet tips with 4 aspirate/dispense cycles
             if liquid in LIQUIDS and LIQUIDS[liquid]['refill_pipets'] == False:
-                lash_e.nr_robot.aspirate_from_vial(source_vial, 0.1, liquid='glycerol', move_up=False)
-                lash_e.nr_robot.dispense_into_vial(source_vial, 0.1, liquid='glycerol', initial_move=False)
+                lash_e.nr_robot.aspirate_from_vial(source_vial, 0.1, liquid='water', move_up=False)
+                lash_e.nr_robot.dispense_into_vial(source_vial, 0.1, liquid='water', initial_move=False)
                 for i in range (0, 3):
-                    lash_e.nr_robot.aspirate_from_vial(source_vial, 0.1, liquid='glycerol', move_to_aspirate=False)
-                    lash_e.nr_robot.dispense_into_vial(source_vial, 0.1, liquid='glycerol', initial_move=False)
+                    lash_e.nr_robot.aspirate_from_vial(source_vial, 0.1, liquid='water', move_to_aspirate=False)
+                    lash_e.nr_robot.dispense_into_vial(source_vial, 0.1, liquid='water', initial_move=False)
                 lash_e.nr_robot.move_home()
             
             print("READY: Hardware initialized successfully")
@@ -287,7 +288,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         measurement_acceptable = True
                     
                     retry_count += 1
-                    
+                    # Check if pipet removal is needed for this liquid (viscous liquids)
+                    if LIQUIDS[state['liquid']]['refill_pipets']:
+                        lash_e.nr_robot.remove_pipet()
+                        print(f"    Removed pipet (refill_pipets=True for {state['liquid']})")
+                        
                     if not measurement_acceptable and retry_count <= max_retries:
                         print(f"    WARNING! Measurement quality insufficient, retrying...")
                 
@@ -302,10 +307,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 print(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
                 
-                # Check if pipet removal is needed for this liquid (viscous liquids)
-                if LIQUIDS[liquid]['refill_pipets']:
-                    lash_e.nr_robot.remove_pipet()
-                    print(f"    Removed pipet (refill_pipets=True for {liquid})")
+                
                 
             else:
                 # Simple simulation: target volume - 20% + overaspirate + noise
@@ -392,8 +394,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         available_volume_ml = tip_volume_ml - target_volume_ml
         
         # Add tip volume constraint if relevant parameters exist
-        constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
-        #constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
+        #constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
         print(f"CONSTRAINT: North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}uL, target: {target_volume_ml*1000:.0f}uL)")

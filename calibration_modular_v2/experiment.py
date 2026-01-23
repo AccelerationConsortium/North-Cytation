@@ -651,6 +651,10 @@ class CalibrationExperiment:
         if self.current_volume_index == 0:
             logger.info("Running screening phase (first volume)")
             screening_trials = self._run_screening_phase(target_volume_ml)
+            
+            # Display screening results summary
+            self._display_screening_summary(screening_trials, target_volume_ml)
+            
             # Store screening trials for two-point calibration access
             self._current_screening_trials = screening_trials
         else:
