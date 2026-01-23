@@ -13,15 +13,16 @@
 # Experiment Configuration
 experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
-  liquid: "agar_water_refill"                     # Target liquid (water, glycerol, ethanol)
+  liquid: "water"                     # Target liquid (water, glycerol, ethanol)
   description: "Testing calibration across 4 volumes: 10μL to 100μL"
   
   # Target Volumes and Measurements
   #Small volumes [0.025, 0.020, 0.015, 0.010, 0.005]  
+  #Extra small volumes [0.05, 0.025, 0.010, 0.005, 0.002]
   #Medium volumes [0.150, 0.100, 0.050, 0.030] 
-  volume_targets_ml: [0.05, 0.025, 0.010, 0.005, 0.002]      # Test with 3 volumes for faster debugging
-  max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
-  max_measurements_first_volume: 72     # Dedicated budget for first volume
+  volume_targets_ml: [0.05, 0.03, 0.100, 0.150]      # Test with 3 volumes for faster debugging
+  max_total_measurements: 200           # Hard limit across entire experiment (increased for 6 volumes)
+  max_measurements_first_volume: 150     # Dedicated budget for first volume
   
   # Frequently Adjusted Parameters
   num_screening_trials: 10             # Number of exploratory trials if no external data available
@@ -52,7 +53,7 @@ hardware_parameters:
   # You can change these to whatever you like
   
   aspirate_speed:
-    bounds: [10, 30]
+    bounds: [10, 25]
     default: 10
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
@@ -60,7 +61,7 @@ hardware_parameters:
     round_to_nearest: 1                 # Round to nearest integer
     
   dispense_speed:
-    bounds: [5, 35] 
+    bounds: [5, 25] 
     default: 10
     type: "integer"                     # Parameter type for optimizer
     time_affecting: true                # Affects operation timing
@@ -68,7 +69,7 @@ hardware_parameters:
     round_to_nearest: 1                 # Round to nearest integer
     
   aspirate_wait_time:
-    bounds: [0.0, 20]
+    bounds: [0.0, 5]
     default: 10.0
     type: "float"                       # Parameter type for optimizer
     time_affecting: true                # Directly affects timing
@@ -107,14 +108,14 @@ hardware_parameters:
     volume_dependent: true              # Re-optimized for each volume
     round_to_nearest: 0.001             # Round to nearest 1 µL
     
-  # post_asp_air_vol:
-  #   bounds: [0.0, 0.1]
-  #   default: 0.05
-  #   type: "float"                       # Parameter type for optimizer
-  #   time_affecting: false               # Volume parameter, not timing
-  #   description: "Post-aspiration air volume (mL)"
-  #   round_to_nearest: 0.001             # Round to nearest 1 µL
-  #   volume_dependent: true   
+  post_asp_air_vol:
+    bounds: [0.0, 0.1]
+    default: 0.05
+    type: "float"                       # Parameter type for optimizer
+    time_affecting: false               # Volume parameter, not timing
+    description: "Post-aspiration air volume (mL)"
+    round_to_nearest: 0.001             # Round to nearest 1 µL
+    volume_dependent: true   
 
   pre_asp_air_vol:
     bounds: [0.0, 0.3]
@@ -215,7 +216,7 @@ optimization:
     
   # Stopping criteria for the first volume optimization phase
   stopping_criteria:
-    min_good_trials: 5                  # Stop after this many parameter sets that meet acceptable tolerances
+    min_good_trials: 8                  # Stop after this many parameter sets that meet acceptable tolerances
     
   # Variability calculation method
   use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV
