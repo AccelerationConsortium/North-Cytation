@@ -20,7 +20,8 @@ experiment:
   #Small volumes [0.025, 0.020, 0.015, 0.010, 0.005]  
   #Extra small volumes [0.05, 0.025, 0.010, 0.005, 0.002]
   #Medium volumes [0.150, 0.100, 0.050, 0.030] 
-  volume_targets_ml: [0.05, 0.03, 0.100, 0.150]      # Test with 3 volumes for faster debugging
+  #High volumes [0.2, 0.5, 0.95]
+  volume_targets_ml: [0.2, 0.5, 0.925]     # Test with 3 volumes for faster debugging
   max_total_measurements: 200           # Hard limit across entire experiment (increased for 6 volumes)
   max_measurements_first_volume: 150     # Dedicated budget for first volume
   
@@ -110,21 +111,21 @@ hardware_parameters:
     
   post_asp_air_vol:
     bounds: [0.0, 0.05]
-    default: 0.05
+    default: 0.025
     type: "float"                       # Parameter type for optimizer
     time_affecting: false               # Volume parameter, not timing
     description: "Post-aspiration air volume (mL)"
     round_to_nearest: 0.001             # Round to nearest 1 µL
     volume_dependent: true   
 
-  pre_asp_air_vol:
-    bounds: [0.0, 0.3]
-    default: 0.0
-    type: "float"                       # Parameter type for optimizer
-    time_affecting: false               # Volume parameter, not timing
-    description: "Pre-aspiration air volume (mL)"
-    volume_dependent: true   
-    round_to_nearest: 0.001             # Round to nearest 1 µL
+  # pre_asp_air_vol:
+  #   bounds: [0.0, 0.3]
+  #   default: 0.0
+  #   type: "float"                       # Parameter type for optimizer
+  #   time_affecting: false               # Volume parameter, not timing
+  #   description: "Pre-aspiration air volume (mL)"
+  #   volume_dependent: true   
+  #   round_to_nearest: 0.001             # Round to nearest 1 µL
 
 # Output Configuration
 output:
@@ -239,10 +240,10 @@ screening:
 # Validation Configuration
 validation:
   # Source calibration data
-  optimal_conditions_file: "optimized_parameters/optimal_conditions_water_150.csv"  # Path to calibration results
+  optimal_conditions_file: "optimized_parameters/optimal_conditions_water_900.csv"  # Path to calibration results
   
   # Validation volumes (in mL)
-  volumes_ml: [0.05, 0.03, 0.100, 0.150]     # Volumes to validate (can be different from calibration)
+  volumes_ml: [0.20, 0.5, 0.90]       # Volumes to validate (can be different from calibration)
   
   # Measurement settings
   replicates_per_volume: 5              # Number of replicate measurements per volume
