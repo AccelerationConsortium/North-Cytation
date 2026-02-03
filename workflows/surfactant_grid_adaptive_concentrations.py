@@ -25,6 +25,8 @@ RECOVERY USAGE:
 # ================================================================================
 
 import sys
+
+
 sys.path.append("../utoronto_demo")
 import pandas as pd
 import numpy as np
@@ -32,6 +34,7 @@ import os
 import json
 from datetime import datetime
 from master_usdl_coordinator import Lash_E
+import slack_agent
 
 # ================================================================================
 # GLOBAL CONFIGURATION AND CONSTANTS
@@ -71,6 +74,9 @@ SURFACTANT_LIBRARY = {
     }
 }
 
+SURFACTANT_A = "SDS"
+SURFACTANT_B = "DTAB"
+
 # WORKFLOW CONSTANTS
 SIMULATE = True # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
@@ -87,7 +93,7 @@ WELL_VOLUME_UL = 200  # uL per well
 PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
 
 # Buffer addition settings
-ADD_BUFFER = True  # Set to False to skip buffer addition
+ADD_BUFFER = False  # Set to False to skip buffer addition
 BUFFER_VOLUME_UL = 20  # uL buffer to add per well
 BUFFER_OPTIONS = ['MES', 'HEPES', 'CAPS']  # Available buffers
 SELECTED_BUFFER = 'HEPES'  # Choose from BUFFER_OPTIONS
@@ -2218,10 +2224,10 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     lash_e.logger.info(f"="*50)
     
     lash_e.logger.info("\n" + "="*50)
-    response = input("Does this dilution plan look correct? Press Enter to proceed with automation, or 'q' to quit: ")
-    if response.lower() == 'q':
-        lash_e.logger.info("Workflow cancelled by user.")
-        return None
+    # response = input("Does this dilution plan look correct? Press Enter to proceed with automation, or 'q' to quit: ")
+    # if response.lower() == 'q':
+    #     lash_e.logger.info("Workflow cancelled by user.")
+    #     return None
     lash_e.logger.info("Proceeding with automated execution...")
     lash_e.logger.info("")
     
@@ -2367,49 +2373,26 @@ if __name__ == "__main__":
     Run the adaptive surfactant grid screening workflow.
     """
     print("Starting adaptive surfactant grid screening...")
-    print("Starting adaptive surfactant grid screening...")
-    
-    # Choose experiment mode
-    RUN_FULL_WORKFLOW = True  # Set to True to run the complete workflow
-    
-    if RUN_FULL_WORKFLOW:
-        # Execute the complete workflow with adaptive concentrations
-        results = execute_adaptive_surfactant_screening(
-            surfactant_a_name="SDS", 
-            surfactant_b_name="DTAB", 
-            simulate=SIMULATE
-        )
-        
-        if results and results['workflow_complete']:
-            print("="*80)
-            print("WORKFLOW COMPLETE!")
-            print("="*80)
-            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-            print(f"+ Wells processed: {results['total_wells']}")
-            print(f"+ Plates used: {results['plates_used']}")
-            breakdown = results['pipette_breakdown']
-            print(f"+ Pipette tips: {breakdown['large_tips']} large, {breakdown['small_tips']} small (total: {breakdown['total']})")
-            print(f"+ Measurements: {len(results['measurements'])} intervals")
-            print(f"+ Mode: {'Simulation' if results['simulation'] else 'Hardware'}")
-            print(f"+ Results saved to: {results['output_folder']}")
-    else:
-        # Just test the concentration calculation (original behavior)
-        print("Testing adaptive concentration grid approach...")
-        
-        # Test with different surfactants
-        surfactants_to_test = [("SDS", "DTAB"), ("CTAB", "NaC"), ("TTAB", "NaDC")]
-        
-        for surf_a, surf_b in surfactants_to_test:
-            print(f"\n=== Testing {surf_a} + {surf_b} ===")
-            concs_a, concs_b = calculate_dual_surfactant_grids(surf_a, surf_b)
-            
-            # Test achievability
-            achievable_a = get_achievable_concentrations(surf_a, concs_a)
-            achievable_b = get_achievable_concentrations(surf_b, concs_b)
-            
-            # Mock vial arrays for grid summary
-            vials_a = [f"{surf_a}_dilution_{i}" if ach else None for i, ach in enumerate(achievable_a)]
-            vials_b = [f"{surf_b}_dilution_{i}" if ach else None for i, ach in enumerate(achievable_b)]
-            
-            summary = create_concentration_grid_summary(concs_a, concs_b, vials_a, vials_b, surf_a, surf_b)
-            print(summary)
+    if not SIMULATE:
+        slack_agent.send_slack_message("Starting adaptive surfactant grid screening workflow...")
+
+    results = execute_adaptive_surfactant_screening(
+        surfactant_a_name=SURFACTANT_A, 
+        surfactant_b_name=SURFACTANT_B, 
+        simulate=SIMULATE
+    )
+    if results and results['workflow_complete']:
+        print("="*80)
+        print("WORKFLOW COMPLETE!")
+        print("="*80)
+        print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+        print(f"+ Wells processed: {results['total_wells']}")
+        print(f"+ Plates used: {results['plates_used']}")
+        breakdown = results['pipette_breakdown']
+        print(f"+ Pipette tips: {breakdown['large_tips']} large, {breakdown['small_tips']} small (total: {breakdown['total']})")
+        print(f"+ Measurements: {len(results['measurements'])} intervals")
+        print(f"+ Mode: {'Simulation' if results['simulation'] else 'Hardware'}")
+        print(f"+ Results saved to: {results['output_folder']}")
+
+    if not SIMULATE:
+        slack_agent.send_slack_message("Completed adaptive surfactant grid screening workflow...")
