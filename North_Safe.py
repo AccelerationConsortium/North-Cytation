@@ -1992,6 +1992,7 @@ class North_Robot(North_Base):
         #Move to the correct location in xy
         if move_to_aspirate:
             self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))
+
         
         #Step 1: Move to above the site and aspirate air if needed
         if pre_asp_air_vol > 0:
@@ -2035,7 +2036,10 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=False, return_vial_home=True, move_speed=None, compensate_overvolume=True, smooth_overvolume=False, measure_weight=False):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, 
+                                     remove_tip=True, use_safe_location=False, return_vial_home=True, move_speed=None, 
+                                     compensate_overvolume=True, smooth_overvolume=False, measure_weight=False, 
+                                     continuous_mass_monitoring=False, save_mass_data=False):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -2094,7 +2098,8 @@ class North_Robot(North_Base):
                 self.c9.default_vel = move_speed
 
             # Dispense into destination
-            dispense_result = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=measure_weight)
+            dispense_result = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=measure_weight,
+                                                      continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data)
             
             # Handle both old and new return formats for backwards compatibility
             if isinstance(dispense_result, tuple):
@@ -2293,15 +2298,17 @@ class North_Robot(North_Base):
         dest_vial_clamped = self.get_vial_info(dest_vial_num,'location')=='clamp' #Is the destination vial clamped?
         dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
 
-        #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
-        if (measure_weight or continuous_mass_monitoring) and dest_vial_clamped:
+        #If the destination vial is at the clamp and you want weight measurement using TRADITIONAL method
+        if measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
             if not self.simulate:
                 # Zero the scale before measurement to prevent baseline drift
                 initial_mass = self.c9.read_steady_scale()
-                self.logger.info(f"Initial mass reading: {initial_mass:.6f} g")
+                self.logger.info(f"Initial mass reading (traditional): {initial_mass:.6f} g")
             else:
                 initial_mass = 0
                 self.logger.info("Simulation mode - initial mass set to 0")
+        else:
+            initial_mass = None  # Will be handled by continuous monitoring if needed
 
         # Determine dispense speed (can be done safely here since no pipet acquisition needed for dispense)
         dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
@@ -2358,7 +2365,7 @@ class North_Robot(North_Base):
             self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
             
         # Start continuous monitoring if requested (includes pre-dispense baseline)
-        if continuous_mass_monitoring and dest_vial_clamped:
+        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
             # Conditional settling based on dispense wait time
             self.logger.info(f"Short wait time ({1.0:.1f}s), allowing scale to settle after robot positioning...")
             time.sleep(1.0)  # 2 second settling delay for short wait times
@@ -2375,14 +2382,14 @@ class North_Robot(North_Base):
             time.sleep(2.0)
             
         # Record when actual dispensing starts
-        if continuous_mass_monitoring and dest_vial_clamped:
+        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
             dispense_start_time = time.time()
         
         # Perform the actual dispensing
         self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
         
         # Record when dispensing ends and wait for post-dispense baseline
-        if continuous_mass_monitoring and dest_vial_clamped:
+        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
             dispense_end_time = time.time()
             dispense_duration = dispense_end_time - dispense_start_time
             self.logger.info(f"Dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
@@ -2401,7 +2408,7 @@ class North_Robot(North_Base):
         self.save_robot_status()
 
         # Analyze continuous mass data after monitoring is stopped
-        if continuous_mass_monitoring and dest_vial_clamped and continuous_mass_data:
+        if measure_weight and continuous_mass_monitoring and dest_vial_clamped and continuous_mass_data:
             if len(continuous_mass_data) >= 4:
                 mass_df = pd.DataFrame(continuous_mass_data)
                 
@@ -2551,8 +2558,8 @@ class North_Robot(North_Base):
                 plt.close()  # Close the figure to free memory
                 self.logger.info(f"Saved mass vs time plot to {plot_filepath}")  
 
-        # Traditional before/after measurement (only if not doing continuous monitoring)
-        elif measure_weight and dest_vial_clamped:
+        # Traditional before/after measurement (only when continuous monitoring is NOT enabled)
+        elif measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
             if not self.simulate:
                 final_mass = self.c9.read_steady_scale()
                 self.logger.info(f"Final mass reading: {final_mass:.6f} g")

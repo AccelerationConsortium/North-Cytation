@@ -1420,10 +1420,116 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
             except Exception as e:
                 lash_e.logger.info(f"      Warning: Could not restore {vial_name}: {e}")
             
+        # PHASE 2: Add all surfactant B solutions (including controls)
+        lash_e.logger.info(f"  Phase 2: Adding surfactant B (including controls)")
         
+        vial_b_groups = defaultdict(list)
+        control_wells_b = defaultdict(list)  # Track control wells separately
         
-        # PHASE 2: Add remaining water to fill wells (including control wells)
-        lash_e.logger.info(f"  Phase 2: Adding water (controls and grid wells)")
+        for batch_idx, req in enumerate(current_batch):
+            actual_well = wells_in_batch[batch_idx]
+            
+            # Group by vial type (regular vs control)
+            if req.get('is_control', False):
+                if req['volume_b_ul'] > 0 and req['dilution_b_vial']:
+                    control_wells_b[req['dilution_b_vial']].append((batch_idx, actual_well, req))
+            else:
+                # Regular grid wells
+                if req['volume_b_ul'] > 0:
+                    vial_b_groups[req['dilution_b_vial']].append((batch_idx, actual_well, req))
+        
+        # Handle control wells first (they use stock concentrations)
+        lash_e.logger.info(f"    Processing {sum(len(wells) for wells in control_wells_b.values())} control wells for surfactant B")
+        for vial_name, well_list in control_wells_b.items():
+            for batch_idx, actual_well, req in well_list:
+                volume_each_ml = req['volume_b_ul'] / 1000
+                lash_e.logger.info(f"      Control well {actual_well}: {req['volume_b_ul']}uL {vial_name}")
+                
+                lash_e.nr_robot.aspirate_from_vial(vial_name, volume_each_ml, liquid='water')
+                lash_e.nr_robot.dispense_into_wellplate(
+                    dest_wp_num_array=[actual_well], 
+                    amount_mL_array=[volume_each_ml],
+                    liquid='water'
+                )
+                lash_e.nr_robot.remove_pipet()
+                
+                actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
+        
+        # Handle regular grid wells (existing logic)
+        lash_e.logger.info(f"    Processing {sum(len(wells) for wells in vial_b_groups.values())} grid wells for surfactant B")
+        lash_e.logger.info(f"    Moving surfactant B vials to safe positions for better access...")
+        
+        # Move surfactant B vials to safe positions (reuse same safe positions)
+        vial_b_original_positions = {}
+        unique_vials_b = list(vial_b_groups.keys())
+        available_positions = SAFE_POSITIONS['main_8mL_rack'].copy()  # Use rack positions first
+        
+        for i, vial_name in enumerate(unique_vials_b):
+            try:
+                # Store original position
+                current_location = lash_e.nr_robot.get_vial_info(vial_name, 'location')
+                current_index = lash_e.nr_robot.get_vial_info(vial_name, 'location_index')
+                vial_b_original_positions[vial_name] = {'location': current_location, 'location_index': current_index}
+                
+                # Select safe position
+                if i < len(available_positions):
+                    safe_position = available_positions[i]
+                    safe_location = 'main_8mL_rack'
+                elif i < len(available_positions) + len(SAFE_POSITIONS['clamp']):
+                    safe_position = SAFE_POSITIONS['clamp'][0]
+                    safe_location = 'clamp'
+                else:
+                    lash_e.logger.warning(f"      No safe position available for {vial_name} (max 7 vials supported)")
+                    continue
+                
+                # Move to safe position
+                lash_e.nr_robot.move_vial_to_location(vial_name, safe_location, safe_position)
+                lash_e.logger.info(f"      Moved {vial_name} to {safe_location} position {safe_position}")
+            except Exception as e:
+                lash_e.logger.info(f"      Warning: Could not move {vial_name}: {e}")
+        
+        # Sort vial groups by concentration (low->high to prevent contamination)
+        sorted_vial_groups_b = sorted(vial_b_groups.items(), 
+                                     key=lambda x: current_batch[x[1][0][0]]['conc_b'] or 0)
+        
+        # Pipette surfactant B
+        surfactant_b_tip_conditioned = False
+        for vial_name, well_list in sorted_vial_groups_b:
+            lash_e.logger.info(f"    Using vial {vial_name} for {len(well_list)} wells")
+            
+            # Condition tip on first surfactant B vial
+            if not surfactant_b_tip_conditioned:
+                condition_tip(lash_e, vial_name)
+                surfactant_b_tip_conditioned = True
+            
+            for batch_idx, actual_well, req in well_list:
+                # FIXED: Use calculated volume from smart dilution plan, not fixed volume
+                volume_each_ml = req['volume_b_ul'] / 1000  # Convert uL to mL (was incorrectly using EFFECTIVE_SURFACTANT_VOLUME)
+                
+                # Track actual dispensed volume
+                actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
+                
+                # Use safe location (handles vial movement properly)
+                lash_e.nr_robot.aspirate_from_vial(req['dilution_b_vial'], volume_each_ml, liquid='water')
+                lash_e.nr_robot.dispense_into_wellplate(
+                    dest_wp_num_array=[actual_well], 
+                    amount_mL_array=[volume_each_ml],
+                    liquid='water'
+                )
+        # Remove tip first, then return vial home to allow safe movement
+        lash_e.nr_robot.remove_pipet()
+        
+        # Return surfactant B vials to original positions
+        lash_e.logger.info(f"    Returning surfactant B vials to home positions...")
+        for vial_name, position_info in vial_b_original_positions.items():
+            try:
+                lash_e.nr_robot.move_vial_to_location(vial_name, position_info['location'], position_info['location_index'])
+                lash_e.logger.info(f"      Restored {vial_name} to home position")
+            except Exception as e:
+                lash_e.logger.info(f"      Warning: Could not restore {vial_name}: {e}")
+        
+        # PHASE 3: Add remaining water to fill wells (including control wells)
+        lash_e.logger.info(f"  Phase 3: Adding water (controls and grid wells)")
         
         # Move water vial to optimal position for efficient access
         try:
@@ -1541,9 +1647,9 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
         lash_e.logger.info(f"  BATCH WATER SUMMARY: {batch_water_dispensed_ul:.1f} uL dispensed this batch")
         lash_e.logger.info(f"  CUMULATIVE WATER TOTAL: {total_water_dispensed_ul:.1f} uL ({total_water_dispensed_ul/1000:.3f} mL)")
 
-        # PHASE 3: Add buffer (if enabled and available)
+        # PHASE 4: Add buffer (if enabled and available)
         if ADD_BUFFER:
-            lash_e.logger.info(f"  Phase 3: Adding {SELECTED_BUFFER} buffer (using small tips, back-and-forth)")
+            lash_e.logger.info(f"  Phase 4: Adding {SELECTED_BUFFER} buffer (using small tips, back-and-forth)")
             buffer_volume_ml = BUFFER_VOLUME_UL / 1000  # Convert to mL
             
             # Validate buffer vial exists
@@ -1601,114 +1707,6 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                 # Return buffer vial to home position
                 lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
         
-        # PHASE 4: Add all surfactant B solutions (including controls)
-        lash_e.logger.info(f"  Phase 4: Adding surfactant B (including controls)")
-        
-        vial_b_groups = defaultdict(list)
-        control_wells_b = defaultdict(list)  # Track control wells separately
-        
-        for batch_idx, req in enumerate(current_batch):
-            actual_well = wells_in_batch[batch_idx]
-            
-            # Group by vial type (regular vs control)
-            if req.get('is_control', False):
-                if req['volume_b_ul'] > 0 and req['dilution_b_vial']:
-                    control_wells_b[req['dilution_b_vial']].append((batch_idx, actual_well, req))
-            else:
-                # Regular grid wells
-                if req['volume_b_ul'] > 0:
-                    vial_b_groups[req['dilution_b_vial']].append((batch_idx, actual_well, req))
-        
-        # Handle control wells first (they use stock concentrations)
-        lash_e.logger.info(f"    Processing {sum(len(wells) for wells in control_wells_b.values())} control wells for surfactant B")
-        for vial_name, well_list in control_wells_b.items():
-            for batch_idx, actual_well, req in well_list:
-                volume_each_ml = req['volume_b_ul'] / 1000
-                lash_e.logger.info(f"      Control well {actual_well}: {req['volume_b_ul']}uL {vial_name}")
-                
-                lash_e.nr_robot.aspirate_from_vial(vial_name, volume_each_ml, liquid='water')
-                lash_e.nr_robot.dispense_into_wellplate(
-                    dest_wp_num_array=[actual_well], 
-                    amount_mL_array=[volume_each_ml],
-                    liquid='water'
-                )
-                lash_e.nr_robot.remove_pipet()
-                
-                actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
-        
-        # Handle regular grid wells (existing logic)
-        lash_e.logger.info(f"    Processing {sum(len(wells) for wells in vial_b_groups.values())} grid wells for surfactant B")
-        lash_e.logger.info(f"    Moving surfactant B vials to safe positions for better access...")
-        
-        # Move surfactant B vials to safe positions (reuse same safe positions)
-        vial_b_original_positions = {}
-        unique_vials_b = list(vial_b_groups.keys())
-        available_positions = SAFE_POSITIONS['main_8mL_rack'].copy()  # Use rack positions first
-        
-        for i, vial_name in enumerate(unique_vials_b):
-            try:
-                # Store original position
-                current_location = lash_e.nr_robot.get_vial_info(vial_name, 'location')
-                current_index = lash_e.nr_robot.get_vial_info(vial_name, 'location_index')
-                vial_b_original_positions[vial_name] = {'location': current_location, 'location_index': current_index}
-                
-                # Select safe position
-                if i < len(available_positions):
-                    safe_position = available_positions[i]
-                    safe_location = 'main_8mL_rack'
-                elif i < len(available_positions) + len(SAFE_POSITIONS['clamp']):
-                    safe_position = SAFE_POSITIONS['clamp'][0]
-                    safe_location = 'clamp'
-                else:
-                    lash_e.logger.warning(f"      No safe position available for {vial_name} (max 7 vials supported)")
-                    continue
-                
-                # Move to safe position
-                lash_e.nr_robot.move_vial_to_location(vial_name, safe_location, safe_position)
-                lash_e.logger.info(f"      Moved {vial_name} to {safe_location} position {safe_position}")
-            except Exception as e:
-                lash_e.logger.info(f"      Warning: Could not move {vial_name}: {e}")
-        
-        # Sort vial groups by concentration (low->high to prevent contamination)
-        sorted_vial_groups_b = sorted(vial_b_groups.items(), 
-                                     key=lambda x: current_batch[x[1][0][0]]['conc_b'] or 0)
-        
-        # Pipette surfactant B
-        surfactant_b_tip_conditioned = False
-        for vial_name, well_list in sorted_vial_groups_b:
-            lash_e.logger.info(f"    Using vial {vial_name} for {len(well_list)} wells")
-            
-            # Condition tip on first surfactant B vial
-            if not surfactant_b_tip_conditioned:
-                condition_tip(lash_e, vial_name)
-                surfactant_b_tip_conditioned = True
-            
-            for batch_idx, actual_well, req in well_list:
-                # FIXED: Use calculated volume from smart dilution plan, not fixed volume
-                volume_each_ml = req['volume_b_ul'] / 1000  # Convert uL to mL (was incorrectly using EFFECTIVE_SURFACTANT_VOLUME)
-                
-                # Track actual dispensed volume
-                actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
-                
-                # Use safe location (handles vial movement properly)
-                lash_e.nr_robot.aspirate_from_vial(req['dilution_b_vial'], volume_each_ml, liquid='water')
-                lash_e.nr_robot.dispense_into_wellplate(
-                    dest_wp_num_array=[actual_well], 
-                    amount_mL_array=[volume_each_ml],
-                    liquid='water'
-                )
-        # Remove tip first, then return vial home to allow safe movement
-        lash_e.nr_robot.remove_pipet()
-        
-        # Return surfactant B vials to original positions
-        lash_e.logger.info(f"    Returning surfactant B vials to home positions...")
-        for vial_name, position_info in vial_b_original_positions.items():
-            try:
-                lash_e.nr_robot.move_vial_to_location(vial_name, position_info['location'], position_info['location_index'])
-                lash_e.logger.info(f"      Restored {vial_name} to home position")
-            except Exception as e:
-                lash_e.logger.info(f"      Warning: Could not restore {vial_name}: {e}")
-
         # Record well information for this batch
         for i, req in enumerate(current_batch):
             actual_well = wells_in_batch[i]

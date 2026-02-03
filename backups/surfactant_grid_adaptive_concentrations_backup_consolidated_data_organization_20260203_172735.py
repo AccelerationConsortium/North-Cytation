@@ -7,11 +7,6 @@ UPDATED CONCENTRATION APPROACH:
 - Logarithmic spacing with fixed number of concentrations (9 by default)
 - Each surfactant gets its own optimized concentration range based on volume constraints
 
-VALIDATION MODES:
-- Set VALIDATE_LIQUIDS=True to run validation alongside full experiment
-- Set VALIDATION_ONLY=True to run only pipetting validation and skip experiment (great for testing)
-- Both modes save validation results to experiment_name/calibration_validation/
-
 DATA PROTECTION FEATURES:
 - Raw Cytation data is immediately backed up to output/cytation_raw_backups/ (preserves complete original data)
 - Processed measurement data is backed up to output/measurement_backups/ after each interval
@@ -85,7 +80,6 @@ SURFACTANT_B = "TTAB"
 # WORKFLOW CONSTANTS
 SIMULATE = False # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
-VALIDATION_ONLY = False # Set to True to run only validations and skip full experiment
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
@@ -715,14 +709,6 @@ def create_substocks_from_recipes(lash_e, recipes):
         
         # Always call robot functions - Lash_E handles simulation internally
         try:
-            # Add source solution
-            lash_e.nr_robot.dispense_from_vial_into_vial(
-                source_vial_name=source_vial, 
-                dest_vial_name=vial_name, 
-                volume=source_volume_ml,
-                liquid='water'
-            )
-
             # Add water first if needed
             if water_volume_ml > 0:
                 lash_e.nr_robot.dispense_into_vial_from_reservoir(
@@ -730,7 +716,13 @@ def create_substocks_from_recipes(lash_e, recipes):
                     volume=water_volume_ml, return_home=False
                 )
             
-
+            # Add source solution
+            lash_e.nr_robot.dispense_from_vial_into_vial(
+                source_vial_name=source_vial, 
+                dest_vial_name=vial_name, 
+                volume=source_volume_ml,
+                liquid='water'
+            )
             
             # Vortex to mix
             lash_e.nr_robot.vortex_vial(vial_name=vial_name, vortex_time=8, vortex_speed=80)
@@ -998,7 +990,7 @@ def load_substock_tracking(logger=None):
                 if logger:
                     logger.info(f"Checking for existing {surfactant} substocks in CSV...")
                 else:
-                    logger.info(f"Checking for existing {surfactant} substocks in CSV...")
+                    lash_e.logger.info(f"Checking for existing {surfactant} substocks in CSV...")
                 
                 for _, row in df.iterrows():
                     vial_name = row['vial_name']
@@ -1021,7 +1013,7 @@ def load_substock_tracking(logger=None):
                                 if logger:
                                     logger.info(f"  Found existing {surfactant} dilution: {vial_name} = {target_conc:.2e} mM ({volume:.1f} mL)")
                                 else:
-                                    logger.info(f"  Found existing {surfactant} dilution: {vial_name} = {target_conc:.2e} mM ({volume:.1f} mL)")
+                                    lash_e.logger.info(f"  Found existing {surfactant} dilution: {vial_name} = {target_conc:.2e} mM ({volume:.1f} mL)")
                         except (ValueError, IndexError):
                             continue
         
@@ -1029,7 +1021,7 @@ def load_substock_tracking(logger=None):
             if logger:
                 logger.warning(f"Could not load existing {surfactant} dilutions from CSV: {e}")
             else:
-                logger.info(f"Warning: Could not load existing {surfactant} dilutions from CSV: {e}")
+                lash_e.logger.info(f"Warning: Could not load existing {surfactant} dilutions from CSV: {e}")
     
     return tracking
 
@@ -1420,10 +1412,116 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
             except Exception as e:
                 lash_e.logger.info(f"      Warning: Could not restore {vial_name}: {e}")
             
+        # PHASE 2: Add all surfactant B solutions (including controls)
+        lash_e.logger.info(f"  Phase 2: Adding surfactant B (including controls)")
         
+        vial_b_groups = defaultdict(list)
+        control_wells_b = defaultdict(list)  # Track control wells separately
         
-        # PHASE 2: Add remaining water to fill wells (including control wells)
-        lash_e.logger.info(f"  Phase 2: Adding water (controls and grid wells)")
+        for batch_idx, req in enumerate(current_batch):
+            actual_well = wells_in_batch[batch_idx]
+            
+            # Group by vial type (regular vs control)
+            if req.get('is_control', False):
+                if req['volume_b_ul'] > 0 and req['dilution_b_vial']:
+                    control_wells_b[req['dilution_b_vial']].append((batch_idx, actual_well, req))
+            else:
+                # Regular grid wells
+                if req['volume_b_ul'] > 0:
+                    vial_b_groups[req['dilution_b_vial']].append((batch_idx, actual_well, req))
+        
+        # Handle control wells first (they use stock concentrations)
+        lash_e.logger.info(f"    Processing {sum(len(wells) for wells in control_wells_b.values())} control wells for surfactant B")
+        for vial_name, well_list in control_wells_b.items():
+            for batch_idx, actual_well, req in well_list:
+                volume_each_ml = req['volume_b_ul'] / 1000
+                lash_e.logger.info(f"      Control well {actual_well}: {req['volume_b_ul']}uL {vial_name}")
+                
+                lash_e.nr_robot.aspirate_from_vial(vial_name, volume_each_ml, liquid='water')
+                lash_e.nr_robot.dispense_into_wellplate(
+                    dest_wp_num_array=[actual_well], 
+                    amount_mL_array=[volume_each_ml],
+                    liquid='water'
+                )
+                lash_e.nr_robot.remove_pipet()
+                
+                actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
+        
+        # Handle regular grid wells (existing logic)
+        lash_e.logger.info(f"    Processing {sum(len(wells) for wells in vial_b_groups.values())} grid wells for surfactant B")
+        lash_e.logger.info(f"    Moving surfactant B vials to safe positions for better access...")
+        
+        # Move surfactant B vials to safe positions (reuse same safe positions)
+        vial_b_original_positions = {}
+        unique_vials_b = list(vial_b_groups.keys())
+        available_positions = SAFE_POSITIONS['main_8mL_rack'].copy()  # Use rack positions first
+        
+        for i, vial_name in enumerate(unique_vials_b):
+            try:
+                # Store original position
+                current_location = lash_e.nr_robot.get_vial_info(vial_name, 'location')
+                current_index = lash_e.nr_robot.get_vial_info(vial_name, 'location_index')
+                vial_b_original_positions[vial_name] = {'location': current_location, 'location_index': current_index}
+                
+                # Select safe position
+                if i < len(available_positions):
+                    safe_position = available_positions[i]
+                    safe_location = 'main_8mL_rack'
+                elif i < len(available_positions) + len(SAFE_POSITIONS['clamp']):
+                    safe_position = SAFE_POSITIONS['clamp'][0]
+                    safe_location = 'clamp'
+                else:
+                    lash_e.logger.warning(f"      No safe position available for {vial_name} (max 7 vials supported)")
+                    continue
+                
+                # Move to safe position
+                lash_e.nr_robot.move_vial_to_location(vial_name, safe_location, safe_position)
+                lash_e.logger.info(f"      Moved {vial_name} to {safe_location} position {safe_position}")
+            except Exception as e:
+                lash_e.logger.info(f"      Warning: Could not move {vial_name}: {e}")
+        
+        # Sort vial groups by concentration (low->high to prevent contamination)
+        sorted_vial_groups_b = sorted(vial_b_groups.items(), 
+                                     key=lambda x: current_batch[x[1][0][0]]['conc_b'] or 0)
+        
+        # Pipette surfactant B
+        surfactant_b_tip_conditioned = False
+        for vial_name, well_list in sorted_vial_groups_b:
+            lash_e.logger.info(f"    Using vial {vial_name} for {len(well_list)} wells")
+            
+            # Condition tip on first surfactant B vial
+            if not surfactant_b_tip_conditioned:
+                condition_tip(lash_e, vial_name)
+                surfactant_b_tip_conditioned = True
+            
+            for batch_idx, actual_well, req in well_list:
+                # FIXED: Use calculated volume from smart dilution plan, not fixed volume
+                volume_each_ml = req['volume_b_ul'] / 1000  # Convert uL to mL (was incorrectly using EFFECTIVE_SURFACTANT_VOLUME)
+                
+                # Track actual dispensed volume
+                actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
+                
+                # Use safe location (handles vial movement properly)
+                lash_e.nr_robot.aspirate_from_vial(req['dilution_b_vial'], volume_each_ml, liquid='water')
+                lash_e.nr_robot.dispense_into_wellplate(
+                    dest_wp_num_array=[actual_well], 
+                    amount_mL_array=[volume_each_ml],
+                    liquid='water'
+                )
+        # Remove tip first, then return vial home to allow safe movement
+        lash_e.nr_robot.remove_pipet()
+        
+        # Return surfactant B vials to original positions
+        lash_e.logger.info(f"    Returning surfactant B vials to home positions...")
+        for vial_name, position_info in vial_b_original_positions.items():
+            try:
+                lash_e.nr_robot.move_vial_to_location(vial_name, position_info['location'], position_info['location_index'])
+                lash_e.logger.info(f"      Restored {vial_name} to home position")
+            except Exception as e:
+                lash_e.logger.info(f"      Warning: Could not restore {vial_name}: {e}")
+        
+        # PHASE 3: Add remaining water to fill wells (including control wells)
+        lash_e.logger.info(f"  Phase 3: Adding water (controls and grid wells)")
         
         # Move water vial to optimal position for efficient access
         try:
@@ -1541,9 +1639,9 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
         lash_e.logger.info(f"  BATCH WATER SUMMARY: {batch_water_dispensed_ul:.1f} uL dispensed this batch")
         lash_e.logger.info(f"  CUMULATIVE WATER TOTAL: {total_water_dispensed_ul:.1f} uL ({total_water_dispensed_ul/1000:.3f} mL)")
 
-        # PHASE 3: Add buffer (if enabled and available)
+        # PHASE 4: Add buffer (if enabled and available)
         if ADD_BUFFER:
-            lash_e.logger.info(f"  Phase 3: Adding {SELECTED_BUFFER} buffer (using small tips, back-and-forth)")
+            lash_e.logger.info(f"  Phase 4: Adding {SELECTED_BUFFER} buffer (using small tips, back-and-forth)")
             buffer_volume_ml = BUFFER_VOLUME_UL / 1000  # Convert to mL
             
             # Validate buffer vial exists
@@ -1601,114 +1699,6 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                 # Return buffer vial to home position
                 lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
         
-        # PHASE 4: Add all surfactant B solutions (including controls)
-        lash_e.logger.info(f"  Phase 4: Adding surfactant B (including controls)")
-        
-        vial_b_groups = defaultdict(list)
-        control_wells_b = defaultdict(list)  # Track control wells separately
-        
-        for batch_idx, req in enumerate(current_batch):
-            actual_well = wells_in_batch[batch_idx]
-            
-            # Group by vial type (regular vs control)
-            if req.get('is_control', False):
-                if req['volume_b_ul'] > 0 and req['dilution_b_vial']:
-                    control_wells_b[req['dilution_b_vial']].append((batch_idx, actual_well, req))
-            else:
-                # Regular grid wells
-                if req['volume_b_ul'] > 0:
-                    vial_b_groups[req['dilution_b_vial']].append((batch_idx, actual_well, req))
-        
-        # Handle control wells first (they use stock concentrations)
-        lash_e.logger.info(f"    Processing {sum(len(wells) for wells in control_wells_b.values())} control wells for surfactant B")
-        for vial_name, well_list in control_wells_b.items():
-            for batch_idx, actual_well, req in well_list:
-                volume_each_ml = req['volume_b_ul'] / 1000
-                lash_e.logger.info(f"      Control well {actual_well}: {req['volume_b_ul']}uL {vial_name}")
-                
-                lash_e.nr_robot.aspirate_from_vial(vial_name, volume_each_ml, liquid='water')
-                lash_e.nr_robot.dispense_into_wellplate(
-                    dest_wp_num_array=[actual_well], 
-                    amount_mL_array=[volume_each_ml],
-                    liquid='water'
-                )
-                lash_e.nr_robot.remove_pipet()
-                
-                actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
-        
-        # Handle regular grid wells (existing logic)
-        lash_e.logger.info(f"    Processing {sum(len(wells) for wells in vial_b_groups.values())} grid wells for surfactant B")
-        lash_e.logger.info(f"    Moving surfactant B vials to safe positions for better access...")
-        
-        # Move surfactant B vials to safe positions (reuse same safe positions)
-        vial_b_original_positions = {}
-        unique_vials_b = list(vial_b_groups.keys())
-        available_positions = SAFE_POSITIONS['main_8mL_rack'].copy()  # Use rack positions first
-        
-        for i, vial_name in enumerate(unique_vials_b):
-            try:
-                # Store original position
-                current_location = lash_e.nr_robot.get_vial_info(vial_name, 'location')
-                current_index = lash_e.nr_robot.get_vial_info(vial_name, 'location_index')
-                vial_b_original_positions[vial_name] = {'location': current_location, 'location_index': current_index}
-                
-                # Select safe position
-                if i < len(available_positions):
-                    safe_position = available_positions[i]
-                    safe_location = 'main_8mL_rack'
-                elif i < len(available_positions) + len(SAFE_POSITIONS['clamp']):
-                    safe_position = SAFE_POSITIONS['clamp'][0]
-                    safe_location = 'clamp'
-                else:
-                    lash_e.logger.warning(f"      No safe position available for {vial_name} (max 7 vials supported)")
-                    continue
-                
-                # Move to safe position
-                lash_e.nr_robot.move_vial_to_location(vial_name, safe_location, safe_position)
-                lash_e.logger.info(f"      Moved {vial_name} to {safe_location} position {safe_position}")
-            except Exception as e:
-                lash_e.logger.info(f"      Warning: Could not move {vial_name}: {e}")
-        
-        # Sort vial groups by concentration (low->high to prevent contamination)
-        sorted_vial_groups_b = sorted(vial_b_groups.items(), 
-                                     key=lambda x: current_batch[x[1][0][0]]['conc_b'] or 0)
-        
-        # Pipette surfactant B
-        surfactant_b_tip_conditioned = False
-        for vial_name, well_list in sorted_vial_groups_b:
-            lash_e.logger.info(f"    Using vial {vial_name} for {len(well_list)} wells")
-            
-            # Condition tip on first surfactant B vial
-            if not surfactant_b_tip_conditioned:
-                condition_tip(lash_e, vial_name)
-                surfactant_b_tip_conditioned = True
-            
-            for batch_idx, actual_well, req in well_list:
-                # FIXED: Use calculated volume from smart dilution plan, not fixed volume
-                volume_each_ml = req['volume_b_ul'] / 1000  # Convert uL to mL (was incorrectly using EFFECTIVE_SURFACTANT_VOLUME)
-                
-                # Track actual dispensed volume
-                actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
-                
-                # Use safe location (handles vial movement properly)
-                lash_e.nr_robot.aspirate_from_vial(req['dilution_b_vial'], volume_each_ml, liquid='water')
-                lash_e.nr_robot.dispense_into_wellplate(
-                    dest_wp_num_array=[actual_well], 
-                    amount_mL_array=[volume_each_ml],
-                    liquid='water'
-                )
-        # Remove tip first, then return vial home to allow safe movement
-        lash_e.nr_robot.remove_pipet()
-        
-        # Return surfactant B vials to original positions
-        lash_e.logger.info(f"    Returning surfactant B vials to home positions...")
-        for vial_name, position_info in vial_b_original_positions.items():
-            try:
-                lash_e.nr_robot.move_vial_to_location(vial_name, position_info['location'], position_info['location_index'])
-                lash_e.logger.info(f"      Restored {vial_name} to home position")
-            except Exception as e:
-                lash_e.logger.info(f"      Warning: Could not restore {vial_name}: {e}")
-
         # Record well information for this batch
         for i, req in enumerate(current_batch):
             actual_well = wells_in_batch[i]
@@ -2044,12 +2034,9 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")
     
-    # Validate pipetting capability if enabled or if in validation-only mode
-    if VALIDATE_LIQUIDS or VALIDATION_ONLY:
-        if VALIDATION_ONLY:
-            lash_e.logger.info("  VALIDATION-ONLY MODE: Running comprehensive pipetting validation...")
-        else:
-            lash_e.logger.info("  Validating pipetting capability using embedded validation...")
+    # Validate pipetting capability if enabled
+    if VALIDATE_LIQUIDS:
+        lash_e.logger.info("  Validating pipetting capability using embedded validation...")
         
         # Use the already-created experiment output folder
         lash_e.logger.info(f"  Validation data will be saved to: {experiment_output_folder}/calibration_validation/")
@@ -2070,6 +2057,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
             # Test 1a: Small water volumes with conditioning
             small_volumes = [0.02,0.05,0.1]
             lash_e.logger.info("      Testing small water volumes (10-100 uL) with conditioning...")
+            lash_e.nr_robot.move_vial_to_location('water', 'clamp', 0)  # Ensure vial is in position
+            condition_tip(lash_e, 'water', conditioning_volume_ul=150, liquid_type='water')  # Condition for small volumes
             
             small_water_results = validate_pipetting_accuracy(
                 lash_e=lash_e,
@@ -2080,9 +2069,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 replicates=3,
                 output_folder=experiment_output_folder,
                 switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=150
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate)
             )
             validation_results['water_small'] = small_water_results
             lash_e.logger.info(f"        Small water: R²={small_water_results['r_squared']:.3f}, Accuracy={small_water_results['mean_accuracy_pct']:.1f}%")
@@ -2090,6 +2077,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
             # Test 1b: Large water volumes with conditioning
             large_volumes = [0.2, 0.5, 0.9]
             lash_e.logger.info("      Testing large water volumes (200-900 uL) with conditioning...")
+            lash_e.nr_robot.move_vial_to_location('water', 'clamp', 0)  # Ensure vial is in position
+            condition_tip(lash_e, 'water', conditioning_volume_ul=900, liquid_type='water')  # Condition for large volumes
             
             large_water_results = validate_pipetting_accuracy(
                 lash_e=lash_e,
@@ -2100,16 +2089,15 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 replicates=3,
                 output_folder=experiment_output_folder,
                 switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=900
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate)
             )
             validation_results['water_large'] = large_water_results
             lash_e.logger.info(f"        Large water: R²={large_water_results['r_squared']:.3f}, Accuracy={large_water_results['mean_accuracy_pct']:.1f}%")
             
             # Test 2: DMSO validation  
             lash_e.logger.info("    Validating DMSO pipetting (5 uL) with conditioning...")
-            
+            lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)  # Ensure vial is in position
+            condition_tip(lash_e, 'pyrene_DMSO', conditioning_volume_ul=25, liquid_type='DMSO')  # Condition for DMSO 
             dmso_results = validate_pipetting_accuracy(
                 lash_e=lash_e,
                 source_vial='pyrene_DMSO',
@@ -2119,9 +2107,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 replicates=5,
                 output_folder=experiment_output_folder,
                 switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=25
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate)
             )
             validation_results['dmso'] = dmso_results
             lash_e.logger.info(f"      DMSO validation: R²={dmso_results['r_squared']:.3f}, Accuracy={dmso_results['mean_accuracy_pct']:.1f}%")
@@ -2129,7 +2115,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
             # Test 3a: Surfactant A stock validation - Small volumes (small tips)
             surfactant_a_stock = f"{surfactant_a_name}_stock"
             lash_e.logger.info(f"    Validating {surfactant_a_stock} pipetting - Small volumes (10-100 uL) with conditioning...")
-            
+            lash_e.nr_robot.move_vial_to_location(surfactant_a_stock, 'clamp', 0)  # Ensure vial is in position
+            condition_tip(lash_e, surfactant_a_stock, conditioning_volume_ul=100, liquid_type='water')  # Condition for surfactant A small
             surf_a_small_results = validate_pipetting_accuracy(
                 lash_e=lash_e,
                 source_vial=surfactant_a_stock,
@@ -2139,16 +2126,15 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 replicates=3,
                 output_folder=experiment_output_folder,
                 switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=100
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate)
             )
             validation_results['surfactant_a_small'] = surf_a_small_results
             lash_e.logger.info(f"        Small {surfactant_a_stock}: R²={surf_a_small_results['r_squared']:.3f}, Accuracy={surf_a_small_results['mean_accuracy_pct']:.1f}%")
             
             # Test 3b: Surfactant A stock validation - Large volumes (large tips)
             lash_e.logger.info(f"    Validating {surfactant_a_stock} pipetting - Large volumes (200-900 uL) with conditioning...")
-            
+            lash_e.nr_robot.move_vial_to_location(surfactant_a_stock, 'clamp', 0) 
+            condition_tip(lash_e, surfactant_a_stock, conditioning_volume_ul=800, liquid_type='water')  # Condition for surfactant A large
             surf_a_large_results = validate_pipetting_accuracy(
                 lash_e=lash_e,
                 source_vial=surfactant_a_stock,
@@ -2158,9 +2144,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 replicates=3,
                 output_folder=experiment_output_folder,
                 switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=800
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate)
             )
             validation_results['surfactant_a_large'] = surf_a_large_results
             lash_e.logger.info(f"        Large {surfactant_a_stock}: R²={surf_a_large_results['r_squared']:.3f}, Accuracy={surf_a_large_results['mean_accuracy_pct']:.1f}%")
@@ -2168,7 +2152,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
             # Test 4a: Surfactant B stock validation - Small volumes (small tips)
             surfactant_b_stock = f"{surfactant_b_name}_stock"
             lash_e.logger.info(f"    Validating {surfactant_b_stock} pipetting - Small volumes (10-100 uL) with conditioning...")
-            
+            lash_e.nr_robot.move_vial_to_location(surfactant_b_stock, 'clamp', 0) 
+            condition_tip(lash_e, surfactant_b_stock, conditioning_volume_ul=150, liquid_type='water')  # Condition for surfactant B small
             surf_b_small_results = validate_pipetting_accuracy(
                 lash_e=lash_e,
                 source_vial=surfactant_b_stock,
@@ -2178,16 +2163,15 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 replicates=1,
                 output_folder=experiment_output_folder,
                 switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=150
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate)
             )
             validation_results['surfactant_b_small'] = surf_b_small_results
             lash_e.logger.info(f"        Small {surfactant_b_stock}: R²={surf_b_small_results['r_squared']:.3f}, Accuracy={surf_b_small_results['mean_accuracy_pct']:.1f}%")
             
             # Test 4b: Surfactant B stock validation - Large volumes (large tips)
             lash_e.logger.info(f"    Validating {surfactant_b_stock} pipetting - Large volumes (200-900 uL) with conditioning...")
-            
+            lash_e.nr_robot.move_vial_to_location(surfactant_b_stock, 'clamp', 0) 
+            condition_tip(lash_e, surfactant_b_stock, conditioning_volume_ul=800, liquid_type='water')  # Condition for surfactant B large
             surf_b_large_results = validate_pipetting_accuracy(
                 lash_e=lash_e,
                 source_vial=surfactant_b_stock,
@@ -2197,9 +2181,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 replicates=1,
                 output_folder=experiment_output_folder,
                 switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=800
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate)
             )
             validation_results['surfactant_b_large'] = surf_b_large_results
             lash_e.logger.info(f"        Large {surfactant_b_stock}: R²={surf_b_large_results['r_squared']:.3f}, Accuracy={surf_b_large_results['mean_accuracy_pct']:.1f}%")
@@ -2222,20 +2204,6 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
             # input(">>> ")
             lash_e.logger.info("")
             
-            # Early exit for validation-only mode
-            if VALIDATION_ONLY:
-                lash_e.logger.info("="*60)
-                lash_e.logger.info("VALIDATION-ONLY MODE: Exiting after validation completion")
-                lash_e.logger.info("="*60)
-                return {
-                    'validation_only': True,
-                    'validation_results': validation_results,
-                    'experiment_name': experiment_name,
-                    'output_folder': experiment_output_folder,
-                    'simulation': simulate,
-                    'workflow_complete': True
-                }
-            
         except ImportError as e:
             lash_e.logger.info(f"    Could not import embedded validation: {e}")
             lash_e.logger.info("    Skipping validation (validation system not available)...")
@@ -2244,7 +2212,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
             lash_e.logger.info("    Continuing with workflow (validation failure non-critical)...")     
    
     else:
-        lash_e.logger.info("  Pipetting validation disabled (set VALIDATE_LIQUIDS=True or VALIDATION_ONLY=True to enable)")
+        lash_e.logger.info("  Pipetting validation disabled")
     
     # Robot is ready - no initial positioning needed
     lash_e.logger.info("  Robot ready for operations")

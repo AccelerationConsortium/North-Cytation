@@ -49,6 +49,34 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import json
 
+def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='water'):
+    """Condition a pipette tip by aspirating and dispensing into source vial multiple times
+    
+    Args:
+        lash_e: Lash_E robot controller
+        vial_name: Name of vial to condition tip with
+        conditioning_volume_ul: Total volume for conditioning (default 100 uL)
+        liquid_type: Type of liquid for pipetting parameters ('water', 'DMSO', etc.)
+    """
+    try:
+        # Calculate volume per conditioning cycle (5 cycles total)
+        cycles = 3
+        volume_per_cycle_ul = conditioning_volume_ul
+        volume_per_cycle_ml = volume_per_cycle_ul / 1000
+        
+        lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL")
+        
+        for cycle in range(cycles):
+            # Aspirate from vial 
+            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type)
+            # Dispense back into same vial
+            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type)
+        
+        lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
+        
+    except Exception as e:
+        lash_e.logger.info(f"    Warning: Could not condition tip with {vial_name}: {e}")
+
 # Add path for imports if needed
 if "../utoronto_demo" not in sys.path:
     sys.path.append("../utoronto_demo")
@@ -101,6 +129,32 @@ def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) ->
     
     return is_acceptable
 
+def calculate_quality_threshold(volume_ml: float) -> float:
+    """
+    Calculate appropriate quality standard deviation threshold based on volume.
+    
+    Args:
+        volume_ml: Volume being tested in mL
+        
+    Returns:
+        float: Quality threshold in grams
+        
+    Logic:
+        - For volumes <= 0.005 mL (5 uL): threshold = 0.0005g (0.5 mg)
+        - For volumes >= 0.5 mL (500 uL): threshold = 0.005g (5 mg)
+        - For volumes in between: linear interpolation
+    """
+    if volume_ml <= 0.005:
+        return 0.0005
+    elif volume_ml >= 0.5:
+        return 0.005
+    else:
+        # Linear interpolation between the two points
+        # (0.005 mL, 0.0005g) and (0.5 mL, 0.005g)
+        slope = (0.005 - 0.0005) / (0.5 - 0.005)
+        threshold = 0.0005 + slope * (volume_ml - 0.005)
+        return threshold
+
 def validate_pipetting_accuracy(
     lash_e,
     source_vial: str,
@@ -114,7 +168,9 @@ def validate_pipetting_accuracy(
     switch_pipet: bool = False,
     compensate_overvolume: bool = True,
     smooth_overvolume: bool = False,
-    quality_std_threshold: float = 0.001
+    quality_std_threshold: float = None,
+    condition_tip_enabled: bool = False,
+    conditioning_volume_ul: float = 100,
 ) -> Dict:
     
 
@@ -134,6 +190,9 @@ def validate_pipetting_accuracy(
         switch_pipet: Whether to change pipet tip between measurements (default: False)
         compensate_overvolume: Apply overvolume compensation based on measured accuracy (default: True)
         smooth_overvolume: Apply local smoothing to remove overvolume outliers (default: False)
+        quality_std_threshold: Standard deviation threshold for quality assessment (default: None = auto-calculate per volume)
+        condition_tip_enabled: Whether to condition tip before validation (default: False)
+        conditioning_volume_ul: Volume for tip conditioning in uL (default: 100)
         
     Returns:
         dict: Results summary containing accuracy metrics, file paths, and statistics
@@ -159,7 +218,7 @@ def validate_pipetting_accuracy(
     
     # === SETUP OUTPUT DIRECTORY ===
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    calib_folder = os.path.join(output_folder, "calibration_validation", f"validation_{timestamp}")
+    calib_folder = os.path.join(output_folder, "calibration_validation", f"validation_{liquid_type}_{source_vial}_{timestamp}")
     
     # Only create directories and prepare file operations in non-simulation mode
     if save_raw_data:
@@ -172,10 +231,28 @@ def validate_pipetting_accuracy(
     print(f"Volumes: {volumes_ml} mL")
     print(f"Replicates: {replicates}")
     print(f"Switch pipet: {switch_pipet}")
+    print(f"Condition tip: {condition_tip_enabled}")
     if save_raw_data:
         print(f"Output: {calib_folder}")
     else:
         print("Output: Simulation mode - no files saved")
+    
+    # === TIP CONDITIONING (OPTIONAL) ===
+    if condition_tip_enabled:
+        print(f"\n--- Tip Conditioning ---")
+        print(f"Moving {source_vial} to clamp position for conditioning...")
+        
+        try:
+
+            # Move source vial to clamp position
+            lash_e.nr_robot.move_vial_to_location(source_vial, 'clamp', 0)
+            
+            # Condition tip with specified volume
+            condition_tip(lash_e, source_vial, conditioning_volume_ul, liquid_type)
+            
+        except Exception as e:
+            print(f"Warning: Tip conditioning failed: {e}")
+            print("Continuing with validation without conditioning...")
     
     # === DATA COLLECTION ===
     all_results = []
@@ -185,6 +262,10 @@ def validate_pipetting_accuracy(
 
     for volume_ml in volumes_ml:
         print(f"\\nTesting volume: {volume_ml:.3f} mL ({replicates} replicates)")
+        
+        # Calculate appropriate quality threshold for this volume
+        current_threshold = quality_std_threshold if quality_std_threshold is not None else calculate_quality_threshold(volume_ml)
+        print(f"  Using quality threshold: {current_threshold:.6f}g ({current_threshold*1000:.3f}mg)")
         
         for rep in range(replicates):
             print(f"  Replicate {rep + 1}/{replicates}...")
@@ -209,14 +290,17 @@ def validate_pipetting_accuracy(
                     return_vial_home=False,   # Keep destination vial in clamp for mass measurement
                     compensate_overvolume=compensate_overvolume,
                     smooth_overvolume=smooth_overvolume,
-                    measure_weight=True  # Enable mass measurement with continuous monitoring
+                    measure_weight=True,  # Enable mass measurement with continuous monitoring
+                    continuous_mass_monitoring=True, 
+                    save_mass_data=True
+                    
                 )
                 
                 # Handle new return format (mass, stability_info)
                 if isinstance(transfer_result, tuple):
                     mass_difference, stability_info = transfer_result
                     # Evaluate measurement quality for calibration/validation
-                    measurement_acceptable = _evaluate_measurement(stability_info, quality_std_threshold)
+                    measurement_acceptable = _evaluate_measurement(stability_info, current_threshold)
                 else:
                     # Backwards compatibility - old format returns just mass
                     mass_difference = transfer_result
@@ -450,7 +534,7 @@ def validate_reservoir_accuracy(
     print(f"Volumes: {volumes_ml} mL")
     print(f"Replicates: {replicates}")
     print(f"Output: {calib_folder}")
-    
+           
     # === DATA COLLECTION ===
     all_results = []
     

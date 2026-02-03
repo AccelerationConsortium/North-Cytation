@@ -11,10 +11,18 @@ def move_vials(input_vial_status_file, repeats=3):
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(input_vial_status_file,initialize_biotek=False)
 
-    for i in range (0, repeats):
-        lash_e.nr_robot.move_vial_to_location(2,'clamp', 0)
-        lash_e.nr_robot.uncap_clamp_vial()
-        lash_e.nr_robot.return_vial_home(2)
+    #lash_e.nr_robot.check_input_file()
+
+    for i in range (0, 1):
+        lash_e.nr_robot.move_vial_to_location("target_vial",'clamp', 0)
+
+        input("Press Enter to continue...")
+
+        for j in range(0, repeats):
+            lash_e.nr_robot.dispense_from_vial_into_vial("target_vial","target_vial",0.100, return_vial_home=False, remove_tip=False)
+        lash_e.nr_robot.remove_pipet()
+
+        lash_e.nr_robot.return_vial_home("target_vial")
         lash_e.nr_robot.move_home()
 
-move_vials("../utoronto_demo/status/sample_input_vials.csv", repeats=1)
+move_vials("../utoronto_demo/status/sample_input_vials.csv", repeats=3)
