@@ -7,7 +7,7 @@ import pandas as pd
 import yaml
 from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
-from pipetting_data.pipetting_parameters import PipettingParameters
+from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirParameters
 from pipetting_data.pipetting_wizard import PipettingWizard
 import matplotlib.patches as patches
 import threading
@@ -1726,6 +1726,62 @@ class North_Robot(North_Base):
                         
         return optimized
     
+    def _get_optimized_reservoir_parameters(self, volume, liquid=None, reservoir_params=None):
+        """
+        Get optimized reservoir parameters using intelligent hierarchy:
+        defaults → liquid-calibrated → user overrides
+        
+        Args:
+            volume (float): Target dispensing volume in mL
+            liquid (str, optional): Liquid type for calibrated parameters
+            reservoir_params (ReservoirParameters, optional): User-provided overrides
+            
+        Returns:
+            ReservoirParameters: Optimized parameters with intelligent defaults
+        """
+        # Start with system defaults
+        optimized = ReservoirParameters()
+        
+        # Apply liquid-specific calibration if available
+        if liquid is not None:
+            try:
+                # TODO: Implement ReservoirWizard when ready
+                # wizard = ReservoirWizard()
+                # calibrated_params = wizard.get_reservoir_parameters(liquid, volume)
+                # 
+                # if calibrated_params is not None:
+                #     # Update only the parameters that were successfully calibrated
+                #     for param_name, param_value in calibrated_params.items():
+                #         if hasattr(optimized, param_name) and param_value is not None:
+                #             setattr(optimized, param_name, param_value)
+                #             self.logger.debug(f"Using calibrated reservoir {param_name}={param_value} for {liquid} at {volume:.3f}mL")
+                
+                self.logger.debug(f"Reservoir calibration not yet implemented for {liquid} - using defaults")
+                            
+            except Exception as e:
+                # Graceful fallback - calibration is optional enhancement
+                self.logger.debug(f"Could not load calibrated reservoir parameters for {liquid}: {e}")
+        
+        # Apply user overrides (highest priority)
+        if reservoir_params is not None:
+            # Handle both dictionary and object formats
+            if isinstance(reservoir_params, dict):
+                # Dictionary format: {'param_name': value}
+                for param_name, user_value in reservoir_params.items():
+                    if hasattr(optimized, param_name) and user_value is not None:
+                        setattr(optimized, param_name, user_value)
+                        self.logger.debug(f"Applied reservoir dict param {param_name}={user_value}")
+            else:
+                # Object format with attributes
+                for param_name in dir(reservoir_params):
+                    if not param_name.startswith('_'):  # Skip private attributes
+                        user_value = getattr(reservoir_params, param_name)
+                        if user_value is not None:  # Only override if user explicitly set a value
+                            setattr(optimized, param_name, user_value)
+                            self.logger.debug(f"Applied reservoir user param {param_name}={user_value}")
+        
+        return optimized
+
     #Check if the aspiration volume is within limits... Now extensible and configuration-driven
     def check_if_aspiration_volume_unacceptable(self, amount_mL):
         if self.HELD_PIPET_TYPE is None:
@@ -2895,10 +2951,28 @@ class North_Robot(North_Base):
         self.logger.info(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume:.3f} mL")
         self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
 
-    def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume, measure_weight = False, return_home=True, continuous_mass_monitoring=False, save_mass_data=False):
+    def dispense_into_vial_from_reservoir(self, reservoir_index, vial_index, volume, reservoir_params=None, liquid=None, measure_weight=False, return_home=True, continuous_mass_monitoring=False, save_mass_data=False):
+        """
+        Dispense liquid from reservoir into a vial.
         
+        Args:
+            reservoir_index: Index of the reservoir to dispense from
+            vial_index: Index/name of destination vial
+            volume: Volume to dispense in mL
+            reservoir_params (ReservoirParameters, optional): Liquid handling parameters (uses defaults if None)
+            liquid (str, optional): Liquid type for calibrated parameter optimization (future feature)
+            measure_weight (bool): Whether to measure mass before/after dispensing (default: False)
+            continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
+            save_mass_data (bool): Whether to save continuous mass data to file (default: False)
+        """
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
+        
+        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        reservoir_params = self._get_optimized_reservoir_parameters(volume, liquid, reservoir_params)
+        
+        
         self.logger.info(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume:.3f} mL")
+        self.logger.debug(f"Reservoir parameters: aspirate_speed={reservoir_params.aspirate_speed}, dispense_speed={reservoir_params.dispense_speed}, overaspirate={reservoir_params.overaspirate_vol:.3f} mL")
         measured_mass = None
         stability_info = None
 
@@ -2953,7 +3027,7 @@ class North_Robot(North_Base):
                 while monitoring_active.is_set():
                     try:
                         if not self.simulate:
-                            weight, steady_status = self.c9.read_scale()  # Returns (weight, steady_status)
+                            steady_status, weight = self.c9.read_scale()  # Actually returns (steady_status, weight)
                         else:
                             weight, steady_status = 0.0, True
                             
@@ -2978,7 +3052,8 @@ class North_Robot(North_Base):
                         self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
                     except Exception as e:
                         self.logger.warning(f"Scale reading failed: {e}")
-                    time.sleep(0.2)  # 5 Hz maximum rate
+                    if not self.simulate:
+                        time.sleep(0.2)  # 5 Hz maximum rate
             
             # Start monitoring with pre-dispense baseline
             self.logger.info("Starting continuous mass monitoring for reservoir dispensing")
@@ -2988,21 +3063,55 @@ class North_Robot(North_Base):
             monitor_thread.start()
             
             # Wait for pre-dispense baseline
-            time.sleep(2.0)
+            if not self.simulate:
+                time.sleep(2.0)
         
         # Record when dispensing starts
         if continuous_mass_monitoring:
             dispense_start_time = time.time()
         
-        # Perform actual dispensing
-        num_dispenses = math.ceil(volume/max_volume)
-        dispense_vol = volume/num_dispenses
-        self.logger.debug(f"Dispensing {dispense_vol:.3f} mL {num_dispenses} times")
-        for i in range (0, num_dispenses):        
-             self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_LEFT)
-             self.c9.aspirate_ml(reservoir_index,dispense_vol)
-             self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_RIGHT)
-             self.c9.dispense_ml(reservoir_index,dispense_vol)
+        # Perform actual dispensing with parameterized control
+        total_volume_to_aspirate = volume + reservoir_params.overaspirate_vol
+        num_dispenses = math.ceil(total_volume_to_aspirate/max_volume)
+        dispense_vol = total_volume_to_aspirate/num_dispenses
+        actual_dispense_vol = dispense_vol  # Dispense everything we aspirate each cycle
+        
+        self.logger.info(f"DISPENSING DEBUG: simulate={self.simulate}, volume={volume:.3f}mL, overaspirate={reservoir_params.overaspirate_vol:.3f}mL")
+        self.logger.info(f"DISPENSING DEBUG: total_vol={total_volume_to_aspirate:.3f}mL, num_dispenses={num_dispenses}, dispense_vol={dispense_vol:.3f}mL, actual_dispense={actual_dispense_vol:.3f}mL")
+        self.logger.debug(f"Dispensing {actual_dispense_vol:.3f} mL (with {reservoir_params.overaspirate_vol:.3f} mL overaspirate) {num_dispenses} times")
+        
+        for i in range(0, num_dispenses):        
+            self.logger.info(f"DISPENSING LOOP {i+1}/{num_dispenses}: simulate={self.simulate}")
+            
+            # Aspirate from reservoir with speed control
+            self.c9.set_pump_valve(reservoir_index, self.c9.PUMP_VALVE_LEFT)
+            if reservoir_params.valve_switch_delay > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.valve_switch_delay)
+                
+            if reservoir_params.aspirate_speed is not None:
+                self.c9.set_pump_speed(reservoir_index, reservoir_params.aspirate_speed)
+            self.logger.info(f"ASPIRATING: {dispense_vol:.3f}mL from reservoir {reservoir_index}")
+            self.c9.aspirate_ml(reservoir_index, dispense_vol)
+            
+            if reservoir_params.aspirate_wait_time > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.aspirate_wait_time)
+                
+            # Dispense into vial with speed control  
+            self.c9.set_pump_valve(reservoir_index, self.c9.PUMP_VALVE_RIGHT)
+            if reservoir_params.valve_switch_delay > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.valve_switch_delay)
+                
+            if reservoir_params.dispense_speed is not None:
+                self.c9.set_pump_speed(reservoir_index, reservoir_params.dispense_speed)
+            self.logger.info(f"DISPENSING: {actual_dispense_vol:.3f}mL into vial {vial_index}")
+            self.c9.dispense_ml(reservoir_index, actual_dispense_vol)
+            
+            if reservoir_params.dispense_wait_time > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.dispense_wait_time)
         
         if not self.simulate:
             time.sleep(1)
@@ -3014,7 +3123,8 @@ class North_Robot(North_Base):
             self.logger.info(f"Reservoir dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
             
             # Collect post-dispense baseline
-            time.sleep(2.0)
+            if not self.simulate:
+                time.sleep(2.0)
             
             # Stop monitoring
             monitoring_active.clear()
@@ -3083,6 +3193,7 @@ class North_Robot(North_Base):
             # Save mass data if requested
             if save_mass_data and continuous_mass_data:
                 import os
+                import matplotlib.pyplot as plt
                 timestamp_str = time.strftime("%Y%m%d_%H%M%S")
                 
                 # Use log filename for folder organization instead of date
@@ -3100,6 +3211,45 @@ class North_Robot(North_Base):
                 mass_df = pd.DataFrame(continuous_mass_data)
                 mass_df.to_csv(filepath, index=False)
                 self.logger.info(f"Saved {len(continuous_mass_data)} reservoir mass measurements to {filepath}")
+                
+                # Create and save mass vs time plot (same as regular dispense method)
+                if len(continuous_mass_data) > 4:
+                    plt.figure(figsize=(10, 6))
+                    
+                    # Plot all data points
+                    plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'b.-', alpha=0.7, markersize=2, linewidth=1)
+                    
+                    # Add phase coloring
+                    pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
+                    dispense_data = mass_df[mass_df['phase'] == 'dispensing'] 
+                    post_data = mass_df[mass_df['phase'] == 'baseline_post']
+                    
+                    if len(pre_data) > 0:
+                        plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
+                                   alpha=0.2, color='green', label='Pre-baseline', zorder=1)
+                    if len(dispense_data) > 0:
+                        plt.axvspan(dispense_data['time_relative'].min(), dispense_data['time_relative'].max(), 
+                                   alpha=0.2, color='blue', label='Dispensing', zorder=1)
+                    if len(post_data) > 0:
+                        plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
+                                   alpha=0.2, color='red', label='Post-baseline', zorder=1)
+                
+                    # Add horizontal lines for averaged baselines
+                    plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
+                    plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
+                    
+                    plt.xlabel('Time (seconds)')
+                    plt.ylabel('Mass (g)')
+                    plt.title(f'Reservoir Mass vs Time During Dispense\\nVial: {vial_index}, Target: {volume:.3f} mL, Measured: {measured_mass:.4f} g')
+                    plt.legend()
+                    plt.grid(True, alpha=0.3)
+                    
+                    # Save the plot
+                    plot_filename = f"reservoir_mass_plot_{vial_index}_res{reservoir_index}_{timestamp_str}.png"
+                    plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
+                    plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
+                    plt.close()  # Close the figure to free memory
+                    self.logger.info(f"Saved reservoir mass vs time plot to {plot_filepath}")
         
         elif measure_weight: # Traditional before/after measurement
             if not self.simulate:

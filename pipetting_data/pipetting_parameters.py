@@ -43,5 +43,28 @@ class PipettingParameters:
     asp_disp_cycles: int = 0                # Number of aspirate/dispense mixing cycles
 
 
+@dataclass
+class ReservoirParameters:
+    """
+    Standard parameters for reservoir (syringe pump) liquid handling operations.
+    
+    These parameters control syringe pump behavior during reservoir-to-vial
+    dispensing operations. Movement and measurement parameters are handled
+    separately at the method level.
+    """
+    
+    # === SPEED PARAMETERS ===
+    aspirate_speed: Optional[int] = 11      # Speed when aspirating from reservoir
+    dispense_speed: Optional[int] = 11      # Speed when dispensing into vial
+    
+    # === TIMING PARAMETERS ===
+    aspirate_wait_time: float = 0.0         # Wait time after aspiration (seconds)
+    dispense_wait_time: float = 0.0         # Wait time after dispensing (seconds)
+    valve_switch_delay: float = 0.1         # Delay when switching valve positions (seconds)
+    
+    # === VOLUME PARAMETERS ===
+    overaspirate_vol: float = 0.0           # Extra volume to aspirate for accuracy (mL)
+
+
 
 

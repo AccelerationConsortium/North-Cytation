@@ -20,9 +20,10 @@ from calibration_protocol_base import CalibrationProtocolBase
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
+import slack_agent
 
 # Tip conditioning volume (mL)
-TIP_CONDITIONING_VOLUME = 0.5
+TIP_CONDITIONING_VOLUME = 0.18
 
 # Liquid densities for mass-to-volume conversion (g/mL)
 LIQUIDS = {
@@ -63,7 +64,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
-        SWAP = False  # If True, enables vial swapping when needed
+        SWAP = True  # If True, enables vial swapping when needed
 
         continuous_monitoring = True
         
@@ -71,7 +72,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
-        self.quality_std_threshold = 0.001  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
+        self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
 
         
@@ -398,6 +399,18 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 lash_e.nr_robot.move_home()
                 
                 print(f"COMPLETE: Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
+                
+                # Send slack notification
+                try:
+                    slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
+                except Exception as e:
+                    print(f"WARNING: Slack notification failed: {e}")
+                
+                # Send slack notification
+                try:
+                    slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
+                except Exception as e:
+                    print(f"WARNING: Slack notification failed: {e}")
                 
             except Exception as e:
                 print(f"WARNING: Hardware cleanup warning: {e}")

@@ -162,6 +162,75 @@ class CalibrationExperiment:
         except Exception as e:
             logger.warning(f"Failed to save incremental data: {e}")
 
+    def _save_incremental_optimal_conditions(self):
+        """Save optimal conditions incrementally after each volume completion.
+        
+        Uses the exact same export logic as the final export to ensure consistency.
+        Saves to optimal_conditions_incremental.csv for crash recovery.
+        """
+        try:
+            # Only proceed if we have completed volumes with results
+            if not self.volume_results:
+                return
+                
+            # Build optimal_conditions list using EXACT same logic as _generate_enhanced_outputs
+            optimal_conditions = []
+            for volume_result in self.volume_results:
+                if volume_result.optimal_parameters:
+                    # Create optimal condition dictionary from the best trial
+                    best_trial = volume_result.best_trials[0] if volume_result.best_trials else None
+                    if best_trial:
+                        optimal_dict = {
+                            'volume_ul': volume_result.target_volume_ml * 1000,
+                            'measured_volume_ul': best_trial.analysis.mean_volume_ml * 1000,
+                            'deviation_pct': best_trial.analysis.absolute_deviation_pct,
+                            'cv_pct': best_trial.analysis.cv_volume_pct,
+                            'time_s': best_trial.analysis.mean_duration_s,
+                            'trials_used': len(volume_result.trials),
+                            'measurements_count': volume_result.measurement_count,
+                            'status': 'success' if best_trial.analysis.absolute_deviation_pct <= 10 else 'partial_success',
+                            'parameters': asdict(volume_result.optimal_parameters)
+                        }
+                        optimal_conditions.append(optimal_dict)
+            
+            # Only save if we have optimal conditions to save
+            if optimal_conditions:
+                # Use the proven _export_optimal_conditions logic
+                import pandas as pd
+                from dataclasses import asdict
+                
+                # Flatten parameters for CSV export (same as existing logic)
+                flattened_conditions = []
+                for condition in optimal_conditions:
+                    flattened = condition.copy()
+                    # Remove nested parameters dict
+                    params = flattened.pop('parameters', {})
+                    
+                    # Add calibration parameters
+                    if 'calibration' in params:
+                        cal_params = params['calibration']
+                        for key, value in cal_params.items():
+                            flattened[key] = value
+                    
+                    # Add hardware parameters 
+                    if 'hardware' in params:
+                        hw_params = params['hardware'].get('parameters', {})
+                        for key, value in hw_params.items():
+                            flattened[key] = value
+                    
+                    flattened_conditions.append(flattened)
+                
+                # Create DataFrame and save
+                df = pd.DataFrame(flattened_conditions)
+                incremental_path = self.output_dir / "optimal_conditions_incremental.csv"
+                df.to_csv(incremental_path, index=False)
+                
+                logger.info(f"[INCREMENTAL] Saved {len(df)} optimal conditions to optimal_conditions_incremental.csv")
+                
+        except Exception as e:
+            logger.warning(f"Failed to save incremental optimal conditions (non-critical): {e}")
+            # Don't raise - this should never crash the main experiment
+
     def _save_measurement_immediately(self, measurement, target_volume_ml: float, strategy: str, parameters=None):
         """Save individual measurement to CSV immediately after it's taken."""
         try:
@@ -526,6 +595,9 @@ class CalibrationExperiment:
                             self.volume_results = original_volume_results
                 
                 self.volume_results.append(volume_result)
+                
+                # INCREMENTAL SAVE: Save optimal conditions after each volume completion
+                self._save_incremental_optimal_conditions()
                 
                 # Check global budget constraints
                 if self.total_measurements >= self.config.get_max_total_measurements():
