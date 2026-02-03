@@ -21,6 +21,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
 
+# Tip conditioning volume (mL)
+TIP_CONDITIONING_VOLUME = 0.5
+
 # Liquid densities for mass-to-volume conversion (g/mL)
 LIQUIDS = {
     "water": {"density": 1.00, "refill_pipets": False},
@@ -60,7 +63,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
-        SWAP = True  # If True, enables vial swapping when needed
+        SWAP = False  # If True, enables vial swapping when needed
 
         continuous_monitoring = True
         
@@ -99,11 +102,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     dispense_wait_time=0.0,
                     blowout_vol=0.5
                 )
-                lash_e.nr_robot.aspirate_from_vial(source_vial, 0.18, move_up=False, parameters=conditioning_params)
-                lash_e.nr_robot.dispense_into_vial(source_vial, 0.18, initial_move=False, parameters=conditioning_params)
+                lash_e.nr_robot.aspirate_from_vial(source_vial, TIP_CONDITIONING_VOLUME, move_up=False, parameters=conditioning_params)
+                lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
                 for i in range (0, 3):
-                    lash_e.nr_robot.aspirate_from_vial(source_vial, 0.18,  move_to_aspirate=False, parameters=conditioning_params)
-                    lash_e.nr_robot.dispense_into_vial(source_vial, 0.18, initial_move=False, parameters=conditioning_params)
+                    lash_e.nr_robot.aspirate_from_vial(source_vial, TIP_CONDITIONING_VOLUME,  move_to_aspirate=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
                 lash_e.nr_robot.move_home()
             
             print("READY: Hardware initialized successfully")
@@ -170,11 +173,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         dispense_wait_time=0.0,
                         blowout_vol=0.5
                     )
-                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], 0.18, move_up=False, parameters=conditioning_params)
-                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], 0.18, initial_move=False, parameters=conditioning_params)
+                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, move_up=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
                     for i in range (0, 3):
-                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], 0.18, move_to_aspirate=False, parameters=conditioning_params)
-                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], 0.18, initial_move=False, parameters=conditioning_params)
+                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, move_to_aspirate=False, parameters=conditioning_params)
+                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
                     lash_e.nr_robot.move_home()
                 
                 print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
@@ -234,7 +237,6 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             save_mass_data=False
         
         for rep in range(replicates):
-            rep_start = time.perf_counter()
             start_time = datetime.now()
             
             # Convert volume to microliters
@@ -278,6 +280,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 while not measurement_acceptable and retry_count <= max_retries:
                     if retry_count > 0:
                         print(f"    Retry attempt {retry_count}/{max_retries}")
+                    
+                    # Start timing just before the successful measurement attempt
+                    rep_start = time.perf_counter()
                     
                     # Aspirate from source vial
                     lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
@@ -327,6 +332,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             else:
                 # Simple simulation: target volume - 20% + overaspirate + noise
                 import random
+                
+                # Start timing for simulation
+                rep_start = time.perf_counter()
                 
                 # Still call the robot methods for vial tracking, but ignore measurement result
                 lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
