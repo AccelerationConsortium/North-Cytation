@@ -83,8 +83,8 @@ SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
+SIMULATE = False # Set to False for actual hardware execution
+VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
 VALIDATION_ONLY = False # Set to True to run only validations and skip full experiment
 
 # Pump configuration:
@@ -127,7 +127,7 @@ TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
 FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
 
 # Workflow control flags
-CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
+CREATE_WELLPLATE = False  # Set to True to create wellplate, False to skip to measurements only
 
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
@@ -260,7 +260,7 @@ def fill_water_vial(lash_e, vial_name):
     # Calculate volume needed to fill to max capacity
     fill_volume_ml = max_volume_ml - current_volume_ml
     
-    if fill_volume_ml <= 0.1:  # Already nearly full (within 100uL)
+    if fill_volume_ml <= 0.1:  # Already nearly full (within 100μL)
         lash_e.logger.info(f"    Water vial '{vial_name}' already full ({current_volume_ml:.2f}mL), skipping fill")
         return
         
@@ -970,7 +970,7 @@ def calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name
     lash_e.logger.info(f"\nAdaptive concentration grid summary:")
     lash_e.logger.info(f"  {surfactant_a_name}: {len(concs_a)} concentrations from {concs_a[0]:.3e} to {concs_a[-1]:.3e} mM")
     lash_e.logger.info(f"  {surfactant_b_name}: {len(concs_b)} concentrations from {concs_b[0]:.3e} to {concs_b[-1]:.3e} mM")
-    lash_e.logger.info(f"  Total combinations: {len(concs_a)} x {len(concs_b)} = {len(concs_a) * len(concs_b)} wells (x {N_REPLICATES} replicates = {len(concs_a) * len(concs_b) * N_REPLICATES} total wells)")
+    lash_e.logger.info(f"  Total combinations: {len(concs_a)} × {len(concs_b)} = {len(concs_a) * len(concs_b)} wells (× {N_REPLICATES} replicates = {len(concs_a) * len(concs_b) * N_REPLICATES} total wells)")
     
     return concs_a, concs_b
 
@@ -1199,128 +1199,11 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
     
     return controls
 
-def add_dmso_and_measure_existing_wells(lash_e, well_indices, wellplate_data):
-    """Add DMSO and perform measurements on existing wells. Useful for resuming experiments."""
-    lash_e.logger.info(f"Starting DMSO addition and measurements for wells {well_indices}")
-    
-    # Add DMSO to the wells
-    add_dmso_to_wells(lash_e, well_indices, wellplate_data)
-    
-    # Measure fluorescence after DMSO addition
-    fluorescence_entry = measure_wellplate_fluorescence(lash_e, well_indices, wellplate_data)
-    
-    lash_e.logger.info(f"Completed DMSO addition and fluorescence measurement for {len(well_indices)} wells")
-    return fluorescence_entry
+# Now let me add the controls to the main pipetting function
 
-def measure_existing_wells_turbidity_only(lash_e, well_indices, wellplate_data):
-    """Measure turbidity on existing wells without DMSO. Useful for resuming experiments."""
-    lash_e.logger.info(f"Starting turbidity measurements for wells {well_indices}")
-    
-    # Measure turbidity only
-    turbidity_entry = measure_wellplate_turbidity(lash_e, well_indices, wellplate_data)
-    
-    lash_e.logger.info(f"Completed turbidity measurement for {len(well_indices)} wells")
-    return turbidity_entry
 
-def add_dmso_to_wells(lash_e, wells_in_batch, wellplate_data):
-    """Add DMSO to all wells in the batch using optimal small-tip dispensing."""
-    from datetime import datetime
-    
-    lash_e.logger.info(f"  Adding pyrene_DMSO ({PYRENE_VOLUME_UL}uL) using small tips, back-and-forth")
-    pyrene_volume_ml = PYRENE_VOLUME_UL / 1000  # Convert to mL
-    
 
-    # Condition tip with DMSO before first use
-    lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)  # Ensure vial is in position
-    condition_tip(lash_e, 'pyrene_DMSO')
-    
-    # Add pyrene to each well individually using back-and-forth with small tips
-    lash_e.logger.info(f"    Dispensing to {len(wells_in_batch)} wells individually for accuracy...")
-    for well_idx in wells_in_batch:
-        lash_e.nr_robot.aspirate_from_vial('pyrene_DMSO', pyrene_volume_ml, liquid='DMSO')
-        lash_e.nr_robot.dispense_into_wellplate(
-            dest_wp_num_array=[well_idx], 
-            amount_mL_array=[pyrene_volume_ml],
-            liquid='DMSO'
-        )
-        # No pipet removal - keep for back-and-forth efficiency
-    
-    # Remove pipet after completing all pyrene dispensing
-    lash_e.nr_robot.remove_pipet()
-    
-    # Return pyrene_DMSO vial to home position
-    lash_e.nr_robot.return_vial_home('pyrene_DMSO')
-
-def measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data):
-    """Measure turbidity for a batch of wells and save data."""
-    from datetime import datetime
-    import os
-    
-    lash_e.logger.info(f"  Measuring turbidity for wells {wells_in_batch[0]}-{wells_in_batch[-1]} (with buffer present)")
-    turbidity_data = measure_turbidity(lash_e, wells_in_batch)
-    
-    # Save raw turbidity data to CSV immediately (skip in simulation)
-    turbidity_filename = None
-    if turbidity_data is not None and not lash_e.simulate:
-        experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        turbidity_filename = f"turbidity_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-        turbidity_path = os.path.join("output", experiment_name, "measurement_backups", turbidity_filename)
-        
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(turbidity_path), exist_ok=True)
-        
-        # Save actual DataFrame to CSV
-        turbidity_data.to_csv(turbidity_path, index=True)
-        lash_e.logger.info(f"    Saved raw turbidity data: {turbidity_filename}")
-    
-    # Store turbidity measurement data (keep for compatibility)
-    turbidity_entry = {
-        'plate_number': wellplate_data['current_plate'],
-        'wells_measured': wells_in_batch,
-        'measurement_type': 'turbidity_batch',
-        'data_file': turbidity_filename,
-        'timestamp': datetime.now().isoformat()
-    }
-    wellplate_data['measurements'].append(turbidity_entry)
-    
-    return turbidity_entry
-
-def measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data):
-    """Measure fluorescence for a batch of wells and save data."""
-    from datetime import datetime
-    import os
-    
-    lash_e.logger.info(f"  Measuring fluorescence for wells {wells_in_batch[0]}-{wells_in_batch[-1]}")
-    fluorescence_data = measure_fluorescence(lash_e, wells_in_batch)
-    
-    # Save raw fluorescence data to CSV immediately (skip in simulation)
-    fluorescence_filename = None
-    if fluorescence_data is not None and not lash_e.simulate:
-        experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        fluorescence_filename = f"fluorescence_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-        fluorescence_path = os.path.join("output", experiment_name, "measurement_backups", fluorescence_filename)
-        
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(fluorescence_path), exist_ok=True)
-        
-        # Save actual DataFrame to CSV
-        fluorescence_data.to_csv(fluorescence_path, index=True)
-        lash_e.logger.info(f"    Saved raw fluorescence data: {fluorescence_filename}")
-    
-    # Store fluorescence measurement data (keep for compatibility)
-    fluorescence_entry = {
-        'plate_number': wellplate_data['current_plate'],
-        'wells_measured': wells_in_batch,
-        'measurement_type': 'fluorescence_batch', 
-        'data_file': fluorescence_filename,
-        'timestamp': datetime.now().isoformat()
-    }
-    wellplate_data['measurements'].append(fluorescence_entry)
-    
-    return fluorescence_entry
-
+# Now let me add the complete corrected pipetting function
 def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, surfactant_a_name, surfactant_b_name, shared_wellplate_state):
     """Pipette concentration grid into wellplate(s) with CORRECTED phase order for proper buffer timing."""
     logger = lash_e.logger
@@ -1332,7 +1215,8 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
     well_map = []  
     total_wells_added = shared_wellplate_state.get('total_wells_added', 0)
     
-
+    # Track total water consumption from water vial
+    total_water_dispensed_ul = 0.0
     
     # Use existing wellplate tracking from shared state
     wellplate_data = {
@@ -1406,7 +1290,8 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
         
         lash_e.logger.info(f"Processing batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {well_counter}-{well_counter + len(current_batch) - 1}")
         
-
+        # Track water usage for this batch
+        batch_water_dispensed_ul = 0.0
         # Check wellplate capacity and switch if needed
         wells_in_batch = []
         for req in current_batch:
@@ -1573,8 +1458,12 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                         control_water_ul = 200.0
                         lash_e.logger.info(f"    Control well {well_idx}: {control_water_ul}uL water (water blank)")
                         
+                        # Track water consumption for control wells
+                        batch_water_dispensed_ul += control_water_ul
+                        total_water_dispensed_ul += control_water_ul
+                        
                         # Check if we need to switch water vials
-                        needed_water_vial = 'water_2' if False else 'water'  # Simplified - just use water
+                        needed_water_vial = 'water_2' if batch_water_dispensed_ul > 6000 else 'water'
                         if needed_water_vial != current_water_vial:
                             lash_e.nr_robot.remove_pipet()  # Remove pipet before switching
                             current_water_vial = needed_water_vial
@@ -1617,8 +1506,12 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                     water_volume_ml = water_needed_ul / 1000
                     lash_e.logger.info(f"    Well {well_idx}: {total_dispensed_ul:.1f}uL surfactants + {water_needed_ul:.1f}uL water = {total_dispensed_ul + water_needed_ul:.1f}uL")
                     
-                    # Check if we need to switch water vials  
-                    needed_water_vial = 'water_2' if False else 'water'  # Simplified - just use water
+                    # Track water consumption
+                    batch_water_dispensed_ul += water_needed_ul
+                    total_water_dispensed_ul += water_needed_ul
+                    
+                    # Check if we need to switch water vials
+                    needed_water_vial = 'water_2' if batch_water_dispensed_ul > 6000 else 'water'
                     if needed_water_vial != current_water_vial:
                         lash_e.nr_robot.remove_pipet()  # Remove pipet before switching
                         current_water_vial = needed_water_vial
@@ -1651,7 +1544,9 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                 lash_e.logger.info(f"    Warning: Could not restore water vial position: {e}")
 
             
-
+            # Log batch water consumption summary
+            lash_e.logger.info(f"  BATCH WATER SUMMARY: {batch_water_dispensed_ul:.1f} uL dispensed this batch")
+            lash_e.logger.info(f"  CUMULATIVE WATER TOTAL: {total_water_dispensed_ul:.1f} uL ({total_water_dispensed_ul/1000:.3f} mL)")
 
             # PHASE 3: Add buffer (if enabled and available)
             if ADD_BUFFER:
@@ -1859,13 +1754,82 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
                     })
         
         # PHASE 5: Measure turbidity AFTER buffer addition (CORRECTED ORDER)
-        turbidity_entry = measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data)
+        lash_e.logger.info(f"  Phase 5: Measuring turbidity for wells {wells_in_batch[0]}-{wells_in_batch[-1]} (with buffer present)")
+        turbidity_data = measure_turbidity(lash_e, wells_in_batch)
+        
+        # Store turbidity measurement data
+        turbidity_entry = {
+            'plate_number': wellplate_data['current_plate'],
+            'wells_measured': wells_in_batch,
+            'measurement_type': 'turbidity_batch',
+            'data': turbidity_data,
+            'timestamp': datetime.now().isoformat()
+        }
+        wellplate_data['measurements'].append(turbidity_entry)
+        
+        # BACKUP: Save raw turbidity data immediately
+        backup_raw_measurement_data(lash_e, turbidity_entry, wellplate_data['current_plate'], wells_in_batch, 
+                                   getattr(lash_e, 'current_experiment_name', None))
         
         # PHASE 6: Add pyrene_DMSO to all wells (using small tips, back-and-forth)
-        add_dmso_to_wells(lash_e, wells_in_batch, wellplate_data)
+        lash_e.logger.info(f"  Phase 6: Adding pyrene_DMSO ({PYRENE_VOLUME_UL}uL) using small tips, back-and-forth")
+        pyrene_volume_ml = PYRENE_VOLUME_UL / 1000  # Convert to mL
+        
+        # Move pyrene_DMSO vial to optimal position before dispensing
+        try:
+            pyrene_original_location = lash_e.nr_robot.get_vial_info('pyrene_DMSO', 'location')
+            pyrene_original_index = lash_e.nr_robot.get_vial_info('pyrene_DMSO', 'location_index')
+            lash_e.logger.info(f"    Moving pyrene_DMSO to optimal position for small-tip access...")
+            lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'main_8mL_rack', 46)  # Second-to-last position
+        except Exception as e:
+            lash_e.logger.info(f"    Warning: Could not move pyrene_DMSO vial: {e}")
+            pyrene_original_location = None
+        
+        # Condition tip with DMSO before first use
+        lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)  # Ensure vial is in position
+        condition_tip(lash_e, 'pyrene_DMSO')
+        
+        # Add pyrene to each well individually using back-and-forth with small tips
+        lash_e.logger.info(f"    Dispensing to {len(wells_in_batch)} wells individually for accuracy...")
+        for well_idx in wells_in_batch:
+            lash_e.nr_robot.aspirate_from_vial('pyrene_DMSO', pyrene_volume_ml, liquid='DMSO')
+            lash_e.nr_robot.dispense_into_wellplate(
+                dest_wp_num_array=[well_idx], 
+                amount_mL_array=[pyrene_volume_ml],
+                liquid='DMSO'
+            )
+            # No pipet removal - keep for back-and-forth efficiency
+        
+        # Remove pipet after completing all pyrene dispensing
+        lash_e.nr_robot.remove_pipet()
+        
+        # Return pyrene_DMSO vial to home position
+        if pyrene_original_location:
+            try:
+                lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', pyrene_original_location, pyrene_original_index)
+                lash_e.logger.info(f"    Returned pyrene_DMSO to home position")
+            except Exception as e:
+                lash_e.logger.info(f"    Warning: Could not return pyrene_DMSO: {e}")
+        else:
+            lash_e.nr_robot.return_vial_home('pyrene_DMSO')
         
         # PHASE 7: Measure fluorescence after pyrene addition
-        fluorescence_entry = measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data)
+        lash_e.logger.info(f"  Phase 7: Measuring fluorescence for wells {wells_in_batch[0]}-{wells_in_batch[-1]}")
+        fluorescence_data = measure_fluorescence(lash_e, wells_in_batch)
+        
+        # Store fluorescence measurement data
+        fluorescence_entry = {
+            'plate_number': wellplate_data['current_plate'],
+            'wells_measured': wells_in_batch,
+            'measurement_type': 'fluorescence_batch',
+            'data': fluorescence_data,
+            'timestamp': datetime.now().isoformat()
+        }
+        wellplate_data['measurements'].append(fluorescence_entry)
+        
+        # BACKUP: Save raw fluorescence data immediately
+        backup_raw_measurement_data(lash_e, fluorescence_entry, wellplate_data['current_plate'], wells_in_batch, 
+                                   getattr(lash_e, 'current_experiment_name', None))
         
         # Update tracking
         wellplate_data['last_measured_well'] = wells_in_batch[-1]
@@ -1885,7 +1849,16 @@ def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, s
         'plates_used_this_combo': shared_wellplate_state.get('plates_used_this_combo', 0) + (wellplate_data['current_plate'] - shared_wellplate_state.get('current_plate', 1))
     }
     
-
+    # Log final water consumption summary
+    lash_e.logger.info(f"\n" + "="*60)
+    lash_e.logger.info(f"TOTAL WATER CONSUMPTION SUMMARY")
+    lash_e.logger.info(f"="*60)
+    lash_e.logger.info(f"Total water dispensed from water vial: {total_water_dispensed_ul:.1f} uL ({total_water_dispensed_ul/1000:.3f} mL)")
+    lash_e.logger.info(f"Wells processed: {len(well_map)} wells")
+    if len(well_map) > 0:
+        avg_water_per_well = total_water_dispensed_ul / len(well_map)
+        lash_e.logger.info(f"Average water per well: {avg_water_per_well:.1f} uL")
+    lash_e.logger.info(f"="*60)
     
     return well_map, updated_shared_state
 
@@ -2062,27 +2035,280 @@ def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tr
     
     return dilution_vials, dilution_steps, achievable_concentrations
 
-def pipette_surfactants_and_buffer_only(lash_e, concs_a, concs_b, plan_a, plan_b, surfactant_a_name, surfactant_b_name, shared_wellplate_state):
-    """Create wells with surfactants and buffer, but no measurements. Extracted from monolithic function."""
-    logger = lash_e.logger
+def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_name="DTAB", simulate=True):
+    """
+    Execute the complete surfactant grid screening workflow using adaptive concentrations.
     
-    # This is a simplified version that only does the pipetting, not measurements
-    # We can extract the surfactant pipetting logic from the original function
-    logger.info(f"Creating wells with surfactants and buffer (no measurements)")
+    Args:
+        surfactant_a_name: Name of first surfactant (cationic)
+        surfactant_b_name: Name of second surfactant (anionic) 
+        simulate: Run in simulation mode
+        
+    Returns:
+        dict: Results including well_map, measurements, and concentrations used
+    """
+    # Initialize Lash_E FIRST so logger is available from the start
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
     
-    # For now, call the original function but strip out measurements
-    # TODO: Extract just the pipetting logic to make this truly separate
-    well_map, updated_state = pipette_grid_to_shared_wellplate(
-        lash_e, concs_a, concs_b, plan_a, plan_b,
-        surfactant_a_name, surfactant_b_name, shared_wellplate_state
-    )
+    # Create experiment name early for consistent folder organization
+    experiment_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}"
+    lash_e.current_experiment_name = experiment_name  # Store for access by other functions
     
-    return well_map, updated_state
-
-
-
-def calculate_concentration_and_dilution_plans(lash_e, surfactant_a_name, surfactant_b_name, experiment_name):
-    """Calculate concentration grids and dilution strategies. Returns all planning data needed for workflow."""
+    # Create organized experiment folder structure
+    experiment_folders = create_experiment_folder_structure(experiment_name)
+    experiment_output_folder = experiment_folders['base']
+    
+    lash_e.logger.info(f"Experiment: {experiment_name}")
+    lash_e.logger.info(f"Output folder: {experiment_output_folder}")
+    lash_e.logger.info(f"Organized subfolders: validation, measurement_backups, substocks, analysis, logs")
+    
+    # Now use logger for everything - no print statements
+    lash_e.logger.info("="*80)
+    lash_e.logger.info("ADAPTIVE SURFACTANT GRID SCREENING WORKFLOW")
+    lash_e.logger.info("="*80)
+    lash_e.logger.info(f"Surfactants: {surfactant_a_name} + {surfactant_b_name}")
+    lash_e.logger.info(f"Mode: {'SIMULATION' if simulate else 'HARDWARE'}")
+    lash_e.logger.info("")
+    
+    # Get initial water volume for tracking
+    try:
+        initial_water_volume = lash_e.nr_robot.get_vial_info('water', 'vial_volume')
+        lash_e.logger.info(f"Initial water volume: {initial_water_volume:.2f} mL")
+    except:
+        initial_water_volume = 8.0  # Default assumption
+        lash_e.logger.info(f"Assumed initial water volume: {initial_water_volume:.2f} mL")
+    
+    # STEP 1: System validation
+    lash_e.logger.info("Step 1: Initializing Lash_E coordinator...")
+    lash_e.logger.info(f"  Mode: {'Simulation' if simulate else 'Hardware'}")
+    
+    # Validate system state
+    lash_e.logger.info("  Validating robot and track status...")
+    lash_e.nr_robot.check_input_file()
+    lash_e.nr_track.check_input_file()
+    
+    # Fill water vials to maximum capacity before workflow
+    lash_e.logger.info("  Ensuring water vials are full before workflow...")
+    fill_water_vial(lash_e, "water")
+    fill_water_vial(lash_e, "water_2")
+    
+    # Validate pipetting capability if enabled or if in validation-only mode
+    if VALIDATE_LIQUIDS or VALIDATION_ONLY:
+        if VALIDATION_ONLY:
+            lash_e.logger.info("  VALIDATION-ONLY MODE: Running comprehensive pipetting validation...")
+        else:
+            lash_e.logger.info("  Validating pipetting capability using embedded validation...")
+        
+        # Use the already-created experiment output folder
+        lash_e.logger.info(f"  Validation data will be saved to: {experiment_output_folder}/calibration_validation/")
+        
+        try:
+            # Import embedded validation functions
+            from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
+            
+            # Define test volumes for different liquid types
+            dmso_test_volume = [0.005]  # 5 uL in mL
+            
+            validation_results = {}
+            
+            # Test 1: Water validation
+            lash_e.logger.info("    Validating water pipetting (10-900 uL)...")
+            # Split into two separate tests as requested
+            
+            # Test 1a: Small water volumes with conditioning
+            small_volumes = [0.02,0.05,0.1]
+            lash_e.logger.info("      Testing small water volumes (10-100 uL) with conditioning...")
+            
+            small_water_results = validate_pipetting_accuracy(
+                lash_e=lash_e,
+                source_vial='water',
+                destination_vial='water',  
+                liquid_type='water',
+                volumes_ml=small_volumes,
+                replicates=3,
+                output_folder=experiment_output_folder,
+                switch_pipet=False,
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+                condition_tip_enabled=True,
+                conditioning_volume_ul=150
+            )
+            validation_results['water_small'] = small_water_results
+            lash_e.logger.info(f"        Small water: R²={small_water_results['r_squared']:.3f}, Accuracy={small_water_results['mean_accuracy_pct']:.1f}%")
+            
+            # Test 1b: Large water volumes with conditioning
+            large_volumes = [0.2, 0.5, 0.9]
+            lash_e.logger.info("      Testing large water volumes (200-900 uL) with conditioning...")
+            
+            large_water_results = validate_pipetting_accuracy(
+                lash_e=lash_e,
+                source_vial='water',
+                destination_vial='water',
+                liquid_type='water',
+                volumes_ml=large_volumes,
+                replicates=3,
+                output_folder=experiment_output_folder,
+                switch_pipet=False,
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+                condition_tip_enabled=True,
+                conditioning_volume_ul=900
+            )
+            validation_results['water_large'] = large_water_results
+            lash_e.logger.info(f"        Large water: R²={large_water_results['r_squared']:.3f}, Accuracy={large_water_results['mean_accuracy_pct']:.1f}%")
+            
+            # Test 2: DMSO validation  
+            lash_e.logger.info("    Validating DMSO pipetting (5 uL) with conditioning...")
+            
+            dmso_results = validate_pipetting_accuracy(
+                lash_e=lash_e,
+                source_vial='pyrene_DMSO',
+                destination_vial='pyrene_DMSO',
+                liquid_type='DMSO',
+                volumes_ml=dmso_test_volume,
+                replicates=5,
+                output_folder=experiment_output_folder,
+                switch_pipet=False,
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+                condition_tip_enabled=True,
+                conditioning_volume_ul=25
+            )
+            validation_results['dmso'] = dmso_results
+            lash_e.logger.info(f"      DMSO validation: R²={dmso_results['r_squared']:.3f}, Accuracy={dmso_results['mean_accuracy_pct']:.1f}%")
+            
+            # Test 3a: Surfactant A stock validation - Small volumes (small tips)
+            surfactant_a_stock = f"{surfactant_a_name}_stock"
+            lash_e.logger.info(f"    Validating {surfactant_a_stock} pipetting - Small volumes (10-100 uL) with conditioning...")
+            
+            surf_a_small_results = validate_pipetting_accuracy(
+                lash_e=lash_e,
+                source_vial=surfactant_a_stock,
+                destination_vial=surfactant_a_stock,
+                liquid_type='water',  # Aqueous surfactant solution
+                volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
+                replicates=3,
+                output_folder=experiment_output_folder,
+                switch_pipet=False,
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+                condition_tip_enabled=True,
+                conditioning_volume_ul=100
+            )
+            validation_results['surfactant_a_small'] = surf_a_small_results
+            lash_e.logger.info(f"        Small {surfactant_a_stock}: R²={surf_a_small_results['r_squared']:.3f}, Accuracy={surf_a_small_results['mean_accuracy_pct']:.1f}%")
+            
+            # Test 3b: Surfactant A stock validation - Large volumes (large tips)
+            lash_e.logger.info(f"    Validating {surfactant_a_stock} pipetting - Large volumes (200-900 uL) with conditioning...")
+            
+            surf_a_large_results = validate_pipetting_accuracy(
+                lash_e=lash_e,
+                source_vial=surfactant_a_stock,
+                destination_vial=surfactant_a_stock,
+                liquid_type='water',  # Aqueous surfactant solution
+                volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
+                replicates=3,
+                output_folder=experiment_output_folder,
+                switch_pipet=False,
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+                condition_tip_enabled=True,
+                conditioning_volume_ul=800
+            )
+            validation_results['surfactant_a_large'] = surf_a_large_results
+            lash_e.logger.info(f"        Large {surfactant_a_stock}: R²={surf_a_large_results['r_squared']:.3f}, Accuracy={surf_a_large_results['mean_accuracy_pct']:.1f}%")
+            
+            # Test 4a: Surfactant B stock validation - Small volumes (small tips)
+            surfactant_b_stock = f"{surfactant_b_name}_stock"
+            lash_e.logger.info(f"    Validating {surfactant_b_stock} pipetting - Small volumes (10-100 uL) with conditioning...")
+            
+            surf_b_small_results = validate_pipetting_accuracy(
+                lash_e=lash_e,
+                source_vial=surfactant_b_stock,
+                destination_vial=surfactant_b_stock,
+                liquid_type='water',  # Aqueous surfactant solution
+                volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
+                replicates=1,
+                output_folder=experiment_output_folder,
+                switch_pipet=False,
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+                condition_tip_enabled=True,
+                conditioning_volume_ul=150
+            )
+            validation_results['surfactant_b_small'] = surf_b_small_results
+            lash_e.logger.info(f"        Small {surfactant_b_stock}: R²={surf_b_small_results['r_squared']:.3f}, Accuracy={surf_b_small_results['mean_accuracy_pct']:.1f}%")
+            
+            # Test 4b: Surfactant B stock validation - Large volumes (large tips)
+            lash_e.logger.info(f"    Validating {surfactant_b_stock} pipetting - Large volumes (200-900 uL) with conditioning...")
+            
+            surf_b_large_results = validate_pipetting_accuracy(
+                lash_e=lash_e,
+                source_vial=surfactant_b_stock,
+                destination_vial=surfactant_b_stock,
+                liquid_type='water',  # Aqueous surfactant solution
+                volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
+                replicates=1,
+                output_folder=experiment_output_folder,
+                switch_pipet=False,
+                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+                condition_tip_enabled=True,
+                conditioning_volume_ul=800
+            )
+            validation_results['surfactant_b_large'] = surf_b_large_results
+            lash_e.logger.info(f"        Large {surfactant_b_stock}: R²={surf_b_large_results['r_squared']:.3f}, Accuracy={surf_b_large_results['mean_accuracy_pct']:.1f}%")
+            
+            # Overall validation summary
+            all_r_squared = [r['r_squared'] for r in validation_results.values()]
+            all_accuracy = [r['mean_accuracy_pct'] for r in validation_results.values()]
+            avg_r_squared = sum(all_r_squared) / len(all_r_squared)
+            avg_accuracy = sum(all_accuracy) / len(all_accuracy)
+            
+            lash_e.logger.info(f"    All pipetting validations COMPLETE:")
+            lash_e.logger.info(f"      Average R²: {avg_r_squared:.3f}")
+            lash_e.logger.info(f"      Average accuracy: {avg_accuracy:.1f}%")
+            lash_e.logger.info(f"      Results saved to: {experiment_output_folder}/calibration_validation/")
+            lash_e.logger.info("")
+            lash_e.logger.info("="*60)
+            lash_e.logger.info("PIPETTING VALIDATION COMPLETE - REVIEW RESULTS")
+            lash_e.logger.info("="*60)
+            # lash_e.logger.info("Press Enter to continue with surfactant preparation...")
+            # input(">>> ")
+            lash_e.logger.info("")
+            
+            # Early exit for validation-only mode
+            if VALIDATION_ONLY:
+                lash_e.logger.info("="*60)
+                lash_e.logger.info("VALIDATION-ONLY MODE: Exiting after validation completion")
+                lash_e.logger.info("="*60)
+                return {
+                    'validation_only': True,
+                    'validation_results': validation_results,
+                    'experiment_name': experiment_name,
+                    'output_folder': experiment_output_folder,
+                    'simulation': simulate,
+                    'workflow_complete': True
+                }
+            
+        except ImportError as e:
+            lash_e.logger.info(f"    Could not import embedded validation: {e}")
+            lash_e.logger.info("    Skipping validation (validation system not available)...")
+        except Exception as e:
+            lash_e.logger.info(f"    Pipetting validation FAILED: {e}")
+            lash_e.logger.info("    Continuing with workflow (validation failure non-critical)...")     
+   
+    else:
+        lash_e.logger.info("  Pipetting validation disabled (set VALIDATE_LIQUIDS=True or VALIDATION_ONLY=True to enable)")
+    
+    # Robot is ready - no initial positioning needed
+    lash_e.logger.info("  Robot ready for operations")
+    
+    # Get fresh wellplate only if creating new wellplate
+    if CREATE_WELLPLATE:
+        lash_e.logger.info("  Getting fresh wellplate...")
+        lash_e.nr_track.get_new_wellplate()
+    else:
+        lash_e.logger.info("  Using existing wellplate (CREATE_WELLPLATE = False)")
+    
+    lash_e.logger.info("+ Lash_E initialization complete")
+    lash_e.logger.info("")
+    
+    # STEP 2: Calculate adaptive concentrations
     lash_e.logger.info("Step 2: Calculating adaptive concentration grids...")
     concs_a, concs_b = calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name)
     
@@ -2095,6 +2321,7 @@ def calculate_concentration_and_dilution_plans(lash_e, surfactant_a_name, surfac
     lash_e.logger.info(f"  {surfactant_b_name}: {len([x for x in achievable_b if x])}/{len(achievable_b)} concentrations achievable")
     lash_e.logger.info("")
     
+    # STEP 3: Calculate smart dilution strategies
     lash_e.logger.info("Step 3: Calculating optimal dilution strategies...")
     
     # Filter to only achievable concentrations
@@ -2120,30 +2347,6 @@ def calculate_concentration_and_dilution_plans(lash_e, surfactant_a_name, surfac
         else:
             dilution_vials_b.append(None)
     
-    # Calculate dilution recipes
-    dilution_recipes = calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfactant_b_name)
-    
-    lash_e.logger.info(f"+ Planning complete: {len(achievable_concs_a)} x {len(achievable_concs_b)} concentration grid")
-    
-    return {
-        'concs_a': concs_a,
-        'concs_b': concs_b,
-        'achievable_concs_a': achievable_concs_a,
-        'achievable_concs_b': achievable_concs_b,
-        'plan_a': plan_a,
-        'plan_b': plan_b,
-        'dilution_vials_a': dilution_vials_a,
-        'dilution_vials_b': dilution_vials_b,
-        'dilution_recipes': dilution_recipes
-    }
-
-def show_dilution_plan_summary_and_verify(lash_e, planning_data, surfactant_a_name, surfactant_b_name, experiment_name):
-    """Show detailed planning summary and verify calculations. Optional verbose step."""
-    plan_a = planning_data['plan_a']
-    plan_b = planning_data['plan_b']
-    achievable_concs_a = planning_data['achievable_concs_a']
-    achievable_concs_b = planning_data['achievable_concs_b']
-    
     # Show summary of dilution strategy
     lash_e.logger.info(f"\n=== DILUTION STRATEGY SUMMARY ===")
     lash_e.logger.info(f"{surfactant_a_name}: {len(plan_a['substocks_needed'])} substocks needed for {len(achievable_concs_a)} concentrations")
@@ -2154,6 +2357,9 @@ def show_dilution_plan_summary_and_verify(lash_e, planning_data, surfactant_a_na
         lash_e.logger.info(f"  {substock['vial_name']}: {substock['concentration_mm']:.2e} mM")
     for substock in plan_b['substocks_needed']:
         lash_e.logger.info(f"  {substock['vial_name']}: {substock['concentration_mm']:.2e} mM")
+    
+    # Calculate and display dilution recipes
+    dilution_recipes = calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfactant_b_name)
     
     # Show detailed pipetting plan
     lash_e.logger.info(f"\n=== DETAILED PIPETTING PLAN ===")
@@ -2181,518 +2387,35 @@ def show_dilution_plan_summary_and_verify(lash_e, planning_data, surfactant_a_na
     if remaining > 0:
         lash_e.logger.info(f"  Additional water: {remaining:.1f} uL")
     
-    # Verify concentration calculations and export to CSV
+    # STEP 3b: Verify concentration calculations and export to CSV
     lash_e.logger.info(f"\n" + "="*50)
     verification_df, well_composition_df = verify_concentration_calculations_and_export(
         lash_e, plan_a, plan_b, surfactant_a_name, surfactant_b_name, achievable_concs_a, achievable_concs_b, experiment_name
     )
     
+    # Calculate water usage from verification dataframe
+    total_water_ul = verification_df['Water_Volume_uL'].sum()
+    total_wells = len(achievable_concs_a) * len(achievable_concs_b) * N_REPLICATES
+    avg_water_per_solution = total_water_ul / len(verification_df) if len(verification_df) > 0 else 0
+    
+    lash_e.logger.info(f"\n" + "="*50)
+    lash_e.logger.info(f"WATER USAGE SUMMARY (from actual calculations)")
+    lash_e.logger.info(f"="*50)
+    lash_e.logger.info(f"Total water for substock dilutions: {total_water_ul:.1f} uL ({total_water_ul/1000:.2f} mL)")
+    lash_e.logger.info(f"Average water per surfactant solution: {avg_water_per_solution:.1f} uL")
+    lash_e.logger.info(f"Wells to be created: {total_wells} wells")
+    lash_e.logger.info(f"Additional water for well filling: ~{total_wells * 85:.0f} uL (~{total_wells * 85/1000:.1f} mL)")
+    total_estimated = (total_water_ul + total_wells * 85) / 1000
+    lash_e.logger.info(f"TOTAL ESTIMATED WATER USAGE: ~{total_estimated:.1f} mL")
+    lash_e.logger.info(f"="*50)
+    
     lash_e.logger.info("\n" + "="*50)
+    # response = input("Does this dilution plan look correct? Press Enter to proceed with automation, or 'q' to quit: ")
+    # if response.lower() == 'q':
+    #     lash_e.logger.info("Workflow cancelled by user.")
+    #     return None
     lash_e.logger.info("Proceeding with automated execution...")
     lash_e.logger.info("")
-    
-    return verification_df, well_composition_df
-
-def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, simulate):
-    """Initialize experiment environment: create folders, set name, log header."""
-    # Create experiment name with timestamp
-    experiment_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}"
-    lash_e.current_experiment_name = experiment_name  # Store for access by other functions
-    
-    # Create organized experiment folder structure
-    experiment_folders = create_experiment_folder_structure(experiment_name)
-    experiment_output_folder = experiment_folders['base']
-    
-    # Log experiment details
-    lash_e.logger.info(f"Experiment: {experiment_name}")
-    lash_e.logger.info(f"Output folder: {experiment_output_folder}")
-    lash_e.logger.info(f"Organized subfolders: validation, measurement_backups, substocks, analysis, logs")
-    
-    # Log workflow header
-    lash_e.logger.info("="*80)
-    lash_e.logger.info("ADAPTIVE SURFACTANT GRID SCREENING WORKFLOW")
-    lash_e.logger.info("="*80)
-    lash_e.logger.info(f"Surfactants: {surfactant_a_name} + {surfactant_b_name}")
-    lash_e.logger.info(f"Mode: {'SIMULATION' if simulate else 'HARDWARE'}")
-    lash_e.logger.info("")
-    
-    return experiment_output_folder, experiment_name
-
-def validate_pipetting_system(lash_e, experiment_output_folder):
-    """Perform comprehensive pipetting validation tests for all liquid types."""
-    if VALIDATION_ONLY:
-        lash_e.logger.info("  VALIDATION-ONLY MODE: Running comprehensive pipetting validation...")
-    else:
-        lash_e.logger.info("  Validating pipetting capability using embedded validation...")
-    
-    # Use the already-created experiment output folder
-    lash_e.logger.info(f"  Validation data will be saved to: {experiment_output_folder}/calibration_validation/")
-    
-    try:
-        # Import embedded validation functions
-        from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
-        
-        # Define test volumes for different liquid types
-        dmso_test_volume = [0.005]  # 5 uL in mL
-        
-        validation_results = {}
-        
-        # Test 1: Water validation
-        lash_e.logger.info("    Validating water pipetting (10-900 uL)...")
-        # Split into two separate tests as requested
-        
-        # Test 1a: Small water volumes with conditioning
-        small_volumes = [0.02,0.05,0.1]
-        lash_e.logger.info("      Testing small water volumes (10-100 uL) with conditioning...")
-        
-        small_water_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial='water',
-            destination_vial='water',  
-            liquid_type='water',
-            volumes_ml=small_volumes,
-            replicates=3,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=150
-        )
-        validation_results['water_small'] = small_water_results
-        lash_e.logger.info(f"        Small water: R^2={small_water_results['r_squared']:.3f}, Accuracy={small_water_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 1b: Large water volumes with conditioning
-        large_volumes = [0.2, 0.5, 0.9]
-        lash_e.logger.info("      Testing large water volumes (200-900 uL) with conditioning...")
-        
-        large_water_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial='water',
-            destination_vial='water',
-            liquid_type='water',
-            volumes_ml=large_volumes,
-            replicates=3,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=900
-        )
-        validation_results['water_large'] = large_water_results
-        lash_e.logger.info(f"        Large water: R^2={large_water_results['r_squared']:.3f}, Accuracy={large_water_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 2: DMSO validation  
-        lash_e.logger.info("    Validating DMSO pipetting (5 uL) with conditioning...")
-        
-        dmso_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial='pyrene_DMSO',
-            destination_vial='pyrene_DMSO',
-            liquid_type='DMSO',
-            volumes_ml=dmso_test_volume,
-            replicates=5,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=25
-        )
-        validation_results['dmso'] = dmso_results
-        lash_e.logger.info(f"      DMSO validation: R^2={dmso_results['r_squared']:.3f}, Accuracy={dmso_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 3a: Surfactant A stock validation - Small volumes (small tips)
-        surfactant_a_stock = f"{SURFACTANT_A}_stock"
-        lash_e.logger.info(f"    Validating {surfactant_a_stock} pipetting - Small volumes (10-100 uL) with conditioning...")
-        
-        surf_a_small_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial=surfactant_a_stock,
-            destination_vial=surfactant_a_stock,
-            liquid_type='water',  # Aqueous surfactant solution
-            volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
-            replicates=3,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=100
-        )
-        validation_results['surfactant_a_small'] = surf_a_small_results
-        lash_e.logger.info(f"        Small {surfactant_a_stock}: R^2={surf_a_small_results['r_squared']:.3f}, Accuracy={surf_a_small_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 3b: Surfactant A stock validation - Large volumes (large tips)
-        lash_e.logger.info(f"    Validating {surfactant_a_stock} pipetting - Large volumes (200-900 uL) with conditioning...")
-        
-        surf_a_large_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial=surfactant_a_stock,
-            destination_vial=surfactant_a_stock,
-            liquid_type='water',  # Aqueous surfactant solution
-            volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
-            replicates=3,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=800
-        )
-        validation_results['surfactant_a_large'] = surf_a_large_results
-        lash_e.logger.info(f"        Large {surfactant_a_stock}: R^2={surf_a_large_results['r_squared']:.3f}, Accuracy={surf_a_large_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 4a: Surfactant B stock validation - Small volumes (small tips)
-        surfactant_b_stock = f"{SURFACTANT_B}_stock"
-        lash_e.logger.info(f"    Validating {surfactant_b_stock} pipetting - Small volumes (10-100 uL) with conditioning...")
-        
-        surf_b_small_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial=surfactant_b_stock,
-            destination_vial=surfactant_b_stock,
-            liquid_type='water',  # Aqueous surfactant solution
-            volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
-            replicates=1,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=150
-        )
-        validation_results['surfactant_b_small'] = surf_b_small_results
-        lash_e.logger.info(f"        Small {surfactant_b_stock}: R^2={surf_b_small_results['r_squared']:.3f}, Accuracy={surf_b_small_results['mean_accuracy_pct']:.1f}%")
-        
-        # Test 4b: Surfactant B stock validation - Large volumes (large tips)
-        lash_e.logger.info(f"    Validating {surfactant_b_stock} pipetting - Large volumes (200-900 uL) with conditioning...")
-        
-        surf_b_large_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial=surfactant_b_stock,
-            destination_vial=surfactant_b_stock,
-            liquid_type='water',  # Aqueous surfactant solution
-            volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
-            replicates=1,
-            output_folder=experiment_output_folder,
-            switch_pipet=False,
-            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-            condition_tip_enabled=True,
-            conditioning_volume_ul=800
-        )
-        validation_results['surfactant_b_large'] = surf_b_large_results
-        lash_e.logger.info(f"        Large {surfactant_b_stock}: R^2={surf_b_large_results['r_squared']:.3f}, Accuracy={surf_b_large_results['mean_accuracy_pct']:.1f}%")
-        
-        # Overall validation summary
-        all_r_squared = [r['r_squared'] for r in validation_results.values()]
-        all_accuracy = [r['mean_accuracy_pct'] for r in validation_results.values()]
-        avg_r_squared = sum(all_r_squared) / len(all_r_squared)
-        avg_accuracy = sum(all_accuracy) / len(all_accuracy)
-        
-        lash_e.logger.info(f"    All pipetting validations COMPLETE:")
-        lash_e.logger.info(f"      Average R^2: {avg_r_squared:.3f}")
-        lash_e.logger.info(f"      Average accuracy: {avg_accuracy:.1f}%")
-        lash_e.logger.info(f"      Results saved to: {experiment_output_folder}/calibration_validation/")
-        lash_e.logger.info("")
-        lash_e.logger.info("="*60)
-        lash_e.logger.info("PIPETTING VALIDATION COMPLETE - REVIEW RESULTS")
-        lash_e.logger.info("="*60)
-        lash_e.logger.info("")
-        
-        # Early exit for validation-only mode
-        if VALIDATION_ONLY:
-            lash_e.logger.info("="*60)
-            lash_e.logger.info("VALIDATION-ONLY MODE: Exiting after validation completion")
-            lash_e.logger.info("="*60)
-            return {
-                'validation_only': True,
-                'validation_results': validation_results,
-                'workflow_complete': True
-            }
-        
-        return validation_results
-        
-    except ImportError as e:
-        lash_e.logger.info(f"    Could not import embedded validation: {e}")
-        lash_e.logger.info("    Skipping validation (validation system not available)...")
-        return None
-    except Exception as e:
-        lash_e.logger.info(f"    Pipetting validation FAILED: {e}")
-        lash_e.logger.info("    Continuing with workflow (validation failure non-critical)...")     
-        return None
-
-def create_consolidated_measurement_csv(lash_e, well_map, updated_state, experiment_output_folder):
-    """Create consolidated CSV with well mapping, concentrations, and measurement data."""
-    import pandas as pd
-    import os
-    import glob
-    
-    lash_e.logger.info("Creating consolidated measurement CSV...")
-    
-    # Create base dataframe from well_map (if available) or generate for existing wells
-    if well_map:
-        # Use actual well mapping from experiment
-        df_base = pd.DataFrame(well_map)
-    else:
-        # Create basic mapping for wells measured (when CREATE_WELLPLATE = False)
-        measurements = updated_state.get('measurements', [])
-        if measurements:
-            # Get wells that were actually measured
-            measured_wells = set()
-            for measurement in measurements:
-                measured_wells.update(measurement.get('wells_measured', []))
-            
-            # Create basic mapping
-            df_base = pd.DataFrame([
-                {
-                    'well': well,
-                    'plate': updated_state.get('current_plate', 1),
-                    'surfactant_a': 'unknown',
-                    'surfactant_b': 'unknown', 
-                    'conc_a_mm': None,
-                    'conc_b_mm': None,
-                    'replicate': 1,
-                    'is_control': False,
-                    'control_type': 'unknown'
-                } for well in sorted(measured_wells)
-            ])
-        else:
-            lash_e.logger.warning("No measurement data found for consolidated CSV")
-            return None
-    
-    # Load measurement data from CSV files
-    measurement_backups_dir = os.path.join(experiment_output_folder, "measurement_backups")
-    
-    if os.path.exists(measurement_backups_dir):
-        # Find turbidity CSV files
-        turbidity_files = glob.glob(os.path.join(measurement_backups_dir, "turbidity_*.csv"))
-        fluorescence_files = glob.glob(os.path.join(measurement_backups_dir, "fluorescence_*.csv"))
-        
-        # Load and combine turbidity data
-        turbidity_df = None
-        if turbidity_files:
-            turbidity_dfs = []
-            for file in turbidity_files:
-                try:
-                    df = pd.read_csv(file, index_col=0)
-                    turbidity_dfs.append(df)
-                except Exception as e:
-                    lash_e.logger.warning(f"Could not load turbidity file {file}: {e}")
-            
-            if turbidity_dfs:
-                turbidity_df = pd.concat(turbidity_dfs, ignore_index=False)
-                # Convert index to well column for merging
-                turbidity_df = turbidity_df.reset_index()
-                turbidity_df = turbidity_df.rename(columns={'index': 'well_position'})
-        
-        # Load and combine fluorescence data
-        fluorescence_df = None
-        if fluorescence_files:
-            fluorescence_dfs = []
-            for file in fluorescence_files:
-                try:
-                    # Read CSV with special handling for Cytation format
-                    temp_df = pd.read_csv(file)
-                    
-                    # Check if this is Cytation format (wavelength info in row 2)
-                    if len(temp_df) > 0 and temp_df.iloc[0].dropna().tolist():
-                        # This is Cytation format - wavelength info is in row 1 (0-indexed)
-                        wavelengths = temp_df.iloc[0].tolist()  # ['334_373', '334_384']
-                        
-                        # Create proper column names mapping
-                        new_columns = {}
-                        for i, wl in enumerate(wavelengths):
-                            if pd.notna(wl) and str(wl) in ['334_373', '334_384']:
-                                original_col = temp_df.columns[i]
-                                new_columns[original_col] = f"fluorescence_{wl}"
-                        
-                        # Remove the wavelength row
-                        temp_df = temp_df.iloc[1:].copy()  # Remove wavelength row
-                        temp_df = temp_df.rename(columns=new_columns)
-                        temp_df = temp_df.reset_index()
-                        temp_df = temp_df.rename(columns={'index': 'well_position'})
-                    else:
-                        # Standard CSV format
-                        temp_df = pd.read_csv(file, index_col=0)
-                        temp_df = temp_df.reset_index()
-                        temp_df = temp_df.rename(columns={'index': 'well_position'})
-                    
-                    fluorescence_dfs.append(temp_df)
-                except Exception as e:
-                    lash_e.logger.warning(f"Could not load fluorescence file {file}: {e}")
-            
-            if fluorescence_dfs:
-                fluorescence_df = pd.concat(fluorescence_dfs, ignore_index=True)
-                lash_e.logger.info(f"  Loaded {len(fluorescence_df)} fluorescence measurements")
-        
-        # Convert well numbers to well positions for merging (A1, A2, etc.)
-        def well_number_to_position(well_number):
-            """Convert well number (0-based) to well position (A1, A2, etc.)"""
-            row = well_number // 12  # 12 columns per row
-            col = well_number % 12
-            return f"{chr(65 + row)}{col + 1}"
-        
-        df_base['well_position'] = df_base['well'].apply(well_number_to_position)
-        
-        # Merge measurement data
-        df_consolidated = df_base.copy()
-        
-        if turbidity_df is not None:
-            df_consolidated = df_consolidated.merge(turbidity_df, on='well_position', how='left', suffixes=('', '_turb'))
-            lash_e.logger.info(f"  Merged turbidity data: {len(turbidity_df)} measurements")
-        
-        if fluorescence_df is not None:
-            df_consolidated = df_consolidated.merge(fluorescence_df, on='well_position', how='left', suffixes=('', '_fluor'))
-            lash_e.logger.info(f"  Merged fluorescence data: {len(fluorescence_df)} measurements")
-        
-        # Clean up column names - handle potential column name variations
-        # Check what columns we actually have after merge
-        actual_columns = list(df_consolidated.columns)
-        lash_e.logger.info(f"  Columns after merge: {actual_columns}")
-        
-        # Columns should already have proper names from CSV reading
-        # Just ensure turbidity column is named correctly if present
-        column_mapping = {}
-        for col in actual_columns:
-            if 'Absorbance' in col or '600' in col:
-                column_mapping[col] = 'turbidity_600'
-        
-        if column_mapping:
-            df_consolidated = df_consolidated.rename(columns=column_mapping)
-            lash_e.logger.info(f"  Renamed columns: {column_mapping}")
-        
-        # Calculate fluorescence ratio (same as cmc_shared)
-        if 'fluorescence_334_373' in df_consolidated.columns and 'fluorescence_334_384' in df_consolidated.columns:
-            df_consolidated['ratio'] = df_consolidated['fluorescence_334_373'] / df_consolidated['fluorescence_334_384']
-            lash_e.logger.info("  Calculated fluorescence ratio (334_373/334_384)")
-        
-        # Reorder columns for readability
-        column_order = ['well', 'well_position', 'plate', 'surfactant_a', 'surfactant_b', 
-                       'conc_a_mm', 'conc_b_mm', 'replicate', 'is_control', 'control_type',
-                       'turbidity_600', 'fluorescence_334_373', 'fluorescence_334_384', 'ratio']
-        
-        available_columns = [col for col in column_order if col in df_consolidated.columns]
-        df_consolidated = df_consolidated[available_columns]
-        
-        # Save consolidated CSV
-        consolidated_path = os.path.join(experiment_output_folder, "consolidated_measurements.csv")
-        df_consolidated.to_csv(consolidated_path, index=False)
-        
-        lash_e.logger.info(f"  Saved consolidated CSV: {consolidated_path}")
-        lash_e.logger.info(f"  Total rows: {len(df_consolidated)}")
-        lash_e.logger.info(f"  Columns: {list(df_consolidated.columns)}")
-        
-        return df_consolidated
-    
-    else:
-        lash_e.logger.warning(f"Measurement backups directory not found: {measurement_backups_dir}")
-        return None
-
-
-def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_name="DTAB", simulate=True):
-    """
-    Execute the complete surfactant grid screening workflow using adaptive concentrations.
-    
-    Args:
-        surfactant_a_name: Name of first surfactant (cationic)
-        surfactant_b_name: Name of second surfactant (anionic) 
-        simulate: Run in simulation mode
-        
-    Returns:
-        dict: Results including well_map, measurements, and concentrations used
-    """
-    # Initialize Lash_E FIRST so logger is available from the start
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
-    lash_e.logger.info("Step 1: Initializing Lash_E coordinator...")
-    lash_e.logger.info(f"  Mode: {'Simulation' if simulate else 'Hardware'}")
-    
-    # Setup experiment environment and folders
-    experiment_output_folder, experiment_name = setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, simulate)
-  
-    
-    # Validate system state
-    lash_e.logger.info("  Validating robot and track status...")
-    lash_e.nr_robot.check_input_file()
-    lash_e.nr_track.check_input_file()
-    
-    # Fill water vials to maximum capacity before workflow
-    lash_e.logger.info("  Ensuring water vials are full before workflow...")
-    fill_water_vial(lash_e, "water")
-    fill_water_vial(lash_e, "water_2")
-    
-    # Validate pipetting capability if enabled or if in validation-only mode
-    if VALIDATE_LIQUIDS or VALIDATION_ONLY:
-        validation_results = validate_pipetting_system(lash_e, experiment_output_folder)
-        
-        # Early exit for validation-only mode
-        if validation_results and validation_results.get('validation_only'):
-            return validation_results
-    else:
-        lash_e.logger.info("  Pipetting validation disabled (set VALIDATE_LIQUIDS=True or VALIDATION_ONLY=True to enable)")
-    
-    # Robot is ready - no initial positioning needed
-    lash_e.logger.info("  Robot ready for operations")
-    
-    # Get fresh wellplate only if creating new wellplate
-    if CREATE_WELLPLATE:
-        lash_e.logger.info("  Getting fresh wellplate...")
-        lash_e.nr_track.get_new_wellplate()
-    else:
-        lash_e.logger.info("  Using existing wellplate (CREATE_WELLPLATE = False)")
-    
-    lash_e.logger.info("+ Lash_E initialization complete")
-    lash_e.logger.info("")
-    
-    # STEP 2-3: Calculate concentration grids and dilution plans
-    planning_data = calculate_concentration_and_dilution_plans(lash_e, surfactant_a_name, surfactant_b_name, experiment_name)
-    
-    # Optional: Show detailed planning summary (can be disabled to reduce log clutter)
-    verification_df, well_composition_df = show_dilution_plan_summary_and_verify(
-        lash_e, planning_data, surfactant_a_name, surfactant_b_name, experiment_name
-    )
-    
-    # Extract needed variables for workflow continuation
-    concs_a = planning_data['concs_a']
-    concs_b = planning_data['concs_b']
-    plan_a = planning_data['plan_a']
-    plan_b = planning_data['plan_b']
-    dilution_vials_a = planning_data['dilution_vials_a']
-    dilution_vials_b = planning_data['dilution_vials_b']
-    
-    # Create well map from experimental design (ALWAYS needed for CSV)
-    well_map = []
-    well_counter = 0
-    for i, conc_a in enumerate(concs_a):
-        for j, conc_b in enumerate(concs_b):
-            if conc_a is not None and conc_b is not None:
-                for rep in range(N_REPLICATES):
-                    well_map.append({
-                        'well': well_counter,
-                        'surfactant_a': surfactant_a_name,
-                        'surfactant_b': surfactant_b_name,
-                        'conc_a_mm': conc_a,
-                        'conc_b_mm': conc_b,
-                        'replicate': rep + 1,
-                        'is_control': False,
-                        'control_type': 'sample'
-                    })
-                    well_counter += 1
-    
-    # Create well map from experimental design (ALWAYS needed for CSV)
-    well_map = []
-    well_counter = 0
-    for i, conc_a in enumerate(concs_a):
-        for j, conc_b in enumerate(concs_b):
-            if conc_a is not None and conc_b is not None:
-                for rep in range(N_REPLICATES):
-                    well_map.append({
-                        'well': well_counter,
-                        'surfactant_a': surfactant_a_name,
-                        'surfactant_b': surfactant_b_name,
-                        'conc_a_mm': conc_a,
-                        'conc_b_mm': conc_b,
-                        'replicate': rep + 1,
-                        'is_control': False,
-                        'control_type': 'sample'
-                    })
-                    well_counter += 1
-    dilution_recipes = planning_data['dilution_recipes']
     
     # STEP 4: Create physical substocks using smart recipes
     lash_e.logger.info("Step 4: Creating physical substocks from calculated recipes...")
@@ -2726,8 +2449,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     lash_e.logger.info("")
     lash_e.logger.info("")
     
-    # STEP 6: Execute pipetting and measurements in separate phases
-    lash_e.logger.info("Step 6: Executing pipetting and measurements in separate phases...")
+    # STEP 6: Execute pipetting workflow with integrated vial optimization
+    lash_e.logger.info("Step 6: Executing pipetting workflow (with integrated vial positioning)...")
     shared_wellplate_state = {
         'global_well_counter': 0,
         'global_well_map': [],
@@ -2738,53 +2461,33 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
         'last_measured_well': -1
     }
     
-    # Phase 6a: Create wells with surfactants and buffer (but no measurements yet)
-    if CREATE_WELLPLATE:
-        lash_e.logger.info("  Phase 6a: Creating wells with surfactants and buffer...")
-        _, updated_state = pipette_surfactants_and_buffer_only(
-            lash_e, concs_a, concs_b, plan_a, plan_b, 
-            surfactant_a_name, surfactant_b_name, shared_wellplate_state
-        )
-    else:
-        # CREATE_WELLPLATE = False: Skip pipetting, just do measurements on existing wells
-        lash_e.logger.info("  CREATE_WELLPLATE = False: Skipping wellplate creation, measuring existing wells...")
-        updated_state = shared_wellplate_state.copy()
-    
-    # Get list of wells to measure
-    if CREATE_WELLPLATE:
-        wells_to_measure = [item['well'] for item in well_map]
-    else:
-        # When not creating wellplate, assume we're measuring all existing wells (0 to N)
-        # This should be configured based on your actual setup
-        wells_to_measure = list(range(96))  # Adjust this range based on your actual wells
-    
-    # Phase 6b: Measure turbidity (after buffer is present)  
-    lash_e.logger.info("  Phase 6b: Measuring turbidity...")
-    wellplate_data = {
-        'current_plate': updated_state['current_plate'],
-        'measurements': updated_state.get('measurements', [])
-    }
-    turbidity_entry = measure_wellplate_turbidity(lash_e, wells_to_measure, wellplate_data)
-    updated_state['measurements'] = wellplate_data['measurements']
-    
-    # Phase 6c: Add DMSO to all wells (only if creating wellplate)
-    if CREATE_WELLPLATE:
-        lash_e.logger.info("  Phase 6c: Adding DMSO...")
-        add_dmso_to_wells(lash_e, wells_to_measure, wellplate_data)
-    else:
-        lash_e.logger.info("  Phase 6c: Skipping DMSO addition (CREATE_WELLPLATE = False)")
-    
-    # Phase 6d: Measure fluorescence (after DMSO addition)
-    lash_e.logger.info("  Phase 6d: Measuring fluorescence...")
-    fluorescence_entry = measure_wellplate_fluorescence(lash_e, wells_to_measure, wellplate_data)
-    updated_state['measurements'] = wellplate_data['measurements']
+    # Always call the pipetting function - it will check CREATE_WELLPLATE internally
+    well_map, updated_state = pipette_grid_to_shared_wellplate(
+        lash_e, concs_a, concs_b, plan_a, plan_b, 
+        surfactant_a_name, surfactant_b_name, shared_wellplate_state
+    )
     
     lash_e.logger.info(f"+ Workflow completed!")
     lash_e.logger.info(f"  Wells processed: {len(well_map)}")
     lash_e.logger.info(f"  Measurements taken: {len(updated_state.get('measurements', []))}")
     lash_e.logger.info("")
     
-
+    # Check final water volume to track any unexpected usage
+    try:
+        final_water_volume = lash_e.nr_robot.get_vial_info('water', 'vial_volume')
+        water_used = initial_water_volume - final_water_volume
+        lash_e.logger.info(f"\nWATER VOLUME TRACKING:")
+        lash_e.logger.info(f"  Initial water: {initial_water_volume:.2f} mL")
+        lash_e.logger.info(f"  Final water: {final_water_volume:.2f} mL")
+        lash_e.logger.info(f"  Water consumed: {water_used:.2f} mL")
+        lash_e.logger.info(f"  Expected from calculations: {total_estimated:.2f} mL")
+        if abs(water_used - total_estimated) > 0.5:
+            lash_e.logger.info(f"  WARNING: Actual usage differs from estimate by {abs(water_used - total_estimated):.2f} mL")
+            lash_e.logger.info(f"           This could indicate validation/conditioning consumed extra water")
+        else:
+            lash_e.logger.info(f"  Actual usage matches estimate within 0.5 mL")
+    except Exception as e:
+        lash_e.logger.info(f"\nCould not check final water volume: {e}")
     
     # STEP 7: Save results to experiment folder
     lash_e.logger.info("Step 7: Saving results...")
@@ -2822,17 +2525,17 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     lash_e.logger.info("CONSOLIDATED DATA ORGANIZATION SUMMARY")
     lash_e.logger.info("="*60)
     lash_e.logger.info(f"All experiment data saved to: {experiment_name}/")
-    lash_e.logger.info(f"\\n Folder Structure:")
-    lash_e.logger.info(f"  +-- well_mapping.csv                  # Well plate layout and composition")
-    lash_e.logger.info(f"  +-- concentration_verification.csv    # Concentration calculations")
-    lash_e.logger.info(f"  +-- well_composition.csv             # Detailed well composition")
-    lash_e.logger.info(f"  +-- dilution_info.json               # Substock dilution plans")
-    lash_e.logger.info(f"  +-- calibration_validation/          # Pipetting validation data")
-    lash_e.logger.info(f"  +-- measurement_backups/             # Raw turbidity & fluorescence data")
-    lash_e.logger.info(f"  +-- substocks/                       # Substock preparation logs (future)")
-    lash_e.logger.info(f"  +-- analysis/                        # Data analysis outputs (future)")
-    lash_e.logger.info(f"  +-- logs/                            # Workflow execution logs (future)")
-    lash_e.logger.info(f"\\nNo more scattered files! Everything is in one place.")
+    lash_e.logger.info(f"\\n📁 Folder Structure:")
+    lash_e.logger.info(f"  ├── well_mapping.csv                  # Well plate layout and composition")
+    lash_e.logger.info(f"  ├── concentration_verification.csv    # Concentration calculations")
+    lash_e.logger.info(f"  ├── well_composition.csv             # Detailed well composition")
+    lash_e.logger.info(f"  ├── dilution_info.json               # Substock dilution plans")
+    lash_e.logger.info(f"  ├── calibration_validation/          # Pipetting validation data")
+    lash_e.logger.info(f"  ├── measurement_backups/             # Raw turbidity & fluorescence data")
+    lash_e.logger.info(f"  ├── substocks/                       # Substock preparation logs (future)")
+    lash_e.logger.info(f"  ├── analysis/                        # Data analysis outputs (future)")
+    lash_e.logger.info(f"  └── logs/                            # Workflow execution logs (future)")
+    lash_e.logger.info(f"\\nNo more scattered files! Everything is in one place. 🎯")
     lash_e.logger.info("="*60)
     
     # Get actual pipette usage breakdown (real from hardware or simulated count)
@@ -2850,22 +2553,14 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     lash_e.logger.info("  6. Measure Fluorescence")
     lash_e.logger.info("")
     
-    # Create consolidated CSV with all measurement data
-    lash_e.logger.info("")
-    consolidated_df = create_consolidated_measurement_csv(
-        lash_e, well_map, updated_state, output_folder
-    )
-    if consolidated_df is not None:
-        lash_e.logger.info(f"+ Consolidated CSV created with {len(consolidated_df)} rows")
-    
     # Return comprehensive results
     return {
         'surfactant_a': surfactant_a_name,
         'surfactant_b': surfactant_b_name,
         'concentrations_a': concs_a.tolist(),
         'concentrations_b': concs_b.tolist(),
-        'achievable_a': planning_data['achievable_concs_a'],
-        'achievable_b': planning_data['achievable_concs_b'],
+        'achievable_a': [x for x in achievable_a if x is not None],
+        'achievable_b': [x for x in achievable_b if x is not None],
         'well_map': well_map,
         'measurements': updated_state.get('measurements', []),
         'total_wells': len(well_map),
