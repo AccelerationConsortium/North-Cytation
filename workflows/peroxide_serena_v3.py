@@ -1,5 +1,6 @@
 import sys
 import time
+import datetime
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
@@ -31,7 +32,8 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
     # output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
     if not simulate:
-        output_file = output_dir / f'output_{first_well_index}.txt'
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = output_dir / f'output_{first_well_index}_{timestamp}.txt'
         data_out.to_csv(output_file, sep=',')
         #Use analyzer to analyze the data
     print()
@@ -81,6 +83,7 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
         output_dir = None
 
 #-> Start from here! 
+    lash_e.grab_new_wellplate()
     #Step 1: Add 1.9 mL "assay reagent" to sample vials
     for i in sample_indices: 
         lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.9)
@@ -140,7 +143,7 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=0)
     lash_e.nr_robot.move_home()
-
+    lash_e.discard_used_wellplate()
     # if not SIMULATE:   
     #     # slack_agent.send_slack_message("Peroxide workflow completed!")
 
@@ -151,6 +154,8 @@ lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 lash_e.nr_robot.check_input_file()
 
 # Run the workflow 3 times with different Reagent+COF+sample sets, reusing the same lash_e instance
-peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1', set_suffix='_Set1')
-peroxide_workflow(lash_e, assay_reagent='Assay_reagent_2', cof_vial='COF_2', set_suffix='_Set2')
-peroxide_workflow(lash_e, assay_reagent='Assay_reagent_3', cof_vial='COF_3', set_suffix='_Set3')
+for i in range(1, 4):
+    assay_reagent = f'Assay_reagent_{i}'
+    cof_vial = f'COF_{i}'
+    set_suffix = f'_Set{i}'
+    peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix)
