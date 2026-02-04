@@ -321,15 +321,16 @@ def degradation_workflow():
     heater_slot = {}  # sample_name -> heater index
 
     for sample in sample_solutions:
+        lash_e.logger.info("\nAdding water to sample: %s", sample)
+        lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
+        lash_e.nr_robot.remove_pipet()
         lash_e.logger.info("\nAdding acid to sample: %s", sample)
         acid_volume = round(float(volume_lookup[sample]['acid_volume']), 4)
         print("Acid Volume:", acid_volume)
         #acid_volume = 0.011
         safe_pipet('6M_HCl',sample,acid_volume, lash_e, return_home=False)
         lash_e.nr_robot.remove_pipet()
-        lash_e.logger.info("\nAdding water to sample: %s", sample)
-        lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
-        lash_e.nr_robot.remove_pipet()
+ 
         # Record per-sample start time using consistent basis (simulated clock = 0; real clock = wall time)
         t0_map[sample] = 0 if SIMULATE else time.time()
         create_samples_and_measure(lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample, used_wells=used_wells, replicates=REPLICATES)
