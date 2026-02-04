@@ -296,17 +296,17 @@ def degradation_workflow():
 
     # -------------------------------------------------------------- Workflow starts from here! ---------------------------------------------------
 
-    # # 1. Polymer sample preparation: Add solvent then stock to each sample vial.
-    # for sample in sample_solutions:
-    #     solvent_vol = volume_lookup[sample]['solvent_volume']
-    #     lash_e.logger.info(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
-    #     safe_pipet('2MeTHF',sample,solvent_vol, lash_e) 
+    # 1. Polymer sample preparation: Add solvent then stock to each sample vial.
+    for sample in sample_solutions:
+        solvent_vol = volume_lookup[sample]['solvent_volume']
+        lash_e.logger.info(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
+        safe_pipet('2MeTHF',sample,solvent_vol, lash_e) 
     
-    # for sample in sample_solutions:
-    #     stock_vol = volume_lookup[sample]['stock_volume']
-    #     lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
-    #     safe_pipet('polymer_stock',sample,stock_vol, lash_e)
-    #     lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
+    for sample in sample_solutions:
+        stock_vol = volume_lookup[sample]['stock_volume']
+        lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
+        safe_pipet('polymer_stock',sample,stock_vol, lash_e)
+        lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
 
 
     # 2. Add acid and water to the polymer samples to initiate degradation and take scheduled UV-VIS measurements.
@@ -320,13 +320,14 @@ def degradation_workflow():
     heater_slot = {}  # sample_name -> heater index
 
     for sample in sample_solutions:
+        lash_e.logger.info("\nAdding water to sample: %s", sample)
+        lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
+        lash_e.nr_robot.remove_pipet()
         lash_e.logger.info("\nAdding acid to sample: %s", sample)
         acid_volume = volume_lookup[sample]['acid_volume']
         safe_pipet('6M_HCl',sample,acid_volume, lash_e)
         lash_e.nr_robot.remove_pipet()
-        lash_e.logger.info("\nAdding water to sample: %s", sample)
-        lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
-        lash_e.nr_robot.remove_pipet()
+ 
         # Record per-sample start time using consistent basis (simulated clock = 0; real clock = wall time)
         t0_map[sample] = 0 if SIMULATE else time.time()
         create_samples_and_measure(lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample, used_wells=used_wells, replicates=REPLICATES)
