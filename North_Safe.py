@@ -7,9 +7,10 @@ import pandas as pd
 import yaml
 from unittest.mock import MagicMock
 import matplotlib.pyplot as plt
-from pipetting_data.pipetting_parameters import PipettingParameters
+from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirParameters
 from pipetting_data.pipetting_wizard import PipettingWizard
 import matplotlib.patches as patches
+import threading
 
 class North_Base:
     """Base class for North robot components with shared functionality"""
@@ -1620,8 +1621,7 @@ class North_Robot(North_Base):
             self.logger.warning("Dispense exceeded limit: Dispensing all liquid")
             self.c9.move_pump(0, 0)
 
-        if not self.simulate:
-            time.sleep(wait_time)
+       
 
         if blowout_vol > 0: #Adjust this later into pipetting parameter
             #blow_speed = 5
@@ -1631,6 +1631,9 @@ class North_Robot(North_Base):
             self.c9.aspirate_ml(0, blowout_vol)
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)
             self.c9.dispense_ml(0, blowout_vol)
+
+        if not self.simulate:
+            time.sleep(wait_time)
 
     #Select appropriate tip type based on volume or use specified tip type
     def select_pipet_tip(self, volume, specified_tip_type=None):
@@ -1723,6 +1726,62 @@ class North_Robot(North_Base):
                         
         return optimized
     
+    def _get_optimized_reservoir_parameters(self, volume, liquid=None, reservoir_params=None):
+        """
+        Get optimized reservoir parameters using intelligent hierarchy:
+        defaults → liquid-calibrated → user overrides
+        
+        Args:
+            volume (float): Target dispensing volume in mL
+            liquid (str, optional): Liquid type for calibrated parameters
+            reservoir_params (ReservoirParameters, optional): User-provided overrides
+            
+        Returns:
+            ReservoirParameters: Optimized parameters with intelligent defaults
+        """
+        # Start with system defaults
+        optimized = ReservoirParameters()
+        
+        # Apply liquid-specific calibration if available
+        if liquid is not None:
+            try:
+                # TODO: Implement ReservoirWizard when ready
+                # wizard = ReservoirWizard()
+                # calibrated_params = wizard.get_reservoir_parameters(liquid, volume)
+                # 
+                # if calibrated_params is not None:
+                #     # Update only the parameters that were successfully calibrated
+                #     for param_name, param_value in calibrated_params.items():
+                #         if hasattr(optimized, param_name) and param_value is not None:
+                #             setattr(optimized, param_name, param_value)
+                #             self.logger.debug(f"Using calibrated reservoir {param_name}={param_value} for {liquid} at {volume:.3f}mL")
+                
+                self.logger.debug(f"Reservoir calibration not yet implemented for {liquid} - using defaults")
+                            
+            except Exception as e:
+                # Graceful fallback - calibration is optional enhancement
+                self.logger.debug(f"Could not load calibrated reservoir parameters for {liquid}: {e}")
+        
+        # Apply user overrides (highest priority)
+        if reservoir_params is not None:
+            # Handle both dictionary and object formats
+            if isinstance(reservoir_params, dict):
+                # Dictionary format: {'param_name': value}
+                for param_name, user_value in reservoir_params.items():
+                    if hasattr(optimized, param_name) and user_value is not None:
+                        setattr(optimized, param_name, user_value)
+                        self.logger.debug(f"Applied reservoir dict param {param_name}={user_value}")
+            else:
+                # Object format with attributes
+                for param_name in dir(reservoir_params):
+                    if not param_name.startswith('_'):  # Skip private attributes
+                        user_value = getattr(reservoir_params, param_name)
+                        if user_value is not None:  # Only override if user explicitly set a value
+                            setattr(optimized, param_name, user_value)
+                            self.logger.debug(f"Applied reservoir user param {param_name}={user_value}")
+        
+        return optimized
+
     #Check if the aspiration volume is within limits... Now extensible and configuration-driven
     def check_if_aspiration_volume_unacceptable(self, amount_mL):
         if self.HELD_PIPET_TYPE is None:
@@ -1763,7 +1822,7 @@ class North_Robot(North_Base):
         return vial
 
     #Get adjust the aspiration height based on how much is there
-    def get_aspirate_height(self, source_vial_num, amount_mL, track_height=True, buffer=1.0):
+    def get_aspirate_height(self, source_vial_num, amount_mL, track_height=True, buffer=2.0):
 
         #Get required information
         base_height = self.get_min_pipetting_height(source_vial_num)
@@ -1933,6 +1992,7 @@ class North_Robot(North_Base):
         #Move to the correct location in xy
         if move_to_aspirate:
             self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))
+
         
         #Step 1: Move to above the site and aspirate air if needed
         if pre_asp_air_vol > 0:
@@ -1976,7 +2036,10 @@ class North_Robot(North_Base):
 
     #This method dispenses from a vial into another vial, using buffer transfer to improve accuracy if needed.
     #TODO: Maybe get rid of the buffer option here and replace with the other new parameters and potentially blowout
-    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, remove_tip=True, use_safe_location=True, return_vial_home=True, move_speed=None, compensate_overvolume=True, smooth_overvolume=False, measure_weight=False):
+    def dispense_from_vial_into_vial(self, source_vial_name, dest_vial_name, volume, parameters=None, liquid=None, specified_tip=None, 
+                                     remove_tip=True, use_safe_location=False, return_vial_home=True, move_speed=None, 
+                                     compensate_overvolume=True, smooth_overvolume=False, measure_weight=False, 
+                                     continuous_mass_monitoring=False, save_mass_data=False):
         """
         Transfer liquid from source vial to destination vial.
 
@@ -2035,7 +2098,16 @@ class North_Robot(North_Base):
                 self.c9.default_vel = move_speed
 
             # Dispense into destination
-            mass_increment = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=measure_weight)
+            dispense_result = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=measure_weight,
+                                                      continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data)
+            
+            # Handle both old and new return formats for backwards compatibility
+            if isinstance(dispense_result, tuple):
+                mass_increment, stability_info = dispense_result
+            else:
+                mass_increment = dispense_result
+                stability_info = None
+                
             total_mass += mass_increment if mass_increment is not None else 0
 
             # Restore original movement speed if changed
@@ -2063,7 +2135,7 @@ class North_Robot(North_Base):
                     self.return_vial_home(clamp_vial_index)
 
 
-        return total_mass
+        return total_mass, stability_info
 
     #TODO add error checks and safeguards
     def pipet_from_wellplate(self, wp_index, volume, parameters=None, liquid=None, aspirate=True, specified_tip=None, move_to_aspirate=True, well_plate_type="96 WELL PLATE"):
@@ -2176,7 +2248,8 @@ class North_Robot(North_Base):
 
     #Dispense an amount into a vial
     def dispense_into_vial(self, dest_vial_name, amount_mL, parameters=None, liquid=None,
-                          initial_move=True, measure_weight=False, move_speed=None):
+                          initial_move=True, measure_weight=False, continuous_mass_monitoring=False, 
+                          save_mass_data=False, move_speed=None):
         """
         Dispense liquid into a vial.
         
@@ -2186,7 +2259,9 @@ class North_Robot(North_Base):
             parameters (PipettingParameters, optional): Liquid handling parameters (uses defaults if None)
             liquid (str, optional): Liquid type for calibrated parameter optimization
             initial_move (bool): Whether to perform initial movement (default: True)
-            measure_weight (bool): Whether to measure mass during dispensing (default: False)
+            measure_weight (bool): Whether to measure mass before/after dispensing (default: False)
+            continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
+            save_mass_data (bool): Whether to save continuous mass data to file (default: False)
         """
         # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
         parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
@@ -2208,21 +2283,32 @@ class North_Robot(North_Base):
             return
 
         measured_mass = None
+        continuous_mass_data = []
+        stability_info = {
+            'pre_stable_count': 0,
+            'pre_total_count': 0, 
+            'post_stable_count': 0,
+            'post_total_count': 0,
+            'pre_baseline_std': 0.0,
+            'post_baseline_std': 0.0
+        }
 
         self.logger.info(f"Pipetting into vial {self.get_vial_info(dest_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
         
         dest_vial_clamped = self.get_vial_info(dest_vial_num,'location')=='clamp' #Is the destination vial clamped?
         dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
 
-        #If the destination vial is at the clamp and you want the weight, measure prior to pipetting
-        if measure_weight and dest_vial_clamped:
+        #If the destination vial is at the clamp and you want weight measurement using TRADITIONAL method
+        if measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
             if not self.simulate:
                 # Zero the scale before measurement to prevent baseline drift
                 initial_mass = self.c9.read_steady_scale()
-                self.logger.info(f"Initial mass reading: {initial_mass:.6f} g")
+                self.logger.info(f"Initial mass reading (traditional): {initial_mass:.6f} g")
             else:
                 initial_mass = 0
                 self.logger.info("Simulation mode - initial mass set to 0")
+        else:
+            initial_mass = None  # Will be handled by continuous monitoring if needed
 
         # Determine dispense speed (can be done safely here since no pipet acquisition needed for dispense)
         dispense_speed = parameters.dispense_speed or self.get_tip_dependent_aspirate_speed()
@@ -2240,19 +2326,240 @@ class North_Robot(North_Base):
         if initial_move:               
             self.c9.goto_xy_safe(location, vel=move_speed if move_speed is not None else self.get_speed('standard_xy'))
         
+        # Setup continuous mass monitoring if requested
+        monitoring_active = threading.Event()
+        
+        def read_scale_continuous():
+            """Continuously read scale at maximum rate (5 Hz) during dispensing"""
+            while monitoring_active.is_set():
+                if not self.simulate and dest_vial_clamped:
+                    try:
+                        current_time = time.time()
+                        steady_status, weight = self.c9.read_scale()  # Get BOTH stability and weight
+                        
+                        # Determine phase based on timing
+                        time_relative = current_time - start_time
+                        if time_relative < 1.0:
+                            phase = 'baseline_pre'
+                        elif dispense_start_time is None or current_time < dispense_start_time:
+                            phase = 'baseline_pre'  # Still in pre-baseline
+                        elif dispense_end_time is None or current_time < dispense_end_time:
+                            phase = 'dispensing'
+                        else:
+                            phase = 'baseline_post'
+                        
+                        continuous_mass_data.append({
+                            'timestamp': current_time,
+                            'time_relative': time_relative,
+                            'mass_g': weight,
+                            'phase': phase,
+                            'steady_status': steady_status  # NEW: Track if scale says reading is stable
+                        })
+                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
+                    except Exception as e:
+                        self.logger.warning(f"Scale reading failed: {e}")
+                time.sleep(0.2)  # 5 Hz maximum rate (0.2 second intervals)
+        
         #Pipet into the vial
-        #self.pipet_from_location(amount_mL, dispense_speed, height, aspirate = False, initial_move=initial_move)
         if initial_move:
             self.c9.move_z(height, vel=move_speed if move_speed is not None else None)
+            
+        # Start continuous monitoring if requested (includes pre-dispense baseline)
+        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
+            # Conditional settling based on dispense wait time
+            self.logger.info(f"Short wait time ({1.0:.1f}s), allowing scale to settle after robot positioning...")
+            time.sleep(1.0)  # 2 second settling delay for short wait times
+            
+            start_time = time.time()
+            dispense_start_time = None  # Will be set when dispensing starts
+            dispense_end_time = None    # Will be set when dispensing ends
+            monitoring_active.set()
+            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
+            monitor_thread.start()
+            self.logger.info("Started continuous mass monitoring with pre-dispense baseline")
+            
+            # Wait for 1.0s baseline before dispensing for better stability
+            time.sleep(2.0)
+            
+        # Record when actual dispensing starts
+        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
+            dispense_start_time = time.time()
+        
+        # Perform the actual dispensing
         self.pipet_dispense(overdispense_vol, wait_time=wait_time, blowout_vol=blowout_vol)
-
-        #Track the added volume in the dataframe
+        
+        # Record when dispensing ends and wait for post-dispense baseline
+        if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
+            dispense_end_time = time.time()
+            dispense_duration = dispense_end_time - dispense_start_time
+            self.logger.info(f"Dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
+            
+            # Let monitoring thread continue for post-baseline period
+            time.sleep(2.0)  # 1.0s post-dispense baseline for better data
+            
+            # Stop continuous monitoring after collecting post-baseline data
+            monitoring_active.clear()
+            monitor_thread.join(timeout=2.0)  # Wait up to 2 seconds for thread to finish
+            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
+        
+         #Track the added volume in the dataframe
         self.VIAL_DF.at[dest_vial_num,'vial_volume']=self.VIAL_DF.at[dest_vial_num,'vial_volume']+amount_mL
         self.PIPET_FLUID_VOLUME -= amount_mL
         self.save_robot_status()
 
-        #If the destination vial is at the clamp and you want the weight, measure after pipetting
-        if measure_weight and dest_vial_clamped:
+        # Analyze continuous mass data after monitoring is stopped
+        if measure_weight and continuous_mass_monitoring and dest_vial_clamped and continuous_mass_data:
+            if len(continuous_mass_data) >= 4:
+                mass_df = pd.DataFrame(continuous_mass_data)
+                
+                # Calculate baselines using STABILITY instead of time phases
+                
+                # OLD WAY: Use arbitrary time phases (might include unstable readings)
+                # pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
+                # post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
+                
+                # NEW WAY: Use actual stability status from scale hardware
+                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
+                                             (mass_df['steady_status'] == True)]
+                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
+                                              (mass_df['steady_status'] == True)]
+                
+                # Calculate mass difference using INDEPENDENT baseline analysis
+                # Each baseline uses stable readings if available, otherwise falls back to time-based
+                
+                # Pre-baseline calculation
+                if len(pre_stable_readings) > 0:
+                    pre_baseline = pre_stable_readings['mass_g'].mean()
+                    pre_method = "STABLE"
+                    self.logger.info(f"Pre-baseline: {len(pre_stable_readings)} stable readings, avg={pre_baseline:.6f}g")
+                else:
+                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
+                    pre_method = "TIME-BASED"
+                    self.logger.info(f"Pre-baseline: No stable readings, using time-based avg={pre_baseline:.6f}g")
+                
+                # Post-baseline calculation  
+                if len(post_stable_readings) > 0:
+                    post_baseline = post_stable_readings['mass_g'].mean()
+                    post_method = "STABLE"
+                    self.logger.info(f"Post-baseline: {len(post_stable_readings)} stable readings, avg={post_baseline:.6f}g")
+                else:
+                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
+                    post_method = "TIME-BASED"
+                    self.logger.info(f"Post-baseline: No stable readings, using time-based avg={post_baseline:.6f}g")
+                
+                # Calculate final result
+                measured_mass = post_baseline - pre_baseline
+                self.logger.info(f"INDEPENDENT BASELINE calculation:")
+                self.logger.info(f"Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
+                
+                # Log comparison info
+                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
+                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
+                pre_stable_count = len(pre_stable_readings) if len(pre_stable_readings) > 0 else 0
+                post_stable_count = len(post_stable_readings) if len(post_stable_readings) > 0 else 0
+                
+                # Update stability info
+                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
+                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
+                
+                stability_info.update({
+                    'pre_stable_count': pre_stable_count,
+                    'pre_total_count': pre_count,
+                    'post_stable_count': post_stable_count, 
+                    'post_total_count': post_count,
+                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
+                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
+                })
+                
+                self.logger.info(f"Reading summary: {pre_count} pre-readings ({pre_stable_count} stable), "
+                               f"{post_count} post-readings ({post_stable_count} stable)")
+                self.logger.info(f"Baseline variability: pre_std={stability_info['pre_baseline_std']:.6f}g, "
+                               f"post_std={stability_info['post_baseline_std']:.6f}g")
+                self.logger.info(f"Target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water")
+            else:
+                self.logger.warning("Insufficient continuous data for baseline calculation")
+                measured_mass = 0.0
+            
+            # Save mass data if requested
+            if save_mass_data and continuous_mass_data:
+                import os
+                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+                
+                # Use log filename for folder organization instead of date
+                if hasattr(self, 'log_filename') and self.log_filename:
+                    # Remove .log extension and use as folder name
+                    log_folder = self.log_filename.replace('.log', '')
+                else:
+                    # Fallback to date if log filename not available
+                    log_folder = time.strftime("%Y-%m-%d")
+                
+                filename = f"mass_data_{dest_vial_name}_{timestamp_str}.csv"
+                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
+                
+                # Ensure log-specific directory exists
+                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
+                
+                # Convert to DataFrame and save
+                mass_df = pd.DataFrame(continuous_mass_data)
+                mass_df.to_csv(filepath, index=False)
+                self.logger.info(f"Saved {len(continuous_mass_data)} mass measurements to {filepath}")
+                
+                # Create and save matplotlib graph with continuous line and phase backgrounds
+                plt.figure(figsize=(12, 6))
+                
+                # Plot one continuous line
+                plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'k-', linewidth=2, label='Mass readings', zorder=3)
+                
+                # Add scatter overlay to show stable vs unstable readings
+                stable_data = mass_df[mass_df['steady_status'] == True]
+                unstable_data = mass_df[mass_df['steady_status'] == False]
+                
+                if len(stable_data) > 0:
+                    plt.scatter(stable_data['time_relative'], stable_data['mass_g'], 
+                              c='green', s=20, alpha=0.7, label='Stable readings', zorder=4)
+                if len(unstable_data) > 0:
+                    plt.scatter(unstable_data['time_relative'], unstable_data['mass_g'], 
+                              c='red', s=20, alpha=0.7, label='Unstable readings', zorder=4)
+                
+                # Add phase background shading
+                if len(mass_df) > 0:
+                    # Get phase transition points
+                    pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
+                    dispense_data = mass_df[mass_df['phase'] == 'dispensing'] 
+                    post_data = mass_df[mass_df['phase'] == 'baseline_post']
+                    
+                    y_min, y_max = plt.ylim()
+                    
+                    # Shade background regions
+                    if len(pre_data) > 0:
+                        plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
+                                   alpha=0.2, color='green', label='Pre-baseline', zorder=1)
+                    if len(dispense_data) > 0:
+                        plt.axvspan(dispense_data['time_relative'].min(), dispense_data['time_relative'].max(), 
+                                   alpha=0.2, color='blue', label='Dispensing', zorder=1)
+                    if len(post_data) > 0:
+                        plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
+                                   alpha=0.2, color='red', label='Post-baseline', zorder=1)
+                
+                # Add horizontal lines for averaged baselines
+                plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
+                plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
+                
+                plt.xlabel('Time (seconds)')
+                plt.ylabel('Mass (g)')
+                plt.title(f'Mass vs Time During Dispense\nVial: {dest_vial_name}, Target: {amount_mL:.3f} mL, Measured: {measured_mass:.4f} g')
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                
+                # Save the plot
+                plot_filename = f"mass_plot_{dest_vial_name}_{timestamp_str}.png"
+                plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
+                plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
+                plt.close()  # Close the figure to free memory
+                self.logger.info(f"Saved mass vs time plot to {plot_filepath}")  
+
+        # Traditional before/after measurement (only when continuous monitoring is NOT enabled)
+        elif measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
             if not self.simulate:
                 final_mass = self.c9.read_steady_scale()
                 self.logger.info(f"Final mass reading: {final_mass:.6f} g")
@@ -2262,7 +2569,79 @@ class North_Robot(North_Base):
             measured_mass = final_mass - initial_mass  
             self.logger.info(f"Mass difference: {measured_mass:.6f} g (target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water)")
 
-        return measured_mass
+        return measured_mass, stability_info
+
+    def monitor_weight_over_time(self, time_s):
+        """
+        Monitor scale weight continuously for a specified duration at maximum rate.
+        
+        Useful for studying evaporation, scale drift, environmental effects, 
+        or general weight stability characterization.
+        
+        Args:
+            time_s (float): Duration to monitor in seconds
+        
+        Returns:
+            list[dict]: Weight data containing:
+                - timestamp: absolute time 
+                - time_relative: seconds from start
+                - mass_g: weight reading
+                - steady_status: True if scale considers reading stable
+        """
+        if self.simulate:
+            self.logger.info("Simulation mode - generating dummy weight data")
+            import random
+            dummy_data = []
+            start_time = time.time()
+            
+            # Simulate at ~5 Hz for realistic timing
+            for i in range(int(time_s * 5)):
+                current_time = start_time + (i * 0.2)
+                # Simulate slight evaporation (gradual decrease) + noise
+                base_mass = 10.0 - (i * 0.0001)  # Slow evaporation
+                noise = random.uniform(-0.0005, 0.0005)  # Small noise
+                dummy_data.append({
+                    'timestamp': current_time,
+                    'time_relative': i * 0.2,
+                    'mass_g': base_mass + noise,
+                    'steady_status': True  # Assume stable in simulation
+                })
+            
+            self.logger.info(f"Completed simulated weight monitoring: {len(dummy_data)} readings over {time_s}s")
+            return dummy_data
+        
+        else:
+            self.logger.info(f"Starting weight monitoring: {time_s}s duration at maximum rate")
+            
+            weight_data = []
+            start_time = time.time()
+            
+            while (time.time() - start_time) < time_s:
+                try:
+                    current_time = time.time()
+                    steady_status, weight = self.c9.read_scale()
+                    time_relative = current_time - start_time
+                    
+                    weight_data.append({
+                        'timestamp': current_time,
+                        'time_relative': time_relative,
+                        'mass_g': weight,
+                        'steady_status': steady_status
+                    })
+                    
+                    self.logger.debug(f"Weight: {weight:.6f}g at {time_relative:.3f}s (steady={steady_status})")
+                    
+                    # Minimal sleep to prevent excessive CPU usage
+                    time.sleep(0.01)
+                    
+                except Exception as e:
+                    self.logger.warning(f"Scale reading failed: {e}")
+                    time.sleep(0.1)
+            
+            total_duration = time.time() - start_time
+            actual_rate = len(weight_data) / total_duration if total_duration > 0 else 0
+            self.logger.info(f"Completed weight monitoring: {len(weight_data)} readings over {total_duration:.3f}s ({actual_rate:.1f} Hz)")
+            return weight_data
 
     # ====================================================================
     # 6. WELLPLATE OPERATIONS
@@ -2579,11 +2958,30 @@ class North_Robot(North_Base):
         self.logger.info(f"Priming reservoir {reservoir_index} line into vial {overflow_vial}: {volume:.3f} mL")
         self.dispense_into_vial_from_reservoir(reservoir_index,overflow_vial,volume)
 
-    def dispense_into_vial_from_reservoir(self,reservoir_index,vial_index,volume, measure_weight = False, return_home=True):
+    def dispense_into_vial_from_reservoir(self, reservoir_index, vial_index, volume, reservoir_params=None, liquid=None, measure_weight=False, return_home=True, continuous_mass_monitoring=False, save_mass_data=False):
+        """
+        Dispense liquid from reservoir into a vial.
         
+        Args:
+            reservoir_index: Index of the reservoir to dispense from
+            vial_index: Index/name of destination vial
+            volume: Volume to dispense in mL
+            reservoir_params (ReservoirParameters, optional): Liquid handling parameters (uses defaults if None)
+            liquid (str, optional): Liquid type for calibrated parameter optimization (future feature)
+            measure_weight (bool): Whether to measure mass before/after dispensing (default: False)
+            continuous_mass_monitoring (bool): Whether to continuously monitor mass during dispensing (default: False)
+            save_mass_data (bool): Whether to save continuous mass data to file (default: False)
+        """
         vial_index = self.normalize_vial_index(vial_index) #Convert to int if needed
+        
+        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
+        reservoir_params = self._get_optimized_reservoir_parameters(volume, liquid, reservoir_params)
+        
+        
         self.logger.info(f"Dispensing into vial {vial_index} from reservoir {reservoir_index}: {volume:.3f} mL")
+        self.logger.debug(f"Reservoir parameters: aspirate_speed={reservoir_params.aspirate_speed}, dispense_speed={reservoir_params.dispense_speed}, overaspirate={reservoir_params.overaspirate_vol:.3f} mL")
         measured_mass = None
+        stability_info = None
 
         #Step 1: move the vial to the clamp
         if not self.get_vial_info(vial_index,'location')=='clamp':
@@ -2593,8 +2991,23 @@ class North_Robot(North_Base):
             self.uncap_clamp_vial()
         self.move_home()
 
-        if measure_weight: #weigh before dispense (if measure_weight = True)
-            initial_mass = self.c9.read_steady_scale()
+        # Initialize for continuous monitoring if requested
+        if continuous_mass_monitoring or measure_weight:
+            initial_mass = None
+            continuous_mass_data = []
+            stability_info = {
+                'pre_stable_count': 0,
+                'pre_total_count': 0, 
+                'post_stable_count': 0,
+                'post_total_count': 0,
+                'pre_baseline_std': 0.0,
+                'post_baseline_std': 0.0
+            }
+            
+            if not self.simulate:
+                initial_mass = self.c9.read_steady_scale()
+            else:
+                initial_mass = 0.0
 
         #Step 2: move the carousel to reservoir position
         carousel_angle = self.get_config_parameter('pumps', reservoir_index, 'carousel_angle', error_on_missing=False)
@@ -2606,20 +3019,125 @@ class North_Robot(North_Base):
             self.logger.warning(f"No carousel configuration found for pump {reservoir_index}")
             
         #Step 3: aspirate and dispense from the reservoir
-
         max_volume = self.get_config_parameter('pumps', reservoir_index, 'volume', error_on_missing=False) or 2.5
 
+        # Set up continuous monitoring if requested
+        if continuous_mass_monitoring:
+            import threading
+            monitoring_active = threading.Event()
+            dispense_start_time = None
+            dispense_end_time = None
+            
+            def read_scale_continuous():
+                """Inner function to continuously read scale weight"""
+                start_time = time.time()
+                while monitoring_active.is_set():
+                    try:
+                        if not self.simulate:
+                            steady_status, weight = self.c9.read_scale()  # Actually returns (steady_status, weight)
+                        else:
+                            weight, steady_status = 0.0, True
+                            
+                        current_time = time.time()
+                        time_relative = current_time - start_time
+                        
+                        # Determine phase based on dispense timing
+                        if dispense_start_time is None:
+                            phase = 'baseline_pre'
+                        elif dispense_end_time is None or current_time < dispense_end_time:
+                            phase = 'dispensing'
+                        else:
+                            phase = 'baseline_post'
+                        
+                        continuous_mass_data.append({
+                            'timestamp': current_time,
+                            'time_relative': time_relative,
+                            'mass_g': weight,
+                            'phase': phase,
+                            'steady_status': steady_status
+                        })
+                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
+                    except Exception as e:
+                        self.logger.warning(f"Scale reading failed: {e}")
+                    if not self.simulate:
+                        time.sleep(0.2)  # 5 Hz maximum rate
+            
+            # Start monitoring with pre-dispense baseline
+            self.logger.info("Starting continuous mass monitoring for reservoir dispensing")
+            start_time = time.time()
+            monitoring_active.set()
+            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
+            monitor_thread.start()
+            
+            # Wait for pre-dispense baseline
+            if not self.simulate:
+                time.sleep(2.0)
         
-        num_dispenses = math.ceil(volume/max_volume)
-        dispense_vol = volume/num_dispenses
-        self.logger.debug(f"Dispensing {dispense_vol:.3f} mL {num_dispenses} times")
-        for i in range (0, num_dispenses):        
-             self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_LEFT)
-             self.c9.aspirate_ml(reservoir_index,dispense_vol)
-             self.c9.set_pump_valve(reservoir_index,self.c9.PUMP_VALVE_RIGHT)
-             self.c9.dispense_ml(reservoir_index,dispense_vol)
+        # Record when dispensing starts
+        if continuous_mass_monitoring:
+            dispense_start_time = time.time()
+        
+        # Perform actual dispensing with parameterized control
+        total_volume_to_aspirate = volume + reservoir_params.overaspirate_vol
+        num_dispenses = math.ceil(total_volume_to_aspirate/max_volume)
+        dispense_vol = total_volume_to_aspirate/num_dispenses
+        actual_dispense_vol = dispense_vol  # Dispense everything we aspirate each cycle
+        
+        self.logger.info(f"DISPENSING DEBUG: simulate={self.simulate}, volume={volume:.3f}mL, overaspirate={reservoir_params.overaspirate_vol:.3f}mL")
+        self.logger.info(f"DISPENSING DEBUG: total_vol={total_volume_to_aspirate:.3f}mL, num_dispenses={num_dispenses}, dispense_vol={dispense_vol:.3f}mL, actual_dispense={actual_dispense_vol:.3f}mL")
+        self.logger.debug(f"Dispensing {actual_dispense_vol:.3f} mL (with {reservoir_params.overaspirate_vol:.3f} mL overaspirate) {num_dispenses} times")
+        
+        for i in range(0, num_dispenses):        
+            self.logger.info(f"DISPENSING LOOP {i+1}/{num_dispenses}: simulate={self.simulate}")
+            
+            # Aspirate from reservoir with speed control
+            self.c9.set_pump_valve(reservoir_index, self.c9.PUMP_VALVE_LEFT)
+            if reservoir_params.valve_switch_delay > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.valve_switch_delay)
+                
+            if reservoir_params.aspirate_speed is not None:
+                self.c9.set_pump_speed(reservoir_index, reservoir_params.aspirate_speed)
+            self.logger.info(f"ASPIRATING: {dispense_vol:.3f}mL from reservoir {reservoir_index}")
+            self.c9.aspirate_ml(reservoir_index, dispense_vol)
+            
+            if reservoir_params.aspirate_wait_time > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.aspirate_wait_time)
+                
+            # Dispense into vial with speed control  
+            self.c9.set_pump_valve(reservoir_index, self.c9.PUMP_VALVE_RIGHT)
+            if reservoir_params.valve_switch_delay > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.valve_switch_delay)
+                
+            if reservoir_params.dispense_speed is not None:
+                self.c9.set_pump_speed(reservoir_index, reservoir_params.dispense_speed)
+            self.logger.info(f"DISPENSING: {actual_dispense_vol:.3f}mL into vial {vial_index}")
+            self.c9.dispense_ml(reservoir_index, actual_dispense_vol)
+            
+            if reservoir_params.dispense_wait_time > 0:
+                if not self.simulate:
+                    time.sleep(reservoir_params.dispense_wait_time)
+        
         if not self.simulate:
             time.sleep(1)
+        
+        # Record when dispensing ends 
+        if continuous_mass_monitoring:
+            dispense_end_time = time.time()
+            dispense_duration = dispense_end_time - dispense_start_time
+            self.logger.info(f"Reservoir dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
+            
+            # Collect post-dispense baseline
+            if not self.simulate:
+                time.sleep(2.0)
+            
+            # Stop monitoring
+            monitoring_active.clear()
+            monitor_thread.join(timeout=2.0)
+            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
+        
         vial_volume = self.get_vial_info(vial_index,'vial_volume')
         self.VIAL_DF.at[vial_index,'vial_volume']=(vial_volume+volume)
         self.save_robot_status()
@@ -2627,15 +3145,136 @@ class North_Robot(North_Base):
         #Step 4: Return the vial back to home
         self.c9.move_carousel(0,0)
 
-        if measure_weight: #weigh after dispense (if measure_weight = True)
-            final_mass = self.c9.read_steady_scale()
-            measured_mass = final_mass - initial_mass
+        # Analyze continuous monitoring data or do traditional measurement
+        if continuous_mass_monitoring and continuous_mass_data:
+            # Process continuous mass data (similar to dispense_into_vial)
+            if len(continuous_mass_data) >= 4:
+                mass_df = pd.DataFrame(continuous_mass_data)
+                
+                # Calculate baselines using stability status
+                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
+                                             (mass_df['steady_status'] == True)]
+                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
+                                              (mass_df['steady_status'] == True)]
+                
+                # Pre-baseline calculation
+                if len(pre_stable_readings) > 0:
+                    pre_baseline = pre_stable_readings['mass_g'].mean()
+                    pre_method = "STABLE"
+                else:
+                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
+                    pre_method = "TIME-BASED"
+                
+                # Post-baseline calculation  
+                if len(post_stable_readings) > 0:
+                    post_baseline = post_stable_readings['mass_g'].mean()
+                    post_method = "STABLE"
+                else:
+                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
+                    post_method = "TIME-BASED"
+                
+                measured_mass = post_baseline - pre_baseline
+                self.logger.info(f"Reservoir dispensing - Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
+                
+                # Update stability info
+                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
+                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
+                
+                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
+                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
+                pre_stable_count = len(pre_stable_readings)
+                post_stable_count = len(post_stable_readings)
+                
+                stability_info.update({
+                    'pre_stable_count': pre_stable_count,
+                    'pre_total_count': pre_count,
+                    'post_stable_count': post_stable_count, 
+                    'post_total_count': post_count,
+                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
+                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
+                })
+            else:
+                self.logger.warning("Insufficient continuous data for baseline calculation")
+                measured_mass = 0.0
+                
+            # Save mass data if requested
+            if save_mass_data and continuous_mass_data:
+                import os
+                import matplotlib.pyplot as plt
+                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+                
+                # Use log filename for folder organization instead of date
+                if hasattr(self, 'log_filename') and self.log_filename:
+                    # Remove .log extension and use as folder name
+                    log_folder = self.log_filename.replace('.log', '')
+                else:
+                    # Fallback to date if log filename not available
+                    log_folder = time.strftime("%Y-%m-%d")
+                
+                filename = f"reservoir_mass_data_{vial_index}_res{reservoir_index}_{timestamp_str}.csv"
+                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
+                
+                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
+                mass_df = pd.DataFrame(continuous_mass_data)
+                mass_df.to_csv(filepath, index=False)
+                self.logger.info(f"Saved {len(continuous_mass_data)} reservoir mass measurements to {filepath}")
+                
+                # Create and save mass vs time plot (same as regular dispense method)
+                if len(continuous_mass_data) > 4:
+                    plt.figure(figsize=(10, 6))
+                    
+                    # Plot all data points
+                    plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'b.-', alpha=0.7, markersize=2, linewidth=1)
+                    
+                    # Add phase coloring
+                    pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
+                    dispense_data = mass_df[mass_df['phase'] == 'dispensing'] 
+                    post_data = mass_df[mass_df['phase'] == 'baseline_post']
+                    
+                    if len(pre_data) > 0:
+                        plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
+                                   alpha=0.2, color='green', label='Pre-baseline', zorder=1)
+                    if len(dispense_data) > 0:
+                        plt.axvspan(dispense_data['time_relative'].min(), dispense_data['time_relative'].max(), 
+                                   alpha=0.2, color='blue', label='Dispensing', zorder=1)
+                    if len(post_data) > 0:
+                        plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
+                                   alpha=0.2, color='red', label='Post-baseline', zorder=1)
+                
+                    # Add horizontal lines for averaged baselines
+                    plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
+                    plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
+                    
+                    plt.xlabel('Time (seconds)')
+                    plt.ylabel('Mass (g)')
+                    plt.title(f'Reservoir Mass vs Time During Dispense\\nVial: {vial_index}, Target: {volume:.3f} mL, Measured: {measured_mass:.4f} g')
+                    plt.legend()
+                    plt.grid(True, alpha=0.3)
+                    
+                    # Save the plot
+                    plot_filename = f"reservoir_mass_plot_{vial_index}_res{reservoir_index}_{timestamp_str}.png"
+                    plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
+                    plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
+                    plt.close()  # Close the figure to free memory
+                    self.logger.info(f"Saved reservoir mass vs time plot to {plot_filepath}")
+        
+        elif measure_weight: # Traditional before/after measurement
+            if not self.simulate:
+                final_mass = self.c9.read_steady_scale()
+                measured_mass = final_mass - initial_mass
+            else:
+                measured_mass = volume * 1.0  # Simulate perfect transfer (assuming water density)
 
         if not self.get_vial_info(vial_index,'capped'):
             self.recap_clamp_vial()
         if return_home:
             self.return_vial_home(vial_index)
-        return measured_mass
+        
+        # Return result in same format as dispense_into_vial
+        if continuous_mass_monitoring:
+            return measured_mass, stability_info
+        else:
+            return measured_mass
 
     # ====================================================================
     # 7. VIAL & CONTAINER MANAGEMENT

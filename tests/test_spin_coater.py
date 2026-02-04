@@ -21,13 +21,13 @@ def sample_workflow():
     # time.sleep(2)
     #lash_e.spinner.close_lid()
 
-    lash_e.temp_controller.turn_on_stirring()
-    time.sleep(3)
-    lash_e.temp_controller.turn_off_stirring()
-
-    # lash_e.spinner.set_speed(1000)
+    # lash_e.temp_controller.turn_on_stirring()
     # time.sleep(3)
-    # lash_e.spinner.stop_spin()
+    # lash_e.temp_controller.turn_off_stirring()
+
+    lash_e.spinner.set_speed(20000)
+    time.sleep(10)
+    lash_e.spinner.stop_spin()
 
 #Execute the sample workflow.
 #Specify that we are going to aspirate 0.6 from our two sample vials. We could also set the number of replicates to some other number than 3

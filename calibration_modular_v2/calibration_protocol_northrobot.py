@@ -19,6 +19,11 @@ from calibration_protocol_base import CalibrationProtocolBase
 # Add parent directory to path for North Robot imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from master_usdl_coordinator import Lash_E
+from pipetting_data.pipetting_parameters import PipettingParameters
+import slack_agent
+
+# Tip conditioning volume (mL)
+TIP_CONDITIONING_VOLUME = 0.18
 
 # Liquid densities for mass-to-volume conversion (g/mL)
 LIQUIDS = {
@@ -32,8 +37,12 @@ LIQUIDS = {
     "glycerol": {"density": 1.26, "refill_pipets": True},
     "PEG_Water": {"density": 1.05, "refill_pipets": True},
     "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
+    "agar_water": {"density": 1.01, "refill_pipets": False},
+    "agar_water_refill": {"density": 1.01, "refill_pipets": True},
 }
 
+
+from pipetting_data.pipetting_parameters import PipettingParameters
 
 class HardwareCalibrationProtocol(CalibrationProtocolBase):
     """Hardware calibration protocol implementing the abstract interface."""
@@ -56,6 +65,16 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         # Vial management mode - swap roles when measurement vial gets too full
         SWAP = True  # If True, enables vial swapping when needed
+
+        continuous_monitoring = True
+        
+        # Quality control threshold for mass measurement stability (in grams)
+        # Default: 0.001g (1mg) - good for most pipetting
+        # For stricter control (low volume): 0.0005g (0.5mg) 
+        # For lenient control (quick tests): 0.002g (2mg)
+        self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
+
+
         
         # Initialize hardware
         try:
@@ -75,6 +94,21 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             
             # Move measurement vial to clamp position for pipetting operations
             lash_e.nr_robot.move_vial_to_location(measurement_vial, "clamp", 0)
+
+            #Tip Conditioning: Pre-wet tips with 4 aspirate/dispense cycles
+            if liquid in LIQUIDS and LIQUIDS[liquid]['refill_pipets'] == False:
+                conditioning_params = PipettingParameters(
+                    aspirate_speed=15,
+                    dispense_speed=5,
+                    dispense_wait_time=0.0,
+                    blowout_vol=0.5
+                )
+                lash_e.nr_robot.aspirate_from_vial(source_vial, TIP_CONDITIONING_VOLUME, move_up=False, parameters=conditioning_params)
+                lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
+                for i in range (0, 3):
+                    lash_e.nr_robot.aspirate_from_vial(source_vial, TIP_CONDITIONING_VOLUME,  move_to_aspirate=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
+                lash_e.nr_robot.move_home()
             
             print("READY: Hardware initialized successfully")
             
@@ -85,7 +119,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 'source_vial': source_vial,
                 'measurement_vial': measurement_vial,
                 'swap_enabled': SWAP,
-                'measurement_count': 0
+                'measurement_count': 0,
+                'continuous_mass_monitoring': continuous_monitoring
             }
             
         except Exception as e:
@@ -104,7 +139,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             # Check current volume in both vials
             measurement_volume = lash_e.nr_robot.get_vial_info(measurement_vial, 'vial_volume')
             source_volume = lash_e.nr_robot.get_vial_info(source_vial, 'vial_volume')
-            min_source_volume = 2.0  # mL - threshold for swapping when source gets low
+            min_source_volume = 3.0  # mL - threshold for swapping when source gets low
             
             # DEBUG: Always print current volumes
             print(f"STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
@@ -129,6 +164,22 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 # Finally: Move the new measurement vial to clamp position
                 lash_e.nr_robot.move_vial_to_location(state['measurement_vial'], "clamp", 0)
+
+                #Tip Conditioning: Pre-wet tips with 4 aspirate/dispense cycles
+                liquid = state['liquid']  # Get liquid from state
+                if liquid in LIQUIDS and LIQUIDS[liquid]['refill_pipets'] == False:
+                    conditioning_params = PipettingParameters(
+                        aspirate_speed=15,
+                        dispense_speed=5,
+                        dispense_wait_time=0.0,
+                        blowout_vol=0.5
+                    )
+                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, move_up=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
+                    for i in range (0, 3):
+                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, move_to_aspirate=False, parameters=conditioning_params)
+                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
+                    lash_e.nr_robot.move_home()
                 
                 print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
             else:
@@ -136,6 +187,39 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
         except Exception as e:
             print(f"WARNING: Vial swap check failed: {e}")
+
+    def _evaluate_measurement(self, stability_info: Dict[str, Any], std_threshold: float = 0.001) -> bool:
+        """Evaluate if a measurement is acceptable based on stability criteria.
+        
+        A baseline is considered stable if:
+        - Stable readings percentage > 50%, OR
+        - Standard deviation < threshold
+        
+        Both baselines must be stable for measurement to be trustworthy.
+        
+        Args:
+            stability_info: Dictionary with stability metrics from dispense_into_vial
+            std_threshold: Maximum acceptable standard deviation in grams (default: 0.001g = 1.0mg)
+            
+        Returns:
+            bool: True if measurement is acceptable, False if should be retried
+        """
+        # Check pre-baseline stability
+        pre_stable_pct = (stability_info['pre_stable_count'] / max(stability_info['pre_total_count'], 1)) * 100
+        pre_stable = (pre_stable_pct > 50.0) or (stability_info['pre_baseline_std'] < std_threshold)
+        
+        # Check post-baseline stability  
+        post_stable_pct = (stability_info['post_stable_count'] / max(stability_info['post_total_count'], 1)) * 100
+        post_stable = (post_stable_pct > 50.0) or (stability_info['post_baseline_std'] < std_threshold)
+        
+        # Both baselines must be stable
+        is_acceptable = pre_stable and post_stable
+        
+        print(f"    Quality check: pre={pre_stable_pct:.1f}% stable (std={stability_info['pre_baseline_std']:.6f}g), "
+              f"post={post_stable_pct:.1f}% stable (std={stability_info['post_baseline_std']:.6f}g)")
+        print(f"    Result: {'ACCEPTABLE' if is_acceptable else 'RETRY NEEDED'} (threshold: {std_threshold:.6f}g)")
+        
+        return is_acceptable
 
     def measure(self, state: Dict[str, Any], volume_mL: float, params: Dict[str, Any], replicates: int = 1) -> List[Dict[str, Any]]:
         """Perform hardware measurement with given parameters."""
@@ -145,9 +229,15 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         results = []
         lash_e = state['lash_e']
+
+        if state.get('continuous_mass_monitoring', False):
+            continuous_mass_monitoring=True
+            save_mass_data=True
+        else:
+            continuous_mass_monitoring=False
+            save_mass_data=False
         
         for rep in range(replicates):
-            rep_start = time.perf_counter()
             start_time = datetime.now()
             
             # Convert volume to microliters
@@ -162,7 +252,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     'aspirate_speed': hw_params.get('aspirate_speed', 10),
                     'dispense_speed': hw_params.get('dispense_speed', 10), 
                     'aspirate_wait_time': hw_params.get('aspirate_wait_time', 0.0),
-                    'dispense_wait_time': hw_params.get('dispense_wait_time', 0.0),
+                    'dispense_wait_time': hw_params.get('dispense_wait_time', 1.5),
                     'pre_asp_air_vol': hw_params.get('pre_asp_air_vol', 0.0),
                     'retract_speed': hw_params.get('retract_speed', 5.0),
                     'blowout_vol': hw_params.get('blowout_vol', 0.0),
@@ -183,14 +273,49 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             simulate = False  # This should match the simulate flag from initialize
             
             if not simulate:
-                # Real hardware measurements
-                # Aspirate from source vial
-                lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
+                # Real hardware measurements with quality-controlled retry loop
+                max_retries = 3
+                retry_count = 0
+                measurement_acceptable = False
                 
-                # Dispense into measurement vial and measure weight
-                measured_mass_g = lash_e.nr_robot.dispense_into_vial(
-                    measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True
-                )
+                while not measurement_acceptable and retry_count <= max_retries:
+                    if retry_count > 0:
+                        print(f"    Retry attempt {retry_count}/{max_retries}")
+                    
+                    # Start timing just before the successful measurement attempt
+                    rep_start = time.perf_counter()
+                    
+                    # Aspirate from source vial
+                    lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
+                    
+                    # Dispense into measurement vial and measure weight
+                    dispense_result = lash_e.nr_robot.dispense_into_vial(
+                        measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True, 
+                        continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data
+                    )
+                    
+                    # Handle new return format (mass, stability_info)
+                    if isinstance(dispense_result, tuple):
+                        measured_mass_g, stability_info = dispense_result
+                        # Evaluate measurement quality if continuous monitoring was used
+                        if continuous_mass_monitoring:
+                            measurement_acceptable = self._evaluate_measurement(stability_info, self.quality_std_threshold)
+                        else:
+                            measurement_acceptable = True  # Accept single-point measurements
+                    else:
+                        # Backwards compatibility - old format returns just mass
+                        measured_mass_g = dispense_result
+                        stability_info = None
+                        measurement_acceptable = True
+                    
+                    retry_count += 1
+                    # Check if pipet removal is needed for this liquid (viscous liquids)
+                    if LIQUIDS[state['liquid']]['refill_pipets']:
+                        lash_e.nr_robot.remove_pipet()
+                        print(f"    Removed pipet (refill_pipets=True for {state['liquid']})")
+                        
+                    if not measurement_acceptable and retry_count <= max_retries:
+                        print(f"    WARNING! Measurement quality insufficient, retrying...")
                 
                 # Convert mass to volume using liquid density
                 liquid = state['liquid']
@@ -203,14 +328,14 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 print(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
                 
-                # Check if pipet removal is needed for this liquid (viscous liquids)
-                if LIQUIDS[liquid]['refill_pipets']:
-                    lash_e.nr_robot.remove_pipet()
-                    print(f"    Removed pipet (refill_pipets=True for {liquid})")
+                
                 
             else:
                 # Simple simulation: target volume - 20% + overaspirate + noise
                 import random
+                
+                # Start timing for simulation
+                rep_start = time.perf_counter()
                 
                 # Still call the robot methods for vial tracking, but ignore measurement result
                 lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
@@ -251,6 +376,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 **pipet_params  # Echo back parameters
             }
             
+            # Add stability information if available
+            if stability_info is not None:
+                result['stability_info'] = stability_info
+                result['retry_count'] = retry_count - 1  # Actual number of retries performed
+            
             results.append(result)
             print(f"    Measured: {measured_volume_uL:.1f}uL (target: {volume_uL:.1f}uL) in {elapsed_s:.2f}s")
             print()  # Add visual separation between measurement cycles
@@ -270,6 +400,18 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 print(f"COMPLETE: Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
                 
+                # Send slack notification
+                try:
+                    slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
+                except Exception as e:
+                    print(f"WARNING: Slack notification failed: {e}")
+                
+                # Send slack notification
+                try:
+                    slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
+                except Exception as e:
+                    print(f"WARNING: Slack notification failed: {e}")
+                
             except Exception as e:
                 print(f"WARNING: Hardware cleanup warning: {e}")
 
@@ -288,8 +430,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         available_volume_ml = tip_volume_ml - target_volume_ml
         
         # Add tip volume constraint if relevant parameters exist
-        #constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
-        constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
+        constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        #constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
         print(f"CONSTRAINT: North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}uL, target: {target_volume_ml*1000:.0f}uL)")

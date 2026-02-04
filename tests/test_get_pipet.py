@@ -8,6 +8,7 @@ input_vial_status_file="../utoronto_demo/status/color_matching_vials.txt"
 
 lashe = Lash_E(input_vial_status_file, initialize_biotek=False)
 
+lashe.nr_robot.check_input_file()
 
 def test_get_pipet(index_list):
     for i in index_list:

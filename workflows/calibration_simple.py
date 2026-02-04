@@ -31,6 +31,7 @@ INPUT_CONDITIONS_FILE = "inputs/full_benchmark_dataset_with_status.csv"  # All 7
 OUTPUT_FOLDER_REAL = r"C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\simple_calibration"  # For real experiments
 OUTPUT_FOLDER_SIM = "output"  # For simulation (relative to current directory)
 
+
 # Derived parameters
 DENSITY_LIQUID = LIQUIDS[LIQUID]["density"]
 NEW_PIPET_EACH_TIME_SET = LIQUIDS[LIQUID]["refill_pipets"]
