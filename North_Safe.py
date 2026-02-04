@@ -2358,7 +2358,8 @@ class North_Robot(North_Base):
                         self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
                     except Exception as e:
                         self.logger.warning(f"Scale reading failed: {e}")
-                time.sleep(0.2)  # 5 Hz maximum rate (0.2 second intervals)
+                if not self.simulate:
+                    time.sleep(0.2)  # 5 Hz maximum rate (0.2 second intervals)
         
         #Pipet into the vial
         if initial_move:
@@ -2368,7 +2369,8 @@ class North_Robot(North_Base):
         if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
             # Conditional settling based on dispense wait time
             self.logger.info(f"Short wait time ({1.0:.1f}s), allowing scale to settle after robot positioning...")
-            time.sleep(1.0)  # 2 second settling delay for short wait times
+            if not self.simulate:
+                time.sleep(1.0)  # 2 second settling delay for short wait times
             
             start_time = time.time()
             dispense_start_time = None  # Will be set when dispensing starts
@@ -2379,7 +2381,8 @@ class North_Robot(North_Base):
             self.logger.info("Started continuous mass monitoring with pre-dispense baseline")
             
             # Wait for 1.0s baseline before dispensing for better stability
-            time.sleep(2.0)
+            if not self.simulate:
+                time.sleep(2.0)
             
         # Record when actual dispensing starts
         if measure_weight and continuous_mass_monitoring and dest_vial_clamped:
@@ -2395,7 +2398,8 @@ class North_Robot(North_Base):
             self.logger.info(f"Dispensing took {dispense_duration:.3f}s, collecting post-dispense baseline")
             
             # Let monitoring thread continue for post-baseline period
-            time.sleep(2.0)  # 1.0s post-dispense baseline for better data
+            if not self.simulate:
+                time.sleep(2.0)  # 1.0s post-dispense baseline for better data
             
             # Stop continuous monitoring after collecting post-baseline data
             monitoring_active.clear()
