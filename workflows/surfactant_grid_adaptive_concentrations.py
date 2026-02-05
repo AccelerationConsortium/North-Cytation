@@ -29,6 +29,7 @@ RECOVERY USAGE:
 # IMPORTS AND DEPENDENCIES
 # ================================================================================
 
+from re import S
 import sys
 
 
@@ -276,130 +277,6 @@ def fill_water_vial(lash_e, vial_name):
 # SECTION 1: SMART SUBSTOCK MANAGEMENT
 # ================================================================================
 
-def optimize_vial_positions_for_pipetting(lash_e, plan_a, plan_b, surfactant_a_name, surfactant_b_name):
-    """
-    Move all stock and substock vials to optimal positions (end of rack) before pipetting.
-    Pipette from low to high concentration, then return vials home.
-    
-    Args:
-        lash_e: Robot coordinator
-        plan_a, plan_b: Smart dilution plans containing vial names
-        surfactant_a_name, surfactant_b_name: Surfactant names
-    
-    Returns:
-        dict: Mapping of vial names to their temporary positions for restoration
-    """
-    lash_e.logger.info(f"\n" + "="*60)
-    lash_e.logger.info(f"OPTIMIZING VIAL POSITIONS FOR PIPETTING")
-    lash_e.logger.info(f"="*60)
-    
-    # Collect all vials that will be used for pipetting
-    surfactant_a_vials = set()
-    surfactant_b_vials = set()
-    
-    # Get stock vials
-    surfactant_a_vials.add(f"{surfactant_a_name}_stock")
-    surfactant_b_vials.add(f"{surfactant_b_name}_stock")
-    
-    # Get substock vials from plans
-    for recipe in plan_a['recipes']:
-        surfactant_a_vials.add(recipe['vial_name'])
-    for recipe in plan_b['recipes']:
-        surfactant_b_vials.add(recipe['vial_name'])
-    
-    lash_e.logger.info(f"  Surfactant A vials to optimize: {sorted(surfactant_a_vials)}")
-    lash_e.logger.info(f"  Surfactant B vials to optimize: {sorted(surfactant_b_vials)}")
-    
-    # Find available positions at end of rack (best for pipetting access)
-    # Rack has 48 positions (0-47), use positions 40-47 for temporary staging
-    OPTIMAL_POSITIONS = list(range(40, 48))  # Positions 40-47 (8 positions)
-    
-    # Track original positions for restoration
-    original_positions = {}
-    position_counter = 0
-    
-    # Move surfactant A vials first (will be pipetted first)
-    for vial_name in sorted(surfactant_a_vials):
-        if position_counter >= len(OPTIMAL_POSITIONS):
-            lash_e.logger.info(f"  Warning: Ran out of optimal positions, leaving {vial_name} in original location")
-            break
-            
-        try:
-            # Get current position
-            current_location = lash_e.nr_robot.get_vial_info(vial_name, 'location')
-            current_index = lash_e.nr_robot.get_vial_info(vial_name, 'location_index')
-            
-            # Store original position
-            original_positions[vial_name] = {
-                'location': current_location,
-                'location_index': current_index
-            }
-            
-            # Move to optimal position
-            optimal_position = OPTIMAL_POSITIONS[position_counter]
-            lash_e.logger.info(f"  Moving {vial_name}: {current_location}[{current_index}] -> main_8mL_rack[{optimal_position}]")
-            lash_e.nr_robot.move_vial_to_location(vial_name, 'main_8mL_rack', optimal_position)
-            position_counter += 1
-            
-        except Exception as e:
-            lash_e.logger.info(f"  Warning: Could not move {vial_name}: {e}")
-    
-    # Move surfactant B vials  
-    for vial_name in sorted(surfactant_b_vials):
-        if position_counter >= len(OPTIMAL_POSITIONS):
-            lash_e.logger.info(f"  Warning: Ran out of optimal positions, leaving {vial_name} in original location")
-            break
-            
-        try:
-            # Get current position
-            current_location = lash_e.nr_robot.get_vial_info(vial_name, 'location')
-            current_index = lash_e.nr_robot.get_vial_info(vial_name, 'location_index')
-            
-            # Store original position
-            original_positions[vial_name] = {
-                'location': current_location,
-                'location_index': current_index
-            }
-            
-            # Move to optimal position
-            optimal_position = OPTIMAL_POSITIONS[position_counter]
-            lash_e.logger.info(f"  Moving {vial_name}: {current_location}[{current_index}] -> main_8mL_rack[{optimal_position}]")
-            lash_e.nr_robot.move_vial_to_location(vial_name, 'main_8mL_rack', optimal_position)
-            position_counter += 1
-            
-        except Exception as e:
-            lash_e.logger.info(f"  Warning: Could not move {vial_name}: {e}")
-    
-    lash_e.logger.info(f"  Successfully positioned {len(original_positions)} vials in optimal locations")
-    lash_e.logger.info(f"  Ready for low->high concentration pipetting")
-    
-    return original_positions
-
-def restore_vial_positions(lash_e, original_positions):
-    """
-    Restore all vials to their original home positions after pipetting.
-    
-    Args:
-        lash_e: Robot coordinator
-        original_positions: Dictionary mapping vial names to their original positions
-    """
-    lash_e.logger.info(f"\n" + "="*60)
-    lash_e.logger.info(f"RESTORING VIAL POSITIONS AFTER PIPETTING")
-    lash_e.logger.info(f"="*60)
-    
-    for vial_name, position_info in original_positions.items():
-        try:
-            lash_e.logger.info(f"  Restoring {vial_name} -> {position_info['location']}[{position_info['location_index']}]")
-            lash_e.nr_robot.move_vial_to_location(
-                vial_name, 
-                position_info['location'], 
-                position_info['location_index']
-            )
-        except Exception as e:
-            lash_e.logger.info(f"  Warning: Could not restore {vial_name}: {e}")
-    
-    lash_e.logger.info(f"  Successfully restored {len(original_positions)} vials to home positions")
-
 class SurfactantSubstockTracker:
     """Track surfactant substock vial contents and find optimal dilution strategies."""
     
@@ -602,9 +479,8 @@ def calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfac
                 
                 for source_conc, source_name in created_substocks.items():
                     if source_conc > target_conc:  # Can only dilute down
-                        # Match automation logic: apply concentration correction factor
-                        required_stock_conc = target_conc * CONCENTRATION_CORRECTION_FACTOR
-                        dilution_factor = source_conc / required_stock_conc
+                        # Simple dilution: no correction factor for substock creation
+                        dilution_factor = source_conc / target_conc
                         source_volume_ml = FINAL_SUBSTOCK_VOLUME_ML / dilution_factor
                         source_volume_ul = source_volume_ml * 1000
                         
@@ -619,9 +495,8 @@ def calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfac
                                 }
                 
                 if best_source:
-                    # Match automation logic: apply concentration correction factor
-                    required_stock_conc = target_conc * CONCENTRATION_CORRECTION_FACTOR
-                    dilution_factor = best_source['conc'] / required_stock_conc
+                    # Simple dilution: no correction factor for substock creation
+                    dilution_factor = best_source['conc'] / target_conc
                     
                     source_volume_ml = FINAL_SUBSTOCK_VOLUME_ML / dilution_factor
                     source_volume_ul = source_volume_ml * 1000
@@ -647,7 +522,7 @@ def calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfac
                     
                     source_type = "stock" if best_source['name'].endswith('_stock') else "dilution"
                     lash_e.logger.info(f"  {vial_name}: {source_volume_ul:.0f}uL {best_source['name']} + {water_volume_ul:.0f}uL water -> {target_conc:.2e} mM")
-                    lash_e.logger.info(f"    (Dilution factor: {dilution_factor:.1f}x from {best_source['conc']:.2e} mM {source_type}, corrected for {CONCENTRATION_CORRECTION_FACTOR:.2f}x buffer factor)")
+                    lash_e.logger.info(f"    (Dilution factor: {dilution_factor:.1f}x from {best_source['conc']:.2e} mM {source_type})")
                 
                 else:
                     # Cannot make with current minimum volume - needs intermediate
@@ -765,151 +640,6 @@ def create_substocks_from_recipes(lash_e, recipes):
     logger.info(f"Substock summary: {newly_created} newly created, {skipped_count} already existed, {total_available} total available")
     return created_substocks
 
-def verify_concentration_calculations_and_export(lash_e, plan_a, plan_b, surfactant_a_name, surfactant_b_name, target_concs_a, target_concs_b, experiment_name=None):
-    """
-    Verify that the dilution plan will actually produce target concentrations.
-    Export detailed calculations to CSV for review.
-    """
-    import pandas as pd
-    
-    lash_e.logger.info(f"\n=== CONCENTRATION VERIFICATION ===")
-    
-    verification_data = []
-    
-    # Verify each concentration for both surfactants
-    for i, target_conc in enumerate(target_concs_a):
-        if target_conc in plan_a['concentration_map']:
-            solution = plan_a['concentration_map'][target_conc]
-            
-            # Calculate final concentration in 200 uL well
-            solution_conc_mm = solution['concentration_mm'] 
-            solution_volume_ul = solution['volume_needed_ul']
-            
-            # Final concentration calculation: (solution_conc * solution_volume) / total_well_volume
-            calculated_final_conc = (solution_conc_mm * solution_volume_ul) / WELL_VOLUME_UL
-            
-            # Water volume for this surfactant
-            water_volume_ul = EFFECTIVE_SURFACTANT_VOLUME - solution_volume_ul
-            
-            # Calculate error
-            error_percent = ((calculated_final_conc - target_conc) / target_conc) * 100 if target_conc > 0 else 0
-            
-            verification_data.append({
-                'Surfactant': surfactant_a_name,
-                'Target_Conc_mM': target_conc,
-                'Solution_Vial': solution['vial_name'],
-                'Solution_Conc_mM': solution_conc_mm,
-                'Solution_Volume_uL': solution_volume_ul,
-                'Water_Volume_uL': water_volume_ul,
-                'Total_Surfactant_Volume_uL': solution_volume_ul + water_volume_ul,
-                'Calculated_Final_Conc_mM': calculated_final_conc,
-                'Error_Percent': error_percent,
-                'Is_Stock': solution['is_stock']
-            })
-    
-    for i, target_conc in enumerate(target_concs_b):
-        if target_conc in plan_b['concentration_map']:
-            solution = plan_b['concentration_map'][target_conc]
-            
-            # Calculate final concentration in 200 uL well
-            solution_conc_mm = solution['concentration_mm'] 
-            solution_volume_ul = solution['volume_needed_ul']
-            
-            # Final concentration calculation
-            calculated_final_conc = (solution_conc_mm * solution_volume_ul) / WELL_VOLUME_UL
-            
-            # Water volume for this surfactant
-            water_volume_ul = EFFECTIVE_SURFACTANT_VOLUME - solution_volume_ul
-            
-            # Calculate error
-            error_percent = ((calculated_final_conc - target_conc) / target_conc) * 100 if target_conc > 0 else 0
-            
-            verification_data.append({
-                'Surfactant': surfactant_b_name,
-                'Target_Conc_mM': target_conc,
-                'Solution_Vial': solution['vial_name'],
-                'Solution_Conc_mM': solution_conc_mm,
-                'Solution_Volume_uL': solution_volume_ul,
-                'Water_Volume_uL': water_volume_ul,
-                'Total_Surfactant_Volume_uL': solution_volume_ul + water_volume_ul,
-                'Calculated_Final_Conc_mM': calculated_final_conc,
-                'Error_Percent': error_percent,
-                'Is_Stock': solution['is_stock']
-            })
-    
-    # Create DataFrame and export
-    df = pd.DataFrame(verification_data)
-    
-    # Add well composition summary
-    well_summary = pd.DataFrame([{
-        'Component': 'Surfactant A',
-        'Volume_uL': EFFECTIVE_SURFACTANT_VOLUME,
-        'Notes': 'Solution + Water'
-    }, {
-        'Component': 'Surfactant B', 
-        'Volume_uL': EFFECTIVE_SURFACTANT_VOLUME,
-        'Notes': 'Solution + Water'
-    }, {
-        'Component': 'Buffer',
-        'Volume_uL': BUFFER_VOLUME_UL if ADD_BUFFER else 0,
-        'Notes': SELECTED_BUFFER if ADD_BUFFER else 'None'
-    }, {
-        'Component': 'Pyrene',
-        'Volume_uL': PYRENE_VOLUME_UL,
-        'Notes': 'Added later'
-    }, {
-        'Component': 'TOTAL',
-        'Volume_uL': WELL_VOLUME_UL,
-        'Notes': 'Target well volume'
-    }])
-    
-    # Define file paths (used for logging regardless of simulation mode)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    if experiment_name:
-        experiment_dir = os.path.join("output", experiment_name)
-        conc_file = os.path.join(experiment_dir, "concentration_verification.csv")
-        well_file = os.path.join(experiment_dir, "well_composition.csv")
-    else:
-        # Fallback to old structure
-        conc_file = f"output/concentration_verification_{timestamp}.csv"
-        well_file = f"output/well_composition_{timestamp}.csv"
-        experiment_dir = "output"
-    
-    # Skip CSV export during simulation
-    if not (hasattr(lash_e, 'simulate') and lash_e.simulate):
-        # Export to CSV files only in hardware mode
-        os.makedirs(experiment_dir, exist_ok=True)
-        df.to_csv(conc_file, index=False)
-        well_summary.to_csv(well_file, index=False)
-    else:
-        lash_e.logger.info(f"    [SIMULATED] Would export CSV files with timestamp {timestamp}")
-    
-    # lash_e.logger.info verification summary
-    max_error = df['Error_Percent'].abs().max()
-    avg_error = df['Error_Percent'].abs().mean()
-    
-    lash_e.logger.info(f"Verification complete:")
-    lash_e.logger.info(f"  Maximum error: {max_error:.2f}%")
-    lash_e.logger.info(f"  Average error: {avg_error:.2f}%")
-    
-    # Log file paths (or simulated paths)
-    if not (hasattr(lash_e, 'simulate') and lash_e.simulate):
-        lash_e.logger.info(f"  Exported detailed calculations to: {conc_file}")
-        lash_e.logger.info(f"  Exported well composition to: {well_file}")
-    else:
-        lash_e.logger.info(f"  [SIMULATED] Would export to: {conc_file}")
-        lash_e.logger.info(f"  [SIMULATED] Would export to: {well_file}")
-    
-    # Show any large errors
-    large_errors = df[df['Error_Percent'].abs() > 5]
-    if len(large_errors) > 0:
-        lash_e.logger.info(f"  WARNING: {len(large_errors)} concentrations have >5% error!")
-        for _, row in large_errors.iterrows():
-            lash_e.logger.info(f"    {row['Surfactant']} {row['Target_Conc_mM']:.2e} mM: {row['Error_Percent']:.1f}% error")
-    else:
-        lash_e.logger.info(f"  + All concentration errors < 5%")
-    
-    return df, well_summary
 
 # ================================================================================
 # SECTION 2: CONCENTRATION AND GRID CALCULATION FUNCTIONS
@@ -1069,67 +799,6 @@ def get_achievable_concentrations(surfactant_name, target_concentrations):
             achievable.append(None)
     
     return achievable
-
-def create_concentration_grid_summary(concs_a, concs_b, dilution_vials_a, dilution_vials_b, surfactant_a_name, surfactant_b_name):
-    """
-    Create a text-based visual summary showing which concentration combinations are achievable.
-    Updated to handle different concentration arrays for each surfactant.
-    
-    Args:
-        concs_a: Concentrations for surfactant A
-        concs_b: Concentrations for surfactant B
-        dilution_vials_a: List of vial names for surfactant A (None for non-achievable)
-        dilution_vials_b: List of vial names for surfactant B (None for non-achievable)
-        surfactant_a_name: Name of surfactant A
-        surfactant_b_name: Name of surfactant B
-        
-    Returns:
-        str: Text grid showing achievable combinations
-    """
-    grid_lines = []
-    grid_lines.append(f"ADAPTIVE CONCENTRATION GRID SUMMARY: {surfactant_a_name} + {surfactant_b_name}")
-    grid_lines.append("=" * 70)
-    grid_lines.append("Legend: X = achievable combination, . = not achievable")
-    grid_lines.append(f"Grid size: {len(concs_a)} × {len(concs_b)} = {len(concs_a) * len(concs_b)} combinations")
-    grid_lines.append("")
-    
-    # Surfactant concentration ranges
-    grid_lines.append(f"{surfactant_a_name}: {concs_a[0]:.1e} to {concs_a[-1]:.1e} mM (stock: {SURFACTANT_LIBRARY[surfactant_a_name]['stock_conc']} mM)")
-    grid_lines.append(f"{surfactant_b_name}: {concs_b[0]:.1e} to {concs_b[-1]:.1e} mM (stock: {SURFACTANT_LIBRARY[surfactant_b_name]['stock_conc']} mM)")
-    grid_lines.append("")
-    
-    # Create header with surfactant B concentrations (columns)
-    header = f"{'':>12}"  # Space for row labels
-    for j, conc_b in enumerate(concs_b):
-        if dilution_vials_b[j] is not None:
-            header += f"{conc_b:.1e}".rjust(12)
-        else:
-            header += f"{'(N/A)':<12}"
-    grid_lines.append(f"{surfactant_b_name} (mM) ->")
-    grid_lines.append(header)
-    grid_lines.append("-" * len(header))
-    
-    # Create rows for each surfactant A concentration
-    for i, conc_a in enumerate(concs_a):
-        if dilution_vials_a[i] is not None:
-            row_label = f"{conc_a:.1e}".rjust(10) + " |"
-        else:
-            row_label = f"{'(N/A)':<10} |"
-        
-        row = row_label
-        for j, conc_b in enumerate(concs_b):
-            # Check if both concentrations are achievable
-            if dilution_vials_a[i] is not None and dilution_vials_b[j] is not None:
-                symbol = "X"
-            else:
-                symbol = "."
-            row += f"{symbol:>12}"
-        grid_lines.append(row)
-    
-    grid_lines.append("")
-    achievable_count = len([1 for a in dilution_vials_a for b in dilution_vials_b if a is not None and b is not None])
-    total_count = len(concs_a) * len(concs_b)
-    grid_lines.append(f"Achievable combinations: {achievable_count}/{total_count}")
     
 def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="start"):
     """
@@ -1146,8 +815,6 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
         'dilution_b_vial': None,
         'volume_a_ul': 200,
         'volume_b_ul': 0,
-        'conc_a': None,  # Full stock concentration
-        'conc_b': 0,
         'replicate': 1,
         'is_control': True
     })
@@ -1160,8 +827,6 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
         'dilution_b_vial': f'{surfactant_b_name}_stock',
         'volume_a_ul': 0,
         'volume_b_ul': 200,
-        'conc_a': 0,
-        'conc_b': None,  # Full stock concentration
         'replicate': 1,
         'is_control': True
     })
@@ -1170,13 +835,11 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
     if ADD_BUFFER:
         controls.append({
             'control_type': f'{position_prefix}_control_buffer',
-            'description': f'Buffer ({SELECTED_BUFFER}, 200 uL)',
+            'description': f'{SELECTED_BUFFER} buffer (200 uL)',
             'dilution_a_vial': None,
             'dilution_b_vial': None,
             'volume_a_ul': 0,
             'volume_b_ul': 0,
-            'conc_a': 0,
-            'conc_b': 0,
             'buffer_only': True,
             'replicate': 1,
             'is_control': True
@@ -1190,67 +853,13 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
         'dilution_b_vial': None,
         'volume_a_ul': 0,
         'volume_b_ul': 0,
-        'conc_a': 0,
-        'conc_b': 0,
         'water_only': True,
         'replicate': 1,
         'is_control': True
     })
     
     return controls
-
-def add_dmso_and_measure_existing_wells(lash_e, well_indices, wellplate_data):
-    """Add DMSO and perform measurements on existing wells. Useful for resuming experiments."""
-    lash_e.logger.info(f"Starting DMSO addition and measurements for wells {well_indices}")
     
-    # Add DMSO to the wells
-    add_dmso_to_wells(lash_e, well_indices, wellplate_data)
-    
-    # Measure fluorescence after DMSO addition
-    fluorescence_entry = measure_wellplate_fluorescence(lash_e, well_indices, wellplate_data)
-    
-    lash_e.logger.info(f"Completed DMSO addition and fluorescence measurement for {len(well_indices)} wells")
-    return fluorescence_entry
-
-def measure_existing_wells_turbidity_only(lash_e, well_indices, wellplate_data):
-    """Measure turbidity on existing wells without DMSO. Useful for resuming experiments."""
-    lash_e.logger.info(f"Starting turbidity measurements for wells {well_indices}")
-    
-    # Measure turbidity only
-    turbidity_entry = measure_wellplate_turbidity(lash_e, well_indices, wellplate_data)
-    
-    lash_e.logger.info(f"Completed turbidity measurement for {len(well_indices)} wells")
-    return turbidity_entry
-
-def add_dmso_to_wells(lash_e, wells_in_batch, wellplate_data):
-    """Add DMSO to all wells in the batch using optimal small-tip dispensing."""
-    from datetime import datetime
-    
-    lash_e.logger.info(f"  Adding pyrene_DMSO ({PYRENE_VOLUME_UL}uL) using small tips, back-and-forth")
-    pyrene_volume_ml = PYRENE_VOLUME_UL / 1000  # Convert to mL
-    
-
-    # Condition tip with DMSO before first use
-    lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)  # Ensure vial is in position
-    condition_tip(lash_e, 'pyrene_DMSO')
-    
-    # Add pyrene to each well individually using back-and-forth with small tips
-    lash_e.logger.info(f"    Dispensing to {len(wells_in_batch)} wells individually for accuracy...")
-    for well_idx in wells_in_batch:
-        lash_e.nr_robot.aspirate_from_vial('pyrene_DMSO', pyrene_volume_ml, liquid='DMSO')
-        lash_e.nr_robot.dispense_into_wellplate(
-            dest_wp_num_array=[well_idx], 
-            amount_mL_array=[pyrene_volume_ml],
-            liquid='DMSO'
-        )
-        # No pipet removal - keep for back-and-forth efficiency
-    
-    # Remove pipet after completing all pyrene dispensing
-    lash_e.nr_robot.remove_pipet()
-    
-    # Return pyrene_DMSO vial to home position
-    lash_e.nr_robot.return_vial_home('pyrene_DMSO')
-
 def measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data):
     """Measure turbidity for a batch of wells and save data."""
     from datetime import datetime
@@ -1321,573 +930,141 @@ def measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data):
     
     return fluorescence_entry
 
-def pipette_grid_to_shared_wellplate(lash_e, concs_a, concs_b, plan_a, plan_b, surfactant_a_name, surfactant_b_name, shared_wellplate_state):
-    """Pipette concentration grid into wellplate(s) with CORRECTED phase order for proper buffer timing."""
+def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, volume_column):
+    """
+    Unified dispensing method for any liquid component.
+    
+    Args:
+        lash_e: Robot coordinator
+        batch_df: DataFrame with well recipes for this batch
+        vial_name: Name of source vial (e.g., 'water', 'SDS_1.0mM', 'pyrene_DMSO')
+        liquid_type: Type of liquid for pipetting parameters ('water', 'DMSO')
+        volume_column: Column name for volume (e.g., 'surf_A_volume_ul', 'water_volume_ul')
+    """
     logger = lash_e.logger
     
-    # NORMAL WORKFLOW CONTINUES BELOW
-    logger.info(f"Starting grid pipetting: {len(concs_a)}x{len(concs_b)} grid with {N_REPLICATES} replicates each")
+    # Get component name for logging
+    component_name = volume_column.replace('_volume_ul', '').replace('_', ' ').title()
     
-    well_counter = shared_wellplate_state.get('global_well_counter', 0)
-    well_map = []  
-    total_wells_added = shared_wellplate_state.get('total_wells_added', 0)
+    # Filter to wells that need this component
+    wells_needing_component = batch_df[batch_df[volume_column] > 0].copy()
     
+    if len(wells_needing_component) == 0:
+        logger.info(f"  {component_name}: No wells need this component")
+        return
+    
+    logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells")
+    
+    # Dispense to each well individually
+    for _, row in wells_needing_component.iterrows():
+        well_idx = row['wellplate_index']
+        volume_ul = row[volume_column]
+        volume_ml = volume_ul / 1000
+        
+        logger.info(f"    Well {well_idx}: {volume_ul:.1f}uL from {vial_name}")
+        
+        # Robot actions (Lash_E handles simulation internally)
+        lash_e.nr_robot.aspirate_from_vial(vial_name, volume_ml, liquid=liquid_type)
+        lash_e.nr_robot.dispense_into_wellplate(
+            dest_wp_num_array=[well_idx], 
+            amount_mL_array=[volume_ml],
+            liquid=liquid_type
+        )
+           
+    logger.info(f"    {component_name}: Dispensing complete")
 
+def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, vial_type):
+    """
+    Cute little method to sort surfactant vials by concentration and move to safe positions.
+    Prevents contamination by going dilute → concentrated.
     
-    # Use existing wellplate tracking from shared state
-    wellplate_data = {
-        'current_plate': shared_wellplate_state.get('current_plate', 1),
-        'wells_used': shared_wellplate_state.get('wells_used', 0),
-        'measurements': [],  
-        'last_measured_well': shared_wellplate_state.get('last_measured_well', -1)
-    }
-    
-    # Generate all well requirements using smart dilution plans
-    
-    # START: Add control wells at beginning
-    start_controls = create_control_wells(surfactant_a_name, surfactant_b_name, "start")
-    all_well_requirements = start_controls.copy()
-    
-    # MIDDLE: Add grid experiment wells  
-    grid_wells = []
-    for i, conc_a in enumerate(concs_a):
-        for j, conc_b in enumerate(concs_b):
-            # Check if both concentrations are achievable using the plans
-            solution_a = plan_a['concentration_map'].get(conc_a)
-            solution_b = plan_b['concentration_map'].get(conc_b)
-            
-            if solution_a is None or solution_b is None:
-                conc_a_str = f"{conc_a:.2e}" if conc_a is not None else "None"
-                conc_b_str = f"{conc_b:.2e}" if conc_b is not None else "None"
-                logger.debug(f"Skipping combination [{i},{j}]: {conc_a_str} + {conc_b_str} mM (no solution available)")
-                continue
-                
-            for rep in range(N_REPLICATES):
-                grid_wells.append({
-                    'conc_a': concs_a[i],
-                    'conc_b': concs_b[j], 
-                    'conc_a_idx': i,
-                    'conc_b_idx': j,
-                    'dilution_a_vial': solution_a['vial_name'],
-                    'dilution_b_vial': solution_b['vial_name'],
-                    'volume_a_ul': solution_a['volume_needed_ul'],
-                    'volume_b_ul': solution_b['volume_needed_ul'],
-                    'replicate': rep + 1,
-                    'is_control': False
-                })
-    
-    all_well_requirements.extend(grid_wells)
-    
-    # END: Add control wells at end
-    end_controls = create_control_wells(surfactant_a_name, surfactant_b_name, "end")
-    all_well_requirements.extend(end_controls)
-    
-    # Report on achievable vs total combinations
-    total_possible_wells = len(concs_a) * len(concs_b) * N_REPLICATES
-    achievable_grid_wells = len(grid_wells)
-    skipped_wells = total_possible_wells - achievable_grid_wells
-    total_controls = len(start_controls) + len(end_controls)
-    total_wells_with_controls = achievable_grid_wells + total_controls
-    
-    logger.info(f"Grid summary: {achievable_grid_wells}/{total_possible_wells} grid wells achievable ({skipped_wells} skipped)")
-    logger.info(f"Controls: {len(start_controls)} start + {len(end_controls)} end = {total_controls} control wells")
-    logger.info(f"Total wells: {total_wells_with_controls} (grid + controls)")
-    
-    if achievable_grid_wells == 0:
-        logger.warning("No achievable concentration combinations found! Check stock concentrations and target ranges.")
-        # Still continue with controls only
-        if total_controls == 0:
-            return [], shared_wellplate_state
-    
-    # Process wells in batches of MEASUREMENT_INTERVAL
-    for batch_start in range(0, len(all_well_requirements), MEASUREMENT_INTERVAL):
-        batch_end = min(batch_start + MEASUREMENT_INTERVAL, len(all_well_requirements))
-        current_batch = all_well_requirements[batch_start:batch_end]
+    Args:
+        lash_e: Robot coordinator
+        vial_names: List of vial names (e.g., ['SDS_1.0mM', 'SDS_5.0mM'])
+        batch_df: DataFrame with concentration info
+        vial_type: 'A' or 'B' for logging and column selection
         
-        lash_e.logger.info(f"Processing batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {well_counter}-{well_counter + len(current_batch) - 1}")
+    Returns:
+        list: Vial names sorted by concentration (dilute first)
+    """
+    if len(vial_names) == 0:
+        return []
         
-
-        # Check wellplate capacity and switch if needed
-        wells_in_batch = []
-        for req in current_batch:
-            # Check if we need to switch wellplates
-            well_counter, wellplate_data = manage_wellplate_switching(lash_e, well_counter, wellplate_data)
-            wells_in_batch.append(well_counter)
-            well_counter += 1
-        
-        # Skip wellplate creation if CREATE_WELLPLATE is False
-        if CREATE_WELLPLATE:
-            # PHASE 1: Add all surfactant A solutions (with integrated vial optimization)
-            lash_e.logger.info(f"  Phase 1: Adding surfactant A (including controls)")
-        
-            from collections import defaultdict
-            vial_a_groups = defaultdict(list)
-            control_wells_a = defaultdict(list)  # Track control wells separately
-            
-            # Track actual dispensed volumes for each well
-            actual_volumes_dispensed = {}  # {well_idx: {'volume_a': X, 'volume_b': Y}}
-            
-            for batch_idx, req in enumerate(current_batch):
-                actual_well = wells_in_batch[batch_idx]
-                
-                # Initialize tracking for this well
-                actual_volumes_dispensed[actual_well] = {
-                    'volume_a_ul': req['volume_a_ul'],
-                    'volume_b_ul': req['volume_b_ul'],
-                    'volume_a_dispensed': 0,
-                'volume_b_dispensed': 0
-            }
-            
-            # Group by vial type (regular vs control)
-            if req.get('is_control', False):
-                if req['volume_a_ul'] > 0 and req['dilution_a_vial']:
-                    control_wells_a[req['dilution_a_vial']].append((batch_idx, actual_well, req))
-            else:
-                # Regular grid wells
-                if req['volume_a_ul'] > 0:
-                    vial_a_groups[req['dilution_a_vial']].append((batch_idx, actual_well, req))
-        
-            # Handle control wells first (they use stock concentrations)
-            lash_e.logger.info(f"    Processing {sum(len(wells) for wells in control_wells_a.values())} control wells for surfactant A")
-            for vial_name, well_list in control_wells_a.items():
-                for batch_idx, actual_well, req in well_list:
-                    volume_each_ml = req['volume_a_ul'] / 1000
-                    lash_e.logger.info(f"      Control well {actual_well}: {req['volume_a_ul']}uL {vial_name}")
-                    
-                    lash_e.nr_robot.aspirate_from_vial(vial_name, volume_each_ml, liquid='water')
-                    lash_e.nr_robot.dispense_into_wellplate(
-                        dest_wp_num_array=[actual_well], 
-                        amount_mL_array=[volume_each_ml],
-                        liquid='water'
-                    )
-                    lash_e.nr_robot.remove_pipet()
-                    
-                    actual_volumes_dispensed[actual_well]['volume_a_dispensed'] = req['volume_a_ul']
-            
-            # Handle regular grid wells (existing logic)
-            lash_e.logger.info(f"    Processing {sum(len(wells) for wells in vial_a_groups.values())} grid wells for surfactant A")
-            lash_e.logger.info(f"    Moving surfactant A vials to safe positions for better access...")
-            
-            # Define safe positions for vial movements (max 7 vials)
-            SAFE_POSITIONS = {
-                'main_8mL_rack': [36, 43, 44, 45, 46, 47],
-                'clamp': [0]
-            }
-            
-            # Move surfactant A vials to safe positions
-            vial_a_original_positions = {}
-            unique_vials_a = list(vial_a_groups.keys())
-            available_positions = SAFE_POSITIONS['main_8mL_rack'].copy()  # Use rack positions first
-            
-            for i, vial_name in enumerate(unique_vials_a):
-                try:
-                    # Store original position
-                    current_location = lash_e.nr_robot.get_vial_info(vial_name, 'location')
-                    current_index = lash_e.nr_robot.get_vial_info(vial_name, 'location_index')
-                    vial_a_original_positions[vial_name] = {'location': current_location, 'location_index': current_index}
-                    
-                    # Select safe position
-                    if i < len(available_positions):
-                        safe_position = available_positions[i]
-                        safe_location = 'main_8mL_rack'
-                    elif i < len(available_positions) + len(SAFE_POSITIONS['clamp']):
-                        safe_position = SAFE_POSITIONS['clamp'][0]
-                        safe_location = 'clamp'
-                    else:
-                        lash_e.logger.warning(f"      No safe position available for {vial_name} (max 7 vials supported)")
-                        continue
-                    
-                    # Move to safe position
-                    lash_e.nr_robot.move_vial_to_location(vial_name, safe_location, safe_position)
-                    lash_e.logger.info(f"      Moved {vial_name} to {safe_location} position {safe_position}")
-                except Exception as e:
-                    lash_e.logger.info(f"      Warning: Could not move {vial_name}: {e}")
-            
-            # Sort vial groups by concentration (low->high to prevent contamination)
-            sorted_vial_groups_a = sorted(vial_a_groups.items(), 
-                                        key=lambda x: current_batch[x[1][0][0]]['conc_a'] or 0)
-            
-            # Pipette surfactant A
-            surfactant_a_tip_conditioned = False
-            for vial_name, well_list in sorted_vial_groups_a:
-                lash_e.logger.info(f"    Using vial {vial_name} for {len(well_list)} wells")
-                
-                # Condition tip on first surfactant A vial
-                if not surfactant_a_tip_conditioned:
-                    condition_tip(lash_e, vial_name)
-                    surfactant_a_tip_conditioned = True
-                
-                for batch_idx, actual_well, req in well_list:
-                    volume_each_ml = req['volume_a_ul'] / 1000  # Convert uL to mL
-                    
-                    # Track actual dispensed volume
-                    actual_volumes_dispensed[actual_well]['volume_a_dispensed'] = req['volume_a_ul']
-                    
-                    # Use safe location (handles vial movement properly)
-                    lash_e.nr_robot.aspirate_from_vial(req['dilution_a_vial'], volume_each_ml, liquid='water')
-                    lash_e.nr_robot.dispense_into_wellplate(
-                        dest_wp_num_array=[actual_well], 
-                        amount_mL_array=[volume_each_ml],
-                        liquid='water'
-                    )
-                # Return vial home and remove tip after each vial to allow safe movement
-            lash_e.nr_robot.remove_pipet()
-            
-            # Return surfactant A vials to original positions
-            lash_e.logger.info(f"    Returning surfactant A vials to home positions...")
-            for vial_name, position_info in vial_a_original_positions.items():
-                try:
-                    lash_e.nr_robot.move_vial_to_location(vial_name, position_info['location'], position_info['location_index'])
-                    lash_e.logger.info(f"      Restored {vial_name} to home position")
-                except Exception as e:
-                    lash_e.logger.info(f"      Warning: Could not restore {vial_name}: {e}")
-                
-            
-            
-            # PHASE 2: Add remaining water to fill wells (including control wells)
-            lash_e.logger.info(f"  Phase 2: Adding water (controls and grid wells)")
-            
-            # Move water vial to optimal position for efficient access
+    logger = lash_e.logger
+    safe_positions = [36, 43, 44, 45, 46, 47, 'clamp']  # Safe spots in order
+    
+    # Get concentration for each vial from the DataFrame
+    vial_concentrations = []
+    conc_column = f'substock_{vial_type}_conc_mm'
+    name_column = f'substock_{vial_type}_name'
+    
+    for vial_name in vial_names:
+        # Find the concentration for this vial
+        vial_rows = batch_df[batch_df[name_column] == vial_name]
+        if len(vial_rows) > 0:
+            concentration = vial_rows.iloc[0][conc_column]
+            vial_concentrations.append((vial_name, concentration))
+        else:
+            # Fallback - assume concentration from vial name if possible
             try:
-                water_original_location = lash_e.nr_robot.get_vial_info('water', 'location')
-                water_original_index = lash_e.nr_robot.get_vial_info('water', 'location_index')
-                optimal_position = 46  # Use rack position for optimal access
-                lash_e.nr_robot.move_vial_to_location('water', 'main_8mL_rack', optimal_position)
-                lash_e.nr_robot.move_vial_to_location('water_2', 'main_8mL_rack', optimal_position-1)
-                lash_e.logger.info(f"    Moved water vial from {water_original_location} to position {optimal_position}")
-            except Exception as e:
-                lash_e.logger.info(f"    Warning: Could not move water vial to optimal position: {e}")
-                water_original_location = None
-            
-            # Calculate water needed for each well individually
-            current_water_vial = 'water'  # Track which water vial is currently in use
-            for well_idx in wells_in_batch:
-                batch_idx = wells_in_batch.index(well_idx)
-                req = current_batch[batch_idx]
-                volume_tracking = actual_volumes_dispensed[well_idx]
-                
-                # Handle special control wells
-                if req.get('is_control', False):
-                    if req.get('water_only', False):
-                        # Water-only control: add full 200 uL water
-                        control_water_ul = 200.0
-                        lash_e.logger.info(f"    Control well {well_idx}: {control_water_ul}uL water (water blank)")
-                        
-                        # Check if we need to switch water vials
-                        needed_water_vial = 'water_2' if False else 'water'  # Simplified - just use water
-                        if needed_water_vial != current_water_vial:
-                            lash_e.nr_robot.remove_pipet()  # Remove pipet before switching
-                            current_water_vial = needed_water_vial
-                            lash_e.logger.info(f"    Switched to {current_water_vial} vial")
-                        
-                        lash_e.nr_robot.aspirate_from_vial(current_water_vial, 0.2, liquid='water', use_safe_location=True)
-                        lash_e.nr_robot.dispense_into_wellplate(
-                            dest_wp_num_array=[well_idx], 
-                            amount_mL_array=[0.2],
-                            liquid='water'
-                        )
-                        # No pipet removal - keep for back-and-forth efficiency
-                        continue
-                    elif req.get('buffer_only', False):
-                        # Buffer-only control: no water needed here (buffer added in Phase 4)
-                        lash_e.logger.info(f"    Control well {well_idx}: No water (buffer-only control)")
-                        continue
-                    else:
-                        # Surfactant control: no additional water needed (already 200 uL)
-                        lash_e.logger.info(f"    Control well {well_idx}: No additional water needed")
-                        continue
-                
-                # Regular grid wells: calculate water needed
-                total_dispensed_ul = (volume_tracking['volume_a_dispensed'] + 
-                                    volume_tracking['volume_b_dispensed'])
-                
-                # Calculate remaining volume needed (pyrene will be added on top, not included in target)
-                target_volume_before_pyrene = WELL_VOLUME_UL  # Fill to 200 uL, then add pyrene on top
-                # Only exclude buffer volume if buffer will actually be added
-                if ADD_BUFFER:
-                    target_volume_before_buffer = target_volume_before_pyrene - BUFFER_VOLUME_UL
+                if '_' in vial_name and 'mM' in vial_name:
+                    conc_str = vial_name.split('_')[-1].replace('mM', '')
+                    concentration = float(conc_str)
+                    vial_concentrations.append((vial_name, concentration))
                 else:
-                    # Include buffer volume as water when buffer is disabled
-                    target_volume_before_buffer = target_volume_before_pyrene
-                
-                # Calculate water needed for this specific well
-                water_needed_ul = target_volume_before_buffer - total_dispensed_ul
-                
-                if water_needed_ul > 0:
-                    water_volume_ml = water_needed_ul / 1000
-                    lash_e.logger.info(f"    Well {well_idx}: {total_dispensed_ul:.1f}uL surfactants + {water_needed_ul:.1f}uL water = {total_dispensed_ul + water_needed_ul:.1f}uL")
-                    
-                    # Check if we need to switch water vials  
-                    needed_water_vial = 'water_2' if False else 'water'  # Simplified - just use water
-                    if needed_water_vial != current_water_vial:
-                        lash_e.nr_robot.remove_pipet()  # Remove pipet before switching
-                        current_water_vial = needed_water_vial
-                        lash_e.nr_robot.return_vial_home('water')
-                        lash_e.nr_robot.move_vial_to_location('water_2', 'clamp', 0)
-                        condition_tip(lash_e, current_water_vial)
-                        lash_e.logger.info(f"    Switched to {current_water_vial} vial")
-                    
-                    # Add water to this specific well
-                    lash_e.nr_robot.aspirate_from_vial(current_water_vial, water_volume_ml, liquid='water')
-                    lash_e.nr_robot.dispense_into_wellplate(
-                        dest_wp_num_array=[well_idx], 
-                        amount_mL_array=[water_volume_ml],
-                        liquid='water'
-                    )
-                    # No pipet removal - keep for back-and-forth efficiency
-                
-                elif water_needed_ul < 0:
-                    lash_e.logger.info(f"    WARNING: Well {well_idx} has {abs(water_needed_ul):.1f}uL excess volume!")
-                else:
-                    lash_e.logger.info(f"    Well {well_idx}: No additional water needed")
-            
-            # Return water vial to original position after all wells processed
-            lash_e.nr_robot.remove_pipet()
-            try:
-                lash_e.nr_robot.return_vial_home('water_2')
-                lash_e.nr_robot.return_vial_home('water')
-                lash_e.logger.info(f"    Restored water vial to original position {water_original_location}")
-            except Exception as e:
-                lash_e.logger.info(f"    Warning: Could not restore water vial position: {e}")
-
-            
-
-
-            # PHASE 3: Add buffer (if enabled and available)
-            if ADD_BUFFER:
-                lash_e.logger.info(f"  Phase 3: Adding {SELECTED_BUFFER} buffer (using small tips, back-and-forth)")
-                buffer_volume_ml = BUFFER_VOLUME_UL / 1000  # Convert to mL
-                
-                # Validate buffer vial exists
-                buffer_found = False
-                try:
-                    lash_e.nr_robot.get_vial_info(SELECTED_BUFFER, 'location')
-                    buffer_found = True
-                except:
-                    logger.warning(f"Buffer vial '{SELECTED_BUFFER}' not found in vial status")
-                    lash_e.logger.info(f"Warning: Buffer vial '{SELECTED_BUFFER}' not found - continuing without buffer")
-                
-                if buffer_found:              
-                    # Condition tip with buffer before first use
-                    condition_tip(lash_e, SELECTED_BUFFER)
-                    
-                    # Separate regular wells from buffer-only controls
-                    regular_wells = []
-                    buffer_only_wells = []
-                    
-                    for i, req in enumerate(current_batch):
-                        well_idx = wells_in_batch[i]
-                        if req.get('is_control', False) and req.get('buffer_only', False):
-                            buffer_only_wells.append(well_idx)
-                        else:
-                            regular_wells.append(well_idx)
-                    
-                    # Add regular buffer amount to regular wells using back-and-forth with small tips
-                    if regular_wells:
-                        lash_e.logger.info(f"    Adding {BUFFER_VOLUME_UL}uL buffer to {len(regular_wells)} regular wells (back-and-forth)")
-                        for well_idx in regular_wells:
-                            lash_e.nr_robot.aspirate_from_vial(SELECTED_BUFFER, buffer_volume_ml, liquid='water', use_safe_location=True)
-                            lash_e.nr_robot.dispense_into_wellplate(
-                                dest_wp_num_array=[well_idx], 
-                                amount_mL_array=[buffer_volume_ml],
-                                liquid='water'
-                            )
-                            # No pipet removal - keep for back-and-forth efficiency
-                    
-                    # Add full 200uL buffer to buffer-only control wells using back-and-forth with small tips
-                    if buffer_only_wells:
-                        lash_e.logger.info(f"    Adding 200uL buffer to {len(buffer_only_wells)} buffer-only control wells (back-and-forth)")
-                        for well_idx in buffer_only_wells:
-                            lash_e.nr_robot.aspirate_from_vial(SELECTED_BUFFER, 0.2, liquid='water', use_safe_location=True)
-                            lash_e.nr_robot.dispense_into_wellplate(
-                                dest_wp_num_array=[well_idx], 
-                                amount_mL_array=[0.2],
-                                liquid='water'
-                            )
-                            # No pipet removal - keep for back-and-forth efficiency
-                            lash_e.logger.info(f"      Buffer control well {well_idx}: 200uL {SELECTED_BUFFER}")
-                    
-                    # Remove pipet after completing all buffer dispensing
-                    lash_e.nr_robot.remove_pipet()
-                    
-                    # Return buffer vial to home position
-                    lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
-            
-            # PHASE 4: Add all surfactant B solutions (including controls)
-            lash_e.logger.info(f"  Phase 4: Adding surfactant B (including controls)")
-            
-            vial_b_groups = defaultdict(list)
-            control_wells_b = defaultdict(list)  # Track control wells separately
-            
-            for batch_idx, req in enumerate(current_batch):
-                actual_well = wells_in_batch[batch_idx]
-                
-                # Group by vial type (regular vs control)
-                if req.get('is_control', False):
-                    if req['volume_b_ul'] > 0 and req['dilution_b_vial']:
-                        control_wells_b[req['dilution_b_vial']].append((batch_idx, actual_well, req))
-                else:
-                    # Regular grid wells
-                    if req['volume_b_ul'] > 0:
-                        vial_b_groups[req['dilution_b_vial']].append((batch_idx, actual_well, req))
-            
-            # Handle control wells first (they use stock concentrations)
-            lash_e.logger.info(f"    Processing {sum(len(wells) for wells in control_wells_b.values())} control wells for surfactant B")
-            for vial_name, well_list in control_wells_b.items():
-                for batch_idx, actual_well, req in well_list:
-                    volume_each_ml = req['volume_b_ul'] / 1000
-                    lash_e.logger.info(f"      Control well {actual_well}: {req['volume_b_ul']}uL {vial_name}")
-                    
-                    lash_e.nr_robot.aspirate_from_vial(vial_name, volume_each_ml, liquid='water')
-                    lash_e.nr_robot.dispense_into_wellplate(
-                        dest_wp_num_array=[actual_well], 
-                        amount_mL_array=[volume_each_ml],
-                        liquid='water'
-                    )
-                    lash_e.nr_robot.remove_pipet()
-                    
-                    actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
-            
-            # Handle regular grid wells (existing logic)
-            lash_e.logger.info(f"    Processing {sum(len(wells) for wells in vial_b_groups.values())} grid wells for surfactant B")
-            lash_e.logger.info(f"    Moving surfactant B vials to safe positions for better access...")
-            
-            # Move surfactant B vials to safe positions (reuse same safe positions)
-            vial_b_original_positions = {}
-            unique_vials_b = list(vial_b_groups.keys())
-            available_positions = SAFE_POSITIONS['main_8mL_rack'].copy()  # Use rack positions first
-            
-            for i, vial_name in enumerate(unique_vials_b):
-                try:
-                    # Store original position
-                    current_location = lash_e.nr_robot.get_vial_info(vial_name, 'location')
-                    current_index = lash_e.nr_robot.get_vial_info(vial_name, 'location_index')
-                    vial_b_original_positions[vial_name] = {'location': current_location, 'location_index': current_index}
-                    
-                    # Select safe position
-                    if i < len(available_positions):
-                        safe_position = available_positions[i]
-                        safe_location = 'main_8mL_rack'
-                    elif i < len(available_positions) + len(SAFE_POSITIONS['clamp']):
-                        safe_position = SAFE_POSITIONS['clamp'][0]
-                        safe_location = 'clamp'
-                    else:
-                        lash_e.logger.warning(f"      No safe position available for {vial_name} (max 7 vials supported)")
-                        continue
-                    
-                    # Move to safe position
-                    lash_e.nr_robot.move_vial_to_location(vial_name, safe_location, safe_position)
-                    lash_e.logger.info(f"      Moved {vial_name} to {safe_location} position {safe_position}")
-                except Exception as e:
-                    lash_e.logger.info(f"      Warning: Could not move {vial_name}: {e}")
-            
-            # Sort vial groups by concentration (low->high to prevent contamination)
-            sorted_vial_groups_b = sorted(vial_b_groups.items(), 
-                                        key=lambda x: current_batch[x[1][0][0]]['conc_b'] or 0)
-            
-            # Pipette surfactant B
-            surfactant_b_tip_conditioned = False
-            for vial_name, well_list in sorted_vial_groups_b:
-                lash_e.logger.info(f"    Using vial {vial_name} for {len(well_list)} wells")
-                
-                # Condition tip on first surfactant B vial
-                if not surfactant_b_tip_conditioned:
-                    condition_tip(lash_e, vial_name)
-                    surfactant_b_tip_conditioned = True
-                
-                for batch_idx, actual_well, req in well_list:
-                    # FIXED: Use calculated volume from smart dilution plan, not fixed volume
-                    volume_each_ml = req['volume_b_ul'] / 1000  # Convert uL to mL (was incorrectly using EFFECTIVE_SURFACTANT_VOLUME)
-                    
-                    # Track actual dispensed volume
-                    actual_volumes_dispensed[actual_well]['volume_b_dispensed'] = req['volume_b_ul']
-                    
-                    # Use safe location (handles vial movement properly)
-                    lash_e.nr_robot.aspirate_from_vial(req['dilution_b_vial'], volume_each_ml, liquid='water')
-                    lash_e.nr_robot.dispense_into_wellplate(
-                        dest_wp_num_array=[actual_well], 
-                        amount_mL_array=[volume_each_ml],
-                        liquid='water'
-                    )
-            # Remove tip first, then return vial home to allow safe movement
-            lash_e.nr_robot.remove_pipet()
-            
-            # Return surfactant B vials to original positions
-            lash_e.logger.info(f"    Returning surfactant B vials to home positions...")
-            for vial_name, position_info in vial_b_original_positions.items():
-                try:
-                    lash_e.nr_robot.move_vial_to_location(vial_name, position_info['location'], position_info['location_index'])
-                    lash_e.logger.info(f"      Restored {vial_name} to home position")
-                except Exception as e:
-                    lash_e.logger.info(f"      Warning: Could not restore {vial_name}: {e}")
-
-            # Record well information for this batch
-            for i, req in enumerate(current_batch):
-                actual_well = wells_in_batch[i]
-                well_map.append({
-                    'well': actual_well,
-                    'plate': wellplate_data['current_plate'],
-                    'surfactant_a': surfactant_a_name,
-                    'surfactant_b': surfactant_b_name,
-                    'conc_a_mm': req.get('conc_a'),
-                    'conc_b_mm': req.get('conc_b'),
-                    'replicate': req.get('replicate', 1),
-                    'vial_a': req.get('dilution_a_vial'),
-                    'vial_b': req.get('dilution_b_vial'),
-                    'is_control': req.get('is_control', False),
-                    'control_type': req.get('control_type', 'experiment')
-                })
+                    # Can't determine concentration, put at end
+                    vial_concentrations.append((vial_name, float('inf')))
+            except:
+                vial_concentrations.append((vial_name, float('inf')))
+    
+    # Sort by concentration (dilute first)
+    vial_concentrations.sort(key=lambda x: x[1])
+    sorted_vials = [vial for vial, conc in vial_concentrations]
+    
+    logger.info(f"  Positioning surfactant {vial_type} vials by concentration (dilute -> concentrated):")
+    
+    # Move vials to safe positions in concentration order
+    for i, vial_name in enumerate(sorted_vials):
+        if i < len(safe_positions):
+            position = safe_positions[i]
+            concentration = vial_concentrations[i][1]
+            if position == 'clamp':
+                logger.info(f"    {vial_name} ({concentration:.2f}mM) -> clamp")
+                lash_e.nr_robot.move_vial_to_location(vial_name, 'clamp', 0)
             else:
-                # CREATE_WELLPLATE = False: Skip pipetting, go straight to measurements
-                lash_e.logger.info("  CREATE_WELLPLATE = False: Skipping pipetting phases, going to measurements...")
-                
-                # Still need to record well information for tracking even if skipping creation
-                for i, req in enumerate(current_batch):
-                    actual_well = wells_in_batch[i]
-                    well_map.append({
-                        'well': actual_well,
-                        'plate': wellplate_data['current_plate'],
-                        'surfactant_a': surfactant_a_name,
-                        'surfactant_b': surfactant_b_name,
-                        'conc_a_mm': req.get('conc_a'),
-                        'conc_b_mm': req.get('conc_b'),
-                        'replicate': req.get('replicate', 1),
-                        'vial_a': req.get('dilution_a_vial'),
-                        'vial_b': req.get('dilution_b_vial'),
-                        'is_control': req.get('is_control', False),
-                        'control_type': req.get('control_type', 'experiment')
-                    })
-        
-        # PHASE 5: Measure turbidity AFTER buffer addition (CORRECTED ORDER)
-        turbidity_entry = measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data)
-        
-        # PHASE 6: Add pyrene_DMSO to all wells (using small tips, back-and-forth)
-        add_dmso_to_wells(lash_e, wells_in_batch, wellplate_data)
-        
-        # PHASE 7: Measure fluorescence after pyrene addition
-        fluorescence_entry = measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data)
-        
-        # Update tracking
-        wellplate_data['last_measured_well'] = wells_in_batch[-1]
-        total_wells_added += len(current_batch)
-        
-        lash_e.logger.info(f"  + Completed batch with {len(current_batch)} wells using optimal tip sequence")
+                logger.info(f"    {vial_name} ({concentration:.2f}mM) -> main_8mL_rack[{position}]")
+                lash_e.nr_robot.move_vial_to_location(vial_name, 'main_8mL_rack', position)
+        else:
+            logger.warning(f"    {vial_name}: No safe position available (too many vials)")
     
-    # Update shared state before returning
-    updated_shared_state = {
-        'global_well_counter': well_counter,
-        'global_well_map': well_map,
-        'total_wells_added': total_wells_added,
-        'current_plate': wellplate_data['current_plate'],
-        'wells_used': wellplate_data['wells_used'],
-        'measurements': wellplate_data['measurements'],
-        'last_measured_well': wellplate_data['last_measured_well'],
-        'plates_used_this_combo': shared_wellplate_state.get('plates_used_this_combo', 0) + (wellplate_data['current_plate'] - shared_wellplate_state.get('current_plate', 1))
-    }
-    
+    return sorted_vials
 
+def return_surfactant_vials_home(lash_e, vial_names, vial_type):
+    """Return surfactant vials to home positions after dispensing."""
+    if len(vial_names) == 0:
+        return
+        
+    logger = lash_e.logger
+    logger.info(f"  Returning surfactant {vial_type} vials to home positions:")
     
-    return well_map, updated_shared_state
+    for vial_name in vial_names:
+        logger.info(f"    {vial_name} -> home")
+        lash_e.nr_robot.return_vial_home(vial_name)
+
+def position_water_vial_safely(lash_e, vial_name):
+    """Position water vial at safe location for dispensing."""
+    logger = lash_e.logger
+    safe_position = 36  # Use first safe position for water
+    
+    logger.info(f"  Positioning {vial_name} at main_8mL_rack[{safe_position}] (safe position)")
+    lash_e.nr_robot.move_vial_to_location(vial_name, 'main_8mL_rack', safe_position)
+
+def return_water_vial_home(lash_e, vial_name):
+    """Return water vial to home position after dispensing."""
+    logger = lash_e.logger
+    logger.info(f"  Returning {vial_name} -> home")
+    lash_e.nr_robot.return_vial_home(vial_name)
+
 
 # Add stubs for the required measurement and helper functions
 def manage_wellplate_switching(lash_e, current_well, wellplate_data):
@@ -1913,6 +1090,15 @@ def measure_turbidity(lash_e, well_indices):
             wells_to_measure=well_indices,
             plate_type="96 WELL PLATE"
         )
+        
+        # Fix CSV format: skip first row so second row becomes headers
+        if hasattr(turbidity_data, 'iloc') and len(turbidity_data) > 1:
+            # Drop the first row and reset headers
+            turbidity_data = turbidity_data.iloc[1:].copy()
+            turbidity_data.columns = turbidity_data.iloc[0]  # Use first row as column names
+            turbidity_data = turbidity_data.iloc[1:].copy()   # Drop the header row from data
+            turbidity_data.index.name = None  # Clean up index name
+            
         lash_e.logger.info(f"Successfully measured turbidity for {len(well_indices)} wells")
         return turbidity_data
 
@@ -1931,6 +1117,15 @@ def measure_fluorescence(lash_e, well_indices):
             wells_to_measure=well_indices,
             plate_type="96 WELL PLATE"
         )
+        
+        # Fix CSV format: skip first row so second row becomes headers
+        if hasattr(fluorescence_data, 'iloc') and len(fluorescence_data) > 1:
+            # Drop the first row and reset headers
+            fluorescence_data = fluorescence_data.iloc[1:].copy()
+            fluorescence_data.columns = fluorescence_data.iloc[0]  # Use first row as column names  
+            fluorescence_data = fluorescence_data.iloc[1:].copy()   # Drop the header row from data
+            fluorescence_data.index.name = None  # Clean up index name
+            
         lash_e.logger.info(f"Successfully measured fluorescence for {len(well_indices)} wells")
         return fluorescence_data
 
@@ -1993,205 +1188,232 @@ def create_experiment_folder_structure(experiment_name):
     
     return subfolders
 
-def check_or_create_substocks(lash_e, surfactant_name, target_concentrations, tracking):
-    """
-    Simplified version: Check if substocks exist, create missing ones.
-    For the adaptive workflow, this creates real dilution series.
-    """
-    logger = lash_e.logger
-    logger.info(f"Preparing substocks for {surfactant_name}")
+
+def create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name):
+    """Convert control well specification to well recipe DataFrame row."""
+    # Start with base recipe structure using None for not-applicable values
+    recipe = {
+        'wellplate_index': well_index,
+        'well_type': 'control',
+        'control_type': control['control_type'],
+        'surf_A': surfactant_a_name,
+        'surf_B': surfactant_b_name,
+        'surf_A_conc_mm': None,  # Will be set if applicable
+        'surf_B_conc_mm': None,  # Will be set if applicable  
+        'substock_A_name': None,
+        'substock_A_conc_mm': None,
+        'surf_A_volume_ul': 0.0,
+        'substock_B_name': None, 
+        'substock_B_conc_mm': None,
+        'surf_B_volume_ul': 0.0,
+        'water_volume_ul': 0.0,
+        'buffer_volume_ul': BUFFER_VOLUME_UL if ADD_BUFFER else 0.0,
+        'buffer_used': SELECTED_BUFFER if ADD_BUFFER else None,
+        'pyrene_volume_ul': PYRENE_VOLUME_UL,  # Add pyrene to all wells
+        'replicate': control['replicate']
+    }
     
-    dilution_vials = []
-    dilution_steps = []
-    achievable_concentrations = get_achievable_concentrations(surfactant_name, target_concentrations)
-    
-    for i, (target_conc, achievable_conc) in enumerate(zip(target_concentrations, achievable_concentrations)):
-        vial_name = f"{surfactant_name}_dilution_{i}"
+    # Handle different control types
+    if control.get('water_only', False):
+        # Water-only control: 200 µL water
+        recipe['water_volume_ul'] = 200.0
+        recipe['control_type'] = 'water_blank'
         
-        if achievable_conc is not None:
-            dilution_vials.append(vial_name)
-            
-            # Record dilution step
-            dilution_steps.append({
-                'vial_name': vial_name,
-                'target_conc_mm': target_conc,
-                'final_conc_mm': achievable_conc,
-                'achievable': True,
-                'created': True
-            })
-            
-            if not lash_e.simulate:
-                # Real hardware dilution creation
-                logger.info(f"Creating physical dilution: {vial_name} = {achievable_conc:.2e} mM")
-                # Create the actual dilution using robot
-                stock_conc = SURFACTANT_LIBRARY[surfactant_name]["stock_conc"]
-                required_stock_conc = achievable_conc * CONCENTRATION_CORRECTION_FACTOR
-                dilution_factor = stock_conc / required_stock_conc
-                
-                stock_volume = FINAL_SUBSTOCK_VOLUME / dilution_factor  # mL
-                water_volume = FINAL_SUBSTOCK_VOLUME - stock_volume  # mL
-                
-                # Add water first
-                if water_volume > 0:
-                    lash_e.nr_robot.dispense_into_vial_from_reservoir(
-                        reservoir_index=1, vial_index=vial_name, volume=water_volume, return_home=False
-                    )
-                
-                # Add stock solution
-                lash_e.nr_robot.dispense_from_vial_into_vial(
-                    source_vial_name=f"{surfactant_name}_stock", 
-                    dest_vial_name=vial_name, 
-                    volume=stock_volume,
-                    liquid='water'
-                )
-                
-                # Vortex to mix
-                lash_e.nr_robot.vortex_vial(vial_name=vial_name, vortex_time=8, vortex_speed=80)
-            else:
-                logger.info(f"Simulated dilution: {vial_name} = {achievable_conc:.2e} mM")
-        else:
-            dilution_vials.append(None)
-            
-            dilution_steps.append({
-                'vial_name': vial_name,
-                'target_conc_mm': target_conc,
-                'achievable': False,
-                'created': False,
-                'reason': 'Stock concentration too low'
-            })
+    elif control.get('buffer_only', False):
+        # Buffer-only control: 200 µL buffer  
+        recipe['buffer_volume_ul'] = 200.0
+        recipe['water_volume_ul'] = 0.0
+        recipe['control_type'] = 'buffer_blank'
+        
+    elif control['volume_a_ul'] > 0:
+        # Surfactant A control: 200 µL surfactant A stock
+        recipe['surf_A_conc_mm'] = SURFACTANT_LIBRARY[surfactant_a_name]['stock_conc']
+        recipe['substock_A_name'] = control['dilution_a_vial']
+        recipe['substock_A_conc_mm'] = SURFACTANT_LIBRARY[surfactant_a_name]['stock_conc'] 
+        recipe['surf_A_volume_ul'] = control['volume_a_ul']
+        recipe['water_volume_ul'] = 0.0
+        recipe['control_type'] = 'surfactant_A_stock'
+        # surf_B stays None (not applicable)
+        
+    elif control['volume_b_ul'] > 0:
+        # Surfactant B control: 200 µL surfactant B stock
+        recipe['surf_B_conc_mm'] = SURFACTANT_LIBRARY[surfactant_b_name]['stock_conc']
+        recipe['substock_B_name'] = control['dilution_b_vial']
+        recipe['substock_B_conc_mm'] = SURFACTANT_LIBRARY[surfactant_b_name]['stock_conc']
+        recipe['surf_B_volume_ul'] = control['volume_b_ul']
+        recipe['water_volume_ul'] = 0.0
+        recipe['control_type'] = 'surfactant_B_stock'
+        # surf_A stays None (not applicable)
     
-    return dilution_vials, dilution_steps, achievable_concentrations
+    return recipe
 
-def pipette_surfactants_and_buffer_only(lash_e, concs_a, concs_b, plan_a, plan_b, surfactant_a_name, surfactant_b_name, shared_wellplate_state):
-    """Create wells with surfactants and buffer, but no measurements. Extracted from monolithic function."""
-    logger = lash_e.logger
+def create_well_recipe_from_concentrations(conc_a, conc_b, plan_a, plan_b, well_index, surfactant_a_name, surfactant_b_name, replicate):
+    """Convert target concentrations to well recipe DataFrame row using dilution plans."""
     
-    # This is a simplified version that only does the pipetting, not measurements
-    # We can extract the surfactant pipetting logic from the original function
-    logger.info(f"Creating wells with surfactants and buffer (no measurements)")
+    # Get solutions from plans (this uses the working calculation logic)
+    solution_a = plan_a['concentration_map'].get(conc_a)
+    solution_b = plan_b['concentration_map'].get(conc_b)
     
-    # For now, call the original function but strip out measurements
-    # TODO: Extract just the pipetting logic to make this truly separate
-    well_map, updated_state = pipette_grid_to_shared_wellplate(
-        lash_e, concs_a, concs_b, plan_a, plan_b,
-        surfactant_a_name, surfactant_b_name, shared_wellplate_state
-    )
+    if not solution_a or not solution_b:
+        raise ValueError(f"No solution found for concentrations {conc_a:.2e} + {conc_b:.2e} mM")
     
-    return well_map, updated_state
+    # Calculate remaining water volume
+    total_surfactant_volume = solution_a['volume_needed_ul'] + solution_b['volume_needed_ul']
+    target_volume_before_buffer = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)
+    water_volume = target_volume_before_buffer - total_surfactant_volume
+    
+    recipe = {
+        'wellplate_index': well_index,
+        'well_type': 'experiment',
+        'control_type': 'experiment',
+        'surf_A': surfactant_a_name,
+        'surf_B': surfactant_b_name,
+        'surf_A_conc_mm': conc_a,
+        'surf_B_conc_mm': conc_b,
+        'substock_A_name': solution_a['vial_name'],
+        'substock_A_conc_mm': solution_a['concentration_mm'],
+        'surf_A_volume_ul': solution_a['volume_needed_ul'],
+        'substock_B_name': solution_b['vial_name'],
+        'substock_B_conc_mm': solution_b['concentration_mm'],
+        'surf_B_volume_ul': solution_b['volume_needed_ul'],
+        'water_volume_ul': max(0, water_volume),  # Ensure non-negative
+        'buffer_volume_ul': BUFFER_VOLUME_UL if ADD_BUFFER else 0.0,
+        'buffer_used': SELECTED_BUFFER if ADD_BUFFER else None,
+        'pyrene_volume_ul': PYRENE_VOLUME_UL,  # Add pyrene to all wells
+        'replicate': replicate
+    }
+    
+    return recipe
 
-
-
-def calculate_concentration_and_dilution_plans(lash_e, surfactant_a_name, surfactant_b_name, experiment_name):
-    """Calculate concentration grids and dilution strategies. Returns all planning data needed for workflow."""
-    lash_e.logger.info("Step 2: Calculating adaptive concentration grids...")
+def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name):
+    """
+    Create complete experiment plan with simplified, clear data structure.
+    Returns: experiment_plan dict with surfactants, stock_solutions_needed, and well_recipes_df
+    """
+    lash_e.logger.info("Step 2: Creating complete experiment plan...")
+    
+    # Step 1: Calculate concentration grids (keep existing working logic)
+    lash_e.logger.info("  Calculating adaptive concentration grids...")
     concs_a, concs_b = calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name)
     
-    # Check achievability
+    # Step 2: Check achievability and create smart dilution plans (keep existing working logic)
     achievable_a = get_achievable_concentrations(surfactant_a_name, concs_a)
     achievable_b = get_achievable_concentrations(surfactant_b_name, concs_b)
-    
-    lash_e.logger.info(f"Concentration analysis:")
-    lash_e.logger.info(f"  {surfactant_a_name}: {len([x for x in achievable_a if x])}/{len(achievable_a)} concentrations achievable")
-    lash_e.logger.info(f"  {surfactant_b_name}: {len([x for x in achievable_b if x])}/{len(achievable_b)} concentrations achievable")
-    lash_e.logger.info("")
-    
-    lash_e.logger.info("Step 3: Calculating optimal dilution strategies...")
-    
-    # Filter to only achievable concentrations
     achievable_concs_a = [c for c in achievable_a if c is not None]
     achievable_concs_b = [c for c in achievable_b if c is not None]
     
-    # Calculate smart dilution plans
+    lash_e.logger.info(f"  {surfactant_a_name}: {len(achievable_concs_a)}/{len(concs_a)} concentrations achievable")
+    lash_e.logger.info(f"  {surfactant_b_name}: {len(achievable_concs_b)}/{len(concs_b)} concentrations achievable")
+    
+    # Step 3: Calculate smart dilution plans (keep existing working logic)
+    lash_e.logger.info("  Calculating optimal dilution strategies...")
     plan_a, tracker_a = calculate_smart_dilution_plan(lash_e, surfactant_a_name, achievable_concs_a)
     plan_b, tracker_b = calculate_smart_dilution_plan(lash_e, surfactant_b_name, achievable_concs_b)
     
-    # Create dilution vial mappings for compatibility with legacy grid functions
-    dilution_vials_a = []
-    for conc in concs_a:
-        if conc in plan_a['concentration_map']:
-            dilution_vials_a.append(plan_a['concentration_map'][conc]['vial_name'])
-        else:
-            dilution_vials_a.append(None)
+    # Step 4: Create stock solutions list with dilution recipes
+    stock_solutions_needed = []
     
-    dilution_vials_b = []
-    for conc in concs_b:
-        if conc in plan_b['concentration_map']:
-            dilution_vials_b.append(plan_b['concentration_map'][conc]['vial_name'])
-        else:
-            dilution_vials_b.append(None)
-    
-    # Calculate dilution recipes
+    # Calculate dilution recipes to get the "how to make" details
     dilution_recipes = calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfactant_b_name)
     
-    lash_e.logger.info(f"+ Planning complete: {len(achievable_concs_a)} x {len(achievable_concs_b)} concentration grid")
+    # Create lookup for recipe details
+    recipe_lookup = {recipe['Vial_Name']: recipe for recipe in dilution_recipes}
     
-    return {
-        'concs_a': concs_a,
-        'concs_b': concs_b,
-        'achievable_concs_a': achievable_concs_a,
-        'achievable_concs_b': achievable_concs_b,
-        'plan_a': plan_a,
-        'plan_b': plan_b,
-        'dilution_vials_a': dilution_vials_a,
-        'dilution_vials_b': dilution_vials_b,
-        'dilution_recipes': dilution_recipes
-    }
-
-def show_dilution_plan_summary_and_verify(lash_e, planning_data, surfactant_a_name, surfactant_b_name, experiment_name):
-    """Show detailed planning summary and verify calculations. Optional verbose step."""
-    plan_a = planning_data['plan_a']
-    plan_b = planning_data['plan_b']
-    achievable_concs_a = planning_data['achievable_concs_a']
-    achievable_concs_b = planning_data['achievable_concs_b']
-    
-    # Show summary of dilution strategy
-    lash_e.logger.info(f"\n=== DILUTION STRATEGY SUMMARY ===")
-    lash_e.logger.info(f"{surfactant_a_name}: {len(plan_a['substocks_needed'])} substocks needed for {len(achievable_concs_a)} concentrations")
-    lash_e.logger.info(f"{surfactant_b_name}: {len(plan_b['substocks_needed'])} substocks needed for {len(achievable_concs_b)} concentrations")
-    
-    lash_e.logger.info(f"\nSubstocks to create:")
+    # Add substocks for surfactant A
     for substock in plan_a['substocks_needed']:
-        lash_e.logger.info(f"  {substock['vial_name']}: {substock['concentration_mm']:.2e} mM")
+        recipe_details = recipe_lookup.get(substock['vial_name'], {})
+        stock_solutions_needed.append({
+            'vial_name': substock['vial_name'],
+            'surfactant': surfactant_a_name,
+            'target_concentration_mm': substock['concentration_mm'],
+            'needed_for_concentrations': ', '.join([f"{c:.2e}" for c in substock['needed_for']]),  # Remove brackets
+            'source_vial': recipe_details.get('Source_Vial', 'Unknown'),
+            'source_concentration_mm': recipe_details.get('Source_Conc_mM', 'Unknown'),
+            'source_volume_ml': recipe_details.get('Source_Volume_mL', 'Unknown'),
+            'water_volume_ml': recipe_details.get('Water_Volume_mL', 'Unknown'),
+            'final_volume_ml': recipe_details.get('Final_Volume_mL', 6.0),
+            'dilution_factor': recipe_details.get('Dilution_Factor', 'Unknown')
+        })
+    
+    # Add substocks for surfactant B  
     for substock in plan_b['substocks_needed']:
-        lash_e.logger.info(f"  {substock['vial_name']}: {substock['concentration_mm']:.2e} mM")
+        recipe_details = recipe_lookup.get(substock['vial_name'], {})
+        stock_solutions_needed.append({
+            'vial_name': substock['vial_name'],
+            'surfactant': surfactant_b_name,
+            'target_concentration_mm': substock['concentration_mm'],
+            'needed_for_concentrations': ', '.join([f"{c:.2e}" for c in substock['needed_for']]),  # Remove brackets
+            'source_vial': recipe_details.get('Source_Vial', 'Unknown'),
+            'source_concentration_mm': recipe_details.get('Source_Conc_mM', 'Unknown'),
+            'source_volume_ml': recipe_details.get('Source_Volume_mL', 'Unknown'),
+            'water_volume_ml': recipe_details.get('Water_Volume_mL', 'Unknown'),
+            'final_volume_ml': recipe_details.get('Final_Volume_mL', 6.0),
+            'dilution_factor': recipe_details.get('Dilution_Factor', 'Unknown')
+        })
     
-    # Show detailed pipetting plan
-    lash_e.logger.info(f"\n=== DETAILED PIPETTING PLAN ===")
-    lash_e.logger.info(f"For each target concentration, showing: vial_to_use (volume_to_pipette)")
-    lash_e.logger.info(f"\n{surfactant_a_name} concentrations:")
-    for target_conc, solution in plan_a['concentration_map'].items():
-        # Water fills the remaining volume in this surfactant's allocation
-        water_for_this_surfactant = EFFECTIVE_SURFACTANT_VOLUME - solution['volume_needed_ul']
-        lash_e.logger.info(f"  {target_conc:.2e} mM: {solution['vial_name']} ({solution['volume_needed_ul']:.1f}uL) + {water_for_this_surfactant:.1f}uL water")
+    # Step 5: Create complete well-by-well recipes DataFrame
+    lash_e.logger.info("  Creating complete well recipes...")
+    well_recipes = []
+    well_index = 0
     
-    lash_e.logger.info(f"\n{surfactant_b_name} concentrations:")
-    for target_conc, solution in plan_b['concentration_map'].items():
-        # Water fills the remaining volume in this surfactant's allocation
-        water_for_this_surfactant = EFFECTIVE_SURFACTANT_VOLUME - solution['volume_needed_ul']
-        lash_e.logger.info(f"  {target_conc:.2e} mM: {solution['vial_name']} ({solution['volume_needed_ul']:.1f}uL) + {water_for_this_surfactant:.1f}uL water")
+    # Add start control wells
+    start_controls = create_control_wells(surfactant_a_name, surfactant_b_name, "start")
+    for control in start_controls:
+        well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name)
+        well_recipes.append(well_recipe)
+        well_index += 1
     
-    lash_e.logger.info(f"\n=== WELL COMPOSITION BREAKDOWN ===")
-    lash_e.logger.info(f"Total well volume: {WELL_VOLUME_UL} uL")
-    lash_e.logger.info(f"  Surfactant A allocation: {EFFECTIVE_SURFACTANT_VOLUME:.1f} uL (solution + water)")
-    lash_e.logger.info(f"  Surfactant B allocation: {EFFECTIVE_SURFACTANT_VOLUME:.1f} uL (solution + water)")
-    if ADD_BUFFER:
-        lash_e.logger.info(f"  Buffer: {BUFFER_VOLUME_UL} uL")
-    lash_e.logger.info(f"  Pyrene (added later): {PYRENE_VOLUME_UL} uL")
-    remaining = WELL_VOLUME_UL - (2 * EFFECTIVE_SURFACTANT_VOLUME) - (BUFFER_VOLUME_UL if ADD_BUFFER else 0) - PYRENE_VOLUME_UL
-    if remaining > 0:
-        lash_e.logger.info(f"  Additional water: {remaining:.1f} uL")
+    # Add grid experiment wells
+    for conc_a in achievable_concs_a:
+        for conc_b in achievable_concs_b:
+            for replicate in range(N_REPLICATES):
+                well_recipe = create_well_recipe_from_concentrations(
+                    conc_a, conc_b, plan_a, plan_b, well_index, 
+                    surfactant_a_name, surfactant_b_name, replicate + 1
+                )
+                well_recipes.append(well_recipe)
+                well_index += 1
     
-    # Verify concentration calculations and export to CSV
-    lash_e.logger.info(f"\n" + "="*50)
-    verification_df, well_composition_df = verify_concentration_calculations_and_export(
-        lash_e, plan_a, plan_b, surfactant_a_name, surfactant_b_name, achievable_concs_a, achievable_concs_b, experiment_name
-    )
+    # Add end control wells
+    end_controls = create_control_wells(surfactant_a_name, surfactant_b_name, "end")
+    for control in end_controls:
+        well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name)
+        well_recipes.append(well_recipe)
+        well_index += 1
     
-    lash_e.logger.info("\n" + "="*50)
-    lash_e.logger.info("Proceeding with automated execution...")
-    lash_e.logger.info("")
+    # Convert to DataFrame
+    import pandas as pd
+    well_recipes_df = pd.DataFrame(well_recipes)
     
-    return verification_df, well_composition_df
+    # Step 6: Create experiment plan structure
+    experiment_plan = {
+        'surfactants': {
+            'A': surfactant_a_name,
+            'B': surfactant_b_name
+        },
+        'stock_solutions_needed': stock_solutions_needed,
+        'well_recipes_df': well_recipes_df
+    }
+    
+    # Step 7: Export to experiment folder (always save planning CSVs, even in simulation)
+    experiment_output_folder = os.path.join("output", experiment_name)
+    os.makedirs(experiment_output_folder, exist_ok=True)
+    
+    # Save well recipes to CSV - directly in experiment folder  
+    recipes_csv_path = os.path.join(experiment_output_folder, "experiment_plan_well_recipes.csv")
+    well_recipes_df.to_csv(recipes_csv_path, index=False)
+    lash_e.logger.info(f"  Saved experiment plan: {recipes_csv_path}")
+    
+    # Save stock solutions to CSV - directly in experiment folder
+    stocks_csv_path = os.path.join(experiment_output_folder, "experiment_plan_stock_solutions.csv")
+    stocks_df = pd.DataFrame(stock_solutions_needed)
+    stocks_df.to_csv(stocks_csv_path, index=False)
+    lash_e.logger.info(f"  Saved stock solutions plan: {stocks_csv_path}")
+    
+    lash_e.logger.info(f"+ Planning complete: {len(well_recipes)} total wells ({len(achievable_concs_a)} x {len(achievable_concs_b)} grid + {len(start_controls) + len(end_controls)} controls)")
+    
+    return experiment_plan
+
 
 def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, simulate):
     """Initialize experiment environment: create folders, set name, log header."""
@@ -2584,7 +1806,6 @@ def create_consolidated_measurement_csv(lash_e, well_map, updated_state, experim
         lash_e.logger.warning(f"Measurement backups directory not found: {measurement_backups_dir}")
         return None
 
-
 def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_name="DTAB", simulate=True):
     """
     Execute the complete surfactant grid screening workflow using adaptive concentrations.
@@ -2605,7 +1826,6 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     # Setup experiment environment and folders
     experiment_output_folder, experiment_name = setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, simulate)
   
-    
     # Validate system state
     lash_e.logger.info("  Validating robot and track status...")
     lash_e.nr_robot.check_input_file()
@@ -2639,249 +1859,259 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     lash_e.logger.info("+ Lash_E initialization complete")
     lash_e.logger.info("")
     
-    # STEP 2-3: Calculate concentration grids and dilution plans
-    planning_data = calculate_concentration_and_dilution_plans(lash_e, surfactant_a_name, surfactant_b_name, experiment_name)
+    # STEP 2: Create complete experiment plan with simplified structure
+    experiment_plan = create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name)
     
-    # Optional: Show detailed planning summary (can be disabled to reduce log clutter)
-    verification_df, well_composition_df = show_dilution_plan_summary_and_verify(
-        lash_e, planning_data, surfactant_a_name, surfactant_b_name, experiment_name
-    )
+    # Extract the well recipes DataFrame
+    well_recipes_df = experiment_plan['well_recipes_df']
+    stock_solutions_needed = experiment_plan['stock_solutions_needed']
     
-    # Extract needed variables for workflow continuation
-    concs_a = planning_data['concs_a']
-    concs_b = planning_data['concs_b']
-    plan_a = planning_data['plan_a']
-    plan_b = planning_data['plan_b']
-    dilution_vials_a = planning_data['dilution_vials_a']
-    dilution_vials_b = planning_data['dilution_vials_b']
+    lash_e.logger.info(f"+ Experiment plan created: {len(well_recipes_df)} wells planned")
+    lash_e.logger.info(f"+ Stock solutions needed: {len(stock_solutions_needed)}")   
     
-    # Create well map from experimental design (ALWAYS needed for CSV)
-    well_map = []
-    well_counter = 0
-    for i, conc_a in enumerate(concs_a):
-        for j, conc_b in enumerate(concs_b):
-            if conc_a is not None and conc_b is not None:
-                for rep in range(N_REPLICATES):
-                    well_map.append({
-                        'well': well_counter,
-                        'surfactant_a': surfactant_a_name,
-                        'surfactant_b': surfactant_b_name,
-                        'conc_a_mm': conc_a,
-                        'conc_b_mm': conc_b,
-                        'replicate': rep + 1,
-                        'is_control': False,
-                        'control_type': 'sample'
-                    })
-                    well_counter += 1
-    
-    # Create well map from experimental design (ALWAYS needed for CSV)
-    well_map = []
-    well_counter = 0
-    for i, conc_a in enumerate(concs_a):
-        for j, conc_b in enumerate(concs_b):
-            if conc_a is not None and conc_b is not None:
-                for rep in range(N_REPLICATES):
-                    well_map.append({
-                        'well': well_counter,
-                        'surfactant_a': surfactant_a_name,
-                        'surfactant_b': surfactant_b_name,
-                        'conc_a_mm': conc_a,
-                        'conc_b_mm': conc_b,
-                        'replicate': rep + 1,
-                        'is_control': False,
-                        'control_type': 'sample'
-                    })
-                    well_counter += 1
-    dilution_recipes = planning_data['dilution_recipes']
-    
-    # STEP 4: Create physical substocks using smart recipes
+    # STEP 3: Create physical substocks BEFORE dispensing
     lash_e.logger.info("Step 4: Creating physical substocks from calculated recipes...")
     
+    # Get dilution recipes from the experiment plan
+    dilution_recipes = []
+    for stock in stock_solutions_needed:
+        if stock['source_vial'] != 'Unknown':  # Only include valid recipes
+            dilution_recipes.append({
+                'Vial_Name': stock['vial_name'],
+                'Surfactant': stock['surfactant'],
+                'Target_Conc_mM': stock['target_concentration_mm'],
+                'Source_Vial': stock['source_vial'],
+                'Source_Conc_mM': stock['source_concentration_mm'],
+                'Source_Volume_mL': stock['source_volume_ml'],
+                'Water_Volume_mL': stock['water_volume_ml'],
+                'Final_Volume_mL': stock['final_volume_ml']
+            })
+    
     # Create substocks in the correct order (recipes are already ordered for dependencies)
-    created_substocks = create_substocks_from_recipes(lash_e, dilution_recipes)
-    
-    # Report results
-    successful_substocks = len([s for s in created_substocks if s['created']])
-    total_substocks = len(created_substocks)
-    lash_e.logger.info(f"+ Substock creation complete: {successful_substocks}/{total_substocks} successful")
-    
-    if successful_substocks < total_substocks:
-        failed_substocks = [s for s in created_substocks if not s['created']]
-        lash_e.logger.info(f"Failed substocks:")
-        for substock in failed_substocks:
-            error_msg = substock.get('error', 'Unknown error')
-            lash_e.logger.info(f"  {substock['vial_name']}: {error_msg}")
-    
-    lash_e.logger.info("")
-    
-    # STEP 5: Show concentration grid summary
-    lash_e.logger.info("Step 5: Concentration Grid Summary")
-    # Create simple summary from smart planning data
-    total_combinations = len(concs_a) * len(concs_b)
-    achievable_combinations = len(plan_a['concentration_map']) * len(plan_b['concentration_map'])
-    lash_e.logger.info(f"Grid analysis:")
-    lash_e.logger.info(f"  {surfactant_a_name}: {len(plan_a['concentration_map'])}/{len(concs_a)} concentrations achievable")
-    lash_e.logger.info(f"  {surfactant_b_name}: {len(plan_b['concentration_map'])}/{len(concs_b)} concentrations achievable")
-    lash_e.logger.info(f"  Total combinations: {achievable_combinations}/{total_combinations} achievable")
-    lash_e.logger.info("")
-    lash_e.logger.info("")
-    
-    # STEP 6: Execute pipetting and measurements in separate phases
-    lash_e.logger.info("Step 6: Executing pipetting and measurements in separate phases...")
-    shared_wellplate_state = {
-        'global_well_counter': 0,
-        'global_well_map': [],
-        'total_wells_added': 0,
-        'current_plate': 1,
-        'wells_used': 0,
-        'measurements': [],
-        'last_measured_well': -1
-    }
-    
-    # Phase 6a: Create wells with surfactants and buffer (but no measurements yet)
-    if CREATE_WELLPLATE:
-        lash_e.logger.info("  Phase 6a: Creating wells with surfactants and buffer...")
-        _, updated_state = pipette_surfactants_and_buffer_only(
-            lash_e, concs_a, concs_b, plan_a, plan_b, 
-            surfactant_a_name, surfactant_b_name, shared_wellplate_state
-        )
+    if dilution_recipes:
+        created_substocks = create_substocks_from_recipes(lash_e, dilution_recipes)
+        newly_created = [s for s in created_substocks if s['created']]
+        already_existing = [s for s in created_substocks if not s['created'] and not s.get('error')]
+        actually_failed = [s for s in created_substocks if s.get('error')]
+        
+        lash_e.logger.info(f"+ Substock creation complete: {len(newly_created)} newly created, {len(already_existing)} already existed, {len(actually_failed)} failed")
+        
+        if already_existing:
+            lash_e.logger.info(f"Substocks already existed (OK):")
+            for substock in already_existing:
+                lash_e.logger.info(f"  {substock['vial_name']}: already available")
+        
+        if actually_failed:
+            lash_e.logger.info(f"Failed substocks (ERRORS):")
+            for substock in actually_failed:
+                error_msg = substock.get('error', 'Unknown error')
+                lash_e.logger.info(f"  {substock['vial_name']}: {error_msg}")
     else:
-        # CREATE_WELLPLATE = False: Skip pipetting, just do measurements on existing wells
-        lash_e.logger.info("  CREATE_WELLPLATE = False: Skipping wellplate creation, measuring existing wells...")
-        updated_state = shared_wellplate_state.copy()
+        lash_e.logger.info("+ No substocks needed (using only stock solutions)")
     
-    # Get list of wells to measure
-    if CREATE_WELLPLATE:
-        wells_to_measure = [item['well'] for item in well_map]
+    # STEP 5: Execute dispensing and measurements in clear phases
+    lash_e.logger.info("Step 5: Executing dispensing and measurements...")
+    
+    # Initialize measurement columns in the DataFrame
+    well_recipes_df['turbidity_600'] = None
+    well_recipes_df['fluorescence_334_373'] = None 
+    well_recipes_df['fluorescence_334_384'] = None
+    well_recipes_df['ratio'] = None
+    
+    if not CREATE_WELLPLATE:
+        lash_e.logger.info("CREATE_WELLPLATE = False: Skipping dispensing")
     else:
-        # When not creating wellplate, assume we're measuring all existing wells (0 to N)
-        # This should be configured based on your actual setup
-        wells_to_measure = list(range(96))  # Adjust this range based on your actual wells
-    
-    # Phase 6b: Measure turbidity (after buffer is present)  
-    lash_e.logger.info("  Phase 6b: Measuring turbidity...")
-    wellplate_data = {
-        'current_plate': updated_state['current_plate'],
-        'measurements': updated_state.get('measurements', [])
-    }
-    turbidity_entry = measure_wellplate_turbidity(lash_e, wells_to_measure, wellplate_data)
-    updated_state['measurements'] = wellplate_data['measurements']
-    
-    # Phase 6c: Add DMSO to all wells (only if creating wellplate)
-    if CREATE_WELLPLATE:
-        lash_e.logger.info("  Phase 6c: Adding DMSO...")
-        add_dmso_to_wells(lash_e, wells_to_measure, wellplate_data)
-    else:
-        lash_e.logger.info("  Phase 6c: Skipping DMSO addition (CREATE_WELLPLATE = False)")
-    
-    # Phase 6d: Measure fluorescence (after DMSO addition)
-    lash_e.logger.info("  Phase 6d: Measuring fluorescence...")
-    fluorescence_entry = measure_wellplate_fluorescence(lash_e, wells_to_measure, wellplate_data)
-    updated_state['measurements'] = wellplate_data['measurements']
-    
-    lash_e.logger.info(f"+ Workflow completed!")
-    lash_e.logger.info(f"  Wells processed: {len(well_map)}")
-    lash_e.logger.info(f"  Measurements taken: {len(updated_state.get('measurements', []))}")
-    lash_e.logger.info("")
+        # Process in batches to match measurement intervals
+        total_wells = len(well_recipes_df)
+        lash_e.logger.info(f"Total wells to process: {total_wells}")
+        
+        for batch_start in range(0, total_wells, MEASUREMENT_INTERVAL):
+            batch_end = min(batch_start + MEASUREMENT_INTERVAL, total_wells)
+            batch_df = well_recipes_df.iloc[batch_start:batch_end]
+            
+            lash_e.logger.info(f"\nProcessing batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {batch_start}-{batch_end-1}")
+            
+            # DISPENSING PHASE: Use unified dispensing for each component with proper vial positioning
+            # Get unique vial names needed for this batch
+            surf_a_vials = batch_df[batch_df['surf_A_volume_ul'] > 0]['substock_A_name'].dropna().unique()
+            surf_b_vials = batch_df[batch_df['surf_B_volume_ul'] > 0]['substock_B_name'].dropna().unique()
+            
+            # Position surfactant A vials by concentration (dilute → concentrated)
+            if len(surf_a_vials) > 0:
+                sorted_surf_a_vials = position_surfactant_vials_by_concentration(lash_e, surf_a_vials, batch_df, 'A')
+                
+                # Dispense surfactant A substocks in concentration order
+                for surf_a_vial in sorted_surf_a_vials:
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'water', 'surf_A_volume_ul')
+                
+                # Return surfactant A vials to home
+                lash_e.nr_robot.remove_pipet()
+                return_surfactant_vials_home(lash_e, sorted_surf_a_vials, 'A')
+            
+            # Dispense water - split between two water vials to prevent running out
+            water_wells = batch_df[batch_df['water_volume_ul'] > 0]
+            if len(water_wells) > 0:
+                # Split water dispensing in half
+                mid_point = len(water_wells) // 2
+                water_batch_1 = water_wells.iloc[:mid_point]
+                water_batch_2 = water_wells.iloc[mid_point:]
+
+                lash_e.nr_robot.move_vial_to_location('water', 'main_8mL_rack', 44)
+                lash_e.nr_robot.move_vial_to_location('water_2', 'main_8mL_rack', 45)
+
+                # Dispense first half with water vial
+                if len(water_batch_1) > 0:
+                    dispense_component_to_wellplate(lash_e, water_batch_1, 'water', 'water', 'water_volume_ul')
+                    
+                # Dispense second half with water_2 vial
+                if len(water_batch_2) > 0:
+                    dispense_component_to_wellplate(lash_e, water_batch_2, 'water_2', 'water', 'water_volume_ul')
+
+                lash_e.nr_robot.remove_pipet()
+                return_water_vial_home(lash_e, 'water')
+                return_water_vial_home(lash_e, 'water_2')
+            
+            # Dispense buffer with safe positioning
+            if ADD_BUFFER:
+                lash_e.logger.info(f"  Positioning {SELECTED_BUFFER} buffer at clamp (safe position)")
+                lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, 'clamp', 0)
+                dispense_component_to_wellplate(lash_e, batch_df, SELECTED_BUFFER, 'water', 'buffer_volume_ul')
+                lash_e.nr_robot.remove_pipet()
+                lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
+            
+            # Position surfactant B vials by concentration (dilute → concentrated)
+            if len(surf_b_vials) > 0:
+                sorted_surf_b_vials = position_surfactant_vials_by_concentration(lash_e, surf_b_vials, batch_df, 'B')
+                
+                # Dispense surfactant B substocks in concentration order
+                for surf_b_vial in sorted_surf_b_vials:
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'water', 'surf_B_volume_ul')
+                
+                # Return surfactant B vials to home
+                lash_e.nr_robot.remove_pipet()
+                return_surfactant_vials_home(lash_e, sorted_surf_b_vials, 'B')
+            
+            # MEASUREMENT PHASE: Turbidity first
+            wells_in_batch = batch_df['wellplate_index'].tolist()
+            lash_e.logger.info("  Measuring turbidity...")
+            turbidity_data = measure_turbidity(lash_e, wells_in_batch)
+            
+            # Add turbidity data to DataFrame by order
+            if turbidity_data is not None:
+                if not lash_e.simulate:
+                    # Hardware mode - turbidity_data is a DataFrame, extract values in order
+                    if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0:
+                        # Get the turbidity values in order (first column with numeric data)
+                        turbidity_values = turbidity_data.iloc[:, 0].values  # First data column
+                        for i, well_idx in enumerate(wells_in_batch):
+                            if i < len(turbidity_values):
+                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_values[i]
+                else:
+                    # Simulation mode - simple values
+                    for i, well_idx in enumerate(wells_in_batch):
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = 0.5
+            
+            # Add DMSO with safe positioning then measure fluorescence
+            lash_e.logger.info("  Positioning pyrene_DMSO at clamp (safe position)")
+            lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)
+            dispense_component_to_wellplate(lash_e, batch_df, 'pyrene_DMSO', 'DMSO', 'pyrene_volume_ul')
+            lash_e.nr_robot.remove_pipet()
+            lash_e.nr_robot.return_vial_home('pyrene_DMSO')
+            lash_e.logger.info("  Measuring fluorescence...")
+            fluorescence_data = measure_fluorescence(lash_e, wells_in_batch)
+            
+            # Add fluorescence data to DataFrame by order
+            if fluorescence_data is not None:
+                if not lash_e.simulate:
+                    # Hardware mode - fluorescence_data is a DataFrame, extract values in order
+                    if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0:
+                        # Get both fluorescence columns in order
+                        val_373_list = fluorescence_data['334_373'].values if '334_373' in fluorescence_data.columns else []
+                        val_384_list = fluorescence_data['334_384'].values if '334_384' in fluorescence_data.columns else []
+                        
+                        for i, well_idx in enumerate(wells_in_batch):
+                            if i < len(val_373_list) and i < len(val_384_list):
+                                val_373 = val_373_list[i]
+                                val_384 = val_384_list[i]
+                                ratio = val_373 / val_384 if val_384 != 0 else None
+                                
+                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
+                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
+                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
+                else:
+                    # Simulation mode - simple values
+                    for i, well_idx in enumerate(wells_in_batch):
+                        val_373 = 80.0
+                        val_384 = 100.0
+                        ratio = val_373 / val_384
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
     
 
     
-    # STEP 7: Save results to experiment folder
-    lash_e.logger.info("Step 7: Saving results...")
-    output_folder = experiment_output_folder  # Use the already-created experiment folder
+    # STEP 6: Save results to experiment folder
+    lash_e.logger.info("Step 6: Saving results...")
+    output_folder = experiment_output_folder
     
-    # Save well mapping data
-    if well_map:
-        well_map_file = os.path.join(output_folder, "well_mapping.csv")
-        pd.DataFrame(well_map).to_csv(well_map_file, index=False)
-        lash_e.logger.info(f"  Well mapping saved to: {well_map_file}")
-    
-    # Save dilution information
-    dilution_info = {
-        'surfactant_a': {
-            'name': surfactant_a_name,
-            'concentrations': concs_a.tolist(),
-            'dilution_plan': plan_a
-        },
-        'surfactant_b': {
-            'name': surfactant_b_name,
-            'concentrations': concs_b.tolist(),
-            'dilution_plan': plan_b
-        }
-    }
-    
-    dilution_file = os.path.join(output_folder, "dilution_info.json")
-    with open(dilution_file, 'w') as f:
-        json.dump(dilution_info, f, indent=2, default=str)
-    lash_e.logger.info(f"  Dilution info saved to: {dilution_file}")
+    # Save the complete well recipes with measurements
+    final_results_path = os.path.join(output_folder, "complete_experiment_results.csv")
+    well_recipes_df.to_csv(final_results_path, index=False)
+    lash_e.logger.info(f"  Complete results saved to: {final_results_path}")
     
     lash_e.logger.info(f"+ Results saved to: {output_folder}")
     
-    # Show organized data summary
-    lash_e.logger.info("\\n" + "="*60)
-    lash_e.logger.info("CONSOLIDATED DATA ORGANIZATION SUMMARY")
-    lash_e.logger.info("="*60)
-    lash_e.logger.info(f"All experiment data saved to: {experiment_name}/")
-    lash_e.logger.info(f"\\n Folder Structure:")
-    lash_e.logger.info(f"  +-- well_mapping.csv                  # Well plate layout and composition")
-    lash_e.logger.info(f"  +-- concentration_verification.csv    # Concentration calculations")
-    lash_e.logger.info(f"  +-- well_composition.csv             # Detailed well composition")
-    lash_e.logger.info(f"  +-- dilution_info.json               # Substock dilution plans")
-    lash_e.logger.info(f"  +-- calibration_validation/          # Pipetting validation data")
-    lash_e.logger.info(f"  +-- measurement_backups/             # Raw turbidity & fluorescence data")
-    lash_e.logger.info(f"  +-- substocks/                       # Substock preparation logs (future)")
-    lash_e.logger.info(f"  +-- analysis/                        # Data analysis outputs (future)")
-    lash_e.logger.info(f"  +-- logs/                            # Workflow execution logs (future)")
-    lash_e.logger.info(f"\\nNo more scattered files! Everything is in one place.")
-    lash_e.logger.info("="*60)
-    
-    # Get actual pipette usage breakdown (real from hardware or simulated count)
+    # Get actual pipette usage breakdown 
     pipette_breakdown = get_pipette_usage_breakdown(lash_e)
     lash_e.logger.info(f"+ Pipette tips used: {pipette_breakdown['large_tips']} large, {pipette_breakdown['small_tips']} small (total: {pipette_breakdown['total']}) ({'simulated' if simulate else 'actual'})")
-    lash_e.logger.info("")
     
-    # Show the corrected phase order being used
-    lash_e.logger.info("+ CORRECTED phase order used:")
-    lash_e.logger.info("  1. Add Surfactant A")
-    lash_e.logger.info("  2. Add Surfactant B") 
-    lash_e.logger.info("  3. Add Buffer (BEFORE turbidity measurement)")
-    lash_e.logger.info("  4. Measure Turbidity (with buffer present)")
-    lash_e.logger.info("  5. Add Pyrene")
-    lash_e.logger.info("  6. Measure Fluorescence")
-    lash_e.logger.info("")
+    # Summary statistics
+    experiment_wells = well_recipes_df[well_recipes_df['well_type'] == 'experiment']
+    control_wells = well_recipes_df[well_recipes_df['well_type'] == 'control']
+    measured_wells = well_recipes_df[well_recipes_df['turbidity_600'].notna()]
     
-    # Create consolidated CSV with all measurement data
-    lash_e.logger.info("")
-    consolidated_df = create_consolidated_measurement_csv(
-        lash_e, well_map, updated_state, output_folder
-    )
-    if consolidated_df is not None:
-        lash_e.logger.info(f"+ Consolidated CSV created with {len(consolidated_df)} rows")
+    lash_e.logger.info("\n" + "="*60)
+    lash_e.logger.info("EXPERIMENT COMPLETE - SUMMARY")
+    lash_e.logger.info("="*60)
+    lash_e.logger.info(f"Surfactants: {surfactant_a_name} + {surfactant_b_name}")
+    lash_e.logger.info(f"Wells: {len(experiment_wells)} experiment + {len(control_wells)} control = {len(well_recipes_df)} total")
+    lash_e.logger.info(f"Measurements: {len(measured_wells)} wells measured")
+    lash_e.logger.info(f"Mode: {'SIMULATION' if simulate else 'HARDWARE'}")
+    lash_e.logger.info(f"Results: {final_results_path}")
+    lash_e.logger.info("="*60)
     
-    # Return comprehensive results
+    # Display final DataFrame for verification
+    if not well_recipes_df.empty:
+        lash_e.logger.info("DataFrame sample with measurements:")
+        sample_cols = ['wellplate_index', 'surf_A_conc_mm', 'surf_B_conc_mm', 'turbidity_600', 'fluorescence_334_373', 'fluorescence_334_384', 'ratio']
+        existing_cols = [col for col in sample_cols if col in well_recipes_df.columns]
+        sample_df = well_recipes_df[existing_cols].head(10)
+        lash_e.logger.info(f"\n{sample_df.to_string()}")
+    
+    # Return clean results with just the essential data
     return {
         'surfactant_a': surfactant_a_name,
         'surfactant_b': surfactant_b_name,
-        'concentrations_a': concs_a.tolist(),
-        'concentrations_b': concs_b.tolist(),
-        'achievable_a': planning_data['achievable_concs_a'],
-        'achievable_b': planning_data['achievable_concs_b'],
-        'well_map': well_map,
-        'measurements': updated_state.get('measurements', []),
-        'total_wells': len(well_map),
-        'plates_used': updated_state.get('current_plate', 1),
+        'well_recipes_df': well_recipes_df,  # Complete DataFrame with measurements
+        'experiment_plan': experiment_plan,
+        'total_wells': len(well_recipes_df),
+        'measured_wells': len(measured_wells),
         'output_folder': output_folder,
-        'dilution_vials_a': dilution_vials_a,
-        'dilution_vials_b': dilution_vials_b,
-        'pipette_breakdown': get_pipette_usage_breakdown(lash_e),
+        'pipette_breakdown': pipette_breakdown,
         'simulation': simulate,
         'workflow_complete': True
     }
+
 
 if __name__ == "__main__":
     """
     Run the adaptive surfactant grid screening workflow.
     """
+    
+    # TEST PLANNING ONLY (comment out to run full workflow)
+    # test_planning_only(SURFACTANT_A, SURFACTANT_B)
+    
+    # FULL WORKFLOW 
     print("Starting adaptive surfactant grid screening...")
     if not SIMULATE:
         slack_agent.send_slack_message("Starting adaptive surfactant grid screening workflow...")
@@ -2891,18 +2121,18 @@ if __name__ == "__main__":
         surfactant_b_name=SURFACTANT_B, 
         simulate=SIMULATE
     )
-    if results and results['workflow_complete']:
-        print("="*80)
-        print("WORKFLOW COMPLETE!")
-        print("="*80)
-        print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-        print(f"+ Wells processed: {results['total_wells']}")
-        print(f"+ Plates used: {results['plates_used']}")
-        breakdown = results['pipette_breakdown']
-        print(f"+ Pipette tips: {breakdown['large_tips']} large, {breakdown['small_tips']} small (total: {breakdown['total']})")
-        print(f"+ Measurements: {len(results['measurements'])} intervals")
-        print(f"+ Mode: {'Simulation' if results['simulation'] else 'Hardware'}")
-        print(f"+ Results saved to: {results['output_folder']}")
+    # if results and results['workflow_complete']:
+    #     print("="*80)
+    #     print("WORKFLOW COMPLETE!")
+    #     print("="*80)
+    #     print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+    #     print(f"+ Wells processed: {results['total_wells']}")
+    #     print(f"+ Plates used: {results['plates_used']}")
+    #     breakdown = results['pipette_breakdown']
+    #     print(f"+ Pipette tips: {breakdown['large_tips']} large, {breakdown['small_tips']} small (total: {breakdown['total']})")
+    #     print(f"+ Measurements: {len(results['measurements'])} intervals")
+    #     print(f"+ Mode: {'Simulation' if results['simulation'] else 'Hardware'}")
+    #     print(f"+ Results saved to: {results['output_folder']}")
 
-    if not SIMULATE:
-        slack_agent.send_slack_message("Completed adaptive surfactant grid screening workflow...")
+    # if not SIMULATE:
+    #     slack_agent.send_slack_message("Completed adaptive surfactant grid screening workflow...")
