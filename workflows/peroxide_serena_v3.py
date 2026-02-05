@@ -6,14 +6,15 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 # import slack_agent
 from pathlib import Path
+import slack_agent  
 import analysis.cof_analyzer as analyzer
 
-def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.2):
+def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.05):
     print("\nDispensing from photoreactor into sample: ", sample_index)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
-    lash_e.nr_robot.dispense_from_vial_into_vial(reaction_mixture_index,sample_index,volume=volume)
+    lash_e.nr_robot.dispense_from_vial_into_vial(reaction_mixture_index,sample_index,volume=volume, liquid='water')
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
-    mix_current_sample(lash_e,sample_index,volume=0.8)
+    mix_current_sample(lash_e,sample_index)
     lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.move_home()
     # lash_e.nr_robot.c9.home_robot() #removed for now to save time
@@ -24,9 +25,12 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=True,well_volume=0.2):
     print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
     lash_e.nr_robot.move_vial_to_location(sample_index, location="main_8mL_rack", location_index=44) #Move sample to safe pipetting position
-    lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume*replicates, track_height=True)
+    
     wells = range(first_well_index,first_well_index+replicates)
-    lash_e.nr_robot.dispense_into_wellplate(wells, [well_volume]*replicates)
+    for well in wells:
+        lash_e.nr_robot.aspirate_from_vial(sample_index, well_volume, track_height=True, liquid='water')
+        lash_e.nr_robot.dispense_into_wellplate([well], [well_volume], liquid='water')
+    
     lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.return_vial_home(sample_index) #Return sample to home position
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells)
@@ -38,7 +42,7 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
         #Use analyzer to analyze the data
     print()
 
-def mix_current_sample(lash_e, sample_index, new_pipet=False,repeats=3, volume=0.25):
+def mix_current_sample(lash_e, sample_index):
     print("\nMixing sample: ", sample_index)
     # if new_pipet:
     #     lash_e.nr_robot.remove_pipet()
@@ -63,8 +67,6 @@ def get_time(simulate,current_time=None):
 #Define your workflow! Make sure that it has parameters that can be changed!
 def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1', set_suffix='',interval=5*60,replicates=3):
   
-    # Initial State of your Vials, so the robot can know where to pipet
-    INPUT_VIAL_STATUS_FILE = "/Users/serenaqiu/Desktop/north_repository/utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
     MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
 
     SIMULATE =  True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
@@ -82,11 +84,51 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     else:
         output_dir = None
 
+
+    #Validate Pipetting Accuracy
+    import pipetting_data.embedded_calibration_validation as pipette_validator
+
+    for cof in ['COF_1','COF_2','COF_3']:
+        vial_name = cof
+        if output_dir is not None:
+            validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
+        else:
+            validation_folder = None
+        results = pipette_validator.validate_pipetting_accuracy(
+                        lash_e=lash_e,
+                        source_vial=vial_name,
+                        destination_vial=vial_name,
+                        liquid_type="water",
+                        volumes_ml=[0.05],  # Convert 10 µL to 0.01 mL
+                        replicates=5,
+                        output_folder=validation_folder,
+                        plot_title=f"Pipetting Validation - {vial_name}",
+                        condition_tip_enabled=True,
+                        conditioning_volume_ul=100
+                    )
+    vial_name = 'water'
+    if output_dir is not None:
+        validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
+    else:
+        validation_folder = None
+    results = pipette_validator.validate_pipetting_accuracy(
+                    lash_e=lash_e,
+                    source_vial=vial_name,
+                    destination_vial=vial_name,
+                    liquid_type="water",
+                    volumes_ml=[0.2, 0.95],  # Convert 10 µL to 0.01 mL
+                    replicates=5,
+                    output_folder=validation_folder,
+                    plot_title=f"Pipetting Validation - {vial_name}",
+                    condition_tip_enabled=True,
+                    conditioning_volume_ul=800
+                )
+
 #-> Start from here! 
     lash_e.grab_new_wellplate()
     #Step 1: Add 1.9 mL "assay reagent" to sample vials
-    for i in sample_indices: 
-        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.9)
+    for i in sample_indices:  #May want to use liquid calibration eg water
+        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.9, liquid='water')
     
     #Step 2: Move the reaction mixture vial to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_location(cof_vial, location="photoreactor_array", location_index=0)
@@ -124,7 +166,7 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
             print(f"Intended Elapsed Time: {(time_required)/60} minutes")
 
             if action_required=="dispense_from_reactor":
-                dispense_from_photoreactor_into_sample(lash_e,cof_vial,sample_index,volume=0.2)
+                dispense_from_photoreactor_into_sample(lash_e,cof_vial,sample_index,volume=0.05)
                 items_completed+=1
             elif action_required=="measure_samples":
                 transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,current_well_index,MEASUREMENT_PROTOCOL_FILE,replicates, output_dir,simulate=SIMULATE)
@@ -144,11 +186,11 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=0)
     lash_e.nr_robot.move_home()
     lash_e.discard_used_wellplate()
-    # if not SIMULATE:   
-    #     # slack_agent.send_slack_message("Peroxide workflow completed!")
+    if not SIMULATE: 
+        slack_agent.send_slack_message("Peroxide workflow completed!")
 
 # Initialize the workstation ONCE before running all workflows
-INPUT_VIAL_STATUS_FILE = "/Users/serenaqiu/Desktop/north_repository/utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
 SIMULATE = True
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 lash_e.nr_robot.check_input_file()

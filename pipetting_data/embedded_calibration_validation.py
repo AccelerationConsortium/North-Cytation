@@ -218,11 +218,16 @@ def validate_pipetting_accuracy(
     
     # === SETUP OUTPUT DIRECTORY ===
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    calib_folder = os.path.join(output_folder, "calibration_validation", f"validation_{liquid_type}_{source_vial}_{timestamp}")
     
-    # Only create directories and prepare file operations in non-simulation mode
-    if save_raw_data:
-        os.makedirs(calib_folder, exist_ok=True)
+    # Handle None output_folder for simulation mode
+    if output_folder is not None:
+        calib_folder = os.path.join(output_folder, "calibration_validation", f"validation_{liquid_type}_{source_vial}_{timestamp}")
+        # Only create directories and prepare file operations in non-simulation mode
+        if save_raw_data:
+            os.makedirs(calib_folder, exist_ok=True)
+    else:
+        calib_folder = None
+        save_raw_data = False  # Force disable file saving when output_folder is None
     
     print(f"\\n=== Pipetting Validation ===")
     print(f"Source: {source_vial}")
