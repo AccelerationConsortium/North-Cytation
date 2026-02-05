@@ -23,7 +23,7 @@ from pipetting_data.pipetting_parameters import PipettingParameters
 import slack_agent
 
 # Tip conditioning volume (mL)
-TIP_CONDITIONING_VOLUME = 0.18
+TIP_CONDITIONING_VOLUME = 0.10
 
 # Liquid densities for mass-to-volume conversion (g/mL)
 LIQUIDS = {
@@ -39,6 +39,8 @@ LIQUIDS = {
     "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
     "agar_water": {"density": 1.01, "refill_pipets": False},
     "agar_water_refill": {"density": 1.01, "refill_pipets": True},
+    "TFA": {"density": 1.49, "refill_pipets": False},
+    "6M_HCl": {"density": 1.10, "refill_pipets": False},
 }
 
 
@@ -64,7 +66,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
-        SWAP = True  # If True, enables vial swapping when needed
+        SWAP = False  # If True, enables vial swapping when needed
+
+        SINGLE_VIAL = True #True if you just want to use one vial, eg for a capped vial use "liquid_source_0"
 
         continuous_monitoring = True
         
@@ -89,8 +93,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             #lash_e.nr_track.check_input_file()
             
             # Simple vial management: Set up source and measurement vials
-            source_vial = "liquid_source_0"
-            measurement_vial = "measurement_vial_0" 
+            if SINGLE_VIAL:
+                source_vial = "liquid_source_0"
+                measurement_vial = "liquid_source_0" 
+            else:
+                source_vial = "liquid_source_0"
+                measurement_vial = "measurement_vial_0"
             
             # Move measurement vial to clamp position for pipetting operations
             lash_e.nr_robot.move_vial_to_location(measurement_vial, "clamp", 0)
@@ -120,7 +128,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 'measurement_vial': measurement_vial,
                 'swap_enabled': SWAP,
                 'measurement_count': 0,
-                'continuous_mass_monitoring': continuous_monitoring
+                'continuous_mass_monitoring': continuous_monitoring,
+                'simulate': simulate
             }
             
         except Exception as e:
@@ -268,10 +277,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             # Perform pipetting operation: aspirate from source, dispense into measurement vial
             source_vial = state['source_vial']
             measurement_vial = state['measurement_vial']
-            
-            # Check if we're in simulation mode
-            simulate = False  # This should match the simulate flag from initialize
-            
+            simulate = state['simulate']
+           
             if not simulate:
                 # Real hardware measurements with quality-controlled retry loop
                 max_retries = 3
@@ -323,8 +330,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     raise ValueError(f"Unknown liquid '{liquid}' - must be one of: {list(LIQUIDS.keys())}")
                 
                 density_g_mL = LIQUIDS[liquid]['density']
-                measured_volume_mL = measured_mass_g / density_g_mL  # mass (g) / density (g/mL) = volume (mL)
-                measured_mass_mg = measured_mass_g * 1000  # Convert g to mg for display
+                if not simulate: 
+                    measured_volume_mL = measured_mass_g / density_g_mL  # mass (g) / density (g/mL) = volume (mL)
+                    measured_mass_mg = measured_mass_g * 1000  # Convert g to mg for display
+                else:
+                    measured_mass_mg = 0.0
+                    measured_volume_mL = 0.0
                 
                 print(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
                 
@@ -376,11 +387,6 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 **pipet_params  # Echo back parameters
             }
             
-            # Add stability information if available
-            if stability_info is not None:
-                result['stability_info'] = stability_info
-                result['retry_count'] = retry_count - 1  # Actual number of retries performed
-            
             results.append(result)
             print(f"    Measured: {measured_volume_uL:.1f}uL (target: {volume_uL:.1f}uL) in {elapsed_s:.2f}s")
             print()  # Add visual separation between measurement cycles
@@ -430,8 +436,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         available_volume_ml = tip_volume_ml - target_volume_ml
         
         # Add tip volume constraint if relevant parameters exist
-        constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
-        #constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
+        #constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
         print(f"CONSTRAINT: North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}uL, target: {target_volume_ml*1000:.0f}uL)")

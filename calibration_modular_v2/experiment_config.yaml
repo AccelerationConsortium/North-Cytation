@@ -13,7 +13,7 @@
 # Experiment Configuration
 experiment:
   name: "multi_volume_calibration_test"  # Human-readable experiment name
-  liquid: "water"                     # Target liquid (water, glycerol, ethanol)
+  liquid: "6M_HCl"                     # Target liquid (water, glycerol, ethanol) ****** <---- important
   description: "Testing calibration across 4 volumes: 10μL to 100μL"
   
   # Target Volumes and Measurements
@@ -21,20 +21,24 @@ experiment:
   #Extra small volumes [0.05, 0.025, 0.010, 0.005, 0.002]
   #Medium volumes [0.150, 0.100, 0.050, 0.030] 
   #High volumes [0.2, 0.5, 0.95]
-  volume_targets_ml: [1.0, 0.5, 1.7, 2.4]   # Test with 3 volumes for faster debugging
-  max_total_measurements: 96           # Hard limit across entire experiment (increased for 6 volumes)
-  max_measurements_first_volume: 76     # Dedicated budget for first volume
+  volume_targets_ml: [0.05, 0.020, 0.01, 0.005]   # Test with 3 volumes for faster debugging
+  max_total_measurements: 200           # Hard limit across entire experiment (increased for 6 volumes)
+  max_measurements_first_volume: 150     # Dedicated budget for first volume
+  #Suggestion 1: 96-60 Short run
+  #Suggestion 2: 200-150 Long run
+
   
   # Frequently Adjusted Parameters
-  num_screening_trials: 6             # Number of exploratory trials if no external data available
-  replicates_for_accurate_measurements: 2  # Extra replicates beyond base replicate for good accuracy. Keep in mind your maximum measurement budget!
-  
+  num_screening_trials: 10             # Number of exploratory trials if no external data available (6 - short, 10 - long)
+  replicates_for_accurate_measurements: 4  # Extra replicates beyond base replicate for good accuracy. Keep in mind your maximum measurement budget!
+    #Set to 4 for longer runs, or 2 for shorter
+
   # Execution Mode
   simulate: false                         # Use simulation instead of hardware. Set to true for dry runs.
   random_seed: 7                         # Reproducibility seed for pseudo-random seeding
   
   # Protocol Configuration (Hardware Abstraction)
-  hardware_protocol: "calibration_protocol_reservoir"     # Real hardware protocol <---- Change this to yours
+  hardware_protocol: "calibration_protocol_northrobot"     # Real hardware protocol <---- Change this to yours
   simulation_protocol: "calibration_protocol_simulated"    # Simulation protocol   <---- Can keep this if you like
 
 # Parameter Space Definition
@@ -85,12 +89,12 @@ hardware_parameters:
   #   description: "Wait time after withdrawal during aspiration (seconds)"
   #   round_to_nearest: 0.1               # Round to nearest 0.1 seconds
 
-  dispense_wait_time:
-    bounds: [0.0, 5]
-    default: 0.0
-    type: "float"                       # Parameter type for optimizer
-    time_affecting: true                # Directly affects timing
-    description: "Wait time after dispensing (seconds)"
+  # dispense_wait_time:
+  #   bounds: [0.0, 5]
+  #   default: 0.0
+  #   type: "float"                       # Parameter type for optimizer
+  #   time_affecting: true                # Directly affects timing
+  #   description: "Wait time after dispensing (seconds)"
     
   # retract_speed:
   #   bounds: [1.0, 15.0]
@@ -118,14 +122,14 @@ hardware_parameters:
   #   round_to_nearest: 0.001             # Round to nearest 1 µL
   #   volume_dependent: true   
 
-  # pre_asp_air_vol:
-  #   bounds: [0.0, 0.3]
-  #   default: 0.0
-  #   type: "float"                       # Parameter type for optimizer
-  #   time_affecting: false               # Volume parameter, not timing
-  #   description: "Pre-aspiration air volume (mL)"
-  #   volume_dependent: true   
-  #   round_to_nearest: 0.001             # Round to nearest 1 µL
+  pre_asp_air_vol:
+    bounds: [0.0, 0.3]
+    default: 0.0
+    type: "float"                       # Parameter type for optimizer
+    time_affecting: false               # Volume parameter, not timing
+    description: "Pre-aspiration air volume (mL)"
+    volume_dependent: true   
+    round_to_nearest: 0.001             # Round to nearest 1 µL
 
 # Output Configuration
 output:
@@ -217,7 +221,7 @@ optimization:
     
   # Stopping criteria for the first volume optimization phase
   stopping_criteria:
-    min_good_trials: 4                  # Stop after this many parameter sets that meet acceptable tolerances
+    min_good_trials: 6                  # Stop after this many parameter sets that meet acceptable tolerances (Set higher if you want more confidence)
     
   # Variability calculation method
   use_range_based_variability: false    # Use (max-min)/(2*mean) for small samples instead of CV
@@ -240,10 +244,10 @@ screening:
 # Validation Configuration
 validation:
   # Source calibration data
-  optimal_conditions_file: "optimized_parameters/optimal_conditions_reservoir_1000.csv"  # Path to calibration results
+  optimal_conditions_file: "optimized_parameters/optimal_conditions_6MHCl.csv"  # Path to calibration results
   
   # Validation volumes (in mL)
-  volumes_ml: [0.25, 0.5, 0.1, 0.05, 1.0]      # Volumes to validate (can be different from calibration)
+  volumes_ml: [0.05, 0.025, 0.015, 0.010, 0.005]     # Volumes to validate (can be different from calibration)
   
   # Measurement settings
   replicates_per_volume: 5              # Number of replicate measurements per volume
