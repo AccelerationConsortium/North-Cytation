@@ -6,7 +6,6 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 from pathlib import Path
 import slack_agent  
-import analysis.cof_analyzer as analyzer
 
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.05):
     print("\nDispensing from photoreactor into sample: ", sample_index)
@@ -64,22 +63,21 @@ def get_time(simulate,current_time=None):
             return current_time + 1
 
 #Define your workflow! Make sure that it has parameters that can be changed!
-def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1', set_suffix='',interval=5*60,replicates=3):
+def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1', set_suffix='',interval=5*60,replicates=3, simulate=True, exp_name=None):
   
     MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
 
-    SIMULATE =  True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+    SIMULATE =  simulate #Set to True if you want to simulate the robot, False if you want to run it on the real robot
 
     sample_times = [1,5,10,20,30,45] #in minutes
     sample_indices = [f"{t}_min_Reaction{set_suffix}" for t in sample_times]
 
     #create file name for the output data
     if not SIMULATE:
-        exp_name = input("Experiment name: ")
         output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / exp_name #appends exp_name to the output directory
         output_dir.mkdir(parents=True, exist_ok=True)
         print("Output directory created at:", output_dir)
-        slack_agent.send_slack_message("Peroxide workflow started!")
+        slack_agent.send_slack_message(f"Peroxide workflow '{exp_name}' started!")
     else:
         output_dir = None
 
@@ -125,9 +123,9 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
 
 #-> Start from here! 
     lash_e.grab_new_wellplate()
-    #Step 1: Add 1.9 mL "assay reagent" to sample vials
+    #Step 1: Add 1.95 mL "assay reagent" to sample vials
     for i in sample_indices:  #May want to use liquid calibration eg water
-        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.9, liquid='water')
+        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water')
     
     #Step 2: Move the reaction mixture vial to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_location(cof_vial, location="photoreactor_array", location_index=0)
@@ -192,13 +190,21 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
 
 NUMBER_OF_SAMPLES = 1
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
-SIMULATE = True
+SIMULATE = False
+
+# Get experiment name at the start
+if not SIMULATE:
+    exp_name = input("Experiment name: ")
+else:
+    exp_name = "simulation_test"
+
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 lash_e.nr_robot.check_input_file()
+lash_e.nr_track.check_input_file()
 
 # Run the workflow N times with different Reagent+COF+sample sets, reusing the same lash_e instance
 for i in range(1, NUMBER_OF_SAMPLES+1):
     assay_reagent = f'Assay_reagent_{i}'
     cof_vial = f'COF_{i}'
     set_suffix = f'_Set{i}'
-    peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix)
+    peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix, simulate=SIMULATE, exp_name=exp_name)

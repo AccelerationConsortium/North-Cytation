@@ -84,8 +84,8 @@ SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
-SIMULATE = False # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
+SIMULATE = True # Set to False for actual hardware execution
+VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
 VALIDATION_ONLY = False # Set to True to run only validations and skip full experiment
 
 # Pump configuration:
@@ -948,11 +948,25 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     # Get component name for logging
     component_name = volume_column.replace('_volume_ul', '').replace('_', ' ').title()
     
-    # Filter to wells that need this component
-    wells_needing_component = batch_df[batch_df[volume_column] > 0].copy()
+    # Filter to wells that need this specific component/substock
+    if volume_column == 'surf_A_volume_ul':
+        # For surfactant A, also check that this is the correct substock
+        wells_needing_component = batch_df[
+            (batch_df[volume_column] > 0) & 
+            (batch_df['substock_A_name'] == vial_name)
+        ].copy()
+    elif volume_column == 'surf_B_volume_ul':
+        # For surfactant B, also check that this is the correct substock  
+        wells_needing_component = batch_df[
+            (batch_df[volume_column] > 0) & 
+            (batch_df['substock_B_name'] == vial_name)
+        ].copy()
+    else:
+        # For other components (water, buffer), use original logic
+        wells_needing_component = batch_df[batch_df[volume_column] > 0].copy()
     
     if len(wells_needing_component) == 0:
-        logger.info(f"  {component_name}: No wells need this component")
+        logger.info(f"  {component_name}: No wells need this component from {vial_name}")
         return
     
     logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells")
