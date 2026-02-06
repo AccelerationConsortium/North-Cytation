@@ -63,7 +63,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         print(f"Initializing North Robot hardware protocol for {liquid}")
 
         # Use hardware simulation mode (different from our simulation protocol)
-        simulate = False  # This enables North Robot's internal simulation
+        simulate = True  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
         SWAP = False  # If True, enables vial swapping when needed
@@ -89,7 +89,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
             
             # Validate hardware files
-            lash_e.nr_robot.check_input_file()
+            #lash_e.nr_robot.check_input_file()
             #lash_e.nr_track.check_input_file()
             lash_e.nr_robot.home_robot_components()
             
@@ -406,16 +406,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 lash_e.nr_robot.move_home()
                 
                 print(f"COMPLETE: Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
-                
+                               
                 # Send slack notification
                 try:
-                    slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
-                except Exception as e:
-                    print(f"WARNING: Slack notification failed: {e}")
-                
-                # Send slack notification
-                try:
-                    slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
+                    if not state.get('simulate', True):
+                        slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
                 except Exception as e:
                     print(f"WARNING: Slack notification failed: {e}")
                 

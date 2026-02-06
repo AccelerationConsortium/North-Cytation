@@ -878,7 +878,7 @@ class CalibrationExperiment:
         
         for trial_idx in range(num_trials):
             # Clear progress display
-            print(f"\n🧪 TRIAL {trial_idx + 1}/{num_trials} - Screening Phase ({target_volume_ml*1000:.0f}uL)")
+            print(f"\n[TRIAL] {trial_idx + 1}/{num_trials} - Screening Phase ({target_volume_ml*1000:.0f}uL)")
             print("=" * 60)
             
             # Generate screening parameters (would use SOBOL or LLM suggestions)
