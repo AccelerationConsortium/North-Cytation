@@ -85,49 +85,49 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     #Validate Pipetting Accuracy
     import pipetting_data.embedded_calibration_validation as pipette_validator
 
-    for cof in [f'COF_{i}' for i in range(1,NUMBER_OF_SAMPLES+1)]:
-        vial_name = cof
-        if output_dir is not None:
-            validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
-        else:
-            validation_folder = None
-        results = pipette_validator.validate_pipetting_accuracy(
-                        lash_e=lash_e,
-                        source_vial=vial_name,
-                        destination_vial=vial_name,
-                        liquid_type="water",
-                        volumes_ml=[0.05],  # Convert 10 µL to 0.01 mL
-                        replicates=5,
-                        output_folder=validation_folder,
-                        plot_title=f"Pipetting Validation - {vial_name}",
-                        condition_tip_enabled=True,
-                        conditioning_volume_ul=100
-                    )
-    vial_name = 'water'
-    if output_dir is not None:
-        validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
-    else:
-        validation_folder = None
-    results = pipette_validator.validate_pipetting_accuracy(
-                    lash_e=lash_e,
-                    source_vial=vial_name,
-                    destination_vial=vial_name,
-                    liquid_type="water",
-                    volumes_ml=[0.2, 0.95],  # Convert 10 µL to 0.01 mL
-                    replicates=5,
-                    output_folder=validation_folder,
-                    plot_title=f"Pipetting Validation - {vial_name}",
-                    condition_tip_enabled=True,
-                    conditioning_volume_ul=800
-                )
+    # for cof in [f'COF_{i}' for i in range(1,NUMBER_OF_SAMPLES+1)]:
+    #     vial_name = cof
+    #     if output_dir is not None:
+    #         validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
+    #     else:
+    #         validation_folder = None
+    #     results = pipette_validator.validate_pipetting_accuracy(
+    #                     lash_e=lash_e,
+    #                     source_vial=vial_name,
+    #                     destination_vial=vial_name,
+    #                     liquid_type="water",
+    #                     volumes_ml=[0.05],  # Convert 10 µL to 0.01 mL
+    #                     replicates=5,
+    #                     output_folder=validation_folder,
+    #                     plot_title=f"Pipetting Validation - {vial_name}",
+    #                     condition_tip_enabled=True,
+    #                     conditioning_volume_ul=100
+    #                 )
+    # vial_name = 'water'
+    # if output_dir is not None:
+    #     validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
+    # else:
+    #     validation_folder = None
+    # results = pipette_validator.validate_pipetting_accuracy(
+    #                 lash_e=lash_e,
+    #                 source_vial=vial_name,
+    #                 destination_vial=vial_name,
+    #                 liquid_type="water",
+    #                 volumes_ml=[0.2, 0.95],  # Convert 10 µL to 0.01 mL
+    #                 replicates=5,
+    #                 output_folder=validation_folder,
+    #                 plot_title=f"Pipetting Validation - {vial_name}",
+    #                 condition_tip_enabled=True,
+    #                 conditioning_volume_ul=800
+                # )
 
 #-> Start from here! 
-    lash_e.grab_new_wellplate()
-    #Step 1: Add 1.95 mL "assay reagent" to sample vials
-    for i in sample_indices:  #May want to use liquid calibration eg water
-        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water')
+    # lash_e.grab_new_wellplate()
+    # #Step 1: Add 1.95 mL "assay reagent" to sample vials
+    # for i in sample_indices:  #May want to use liquid calibration eg water
+    #     lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water')
     
-    #Step 2: Move the reaction mixture vial to the photoreactor to start the reaction.
+    # #Step 2: Move the reaction mixture vial to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_location(cof_vial, location="photoreactor_array", location_index=0)
     #Turn on photoreactor
     lash_e.photoreactor.turn_on_reactor_led(reactor_num=0,intensity=100)
