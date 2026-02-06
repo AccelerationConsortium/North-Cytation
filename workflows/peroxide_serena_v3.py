@@ -4,7 +4,6 @@ import datetime
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
-# import slack_agent
 from pathlib import Path
 import slack_agent  
 import analysis.cof_analyzer as analyzer
@@ -80,7 +79,7 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
         output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / exp_name #appends exp_name to the output directory
         output_dir.mkdir(parents=True, exist_ok=True)
         print("Output directory created at:", output_dir)
-        # slack_agent.send_slack_message("Peroxide workflow started!")
+        slack_agent.send_slack_message("Peroxide workflow started!")
     else:
         output_dir = None
 
@@ -88,7 +87,7 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     #Validate Pipetting Accuracy
     import pipetting_data.embedded_calibration_validation as pipette_validator
 
-    for cof in ['COF_1','COF_2','COF_3']:
+    for cof in [f'COF_{i}' for i in range(1,NUMBER_OF_SAMPLES+1)]:
         vial_name = cof
         if output_dir is not None:
             validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
@@ -190,13 +189,15 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
         slack_agent.send_slack_message("Peroxide workflow completed!")
 
 # Initialize the workstation ONCE before running all workflows
+
+NUMBER_OF_SAMPLES = 1
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
 SIMULATE = True
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 lash_e.nr_robot.check_input_file()
 
-# Run the workflow 3 times with different Reagent+COF+sample sets, reusing the same lash_e instance
-for i in range(1, 4):
+# Run the workflow N times with different Reagent+COF+sample sets, reusing the same lash_e instance
+for i in range(1, NUMBER_OF_SAMPLES+1):
     assay_reagent = f'Assay_reagent_{i}'
     cof_vial = f'COF_{i}'
     set_suffix = f'_Set{i}'
