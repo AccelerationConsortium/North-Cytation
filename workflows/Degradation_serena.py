@@ -20,9 +20,10 @@ def validate_key_liquids(lash_e, output_dir):
         from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
         
         validation_tests = [
-            {'vial': 'water', 'liquid': 'water', 'volumes': [0.01, 0.05, 0.15], 'reps': 3},
-            {'vial': 'sample_1', 'liquid': 'water', 'volumes': [0.05, 0.15], 'reps': 2},
-            {'vial': 'H2O2_30', 'liquid': 'water', 'volumes': [0.01, 0.02], 'reps': 2}
+            {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3},
+            {'vial': '2MeTHF', 'liquid': '2MeTHF', 'volumes': [0.15, 0.95], 'reps': 3},
+            {'vial': '6M_HCl', 'liquid': '6M_HCl', 'volumes': [0.025, 0.015, 0.005], 'reps': 3},
+            {'vial': 'polymer_stock', 'liquid': '2MeTHF', 'volumes': [0.100], 'reps': 3},
         ]
         
         lash_e.logger.info("Running compact liquid validation...")
