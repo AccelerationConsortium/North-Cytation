@@ -7,6 +7,37 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 from pathlib import Path
 
+# Configuration
+VALIDATE_LIQUIDS = False  # Set to True to run pipetting validation
+
+
+def validate_key_liquids(lash_e, output_dir):
+    """Compact validation of key liquids used in degradation workflow."""
+    if not VALIDATE_LIQUIDS:
+        return
+    
+    try:
+        from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
+        
+        validation_tests = [
+            {'vial': 'water', 'liquid': 'water', 'volumes': [0.01, 0.05, 0.15], 'reps': 3},
+            {'vial': 'sample_1', 'liquid': 'water', 'volumes': [0.05, 0.15], 'reps': 2},
+            {'vial': 'H2O2_30', 'liquid': 'water', 'volumes': [0.01, 0.02], 'reps': 2}
+        ]
+        
+        lash_e.logger.info("Running compact liquid validation...")
+        for test in validation_tests:
+            result = validate_pipetting_accuracy(
+                lash_e=lash_e, source_vial=test['vial'], destination_vial=test['vial'],
+                liquid_type=test['liquid'], volumes_ml=test['volumes'], replicates=test['reps'],
+                output_folder=output_dir, switch_pipet=False, save_raw_data=not lash_e.simulate,
+                condition_tip_enabled=True, conditioning_volume_ul=max(test['volumes'])*1000
+            )
+            lash_e.logger.info(f"  {test['vial']}: R^2={result['r_squared']:.3f}, Accuracy={result['mean_accuracy_pct']:.1f}%")
+        
+    except ImportError:
+        lash_e.logger.info("Validation system not available, skipping...")
+
 #01/05/2025Question: how to incorporate the pipetting params?
 # Take aliquot -> Wellplate measurement (3 replicate)-> Put sample back to wellplate
 def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_protocol_file_path, simulate,  sample_name, used_wells, heater_slot_map=None, replicates=3):
@@ -234,6 +265,8 @@ def degradation_workflow():
     # Get stock concentration
     stock_conc = df.loc[df[sample_col] == 'polymer_stock', 'concentration(mg/mL)'].iloc[0] #This selects the row where vial_name == 'polymer_stock' and pulls its 'concentration(mg/mL)'
     lash_e.logger.info(f"Stock concentration: {stock_conc} mg/mL")
+
+
     
     # Calculate dilution volumes for each sample
     samples = df[df[sample_col].str.contains("sample", case=False, na=False)].copy() # case=false -> Select rows where vial_name contains ‘sample’ in any capitalization, na=false -> if vial_name is missing, treat it as not a match
@@ -289,11 +322,16 @@ def degradation_workflow():
         output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / exp_name #appends exp_name to the output directory
         output_dir.mkdir(parents=True, exist_ok=True)
         lash_e.logger.info("Output directory created at: %s", output_dir)
+        
+        # Run validation if enabled
+        validate_key_liquids(lash_e, output_dir)
+        
         slack_agent.send_slack_message("Degradation workflow started!")
 
         lash_e.nr_robot.home_robot_components()
     else:
         output_dir = None
+        validate_key_liquids(lash_e, output_dir)  # Also validate in simulation
 
     # -------------------------------------------------------------- Workflow starts from here! ---------------------------------------------------
 
