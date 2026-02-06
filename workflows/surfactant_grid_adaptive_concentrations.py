@@ -84,7 +84,7 @@ SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
+SIMULATE = False # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 VALIDATION_ONLY = False # Set to True to run only validations and skip full experiment
 
@@ -612,7 +612,9 @@ def create_substocks_from_recipes(lash_e, recipes):
             
             # Vortex to mix
             lash_e.nr_robot.vortex_vial(vial_name=vial_name, vortex_time=8, vortex_speed=80)
+            lash_e.nr_robot.return_vial_home(vial_name=vial_name)
             
+
             created_substocks.append({
                 'vial_name': vial_name,
                 'concentration_mm': target_conc,
@@ -1836,6 +1838,10 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")
     
+    # Home robot to ensure clean starting position
+    lash_e.logger.info("  Homing robot to ensure clean starting position...")
+    lash_e.nr_robot.home_robot_components()
+    
     # Validate pipetting capability if enabled or if in validation-only mode
     if VALIDATE_LIQUIDS or VALIDATION_ONLY:
         validation_results = validate_pipetting_system(lash_e, experiment_output_folder)
@@ -1887,7 +1893,10 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 'Final_Volume_mL': stock['final_volume_ml']
             })
     
-    # Create substocks in the correct order (recipes are already ordered for dependencies)
+    # Sort by concentration (highest first) for correct creation order
+    dilution_recipes.sort(key=lambda x: x['Target_Conc_mM'], reverse=True)
+    
+    # Create substocks in the correct order (highest concentration first)
     if dilution_recipes:
         created_substocks = create_substocks_from_recipes(lash_e, dilution_recipes)
         newly_created = [s for s in created_substocks if s['created']]
