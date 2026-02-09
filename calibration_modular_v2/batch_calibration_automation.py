@@ -39,7 +39,21 @@ LIQUIDS_TO_CALIBRATE = [
         'liquid_name': 'water',
         'target_vial': 'SDS_stock',
         'volume_targets_ml': [0.95, 0.5, 0.2],
-        'validation_volumes_ml': [0.95, 0.5, 0.2]
+        'validation_volumes_ml': [0.95, 0.5, 0.2],
+        'hardware_parameters': {
+            'post_asp_air_vol': {
+                'bounds': [0.0, 0.050],
+                'type': 'float',
+                'round_to_nearest': 0.001,
+                'default': 0.010,
+            },
+            'blowout_vol': {
+                'bounds': [0.0, 0.5],
+                'type': 'float',
+                'round_to_nearest': 0.001,
+                'default': 0.1
+            }
+        }
     },
     {
         'liquid_name': 'water',
@@ -51,7 +65,21 @@ LIQUIDS_TO_CALIBRATE = [
         'liquid_name': 'water',
         'target_vial': 'water',
         'volume_targets_ml': [0.95, 0.5, 0.2],
-        'validation_volumes_ml': [0.95, 0.5, 0.2]
+        'validation_volumes_ml': [0.95, 0.5, 0.2],
+        'hardware_parameters': {
+            'post_asp_air_vol': {
+                'bounds': [0.0, 0.050],
+                'type': 'float',
+                'round_to_nearest': 0.001,
+                'default': 0.010,
+            },
+            'blowout_vol': {
+                'bounds': [0.0, 0.5],
+                'type': 'float',
+                'round_to_nearest': 0.001,
+                'default': 0.1
+            }
+        }
     }
 ]
 
@@ -102,6 +130,16 @@ class BatchCalibrationAutomator:
         config['experiment']['liquid'] = liquid_config['liquid_name']
         config['experiment']['volume_targets_ml'] = liquid_config['volume_targets_ml']
         config['validation']['volumes_ml'] = liquid_config['validation_volumes_ml']
+        
+        # Update hardware parameters if specified
+        if 'hardware_parameters' in liquid_config:
+            print(f"    Applying hardware parameters: {list(liquid_config['hardware_parameters'].keys())}")
+            if 'hardware_parameters' not in config:
+                config['hardware_parameters'] = {}
+            
+            for param_name, param_config in liquid_config['hardware_parameters'].items():
+                config['hardware_parameters'][param_name] = param_config
+                print(f"      {param_name}: bounds={param_config.get('bounds')}, type={param_config.get('type')}")
         
         with open(CONFIG_FILE, 'w') as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)

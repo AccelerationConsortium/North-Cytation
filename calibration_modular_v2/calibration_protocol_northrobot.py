@@ -432,8 +432,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         available_volume_ml = tip_volume_ml - target_volume_ml
         
         # Add tip volume constraint if relevant parameters exist
-        #constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
-        constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
+        constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        #constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
         print(f"CONSTRAINT: North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}uL, target: {target_volume_ml*1000:.0f}uL)")
