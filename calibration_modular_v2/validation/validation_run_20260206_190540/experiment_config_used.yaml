@@ -3,9 +3,9 @@ experiment:
   liquid: water
   description: "Testing calibration across 4 volumes: 10\xCE\xBCL to 100\xCE\xBCL"
   volume_targets_ml:
-  - 0.18
-  - 0.1
-  - 0.075
+  - 0.95
+  - 0.5
+  - 0.2
   max_total_measurements: 30
   max_measurements_first_volume: 20
   num_screening_trials: 2
@@ -62,7 +62,6 @@ hardware_parameters:
     description: Pre-aspiration air volume (mL)
     volume_dependent: true
     round_to_nearest: 0.001
-  
 output:
   base_directory: output/
   save_raw_measurements: true
@@ -139,12 +138,11 @@ screening:
     - deviation_pct
     - duration_s
 validation:
-  optimal_conditions_file: optimized_parameters/optimal_conditions_water_5_50_new.csv
+  optimal_conditions_file: output/run_1770422541/optimal_conditions.csv
   volumes_ml:
-  - 0.05
-  - 0.025
-  - 0.01
-  - 0.005
+  - 0.95
+  - 0.5
+  - 0.2
   replicates_per_volume: 5
   output_directory: validation/
   generate_plots: true
