@@ -432,7 +432,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         available_volume_ml = tip_volume_ml - target_volume_ml
         
         # Add tip volume constraint if relevant parameters exist
-        constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        if target_volume_ml <= tip_volume_ml:
+            constraints.append(f"target_volume_ml <= {tip_volume_ml:.6f}  # Tip volume constraint")
+        else: 
+            constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
         #constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
