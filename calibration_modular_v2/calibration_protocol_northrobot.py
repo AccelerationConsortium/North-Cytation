@@ -12,6 +12,8 @@ Optional: start_time, end_time, echoed params.
 import time
 import sys
 import os
+import yaml
+from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from calibration_protocol_base import CalibrationProtocolBase
@@ -22,8 +24,7 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
 import slack_agent
 
-# Tip conditioning volume (mL)
-TIP_CONDITIONING_VOLUME = 0.10
+# Tip conditioning volume will be calculated dynamically based on target volumes
 
 # Liquid densities for mass-to-volume conversion (g/mL)
 LIQUIDS = {
@@ -49,6 +50,13 @@ from pipetting_data.pipetting_parameters import PipettingParameters
 class HardwareCalibrationProtocol(CalibrationProtocolBase):
     """Hardware calibration protocol implementing the abstract interface."""
     
+    def get_tip_conditioning_volume(self, target_volume_ml: float) -> float:
+        """Calculate appropriate conditioning volume based on target pipetting volume."""
+        if target_volume_ml <= 0.15:  # Small tip (200 uL)
+            return min(0.150, target_volume_ml * 1.2)
+        else:  # Large tip (1000 uL) 
+            return min(0.900, target_volume_ml * 1.2)  
+    
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Initialize hardware protocol with North Robot's internal simulation."""
                
@@ -61,9 +69,37 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         liquid = cfg['experiment']['liquid']
         
         print(f"Initializing North Robot hardware protocol for {liquid}")
+        
+        # Read full config directly from file to get volume targets
+        try:
+            config_path = Path(__file__).parent / "experiment_config.yaml"
+            with open(config_path, 'r') as f:
+                full_config = yaml.safe_load(f)
+            
+            volume_targets = full_config.get('experiment', {}).get('volume_targets_ml', [])
+            print(f"Read volume targets from config: {volume_targets}")
+        except Exception as e:
+            print(f"Warning: Could not read config file ({e}), using fallback")
+            volume_targets = []
+        
+        # DEBUG: Show what's in the passed config vs full config
+        print(f"DEBUG: cfg keys = {list(cfg.keys()) if cfg else 'cfg is None'}")
+        print(f"DEBUG: cfg['experiment'] keys = {list(cfg['experiment'].keys()) if cfg and 'experiment' in cfg else 'no experiment'}")
+        print(f"DEBUG: volume_targets_ml from file = {volume_targets}")
+        
+        # Extract volume targets to determine tip conditioning
+        if volume_targets:
+            max_volume = max(volume_targets)
+            # Store for use in tip conditioning
+            self.conditioning_volume = self.get_tip_conditioning_volume(max_volume)
+            print(f"Set conditioning volume to {self.conditioning_volume:.3f}mL based on max target {max_volume:.3f}mL")
+        else:
+            # Fallback to conservative default
+            self.conditioning_volume = 0.05
+            print("No volume targets found, using default conditioning volume 0.05mL")
 
         # Use hardware simulation mode (different from our simulation protocol)
-        simulate = True  # This enables North Robot's internal simulation
+        simulate = False  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
         SWAP = False  # If True, enables vial swapping when needed
@@ -112,11 +148,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     dispense_wait_time=0.0,
                     blowout_vol=0.5
                 )
-                lash_e.nr_robot.aspirate_from_vial(source_vial, TIP_CONDITIONING_VOLUME, move_up=False, parameters=conditioning_params)
-                lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
-                for i in range (0, 3):
-                    lash_e.nr_robot.aspirate_from_vial(source_vial, TIP_CONDITIONING_VOLUME,  move_to_aspirate=False, parameters=conditioning_params)
-                    lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
+                lash_e.nr_robot.aspirate_from_vial(source_vial, self.conditioning_volume, move_up=False, parameters=conditioning_params)
+                lash_e.nr_robot.dispense_into_vial(source_vial, self.conditioning_volume, initial_move=False, parameters=conditioning_params)
+                for i in range(3):
+                    lash_e.nr_robot.aspirate_from_vial(source_vial, self.conditioning_volume,  move_to_aspirate=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(source_vial, self.conditioning_volume, initial_move=False, parameters=conditioning_params)
                 lash_e.nr_robot.move_home()
             
             print("READY: Hardware initialized successfully")
@@ -184,11 +220,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         dispense_wait_time=0.0,
                         blowout_vol=0.5
                     )
-                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, move_up=False, parameters=conditioning_params)
-                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
-                    for i in range (0, 3):
-                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, move_to_aspirate=False, parameters=conditioning_params)
-                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
+                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], self.conditioning_volume, move_up=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], self.conditioning_volume, initial_move=False, parameters=conditioning_params)
+                    for i in range(3):
+                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], self.conditioning_volume, move_to_aspirate=False, parameters=conditioning_params)
+                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], self.conditioning_volume, initial_move=False, parameters=conditioning_params)
                     lash_e.nr_robot.move_home()
                 
                 print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
@@ -428,18 +464,19 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         else:
             tip_volume_ml = 1.0
             
-        # Calculate available volume for air and overaspiration
-        available_volume_ml = tip_volume_ml - target_volume_ml
+
+        max_volume = 1.0    
         
         # Add tip volume constraint if relevant parameters exist
-        if target_volume_ml <= tip_volume_ml:
-            constraints.append(f"target_volume_ml <= {tip_volume_ml:.6f}  # Tip volume constraint")
-        else: 
-            constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
-        #constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
-        constraints.append(constraint)
-        
-        print(f"CONSTRAINT: North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}uL, target: {target_volume_ml*1000:.0f}uL)")
+        try:
+            constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
+        except:
+            constraints.append(f"overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
+
+        try:
+            constraints.append(f"pre_asp_air_vol + post_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
+        except:
+            constraints.append(f"pre_asp_air_vol +  overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
         
         return constraints
 

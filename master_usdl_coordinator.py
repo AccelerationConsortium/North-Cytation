@@ -11,6 +11,63 @@ import os
 from datetime import datetime
 import logging
 
+# ================================================================================
+# CYTATION DATA PROCESSING UTILITIES
+# ================================================================================
+
+def flatten_cytation_data(data, measurement_type="unknown"):
+    """
+    Reliably flatten Cytation MultiIndex DataFrame to simple columns.
+    
+    This utility handles the common Cytation data structure issues:
+    - MultiIndex columns like [('rep1_CMC_Absorbance_96', '600')] -> ['600']
+    - Well positions as index -> 'well_position' column
+    - Proper column naming for different measurement types
+    
+    Args:
+        data: DataFrame from lash_e.measure_wellplate()
+        measurement_type: 'turbidity' or 'fluorescence' for column naming
+        
+    Returns:
+        DataFrame with simple columns: ['well_position', 'turbidity_600'] or ['well_position', '334_373', '334_384']
+        
+    Usage:
+        turbidity_data = flatten_cytation_data(turbidity_data, 'turbidity')
+        fluorescence_data = flatten_cytation_data(fluorescence_data, 'fluorescence')
+        
+    Note:
+        Ratio calculation for pyrene fluorescence: 334_373 / 334_384 (I₃/I₁ ratio)
+        This is the standard pyrene ratio for CMC determination.
+    """
+    if data is None:
+        return None
+        
+    # Handle MultiIndex columns - flatten to single level
+    if isinstance(data.columns, pd.MultiIndex):
+        # Take the second level (wavelength/measurement) as column names
+        data.columns = [col[1] if isinstance(col, tuple) else col for col in data.columns]
+    
+    # Rename columns to standard names based on measurement type
+    if measurement_type == 'turbidity':
+        column_mapping = {}
+        for col in data.columns:
+            if '600' in str(col) or 'Absorbance' in str(col):
+                column_mapping[col] = 'turbidity_600'
+        if column_mapping:
+            data = data.rename(columns=column_mapping)
+    
+    # Reset index to convert well positions (A1, A2, etc.) to a column
+    data = data.reset_index()
+    if 'index' in data.columns:
+        data = data.rename(columns={'index': 'well_position'})
+    elif data.columns[0] == 0 or str(data.columns[0]).startswith('Unnamed'):
+        # Handle cases where reset_index creates unnamed column
+        data.columns = ['well_position'] + list(data.columns[1:])
+    
+    return data
+
+# ================================================================================
+
 class Lash_E:
     nr_robot = None
     nr_track = None
