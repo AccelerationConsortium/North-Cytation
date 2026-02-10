@@ -23,18 +23,18 @@ import shutil
 
 # Configuration - Edit this list for your liquids to calibrate
 LIQUIDS_TO_CALIBRATE = [
-    {
-        'liquid_name': 'water',
-        'target_vial': 'SDS_stock',
-        'volume_targets_ml': [0.05, 0.025, 0.010],
-        'validation_volumes_ml': [0.05, 0.025, 0.010]
-    },
-    {
-        'liquid_name': 'water',
-        'target_vial': 'SDS_stock',
-        'volume_targets_ml': [0.180, 0.100, 0.075],
-        'validation_volumes_ml': [0.180, 0.100, 0.075]
-    },
+    # {
+    #     'liquid_name': 'water',
+    #     'target_vial': 'SDS_stock',
+    #     'volume_targets_ml': [0.05, 0.025, 0.010],
+    #     'validation_volumes_ml': [0.05, 0.025, 0.010]
+    # },
+    # {
+    #     'liquid_name': 'water',
+    #     'target_vial': 'SDS_stock',
+    #     'volume_targets_ml': [0.180, 0.100, 0.075],
+    #     'validation_volumes_ml': [0.180, 0.100, 0.075]
+    # },
     {
         'liquid_name': 'water',
         'target_vial': 'SDS_stock',
@@ -97,19 +97,22 @@ class BatchCalibrationAutomator:
         self.backup_created = False
         
     def create_backups(self):
-        """Create backups of original files before starting."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        """Create single backup files in calibration_modular_v2 folder (overwrite previous ones to prevent accumulation)."""
         
-        # Backup config file - keep in current directory
-        config_backup = f"experiment_config_backup_{timestamp}.yaml"
+        # Get the directory where this script is located (calibration_modular_v2)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Backup config file - store in calibration_modular_v2 folder
+        config_backup = os.path.join(script_dir, "experiment_config_backup.yaml")
         shutil.copy2(CONFIG_FILE, config_backup)
         
-        # Backup vials CSV - keep in same directory as original
-        vials_backup = f"calibration_vials_short_backup_{timestamp}.csv"
-        vials_backup_path = os.path.join(os.path.dirname(VIALS_CSV), vials_backup)
-        shutil.copy2(VIALS_CSV, vials_backup_path)
+        # Backup vials CSV - store in calibration_modular_v2 folder
+        vials_backup = os.path.join(script_dir, "calibration_vials_short_backup.csv")
+        shutil.copy2(VIALS_CSV, vials_backup)
         
-        print(f"Created backups: {config_backup}, {vials_backup_path}")
+        print(f"Created backups in {script_dir}:")
+        print(f"  - experiment_config_backup.yaml")
+        print(f"  - calibration_vials_short_backup.csv")
         self.backup_created = True
         
     def load_original_files(self):
@@ -226,14 +229,14 @@ class BatchCalibrationAutomator:
         print(f"  Running {script_name}...")
         print(f"    (Output will appear below - press Ctrl+C if hanging)")
         try:
-            # Run with visible output and reasonable timeout
+            # Run with visible output and extended timeout for long calibrations
             result = subprocess.run([sys.executable, script_name], 
-                                  timeout=300,  # 5 minute timeout
+                                  timeout=10000,  # 2 hour timeout (calibrations can take over an hour)
                                   check=True)
             print(f"    {script_name} completed successfully")
             return True
         except subprocess.TimeoutExpired:
-            print(f"    TIMEOUT: {script_name} took longer than 5 minutes")
+            print(f"    TIMEOUT: {script_name} took longer than 2 hours")
             return False
         except subprocess.CalledProcessError as e:
             print(f"    ERROR: {script_name} failed!")

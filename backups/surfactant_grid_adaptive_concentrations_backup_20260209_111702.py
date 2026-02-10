@@ -39,7 +39,7 @@ import numpy as np
 import os
 import json
 from datetime import datetime
-from master_usdl_coordinator import Lash_E, flatten_cytation_data
+from master_usdl_coordinator import Lash_E
 import slack_agent
 
 # ================================================================================
@@ -895,7 +895,7 @@ def measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data):
     }
     wellplate_data['measurements'].append(turbidity_entry)
     
-    return turbidity_entry, turbidity_data
+    return turbidity_entry
 
 def measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data):
     """Measure fluorescence for a batch of wells and save data."""
@@ -930,7 +930,7 @@ def measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data):
     }
     wellplate_data['measurements'].append(fluorescence_entry)
     
-    return fluorescence_entry, fluorescence_data
+    return fluorescence_entry
 
 def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, volume_column):
     """
@@ -1107,20 +1107,14 @@ def measure_turbidity(lash_e, well_indices):
             plate_type="96 WELL PLATE"
         )
         
-        # DEBUG: Show raw data structure
-        lash_e.logger.info(f"TURBIDITY RAW DEBUG: type = {type(turbidity_data)}")
-        if hasattr(turbidity_data, 'shape'):
-            lash_e.logger.info(f"TURBIDITY RAW DEBUG: shape = {turbidity_data.shape}")
-            lash_e.logger.info(f"TURBIDITY RAW DEBUG: columns = {list(turbidity_data.columns)}")
-            lash_e.logger.info(f"TURBIDITY RAW DEBUG: first 3 rows:\n{turbidity_data.head(3)}")
-        
-        # Process Cytation format using utility function
-        turbidity_data = flatten_cytation_data(turbidity_data, 'turbidity')
-        if turbidity_data is not None:
-            lash_e.logger.info(f"TURBIDITY PROCESSING: Final columns = {list(turbidity_data.columns)}")
-            lash_e.logger.info(f"TURBIDITY PROCESSING: Final shape = {turbidity_data.shape}")
-            lash_e.logger.info(f"TURBIDITY PROCESSING: First few processed rows:\n{turbidity_data.head(3)}")
-        
+        # Fix CSV format: skip first row so second row becomes headers
+        if hasattr(turbidity_data, 'iloc') and len(turbidity_data) > 1:
+            # Drop the first row and reset headers
+            turbidity_data = turbidity_data.iloc[1:].copy()
+            turbidity_data.columns = turbidity_data.iloc[0]  # Use first row as column names
+            turbidity_data = turbidity_data.iloc[1:].copy()   # Drop the header row from data
+            turbidity_data.index.name = None  # Clean up index name
+            
         lash_e.logger.info(f"Successfully measured turbidity for {len(well_indices)} wells")
         return turbidity_data
 
@@ -1140,20 +1134,14 @@ def measure_fluorescence(lash_e, well_indices):
             plate_type="96 WELL PLATE"
         )
         
-        # DEBUG: Show raw data structure
-        lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: type = {type(fluorescence_data)}")
-        if hasattr(fluorescence_data, 'shape'):
-            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: shape = {fluorescence_data.shape}")
-            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: columns = {list(fluorescence_data.columns)}")
-            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: first 3 rows:\n{fluorescence_data.head(3)}")
-        
-        # Process Cytation format using utility function
-        fluorescence_data = flatten_cytation_data(fluorescence_data, 'fluorescence')
-        if fluorescence_data is not None:
-            lash_e.logger.info(f"FLUORESCENCE PROCESSING: Final columns = {list(fluorescence_data.columns)}")
-            lash_e.logger.info(f"FLUORESCENCE PROCESSING: Final shape = {fluorescence_data.shape}")
-            lash_e.logger.info(f"FLUORESCENCE PROCESSING: First few processed rows:\n{fluorescence_data.head(3)}")
-        
+        # Fix CSV format: skip first row so second row becomes headers
+        if hasattr(fluorescence_data, 'iloc') and len(fluorescence_data) > 1:
+            # Drop the first row and reset headers
+            fluorescence_data = fluorescence_data.iloc[1:].copy()
+            fluorescence_data.columns = fluorescence_data.iloc[0]  # Use first row as column names  
+            fluorescence_data = fluorescence_data.iloc[1:].copy()   # Drop the header row from data
+            fluorescence_data.index.name = None  # Clean up index name
+            
         lash_e.logger.info(f"Successfully measured fluorescence for {len(well_indices)} wells")
         return fluorescence_data
 
@@ -1948,37 +1936,30 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     # STEP 5: Execute dispensing and measurements in clear phases
     lash_e.logger.info("Step 5: Executing dispensing and measurements...")
     
-    # Initialize wellplate tracking for measurements
-    wellplate_data = {
-        'current_plate': 1,
-        'wells_used': 0,
-        'last_measured_well': -1,
-        'measurements': []
-    }
-    
     # Initialize measurement columns in the DataFrame
     well_recipes_df['turbidity_600'] = None
     well_recipes_df['fluorescence_334_373'] = None 
     well_recipes_df['fluorescence_334_384'] = None
     well_recipes_df['ratio'] = None
     
-
-    # Process in batches to match measurement intervals
-    total_wells = len(well_recipes_df)
-    lash_e.logger.info(f"Total wells to process: {total_wells}")
-    
-    for batch_start in range(0, total_wells, MEASUREMENT_INTERVAL):
-        batch_end = min(batch_start + MEASUREMENT_INTERVAL, total_wells)
-        batch_df = well_recipes_df.iloc[batch_start:batch_end]
+    if not CREATE_WELLPLATE:
+        lash_e.logger.info("CREATE_WELLPLATE = False: Skipping dispensing")
+    else:
+        # Process in batches to match measurement intervals
+        total_wells = len(well_recipes_df)
+        lash_e.logger.info(f"Total wells to process: {total_wells}")
         
-        lash_e.logger.info(f"\nProcessing batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {batch_start}-{batch_end-1}")
-        
-        # DISPENSING PHASE: Use unified dispensing for each component with proper vial positioning
-        # Get unique vial names needed for this batch
-        surf_a_vials = batch_df[batch_df['surf_A_volume_ul'] > 0]['substock_A_name'].dropna().unique()
-        surf_b_vials = batch_df[batch_df['surf_B_volume_ul'] > 0]['substock_B_name'].dropna().unique()
-        
-        if CREATE_WELLPLATE:
+        for batch_start in range(0, total_wells, MEASUREMENT_INTERVAL):
+            batch_end = min(batch_start + MEASUREMENT_INTERVAL, total_wells)
+            batch_df = well_recipes_df.iloc[batch_start:batch_end]
+            
+            lash_e.logger.info(f"\nProcessing batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {batch_start}-{batch_end-1}")
+            
+            # DISPENSING PHASE: Use unified dispensing for each component with proper vial positioning
+            # Get unique vial names needed for this batch
+            surf_a_vials = batch_df[batch_df['surf_A_volume_ul'] > 0]['substock_A_name'].dropna().unique()
+            surf_b_vials = batch_df[batch_df['surf_B_volume_ul'] > 0]['substock_B_name'].dropna().unique()
+            
             # Position surfactant A vials by concentration (dilute → concentrated)
             if len(surf_a_vials) > 0:
                 sorted_surf_a_vials = position_surfactant_vials_by_concentration(lash_e, surf_a_vials, batch_df, 'A')
@@ -2033,128 +2014,64 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 # Return surfactant B vials to home
                 lash_e.nr_robot.remove_pipet()
                 return_surfactant_vials_home(lash_e, sorted_surf_b_vials, 'B')
-        
-        # MEASUREMENT PHASE: Turbidity first
-        wells_in_batch = batch_df['wellplate_index'].tolist()
-        lash_e.logger.info("  Measuring turbidity...")
-        turbidity_entry, turbidity_data = measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data)
-        
-        # DEBUG: Show what turbidity data we got
-        lash_e.logger.info(f"  TURBIDITY DEBUG: wells measured = {wells_in_batch}")
-        lash_e.logger.info(f"  TURBIDITY DEBUG: backup entry = {turbidity_entry}")
-        lash_e.logger.info(f"  TURBIDITY DEBUG: data type = {type(turbidity_data)}")
-        if hasattr(turbidity_data, 'columns'):
-            lash_e.logger.info(f"  TURBIDITY DEBUG: columns = {list(turbidity_data.columns)}")
-            lash_e.logger.info(f"  TURBIDITY DEBUG: shape = {turbidity_data.shape}")
-            lash_e.logger.info(f"  TURBIDITY DEBUG: first few rows:\n{turbidity_data.head()}")
-        else:
-            lash_e.logger.info(f"  TURBIDITY DEBUG: raw data = {turbidity_data}")
-        
-        # Add turbidity data to DataFrame by well position mapping
-        if turbidity_data is not None:
-            if not lash_e.simulate:
-                # Hardware mode - turbidity_data is a DataFrame with well_position column
-                if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0 and 'well_position' in turbidity_data.columns:
-                    # Convert well indices to well positions for lookup
-                    def well_index_to_position(well_idx):
-                        """Convert well index (0-95) to well position (A1-H12)"""
-                        row = well_idx // 12  # 12 columns per row
-                        col = well_idx % 12
-                        return f"{chr(65 + row)}{col + 1}"
-                    
-                    # Get turbidity column (should be 'turbidity_600' after renaming)
-                    turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
-                    lash_e.logger.info(f"  Using turbidity column: {turbidity_col}")
-                    
-                    # Map each well by position
-                    for well_idx in wells_in_batch:
-                        well_position = well_index_to_position(well_idx)
-                        matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
-                        
-                        if len(matching_rows) > 0:
-                            turbidity_value = matching_rows.iloc[0][turbidity_col]
-                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
-                            lash_e.logger.info(f"  Mapped {well_position} (idx {well_idx}) -> turbidity {turbidity_value}")
-                        else:
-                            lash_e.logger.warning(f"  No turbidity data found for well {well_position} (idx {well_idx})")
+            
+            # MEASUREMENT PHASE: Turbidity first
+            wells_in_batch = batch_df['wellplate_index'].tolist()
+            lash_e.logger.info("  Measuring turbidity...")
+            turbidity_data = measure_turbidity(lash_e, wells_in_batch)
+            
+            # Add turbidity data to DataFrame by order
+            if turbidity_data is not None:
+                if not lash_e.simulate:
+                    # Hardware mode - turbidity_data is a DataFrame, extract values in order
+                    if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0:
+                        # Get the turbidity values in order (first column with numeric data)
+                        turbidity_values = turbidity_data.iloc[:, 0].values  # First data column
+                        for i, well_idx in enumerate(wells_in_batch):
+                            if i < len(turbidity_values):
+                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_values[i]
                 else:
-                    lash_e.logger.warning("  Turbidity data missing or has unexpected format")
-            else:
-                # Simulation mode - simple values
-                for i, well_idx in enumerate(wells_in_batch):
-                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = 0.5
-        
-        # Add DMSO with safe positioning then measure fluorescence
-        if CREATE_WELLPLATE:
+                    # Simulation mode - simple values
+                    for i, well_idx in enumerate(wells_in_batch):
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = 0.5
+            
+            # Add DMSO with safe positioning then measure fluorescence
             lash_e.logger.info("  Positioning pyrene_DMSO at clamp (safe position)")
             lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)
             dispense_component_to_wellplate(lash_e, batch_df, 'pyrene_DMSO', 'DMSO', 'pyrene_volume_ul')
             lash_e.nr_robot.remove_pipet()
             lash_e.nr_robot.return_vial_home('pyrene_DMSO')
-        
-        lash_e.logger.info("  Measuring fluorescence...")
-        fluorescence_entry, fluorescence_data = measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data)
-        
-        # DEBUG: Show what fluorescence data we got
-        lash_e.logger.info(f"  FLUORESCENCE DEBUG: wells measured = {wells_in_batch}")
-        lash_e.logger.info(f"  FLUORESCENCE DEBUG: backup entry = {fluorescence_entry}")
-        lash_e.logger.info(f"  FLUORESCENCE DEBUG: data type = {type(fluorescence_data)}")
-        if hasattr(fluorescence_data, 'columns'):
-            lash_e.logger.info(f"  FLUORESCENCE DEBUG: columns = {list(fluorescence_data.columns)}")
-            lash_e.logger.info(f"  FLUORESCENCE DEBUG: shape = {fluorescence_data.shape}")
-            lash_e.logger.info(f"  FLUORESCENCE DEBUG: first few rows:\n{fluorescence_data.head()}")
-        else:
-            lash_e.logger.info(f"  FLUORESCENCE DEBUG: raw data = {fluorescence_data}")
-        
-        # Add fluorescence data to DataFrame by well position mapping
-        if fluorescence_data is not None:
-            if not lash_e.simulate:
-                # Hardware mode - fluorescence_data is a DataFrame with well_position column
-                if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0 and 'well_position' in fluorescence_data.columns:
-                    # Convert well indices to well positions for lookup
-                    def well_index_to_position(well_idx):
-                        """Convert well index (0-95) to well position (A1-H12)"""
-                        row = well_idx // 12  # 12 columns per row
-                        col = well_idx % 12
-                        return f"{chr(65 + row)}{col + 1}"
-                    
-                    # Check for fluorescence columns
-                    has_373 = '334_373' in fluorescence_data.columns
-                    has_384 = '334_384' in fluorescence_data.columns
-                    lash_e.logger.info(f"  Fluorescence columns available: 334_373={has_373}, 334_384={has_384}")
-                    
-                    if has_373 and has_384:
-                        # Map each well by position
-                        for well_idx in wells_in_batch:
-                            well_position = well_index_to_position(well_idx)
-                            matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
-                            
-                            if len(matching_rows) > 0:
-                                val_373 = matching_rows.iloc[0]['334_373']
-                                val_384 = matching_rows.iloc[0]['334_384']
+            lash_e.logger.info("  Measuring fluorescence...")
+            fluorescence_data = measure_fluorescence(lash_e, wells_in_batch)
+            
+            # Add fluorescence data to DataFrame by order
+            if fluorescence_data is not None:
+                if not lash_e.simulate:
+                    # Hardware mode - fluorescence_data is a DataFrame, extract values in order
+                    if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0:
+                        # Get both fluorescence columns in order
+                        val_373_list = fluorescence_data['334_373'].values if '334_373' in fluorescence_data.columns else []
+                        val_384_list = fluorescence_data['334_384'].values if '334_384' in fluorescence_data.columns else []
+                        
+                        for i, well_idx in enumerate(wells_in_batch):
+                            if i < len(val_373_list) and i < len(val_384_list):
+                                val_373 = val_373_list[i]
+                                val_384 = val_384_list[i]
                                 ratio = val_373 / val_384 if val_384 != 0 else None
                                 
                                 well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
                                 well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
                                 well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
-                                
-                                lash_e.logger.info(f"  Mapped {well_position} (idx {well_idx}) -> F373={val_373}, F384={val_384}, ratio={ratio:.3f}")
-                            else:
-                                lash_e.logger.warning(f"  No fluorescence data found for well {well_position} (idx {well_idx})")
-                    else:
-                        lash_e.logger.warning(f"  Missing expected fluorescence columns. Available: {list(fluorescence_data.columns)}")
                 else:
-                    lash_e.logger.warning("  Fluorescence data missing or has unexpected format")
-            else:
-                # Simulation mode - simple values
-                for i, well_idx in enumerate(wells_in_batch):
-                    val_373 = 80.0
-                    val_384 = 100.0
-                    ratio = val_373 / val_384
-                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
-                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
-                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
-
+                    # Simulation mode - simple values
+                    for i, well_idx in enumerate(wells_in_batch):
+                        val_373 = 80.0
+                        val_384 = 100.0
+                        ratio = val_373 / val_384
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
+    
 
     
     # STEP 6: Save results to experiment folder
