@@ -1,6 +1,6 @@
-"""Hardware calibration protocol for North Robot system.
+"""Heated Hardware calibration protocol for North Robot system.
 
-Unified minimal interface:
+Unified minimal interface with temperature control:
     initialize(cfg) -> state (dict)
     measure(state, volume_mL, params, replicates) -> list[dict]
     wrapup(state) -> None
@@ -43,16 +43,22 @@ LIQUIDS = {
     "6M_HCl": {"density": 1.10, "refill_pipets": False},
 }
 
+# Temperature settings
+DEFAULT_TARGET_TEMP = 40.0  # Default target temperature in Celsius
+TEMP_TOLERANCE = 2.0        # Temperature tolerance in Celsius
+MAX_HEATING_TIME = 300      # Maximum time to wait for heating (5 minutes)
+TEMP_CHECK_INTERVAL = 10    # Seconds between temperature checks
+
 
 from pipetting_data.pipetting_parameters import PipettingParameters
 
-class HardwareCalibrationProtocol(CalibrationProtocolBase):
-    """Hardware calibration protocol implementing the abstract interface."""
+class HeatedCalibrationProtocol(CalibrationProtocolBase):
+    """Heated hardware calibration protocol implementing the abstract interface."""
     
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Initialize hardware protocol with North Robot's internal simulation."""
+        """Initialize heated hardware protocol with North Robot's internal simulation."""
                
-        # Get liquid from experiment config - FAIL if missing
+        # Get liquid and temperature from experiment config - FAIL if missing
         if not cfg or 'experiment' not in cfg:
             raise ValueError("Missing required 'experiment' configuration section")
         
@@ -60,7 +66,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             raise ValueError("Missing required 'liquid' in experiment configuration")
         liquid = cfg['experiment']['liquid']
         
-        print(f"Initializing North Robot hardware protocol for {liquid}")
+        # Get target temperature (with fallback to default)
+        target_temp = DEFAULT_TARGET_TEMP
+        
+        print(f"Initializing Heated North Robot protocol for {liquid} at {target_temp}C")
 
         # Use hardware simulation mode (different from our simulation protocol)
         simulate = True  # This enables North Robot's internal simulation
@@ -68,40 +77,63 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         # Vial management mode - swap roles when measurement vial gets too full
         SWAP = False  # If True, enables vial swapping when needed
 
-        SINGLE_VIAL = True #True if you just want to use one vial, eg for a capped vial use "liquid_source_0"
+        SINGLE_VIAL = False #True if you just want to use one vial, eg for a capped vial use "liquid_source_0"
 
         continuous_monitoring = True
-               
+        
         # Quality control threshold for mass measurement stability (in grams)
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
         self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
-        if not simulate:
-            slack_agent.send_slack_message("🤖 North Robot calibration/validation started!")
-
         
         # Initialize hardware
         try:
-            # Initialize vial file path
-            vial_file = "status/calibration_vials_short.csv"
+            # Initialize vial file path for heated operations
+            vial_file = "status/calibration_vials_heated.csv"
             
-            # Initialize Lash_E coordinator
-            lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
+            # Initialize Lash_E coordinator with temperature controller
+            lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False, initialize_t8=True)
             
             # Validate hardware files
-            #lash_e.nr_robot.check_input_file()
+            lash_e.nr_robot.check_input_file()
             #lash_e.nr_track.check_input_file()
             lash_e.nr_robot.home_robot_components()
             
             # Simple vial management: Set up source and measurement vials
-            if SINGLE_VIAL:
-                source_vial = "liquid_source_0"
-                measurement_vial = "liquid_source_0" 
+            source_vial = "heated_liquid_source_0"
+            measurement_vial = "measurement_vial_0"
+            
+            # Move source vial to heater position
+            print(f"Moving {source_vial} to heater position...")
+            lash_e.nr_robot.move_vial_to_location(source_vial, "heater", 0)
+            
+            # Start heating process
+            print(f"Starting heating to {target_temp}C...")
+            if not simulate:
+                lash_e.temp_controller.set_temp(target_temp, channel=0)
+                
+                # Wait for temperature to reach target
+                print("Waiting for temperature to reach target...")
+                start_heating_time = time.time()
+                temp_reached = False
+                
+                while not temp_reached and (time.time() - start_heating_time) < MAX_HEATING_TIME:
+                    current_temp = lash_e.temp_controller.get_temp(channel=0)
+                    print(f"Current temperature: {current_temp:.1f}C (target: {target_temp:.1f}C)")
+                    
+                    if abs(current_temp - target_temp) <= TEMP_TOLERANCE:
+                        temp_reached = True
+                        print(f"✓ Target temperature reached: {current_temp:.1f}C")
+                    else:
+                        print(f"Heating... {current_temp:.1f}C -> {target_temp:.1f}C")
+                        time.sleep(TEMP_CHECK_INTERVAL)
+                
+                if not temp_reached:
+                    raise RuntimeError(f"Failed to reach target temperature {target_temp}C within {MAX_HEATING_TIME}s")
             else:
-                source_vial = "liquid_source_0"
-                measurement_vial = "measurement_vial_0"
+                print(f"SIMULATION: Would heat to {target_temp}C")
             
             # Move measurement vial to clamp position for pipetting operations
             lash_e.nr_robot.move_vial_to_location(measurement_vial, "clamp", 0)
@@ -121,11 +153,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
                 lash_e.nr_robot.move_home()
             
-            print("READY: Hardware initialized successfully")
+            print("READY: Heated hardware initialized successfully")
             
             return {
                 'initialized_at': datetime.now(),
                 'liquid': liquid,
+                'target_temperature_c': target_temp,
                 'lash_e': lash_e,
                 'source_vial': source_vial,
                 'measurement_vial': measurement_vial,
@@ -136,10 +169,30 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             }
             
         except Exception as e:
-            raise RuntimeError(f"Hardware initialization failed: {e}") from e
+            raise RuntimeError(f"Heated hardware initialization failed: {e}") from e
+
+    def _check_and_maintain_temperature(self, state: Dict[str, Any]) -> None:
+        """Check and maintain target temperature during operation."""
+        if state.get('simulate', True):
+            return  # Skip temperature checks in simulation
+            
+        try:
+            lash_e = state['lash_e']
+            target_temp = state['target_temperature_c']
+            
+            current_temp = lash_e.temp_controller.get_temp(channel=0)
+            
+            if abs(current_temp - target_temp) > TEMP_TOLERANCE:
+                print(f"WARNING: Temperature drift detected. Current: {current_temp:.1f}C, Target: {target_temp:.1f}C")
+                # Could implement reheating logic here if needed
+            else:
+                print(f"Temperature stable: {current_temp:.1f}C (target: {target_temp:.1f}C)")
+                
+        except Exception as e:
+            print(f"WARNING: Temperature check failed: {e}")
 
     def _check_and_swap_vials(self, state: Dict[str, Any], swap_enabled: bool = True) -> None:
-        """Check measurement vial volume and swap if needed."""
+        """Check measurement vial volume and swap if needed (adapted for heated operation)."""
         if not swap_enabled:
             return
             
@@ -156,7 +209,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             # DEBUG: Always print current volumes
             print(f"STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
             
-            # Swap when source vial gets too low (< 2 mL)
+            # Swap when source vial gets too low (< 3 mL) 
             # AND measurement vial has accumulated enough liquid to become the new source (> 1 mL)
             should_swap = (source_volume is not None and 
                           source_volume < min_source_volume and
@@ -164,17 +217,30 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                           measurement_volume > 1.0)
             
             if should_swap:
-                print(f"🔄 SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL (< {min_source_volume}mL), measurement vial ({measurement_vial}) has {measurement_volume:.2f}mL")
+                print(f"🔄 HEATED SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL, measurement vial has {measurement_volume:.2f}mL")
+                
+                # Turn off heating temporarily
+                if not state.get('simulate', True):
+                    lash_e.temp_controller.turn_off_heating(channel=0)
                 
                 # First: Return the old measurement vial (at clamp) to its home position
                 lash_e.nr_robot.remove_pipet()
                 lash_e.nr_robot.return_vial_home(measurement_vial)
                 
+                # Return old source vial from heater to its home
+                lash_e.nr_robot.return_vial_home(source_vial)
+                
                 # Swap the vial roles in state
                 state['source_vial'] = measurement_vial  # Old measurement becomes new source
                 state['measurement_vial'] = source_vial   # Old source becomes new measurement
                 
-                # Finally: Move the new measurement vial to clamp position
+                # Move new source vial to heater and restart heating
+                lash_e.nr_robot.move_vial_to_location(state['source_vial'], "heater", 0)
+                if not state.get('simulate', True):
+                    lash_e.temp_controller.set_temp(state['target_temperature_c'], channel=0)
+                    print(f"Restarting heating for new source vial at heater")
+                
+                # Move the new measurement vial to clamp position
                 lash_e.nr_robot.move_vial_to_location(state['measurement_vial'], "clamp", 0)
 
                 #Tip Conditioning: Pre-wet tips with 4 aspirate/dispense cycles
@@ -193,12 +259,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
                     lash_e.nr_robot.move_home()
                 
-                print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
+                print(f"HEATED SWAP complete: source={state['source_vial']} (at heater), measurement={state['measurement_vial']} (at clamp)")
             else:
                 print(f"✋ NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
                 
         except Exception as e:
-            print(f"WARNING: Vial swap check failed: {e}")
+            print(f"WARNING: Heated vial swap check failed: {e}")
 
     def _evaluate_measurement(self, stability_info: Dict[str, Any], std_threshold: float = 0.001) -> bool:
         """Evaluate if a measurement is acceptable based on stability criteria.
@@ -234,7 +300,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         return is_acceptable
 
     def measure(self, state: Dict[str, Any], volume_mL: float, params: Dict[str, Any], replicates: int = 1) -> List[Dict[str, Any]]:
-        """Perform hardware measurement with given parameters."""
+        """Perform heated hardware measurement with given parameters."""
+        
+        # Check temperature before starting measurements
+        self._check_and_maintain_temperature(state)
         
         # Check if we need to swap vials before pipetting
         self._check_and_swap_vials(state, swap_enabled=state.get('swap_enabled', False))
@@ -275,9 +344,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             except KeyError as e:
                 raise ValueError(f"Missing required parameter structure - params dict malformed: {e}") from e
             
-            print(f"  Rep {rep+1}/{replicates}: {volume_uL:.1f}uL with params {pipet_params}")
+            print(f"  Rep {rep+1}/{replicates}: {volume_uL:.1f}uL with params {pipet_params} at {state['target_temperature_c']:.1f}C")
             
-            # Perform pipetting operation: aspirate from source, dispense into measurement vial
+            # Perform pipetting operation: aspirate from heated source, dispense into measurement vial
             source_vial = state['source_vial']
             measurement_vial = state['measurement_vial']
             simulate = state['simulate']
@@ -295,7 +364,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     # Start timing just before the successful measurement attempt
                     rep_start = time.perf_counter()
                     
-                    # Aspirate from source vial
+                    # Aspirate from heated source vial (at heater position)
                     lash_e.nr_robot.aspirate_from_vial(source_vial, volume_mL, parameters=pipet_params)
                     
                     # Dispense into measurement vial and measure weight
@@ -340,12 +409,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     measured_mass_mg = 0.0
                     measured_volume_mL = 0.0
                 
-                print(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
+                print(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL, heated)")
                 
                 
                 
             else:
-                # Simple simulation: target volume - 20% + overaspirate + noise
+                # Simple simulation: target volume - 20% + overaspirate + noise + heat effect
                 import random
                 
                 # Start timing for simulation
@@ -357,13 +426,14 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     measurement_vial, volume_mL, parameters=pipet_params, measure_weight=True
                 )
                 
-                # Basic simulation logic
-                base_efficiency = 0.8  # Start at 80% efficiency (target - 20%)
+                # Enhanced simulation logic for heated liquids
+                base_efficiency = 0.85  # Slightly better efficiency when heated (85%)
                 overaspirate_effect = pipet_params.get('overaspirate_vol', 0.004) * 1000  # Convert to uL
-                noise = random.uniform(-0.02, 0.02) * volume_mL  # ±2% noise
+                heat_effect = 0.02 * volume_mL  # 2% improvement from heating (lower viscosity)
+                noise = random.uniform(-0.015, 0.015) * volume_mL  # ±1.5% noise (tighter than room temp)
                 
-                # Simple formula: base efficiency + overaspirate helps + noise
-                simulated_volume_mL = (volume_mL * base_efficiency) + (overaspirate_effect / 1000) + noise
+                # Formula: base efficiency + overaspirate helps + heat helps + noise
+                simulated_volume_mL = (volume_mL * base_efficiency) + (overaspirate_effect / 1000) + heat_effect + noise
                 simulated_volume_mL = max(simulated_volume_mL, 0)  # Can't be negative
                 
                 measured_volume_mL = simulated_volume_mL
@@ -387,40 +457,49 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 'target_volume_mL': volume_mL,
                 'measured_volume_uL': measured_volume_uL,
                 'target_volume_uL': volume_uL,
+                'temperature_c': state['target_temperature_c'],  # Record temperature used
                 **pipet_params  # Echo back parameters
             }
             
             results.append(result)
-            print(f"    Measured: {measured_volume_uL:.1f}uL (target: {volume_uL:.1f}uL) in {elapsed_s:.2f}s")
+            print(f"    Measured: {measured_volume_uL:.1f}uL (target: {volume_uL:.1f}uL) at {state['target_temperature_c']:.1f}C in {elapsed_s:.2f}s")
             print()  # Add visual separation between measurement cycles
         
         return results
 
     def wrapup(self, state: Dict[str, Any]) -> None:
-        """Clean up hardware resources."""
+        """Clean up heated hardware resources."""
         
         lash_e = state.get('lash_e')
         if lash_e:
             try:
+                # Turn off heating first
+                if not state.get('simulate', True):
+                    print(f"Turning off heater (was at {state['target_temperature_c']:.1f}C)...")
+                    lash_e.temp_controller.turn_off_heating(channel=0)
+                
                 # Move robot to safe position
                 lash_e.nr_robot.remove_pipet()
                 lash_e.nr_robot.return_vial_home(state['measurement_vial'])
+                
+                # Return source vial from heater to home position
+                lash_e.nr_robot.return_vial_home(state['source_vial'])
                 lash_e.nr_robot.move_home()
                 
-                print(f"COMPLETE: Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
+                print(f"COMPLETE: Heated hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
                                
                 # Send slack notification
                 try:
                     if not state.get('simulate', True):
-                        slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
+                        slack_agent.send_slack_message(f"🔥 Heated North Robot calibration finished! All measurements completed at {state['target_temperature_c']:.1f}C.")
                 except Exception as e:
                     print(f"WARNING: Slack notification failed: {e}")
                 
             except Exception as e:
-                print(f"WARNING: Hardware cleanup warning: {e}")
+                print(f"WARNING: Heated hardware cleanup warning: {e}")
 
     def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
-        """Get hardware-specific parameter constraints for North Robot system."""
+        """Get hardware-specific parameter constraints for North Robot system (same as regular protocol)."""
         constraints = []
         
         # North Robot tip volume constraint
@@ -436,9 +515,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         # Add tip volume constraint if relevant parameters exist
         if target_volume_ml <= tip_volume_ml:
             constraints.append(f"target_volume_ml <= {tip_volume_ml:.6f}  # Tip volume constraint")
-        
-        # Always add constraint for total aspirated volume (target + overaspirate + air volumes)
-        constraint = f"target_volume_ml + overaspirate_vol + pre_asp_air_vol + post_asp_air_vol <= {tip_volume_ml:.6f}"
+        else: 
+            constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
+        #constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
         constraints.append(constraint)
         
         print(f"CONSTRAINT: North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}uL, target: {target_volume_ml*1000:.0f}uL)")
@@ -447,4 +526,4 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
 
 
 # Export the protocol instance for clean importing
-protocol_instance = HardwareCalibrationProtocol()
+protocol_instance = HeatedCalibrationProtocol()
