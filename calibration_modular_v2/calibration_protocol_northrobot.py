@@ -52,10 +52,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
     
     def get_tip_conditioning_volume(self, target_volume_ml: float) -> float:
         """Calculate appropriate conditioning volume based on target pipetting volume."""
-        if target_volume_ml <= 0.15:  # Small tip (200 uL)
-            return min(0.150, target_volume_ml * 1.2)
+        if target_volume_ml <= 0.20:  # Small tip (200 uL)
+            return min(0.200, target_volume_ml * 1.2)
         else:  # Large tip (1000 uL) 
-            return min(0.900, target_volume_ml * 1.2)  
+            return min(1.000, target_volume_ml * 1.2)  
     
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Initialize hardware protocol with North Robot's internal simulation."""
@@ -127,7 +127,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
             
             # Validate hardware files
-            #lash_e.nr_robot.check_input_file()
+            lash_e.nr_robot.check_input_file()
             #lash_e.nr_track.check_input_file()
             lash_e.nr_robot.home_robot_components()
             
@@ -461,7 +461,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         # North Robot tip volume constraint
         # Use 0.2 mL tips for volumes <= 150 uL, otherwise 1.0 mL tips
-        if target_volume_ml <= 0.15:  # 150 uL or less
+        if target_volume_ml <= 0.20:  # 150 uL or less
             tip_volume_ml = 0.2
         else:
             tip_volume_ml = 1.0
@@ -469,16 +469,20 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
 
         max_volume = 1.0    
         
-        # Add tip volume constraint if relevant parameters exist
-        try:
+        # Check if post_asp_air_vol parameter exists in hardware_parameters
+        hardware_params = self.config.get_hardware_parameters()
+        has_post_asp_air = 'post_asp_air_vol' in hardware_params.keys()
+        
+        # Add tip volume constraint - only include post_asp_air_vol if it exists
+        if has_post_asp_air:
             constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
-        except:
+        else:
             constraints.append(f"overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
 
-        try:
+        if has_post_asp_air:
             constraints.append(f"pre_asp_air_vol + post_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
-        except:
-            constraints.append(f"pre_asp_air_vol +  overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
+        else:
+            constraints.append(f"pre_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
         
         return constraints
 

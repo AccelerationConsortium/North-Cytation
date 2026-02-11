@@ -35,52 +35,52 @@ LIQUIDS_TO_CALIBRATE = [
     #     'volume_targets_ml': [0.180, 0.100, 0.075],
     #     'validation_volumes_ml': [0.180, 0.100, 0.075]
     # },
-    {
-        'liquid_name': 'water',
-        'target_vial': 'SDS_stock',
-        'volume_targets_ml': [0.95, 0.5, 0.2],
-        'validation_volumes_ml': [0.95, 0.5, 0.2],
-        'hardware_parameters': {
-            'post_asp_air_vol': {
-                'bounds': [0.0, 0.050],
-                'type': 'float',
-                'round_to_nearest': 0.001,
-                'default': 0.010,
-            },
-            'blowout_vol': {
-                'bounds': [0.0, 0.5],
-                'type': 'float',
-                'round_to_nearest': 0.001,
-                'default': 0.1
-            }
-        }
-    },
+    # {
+    #     'liquid_name': 'water',
+    #     'target_vial': 'SDS_stock',
+    #     'volume_targets_ml': [0.95, 0.5, 0.2],
+    #     'validation_volumes_ml': [0.95, 0.5, 0.2],
+    #     'hardware_parameters': {
+    #         'post_asp_air_vol': {
+    #             'bounds': [0.0, 0.050],
+    #             'type': 'float',
+    #             'round_to_nearest': 0.001,
+    #             'default': 0.010,
+    #         },
+    #         'blowout_vol': {
+    #             'bounds': [0.0, 0.5],
+    #             'type': 'float',
+    #             'round_to_nearest': 0.001,
+    #             'default': 0.1
+    #         }
+    #     }
+    # },
     {
         'liquid_name': 'water',
         'target_vial': 'water',
         'volume_targets_ml': [0.180, 0.100, 0.075],
         'validation_volumes_ml': [0.180, 0.100, 0.075]
     },
-    {
-        'liquid_name': 'water',
-        'target_vial': 'water',
-        'volume_targets_ml': [0.95, 0.5, 0.2],
-        'validation_volumes_ml': [0.95, 0.5, 0.2],
-        'hardware_parameters': {
-            'post_asp_air_vol': {
-                'bounds': [0.0, 0.050],
-                'type': 'float',
-                'round_to_nearest': 0.001,
-                'default': 0.010,
-            },
-            'blowout_vol': {
-                'bounds': [0.0, 0.5],
-                'type': 'float',
-                'round_to_nearest': 0.001,
-                'default': 0.1
-            }
-        }
-    }
+    # {
+    #     'liquid_name': 'water',
+    #     'target_vial': 'water',
+    #     'volume_targets_ml': [0.95, 0.5, 0.2],
+    #     'validation_volumes_ml': [0.95, 0.5, 0.2],
+    #     'hardware_parameters': {
+    #         'post_asp_air_vol': {
+    #             'bounds': [0.0, 0.050],
+    #             'type': 'float',
+    #             'round_to_nearest': 0.001,
+    #             'default': 0.010,
+    #         },
+    #         'blowout_vol': {
+    #             'bounds': [0.0, 0.5],
+    #             'type': 'float',
+    #             'round_to_nearest': 0.001,
+    #             'default': 0.1
+    #         }
+    #     }
+    # }
 ]
 
 # File paths - assumes running from main utoronto_demo directory (like other workflows)
