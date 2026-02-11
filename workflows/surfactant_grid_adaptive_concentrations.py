@@ -514,9 +514,20 @@ def calculate_adaptive_concentration_bounds(experiment_df, surfactant_a_name, su
                               linestyle='-', label='Largest baseline rectangle')
         ax1.add_patch(rect_patch)
         
-        # Draw new threshold lines
-        new_surf_A_min = best_rectangle['surf_A_max']
-        new_surf_B_min = best_rectangle['surf_B_max']
+        # Draw new threshold lines - move one step back from rectangle edge
+        # Find the index of the current rectangle max, then go one step lower
+        current_A_max_idx = surf_A_concs.index(best_rectangle['surf_A_max'])
+        current_B_max_idx = surf_B_concs.index(best_rectangle['surf_B_max'])
+        
+        # Go one step lower (but don't go below 0)
+        new_A_idx = max(0, current_A_max_idx - 1)
+        new_B_idx = max(0, current_B_max_idx - 1)
+        
+        new_surf_A_min = surf_A_concs[new_A_idx]
+        new_surf_B_min = surf_B_concs[new_B_idx]
+        
+        logger.info(f"      Stepping back: {surfactant_a_name} from {best_rectangle['surf_A_max']:.6f} to {new_surf_A_min:.6f} mM")
+        logger.info(f"      Stepping back: {surfactant_b_name} from {best_rectangle['surf_B_max']:.6f} to {new_surf_B_min:.6f} mM")
         
         try:
             surf_A_idx = surf_A_concs.index(new_surf_A_min) + 0.5
