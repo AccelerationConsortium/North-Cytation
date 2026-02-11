@@ -47,6 +47,19 @@ COLUMN_MAPPING = {
     'volume_target_ml': 'volume_target',  # Will convert mL to uL
 }
 
+# Additional column mappings (with multiple possible source names)
+ADDITIONAL_COLUMN_MAPPING = {
+    'volume_measured_ml': 'volume_measured',  # Will convert mL to uL
+    'volume_measured_ul': 'volume_measured', 
+    'volume_measured': 'volume_measured',
+    'duration_s': 'time',
+    'time': 'time', 
+    'deviation_pct': 'average_deviation',
+    'average_deviation': 'average_deviation',
+    'precision_cv_pct': 'variability',
+    'variability': 'variability',
+}
+
 # Parameters that should be added if missing (with default values)
 DEFAULT_PARAMETERS = {
     'dispense_wait_time': 0.0,
@@ -98,24 +111,16 @@ def convert_file(input_path: Path, output_path: Path) -> bool:
                 converted_df[param] = default_value
                 logging.info(f"Added missing parameter {param} = {default_value}")
         
-        # Copy over any additional useful columns that might exist
-        additional_cols = ['volume_measured', 'average_deviation', 'variability', 'time']
-        for col in additional_cols:
-            # Look for the column with various naming patterns
-            possible_names = [col, f'volume_measured_ml', f'volume_measured_ul', 'duration_s', 'deviation_pct']
-            for possible_name in possible_names:
-                if possible_name in df.columns and col not in converted_df.columns:
-                    if col == 'volume_measured' and possible_name == 'volume_measured_ml':
-                        # Convert mL to uL
-                        converted_df[col] = df[possible_name] * 1000
-                    elif col == 'time' and possible_name == 'duration_s':
-                        converted_df[col] = df[possible_name]
-                    elif col == 'average_deviation' and possible_name == 'deviation_pct':
-                        converted_df[col] = df[possible_name]
-                    else:
-                        converted_df[col] = df[possible_name]
-                    logging.info(f"Added additional column {possible_name} → {col}")
-                    break
+        # Copy over any additional useful columns using the mapping
+        for v2_col, original_col in ADDITIONAL_COLUMN_MAPPING.items():
+            if v2_col in df.columns and original_col not in converted_df.columns:
+                if v2_col == 'volume_measured_ml':
+                    # Convert mL to uL
+                    converted_df[original_col] = df[v2_col] * 1000
+                    logging.info(f"Converted {v2_col} (mL) → {original_col} (uL)")
+                else:
+                    converted_df[original_col] = df[v2_col]
+                    logging.info(f"Mapped {v2_col} → {original_col}")
         
         # Sort by volume_target for consistency with original wizard
         converted_df = converted_df.sort_values('volume_target').reset_index(drop=True)

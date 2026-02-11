@@ -56,21 +56,29 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         lash_e: Lash_E robot controller
         vial_name: Name of vial to condition tip with
         conditioning_volume_ul: Total volume for conditioning (default 100 uL)
-        liquid_type: Type of liquid for pipetting parameters ('water', 'DMSO', etc.)
+        liquid_type: Type of liquid for pipetting parameters (ignored - always uses dummy params)
     """
     try:
-        # Calculate volume per conditioning cycle (5 cycles total)
+        # Calculate volume per conditioning cycle (3 cycles total)
         cycles = 3
         volume_per_cycle_ul = conditioning_volume_ul
         volume_per_cycle_ml = volume_per_cycle_ul / 1000
         
-        lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL")
+        # Use simple dummy parameters for fast conditioning (accuracy not needed)
+        lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL (fast dummy params)")
+        
+        # Simple dummy parameters - fast and reliable for conditioning only
+        from North_Safe import PipettingParameters
+        dummy_params = PipettingParameters(
+            aspirate_speed=15,      # Fast aspirate
+            dispense_speed=5,       # Fast dispense  
+            dispense_wait_time=0.0, # No waiting
+            blowout_vol=0.5         # Minimal blowout
+        )
         
         for cycle in range(cycles):
-            # Aspirate from vial 
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type)
-            # Dispense back into same vial
-            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type)
+            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
         
         lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
         
@@ -93,6 +101,7 @@ LIQUID_DENSITIES = {
     "glycerol": 1.26,
     "PEG_Water": 1.05,
     "4%_hyaluronic_acid_water": 1.01,
+    "SDS": 1.00
 }
 
 def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) -> bool:
