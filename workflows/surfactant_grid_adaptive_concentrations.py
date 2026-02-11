@@ -98,6 +98,9 @@ STAGE_1_RECOVERY_FOLDER = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\ou
 
 # Adaptive grid parameters - concentration ranges adapt to stock concentrations
 MIN_CONC = 10**-4  # 0.0001 mM minimum concentration for all surfactants
+
+# Wells tracking for iterative workflow
+wells_used = 0  # Global counter for wells used across all iterations
 NUMBER_CONCENTRATIONS = 9  # Number of concentration steps in logarithmic grid
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
@@ -3123,6 +3126,181 @@ def execute_2_stage_workflow(lash_e, surfactant_a_name="SDS", surfactant_b_name=
         }
 
 
+# ================================================================================
+# NEW 3-STEP WORKFLOW FUNCTIONS
+# ================================================================================
+
+
+def run_adaptive_step(lash_e, surfactant_a_name, surfactant_b_name, num_concentrations=None):
+    """
+    Step 2: Adaptive - Run baseline rectangle finding and adaptive concentration bounds.
+    
+    Args:
+        lash_e: Lash_E coordinator instance  
+        surfactant_a_name: First surfactant name
+        surfactant_b_name: Second surfactant name
+        num_concentrations: Number of concentrations per grid dimension (default: use global NUMBER_CONCENTRATIONS)
+        
+    Returns:
+        dict: Adaptive experiment results and concentration bounds
+    """
+    global wells_used
+    
+    if num_concentrations is None:
+        num_concentrations = NUMBER_CONCENTRATIONS
+    
+    lash_e.logger.info("=== STEP 2: ADAPTIVE ===")
+    lash_e.logger.info(f"Using {num_concentrations}x{num_concentrations} concentration grid")
+    
+    # Run the adaptive concentration grid (essentially the current "stage 1")
+    lash_e.logger.info("Running adaptive concentration grid experiment...")
+    
+    # This would be the existing grid experiment logic
+    # TODO: Replace with actual function name and proper num_concentrations parameter
+    # adaptive_results = run_adaptive_concentration_experiment(
+    #     lash_e, surfactant_a_name, surfactant_b_name, 
+    #     min_conc_override=None, max_conc_override=None,
+    #     num_concentrations_override=num_concentrations
+    # )
+    
+    # For now, placeholder that will be replaced with actual experiment function
+    adaptive_results = {
+        "method": "adaptive_concentration_grid",
+        "num_concentrations": num_concentrations,
+        "surfactant_a": surfactant_a_name,
+        "surfactant_b": surfactant_b_name,
+        "status": "placeholder",
+        "wells_used": num_concentrations * num_concentrations  # Grid size
+    }
+    
+    wells_used += adaptive_results.get('wells_used', 0)
+    lash_e.logger.info(f"Adaptive step complete. Wells used so far: {wells_used}")
+    
+    return adaptive_results
+
+def run_iterative_boundary_step(lash_e, adaptive_results, surfactant_a_name, surfactant_b_name):
+    """
+    Step 3: Iterative boundary finding - Iteratively refine boundaries using previous results.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        adaptive_results: Results from step 2 (adaptive concentration bounds)
+        surfactant_a_name: First surfactant name  
+        surfactant_b_name: Second surfactant name
+        
+    Returns:
+        dict: Iterative boundary refinement results
+    """
+    global wells_used
+    
+    lash_e.logger.info("=== STEP 3: ITERATIVE BOUNDARY FINDING ===")
+    
+    # TODO: Implement iterative boundary finding
+    # This will use gradient/vector methods to iteratively find boundaries
+    lash_e.logger.info("Iterative boundary finding not implemented yet...")
+    
+    boundary_results = {
+        "method": "iterative_boundary_finding",
+        "status": "not_implemented",
+        "wells_used": 0,
+        "iterations": 0
+    }
+    
+    wells_used += boundary_results.get('wells_used', 0)
+    lash_e.logger.info(f"Boundary step complete. Total wells used: {wells_used}")
+    
+    return boundary_results
+
+def run_3_step_workflow(surfactant_a_name, surfactant_b_name, adaptive_num_concentrations=None):
+    """
+    Run the new 3-step iterative workflow:
+    1. Validation  
+    2. Adaptive (baseline rectangle)
+    3. Iterative boundary finding
+    
+    Args:
+        surfactant_a_name: First surfactant name
+        surfactant_b_name: Second surfactant name
+        adaptive_num_concentrations: Number of concentrations for adaptive step (default: use global NUMBER_CONCENTRATIONS)
+        
+    Returns:
+        dict: Complete workflow results
+    """
+    global wells_used
+    wells_used = 0  # Reset global counter
+    
+    if adaptive_num_concentrations is None:
+        adaptive_num_concentrations = NUMBER_CONCENTRATIONS
+    
+    try:
+        # Initialize Lash_E coordinator
+        INPUT_VIAL_STATUS_FILE = r"\\status\\surfactant_grid_vials_expanded.csv"
+        lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
+        
+        lash_e.logger.info("="*80)
+        lash_e.logger.info("STARTING 3-STEP ITERATIVE SURFACTANT WORKFLOW")
+        lash_e.logger.info("="*80)
+        lash_e.logger.info(f"Target surfactants: {surfactant_a_name} + {surfactant_b_name}")
+        lash_e.logger.info(f"Adaptive grid size: {adaptive_num_concentrations}x{adaptive_num_concentrations}")
+        lash_e.logger.info(f"Simulation mode: {SIMULATE}")
+        
+        # Step 1: Validation - use existing validation function  
+        setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, SIMULATE)
+        experiment_output_folder = os.path.join("output", lash_e.current_experiment_name)
+        
+        lash_e.logger.info("=== STEP 1: VALIDATION ===")
+        if VALIDATE_LIQUIDS:
+            lash_e.logger.info("Running pipetting validation...")
+            validate_pipetting_system(lash_e, experiment_output_folder)
+            validation_results = {"validation_completed": True, "wells_used": 0}
+        else:
+            lash_e.logger.info("Skipping validation (VALIDATE_LIQUIDS=False)")
+            validation_results = {"validation_skipped": True, "wells_used": 0}
+        
+        # Step 2: Adaptive  
+        adaptive_results = run_adaptive_step(lash_e, surfactant_a_name, surfactant_b_name, adaptive_num_concentrations)
+        
+        # Step 3: Iterative boundary finding
+        boundary_results = run_iterative_boundary_step(
+            lash_e, adaptive_results, surfactant_a_name, surfactant_b_name
+        )
+        
+        # Combine results
+        workflow_results = {
+            'workflow_type': '3_step_iterative',
+            'validation_results': validation_results,
+            'adaptive_results': adaptive_results,  
+            'boundary_results': boundary_results,
+            'total_wells_used': wells_used,
+            'surfactant_a': surfactant_a_name,
+            'surfactant_b': surfactant_b_name,
+            'simulation': SIMULATE,
+            'workflow_complete': True
+        }
+        
+        lash_e.logger.info("="*80)
+        lash_e.logger.info("3-STEP WORKFLOW COMPLETE")
+        lash_e.logger.info("="*80)
+        lash_e.logger.info(f"Total wells used: {wells_used}")
+        
+        return workflow_results
+        
+    except Exception as e:
+        print(f"ERROR in 3-step workflow: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return {
+            'workflow_type': '3_step_iterative',
+            'validation_results': None,
+            'adaptive_results': None,
+            'boundary_results': None,
+            'total_wells_used': wells_used,
+            'error': str(e),
+            'workflow_complete': False
+        }
+
+
 if __name__ == "__main__":
     """
     Run the adaptive surfactant grid screening workflow.
@@ -3242,18 +3420,3 @@ if __name__ == "__main__":
     
     else:
         print("No workflow selected. Set RUN_2_STAGE_WORKFLOW=True or RUN_SINGLE_STAGE=True")
-    # if results and results['workflow_complete']:
-    #     print("="*80)
-    #     print("WORKFLOW COMPLETE!")
-    #     print("="*80)
-    #     print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-    #     print(f"+ Wells processed: {results['total_wells']}")
-    #     print(f"+ Plates used: {results['plates_used']}")
-    #     breakdown = results['pipette_breakdown']
-    #     print(f"+ Pipette tips: {breakdown['large_tips']} large, {breakdown['small_tips']} small (total: {breakdown['total']})")
-    #     print(f"+ Measurements: {len(results['measurements'])} intervals")
-    #     print(f"+ Mode: {'Simulation' if results['simulation'] else 'Hardware'}")
-    #     print(f"+ Results saved to: {results['output_folder']}")
-
-    # if not SIMULATE:
-    #     slack_agent.send_slack_message("Completed adaptive surfactant grid screening workflow...")
