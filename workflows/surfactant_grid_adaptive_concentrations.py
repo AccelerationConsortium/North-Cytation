@@ -722,6 +722,36 @@ def fill_water_vial(lash_e, vial_name):
     
     lash_e.logger.info(f"    Water vial '{vial_name}' filled successfully to {max_volume_ml:.2f}mL")
 
+def refill_surfactant_vial(lash_e, vial_name, liquid='SDS'):
+    """
+    Refill a surfactant vial to maximum capacity (8mL) by moving it to reservoir,
+    calculating needed volume, dispensing from reservoir, and returning home.
+    
+    Args:
+        lash_e: The Lash_E coordinator instance
+        vial_name (str): Name of surfactant vial to fill (e.g., 'surfactant_A_stock')
+    """
+    # Get current volume and vial capacity
+    current_volume_ml = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
+    max_volume_ml = 8
+    
+    # Calculate volume needed to fill to max capacity
+    fill_volume_ml = max_volume_ml - current_volume_ml
+    
+    if fill_volume_ml <= 0.1:  # Already nearly full (within 100uL)
+        lash_e.logger.info(f"    Surfactant vial '{vial_name}' already full ({current_volume_ml:.2f}mL), skipping fill")
+        return
+        
+    lash_e.logger.info(f"    Refilling surfactant vial '{vial_name}': {current_volume_ml:.2f}mL -> {max_volume_ml:.2f}mL (adding {fill_volume_ml:.2f}mL)")
+    
+    # Fill vial from reservoir
+    # Parse surfactant name (everything before first underscore) and add _refill
+    surfactant_base_name = vial_name.split('_')[0]  # e.g., "SDS" from "SDS_stock"
+    source_refill_vial = f"{surfactant_base_name}_refill"
+    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name=source_refill_vial,dest_vial_name=vial_name, volume=fill_volume_ml, liquid=liquid)
+    
+    lash_e.logger.info(f"    Surfactant vial '{vial_name}' refilled successfully to {max_volume_ml:.2f}mL")
+
 # ================================================================================
 # SECTION 1: SMART SUBSTOCK MANAGEMENT
 # ================================================================================
@@ -2863,6 +2893,10 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         
         fill_water_vial(lash_e, "water")  # Ensure water is refilled for pipetting
         fill_water_vial(lash_e, "water_2")  # Refill second water vial as well
+
+        # Refill both surfactant stock vials
+        refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid=surfactant_a_name)
+        refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid=surfactant_b_name)
 
         # Calculate how many wells we can use in current wellplate
         wells_remaining_in_plate = 96 - current_wellplate_wells
