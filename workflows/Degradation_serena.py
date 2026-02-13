@@ -205,7 +205,14 @@ def check_and_switch_waste_vial(lash_e, waste_state):
         return current_waste
 
 #  -------------------------------------------------------------- Define my workflow here! ---------------------------------------------------
-def degradation_workflow():
+# Acid library: maps acid name to {'molar_mass': g/mol, 'molarity': mol/L}
+ACID_LIBRARY = {
+    '6M_HCl': {'molar_mass': 36.46, 'molarity': 6.0},
+    'TFA': {'molar_mass': 114.02, 'molarity': 6.0},
+    '12M_H2SO4': {'molar_mass': 98.08, 'molarity': 12.0},
+}
+
+def degradation_workflow(acid_type, acid_molar_excess):
   
     # a. Initial State of your Vials, so the robot can know where to pipet:
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/degradation_vial_status.csv"
@@ -244,15 +251,20 @@ def degradation_workflow():
 
     # g. acid amount calculation:
     polymer_molar_mass = 1353350 # molar mass in mg to simplify calculation afterwards
-    HCl_molarity = 6.0 #mol/L
+    
+    # Get acid properties from library
+    acid_molarity = ACID_LIBRARY[acid_type]['molarity']
+    acid_molar_mass = ACID_LIBRARY[acid_type]['molar_mass']
+    lash_e.logger.info(f"Using acid: {acid_type}")
   
-    # Calculate dilution volumes for each sample
-    samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * samples['acid_molar_excess']) / HCl_molarity) * 1000 # in mL
+    # Calculates the volume of acid to be added
+    samples['acid_molar_excess'] = acid_molar_excess
+    if acid_type == '6M_HCl':
+        samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * acid_molar_excess) / acid_molarity) * 1000 # in mL
+    if acid_type != '6M_HCl':
+        samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * acid_molar_excess) * acid_molar_mass) * 1000 # in mL
     lash_e.logger.info("Calculated volumes for each sample:")
     lash_e.logger.info("%s", samples[[sample_col, 'acid_molar_excess', 'acid_volume']])
-
-    
-    
 
     # Initialize waste vial management
     waste_state = {
@@ -325,10 +337,11 @@ def degradation_workflow():
         lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
         lash_e.nr_robot.remove_pipet()
         lash_e.logger.info("\nAdding acid to sample: %s", sample)
+        
         acid_volume = round(float(volume_lookup[sample]['acid_volume']), 4)
         print("Acid Volume:", acid_volume)
         #acid_volume = 0.011
-        safe_pipet('6M_HCl',sample,acid_volume, lash_e, return_home=False)
+        safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=False)
         lash_e.nr_robot.remove_pipet()
  
         # Record per-sample start time using consistent basis (simulated clock = 0; real clock = wall time)
@@ -409,7 +422,7 @@ def degradation_workflow():
     lash_e.nr_robot.move_home()
 
     # 3. Clean the well plate after all measurements are done
-    wash_wellplate(lash_e, used_wells, solvent_vial='2MeTHF', acetone_vial='acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=2, well_volume=0.19)
+    wash_wellplate(lash_e, used_wells, solvent_vial='2MeTHF', acetone_vial='acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=1, well_volume=0.19)
 
     # 4. Home all components at the end of the workflow
     lash_e.nr_robot.move_home()
@@ -417,5 +430,6 @@ def degradation_workflow():
     if not SIMULATE:   
         slack_agent.send_slack_message("Degradation workflow completed!")
 
-degradation_workflow() #Run your workflow
+
+degradation_workflow(acid_type='6M_HCl', acid_molar_excess=None) #Run your workflow
 
