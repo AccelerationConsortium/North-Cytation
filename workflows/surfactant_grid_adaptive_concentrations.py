@@ -129,8 +129,8 @@ MIN_WELL_PIPETTE_VOLUME_UL = 10.0  # Minimum volume for well dispensing
 MAX_SURFACTANT_VOLUME_UL = 90.0   # Maximum surfactant volume per well
 
 # Measurement protocol files for Cytation TODO: Add shaking for 10 minutes... 
-TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
-FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
+TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96_shake.prt"
+FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96_shake.prt"
 
 
 
