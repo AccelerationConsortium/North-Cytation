@@ -174,10 +174,18 @@ class GeneralizedVectorEdgeRecommender:
         for col in self.output_columns:
             values = experiment_data[col].values
             
+            # Ensure values is always an array (fix for single-element case)
+            values = np.asarray(values)
+            
             if self.normalization_method == 'log_zscore':
                 # Log transform + z-score
                 epsilon = 1e-6
-                log_values = np.log10(values + epsilon)
+                
+                # Ensure proper numpy array handling (fixes dtype issues)
+                values_array = np.asarray(values, dtype=np.float64)
+                values_with_epsilon = values_array + epsilon
+                
+                log_values = np.log10(values_with_epsilon)
                 
                 scaler = StandardScaler()
                 normalized = scaler.fit_transform(log_values.reshape(-1, 1)).flatten()
@@ -230,6 +238,107 @@ class GeneralizedVectorEdgeRecommender:
         
         return experiment_data
     
+    def _create_ghost_points(self, grid_data, grid_sizes, grid_coordinates):
+        """Create ghost points for missing grid positions using neighbor interpolation."""
+        
+        complete_grid_data = grid_data.copy()
+        ghost_count = 0
+        
+        # Iterate through all possible grid positions
+        for grid_indices in np.ndindex(*grid_sizes):
+            if grid_indices not in grid_data:
+                # This is a missing position - create a ghost point
+                neighbors = self._find_grid_neighbors(grid_indices, grid_sizes, grid_data)
+                
+                if len(neighbors) >= 2:  # Need at least 2 neighbors for interpolation
+                    ghost_point = self._interpolate_ghost_point(grid_indices, neighbors, grid_coordinates)
+                    ghost_point['is_ghost'] = True
+                    complete_grid_data[grid_indices] = ghost_point
+                    ghost_count += 1
+        
+        print(f"    Created {ghost_count} ghost points from neighbor interpolation")
+        return complete_grid_data
+    
+    def _find_grid_neighbors(self, grid_indices, grid_sizes, grid_data):
+        """Find real data neighbors within 1-2 grid steps for interpolation."""
+        
+        neighbors = []
+        
+        # Search in expanding radius (1 step, then 2 steps)
+        for radius in [1, 2]:
+            for dim in range(len(grid_sizes)):
+                # Check negative direction
+                if grid_indices[dim] >= radius:
+                    neighbor_idx = list(grid_indices)
+                    neighbor_idx[dim] -= radius
+                    neighbor_idx = tuple(neighbor_idx)
+                    if neighbor_idx in grid_data:
+                        neighbors.append((neighbor_idx, grid_data[neighbor_idx]))
+                
+                # Check positive direction
+                if grid_indices[dim] < grid_sizes[dim] - radius:
+                    neighbor_idx = list(grid_indices)
+                    neighbor_idx[dim] += radius
+                    neighbor_idx = tuple(neighbor_idx)
+                    if neighbor_idx in grid_data:
+                        neighbors.append((neighbor_idx, grid_data[neighbor_idx]))
+            
+            # If we found enough neighbors at this radius, stop searching
+            if len(neighbors) >= 2:
+                break
+        
+        return neighbors
+    
+    def _interpolate_ghost_point(self, grid_indices, neighbors, grid_coordinates):
+        """Interpolate values for a ghost point using inverse distance weighting."""
+        
+        # Calculate position of ghost point
+        ghost_coords = {}
+        for i, col in enumerate(self.input_columns):
+            coord_list = grid_coordinates[col]
+            ghost_coords[col] = coord_list[grid_indices[i]]
+        
+        # If log transform, calculate log coordinates too
+        if self.log_transform_inputs:
+            for col in self.input_columns:
+                ghost_coords[f'log_{col}'] = np.log10(ghost_coords[col])
+        
+        # Interpolate output values using inverse distance weighting
+        total_weight = 0
+        weighted_outputs = {col: 0 for col in self.output_columns}
+        weighted_normalized = {f'{col}_normalized': 0 for col in self.output_columns}
+        
+        for neighbor_idx, neighbor_data in neighbors:
+            # Calculate distance in log space (if using log transform)
+            if self.log_transform_inputs:
+                ghost_pos = np.array([ghost_coords[f'log_{col}'] for col in self.input_columns])
+                neighbor_pos = np.array([neighbor_data[f'log_{col}'] for col in self.input_columns])
+            else:
+                ghost_pos = np.array([ghost_coords[col] for col in self.input_columns])
+                neighbor_pos = np.array([neighbor_data[col] for col in self.input_columns])
+            
+            distance = np.linalg.norm(ghost_pos - neighbor_pos)
+            if distance < 1e-10:  # Very close, give high weight
+                weight = 1e10
+            else:
+                weight = 1.0 / (distance ** 2)  # Inverse distance squared
+            
+            total_weight += weight
+            
+            # Weight the output values
+            for col in self.output_columns:
+                weighted_outputs[col] += weight * neighbor_data[col]
+                weighted_normalized[f'{col}_normalized'] += weight * neighbor_data[f'{col}_normalized']
+        
+        # Create interpolated ghost point
+        ghost_point = ghost_coords.copy()
+        
+        for col in self.output_columns:
+            ghost_point[col] = weighted_outputs[col] / total_weight
+            ghost_point[f'{col}_normalized'] = weighted_normalized[f'{col}_normalized'] / total_weight
+        
+        return ghost_point
+
     def _create_grid_structure(self, experiment_data):
         """Create n-dimensional grid structure for neighbor identification."""
         
@@ -282,8 +391,17 @@ class GeneralizedVectorEdgeRecommender:
         grid_sizes = [len(grid_coordinates[col]) for col in self.input_columns]
         
         print(f"  Calculating edges for {self.n_inputs}-dimensional grid...")
+        print(f"  Original data coverage: {len(grid_data)}/{np.prod(grid_sizes)}")
         
-        # Generate edges along each dimension
+        # STEP 1: Create ghost points for missing grid positions
+        print(f"  Step 1: Creating ghost points for missing grid positions...")
+        complete_grid_data = self._create_ghost_points(grid_data, grid_sizes, grid_coordinates)
+        print(f"  Enhanced data coverage: {len(complete_grid_data)}/{np.prod(grid_sizes)} (includes ghost points)")
+        
+        # STEP 2A: Generate axis-aligned edges (existing behavior)
+        print(f"  Step 2A: Creating axis-aligned edges...")
+        axis_edges = 0
+        
         for dim in range(self.n_inputs):
             dim_name = self.input_columns[dim]
             
@@ -298,58 +416,164 @@ class GeneralizedVectorEdgeRecommender:
                 neighbor_indices[dim] += 1
                 neighbor_indices = tuple(neighbor_indices)
                 
-                # Check if both positions have data
-                if grid_indices in grid_data and neighbor_indices in grid_data:
-                    data1 = grid_data[grid_indices]
-                    data2 = grid_data[neighbor_indices]
+                # Check both positions exist
+                if grid_indices in complete_grid_data and neighbor_indices in complete_grid_data:
+                    edge = self._create_edge(grid_indices, neighbor_indices, complete_grid_data, 
+                                           [dim], f"axis_{dim_name}")
+                    if edge:
+                        edges.append(edge)
+                        axis_edges += 1
+        
+        print(f"    Created {axis_edges} axis-aligned edges")
+        
+        # STEP 2B: Generate diagonal edges (NEW - fixes stair-step boundaries)
+        print(f"  Step 2B: Creating diagonal edges...")
+        diagonal_edges = 0
+        
+        # Add positive diagonal edges (+1, +1)
+        for dim1, dim2 in combinations(range(self.n_inputs), 2):
+            dim1_name = self.input_columns[dim1]
+            dim2_name = self.input_columns[dim2]
+            
+            for grid_indices in np.ndindex(*grid_sizes):
+                # Check if we can move +1 in both dimensions
+                if (grid_indices[dim1] < grid_sizes[dim1] - 1 and 
+                    grid_indices[dim2] < grid_sizes[dim2] - 1):
                     
-                    # Calculate vector difference in normalized output space
-                    output_diffs = []
-                    normalized_diffs_dict = {}
+                    neighbor_indices = list(grid_indices)
+                    neighbor_indices[dim1] += 1
+                    neighbor_indices[dim2] += 1
+                    neighbor_indices = tuple(neighbor_indices)
                     
-                    for col in self.output_columns:
-                        norm_col = f'{col}_normalized'
-                        diff = data2[norm_col] - data1[norm_col]
-                        output_diffs.append(diff)
-                        normalized_diffs_dict[f'{col}_diff'] = diff
+                    # Check both positions exist
+                    if grid_indices in complete_grid_data and neighbor_indices in complete_grid_data:
+                        edge = self._create_edge(grid_indices, neighbor_indices, complete_grid_data,
+                                               [dim1, dim2], f"diag_{dim1_name}+{dim2_name}")
+                        if edge:
+                            edges.append(edge)
+                            diagonal_edges += 1
+        
+        # Add negative diagonal edges (+1, -1) 
+        for dim1, dim2 in combinations(range(self.n_inputs), 2):
+            dim1_name = self.input_columns[dim1]
+            dim2_name = self.input_columns[dim2]
+            
+            for grid_indices in np.ndindex(*grid_sizes):
+                # Check if we can move +1 in dim1 and -1 in dim2
+                if (grid_indices[dim1] < grid_sizes[dim1] - 1 and 
+                    grid_indices[dim2] > 0):
                     
-                    # Calculate Euclidean distance in normalized space
-                    score = np.sqrt(sum(diff**2 for diff in output_diffs))
+                    neighbor_indices = list(grid_indices)
+                    neighbor_indices[dim1] += 1
+                    neighbor_indices[dim2] -= 1
+                    neighbor_indices = tuple(neighbor_indices)
                     
-                    # Calculate midpoint coordinates
-                    midpoint = {}
-                    for col in self.input_columns:
-                        midpoint[col] = (data1[col] + data2[col]) / 2
-                        if self.log_transform_inputs:
-                            midpoint[f'log_{col}'] = (data1[f'log_{col}'] + data2[f'log_{col}']) / 2
-                    
-                    # Create edge record
-                    edge = {
-                        'pos1': grid_indices,
-                        'pos2': neighbor_indices,
-                        'dimension': dim,
-                        'dimension_name': dim_name,
-                        'score': score,
-                        **midpoint,
-                        **normalized_diffs_dict
-                    }
-                    
-                    edges.append(edge)
+                    # Check both positions exist
+                    if grid_indices in complete_grid_data and neighbor_indices in complete_grid_data:
+                        edge = self._create_edge(grid_indices, neighbor_indices, complete_grid_data,
+                                               [dim1, dim2], f"diag_{dim1_name}-{dim2_name}")
+                        if edge:
+                            edges.append(edge)
+                            diagonal_edges += 1
+        
+        print(f"    Created {diagonal_edges} diagonal edges")
         
         edges_df = pd.DataFrame(edges)
         
-        print(f"  Calculated {len(edges_df)} edge scores")
+        print(f"  Total edges: {len(edges_df)} ({axis_edges} axis + {diagonal_edges} diagonal)")
         if len(edges_df) > 0:
-            print(f"  Score range: {edges_df['score'].min():.4f} - {edges_df['score'].max():.4f}")
-            print(f"  Mean score: {edges_df['score'].mean():.4f}")
+            print(f"  Weighted score range: {edges_df['score'].min():.4f} - {edges_df['score'].max():.4f}")
+            print(f"  Base score range: {edges_df['base_score'].min():.4f} - {edges_df['base_score'].max():.4f}")
+            print(f"  Length-weighted mean score: {edges_df['score'].mean():.4f}")
+            print(f"  Edges with ghost points: {edges_df['has_ghost'].sum()}/{len(edges_df)} ({100*edges_df['has_ghost'].mean():.1f}%)")
             
             # Show distribution by dimension
-            for dim, dim_name in enumerate(self.input_columns):
-                dim_edges = edges_df[edges_df['dimension'] == dim]
-                if len(dim_edges) > 0:
-                    print(f"    {dim_name} direction: {len(dim_edges)} edges, avg score: {dim_edges['score'].mean():.4f}")
+            dim_counts = edges_df['dimension_name'].value_counts()
+            for dim_name, count in dim_counts.items():
+                print(f"    {dim_name}: {count} edges")
         
         return edges_df
+    
+    def _create_edge(self, pos1, pos2, grid_data, changed_dims, dimension_name):
+        """Create edge between two grid positions with proper length calculation."""
+        
+        data1 = grid_data[pos1]
+        data2 = grid_data[pos2]
+        
+        # Ghost point filtering: don't allow ghost-ghost edges
+        is_ghost1 = data1.get('is_ghost', False)
+        is_ghost2 = data2.get('is_ghost', False)
+        
+        if is_ghost1 and is_ghost2:
+            return None  # Skip ghost-ghost edges
+        
+        # Calculate vector difference in normalized output space
+        output_diffs = []
+        normalized_diffs_dict = {}
+        
+        for col in self.output_columns:
+            norm_col = f'{col}_normalized'
+            diff = data2[norm_col] - data1[norm_col]
+            output_diffs.append(diff)
+            normalized_diffs_dict[f'{col}_diff'] = diff
+        
+        # Calculate base boundary score (Euclidean distance in normalized space)
+        base_score = np.sqrt(sum(diff**2 for diff in output_diffs))
+        
+        # Calculate proper edge length for all changed dimensions (Euclidean)
+        edge_deltas = []
+        for dim in changed_dims:
+            col = self.input_columns[dim]
+            if self.log_transform_inputs:
+                delta = data2[f'log_{col}'] - data1[f'log_{col}']
+            else:
+                delta = data2[col] - data1[col]
+            edge_deltas.append(delta)
+        
+        # Euclidean edge length in appropriate space
+        edge_length = np.sqrt(sum(delta**2 for delta in edge_deltas))
+        
+        # Apply length weighting (reduced bonus for diagonals to avoid over-favoring)
+        if len(changed_dims) > 1:  # Diagonal edge
+            length_weight = np.sqrt(edge_length) * 0.5  # Reduced bonus for diagonals
+        else:  # Axis edge
+            length_weight = np.sqrt(edge_length)
+        
+        weighted_score = base_score * (1.0 + 0.3 * length_weight)  # Reduced from 0.5 to 0.3
+        
+        # Stronger penalty for ghost points (increased from 10% to 40%)
+        if is_ghost1 or is_ghost2:
+            weighted_score *= 0.6  # 40% penalty for ghost interpolation
+        
+        # Calculate midpoint coordinates
+        midpoint = {}
+        for dim in range(self.n_inputs):
+            col = self.input_columns[dim]
+            if self.log_transform_inputs:
+                # Geometric mean (proper log-space midpoint)
+                midpoint[col] = np.sqrt(data1[col] * data2[col])
+                midpoint[f'log_{col}'] = (data1[f'log_{col}'] + data2[f'log_{col}']) / 2
+            else:
+                # Arithmetic mean
+                midpoint[col] = (data1[col] + data2[col]) / 2
+        
+        # Create edge record
+        edge = {
+            'pos1': pos1,
+            'pos2': pos2,
+            'dimension': changed_dims[0] if len(changed_dims) == 1 else -1,  # -1 for diagonals
+            'dimension_name': dimension_name,
+            'changed_dims': changed_dims,
+            'score': weighted_score,
+            'base_score': base_score,
+            'edge_length': edge_length,
+            'length_weight': length_weight,
+            'has_ghost': is_ghost1 or is_ghost2,
+            **midpoint,
+            **normalized_diffs_dict
+        }
+        
+        return edge
     
     def _select_boundary_points(self, edges_df, grid_coordinates, n_points, min_spacing_factor):
         """Select high-scoring edge midpoints with minimum spacing enforcement."""

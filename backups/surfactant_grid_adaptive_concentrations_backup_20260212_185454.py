@@ -2869,8 +2869,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         # Get gradient suggestions (always request full amount)
         gradient_results = find_high_gradient_areas(
             results, lash_e, 
-            n_suggestions=gradient_suggestions_requested,
-            starting_well_index=current_wellplate_wells  # Start from current position in wellplate
+            n_suggestions=gradient_suggestions_requested
         )
         
         # Limit the actual measurements to what we can process
@@ -2925,7 +2924,7 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=12, startin
     Find high-gradient areas from initial screening and perform targeted exploration.
     
     Uses existing substocks from initial screening - NO new substock creation.
-    Continues well indexing from current wellplate position with 96-well limit.
+    Continues well indexing from current wellplate position.
     
     Args:
         existing_results: Results dict from execute_iterative_workflow() 
@@ -2954,8 +2953,7 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=12, startin
         initial_data_df, 
         surfactant_a_name, 
         surfactant_b_name, 
-        n_suggestions=n_suggestions,
-        output_dir=existing_results['output_folder']  # Pass output directory for visualizations
+        n_suggestions=n_suggestions
     )
     
     logger.info(f"Generated {len(suggested_concentrations)} concentration suggestions")
@@ -2980,31 +2978,12 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=12, startin
         last_well_used = existing_results['well_recipes_df']['wellplate_index'].max()
         starting_well_index = last_well_used + 1 if pd.notna(last_well_used) else 0
     
-    # CRITICAL FIX: Ensure we don't exceed 96-well plate limits
-    wells_remaining_in_plate = 96 - starting_well_index
-    if wells_remaining_in_plate <= 0:
-        raise ValueError(f"CRITICAL: Starting well index {starting_well_index} exceeds 96-well plate capacity! Current wellplate is full.")
-    
-    # Limit suggestions to available wells in current plate
-    max_suggestions_possible = min(n_suggestions, wells_remaining_in_plate)
-    if max_suggestions_possible < n_suggestions:
-        logger.info(f"Limiting suggestions from {n_suggestions} to {max_suggestions_possible} due to wellplate capacity")
-    
-    logger.info(f"Continuing well indexing from position {starting_well_index} (max {max_suggestions_possible} suggestions possible)")
+    logger.info(f"Continuing well indexing from position {starting_well_index}")
     
     well_recipes = []
     
-    # Only process the number of suggestions we can actually fit
-    suggestions_to_process = suggested_concentrations[:max_suggestions_possible]
-    
-    for i, (conc_a, conc_b) in enumerate(suggestions_to_process):
+    for i, (conc_a, conc_b) in enumerate(suggested_concentrations):
         well_index = starting_well_index + i  # Continue from last used well position
-        
-        # Double-check well index is valid
-        if well_index >= 96:
-            logger.warning(f"Skipping suggestion {i+1}: well index {well_index} exceeds 96-well plate capacity")
-            break
-            
         replicate = 1
         
         try:
@@ -3027,12 +3006,12 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=12, startin
     logger.info(f"High-gradient exploration complete: {len(measured_suggestions_df)} wells measured")
     return measured_suggestions_df
 
-def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=12, output_dir=None):
+def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=12):
     """
-    Use Delaunay triangle refinement to suggest high-variation concentration pairs for exploration.
+    Use vector edge refinement to suggest high-gradient concentration pairs for exploration.
     
-    Uses DelaunayTriangleRecommender to find boundaries in ratio measurements
-    by analyzing output variation among triangle vertices in the concentration space.
+    Uses GeneralizedVectorEdgeRecommender to find boundaries in [turbidity, ratio] vector field
+    by analyzing edges between neighboring grid points in concentration space.
     
     Args:
         experiment_data_df: DataFrame with measured experimental data including:
@@ -3044,33 +3023,33 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         
     Returns:
         list of tuples: [(conc_a_1, conc_b_1), (conc_a_2, conc_b_2), ...] 
-                       concentration pairs in mM for high-variation exploration
+                       concentration pairs in mM for gradient exploration
     """
     
-    print(f"Analyzing triangle boundaries in {surfactant_a_name}+{surfactant_b_name} data...")
+    print(f"Analyzing gradient boundaries in {surfactant_a_name}+{surfactant_b_name} data...")
     print(f"Input data: {len(experiment_data_df)} experimental wells")
     
-    # Import the Delaunay triangle recommender
+    # Import the generalized vector edge recommender
     try:
         import sys
         import os
         recommender_path = os.path.join(os.path.dirname(__file__), '..', 'recommenders')
         if recommender_path not in sys.path:
             sys.path.append(recommender_path)
-        from recommenders.delaunay_triangle_recommender import DelaunayTriangleRecommender
+        from recommenders.generalized_vector_edge_recommender import GeneralizedVectorEdgeRecommender
     except ImportError as e:
-        raise ImportError(f"CRITICAL: DelaunayTriangleRecommender import failed: {e}. Adaptive algorithm cannot run without this!")
+        raise ImportError(f"CRITICAL: GeneralizedVectorEdgeRecommender import failed: {e}. Adaptive algorithm cannot run without this!")
     
-    # Initialize the triangle recommender (focus on ratio AND turbidity boundaries)
-    recommender = DelaunayTriangleRecommender(
-        input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
-        output_columns=['ratio', 'turbidity_600'],           # Focus on BOTH ratio and turbidity boundaries 
+    # Initialize the vector edge recommender (focus on ratio boundary)
+    recommender = GeneralizedVectorEdgeRecommender(
+        input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # Concentration space (X, Y)
+        output_columns=['ratio'],                            # Focus on ratio boundary only 
         log_transform_inputs=True,    # Work in log concentration space
         normalization_method='log_zscore'  # Log + z-score normalization
     )
     
-    # Get recommendations from triangle analysis
-    print(f"Running Delaunay triangle analysis for {n_suggestions} boundary suggestions...")
+    # Get recommendations from vector edge analysis
+    print(f"Running vector edge analysis for {n_suggestions} boundary suggestions...")
     print(f"DEBUG: Using output columns: {recommender.output_columns}")
     print(f"DEBUG: Input data shape: {experiment_data_df.shape}")
     print(f"DEBUG: Available columns: {list(experiment_data_df.columns)}")
@@ -3078,20 +3057,18 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     recommendations_df = recommender.get_recommendations(
         experiment_data_df, 
         n_points=n_suggestions,
-        min_spacing_factor=0.5,  # Minimum spacing between triangle centroids
-        tol_factor=0.1,         # Tolerance for duplicate detection
-        triangle_score_method='max',  # Use max distance for sensitivity
-        output_dir=output_dir,  # Save triangle visualizations to output folder
-        create_visualization=True  # Create and save triangle analysis plots
+        min_spacing_factor=2.0,  # INCREASED spacing to avoid existing points
+        output_dir=None,  # No file saving needed for iterative use
+        create_visualization=False  # Skip plots during iterative workflow
     )
     
-    print(f"DEBUG: Triangle recommender returned {len(recommendations_df)} suggestions")
+    print(f"DEBUG: Vector edge recommender returned {len(recommendations_df)} suggestions")
     if len(recommendations_df) > 0:
         print(f"DEBUG: First few suggestions:")
         print(recommendations_df[['surf_A_conc_mm', 'surf_B_conc_mm']].head())
     
     if len(recommendations_df) == 0:
-        raise RuntimeError(f"CRITICAL: Triangle analysis returned 0 recommendations! Algorithm is broken. Input data shape: {experiment_data_df.shape}, columns: {list(experiment_data_df.columns)}, output columns: {recommender.output_columns}")
+        raise RuntimeError(f"CRITICAL: Vector edge analysis returned 0 recommendations! Algorithm is broken. Input data shape: {experiment_data_df.shape}, columns: {list(experiment_data_df.columns)}, output columns: {recommender.output_columns}")
     
     # Extract concentration pairs from recommendations
     concentration_pairs = []
@@ -3100,13 +3077,13 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         conc_b = row['surf_B_conc_mm']
         concentration_pairs.append((conc_a, conc_b))
     
-    print(f"Triangle analysis complete: {len(concentration_pairs)} concentration pairs identified")
-    print(f"Triangle score range: {recommendations_df['triangle_score'].min():.4f} - {recommendations_df['triangle_score'].max():.4f}")
+    print(f"Vector edge analysis complete: {len(concentration_pairs)} concentration pairs identified")
+    print(f"Boundary score range: {recommendations_df['boundary_score'].min():.4f} - {recommendations_df['boundary_score'].max():.4f}")
     
     # Show sample of recommendations for verification
     print("Sample recommendations:")
     for i, (conc_a, conc_b) in enumerate(concentration_pairs[:5]):
-        score = recommendations_df.iloc[i]['triangle_score']
+        score = recommendations_df.iloc[i]['boundary_score']
         print(f"  {i+1}: {surfactant_a_name}={conc_a:.3e} mM, {surfactant_b_name}={conc_b:.3e} mM (score: {score:.4f})")
     
     return concentration_pairs
