@@ -82,7 +82,7 @@ SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
-SIMULATE = False # Set to False for actual hardware execution
+SIMULATE = True # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
 VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
@@ -722,6 +722,36 @@ def fill_water_vial(lash_e, vial_name):
     
     lash_e.logger.info(f"    Water vial '{vial_name}' filled successfully to {max_volume_ml:.2f}mL")
 
+def refill_surfactant_vial(lash_e, vial_name, liquid='SDS'):
+    """
+    Refill a surfactant vial to maximum capacity (8mL) by moving it to reservoir,
+    calculating needed volume, dispensing from reservoir, and returning home.
+    
+    Args:
+        lash_e: The Lash_E coordinator instance
+        vial_name (str): Name of surfactant vial to fill (e.g., 'surfactant_A_stock')
+    """
+    # Get current volume and vial capacity
+    current_volume_ml = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
+    max_volume_ml = 8
+    
+    # Calculate volume needed to fill to max capacity
+    fill_volume_ml = max_volume_ml - current_volume_ml
+    
+    if fill_volume_ml <= 2.0:  # Already nearly full (within 2mL)
+        lash_e.logger.info(f"    Surfactant vial '{vial_name}' already full ({current_volume_ml:.2f}mL), skipping fill")
+        return
+        
+    lash_e.logger.info(f"    Refilling surfactant vial '{vial_name}': {current_volume_ml:.2f}mL -> {max_volume_ml:.2f}mL (adding {fill_volume_ml:.2f}mL)")
+    
+    # Fill vial from reservoir
+    # Parse surfactant name (everything before first underscore) and add _refill
+    surfactant_base_name = vial_name.split('_')[0]  # e.g., "SDS" from "SDS_stock"
+    source_refill_vial = f"{surfactant_base_name}_refill"
+    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name=source_refill_vial,dest_vial_name=vial_name, volume=fill_volume_ml, liquid=liquid)
+    
+    lash_e.logger.info(f"    Surfactant vial '{vial_name}' refilled successfully to {max_volume_ml:.2f}mL")
+
 # ================================================================================
 # SECTION 1: SMART SUBSTOCK MANAGEMENT
 # ================================================================================
@@ -735,7 +765,7 @@ class SurfactantSubstockTracker:
         self.min_pipette_volume_ul = MIN_WELL_PIPETTE_VOLUME_UL  # Consistent with other functions
         self.max_surfactant_volume_ul = MAX_SURFACTANT_VOLUME_UL  # Consistent with other functions
     
-    def find_best_solution_for_concentration(self, surfactant_name, target_conc_mm):
+    def find_best_solution_for_concentration(self, surfactant_name, target_conc_mm, lash_e=None):
         """
         Find best available solution (stock or substock) for achieving target concentration.
         Returns solution dict or None if no suitable solution exists within pipetting limits.
@@ -785,9 +815,43 @@ class SurfactantSubstockTracker:
         if not options:
             return None
         
-        # Return most concentrated option that's still pipettable (uses least volume)
-        options.sort(key=lambda x: x['concentration_mm'], reverse=True)
-        return options[0]
+        # Use conservation-aware ranking to select best option
+        return self.rank_options_with_conservation(options, lash_e)
+    
+    def rank_options_with_conservation(self, options, lash_e=None, conservation_threshold=4.0):
+        """Rank options balancing pipetting volume preference with vial conservation."""
+        scored_options = []
+        
+        for option in options:
+            vial_name = option['vial_name']
+            volume_needed_ml = option['volume_needed_ml']
+            pipette_volume_ul = option['volume_needed_ul']
+            
+            # Get current vial volume (with fallback for simulation/errors)
+            try:
+                if lash_e is not None:
+                    current_vial_volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
+                else:
+                    current_vial_volume = 6.0  # Conservative default
+            except:
+                current_vial_volume = 6.0  # Default for simulation/errors
+            
+            # Conservation penalty: penalize high usage from low vials
+            if current_vial_volume < conservation_threshold:
+                conservation_penalty = (volume_needed_ml / current_vial_volume) * 50  # Scale factor
+            else:
+                conservation_penalty = 0  # No penalty for vials with plenty left
+            
+            # Pipetting preference: higher volumes generally preferred  
+            pipetting_score = pipette_volume_ul
+            
+            # Combined score: preference minus penalty
+            total_score = pipetting_score - conservation_penalty
+            
+            scored_options.append((option, total_score))
+        
+        # Return option with highest score
+        return max(scored_options, key=lambda x: x[1])[0]
     
     def calculate_optimal_substock_concentration(self, surfactant_name, target_conc_mm):
         """
@@ -871,9 +935,9 @@ def calculate_systematic_dilution_series(surfactant_name, target_concentrations_
     min_target = min(target_concentrations_mm)
     max_target = max(target_concentrations_mm)
     
-    series_max = stock_conc * 0.10
+    series_max = stock_conc * 0.20
    
-    series_min = min_target * 5
+    series_min = min_target * 10
     
     # Create evenly spaced points on log scale
     log_points = np.linspace(np.log10(series_max), np.log10(series_min), num_substocks)
@@ -942,7 +1006,7 @@ def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations
     
     # Now map each target to best available solution
     for target_conc in target_concentrations_mm:
-        solution = tracker.find_best_solution_for_concentration(surfactant_name, target_conc)
+        solution = tracker.find_best_solution_for_concentration(surfactant_name, target_conc, lash_e)
         
         if solution:
             plan['concentration_map'][target_conc] = solution
@@ -1229,6 +1293,35 @@ def calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name
     
     return concs_a, concs_b
 
+def rank_options_with_conservation_external(options, lash_e, conservation_threshold=4.0):
+    """External ranking function for create_plan_from_existing_stocks with different data structure."""
+    scored_options = []
+    
+    for option in options:
+        vial_name = option['stock']['vial_name']
+        volume_needed_ml = option['volume_needed_ul'] / 1000  # Convert to mL
+        pipette_volume_ul = option['volume_needed_ul']
+        
+        # Get current vial volume (with fallback for simulation/errors)
+        current_vial_volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
+        
+        # Conservation penalty: penalize high usage from low vials
+        if current_vial_volume < conservation_threshold:
+            conservation_penalty = (volume_needed_ml / current_vial_volume) * 50  # Scale factor
+        else:
+            conservation_penalty = 0  # No penalty for vials with plenty left
+        
+        # Pipetting preference: higher volumes generally preferred  
+        pipetting_score = pipette_volume_ul
+        
+        # Combined score: preference minus penalty
+        total_score = pipetting_score - conservation_penalty
+        
+        scored_options.append((option, total_score))
+    
+    # Return option with highest score
+    return max(scored_options, key=lambda x: x[1])[0]
+
 def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, target_concentrations):
     """
     Create a dilution plan using existing stock solutions with proper dilution calculations.
@@ -1307,9 +1400,8 @@ def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, 
                     })
         
         if options:
-            # Choose the option with the most concentrated stock that's still pipettable
-            # This minimizes volume needed (like the smart planner)
-            best_option = max(options, key=lambda x: x['concentration_mm'])
+            # Choose option using conservation-aware ranking
+            best_option = rank_options_with_conservation_external(options, lash_e)
             
             concentration_map[target_conc] = {
                 'vial_name': best_option['stock']['vial_name'],
@@ -1574,7 +1666,7 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
         return []
         
     logger = lash_e.logger
-    safe_positions = ['clamp', 47, 46, 45, 44, 43, 36]  # Safe spots in order: clamp -> rack positions
+    safe_positions = [47, 46, 45, 44, 'clamp', 43, 36]  # Safe spots in order: clamp -> rack positions
     
     # Get concentration for each vial from the DataFrame
     vial_concentrations = []
@@ -2864,6 +2956,10 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         fill_water_vial(lash_e, "water")  # Ensure water is refilled for pipetting
         fill_water_vial(lash_e, "water_2")  # Refill second water vial as well
 
+        # Refill both surfactant stock vials
+        refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid=surfactant_a_name)
+        refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid=surfactant_b_name)
+
         # Calculate how many wells we can use in current wellplate
         wells_remaining_in_plate = 96 - current_wellplate_wells
         max_measurements_this_iteration = min(
@@ -3347,6 +3443,8 @@ if __name__ == "__main__":
             print(f"+ Total wells: {results['total_wells']}")
             print(f"+ Measured wells: {results['measured_wells']}")
             print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+
+            print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
         else:
             print("Iterative workflow failed!")
     

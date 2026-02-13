@@ -1822,7 +1822,7 @@ class North_Robot(North_Base):
         return vial
 
     #Get adjust the aspiration height based on how much is there
-    def get_aspirate_height(self, source_vial_num, amount_mL, track_height=True, buffer=2.0):
+    def get_aspirate_height(self, source_vial_num, amount_mL, track_height=True, buffer=1.0):
 
         #Get required information
         base_height = self.get_min_pipetting_height(source_vial_num)
