@@ -66,6 +66,7 @@ class Biotek_Wrapper:
             RuntimeError: If hardware connection fails in non-simulation mode
         """
         self.logger = logger
+        self.simulate = simulate
 
         if not simulate:
             from biotek_driver.biotek import Biotek
@@ -82,7 +83,11 @@ class Biotek_Wrapper:
         if status == 0:
             self._log('info', 'Cytation5 is connected and ready')
         elif not simulate:
-            self._log('warning', "Cytation5 not connected... May need to restart")
+            self._log('error', "Cytation5 not connected... May need to restart")
+            if not self.simulate:
+                input("Error: Cytation5 not connected. Please check connection and restart if needed. Press Enter to continue...")
+            else:
+                self._log('warning', "SIMULATION MODE: Would pause for Cytation5 connection error")
             
     def CarrierIn(self, plate_type="96 WELL PLATE", use_lid=False):
         """

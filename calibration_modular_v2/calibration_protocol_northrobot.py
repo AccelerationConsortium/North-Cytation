@@ -12,6 +12,8 @@ Optional: start_time, end_time, echoed params.
 import time
 import sys
 import os
+import yaml
+from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from calibration_protocol_base import CalibrationProtocolBase
@@ -22,8 +24,7 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
 import slack_agent
 
-# Tip conditioning volume (mL)
-TIP_CONDITIONING_VOLUME = 0.10
+# Tip conditioning volume will be calculated dynamically based on target volumes
 
 # Liquid densities for mass-to-volume conversion (g/mL)
 LIQUIDS = {
@@ -49,6 +50,13 @@ from pipetting_data.pipetting_parameters import PipettingParameters
 class HardwareCalibrationProtocol(CalibrationProtocolBase):
     """Hardware calibration protocol implementing the abstract interface."""
     
+    def get_tip_conditioning_volume(self, target_volume_ml: float) -> float:
+        """Calculate appropriate conditioning volume based on target pipetting volume."""
+        if target_volume_ml <= 0.20:  # Small tip (200 uL)
+            return min(0.200, target_volume_ml * 1.2)
+        else:  # Large tip (1000 uL) 
+            return min(1.000, target_volume_ml * 1.2)  
+    
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Initialize hardware protocol with North Robot's internal simulation."""
                
@@ -61,6 +69,34 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         liquid = cfg['experiment']['liquid']
         
         print(f"Initializing North Robot hardware protocol for {liquid}")
+        
+        # Read full config directly from file to get volume targets
+        try:
+            config_path = Path(__file__).parent / "experiment_config.yaml"
+            with open(config_path, 'r') as f:
+                full_config = yaml.safe_load(f)
+            
+            volume_targets = full_config.get('experiment', {}).get('volume_targets_ml', [])
+            print(f"Read volume targets from config: {volume_targets}")
+        except Exception as e:
+            print(f"Warning: Could not read config file ({e}), using fallback")
+            volume_targets = []
+        
+        # DEBUG: Show what's in the passed config vs full config
+        print(f"DEBUG: cfg keys = {list(cfg.keys()) if cfg else 'cfg is None'}")
+        print(f"DEBUG: cfg['experiment'] keys = {list(cfg['experiment'].keys()) if cfg and 'experiment' in cfg else 'no experiment'}")
+        print(f"DEBUG: volume_targets_ml from file = {volume_targets}")
+        
+        # Extract volume targets to determine tip conditioning
+        if volume_targets:
+            max_volume = max(volume_targets)
+            # Store for use in tip conditioning
+            self.conditioning_volume = self.get_tip_conditioning_volume(max_volume)
+            print(f"Set conditioning volume to {self.conditioning_volume:.3f}mL based on max target {max_volume:.3f}mL")
+        else:
+            # Fallback to conservative default
+            self.conditioning_volume = 0.05
+            print("No volume targets found, using default conditioning volume 0.05mL")
 
         # Use hardware simulation mode (different from our simulation protocol)
         simulate = False  # This enables North Robot's internal simulation
@@ -71,13 +107,15 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         SINGLE_VIAL = True #True if you just want to use one vial, eg for a capped vial use "liquid_source_0"
 
         continuous_monitoring = True
-        
+               
         # Quality control threshold for mass measurement stability (in grams)
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
         self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
+        if not simulate:
+            slack_agent.send_slack_message("🤖 North Robot calibration/validation started!")
 
         
         # Initialize hardware
@@ -91,6 +129,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             # Validate hardware files
             lash_e.nr_robot.check_input_file()
             #lash_e.nr_track.check_input_file()
+            lash_e.nr_robot.home_robot_components()
             
             # Simple vial management: Set up source and measurement vials
             if SINGLE_VIAL:
@@ -111,11 +150,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     dispense_wait_time=0.0,
                     blowout_vol=0.5
                 )
-                lash_e.nr_robot.aspirate_from_vial(source_vial, TIP_CONDITIONING_VOLUME, move_up=False, parameters=conditioning_params)
-                lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
-                for i in range (0, 3):
-                    lash_e.nr_robot.aspirate_from_vial(source_vial, TIP_CONDITIONING_VOLUME,  move_to_aspirate=False, parameters=conditioning_params)
-                    lash_e.nr_robot.dispense_into_vial(source_vial, TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
+                lash_e.nr_robot.aspirate_from_vial(source_vial, self.conditioning_volume, move_up=False, parameters=conditioning_params)
+                lash_e.nr_robot.dispense_into_vial(source_vial, self.conditioning_volume, initial_move=False, parameters=conditioning_params)
+                for i in range(3):
+                    lash_e.nr_robot.aspirate_from_vial(source_vial, self.conditioning_volume,  move_to_aspirate=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(source_vial, self.conditioning_volume, initial_move=False, parameters=conditioning_params)
                 lash_e.nr_robot.move_home()
             
             print("READY: Hardware initialized successfully")
@@ -183,11 +222,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         dispense_wait_time=0.0,
                         blowout_vol=0.5
                     )
-                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, move_up=False, parameters=conditioning_params)
-                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
-                    for i in range (0, 3):
-                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, move_to_aspirate=False, parameters=conditioning_params)
-                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], TIP_CONDITIONING_VOLUME, initial_move=False, parameters=conditioning_params)
+                    lash_e.nr_robot.aspirate_from_vial(state['source_vial'], self.conditioning_volume, move_up=False, parameters=conditioning_params)
+                    lash_e.nr_robot.dispense_into_vial(state['source_vial'], self.conditioning_volume, initial_move=False, parameters=conditioning_params)
+                    for i in range(3):
+                        lash_e.nr_robot.aspirate_from_vial(state['source_vial'], self.conditioning_volume, move_to_aspirate=False, parameters=conditioning_params)
+                        lash_e.nr_robot.dispense_into_vial(state['source_vial'], self.conditioning_volume, initial_move=False, parameters=conditioning_params)
                     lash_e.nr_robot.move_home()
                 
                 print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
@@ -405,16 +444,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 lash_e.nr_robot.move_home()
                 
                 print(f"COMPLETE: Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
-                
+                               
                 # Send slack notification
                 try:
-                    slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
-                except Exception as e:
-                    print(f"WARNING: Slack notification failed: {e}")
-                
-                # Send slack notification
-                try:
-                    slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
+                    if not state.get('simulate', True):
+                        slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
                 except Exception as e:
                     print(f"WARNING: Slack notification failed: {e}")
                 
@@ -427,20 +461,28 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         # North Robot tip volume constraint
         # Use 0.2 mL tips for volumes <= 150 uL, otherwise 1.0 mL tips
-        if target_volume_ml <= 0.15:  # 150 uL or less
+        if target_volume_ml <= 0.20:  # 150 uL or less
             tip_volume_ml = 0.2
         else:
             tip_volume_ml = 1.0
             
-        # Calculate available volume for air and overaspiration
-        available_volume_ml = tip_volume_ml - target_volume_ml
+
+        max_volume = 1.0    
         
-        # Add tip volume constraint if relevant parameters exist
-        #constraint = f"post_asp_air_vol + overaspirate_vol <= {available_volume_ml:.6f}"
-        constraint = f"overaspirate_vol <= {available_volume_ml:.6f}"
-        constraints.append(constraint)
+        # Check if post_asp_air_vol parameter exists in hardware_parameters
+        hardware_params = self.config.get_hardware_parameters()
+        has_post_asp_air = 'post_asp_air_vol' in hardware_params.keys()
         
-        print(f"CONSTRAINT: North Robot constraint: {constraint} (tip: {tip_volume_ml*1000:.0f}uL, target: {target_volume_ml*1000:.0f}uL)")
+        # Add tip volume constraint - only include post_asp_air_vol if it exists
+        if has_post_asp_air:
+            constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
+        else:
+            constraints.append(f"overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
+
+        if has_post_asp_air:
+            constraints.append(f"pre_asp_air_vol + post_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
+        else:
+            constraints.append(f"pre_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
         
         return constraints
 
