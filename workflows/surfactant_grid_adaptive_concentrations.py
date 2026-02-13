@@ -82,13 +82,15 @@ SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
+SIMULATE = False # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
+VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
 
-# Pump configuration:
-# Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
-# Pump 1 = Water reservoir pump (carousel angle 45 deg, height 70)
+# WORKFLOW OPTIONS
+RUN_2_STAGE_WORKFLOW = False  # Set to True to run 2-stage adaptive workflow
+RUN_SINGLE_STAGE = False       # Set to True to run single-stage workflow
+RUN_ITERATIVE_WORKFLOW = True #Using triangles
 
 # Adaptive grid parameters - concentration ranges adapt to stock concentrations
 MIN_CONC = 10**-4  # 0.0001 mM minimum concentration for all surfactants
@@ -96,6 +98,7 @@ NUMBER_CONCENTRATIONS = 9  # Number of concentration steps in logarithmic grid
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
 PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
+ITERATIVE_MEASUREMENT_TOTAL= 192 #The number of measurements done
 
 # Buffer addition settings
 ADD_BUFFER = False  # Set to False to skip buffer addition
@@ -125,7 +128,7 @@ MEASUREMENT_INTERVAL = 96    # Measure every N wells to prevent evaporation
 MIN_WELL_PIPETTE_VOLUME_UL = 10.0  # Minimum volume for well dispensing
 MAX_SURFACTANT_VOLUME_UL = 90.0   # Maximum surfactant volume per well
 
-# Measurement protocol files for Cytation
+# Measurement protocol files for Cytation TODO: Add shaking for 10 minutes... 
 TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
 FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
 
@@ -1529,8 +1532,11 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     if len(wells_needing_component) == 0:
         logger.info(f"  {component_name}: No wells need this component from {vial_name}")
         return
+
+    # Sort wells by volume (largest first) to minimize tip changes
+    wells_needing_component = wells_needing_component.sort_values(volume_column, ascending=False)
     
-    logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells")
+    logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells (sorted by volume)")
     
     # Dispense to each well individually
     for _, row in wells_needing_component.iterrows():
@@ -1600,7 +1606,7 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
     
     logger.info(f"  Positioning surfactant {vial_type} vials by concentration (concentrated -> dilute):")
     
-    # Move vials to safe positions in concentration order
+    # Move vials to safe positions in concentration order (concentrated -> dilute for positioning)
     for i, vial_name in enumerate(sorted_vials):
         if i < len(safe_positions):
             position = safe_positions[i]
@@ -1614,7 +1620,9 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
         else:
             logger.warning(f"    {vial_name}: No safe position available (too many vials)")
     
-    return sorted_vials
+    # Return in reverse order for pipetting (dilute -> concentrated to prevent contamination)
+    logger.info(f"  Dispensing order will be: dilute -> concentrated")
+    return sorted_vials[::-1]  # Reverse the list for dispensing
 
 def return_surfactant_vials_home(lash_e, vial_names, vial_type):
     """Return surfactant vials to home positions after dispensing."""
@@ -2853,6 +2861,9 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         print(f"Current measurements: {current_measurements}/{target_measurements}")
         print(f"Current wellplate usage: {current_wellplate_wells}/96 wells")
         
+        fill_water_vial(lash_e, "water")  # Ensure water is refilled for pipetting
+        fill_water_vial(lash_e, "water_2")  # Refill second water vial as well
+
         # Calculate how many wells we can use in current wellplate
         wells_remaining_in_plate = 96 - current_wellplate_wells
         max_measurements_this_iteration = min(
@@ -2888,7 +2899,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         current_wellplate_wells += len(gradient_results)
         
         # Switch wellplate only if current one is full
-        if current_wellplate_wells >= 96:
+        if current_wellplate_wells >= 96 and current_measurements < target_measurements:
             print("Current wellplate full, switching to new wellplate...")
             lash_e.discard_used_wellplate()
             lash_e.grab_new_wellplate()
@@ -3244,11 +3255,6 @@ if __name__ == "__main__":
     Run the adaptive surfactant grid screening workflow.
     """
     
-    # WORKFLOW OPTIONS
-    RUN_2_STAGE_WORKFLOW = False  # Set to True to run 2-stage adaptive workflow
-    RUN_SINGLE_STAGE = False       # Set to True to run single-stage workflow
-    RUN_ITERATIVE_WORKFLOW = True
-
     # Initialize Lash_E and validate once
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
     print("Validating robot and track status...")
@@ -3326,7 +3332,7 @@ if __name__ == "__main__":
             surfactant_a_name=SURFACTANT_A, 
             surfactant_b_name=SURFACTANT_B,
             number_concentrations=5,  # Start with rapid 5x5 screening
-            target_measurements=96,   # Fill one wellplate with iterative exploration
+            target_measurements=ITERATIVE_MEASUREMENT_TOTAL,   # Fill one wellplate with iterative exploration
             gradient_suggestions_per_iteration=12,
             lash_e=lash_e,
             experiment_output_folder=experiment_output_folder,
