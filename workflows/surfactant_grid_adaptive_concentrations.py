@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Surfactant Grid Turbidity + Fluorescence Screening Workflow - Adaptive Concentrations
 Systematic dilution grid of two surfactants with adaptive concentration ranges based on stock concentrations.
@@ -29,17 +30,14 @@ RECOVERY USAGE:
 # IMPORTS AND DEPENDENCIES
 # ================================================================================
 
-from re import S
 import sys
-
-
 sys.path.append("../utoronto_demo")
 import pandas as pd
 import numpy as np
 import os
 import json
 from datetime import datetime
-from master_usdl_coordinator import Lash_E
+from master_usdl_coordinator import Lash_E, flatten_cytation_data
 import slack_agent
 
 # ================================================================================
@@ -85,8 +83,8 @@ SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
 SIMULATE = True # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
-VALIDATION_ONLY = False # Set to True to run only validations and skip full experiment
+VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
+CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
 
 # Pump configuration:
 # Pump 0 = Pipetting pump (no reservoir, used for aspirate/dispense)
@@ -123,19 +121,476 @@ FINAL_SUBSTOCK_VOLUME = 6  # mL final volume for each dilution
 MINIMUM_PIPETTE_VOLUME = 0.2  # mL (200 uL) - minimum volume for accurate pipetting
 MEASUREMENT_INTERVAL = 96    # Measure every N wells to prevent evaporation
 
+# Pipetting volume limits (consistent across all functions)
+MIN_WELL_PIPETTE_VOLUME_UL = 10.0  # Minimum volume for well dispensing
+MAX_SURFACTANT_VOLUME_UL = 90.0   # Maximum surfactant volume per well
+
 # Measurement protocol files for Cytation
 TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
 FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
 
-# Workflow control flags
-CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
+
 
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
 
+# ================================================================================
+# HEATMAP VISUALIZATION FUNCTIONS
+# ================================================================================
 
+def generate_surfactant_grid_heatmaps(csv_file_path, output_dir, logger, surfactant_a_name, surfactant_b_name):
+    """
+    Generate heatmap visualizations for surfactant grid experiment results.
+    Creates both individual and combined plots with controls displayed below main grids.
+    
+    Args:
+        csv_file_path (str): Path to the complete_experiment_results.csv file
+        output_dir (str): Directory where heatmaps should be saved  
+        logger: Logger instance for reporting progress
+        surfactant_a_name (str): Name of surfactant A (x-axis)
+        surfactant_b_name (str): Name of surfactant B (y-axis)
+    """
+    try:
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        from pathlib import Path
+        
+        logger.info(f"    Creating heatmaps from: {os.path.basename(csv_file_path)}")
+        
+        # Read the CSV file
+        df = pd.read_csv(csv_file_path)
+        
+        # Filter data
+        experiment_data = df[df['well_type'] == 'experiment'].copy()
+        control_data = df[df['well_type'] == 'control'].copy()
+        
+        if experiment_data.empty:
+            logger.warning("    No experiment data found - skipping heatmap generation")
+            return
+            
+        # Process control data - handle NaN values
+        control_processed = []
+        for _, row in control_data.iterrows():
+            control_info = {
+                'control_type': row['control_type'],
+                'surf_A_conc_mm': row['surf_A_conc_mm'] if not pd.isna(row['surf_A_conc_mm']) else 0,
+                'surf_B_conc_mm': row['surf_B_conc_mm'] if not pd.isna(row['surf_B_conc_mm']) else 0,
+                'turbidity_600': row['turbidity_600'],
+                'ratio': row['ratio']
+            }
+            control_processed.append(control_info)
+        
+        if not control_processed:
+            logger.warning("    No control data found - creating experiment-only heatmaps")
+            control_df = pd.DataFrame()
+        else:
+            control_df = pd.DataFrame(control_processed)
+        
+        # Get concentration ranges
+        surf_A_concs = sorted(experiment_data['surf_A_conc_mm'].unique())
+        surf_B_concs = sorted(experiment_data['surf_B_conc_mm'].unique())
+        
+        logger.info(f"    Grid size: {len(surf_A_concs)} x {len(surf_B_concs)}")
+        
+        # Create pivot tables for heatmap data (high concentrations top-right)
+        turbidity_grid = experiment_data.pivot_table(
+            index='surf_B_conc_mm', columns='surf_A_conc_mm', values='turbidity_600', aggfunc='mean'
+        ).reindex(sorted(experiment_data['surf_B_conc_mm'].unique(), reverse=True))
+        turbidity_grid = turbidity_grid.reindex(sorted(experiment_data['surf_A_conc_mm'].unique()), axis=1)
+        
+        ratio_grid = experiment_data.pivot_table(
+            index='surf_B_conc_mm', columns='surf_A_conc_mm', values='ratio', aggfunc='mean'
+        ).reindex(sorted(experiment_data['surf_B_conc_mm'].unique(), reverse=True))
+        ratio_grid = ratio_grid.reindex(sorted(experiment_data['surf_A_conc_mm'].unique()), axis=1)
+        
+        # Determine color scale ranges
+        all_turbidity = list(experiment_data['turbidity_600'])
+        all_ratio = list(experiment_data['ratio'])
+        if not control_df.empty:
+            all_turbidity.extend(list(control_df['turbidity_600']))
+            all_ratio.extend(list(control_df['ratio']))
+        
+        turbidity_vmin, turbidity_vmax = min(all_turbidity), max(all_turbidity)
+        ratio_vmin, ratio_vmax = min(all_ratio), max(all_ratio)
+        
+        # Set up plotting
+        plt.style.use('default')
+        
+        # Format concentration labels for readability
+        def format_conc_label(conc):
+            if conc < 0.001:
+                return f'{conc:.6f}'
+            elif conc < 1:
+                return f'{conc:.4f}'
+            else:
+                return f'{conc:.1f}'
+        
+        # Create combined plot if controls exist
+        if not control_df.empty:
+            # Create control grids (3 controls: water, surfactant A only, surfactant B only)
+            control_labels = ['Water\\n(0,0)', f'{surfactant_a_name} Only\\n(50,0)', f'{surfactant_b_name} Only\\n(0,50)']
+            
+            turbidity_controls = np.array([[
+                control_df[control_df['control_type'] == 'water_blank']['turbidity_600'].iloc[0] if 'water_blank' in control_df['control_type'].values else 0,
+                control_df[control_df['control_type'] == 'surfactant_A_stock']['turbidity_600'].iloc[0] if 'surfactant_A_stock' in control_df['control_type'].values else 0,
+                control_df[control_df['control_type'] == 'surfactant_B_stock']['turbidity_600'].iloc[0] if 'surfactant_B_stock' in control_df['control_type'].values else 0
+            ]])
+            
+            ratio_controls = np.array([[
+                control_df[control_df['control_type'] == 'water_blank']['ratio'].iloc[0] if 'water_blank' in control_df['control_type'].values else 0,
+                control_df[control_df['control_type'] == 'surfactant_A_stock']['ratio'].iloc[0] if 'surfactant_A_stock' in control_df['control_type'].values else 0,
+                control_df[control_df['control_type'] == 'surfactant_B_stock']['ratio'].iloc[0] if 'surfactant_B_stock' in control_df['control_type'].values else 0
+            ]])
+            
+            # Combined plot with controls
+            fig = plt.figure(figsize=(20, 14))
+            gs = fig.add_gridspec(2, 2, height_ratios=[15, 1], hspace=0.15, wspace=0.25)
+            
+            # Main turbidity plot
+            ax1_main = fig.add_subplot(gs[0, 0])
+            sns.heatmap(turbidity_grid, ax=ax1_main, cmap='viridis', annot=True, fmt='.3f',
+                       cbar_kws={'label': 'Turbidity (600 nm)'}, square=True,
+                       xticklabels=[format_conc_label(x) for x in turbidity_grid.columns],
+                       yticklabels=[format_conc_label(y) for y in turbidity_grid.index],
+                       vmin=turbidity_vmin, vmax=turbidity_vmax)
+            ax1_main.set_title(f'Turbidity vs Surfactant Concentrations\\n({surfactant_a_name} vs {surfactant_b_name})', fontsize=16, fontweight='bold')
+            ax1_main.set_xlabel(f'{surfactant_a_name} Concentration (mM)', fontsize=12)
+            ax1_main.set_ylabel(f'{surfactant_b_name} Concentration (mM)', fontsize=12)
+            ax1_main.tick_params(axis='x', rotation=45)
+            
+            # Turbidity controls
+            ax1_ctrl = fig.add_subplot(gs[1, 0])
+            sns.heatmap(turbidity_controls, ax=ax1_ctrl, cmap='viridis', annot=True, fmt='.3f',
+                       cbar=False, xticklabels=control_labels, yticklabels=['Controls'],
+                       vmin=turbidity_vmin, vmax=turbidity_vmax)
+            ax1_ctrl.set_title('Control Samples', fontsize=11)
+            ax1_ctrl.tick_params(axis='x', rotation=0, labelsize=10)
+            
+            # Main ratio plot
+            ax2_main = fig.add_subplot(gs[0, 1])
+            sns.heatmap(ratio_grid, ax=ax2_main, cmap='plasma', annot=True, fmt='.3f',
+                       cbar_kws={'label': 'Fluorescence Ratio (334/373 : 334/384)'}, square=True,
+                       xticklabels=[format_conc_label(x) for x in ratio_grid.columns],
+                       yticklabels=[format_conc_label(y) for y in ratio_grid.index],
+                       vmin=ratio_vmin, vmax=ratio_vmax)
+            ax2_main.set_title(f'Fluorescence Ratio vs Surfactant Concentrations\\n({surfactant_a_name} vs {surfactant_b_name})', fontsize=16, fontweight='bold')
+            ax2_main.set_xlabel(f'{surfactant_a_name} Concentration (mM)', fontsize=12)
+            ax2_main.set_ylabel(f'{surfactant_b_name} Concentration (mM)', fontsize=12)
+            ax2_main.tick_params(axis='x', rotation=45)
+            
+            # Ratio controls
+            ax2_ctrl = fig.add_subplot(gs[1, 1])
+            sns.heatmap(ratio_controls, ax=ax2_ctrl, cmap='plasma', annot=True, fmt='.3f',
+                       cbar=False, xticklabels=control_labels, yticklabels=['Controls'],
+                       vmin=ratio_vmin, vmax=ratio_vmax)
+            ax2_ctrl.set_title('Control Samples', fontsize=11)
+            ax2_ctrl.tick_params(axis='x', rotation=0, labelsize=10)
+            
+            # Save combined plot
+            combined_path = os.path.join(output_dir, 'surfactant_grid_heatmaps_with_controls.png')
+            plt.savefig(combined_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            logger.info(f"    Combined heatmap saved: {os.path.basename(combined_path)}")
+        
+        # Individual plots (always create these)
+        # Turbidity only
+        fig, ax = plt.subplots(figsize=(12, 10))
+        sns.heatmap(turbidity_grid, ax=ax, cmap='viridis', annot=True, fmt='.3f',
+                   cbar_kws={'label': 'Turbidity (600 nm)'}, square=True,
+                   xticklabels=[format_conc_label(x) for x in turbidity_grid.columns],
+                   yticklabels=[format_conc_label(y) for y in turbidity_grid.index])
+        ax.set_title(f'Turbidity vs Surfactant Concentrations ({surfactant_a_name} vs {surfactant_b_name})', fontsize=18, fontweight='bold')
+        ax.set_xlabel(f'{surfactant_a_name} Concentration (mM)', fontsize=14)
+        ax.set_ylabel(f'{surfactant_b_name} Concentration (mM)', fontsize=14)
+        ax.tick_params(axis='x', rotation=45)
+        
+        turb_path = os.path.join(output_dir, 'surfactant_grid_turbidity.png')
+        plt.savefig(turb_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        logger.info(f"    Turbidity heatmap saved: {os.path.basename(turb_path)}")
+        
+        # Ratio only
+        fig, ax = plt.subplots(figsize=(12, 10))
+        sns.heatmap(ratio_grid, ax=ax, cmap='plasma', annot=True, fmt='.3f',
+                   cbar_kws={'label': 'Fluorescence Ratio (334/373 : 334/384)'}, square=True,
+                   xticklabels=[format_conc_label(x) for x in ratio_grid.columns],
+                   yticklabels=[format_conc_label(y) for y in ratio_grid.index])
+        ax.set_title(f'Fluorescence Ratio vs Surfactant Concentrations ({surfactant_a_name} vs {surfactant_b_name})', fontsize=18, fontweight='bold')
+        ax.set_xlabel(f'{surfactant_a_name} Concentration (mM)', fontsize=14)
+        ax.set_ylabel(f'{surfactant_b_name} Concentration (mM)', fontsize=14)
+        ax.tick_params(axis='x', rotation=45)
+        
+        ratio_path = os.path.join(output_dir, 'surfactant_grid_ratio.png')
+        plt.savefig(ratio_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        logger.info(f"    Ratio heatmap saved: {os.path.basename(ratio_path)}")
+        
+        # Summary
+        logger.info(f"    Heatmap generation complete - {len(surf_A_concs)}x{len(surf_B_concs)} grid visualized")
+        
+    except ImportError as e:
+        logger.warning(f"    Missing visualization libraries: {e}")
+        logger.warning("    Install matplotlib and seaborn: pip install matplotlib seaborn")
+    except Exception as e:
+        logger.error(f"    Heatmap generation failed: {e}")
+        raise
 
-def backup_raw_measurement_data(lash_e, measurement_entry, plate_number, wells_measured, experiment_name=None):
+def calculate_adaptive_concentration_bounds(experiment_df, surfactant_a_name, surfactant_b_name, output_dir, logger):
+    """
+    Calculate new minimum concentration bounds using baseline rectangle method.
+    
+    Args:
+        experiment_df: DataFrame with experimental results (surf_A_conc_mm, surf_B_conc_mm, turbidity_600, ratio columns)
+        surfactant_a_name: Name of surfactant A
+        surfactant_b_name: Name of surfactant B  
+        output_dir: Directory to save threshold analysis
+        logger: Logger instance
+        
+    Returns:
+        dict: {surfactant_a_name: min_conc, surfactant_b_name: min_conc}
+    """
+    try:
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        from pathlib import Path
+        
+        logger.info("    Calculating adaptive concentration bounds using baseline rectangle method...")
+        
+        # Step 1: Classify baseline vs non-baseline wells
+        df = experiment_df.copy()
+        
+        # Classification criteria (from baseline_classification.py)
+        turbidity_threshold = 0.15  # Above this = likely interaction
+        ratio_baseline = df['ratio'].median()  # Use median as baseline reference
+        ratio_std = df['ratio'].std()
+        ratio_threshold = 2.0 * ratio_std  # 2 standard deviations from baseline
+        
+        logger.info(f"      Classification thresholds: turbidity > {turbidity_threshold:.3f}, ratio deviation > {ratio_threshold:.3f}")
+        
+        # Classify each well
+        df['is_baseline'] = (
+            (df['turbidity_600'] <= turbidity_threshold) & 
+            (np.abs(df['ratio'] - ratio_baseline) <= ratio_threshold)
+        )
+        
+        baseline_count = df['is_baseline'].sum()
+        non_baseline_count = len(df) - baseline_count
+        logger.info(f"      Classification results: {baseline_count} baseline, {non_baseline_count} non-baseline wells")
+        
+        # Step 2: Find largest baseline rectangle
+        def largest_rectangle_in_histogram(heights):
+            """Find the area of the largest rectangle in a histogram."""
+            stack = []
+            max_area = 0
+            best_rect = (0, 0, 0, 0)  # (area, left, right, height)
+            
+            for i, h in enumerate(heights):
+                while stack and heights[stack[-1]] > h:
+                    height = heights[stack.pop()]
+                    width = i if not stack else i - stack[-1] - 1
+                    area = height * width
+                    if area > max_area:
+                        max_area = area
+                        left = 0 if not stack else stack[-1] + 1
+                        best_rect = (area, left, i - 1, height)
+                stack.append(i)
+            
+            while stack:
+                height = heights[stack.pop()]
+                width = len(heights) if not stack else len(heights) - stack[-1] - 1
+                area = height * width
+                if area > max_area:
+                    max_area = area
+                    left = 0 if not stack else stack[-1] + 1
+                    best_rect = (area, left, len(heights) - 1, height)
+            
+            return best_rect
+        
+        # Get sorted unique concentrations
+        surf_A_concs = sorted(df['surf_A_conc_mm'].unique())
+        surf_B_concs = sorted(df['surf_B_conc_mm'].unique())
+        
+        logger.info(f"      Grid dimensions: {len(surf_A_concs)} x {len(surf_B_concs)}")
+        
+        # Create binary matrix (1 = baseline, 0 = non-baseline)
+        matrix = np.zeros((len(surf_B_concs), len(surf_A_concs)), dtype=int)
+        
+        for i, surf_B_conc in enumerate(surf_B_concs):
+            for j, surf_A_conc in enumerate(surf_A_concs):
+                well = df[
+                    (df['surf_A_conc_mm'] == surf_A_conc) & 
+                    (df['surf_B_conc_mm'] == surf_B_conc)
+                ]
+                if len(well) > 0:
+                    matrix[i, j] = 1 if well.iloc[0]['is_baseline'] else 0
+        
+        # Find largest rectangle using histogram method
+        max_area = 0
+        best_rectangle = None
+        heights = np.zeros(len(surf_A_concs), dtype=int)
+        
+        for row in range(len(surf_B_concs)):
+            # Update heights for this row
+            for col in range(len(surf_A_concs)):
+                if matrix[row, col] == 1:
+                    heights[col] += 1
+                else:
+                    heights[col] = 0
+            
+            # Find largest rectangle in this histogram
+            area, left_col, right_col, height = largest_rectangle_in_histogram(heights)
+            
+            if area > max_area:
+                max_area = area
+                bottom_row = row - height + 1
+                top_row = row
+                best_rectangle = {
+                    'area': area,
+                    'bottom_row': bottom_row,
+                    'top_row': top_row,
+                    'left_col': left_col,
+                    'right_col': right_col,
+                    'surf_A_min': surf_A_concs[left_col],
+                    'surf_A_max': surf_A_concs[right_col],
+                    'surf_B_min': surf_B_concs[bottom_row],
+                    'surf_B_max': surf_B_concs[top_row]
+                }
+        
+        if best_rectangle is None:
+            logger.warning("      No baseline rectangle found - using original bounds")
+            return {
+                'surf_a_min': min(surf_A_concs), 
+                'surf_a_max': max(surf_A_concs),
+                'surf_b_min': min(surf_B_concs),
+                'surf_b_max': max(surf_B_concs)
+            }
+        
+        logger.info(f"      Largest baseline rectangle: {best_rectangle['area']} wells")
+        logger.info(f"      {surfactant_a_name} range: {best_rectangle['surf_A_min']:.6f} - {best_rectangle['surf_A_max']:.6f} mM")
+        logger.info(f"      {surfactant_b_name} range: {best_rectangle['surf_B_min']:.6f} - {best_rectangle['surf_B_max']:.6f} mM")
+        
+        # Step 3: Create and save visualization
+        threshold_dir = Path(output_dir) / "concentration_thresholds"
+        threshold_dir.mkdir(exist_ok=True)
+        
+        # Create classification grid for visualization
+        classification_grid = df.pivot_table(
+            index='surf_B_conc_mm', columns='surf_A_conc_mm', 
+            values='is_baseline', aggfunc='mean'
+        ).reindex(sorted(surf_B_concs, reverse=True))
+        classification_grid = classification_grid.reindex(sorted(surf_A_concs), axis=1)
+        
+        # Invert for display (1=non-baseline=red)
+        classification_display = 1 - classification_grid
+        
+        # Create visualization
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 8))
+        
+        # Plot 1: Classification with baseline rectangle
+        sns.heatmap(classification_display, ax=ax1, cmap='RdBu_r', vmin=0, vmax=1,
+                   annot=True, fmt='.0f', cbar_kws={'label': 'Non-baseline (1) vs Baseline (0)'},
+                   xticklabels=[f'{x:.4f}' if x < 1 else f'{x:.1f}' for x in surf_A_concs],
+                   yticklabels=[f'{y:.4f}' if y < 1 else f'{y:.1f}' for y in sorted(surf_B_concs, reverse=True)])
+        
+        # Draw baseline rectangle
+        left_col = best_rectangle['left_col']
+        right_col = best_rectangle['right_col'] + 1
+        bottom_row_display = len(surf_B_concs) - 1 - best_rectangle['top_row']
+        top_row_display = len(surf_B_concs) - best_rectangle['bottom_row']
+        
+        from matplotlib.patches import Rectangle
+        rect_patch = Rectangle((left_col, bottom_row_display), 
+                              right_col - left_col, 
+                              top_row_display - bottom_row_display,
+                              linewidth=3, edgecolor='green', facecolor='none', 
+                              linestyle='-', label='Largest baseline rectangle')
+        ax1.add_patch(rect_patch)
+        
+        # Draw new threshold lines
+        new_surf_A_min = best_rectangle['surf_A_max']
+        new_surf_B_min = best_rectangle['surf_B_max']
+        
+        try:
+            surf_A_idx = surf_A_concs.index(new_surf_A_min) + 0.5
+            surf_B_idx = sorted(surf_B_concs, reverse=True).index(new_surf_B_min) + 0.5
+        except ValueError:
+            surf_A_idx = min(range(len(surf_A_concs)), key=lambda x: abs(surf_A_concs[x] - new_surf_A_min)) + 0.5
+            surf_B_idx = min(range(len(surf_B_concs)), key=lambda x: abs(sorted(surf_B_concs, reverse=True)[x] - new_surf_B_min)) + 0.5
+        
+        ax1.axvline(x=surf_A_idx, color='red', linewidth=2, linestyle='--', label=f'New {surfactant_a_name} min: {new_surf_A_min:.4f}')
+        ax1.axhline(y=surf_B_idx, color='red', linewidth=2, linestyle='--', label=f'New {surfactant_b_name} min: {new_surf_B_min:.4f}')
+        
+        ax1.set_xlabel(f'{surfactant_a_name} Concentration (mM)')
+        ax1.set_ylabel(f'{surfactant_b_name} Concentration (mM)')
+        ax1.set_title(f'Baseline Classification with Largest Baseline Rectangle\\n(Green box = all baseline, Red lines = new thresholds)', fontweight='bold', fontsize=14)
+        ax1.legend()
+        
+        # Plot 2: Excluded vs Included wells
+        excluded_wells = df[
+            (df['surf_A_conc_mm'] <= new_surf_A_min) & 
+            (df['surf_B_conc_mm'] <= new_surf_B_min)
+        ]
+        
+        included_wells = df[
+            (df['surf_A_conc_mm'] > new_surf_A_min) | 
+            (df['surf_B_conc_mm'] > new_surf_B_min)
+        ]
+        
+        ax2.scatter(excluded_wells['surf_A_conc_mm'], excluded_wells['surf_B_conc_mm'], 
+                   c='lightgray', s=100, alpha=0.7, label=f'Excluded (n={len(excluded_wells)})')
+        
+        included_baseline = included_wells[included_wells['is_baseline'] == True]
+        included_non_baseline = included_wells[included_wells['is_baseline'] == False]
+        
+        ax2.scatter(included_baseline['surf_A_conc_mm'], included_baseline['surf_B_conc_mm'],
+                   c='blue', s=100, alpha=0.7, label=f'Included Baseline (n={len(included_baseline)})')
+        ax2.scatter(included_non_baseline['surf_A_conc_mm'], included_non_baseline['surf_B_conc_mm'],
+                   c='red', s=100, alpha=0.7, label=f'Included Non-baseline (n={len(included_non_baseline)})')
+        
+        ax2.axvline(x=new_surf_A_min, color='green', linewidth=2, linestyle='--')
+        ax2.axhline(y=new_surf_B_min, color='green', linewidth=2, linestyle='--')
+        
+        ax2.set_xlabel(f'{surfactant_a_name} Concentration (mM)')
+        ax2.set_ylabel(f'{surfactant_b_name} Concentration (mM)')
+        ax2.set_title(f'Wells: Excluded vs Included\\n(Baseline Rectangle Strategy)', fontweight='bold', fontsize=14)
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax2.grid(True, alpha=0.3)
+        ax2.legend()
+        
+        plt.tight_layout(pad=2.0)
+        
+        # Save visualization
+        vis_path = threshold_dir / 'adaptive_concentration_bounds.png'
+        plt.savefig(vis_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        logger.info(f"      Threshold visualization saved: {vis_path.name}")
+        
+        # Return new bounds
+        new_bounds = {
+            'surf_a_min': new_surf_A_min,
+            'surf_a_max': max(surf_A_concs),  # Keep original max
+            'surf_b_min': new_surf_B_min,
+            'surf_b_max': max(surf_B_concs)   # Keep original max
+        }
+        
+        logger.info(f"      New concentration bounds: {new_bounds}")
+        return new_bounds
+        
+    except Exception as e:
+        logger.error(f"    Error calculating adaptive bounds: {str(e)}")
+        return {
+            'surf_a_min': 0.001, 
+            'surf_a_max': 1.0,
+            'surf_b_min': 0.001,
+            'surf_b_max': 1.0
+        }  # Fallback bounds
+
+# ================================================================================
+# DATA BACKUP AND RECOVERY FUNCTIONS
+# ================================================================================
     """
     Immediately backup raw measurement data to prevent data loss if processing crashes.
     
@@ -236,15 +691,6 @@ def get_pipette_usage_breakdown(lash_e):
             'total': manual_count
         }
 
-def track_pipette_usage(lash_e, operation_description="pipette operation"):
-    """Increment pipette counter (simulation only) and optionally log the operation."""
-    if hasattr(lash_e, 'simulate') and lash_e.simulate:
-        # Only manually count in simulation mode
-        lash_e.pipette_count += 1
-        if not getattr(lash_e, 'quiet_mode', False):
-            lash_e.logger.info(f"    [Simulated Pipette {lash_e.pipette_count}]: {operation_description}")
-    # In hardware mode, the robot automatically tracks usage in robot_status.yaml
-
 def fill_water_vial(lash_e, vial_name):
     """
     Fill a water vial to maximum capacity (8mL) by moving it to reservoir,
@@ -283,8 +729,8 @@ class SurfactantSubstockTracker:
     def __init__(self):
         self.substocks = {}  # vial_name: {'surfactant_name': str, 'concentration_mm': float, 'volume_ml': float}
         self.next_available_substock = 0
-        self.min_pipette_volume_ul = 10  # Minimum pipetting volume in uL
-        self.max_surfactant_volume_ul = EFFECTIVE_SURFACTANT_VOLUME  # Max volume per surfactant per well
+        self.min_pipette_volume_ul = MIN_WELL_PIPETTE_VOLUME_UL  # Consistent with other functions
+        self.max_surfactant_volume_ul = MAX_SURFACTANT_VOLUME_UL  # Consistent with other functions
     
     def find_best_solution_for_concentration(self, surfactant_name, target_conc_mm):
         """
@@ -347,8 +793,8 @@ class SurfactantSubstockTracker:
         """
         max_volume_ml = self.max_surfactant_volume_ul / 1000
         
-        # Target 15-20 uL volumes for efficient, reusable solutions
-        target_volume_ul = 17.5
+        # Target 25 uL volumes for efficient, reusable solutions (configurable)
+        target_volume_ul = 25  # Increased from 15 to push volumes higher
         # Calculate concentration needed to achieve target final concentration with target volume
         # target_conc_mm = (optimal_conc * target_volume_ul) / 200
         # Therefore: optimal_conc = (target_conc_mm * 200) / target_volume_ul
@@ -365,7 +811,7 @@ class SurfactantSubstockTracker:
         # Use the most restrictive constraint
         final_conc = min(optimal_conc, max_conc_absolute, max_substock_conc)
         
-        # Round to nice numbers
+        # Round to nice numbers - more flexible options
         def round_to_nice_concentration(value):
             if value <= 0:
                 return 0
@@ -373,16 +819,23 @@ class SurfactantSubstockTracker:
             magnitude = 10 ** np.floor(log_val)
             normalized = value / magnitude
             
-            if normalized <= 1.0:
+            # More granular rounding options to fill concentration gaps
+            if normalized <= 1.2:
                 nice_normalized = 1.0
-            elif normalized <= 2.0:
+            elif normalized <= 1.8:
+                nice_normalized = 1.5
+            elif normalized <= 2.5:
                 nice_normalized = 2.0
-            elif normalized <= 3.0:
+            elif normalized <= 3.5:
                 nice_normalized = 3.0
-            elif normalized <= 5.0:
-                nice_normalized = 3.0
-            else:
+            elif normalized <= 4.5:
+                nice_normalized = 4.0
+            elif normalized <= 6.0:
                 nice_normalized = 5.0
+            elif normalized <= 8.0:
+                nice_normalized = 7.0
+            else:
+                nice_normalized = 10.0
                 
             return nice_normalized * magnitude
         
@@ -401,10 +854,69 @@ class SurfactantSubstockTracker:
         self.next_available_substock += 1
         return vial_name
 
+def calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, num_substocks=6, target_volume_ul=25):
+    """
+    Calculate a systematic dilution series with even decreases to cover the concentration range.
+    Can be optimized for target pipetting volumes.
+    """
+    import numpy as np
+    
+    # Get stock concentration
+    stock_conc = SURFACTANT_LIBRARY[surfactant_name]['stock_conc']
+    
+    # Find the range we need to cover
+    min_target = min(target_concentrations_mm)
+    max_target = max(target_concentrations_mm)
+    
+    series_max = stock_conc * 0.10
+   
+    series_min = min_target * 5
+    
+    # Create evenly spaced points on log scale
+    log_points = np.linspace(np.log10(series_max), np.log10(series_min), num_substocks)
+    concentrations = 10 ** log_points
+    
+    # Round each to nice numbers
+    def round_to_nice_concentration(value):
+        if value <= 0:
+            return 0
+        log_val = np.log10(value)
+        magnitude = 10 ** np.floor(log_val)
+        normalized = value / magnitude
+        
+        # More granular rounding options
+        if normalized <= 1.2:
+            nice_normalized = 1.0
+        elif normalized <= 1.8:
+            nice_normalized = 1.5
+        elif normalized <= 2.5:
+            nice_normalized = 2.0
+        elif normalized <= 3.5:
+            nice_normalized = 3.0
+        elif normalized <= 4.5:
+            nice_normalized = 4.0
+        elif normalized <= 6.0:
+            nice_normalized = 5.0
+        elif normalized <= 8.0:
+            nice_normalized = 7.0
+        else:
+            nice_normalized = 10.0
+            
+        return nice_normalized * magnitude
+    
+    # Round and remove duplicates
+    rounded_concentrations = []
+    for conc in concentrations:
+        rounded = round_to_nice_concentration(conc)
+        if rounded not in rounded_concentrations and rounded < stock_conc:
+            rounded_concentrations.append(rounded)
+    
+    return sorted(rounded_concentrations, reverse=True)
+
 def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations_mm):
     """
     Calculate optimal dilution strategy for a surfactant across all target concentrations.
-    Returns plan showing which solutions to create and how to use them.
+    Uses systematic dilution series for better coverage.
     """
     tracker = SurfactantSubstockTracker()
     plan = {'substocks_needed': [], 'concentration_map': {}}
@@ -412,31 +924,34 @@ def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations
     lash_e.logger.info(f"\n=== Analyzing dilution strategy for {surfactant_name} ===")
     lash_e.logger.info(f"Target concentrations: {[f'{c:.2e}' for c in target_concentrations_mm]} mM")
     
+    # Pre-calculate systematic dilution series optimized for 30-40 ╬╝L volumes
+    systematic_series = calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, target_volume_ul=35)
+    lash_e.logger.info(f"Systematic dilution series: {[f'{c:.2g}' for c in systematic_series]} mM")
+    
+    # Add systematic substocks to tracker
+    for conc in systematic_series:
+        vial_name = tracker.add_substock(surfactant_name, conc)
+        plan['substocks_needed'].append({
+            'vial_name': vial_name,
+            'concentration_mm': conc,
+            'needed_for': []  # Will be filled in below
+        })
+    
+    # Now map each target to best available solution
     for target_conc in target_concentrations_mm:
-        # Try to find existing solution
         solution = tracker.find_best_solution_for_concentration(surfactant_name, target_conc)
         
         if solution:
-            # Found existing solution
             plan['concentration_map'][target_conc] = solution
             lash_e.logger.info(f"  {target_conc:.2e} mM: Use {solution['vial_name']} ({solution['volume_needed_ul']:.1f} uL)")
-        else:
-            # Need new substock
-            optimal_conc = tracker.calculate_optimal_substock_concentration(surfactant_name, target_conc)
-            vial_name = tracker.add_substock(surfactant_name, optimal_conc)
             
-            # Now find solution using new substock
-            solution = tracker.find_best_solution_for_concentration(surfactant_name, target_conc)
-            if solution:
-                plan['concentration_map'][target_conc] = solution
-                plan['substocks_needed'].append({
-                    'vial_name': vial_name,
-                    'concentration_mm': optimal_conc,
-                    'needed_for': [target_conc]
-                })
-                print(f"  {target_conc:.2e} mM: CREATE {vial_name} at {optimal_conc:.2e} mM -> use {solution['volume_needed_ul']:.1f} uL")
-            else:
-                print(f"  {target_conc:.2e} mM: *** CANNOT ACHIEVE ***")
+            # Add to needed_for list for the substock
+            for substock in plan['substocks_needed']:
+                if substock['vial_name'] == solution['vial_name']:
+                    substock['needed_for'].append(target_conc)
+                    break
+        else:
+            lash_e.logger.warning(f"  {target_conc:.2e} mM: *** CANNOT ACHIEVE with systematic series ***")
     
     return plan, tracker
 
@@ -612,7 +1127,9 @@ def create_substocks_from_recipes(lash_e, recipes):
             
             # Vortex to mix
             lash_e.nr_robot.vortex_vial(vial_name=vial_name, vortex_time=8, vortex_speed=80)
+            lash_e.nr_robot.return_vial_home(vial_name=vial_name)
             
+
             created_substocks.append({
                 'vial_name': vial_name,
                 'concentration_mm': target_conc,
@@ -645,44 +1162,49 @@ def create_substocks_from_recipes(lash_e, recipes):
 # SECTION 2: CONCENTRATION AND GRID CALCULATION FUNCTIONS
 # ================================================================================
 
-#DESCRIPTION: Calculate adaptive logarithmic concentration grid for surfactant dilution series
-#RATING: 9/10 - Adaptive approach that optimizes concentration range for each surfactant
-def calculate_grid_concentrations(lash_e, surfactant_name=None):
+def calculate_grid_concentrations(lash_e, surfactant_name=None, min_conc=None, max_conc=None, number_concentrations=9):
     """
     Calculate adaptive concentration grid points for surfactants.
-    Each surfactant gets its own optimized range: min_conc to stock_conc/2.
+    Each surfactant gets its own optimized range: min_conc to max_conc.
     
     Args:
         lash_e: Lash_E coordinator for logging
         surfactant_name: Name of surfactant (if None, uses generic range)
+        min_conc: Custom minimum concentration (if None, uses MIN_CONC)
+        max_conc: Custom maximum concentration (if None, calculates from stock)
         
     Returns:
         numpy.array: Concentration values in mM
     """
-    if surfactant_name and surfactant_name in SURFACTANT_LIBRARY:
-        stock_conc = SURFACTANT_LIBRARY[surfactant_name]["stock_conc"]
-        # Maximum concentration is limited by volume allocation in the well
-        # Max achievable: stock_conc * (allocated_volume / total_well_volume)
-        max_conc = stock_conc * (EFFECTIVE_SURFACTANT_VOLUME / WELL_VOLUME_UL)
+    # Use custom min_conc or default
+    effective_min_conc = min_conc if min_conc is not None else MIN_CONC
+    
+    # Calculate max_conc if not provided
+    if max_conc is None:
+        if surfactant_name and surfactant_name in SURFACTANT_LIBRARY:
+            stock_conc = SURFACTANT_LIBRARY[surfactant_name]["stock_conc"]
+            # Maximum concentration is limited by volume allocation in the well
+            # Max achievable: stock_conc * (allocated_volume / total_well_volume)
+            effective_max_conc = stock_conc * (EFFECTIVE_SURFACTANT_VOLUME / WELL_VOLUME_UL)
+        else:
+            # Generic range if no surfactant specified
+            effective_max_conc = 25  # Generic max for calculations
     else:
-        # Generic range if no surfactant specified
-        max_conc = 25  # Generic max for calculations
+        effective_max_conc = max_conc
     
-    # Create logarithmic spacing from MIN_CONC to max_conc
+    # Create logarithmic spacing from effective_min_conc to effective_max_conc
     # np.logspace(start, stop, num) where start and stop are log10 values
-    log_min = np.log10(MIN_CONC)
-    log_max = np.log10(max_conc)
+    log_min = np.log10(effective_min_conc)
+    log_max = np.log10(effective_max_conc)
     
-    concentrations = np.logspace(log_min, log_max, NUMBER_CONCENTRATIONS)
+    concentrations = np.logspace(log_min, log_max, number_concentrations)
     
-    lash_e.logger.info(f"Adaptive grid for {surfactant_name or 'generic'}: {MIN_CONC:.1e} to {max_conc:.1f} mM ({NUMBER_CONCENTRATIONS} steps)")
+    lash_e.logger.info(f"Adaptive grid for {surfactant_name or 'generic'}: {effective_min_conc:.1e} to {effective_max_conc:.1f} mM ({number_concentrations} steps)")
     lash_e.logger.info(f"  Concentrations: {[f'{c:.3e}' for c in concentrations]}")
     
     return concentrations
 
-#DESCRIPTION: Calculate concentration grids for both surfactants with adaptive ranges
-#RATING: 10/10 - Clean interface for dual-surfactant experiments
-def calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name):
+def calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name, number_concentrations=9):
     """
     Calculate optimized concentration grids for both surfactants.
     
@@ -694,8 +1216,8 @@ def calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name
     Returns:
         tuple: (concentrations_a, concentrations_b)
     """
-    concs_a = calculate_grid_concentrations(lash_e, surfactant_a_name)
-    concs_b = calculate_grid_concentrations(lash_e, surfactant_b_name)
+    concs_a = calculate_grid_concentrations(lash_e, surfactant_a_name, number_concentrations=number_concentrations)
+    concs_b = calculate_grid_concentrations(lash_e, surfactant_b_name, number_concentrations=number_concentrations)
     
     lash_e.logger.info(f"\nAdaptive concentration grid summary:")
     lash_e.logger.info(f"  {surfactant_a_name}: {len(concs_a)} concentrations from {concs_a[0]:.3e} to {concs_a[-1]:.3e} mM")
@@ -704,70 +1226,111 @@ def calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name
     
     return concs_a, concs_b
 
-#DESCRIPTION: Load existing substock dilutions from CSV and track what's already prepared
-#RATING: 7/10 - Comprehensive but complex parsing logic, handles edge cases well  
-def load_substock_tracking(logger=None):
-    """Create substock tracking, detecting existing dilutions from CSV file."""
-    tracking = {}
+def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, target_concentrations):
+    """
+    Create a dilution plan using existing stock solutions with proper dilution calculations.
     
-    # Initialize tracking structure
-    for surfactant in SURFACTANT_LIBRARY.keys():
-        tracking[surfactant] = {
-            "stock_available": True,
-            "dilutions_created": set(),  # Set of concentration values that have been created
-            "dilution_recipes": {}  # Dictionary to store full dilution recipe information by concentration
-        }
+    Args:
+        existing_stock_solutions: List of stock solutions from previous stage
+        surfactant_name: Name of surfactant (e.g., 'SDS', 'TTAB') 
+        target_concentrations: List of concentrations needed for this stage
         
-        # Calculate adaptive concentrations for this specific surfactant
-        concentrations = calculate_grid_concentrations(surfactant)
-        
-        # Read CSV file to detect existing dilutions based on volume
-        try:
-            vial_file_path = "status/surfactant_grid_vials_expanded.csv"
-            if os.path.exists(vial_file_path):
-                import pandas as pd
-                df = pd.read_csv(vial_file_path)
-                
-                if logger:
-                    logger.info(f"Checking for existing {surfactant} substocks in CSV...")
-                else:
-                    logger.info(f"Checking for existing {surfactant} substocks in CSV...")
-                
-                for _, row in df.iterrows():
-                    vial_name = row['vial_name']
-                    volume = float(row['vial_volume']) if pd.notna(row['vial_volume']) else 0.0
-                    
-                    # Skip if no volume (empty vial)
-                    if volume <= 0:
-                        continue
-                    
-                    # Parse dilution vials to extract surfactant and concentration
-                    if vial_name.startswith(f"{surfactant}_dilution_"):
-                        try:
-                            # Extract dilution index from vial name
-                            dilution_idx = int(vial_name.split("_")[-1])
-                            
-                            # Map dilution index to concentration using this surfactant's grid
-                            if dilution_idx < len(concentrations):
-                                target_conc = concentrations[dilution_idx]
-                                tracking[surfactant]["dilutions_created"].add(target_conc)
-                                if logger:
-                                    logger.info(f"  Found existing {surfactant} dilution: {vial_name} = {target_conc:.2e} mM ({volume:.1f} mL)")
-                                else:
-                                    logger.info(f"  Found existing {surfactant} dilution: {vial_name} = {target_conc:.2e} mM ({volume:.1f} mL)")
-                        except (ValueError, IndexError):
-                            continue
-        
-        except Exception as e:
-            if logger:
-                logger.warning(f"Could not load existing {surfactant} dilutions from CSV: {e}")
-            else:
-                logger.info(f"Warning: Could not load existing {surfactant} dilutions from CSV: {e}")
+    Returns:
+        plan: Dictionary with concentration_map and substocks_needed (like calculate_smart_dilution_plan output)
+    """
+    # Filter existing stocks for this surfactant and sort by concentration (highest first)
+    surfactant_stocks = [stock for stock in existing_stock_solutions 
+                        if stock['surfactant'] == surfactant_name]
     
-    return tracking
+    # Add the stock solution itself (always available)
+    stock_vial_name = f"{surfactant_name}_stock"
+    
+    print(f"DEBUG: Looking for surfactant: {surfactant_name}")
+    print(f"DEBUG: SURFACTANT_LIBRARY keys: {list(SURFACTANT_LIBRARY.keys())}")
+    
+    surfactant_info = SURFACTANT_LIBRARY[surfactant_name]
+    print(f"DEBUG: Surfactant info: {surfactant_info}")
+    
+    # Look for stock concentration in the surfactant info
+    if isinstance(surfactant_info, dict) and 'stock_conc' in surfactant_info:
+        stock_conc = surfactant_info['stock_conc']
+    elif isinstance(surfactant_info, (int, float)):
+        stock_conc = surfactant_info  # Direct concentration value
+    else:
+        # Default fallback - assume 50 mM for common surfactants
+        stock_conc = 50.0
+        print(f"DEBUG: Using default stock concentration 50 mM for {surfactant_name}")
+    
+    surfactant_stocks.append({
+        'vial_name': stock_vial_name,
+        'target_concentration_mm': stock_conc,
+        'surfactant': surfactant_name
+    })
+    print(f"DEBUG: Added stock solution {stock_vial_name} = {stock_conc} mM")
 
-# Continue with all the other functions from the original file...
-# Let me add the key functions that need to be updated for the adaptive approach
+    
+    # Sort by concentration (highest first)
+    surfactant_stocks.sort(key=lambda x: x['target_concentration_mm'], reverse=True)
+    
+    print(f"DEBUG: Available stocks for {surfactant_name}:")
+    for stock in surfactant_stocks:
+        print(f"  {stock['vial_name']}: {stock['target_concentration_mm']} mM")
+    
+    # Create concentration map: {target_conc: {vial_name, concentration_mm, volume_needed_ul}}
+    concentration_map = {}
+    substocks_needed = []
+    
+    for target_conc in target_concentrations:
+        # Find best solution based on pipettable volumes (like the smart dilution planner)
+        min_pipette_volume_ul = MIN_WELL_PIPETTE_VOLUME_UL  # Consistent across all functions
+        max_surfactant_volume_ul = MAX_SURFACTANT_VOLUME_UL  # Consistent across all functions
+        
+        options = []
+        
+        # Evaluate all available stocks for pipettability
+        for stock in surfactant_stocks:
+            source_conc = stock['target_concentration_mm']
+            if source_conc > target_conc:  # Can only dilute down
+                # Calculate volume needed: C1*V1 = C2*V2, so V1 = (C2*V2)/C1
+                volume_needed_ul = (target_conc * WELL_VOLUME_UL) / source_conc
+                
+                # Check if volume is pipettable
+                if (volume_needed_ul >= min_pipette_volume_ul and 
+                    volume_needed_ul <= max_surfactant_volume_ul):
+                    options.append({
+                        'stock': stock,
+                        'volume_needed_ul': volume_needed_ul,
+                        'concentration_mm': source_conc
+                    })
+        
+        if options:
+            # Choose the option with the most concentrated stock that's still pipettable
+            # This minimizes volume needed (like the smart planner)
+            best_option = max(options, key=lambda x: x['concentration_mm'])
+            
+            concentration_map[target_conc] = {
+                'vial_name': best_option['stock']['vial_name'],
+                'concentration_mm': best_option['concentration_mm'], 
+                'volume_needed_ul': best_option['volume_needed_ul']
+            }
+            
+            # Add to substocks_needed (for compatibility)
+            if not any(s['vial_name'] == best_option['stock']['vial_name'] for s in substocks_needed):
+                substocks_needed.append({
+                    'vial_name': best_option['stock']['vial_name'],
+                    'concentration_mm': best_option['concentration_mm'],
+                    'needed_for': [target_conc]
+                })
+                
+            print(f"DEBUG: {target_conc:.3e} mM -> {best_option['stock']['vial_name']} ({best_option['volume_needed_ul']:.1f} uL)")
+        else:
+            # No pipettable solution found
+            raise ValueError(f"No pipettable stock solution found for {target_conc:.3e} mM {surfactant_name} (volumes would be too small or too large)")
+    
+    return {
+        'concentration_map': concentration_map,
+        'substocks_needed': substocks_needed
+    }
 
 def get_achievable_concentrations(surfactant_name, target_concentrations):
     """
@@ -860,13 +1423,13 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
     
     return controls
     
-def measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data):
+def measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data, batch_recipes=None):
     """Measure turbidity for a batch of wells and save data."""
     from datetime import datetime
     import os
     
     lash_e.logger.info(f"  Measuring turbidity for wells {wells_in_batch[0]}-{wells_in_batch[-1]} (with buffer present)")
-    turbidity_data = measure_turbidity(lash_e, wells_in_batch)
+    turbidity_data = measure_turbidity(lash_e, wells_in_batch, batch_recipes)
     
     # Save raw turbidity data to CSV immediately (skip in simulation)
     turbidity_filename = None
@@ -893,15 +1456,15 @@ def measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data):
     }
     wellplate_data['measurements'].append(turbidity_entry)
     
-    return turbidity_entry
+    return turbidity_entry, turbidity_data
 
-def measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data):
+def measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data, batch_recipes=None):
     """Measure fluorescence for a batch of wells and save data."""
     from datetime import datetime
     import os
     
     lash_e.logger.info(f"  Measuring fluorescence for wells {wells_in_batch[0]}-{wells_in_batch[-1]}")
-    fluorescence_data = measure_fluorescence(lash_e, wells_in_batch)
+    fluorescence_data = measure_fluorescence(lash_e, wells_in_batch, batch_recipes)
     
     # Save raw fluorescence data to CSV immediately (skip in simulation)
     fluorescence_filename = None
@@ -928,7 +1491,7 @@ def measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data):
     }
     wellplate_data['measurements'].append(fluorescence_entry)
     
-    return fluorescence_entry
+    return fluorescence_entry, fluorescence_data
 
 def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, volume_column):
     """
@@ -946,11 +1509,25 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     # Get component name for logging
     component_name = volume_column.replace('_volume_ul', '').replace('_', ' ').title()
     
-    # Filter to wells that need this component
-    wells_needing_component = batch_df[batch_df[volume_column] > 0].copy()
+    # Filter to wells that need this specific component/substock
+    if volume_column == 'surf_A_volume_ul':
+        # For surfactant A, also check that this is the correct substock
+        wells_needing_component = batch_df[
+            (batch_df[volume_column] > 0) & 
+            (batch_df['substock_A_name'] == vial_name)
+        ].copy()
+    elif volume_column == 'surf_B_volume_ul':
+        # For surfactant B, also check that this is the correct substock  
+        wells_needing_component = batch_df[
+            (batch_df[volume_column] > 0) & 
+            (batch_df['substock_B_name'] == vial_name)
+        ].copy()
+    else:
+        # For other components (water, buffer), use original logic
+        wells_needing_component = batch_df[batch_df[volume_column] > 0].copy()
     
     if len(wells_needing_component) == 0:
-        logger.info(f"  {component_name}: No wells need this component")
+        logger.info(f"  {component_name}: No wells need this component from {vial_name}")
         return
     
     logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells")
@@ -976,7 +1553,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
 def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, vial_type):
     """
     Cute little method to sort surfactant vials by concentration and move to safe positions.
-    Prevents contamination by going dilute → concentrated.
+    Prevents contamination by going concentrated ΓåÆ dilute, starting at clamp.
     
     Args:
         lash_e: Robot coordinator
@@ -985,13 +1562,13 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
         vial_type: 'A' or 'B' for logging and column selection
         
     Returns:
-        list: Vial names sorted by concentration (dilute first)
+        list: Vial names sorted by concentration (concentrated first)
     """
     if len(vial_names) == 0:
         return []
         
     logger = lash_e.logger
-    safe_positions = [36, 43, 44, 45, 46, 47, 'clamp']  # Safe spots in order
+    safe_positions = ['clamp', 47, 46, 45, 44, 43, 36]  # Safe spots in order: clamp -> rack positions
     
     # Get concentration for each vial from the DataFrame
     vial_concentrations = []
@@ -1017,11 +1594,11 @@ def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, via
             except:
                 vial_concentrations.append((vial_name, float('inf')))
     
-    # Sort by concentration (dilute first)
-    vial_concentrations.sort(key=lambda x: x[1])
+    # Sort by concentration (concentrated first)
+    vial_concentrations.sort(key=lambda x: x[1], reverse=True)
     sorted_vials = [vial for vial, conc in vial_concentrations]
     
-    logger.info(f"  Positioning surfactant {vial_type} vials by concentration (dilute -> concentrated):")
+    logger.info(f"  Positioning surfactant {vial_type} vials by concentration (concentrated -> dilute):")
     
     # Move vials to safe positions in concentration order
     for i, vial_name in enumerate(sorted_vials):
@@ -1051,35 +1628,13 @@ def return_surfactant_vials_home(lash_e, vial_names, vial_type):
         logger.info(f"    {vial_name} -> home")
         lash_e.nr_robot.return_vial_home(vial_name)
 
-def position_water_vial_safely(lash_e, vial_name):
-    """Position water vial at safe location for dispensing."""
-    logger = lash_e.logger
-    safe_position = 36  # Use first safe position for water
-    
-    logger.info(f"  Positioning {vial_name} at main_8mL_rack[{safe_position}] (safe position)")
-    lash_e.nr_robot.move_vial_to_location(vial_name, 'main_8mL_rack', safe_position)
-
 def return_water_vial_home(lash_e, vial_name):
     """Return water vial to home position after dispensing."""
     logger = lash_e.logger
     logger.info(f"  Returning {vial_name} -> home")
     lash_e.nr_robot.return_vial_home(vial_name)
 
-
-# Add stubs for the required measurement and helper functions
-def manage_wellplate_switching(lash_e, current_well, wellplate_data):
-    """Handle wellplate switching when MAX_WELLS is reached."""
-    if current_well >= MAX_WELLS:
-        # Switch to new plate logic would go here
-        wellplate_data['current_plate'] += 1
-        wellplate_data['wells_used'] = 0
-        wellplate_data['last_measured_well'] = -1
-        return 0, wellplate_data
-    else:
-        wellplate_data['wells_used'] = max(wellplate_data['wells_used'], current_well + 1)
-        return current_well, wellplate_data
-
-def measure_turbidity(lash_e, well_indices):
+def measure_turbidity(lash_e, well_indices, batch_recipes=None):
     """Measure turbidity using Cytation plate reader with predefined protocol."""
     lash_e.logger.info(f"Measuring turbidity in wells {well_indices} using protocol {TURBIDITY_PROTOCOL_FILE}...")
     
@@ -1091,22 +1646,60 @@ def measure_turbidity(lash_e, well_indices):
             plate_type="96 WELL PLATE"
         )
         
-        # Fix CSV format: skip first row so second row becomes headers
-        if hasattr(turbidity_data, 'iloc') and len(turbidity_data) > 1:
-            # Drop the first row and reset headers
-            turbidity_data = turbidity_data.iloc[1:].copy()
-            turbidity_data.columns = turbidity_data.iloc[0]  # Use first row as column names
-            turbidity_data = turbidity_data.iloc[1:].copy()   # Drop the header row from data
-            turbidity_data.index.name = None  # Clean up index name
-            
+        # DEBUG: Show raw data structure
+        lash_e.logger.info(f"TURBIDITY RAW DEBUG: type = {type(turbidity_data)}")
+        if hasattr(turbidity_data, 'shape'):
+            lash_e.logger.info(f"TURBIDITY RAW DEBUG: shape = {turbidity_data.shape}")
+            lash_e.logger.info(f"TURBIDITY RAW DEBUG: columns = {list(turbidity_data.columns)}")
+            lash_e.logger.info(f"TURBIDITY RAW DEBUG: first 3 rows:\n{turbidity_data.head(3)}")
+        
+        # Process Cytation format using utility function
+        turbidity_data = flatten_cytation_data(turbidity_data, 'turbidity')
+        if turbidity_data is not None:
+            lash_e.logger.info(f"TURBIDITY PROCESSING: Final columns = {list(turbidity_data.columns)}")
+            lash_e.logger.info(f"TURBIDITY PROCESSING: Final shape = {turbidity_data.shape}")
+            lash_e.logger.info(f"TURBIDITY PROCESSING: First few processed rows:\n{turbidity_data.head(3)}")
+        
         lash_e.logger.info(f"Successfully measured turbidity for {len(well_indices)} wells")
         return turbidity_data
 
     else:
-        lash_e.logger.info("Simulation mode - returning mock turbidity data")
-        return {'turbidity': [0.5] * len(well_indices)}
+        lash_e.logger.info("Simulation mode - generating realistic turbidity data")
+        
+        # Use passed batch recipe data for simulation
+        simulated_data = []
+        
+        for well_idx in well_indices:
+            # Try to find recipe for this well
+            if batch_recipes is not None:
+                well_recipe = batch_recipes[batch_recipes['wellplate_index'] == well_idx]
+                if len(well_recipe) > 0:
+                    row = well_recipe.iloc[0]
+                    
+                    # Experiment wells: use sophisticated simulation
+                    if (row['well_type'] == 'experiment' and 
+                        pd.notna(row['surf_A_conc_mm']) and pd.notna(row['surf_B_conc_mm'])):
+                        surf_a_conc = row['surf_A_conc_mm']
+                        surf_b_conc = row['surf_B_conc_mm']
+                        sim_result = simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True)
+                        simulated_data.append(sim_result['turbidity_600'])
+                        
+                    # Control wells: simple baseline values
+                    elif 'water' in str(row['control_type']).lower():
+                        simulated_data.append(0.02)  # Water blank
+                    else:
+                        simulated_data.append(0.35)  # Other controls
+                else:
+                    # Well not found in recipe - use simple pattern
+                    simulated_data.append(0.25 + 0.1 * (well_idx % 5) / 5.0)
+            else:
+                # No recipe available - use simple pattern
+                simulated_data.append(0.25 + 0.1 * (well_idx % 5) / 5.0)
+        
+        lash_e.logger.info(f"Generated realistic turbidity data for {len(well_indices)} wells (range: {min(simulated_data):.3f}-{max(simulated_data):.3f})")
+        return {'turbidity': simulated_data}
 
-def measure_fluorescence(lash_e, well_indices):
+def measure_fluorescence(lash_e, well_indices, batch_recipes=None):
     """Measure fluorescence using Cytation plate reader with predefined protocol."""
     lash_e.logger.info(f"Measuring fluorescence in wells {well_indices} using protocol {FLUORESCENCE_PROTOCOL_FILE}...")
     
@@ -1118,40 +1711,76 @@ def measure_fluorescence(lash_e, well_indices):
             plate_type="96 WELL PLATE"
         )
         
-        # Fix CSV format: skip first row so second row becomes headers
-        if hasattr(fluorescence_data, 'iloc') and len(fluorescence_data) > 1:
-            # Drop the first row and reset headers
-            fluorescence_data = fluorescence_data.iloc[1:].copy()
-            fluorescence_data.columns = fluorescence_data.iloc[0]  # Use first row as column names  
-            fluorescence_data = fluorescence_data.iloc[1:].copy()   # Drop the header row from data
-            fluorescence_data.index.name = None  # Clean up index name
-            
+        # DEBUG: Show raw data structure
+        lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: type = {type(fluorescence_data)}")
+        if hasattr(fluorescence_data, 'shape'):
+            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: shape = {fluorescence_data.shape}")
+            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: columns = {list(fluorescence_data.columns)}")
+            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: first 3 rows:\n{fluorescence_data.head(3)}")
+        
+        # Process Cytation format using utility function
+        fluorescence_data = flatten_cytation_data(fluorescence_data, 'fluorescence')
+        if fluorescence_data is not None:
+            lash_e.logger.info(f"FLUORESCENCE PROCESSING: Final columns = {list(fluorescence_data.columns)}")
+            lash_e.logger.info(f"FLUORESCENCE PROCESSING: Final shape = {fluorescence_data.shape}")
+            lash_e.logger.info(f"FLUORESCENCE PROCESSING: First few processed rows:\n{fluorescence_data.head(3)}")
+        
         lash_e.logger.info(f"Successfully measured fluorescence for {len(well_indices)} wells")
         return fluorescence_data
 
     else:
-        lash_e.logger.info("Simulation mode - returning mock fluorescence data")
+        lash_e.logger.info("Simulation mode - generating realistic fluorescence data")
+        
+        # Use passed batch recipe data for simulation
+        f373_data = []
+        f384_data = []
+        
+        for well_idx in well_indices:
+            # Try to find recipe for this well
+            if batch_recipes is not None:
+                well_recipe = batch_recipes[batch_recipes['wellplate_index'] == well_idx]
+                if len(well_recipe) > 0:
+                    row = well_recipe.iloc[0]
+                    
+                    # Experiment wells: use sophisticated simulation
+                    if (row['well_type'] == 'experiment' and 
+                        pd.notna(row['surf_A_conc_mm']) and pd.notna(row['surf_B_conc_mm'])):
+                        surf_a_conc = row['surf_A_conc_mm']
+                        surf_b_conc = row['surf_B_conc_mm']
+                        sim_result = simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True)
+                        f373_data.append(sim_result['fluorescence_334_373'])
+                        f384_data.append(sim_result['fluorescence_334_384'])
+                        
+                    # Control wells: simple baseline values
+                    elif 'water' in str(row['control_type']).lower():
+                        f373_data.append(5.0)   # Water blank
+                        f384_data.append(8.0)
+                    else:
+                        f373_data.append(70.0)  # Other controls
+                        f384_data.append(90.0)
+                else:
+                    # Well not found in recipe - use simple pattern
+                    f373_data.append(70.0 + 20.0 * (well_idx % 7) / 7.0)
+                    f384_data.append(90.0 + 15.0 * (well_idx % 7) / 7.0)
+            else:
+                # No recipe available - use simple pattern
+                f373_data.append(70.0 + 20.0 * (well_idx % 7) / 7.0)
+                f384_data.append(90.0 + 15.0 * (well_idx % 7) / 7.0)
+        
+        lash_e.logger.info(f"Generated realistic fluorescence data for {len(well_indices)} wells")
+        lash_e.logger.info(f"  F373 range: {min(f373_data):.1f}-{max(f373_data):.1f}")
+        lash_e.logger.info(f"  F384 range: {min(f384_data):.1f}-{max(f384_data):.1f}")
+        
         return {
-            '334_373': [80.0] * len(well_indices),
-            '334_384': [100.0] * len(well_indices)
+            '334_373': f373_data,
+            '334_384': f384_data
         }
 
 # ================================================================================
 # SECTION 6: FULL WORKFLOW EXECUTION WITH LASH_E INTEGRATION
 # ================================================================================
 
-def create_output_folder(simulate=True, experiment_name=None):
-    """Create experiment-specific output folder."""
-    if experiment_name:
-        output_folder = os.path.join("output", experiment_name)
-    else:
-        # Fallback to old naming scheme
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        mode = "simulated" if simulate else "hardware"
-        folder_name = f"adaptive_surfactant_screening_{mode}_{timestamp}"
-        output_folder = os.path.join("output", folder_name)
-    os.makedirs(output_folder, exist_ok=True)
-    return output_folder
+
 
 def create_experiment_folder_structure(experiment_name):
     """
@@ -1159,11 +1788,11 @@ def create_experiment_folder_structure(experiment_name):
     
     Folder organization:
     output/{experiment_name}/
-    ├── calibration_validation/     # Pipetting validation results
-    ├── measurement_backups/        # Raw measurement data backups  
-    ├── substocks/                  # Substock preparation logs
-    ├── analysis/                   # Data analysis outputs
-    └── logs/                       # Workflow execution logs
+    Γö£ΓöÇΓöÇ calibration_validation/     # Pipetting validation results
+    Γö£ΓöÇΓöÇ measurement_backups/        # Raw measurement data backups  
+    Γö£ΓöÇΓöÇ substocks/                  # Substock preparation logs
+    Γö£ΓöÇΓöÇ analysis/                   # Data analysis outputs
+    ΓööΓöÇΓöÇ logs/                       # Workflow execution logs
     
     Args:
         experiment_name: Name of the experiment (e.g., surfactant_grid_SDS_DTAB_20240203_143022)
@@ -1187,7 +1816,6 @@ def create_experiment_folder_structure(experiment_name):
         os.makedirs(folder_path, exist_ok=True)
     
     return subfolders
-
 
 def create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name):
     """Convert control well specification to well recipe DataFrame row."""
@@ -1215,18 +1843,18 @@ def create_well_recipe_from_control(control, well_index, surfactant_a_name, surf
     
     # Handle different control types
     if control.get('water_only', False):
-        # Water-only control: 200 µL water
+        # Water-only control: 200 ┬╡L water
         recipe['water_volume_ul'] = 200.0
         recipe['control_type'] = 'water_blank'
         
     elif control.get('buffer_only', False):
-        # Buffer-only control: 200 µL buffer  
+        # Buffer-only control: 200 ┬╡L buffer  
         recipe['buffer_volume_ul'] = 200.0
         recipe['water_volume_ul'] = 0.0
         recipe['control_type'] = 'buffer_blank'
         
     elif control['volume_a_ul'] > 0:
-        # Surfactant A control: 200 µL surfactant A stock
+        # Surfactant A control: 200 ┬╡L surfactant A stock
         recipe['surf_A_conc_mm'] = SURFACTANT_LIBRARY[surfactant_a_name]['stock_conc']
         recipe['substock_A_name'] = control['dilution_a_vial']
         recipe['substock_A_conc_mm'] = SURFACTANT_LIBRARY[surfactant_a_name]['stock_conc'] 
@@ -1236,7 +1864,7 @@ def create_well_recipe_from_control(control, well_index, surfactant_a_name, surf
         # surf_B stays None (not applicable)
         
     elif control['volume_b_ul'] > 0:
-        # Surfactant B control: 200 µL surfactant B stock
+        # Surfactant B control: 200 ┬╡L surfactant B stock
         recipe['surf_B_conc_mm'] = SURFACTANT_LIBRARY[surfactant_b_name]['stock_conc']
         recipe['substock_B_name'] = control['dilution_b_vial']
         recipe['substock_B_conc_mm'] = SURFACTANT_LIBRARY[surfactant_b_name]['stock_conc']
@@ -1285,16 +1913,31 @@ def create_well_recipe_from_concentrations(conc_a, conc_b, plan_a, plan_b, well_
     
     return recipe
 
-def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name):
+def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name,
+                                  surf_a_min=None, surf_a_max=None, surf_b_min=None, surf_b_max=None, 
+                                  existing_stock_solutions=None, number_concentrations=9):
     """
     Create complete experiment plan with simplified, clear data structure.
     Returns: experiment_plan dict with surfactants, stock_solutions_needed, and well_recipes_df
     """
     lash_e.logger.info("Step 2: Creating complete experiment plan...")
     
-    # Step 1: Calculate concentration grids (keep existing working logic)
+    # Step 1: Calculate concentration grids (with optional custom bounds)
     lash_e.logger.info("  Calculating adaptive concentration grids...")
-    concs_a, concs_b = calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name)
+    
+    if any([surf_a_min, surf_a_max, surf_b_min, surf_b_max]):
+        # Custom bounds provided - use them
+        lash_e.logger.info("  Using custom concentration bounds...")
+        concs_a = calculate_grid_concentrations(lash_e, surfactant_a_name, 
+                                              min_conc=surf_a_min, max_conc=surf_a_max, 
+                                              number_concentrations=number_concentrations)
+        concs_b = calculate_grid_concentrations(lash_e, surfactant_b_name, 
+                                              min_conc=surf_b_min, max_conc=surf_b_max, 
+                                              number_concentrations=number_concentrations)
+    else:
+        # Use default bounds
+        concs_a, concs_b = calculate_dual_surfactant_grids(lash_e, surfactant_a_name, surfactant_b_name, 
+                                                          number_concentrations=number_concentrations)
     
     # Step 2: Check achievability and create smart dilution plans (keep existing working logic)
     achievable_a = get_achievable_concentrations(surfactant_a_name, concs_a)
@@ -1305,10 +1948,18 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     lash_e.logger.info(f"  {surfactant_a_name}: {len(achievable_concs_a)}/{len(concs_a)} concentrations achievable")
     lash_e.logger.info(f"  {surfactant_b_name}: {len(achievable_concs_b)}/{len(concs_b)} concentrations achievable")
     
-    # Step 3: Calculate smart dilution plans (keep existing working logic)
-    lash_e.logger.info("  Calculating optimal dilution strategies...")
-    plan_a, tracker_a = calculate_smart_dilution_plan(lash_e, surfactant_a_name, achievable_concs_a)
-    plan_b, tracker_b = calculate_smart_dilution_plan(lash_e, surfactant_b_name, achievable_concs_b)
+    # Step 3: Calculate smart dilution plans or use existing stock solutions
+    if existing_stock_solutions:
+        lash_e.logger.info("  Using existing stock solutions from previous stage...")
+        # Convert existing stock solutions to plan format
+        plan_a = create_plan_from_existing_stocks(existing_stock_solutions, surfactant_a_name, achievable_concs_a)
+        plan_b = create_plan_from_existing_stocks(existing_stock_solutions, surfactant_b_name, achievable_concs_b)
+        tracker_a = None
+        tracker_b = None
+    else:
+        lash_e.logger.info("  Calculating optimal dilution strategies...")
+        plan_a, tracker_a = calculate_smart_dilution_plan(lash_e, surfactant_a_name, achievable_concs_a)
+        plan_b, tracker_b = calculate_smart_dilution_plan(lash_e, surfactant_b_name, achievable_concs_b)
     
     # Step 4: Create stock solutions list with dilution recipes
     stock_solutions_needed = []
@@ -1414,7 +2065,6 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     
     return experiment_plan
 
-
 def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, simulate):
     """Initialize experiment environment: create folders, set name, log header."""
     # Create experiment name with timestamp
@@ -1440,6 +2090,326 @@ def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, s
     lash_e.logger.info("")
     
     return experiment_output_folder, experiment_name
+
+def execute_dispensing_and_measurements(lash_e, well_recipes_df):
+    """
+    Execute dispensing and measurement phases for arbitrary well recipe data.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        well_recipes_df: DataFrame with well recipes containing volume columns
+        
+    Returns:
+        DataFrame: Updated well_recipes_df with measurement data added
+    """
+    lash_e.logger.info("Executing dispensing and measurements...")
+    
+    # Initialize wellplate tracking for measurements
+    wellplate_data = {
+        'current_plate': 1,
+        'wells_used': 0,
+        'last_measured_well': -1,
+        'measurements': []
+    }
+    
+    # Initialize measurement columns in the DataFrame
+    well_recipes_df['turbidity_600'] = None
+    well_recipes_df['fluorescence_334_373'] = None 
+    well_recipes_df['fluorescence_334_384'] = None
+    well_recipes_df['ratio'] = None
+    
+    # Process in batches to match measurement intervals
+    total_wells = len(well_recipes_df)
+    lash_e.logger.info(f"Total wells to process: {total_wells}")
+    
+    for batch_start in range(0, total_wells, MEASUREMENT_INTERVAL):
+        batch_end = min(batch_start + MEASUREMENT_INTERVAL, total_wells)
+        batch_df = well_recipes_df.iloc[batch_start:batch_end]
+        
+        lash_e.logger.info(f"\nProcessing batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {batch_start}-{batch_end-1}")
+        
+        # DISPENSING PHASE: Use unified dispensing for each component with proper vial positioning
+        # Get unique vial names needed for this batch
+        surf_a_vials = batch_df[batch_df['surf_A_volume_ul'] > 0]['substock_A_name'].dropna().unique()
+        surf_b_vials = batch_df[batch_df['surf_B_volume_ul'] > 0]['substock_B_name'].dropna().unique()
+        
+        if CREATE_WELLPLATE:
+            # Position surfactant A vials by concentration (concentrated ΓåÆ dilute)
+            if len(surf_a_vials) > 0:
+                sorted_surf_a_vials = position_surfactant_vials_by_concentration(lash_e, surf_a_vials, batch_df, 'A')
+                
+                # Dispense surfactant A substocks in concentration order
+                for surf_a_vial in sorted_surf_a_vials:
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'water', 'surf_A_volume_ul')
+                
+                # Return surfactant A vials to home
+                lash_e.nr_robot.remove_pipet()
+                return_surfactant_vials_home(lash_e, sorted_surf_a_vials, 'A')
+            
+            # Dispense water - split between two water vials to prevent running out
+            water_wells = batch_df[batch_df['water_volume_ul'] > 0]
+            if len(water_wells) > 0:
+                # Split water dispensing in half
+                mid_point = len(water_wells) // 2
+                water_batch_1 = water_wells.iloc[:mid_point]
+                water_batch_2 = water_wells.iloc[mid_point:]
+
+                lash_e.nr_robot.move_vial_to_location('water', 'main_8mL_rack', 44)
+                lash_e.nr_robot.move_vial_to_location('water_2', 'main_8mL_rack', 45)
+
+                # Dispense first half with water vial
+                if len(water_batch_1) > 0:
+                    dispense_component_to_wellplate(lash_e, water_batch_1, 'water', 'water', 'water_volume_ul')
+                    
+                # Dispense second half with water_2 vial
+                if len(water_batch_2) > 0:
+                    dispense_component_to_wellplate(lash_e, water_batch_2, 'water_2', 'water', 'water_volume_ul')
+
+                lash_e.logger.info("    Water dispensing complete")
+
+                lash_e.nr_robot.remove_pipet()
+                return_water_vial_home(lash_e, 'water')
+                return_water_vial_home(lash_e, 'water_2')
+            
+            # Dispense buffer with safe positioning
+            if ADD_BUFFER:
+                lash_e.logger.info(f"  Positioning {SELECTED_BUFFER} buffer at clamp (safe position)")
+                lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, 'clamp', 0)
+                dispense_component_to_wellplate(lash_e, batch_df, SELECTED_BUFFER, 'water', 'buffer_volume_ul')
+                lash_e.nr_robot.remove_pipet()
+                lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
+            
+            # Position surfactant B vials by concentration (concentrated ΓåÆ dilute)
+            if len(surf_b_vials) > 0:
+                sorted_surf_b_vials = position_surfactant_vials_by_concentration(lash_e, surf_b_vials, batch_df, 'B')
+                
+                # Dispense surfactant B substocks in concentration order
+                for surf_b_vial in sorted_surf_b_vials:
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'water', 'surf_B_volume_ul')
+                
+                # Return surfactant B vials to home
+                lash_e.nr_robot.remove_pipet()
+                return_surfactant_vials_home(lash_e, sorted_surf_b_vials, 'B')
+        
+        # MEASUREMENT PHASE: Turbidity first
+        wells_in_batch = batch_df['wellplate_index'].tolist()
+        
+        lash_e.logger.info("  Measuring turbidity...")
+        turbidity_entry, turbidity_data = measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data, batch_df)
+        
+        # DEBUG: Show what turbidity data we got
+        lash_e.logger.info(f"  TURBIDITY DEBUG: wells measured = {wells_in_batch}")
+        lash_e.logger.info(f"  TURBIDITY DEBUG: backup entry = {turbidity_entry}")
+        lash_e.logger.info(f"  TURBIDITY DEBUG: data type = {type(turbidity_data)}")
+        if hasattr(turbidity_data, 'columns'):
+            lash_e.logger.info(f"  TURBIDITY DEBUG: columns = {list(turbidity_data.columns)}")
+            lash_e.logger.info(f"  TURBIDITY DEBUG: shape = {turbidity_data.shape}")
+            lash_e.logger.info(f"  TURBIDITY DEBUG: first few rows:\n{turbidity_data.head()}")
+        else:
+            lash_e.logger.info(f"  TURBIDITY DEBUG: raw data = {turbidity_data}")
+        
+        # Add turbidity data to DataFrame by well position mapping
+        if turbidity_data is not None:
+            if not lash_e.simulate:
+                # Hardware mode - turbidity_data is a DataFrame with well_position column
+                if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0 and 'well_position' in turbidity_data.columns:
+                    # Convert well indices to well positions for lookup
+                    def well_index_to_position(well_idx):
+                        """Convert well index (0-95) to well position (A1-H12)"""
+                        row = well_idx // 12  # 12 columns per row
+                        col = well_idx % 12
+                        return f"{chr(65 + row)}{col + 1}"
+                    
+                    # Get turbidity column (should be 'turbidity_600' after renaming)
+                    turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
+                    lash_e.logger.info(f"  Using turbidity column: {turbidity_col}")
+                    
+                    # Map each well by position
+                    for well_idx in wells_in_batch:
+                        well_position = well_index_to_position(well_idx)
+                        matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
+                        
+                        if len(matching_rows) > 0:
+                            turbidity_value = matching_rows.iloc[0][turbidity_col]
+                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
+                            lash_e.logger.info(f"  Mapped {well_position} (idx {well_idx}) -> turbidity {turbidity_value}")
+                        else:
+                            lash_e.logger.warning(f"  No turbidity data found for well {well_position} (idx {well_idx})")
+                else:
+                    lash_e.logger.warning("  Turbidity data missing or has unexpected format")
+            else:
+                # Simulation mode - realistic concentration-based values
+                for i, well_idx in enumerate(wells_in_batch):
+                    # Get concentrations for this well
+                    well_row = well_recipes_df[well_recipes_df['wellplate_index'] == well_idx]
+                    if len(well_row) > 0 and well_row.iloc[0]['well_type'] == 'experiment':
+                        surf_a_conc = well_row.iloc[0]['surf_A_conc_mm']
+                        surf_b_conc = well_row.iloc[0]['surf_B_conc_mm']
+                        sim_data = simulate_surfactant_measurements(surf_a_conc, surf_b_conc)
+                        turbidity_value = sim_data['turbidity_600']
+                    else:
+                        # Control wells get baseline values
+                        turbidity_value = 0.2 + 0.1 * np.random.random()  # Small variation for controls
+                    
+                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
+        
+        # Add DMSO with safe positioning then measure fluorescence
+        if CREATE_WELLPLATE:
+            lash_e.logger.info("  Positioning pyrene_DMSO at clamp (safe position)")
+            lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)
+            dispense_component_to_wellplate(lash_e, batch_df, 'pyrene_DMSO', 'DMSO', 'pyrene_volume_ul')
+            lash_e.nr_robot.remove_pipet()
+            lash_e.nr_robot.return_vial_home('pyrene_DMSO')
+        
+        lash_e.logger.info("  Measuring fluorescence...")
+        fluorescence_entry, fluorescence_data = measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data, batch_df)
+        
+        # DEBUG: Show what fluorescence data we got
+        lash_e.logger.info(f"  FLUORESCENCE DEBUG: wells measured = {wells_in_batch}")
+        lash_e.logger.info(f"  FLUORESCENCE DEBUG: backup entry = {fluorescence_entry}")
+        lash_e.logger.info(f"  FLUORESCENCE DEBUG: data type = {type(fluorescence_data)}")
+        if hasattr(fluorescence_data, 'columns'):
+            lash_e.logger.info(f"  FLUORESCENCE DEBUG: columns = {list(fluorescence_data.columns)}")
+            lash_e.logger.info(f"  FLUORESCENCE DEBUG: shape = {fluorescence_data.shape}")
+            lash_e.logger.info(f"  FLUORESCENCE DEBUG: first few rows:\n{fluorescence_data.head()}")
+        else:
+            lash_e.logger.info(f"  FLUORESCENCE DEBUG: raw data = {fluorescence_data}")
+        
+        # Add fluorescence data to DataFrame by well position mapping
+        if fluorescence_data is not None:
+            if not lash_e.simulate:
+                # Hardware mode - fluorescence_data is a DataFrame with well_position column
+                if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0 and 'well_position' in fluorescence_data.columns:
+                    # Convert well indices to well positions for lookup
+                    def well_index_to_position(well_idx):
+                        """Convert well index (0-95) to well position (A1-H12)"""
+                        row = well_idx // 12  # 12 columns per row
+                        col = well_idx % 12
+                        return f"{chr(65 + row)}{col + 1}"
+                    
+                    # Check for fluorescence columns
+                    has_373 = '334_373' in fluorescence_data.columns
+                    has_384 = '334_384' in fluorescence_data.columns
+                    lash_e.logger.info(f"  Fluorescence columns available: 334_373={has_373}, 334_384={has_384}")
+                    
+                    if has_373 and has_384:
+                        # Map each well by position
+                        for well_idx in wells_in_batch:
+                            well_position = well_index_to_position(well_idx)
+                            matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
+                            
+                            if len(matching_rows) > 0:
+                                val_373 = matching_rows.iloc[0]['334_373']
+                                val_384 = matching_rows.iloc[0]['334_384']
+                                ratio = val_373 / val_384 if val_384 != 0 else None
+                                
+                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
+                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
+                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
+                                
+                                lash_e.logger.info(f"  Mapped {well_position} (idx {well_idx}) -> F373={val_373}, F384={val_384}, ratio={ratio:.3f}")
+                            else:
+                                lash_e.logger.warning(f"  No fluorescence data found for well {well_position} (idx {well_idx})")
+                    else:
+                        lash_e.logger.warning(f"  Missing expected fluorescence columns. Available: {list(fluorescence_data.columns)}")
+                else:
+                    lash_e.logger.warning("  Fluorescence data missing or has unexpected format")
+            else:
+                # Simulation mode - realistic concentration-based values  
+                for i, well_idx in enumerate(wells_in_batch):
+                    # Get concentrations for this well
+                    well_row = well_recipes_df[well_recipes_df['wellplate_index'] == well_idx]
+                    if len(well_row) > 0 and well_row.iloc[0]['well_type'] == 'experiment':
+                        surf_a_conc = well_row.iloc[0]['surf_A_conc_mm']
+                        surf_b_conc = well_row.iloc[0]['surf_B_conc_mm']
+                        sim_data = simulate_surfactant_measurements(surf_a_conc, surf_b_conc)
+                        val_373 = sim_data['fluorescence_334_373']
+                        val_384 = sim_data['fluorescence_334_384'] 
+                        ratio = sim_data['ratio']
+                    else:
+                        # Control wells get baseline values
+                        val_373 = 75.0 + 10.0 * np.random.random()
+                        val_384 = 95.0 + 10.0 * np.random.random() 
+                        ratio = val_373 / val_384
+                    
+                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
+                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
+                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
+
+    return well_recipes_df
+
+def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
+    """
+    Generate realistic simulation data for turbidity and ratio based on surfactant concentrations.
+    
+    Creates 2D boundary patterns that transition between baseline and elevated states:
+    - Ratio: Diagonal boundary from bottom-left to top-right
+    - Turbidity: Circular boundary with different center
+    
+    Args:
+        surf_a_conc: Surfactant A concentration in mM
+        surf_b_conc: Surfactant B concentration in mM 
+        add_noise: Whether to add realistic experimental noise
+        
+    Returns:
+        dict: {'turbidity_600': float, 'fluorescence_334_373': float, 
+               'fluorescence_334_384': float, 'ratio': float}
+    """
+    import numpy as np
+    
+    # Work in log space for realistic concentration effects
+    log_a = np.log10(surf_a_conc)
+    log_b = np.log10(surf_b_conc)
+    
+    # RATIO SIMULATION: Diagonal boundary (sigmoid transition)
+    # Boundary runs from (-6, -4) to (-3, -1) in log space
+    diagonal_distance = (log_a + log_b + 5.0) / np.sqrt(2)  # Distance from diagonal line
+    ratio_transition = 1.0 / (1.0 + np.exp(-8.0 * diagonal_distance))  # Sharp sigmoid
+    ratio_baseline = 0.6   # Low ratio state
+    ratio_elevated = 1.4   # High ratio state 
+    simulated_ratio = ratio_baseline + (ratio_elevated - ratio_baseline) * ratio_transition
+    
+    # TURBIDITY SIMULATION: Circular boundary (different center)
+    # Circle centered at (-4.5, -2.5) in log space with radius 1.2
+    center_a, center_b = -4.5, -2.5
+    radius_distance = np.sqrt((log_a - center_a)**2 + (log_b - center_b)**2)
+    turbidity_transition = 1.0 / (1.0 + np.exp(-5.0 * (radius_distance - 1.2)))
+    turbidity_baseline = 0.15  # Low turbidity state
+    turbidity_elevated = 0.85  # High turbidity state
+    simulated_turbidity = turbidity_baseline + (turbidity_elevated - turbidity_baseline) * turbidity_transition
+    
+    # FLUORESCENCE: Derive from ratio (realistic relationship)
+    # F384 stays relatively constant, F373 varies with ratio
+    f384_base = 95.0 + 10.0 * np.sin(log_a + log_b)  # Slight spatial variation
+    f373_base = simulated_ratio * f384_base  # F373/F384 = ratio
+    
+    # Add realistic experimental noise if requested
+    if add_noise:
+        noise_scale = 0.01  # 1% coefficient of variation (reduced from 5%)
+        ratio_noise = 1.0 + np.random.normal(0, noise_scale)
+        turbidity_noise = 1.0 + np.random.normal(0, noise_scale)
+        fluorescence_noise = 1.0 + np.random.normal(0, noise_scale * 0.5)  # Lower noise for fluorescence
+        
+        simulated_ratio *= ratio_noise
+        simulated_turbidity *= turbidity_noise
+        f373_base *= fluorescence_noise
+        f384_base *= fluorescence_noise
+        
+        # Recalculate ratio from potentially noisy fluorescence
+        simulated_ratio = f373_base / f384_base if f384_base > 0 else simulated_ratio
+    
+    # Ensure physically reasonable bounds
+    simulated_ratio = max(0.1, min(3.0, simulated_ratio))
+    simulated_turbidity = max(0.01, min(1.5, simulated_turbidity))
+    f373_base = max(10.0, min(300.0, f373_base))
+    f384_base = max(10.0, min(300.0, f384_base))
+    
+    return {
+        'turbidity_600': round(simulated_turbidity, 4),
+        'fluorescence_334_373': round(f373_base, 2),
+        'fluorescence_334_384': round(f384_base, 2),
+        'ratio': round(simulated_ratio, 4)
+    }
 
 def validate_pipetting_system(lash_e, experiment_output_folder):
     """Perform comprehensive pipetting validation tests for all liquid types."""
@@ -1639,228 +2609,45 @@ def validate_pipetting_system(lash_e, experiment_output_folder):
         lash_e.logger.info("    Continuing with workflow (validation failure non-critical)...")     
         return None
 
-def create_consolidated_measurement_csv(lash_e, well_map, updated_state, experiment_output_folder):
-    """Create consolidated CSV with well mapping, concentrations, and measurement data."""
-    import pandas as pd
-    import os
-    import glob
-    
-    lash_e.logger.info("Creating consolidated measurement CSV...")
-    
-    # Create base dataframe from well_map (if available) or generate for existing wells
-    if well_map:
-        # Use actual well mapping from experiment
-        df_base = pd.DataFrame(well_map)
-    else:
-        # Create basic mapping for wells measured (when CREATE_WELLPLATE = False)
-        measurements = updated_state.get('measurements', [])
-        if measurements:
-            # Get wells that were actually measured
-            measured_wells = set()
-            for measurement in measurements:
-                measured_wells.update(measurement.get('wells_measured', []))
-            
-            # Create basic mapping
-            df_base = pd.DataFrame([
-                {
-                    'well': well,
-                    'plate': updated_state.get('current_plate', 1),
-                    'surfactant_a': 'unknown',
-                    'surfactant_b': 'unknown', 
-                    'conc_a_mm': None,
-                    'conc_b_mm': None,
-                    'replicate': 1,
-                    'is_control': False,
-                    'control_type': 'unknown'
-                } for well in sorted(measured_wells)
-            ])
-        else:
-            lash_e.logger.warning("No measurement data found for consolidated CSV")
-            return None
-    
-    # Load measurement data from CSV files
-    measurement_backups_dir = os.path.join(experiment_output_folder, "measurement_backups")
-    
-    if os.path.exists(measurement_backups_dir):
-        # Find turbidity CSV files
-        turbidity_files = glob.glob(os.path.join(measurement_backups_dir, "turbidity_*.csv"))
-        fluorescence_files = glob.glob(os.path.join(measurement_backups_dir, "fluorescence_*.csv"))
-        
-        # Load and combine turbidity data
-        turbidity_df = None
-        if turbidity_files:
-            turbidity_dfs = []
-            for file in turbidity_files:
-                try:
-                    df = pd.read_csv(file, index_col=0)
-                    turbidity_dfs.append(df)
-                except Exception as e:
-                    lash_e.logger.warning(f"Could not load turbidity file {file}: {e}")
-            
-            if turbidity_dfs:
-                turbidity_df = pd.concat(turbidity_dfs, ignore_index=False)
-                # Convert index to well column for merging
-                turbidity_df = turbidity_df.reset_index()
-                turbidity_df = turbidity_df.rename(columns={'index': 'well_position'})
-        
-        # Load and combine fluorescence data
-        fluorescence_df = None
-        if fluorescence_files:
-            fluorescence_dfs = []
-            for file in fluorescence_files:
-                try:
-                    # Read CSV with special handling for Cytation format
-                    temp_df = pd.read_csv(file)
-                    
-                    # Check if this is Cytation format (wavelength info in row 2)
-                    if len(temp_df) > 0 and temp_df.iloc[0].dropna().tolist():
-                        # This is Cytation format - wavelength info is in row 1 (0-indexed)
-                        wavelengths = temp_df.iloc[0].tolist()  # ['334_373', '334_384']
-                        
-                        # Create proper column names mapping
-                        new_columns = {}
-                        for i, wl in enumerate(wavelengths):
-                            if pd.notna(wl) and str(wl) in ['334_373', '334_384']:
-                                original_col = temp_df.columns[i]
-                                new_columns[original_col] = f"fluorescence_{wl}"
-                        
-                        # Remove the wavelength row
-                        temp_df = temp_df.iloc[1:].copy()  # Remove wavelength row
-                        temp_df = temp_df.rename(columns=new_columns)
-                        temp_df = temp_df.reset_index()
-                        temp_df = temp_df.rename(columns={'index': 'well_position'})
-                    else:
-                        # Standard CSV format
-                        temp_df = pd.read_csv(file, index_col=0)
-                        temp_df = temp_df.reset_index()
-                        temp_df = temp_df.rename(columns={'index': 'well_position'})
-                    
-                    fluorescence_dfs.append(temp_df)
-                except Exception as e:
-                    lash_e.logger.warning(f"Could not load fluorescence file {file}: {e}")
-            
-            if fluorescence_dfs:
-                fluorescence_df = pd.concat(fluorescence_dfs, ignore_index=True)
-                lash_e.logger.info(f"  Loaded {len(fluorescence_df)} fluorescence measurements")
-        
-        # Convert well numbers to well positions for merging (A1, A2, etc.)
-        def well_number_to_position(well_number):
-            """Convert well number (0-based) to well position (A1, A2, etc.)"""
-            row = well_number // 12  # 12 columns per row
-            col = well_number % 12
-            return f"{chr(65 + row)}{col + 1}"
-        
-        df_base['well_position'] = df_base['well'].apply(well_number_to_position)
-        
-        # Merge measurement data
-        df_consolidated = df_base.copy()
-        
-        if turbidity_df is not None:
-            df_consolidated = df_consolidated.merge(turbidity_df, on='well_position', how='left', suffixes=('', '_turb'))
-            lash_e.logger.info(f"  Merged turbidity data: {len(turbidity_df)} measurements")
-        
-        if fluorescence_df is not None:
-            df_consolidated = df_consolidated.merge(fluorescence_df, on='well_position', how='left', suffixes=('', '_fluor'))
-            lash_e.logger.info(f"  Merged fluorescence data: {len(fluorescence_df)} measurements")
-        
-        # Clean up column names - handle potential column name variations
-        # Check what columns we actually have after merge
-        actual_columns = list(df_consolidated.columns)
-        lash_e.logger.info(f"  Columns after merge: {actual_columns}")
-        
-        # Columns should already have proper names from CSV reading
-        # Just ensure turbidity column is named correctly if present
-        column_mapping = {}
-        for col in actual_columns:
-            if 'Absorbance' in col or '600' in col:
-                column_mapping[col] = 'turbidity_600'
-        
-        if column_mapping:
-            df_consolidated = df_consolidated.rename(columns=column_mapping)
-            lash_e.logger.info(f"  Renamed columns: {column_mapping}")
-        
-        # Calculate fluorescence ratio (same as cmc_shared)
-        if 'fluorescence_334_373' in df_consolidated.columns and 'fluorescence_334_384' in df_consolidated.columns:
-            df_consolidated['ratio'] = df_consolidated['fluorescence_334_373'] / df_consolidated['fluorescence_334_384']
-            lash_e.logger.info("  Calculated fluorescence ratio (334_373/334_384)")
-        
-        # Reorder columns for readability
-        column_order = ['well', 'well_position', 'plate', 'surfactant_a', 'surfactant_b', 
-                       'conc_a_mm', 'conc_b_mm', 'replicate', 'is_control', 'control_type',
-                       'turbidity_600', 'fluorescence_334_373', 'fluorescence_334_384', 'ratio']
-        
-        available_columns = [col for col in column_order if col in df_consolidated.columns]
-        df_consolidated = df_consolidated[available_columns]
-        
-        # Save consolidated CSV
-        consolidated_path = os.path.join(experiment_output_folder, "consolidated_measurements.csv")
-        df_consolidated.to_csv(consolidated_path, index=False)
-        
-        lash_e.logger.info(f"  Saved consolidated CSV: {consolidated_path}")
-        lash_e.logger.info(f"  Total rows: {len(df_consolidated)}")
-        lash_e.logger.info(f"  Columns: {list(df_consolidated.columns)}")
-        
-        return df_consolidated
-    
-    else:
-        lash_e.logger.warning(f"Measurement backups directory not found: {measurement_backups_dir}")
-        return None
-
-def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_name="DTAB", simulate=True):
+def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_name="DTAB", 
+                                         surf_a_min=None, surf_a_max=None,
+                                         surf_b_min=None, surf_b_max=None, 
+                                         lash_e=None, existing_stock_solutions=None, 
+                                         number_concentrations=9, experiment_output_folder=None, simulate=True):
     """
     Execute the complete surfactant grid screening workflow using adaptive concentrations.
     
     Args:
         surfactant_a_name: Name of first surfactant (cationic)
         surfactant_b_name: Name of second surfactant (anionic) 
+        surf_a_min, surf_a_max: Custom concentration bounds for surfactant A (None = use defaults)
+        surf_b_min, surf_b_max: Custom concentration bounds for surfactant B (None = use defaults)
+        lash_e: Existing Lash_E instance (if None, creates new one)
         simulate: Run in simulation mode
         
     Returns:
         dict: Results including well_map, measurements, and concentrations used
     """
-    # Initialize Lash_E FIRST so logger is available from the start
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=simulate)
-    lash_e.logger.info("Step 1: Initializing Lash_E coordinator...")
-    lash_e.logger.info(f"  Mode: {'Simulation' if simulate else 'Hardware'}")
+    # Using existing lash_e instance (always provided from main)
+    lash_e.logger.info("Using existing Lash_E instance for workflow stage...")
     
-    # Setup experiment environment and folders
-    experiment_output_folder, experiment_name = setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, simulate)
-  
-    # Validate system state
-    lash_e.logger.info("  Validating robot and track status...")
-    lash_e.nr_robot.check_input_file()
-    lash_e.nr_track.check_input_file()
-    
-    # Fill water vials to maximum capacity before workflow
-    lash_e.logger.info("  Ensuring water vials are full before workflow...")
+    # Refill water vials to reset volume tracking between stages
+    lash_e.logger.info("  Refilling water vials to reset volume tracking...")
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")
     
-    # Validate pipetting capability if enabled or if in validation-only mode
-    if VALIDATE_LIQUIDS or VALIDATION_ONLY:
-        validation_results = validate_pipetting_system(lash_e, experiment_output_folder)
-        
-        # Early exit for validation-only mode
-        if validation_results and validation_results.get('validation_only'):
-            return validation_results
+    # Use provided experiment folder or create new one if not provided
+    if experiment_output_folder is None:
+        experiment_output_folder, experiment_name = setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, simulate)
     else:
-        lash_e.logger.info("  Pipetting validation disabled (set VALIDATE_LIQUIDS=True or VALIDATION_ONLY=True to enable)")
-    
-    # Robot is ready - no initial positioning needed
-    lash_e.logger.info("  Robot ready for operations")
-    
-    # Get fresh wellplate only if creating new wellplate
-    if CREATE_WELLPLATE:
-        lash_e.logger.info("  Getting fresh wellplate...")
-        lash_e.nr_track.get_new_wellplate()
-    else:
-        lash_e.logger.info("  Using existing wellplate (CREATE_WELLPLATE = False)")
-    
-    lash_e.logger.info("+ Lash_E initialization complete")
-    lash_e.logger.info("")
-    
+        # Extract experiment name from folder path
+        experiment_name = os.path.basename(experiment_output_folder)
+        lash_e.logger.info(f"Using existing experiment folder: {experiment_output_folder}")
+       
     # STEP 2: Create complete experiment plan with simplified structure
-    experiment_plan = create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name)
+    experiment_plan = create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name,
+                                                     surf_a_min, surf_a_max, surf_b_min, surf_b_max, 
+                                                     existing_stock_solutions, number_concentrations)
     
     # Extract the well recipes DataFrame
     well_recipes_df = experiment_plan['well_recipes_df']
@@ -1887,7 +2674,10 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                 'Final_Volume_mL': stock['final_volume_ml']
             })
     
-    # Create substocks in the correct order (recipes are already ordered for dependencies)
+    # Sort by concentration (highest first) for correct creation order
+    dilution_recipes.sort(key=lambda x: x['Target_Conc_mM'], reverse=True)
+    
+    # Create substocks in the correct order (highest concentration first)
     if dilution_recipes:
         created_substocks = create_substocks_from_recipes(lash_e, dilution_recipes)
         newly_created = [s for s in created_substocks if s['created']]
@@ -1911,145 +2701,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     
     # STEP 5: Execute dispensing and measurements in clear phases
     lash_e.logger.info("Step 5: Executing dispensing and measurements...")
-    
-    # Initialize measurement columns in the DataFrame
-    well_recipes_df['turbidity_600'] = None
-    well_recipes_df['fluorescence_334_373'] = None 
-    well_recipes_df['fluorescence_334_384'] = None
-    well_recipes_df['ratio'] = None
-    
-    if not CREATE_WELLPLATE:
-        lash_e.logger.info("CREATE_WELLPLATE = False: Skipping dispensing")
-    else:
-        # Process in batches to match measurement intervals
-        total_wells = len(well_recipes_df)
-        lash_e.logger.info(f"Total wells to process: {total_wells}")
-        
-        for batch_start in range(0, total_wells, MEASUREMENT_INTERVAL):
-            batch_end = min(batch_start + MEASUREMENT_INTERVAL, total_wells)
-            batch_df = well_recipes_df.iloc[batch_start:batch_end]
-            
-            lash_e.logger.info(f"\nProcessing batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {batch_start}-{batch_end-1}")
-            
-            # DISPENSING PHASE: Use unified dispensing for each component with proper vial positioning
-            # Get unique vial names needed for this batch
-            surf_a_vials = batch_df[batch_df['surf_A_volume_ul'] > 0]['substock_A_name'].dropna().unique()
-            surf_b_vials = batch_df[batch_df['surf_B_volume_ul'] > 0]['substock_B_name'].dropna().unique()
-            
-            # Position surfactant A vials by concentration (dilute → concentrated)
-            if len(surf_a_vials) > 0:
-                sorted_surf_a_vials = position_surfactant_vials_by_concentration(lash_e, surf_a_vials, batch_df, 'A')
-                
-                # Dispense surfactant A substocks in concentration order
-                for surf_a_vial in sorted_surf_a_vials:
-                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'water', 'surf_A_volume_ul')
-                
-                # Return surfactant A vials to home
-                lash_e.nr_robot.remove_pipet()
-                return_surfactant_vials_home(lash_e, sorted_surf_a_vials, 'A')
-            
-            # Dispense water - split between two water vials to prevent running out
-            water_wells = batch_df[batch_df['water_volume_ul'] > 0]
-            if len(water_wells) > 0:
-                # Split water dispensing in half
-                mid_point = len(water_wells) // 2
-                water_batch_1 = water_wells.iloc[:mid_point]
-                water_batch_2 = water_wells.iloc[mid_point:]
-
-                lash_e.nr_robot.move_vial_to_location('water', 'main_8mL_rack', 44)
-                lash_e.nr_robot.move_vial_to_location('water_2', 'main_8mL_rack', 45)
-
-                # Dispense first half with water vial
-                if len(water_batch_1) > 0:
-                    dispense_component_to_wellplate(lash_e, water_batch_1, 'water', 'water', 'water_volume_ul')
-                    
-                # Dispense second half with water_2 vial
-                if len(water_batch_2) > 0:
-                    dispense_component_to_wellplate(lash_e, water_batch_2, 'water_2', 'water', 'water_volume_ul')
-
-                lash_e.nr_robot.remove_pipet()
-                return_water_vial_home(lash_e, 'water')
-                return_water_vial_home(lash_e, 'water_2')
-            
-            # Dispense buffer with safe positioning
-            if ADD_BUFFER:
-                lash_e.logger.info(f"  Positioning {SELECTED_BUFFER} buffer at clamp (safe position)")
-                lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, 'clamp', 0)
-                dispense_component_to_wellplate(lash_e, batch_df, SELECTED_BUFFER, 'water', 'buffer_volume_ul')
-                lash_e.nr_robot.remove_pipet()
-                lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
-            
-            # Position surfactant B vials by concentration (dilute → concentrated)
-            if len(surf_b_vials) > 0:
-                sorted_surf_b_vials = position_surfactant_vials_by_concentration(lash_e, surf_b_vials, batch_df, 'B')
-                
-                # Dispense surfactant B substocks in concentration order
-                for surf_b_vial in sorted_surf_b_vials:
-                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'water', 'surf_B_volume_ul')
-                
-                # Return surfactant B vials to home
-                lash_e.nr_robot.remove_pipet()
-                return_surfactant_vials_home(lash_e, sorted_surf_b_vials, 'B')
-            
-            # MEASUREMENT PHASE: Turbidity first
-            wells_in_batch = batch_df['wellplate_index'].tolist()
-            lash_e.logger.info("  Measuring turbidity...")
-            turbidity_data = measure_turbidity(lash_e, wells_in_batch)
-            
-            # Add turbidity data to DataFrame by order
-            if turbidity_data is not None:
-                if not lash_e.simulate:
-                    # Hardware mode - turbidity_data is a DataFrame, extract values in order
-                    if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0:
-                        # Get the turbidity values in order (first column with numeric data)
-                        turbidity_values = turbidity_data.iloc[:, 0].values  # First data column
-                        for i, well_idx in enumerate(wells_in_batch):
-                            if i < len(turbidity_values):
-                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_values[i]
-                else:
-                    # Simulation mode - simple values
-                    for i, well_idx in enumerate(wells_in_batch):
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = 0.5
-            
-            # Add DMSO with safe positioning then measure fluorescence
-            lash_e.logger.info("  Positioning pyrene_DMSO at clamp (safe position)")
-            lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)
-            dispense_component_to_wellplate(lash_e, batch_df, 'pyrene_DMSO', 'DMSO', 'pyrene_volume_ul')
-            lash_e.nr_robot.remove_pipet()
-            lash_e.nr_robot.return_vial_home('pyrene_DMSO')
-            lash_e.logger.info("  Measuring fluorescence...")
-            fluorescence_data = measure_fluorescence(lash_e, wells_in_batch)
-            
-            # Add fluorescence data to DataFrame by order
-            if fluorescence_data is not None:
-                if not lash_e.simulate:
-                    # Hardware mode - fluorescence_data is a DataFrame, extract values in order
-                    if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0:
-                        # Get both fluorescence columns in order
-                        val_373_list = fluorescence_data['334_373'].values if '334_373' in fluorescence_data.columns else []
-                        val_384_list = fluorescence_data['334_384'].values if '334_384' in fluorescence_data.columns else []
-                        
-                        for i, well_idx in enumerate(wells_in_batch):
-                            if i < len(val_373_list) and i < len(val_384_list):
-                                val_373 = val_373_list[i]
-                                val_384 = val_384_list[i]
-                                ratio = val_373 / val_384 if val_384 != 0 else None
-                                
-                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
-                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
-                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
-                else:
-                    # Simulation mode - simple values
-                    for i, well_idx in enumerate(wells_in_batch):
-                        val_373 = 80.0
-                        val_384 = 100.0
-                        ratio = val_373 / val_384
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
-    
-
-    
+    well_recipes_df = execute_dispensing_and_measurements(lash_e, well_recipes_df)
     # STEP 6: Save results to experiment folder
     lash_e.logger.info("Step 6: Saving results...")
     output_folder = experiment_output_folder
@@ -2059,9 +2711,43 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     well_recipes_df.to_csv(final_results_path, index=False)
     lash_e.logger.info(f"  Complete results saved to: {final_results_path}")
     
+    # Generate heatmap visualizations
+    try:
+        lash_e.logger.info("  Generating heatmap visualizations...")
+        
+        # Create heatmap subfolder
+        heatmap_folder = os.path.join(output_folder, "heatmap")
+        os.makedirs(heatmap_folder, exist_ok=True)
+        
+        # Generate heatmaps using the visualization function
+        generate_surfactant_grid_heatmaps(final_results_path, heatmap_folder, lash_e.logger, surfactant_a_name, surfactant_b_name)
+        
+        lash_e.logger.info(f"  Heatmaps saved to: {heatmap_folder}")
+        
+        # Calculate adaptive concentration bounds using baseline rectangle method
+        lash_e.logger.info("  Calculating adaptive concentration bounds...")
+        
+        # Load experimental data for bounds calculation
+        experiment_results_df = pd.read_csv(final_results_path)
+        experiment_data_for_bounds = experiment_results_df[experiment_results_df['well_type'] == 'experiment'].copy()
+        
+        new_bounds = calculate_adaptive_concentration_bounds(
+            experiment_data_for_bounds, 
+            surfactant_a_name, 
+            surfactant_b_name, 
+            output_folder, 
+            lash_e.logger
+        )
+        
+        lash_e.logger.info(f"  Adaptive bounds calculated: {new_bounds}")
+        
+    except Exception as e:
+        lash_e.logger.warning(f"  Failed to generate heatmaps: {str(e)}")
+        lash_e.logger.warning("  Continuing without heatmap generation...")
+    
     lash_e.logger.info(f"+ Results saved to: {output_folder}")
     
-    # Get actual pipette usage breakdown 
+    # # Get actual pipette usage breakdown 
     pipette_breakdown = get_pipette_usage_breakdown(lash_e)
     lash_e.logger.info(f"+ Pipette tips used: {pipette_breakdown['large_tips']} large, {pipette_breakdown['small_tips']} small (total: {pipette_breakdown['total']}) ({'simulated' if simulate else 'actual'})")
     
@@ -2079,7 +2765,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     lash_e.logger.info(f"Mode: {'SIMULATION' if simulate else 'HARDWARE'}")
     lash_e.logger.info(f"Results: {final_results_path}")
     lash_e.logger.info("="*60)
-    
+       
     # Display final DataFrame for verification
     if not well_recipes_df.empty:
         lash_e.logger.info("DataFrame sample with measurements:")
@@ -2087,6 +2773,11 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
         existing_cols = [col for col in sample_cols if col in well_recipes_df.columns]
         sample_df = well_recipes_df[existing_cols].head(10)
         lash_e.logger.info(f"\n{sample_df.to_string()}")
+    
+    # Send Slack completion message (hardware mode only)
+    if not simulate:
+        stage_info = f"Adaptive screening complete: {surfactant_a_name}+{surfactant_b_name}, {len(well_recipes_df)} wells, {len(measured_wells)} measured"
+        slack_agent.send_slack_message(stage_info)
     
     # Return clean results with just the essential data
     return {
@@ -2102,37 +2793,557 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
         'workflow_complete': True
     }
 
+def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB", 
+                              number_concentrations=5, target_measurements=96, 
+                              gradient_suggestions_per_iteration=12, lash_e=None, 
+                              experiment_output_folder=None, simulate=True):
+    """
+    Execute iterative surfactant screening with configurable number of concentrations.
+    
+    This method allows for rapid initial screening with fewer concentrations (e.g., 5)
+    before proceeding to iterative gradient-based refinement until target measurements reached.
+    
+    Args:
+        surfactant_a_name: Name of first surfactant (e.g., 'SDS')
+        surfactant_b_name: Name of second surfactant (e.g., 'DTAB') 
+        number_concentrations: Number of concentration steps (default 5 for rapid screening)
+        target_measurements: Total measurements to reach (default 200)
+        gradient_suggestions_per_iteration: Number of gradient suggestions per iteration (default 12)
+        simulate: Run in simulation mode
+        
+    Returns:
+        dict: Results from iterative screening with experiment plan and measurements
+    """
+    print("="*80)
+    print(f"ITERATIVE SURFACTANT SCREENING WORKFLOW")
+    print(f"Surfactants: {surfactant_a_name} + {surfactant_b_name}")
+    print(f"Concentrations: {number_concentrations} steps (rapid screening)")
+    print(f"Target measurements: {target_measurements}")
+    print(f"Mode: {'SIMULATION' if simulate else 'HARDWARE'}")
+    print("="*80)
+
+    lash_e.grab_new_wellplate()
+
+    # Execute initial adaptive screening with configurable number of concentrations
+    results = execute_adaptive_surfactant_screening(
+        surfactant_a_name=surfactant_a_name,
+        surfactant_b_name=surfactant_b_name, 
+        surf_a_min=None,  # Use default bounds
+        surf_a_max=None,
+        surf_b_min=None,
+        surf_b_max=None,
+        lash_e=lash_e,
+        existing_stock_solutions=None,  # Fresh start, no existing solutions
+        number_concentrations=number_concentrations,  # Configurable parameter
+        experiment_output_folder=experiment_output_folder,
+        simulate=simulate
+    )
+
+    # Track current measurements and wellplate capacity
+    current_measurements = len(results['well_recipes_df'])
+    current_wellplate_wells = current_measurements
+    iteration = 1
+    
+    print(f"Initial screening complete: {current_measurements} measurements")
+    print(f"Starting iterative gradient exploration...")
+    
+    # Iterative gradient exploration loop
+    while current_measurements < target_measurements:
+        print(f"\n--- Iteration {iteration} ---")
+        print(f"Current measurements: {current_measurements}/{target_measurements}")
+        print(f"Current wellplate usage: {current_wellplate_wells}/96 wells")
+        
+        # Calculate how many wells we can use in current wellplate
+        wells_remaining_in_plate = 96 - current_wellplate_wells
+        max_measurements_this_iteration = min(
+            target_measurements - current_measurements,
+            wells_remaining_in_plate
+        )
+        
+        # Always get full gradient suggestions, regardless of plate constraints
+        gradient_suggestions_requested = gradient_suggestions_per_iteration
+        
+        print(f"Requesting {gradient_suggestions_requested} gradient suggestions")
+        print(f"Can process maximum {max_measurements_this_iteration} measurements this iteration ({wells_remaining_in_plate} wells remaining in plate)")
+            
+        # Get gradient suggestions (always request full amount)
+        gradient_results = find_high_gradient_areas(
+            results, lash_e, 
+            n_suggestions=gradient_suggestions_requested,
+            starting_well_index=current_wellplate_wells  # Start from current position in wellplate
+        )
+        
+        # Limit the actual measurements to what we can process
+        if len(gradient_results) > max_measurements_this_iteration:
+            print(f"Limiting {len(gradient_results)} suggestions to {max_measurements_this_iteration} due to plate constraints")
+            gradient_results = gradient_results.head(max_measurements_this_iteration)
+        
+        # Merge new results with existing data
+        print(f"Merging {len(gradient_results)} new measurements with existing data...")
+        merged_df = pd.concat([results['well_recipes_df'], gradient_results], ignore_index=True)
+        results['well_recipes_df'] = merged_df
+        
+        # Update tracking
+        current_measurements = len(merged_df)
+        current_wellplate_wells += len(gradient_results)
+        
+        # Switch wellplate only if current one is full
+        if current_wellplate_wells >= 96:
+            print("Current wellplate full, switching to new wellplate...")
+            lash_e.discard_used_wellplate()
+            lash_e.grab_new_wellplate()
+            current_wellplate_wells = 0
+        
+        # Save updated results
+        updated_results_path = os.path.join(results['output_folder'], "iterative_experiment_results.csv")
+        merged_df.to_csv(updated_results_path, index=False)
+        print(f"Updated results saved: {updated_results_path}")
+        
+        iteration += 1
+        
+        # Safety check to prevent infinite loops
+        if iteration > 20:
+            print("Maximum iterations reached (20), stopping...")
+            break
+
+    # Final cleanup
+    lash_e.discard_used_wellplate()
+    
+    # Update final results
+    results['total_wells'] = len(results['well_recipes_df'])
+    results['measured_wells'] = len(results['well_recipes_df'][results['well_recipes_df']['turbidity_600'].notna()])
+
+    print(f"\nIterative workflow complete!")
+    print(f"Final results: {results['total_wells']} wells, {results['measured_wells']} measured")
+    print(f"Iterations completed: {iteration-1}")
+    print(f"Output folder: {results['output_folder']}")
+        
+    return results
+
+def find_high_gradient_areas(existing_results, lash_e, n_suggestions=12, starting_well_index=None):
+    """
+    Find high-gradient areas from initial screening and perform targeted exploration.
+    
+    Uses existing substocks from initial screening - NO new substock creation.
+    Continues well indexing from current wellplate position with 96-well limit.
+    
+    Args:
+        existing_results: Results dict from execute_iterative_workflow() 
+        lash_e: Lash_E coordinator instance (reused from initial screening)
+        n_suggestions: Number of concentration pairs to explore (default 12)
+        starting_well_index: Starting well position (None = continue from last used well)
+        
+    Returns:
+        DataFrame: New measurement data from targeted exploration
+    """
+    logger = lash_e.logger
+    logger.info(f"Starting high-gradient area exploration with {n_suggestions} suggestions...")
+    
+    # Extract data from initial screening
+    initial_data_df = existing_results['well_recipes_df']
+    available_substocks = existing_results['experiment_plan']['stock_solutions_needed']
+    surfactant_a_name = existing_results['surfactant_a']
+    surfactant_b_name = existing_results['surfactant_b']
+    
+    logger.info(f"Initial data: {len(initial_data_df)} wells measured")
+    logger.info(f"Available substocks: {len(available_substocks)} solutions")
+    
+    # STEP 1: Analyze gradients and get suggested concentrations (placeholder for your method)
+    logger.info("Analyzing gradients to identify high-interest regions...")
+    suggested_concentrations = get_suggested_concentrations(
+        initial_data_df, 
+        surfactant_a_name, 
+        surfactant_b_name, 
+        n_suggestions=n_suggestions,
+        output_dir=existing_results['output_folder']  # Pass output directory for visualizations
+    )
+    
+    logger.info(f"Generated {len(suggested_concentrations)} concentration suggestions")
+    
+    # STEP 2: Use existing substocks to match suggested concentrations
+    logger.info("Matching suggestions to existing substocks...")
+    
+    # Separate concentrations for each surfactant
+    target_concs_a = [pair[0] for pair in suggested_concentrations]
+    target_concs_b = [pair[1] for pair in suggested_concentrations]
+    
+    # Use smart matching with existing substocks (NO new dilutions)
+    plan_a = create_plan_from_existing_stocks(available_substocks, surfactant_a_name, target_concs_a)
+    plan_b = create_plan_from_existing_stocks(available_substocks, surfactant_b_name, target_concs_b)
+    
+    # STEP 3: Create well recipes for suggestions
+    logger.info("Creating well recipes for targeted exploration...")
+    
+    # Determine starting well position (continue from where previous operations left off)
+    if starting_well_index is None:
+        # Get the highest well index from existing results + 1
+        last_well_used = existing_results['well_recipes_df']['wellplate_index'].max()
+        starting_well_index = last_well_used + 1 if pd.notna(last_well_used) else 0
+    
+    # CRITICAL FIX: Ensure we don't exceed 96-well plate limits
+    wells_remaining_in_plate = 96 - starting_well_index
+    if wells_remaining_in_plate <= 0:
+        raise ValueError(f"CRITICAL: Starting well index {starting_well_index} exceeds 96-well plate capacity! Current wellplate is full.")
+    
+    # Limit suggestions to available wells in current plate
+    max_suggestions_possible = min(n_suggestions, wells_remaining_in_plate)
+    if max_suggestions_possible < n_suggestions:
+        logger.info(f"Limiting suggestions from {n_suggestions} to {max_suggestions_possible} due to wellplate capacity")
+    
+    logger.info(f"Continuing well indexing from position {starting_well_index} (max {max_suggestions_possible} suggestions possible)")
+    
+    well_recipes = []
+    
+    # Only process the number of suggestions we can actually fit
+    suggestions_to_process = suggested_concentrations[:max_suggestions_possible]
+    
+    for i, (conc_a, conc_b) in enumerate(suggestions_to_process):
+        well_index = starting_well_index + i  # Continue from last used well position
+        
+        # Double-check well index is valid
+        if well_index >= 96:
+            logger.warning(f"Skipping suggestion {i+1}: well index {well_index} exceeds 96-well plate capacity")
+            break
+            
+        replicate = 1
+        
+        try:
+            recipe = create_well_recipe_from_concentrations(
+                conc_a, conc_b, plan_a, plan_b, 
+                well_index, surfactant_a_name, surfactant_b_name, replicate
+            )
+            well_recipes.append(recipe)
+        except ValueError as e:
+            raise ValueError(f"CRITICAL: Cannot create recipe for {conc_a:.3e} + {conc_b:.3e} mM: {e}. Algorithm suggestions are not achievable with current stocks!")
+    
+    # Convert to DataFrame
+    suggestions_df = pd.DataFrame(well_recipes)
+    logger.info(f"Created {len(suggestions_df)} well recipes for dispensing")
+    
+    # Execute dispensing and measurements using existing infrastructure
+    logger.info("Executing targeted dispensing and measurements...")
+    measured_suggestions_df = execute_dispensing_and_measurements(lash_e, suggestions_df)
+    
+    logger.info(f"High-gradient exploration complete: {len(measured_suggestions_df)} wells measured")
+    return measured_suggestions_df
+
+def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=12, output_dir=None):
+    """
+    Use Delaunay triangle refinement to suggest high-variation concentration pairs for exploration.
+    
+    Uses DelaunayTriangleRecommender to find boundaries in ratio measurements
+    by analyzing output variation among triangle vertices in the concentration space.
+    
+    Args:
+        experiment_data_df: DataFrame with measured experimental data including:
+                           - surf_A_conc_mm, surf_B_conc_mm (concentrations)
+                           - turbidity_600, ratio (measurements)
+        surfactant_a_name: Name of first surfactant (for logging)
+        surfactant_b_name: Name of second surfactant (for logging)  
+        n_suggestions: Number of concentration pairs to suggest
+        
+    Returns:
+        list of tuples: [(conc_a_1, conc_b_1), (conc_a_2, conc_b_2), ...] 
+                       concentration pairs in mM for high-variation exploration
+    """
+    
+    print(f"Analyzing triangle boundaries in {surfactant_a_name}+{surfactant_b_name} data...")
+    print(f"Input data: {len(experiment_data_df)} experimental wells")
+    
+    # Import the Delaunay triangle recommender
+    try:
+        import sys
+        import os
+        recommender_path = os.path.join(os.path.dirname(__file__), '..', 'recommenders')
+        if recommender_path not in sys.path:
+            sys.path.append(recommender_path)
+        from recommenders.delaunay_triangle_recommender import DelaunayTriangleRecommender
+    except ImportError as e:
+        raise ImportError(f"CRITICAL: DelaunayTriangleRecommender import failed: {e}. Adaptive algorithm cannot run without this!")
+    
+    # Initialize the triangle recommender (focus on ratio AND turbidity boundaries)
+    recommender = DelaunayTriangleRecommender(
+        input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
+        output_columns=['ratio', 'turbidity_600'],           # Focus on BOTH ratio and turbidity boundaries 
+        log_transform_inputs=True,    # Work in log concentration space
+        normalization_method='log_zscore'  # Log + z-score normalization
+    )
+    
+    # Get recommendations from triangle analysis
+    print(f"Running Delaunay triangle analysis for {n_suggestions} boundary suggestions...")
+    print(f"DEBUG: Using output columns: {recommender.output_columns}")
+    print(f"DEBUG: Input data shape: {experiment_data_df.shape}")
+    print(f"DEBUG: Available columns: {list(experiment_data_df.columns)}")
+    
+    recommendations_df = recommender.get_recommendations(
+        experiment_data_df, 
+        n_points=n_suggestions,
+        min_spacing_factor=0.5,  # Minimum spacing between triangle centroids
+        tol_factor=0.1,         # Tolerance for duplicate detection
+        triangle_score_method='max',  # Use max distance for sensitivity
+        output_dir=output_dir,  # Save triangle visualizations to output folder
+        create_visualization=True  # Create and save triangle analysis plots
+    )
+    
+    print(f"DEBUG: Triangle recommender returned {len(recommendations_df)} suggestions")
+    if len(recommendations_df) > 0:
+        print(f"DEBUG: First few suggestions:")
+        print(recommendations_df[['surf_A_conc_mm', 'surf_B_conc_mm']].head())
+    
+    if len(recommendations_df) == 0:
+        raise RuntimeError(f"CRITICAL: Triangle analysis returned 0 recommendations! Algorithm is broken. Input data shape: {experiment_data_df.shape}, columns: {list(experiment_data_df.columns)}, output columns: {recommender.output_columns}")
+    
+    # Extract concentration pairs from recommendations
+    concentration_pairs = []
+    for _, row in recommendations_df.iterrows():
+        conc_a = row['surf_A_conc_mm']
+        conc_b = row['surf_B_conc_mm']
+        concentration_pairs.append((conc_a, conc_b))
+    
+    print(f"Triangle analysis complete: {len(concentration_pairs)} concentration pairs identified")
+    print(f"Triangle score range: {recommendations_df['triangle_score'].min():.4f} - {recommendations_df['triangle_score'].max():.4f}")
+    
+    # Show sample of recommendations for verification
+    print("Sample recommendations:")
+    for i, (conc_a, conc_b) in enumerate(concentration_pairs[:5]):
+        score = recommendations_df.iloc[i]['triangle_score']
+        print(f"  {i+1}: {surfactant_a_name}={conc_a:.3e} mM, {surfactant_b_name}={conc_b:.3e} mM (score: {score:.4f})")
+    
+    return concentration_pairs
+
+def execute_2_stage_workflow(lash_e, surfactant_a_name="SDS", surfactant_b_name="DTAB", 
+                            experiment_output_folder=None, simulate=True):
+    """
+    Execute complete 2-stage adaptive workflow:
+    1. Broad exploration with default concentration ranges
+    2. Calculate optimal bounds from baseline classification  
+    3. Focused exploration with adaptive bounds
+    
+    Args:
+        lash_e: Pre-initialized and validated Lash_E instance
+        surfactant_a_name: Name of first surfactant
+        surfactant_b_name: Name of second surfactant
+        simulate: Run in simulation mode
+        
+    Returns:
+        dict: Combined results from both stages
+    """
+    stage_1_results = {}
+    stage_2_results = {}
+    
+    try:
+        # Use the pre-initialized and validated Lash_E instance
+        print("Using validated Lash_E for 2-stage adaptive workflow...")
+        
+        # STAGE 1: Broad exploration with default bounds
+        print("="*80)
+        print("STARTING 2-STAGE ADAPTIVE WORKFLOW")
+        print("="*80)
+        print("Stage 1: Broad concentration exploration...")
+
+        lash_e.grab_new_wellplate()  # Get fresh wellplate for stage 1
+        
+        stage_1_results = execute_adaptive_surfactant_screening(
+            surfactant_a_name=surfactant_a_name, 
+            surfactant_b_name=surfactant_b_name,
+            lash_e=lash_e,
+            experiment_output_folder=experiment_output_folder,
+            simulate=simulate
+        )
+        
+        lash_e.discard_used_wellplate()  # Discard wellplate after stage 1
+
+        if not stage_1_results['workflow_complete']:
+            raise Exception("Stage 1 workflow failed to complete")
+        
+        print("Stage 1 complete! Analyzing results...")
+        
+        # STAGE 2: Calculate adaptive bounds and focused exploration
+        print("Calculating adaptive concentration bounds from stage 1 data...")
+        
+        # Hardware mode: always use actual stage 1 results
+        stage_1_df = stage_1_results['well_recipes_df']
+        experiment_data = stage_1_df[stage_1_df['well_type'] == 'experiment'].copy()
+        
+        # Calculate new bounds using the rectangle method
+        class SimpleLogger:
+            def info(self, msg): print(msg)
+            def error(self, msg): print(f"ERROR: {msg}")
+            def warning(self, msg): print(f"WARNING: {msg}")
+        
+        new_bounds = calculate_adaptive_concentration_bounds(
+            experiment_data, 
+            surfactant_a_name, 
+            surfactant_b_name,
+            stage_1_results['output_folder'],
+            SimpleLogger()  # Simple logger wrapper for print
+        )
+        
+        print(f"New adaptive bounds calculated:")
+        print(f"  {surfactant_a_name}: {new_bounds['surf_a_min']:.3e} to {new_bounds['surf_a_max']:.3e} mM")
+        print(f"  {surfactant_b_name}: {new_bounds['surf_b_min']:.3e} to {new_bounds['surf_b_max']:.3e} mM")
+        
+        # Stage 2: Focused exploration with adaptive bounds (reuse same lash_e!)
+        print("\nStage 2: Focused exploration with adaptive bounds...")
+        
+        lash_e.grab_new_wellplate() 
+
+        stage_2_results = execute_adaptive_surfactant_screening(
+            surfactant_a_name=surfactant_a_name,
+            surfactant_b_name=surfactant_b_name,
+            surf_a_min=new_bounds['surf_a_min'],
+            surf_a_max=new_bounds['surf_a_max'],
+            surf_b_min=new_bounds['surf_b_min'], 
+            surf_b_max=new_bounds['surf_b_max'],
+            lash_e=lash_e,
+            existing_stock_solutions=stage_1_results['experiment_plan']['stock_solutions_needed'],
+            experiment_output_folder=experiment_output_folder,
+            simulate=simulate
+        )
+
+        lash_e.discard_used_wellplate()
+        
+        if not stage_2_results['workflow_complete']:
+            raise Exception("Stage 2 workflow failed to complete")
+        
+        print("Stage 2 complete!")
+        
+        # Combine results
+        print("\\n" + "="*80)
+        print("2-STAGE WORKFLOW COMPLETE!")
+        print("="*80)
+        print(f"Stage 1: {len(stage_1_results['well_recipes_df'])} wells")
+        print(f"Stage 2: {len(stage_2_results['well_recipes_df'])} wells") 
+        print(f"Total: {len(stage_1_results['well_recipes_df']) + len(stage_2_results['well_recipes_df'])} wells across both stages")
+        
+        return {
+            'surfactant_a': surfactant_a_name,
+            'surfactant_b': surfactant_b_name,
+            'stage_1_results': stage_1_results,
+            'stage_2_results': stage_2_results,
+            'adaptive_bounds': new_bounds,
+            'total_wells': len(stage_1_results['well_recipes_df']) + len(stage_2_results['well_recipes_df']),
+            'simulation': simulate,
+            'workflow_complete': True
+        }
+        
+    except Exception as e:
+        print(f"ERROR in 2-stage workflow: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return {
+            'stage_1_results': stage_1_results,
+            'stage_2_results': stage_2_results, 
+            'error': str(e),
+            'workflow_complete': False
+        }
 
 if __name__ == "__main__":
     """
     Run the adaptive surfactant grid screening workflow.
     """
     
-    # TEST PLANNING ONLY (comment out to run full workflow)
-    # test_planning_only(SURFACTANT_A, SURFACTANT_B)
-    
-    # FULL WORKFLOW 
-    print("Starting adaptive surfactant grid screening...")
-    if not SIMULATE:
-        slack_agent.send_slack_message("Starting adaptive surfactant grid screening workflow...")
+    # WORKFLOW OPTIONS
+    RUN_2_STAGE_WORKFLOW = False  # Set to True to run 2-stage adaptive workflow
+    RUN_SINGLE_STAGE = False       # Set to True to run single-stage workflow
+    RUN_ITERATIVE_WORKFLOW = True
 
-    results = execute_adaptive_surfactant_screening(
-        surfactant_a_name=SURFACTANT_A, 
-        surfactant_b_name=SURFACTANT_B, 
-        simulate=SIMULATE
+    # Initialize Lash_E and validate once
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
+    print("Validating robot and track status...")
+    lash_e.nr_robot.check_input_file()
+    lash_e.nr_track.check_input_file()
+
+    fill_water_vial(lash_e, "water")
+    fill_water_vial(lash_e, "water_2")
+
+    # Create unified experiment folder for all workflows
+    experiment_output_folder, experiment_name = setup_experiment_environment(
+        lash_e, SURFACTANT_A, SURFACTANT_B, SIMULATE
     )
-    # if results and results['workflow_complete']:
-    #     print("="*80)
-    #     print("WORKFLOW COMPLETE!")
-    #     print("="*80)
-    #     print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-    #     print(f"+ Wells processed: {results['total_wells']}")
-    #     print(f"+ Plates used: {results['plates_used']}")
-    #     breakdown = results['pipette_breakdown']
-    #     print(f"+ Pipette tips: {breakdown['large_tips']} large, {breakdown['small_tips']} small (total: {breakdown['total']})")
-    #     print(f"+ Measurements: {len(results['measurements'])} intervals")
-    #     print(f"+ Mode: {'Simulation' if results['simulation'] else 'Hardware'}")
-    #     print(f"+ Results saved to: {results['output_folder']}")
+    print(f"Unified experiment folder created: {experiment_output_folder}")
 
-    # if not SIMULATE:
-    #     slack_agent.send_slack_message("Completed adaptive surfactant grid screening workflow...")
+    if VALIDATE_LIQUIDS:
+        validate_pipetting_system(lash_e, experiment_output_folder)
+
+    if RUN_2_STAGE_WORKFLOW:
+        print("Starting 2-stage adaptive surfactant grid screening...")
+        if not SIMULATE:
+            slack_agent.send_slack_message("Starting 2-stage adaptive surfactant grid screening workflow...")
+
+        results = execute_2_stage_workflow(
+            lash_e=lash_e,
+            surfactant_a_name=SURFACTANT_A, 
+            surfactant_b_name=SURFACTANT_B, 
+            experiment_output_folder=experiment_output_folder,
+            simulate=SIMULATE
+        )
+        
+        if results and results['workflow_complete']:
+            print("="*80)
+            print("2-STAGE WORKFLOW COMPLETE!")
+            print("="*80)
+            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+            print(f"+ Stage 1 wells: {len(results['stage_1_results']['well_recipes_df'])}")
+            print(f"+ Stage 2 wells: {len(results['stage_2_results']['well_recipes_df'])}")
+            print(f"+ Total wells: {results['total_wells']}")
+            print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+        else:
+            print("2-stage workflow failed!")
+            
+    elif RUN_SINGLE_STAGE:
+        # SINGLE STAGE WORKFLOW 
+        print("Starting single-stage adaptive surfactant grid screening...")
+        if not SIMULATE:
+            slack_agent.send_slack_message("Starting adaptive surfactant grid screening workflow...")
+
+        results = execute_adaptive_surfactant_screening(
+            surfactant_a_name=SURFACTANT_A, 
+            surfactant_b_name=SURFACTANT_B,
+            lash_e=lash_e,
+            experiment_output_folder=experiment_output_folder,
+            simulate=SIMULATE
+        )
+        
+        if results and results['workflow_complete']:
+            print("="*80)
+            print("SINGLE-STAGE WORKFLOW COMPLETE!")
+            print("="*80)
+            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+            print(f"+ Wells: {results['total_wells']}")
+            print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+        else:
+            print("Single-stage workflow failed!")
+    
+    elif RUN_ITERATIVE_WORKFLOW:
+        # ITERATIVE WORKFLOW WITH GRADIENT EXPLORATION
+        print("Starting iterative gradient exploration workflow...")
+        if not SIMULATE:
+            slack_agent.send_slack_message("Starting iterative gradient exploration workflow...")
+
+        results = execute_iterative_workflow(
+            surfactant_a_name=SURFACTANT_A, 
+            surfactant_b_name=SURFACTANT_B,
+            number_concentrations=5,  # Start with rapid 5x5 screening
+            target_measurements=96,   # Fill one wellplate with iterative exploration
+            gradient_suggestions_per_iteration=12,
+            lash_e=lash_e,
+            experiment_output_folder=experiment_output_folder,
+            simulate=SIMULATE
+        )
+        
+        if results and results['workflow_complete']:
+            print("="*80)
+            print("ITERATIVE WORKFLOW COMPLETE!")
+            print("="*80)
+            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+            print(f"+ Total wells: {results['total_wells']}")
+            print(f"+ Measured wells: {results['measured_wells']}")
+            print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+        else:
+            print("Iterative workflow failed!")
+    
+    else:
+        print("No workflow selected. Set RUN_2_STAGE_WORKFLOW=True, RUN_SINGLE_STAGE=True, or RUN_ITERATIVE_WORKFLOW=True")
+
