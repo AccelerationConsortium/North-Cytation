@@ -8,6 +8,31 @@ from pathlib import Path
 import slack_agent
 import pipetting_data.embedded_calibration_validation as pipette_validator  
 
+# Global well tracking variables
+WELLS_PER_PLATE = 96
+current_well_count = 0
+wellplate_count = 0
+
+def check_and_get_wellplate_if_needed(lash_e, wells_needed):
+    """Check if we need a new wellplate and get one if necessary"""
+    global current_well_count, wellplate_count, WELLS_PER_PLATE
+    
+    if current_well_count + wells_needed > WELLS_PER_PLATE:
+        print(f"Wells needed: {wells_needed}, Current well count: {current_well_count}")
+        print("Need new wellplate - current plate is full")
+        if current_well_count > 0:  # Only discard if we have a plate in use
+            lash_e.discard_used_wellplate()
+        lash_e.grab_new_wellplate()
+        wellplate_count += 1
+        current_well_count = 0
+        print(f"Got new wellplate #{wellplate_count}")
+
+def update_well_count(wells_used):
+    """Update the global well count after using wells"""
+    global current_well_count
+    current_well_count += wells_used
+    print(f"Used {wells_used} wells. Total wells used on current plate: {current_well_count}")
+
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.05):
     print("\nDispensing from photoreactor into sample: ", sample_index)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
@@ -39,6 +64,9 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
         output_file = output_dir / f'output_{first_well_index}_{timestamp}.txt'
         data_out.to_csv(output_file, sep=',')
         #Use analyzer to analyze the data
+    
+    # Update well count after using wells
+    update_well_count(replicates)
     print()
 
 def mix_current_sample(lash_e, sample_index):
@@ -64,7 +92,7 @@ def get_time(simulate,current_time=None):
             return current_time + 1
 
 #Define your workflow! Make sure that it has parameters that can be changed!
-def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1', set_suffix='',replicates=3, simulate=True, output_dir=None):
+def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1', set_suffix='',replicates=3, simulate=True, output_dir=None, global_well_index=0):
   
     MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
 
@@ -79,11 +107,14 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
         cof_output_dir = None
 
     #OAM Note: These times need to exactly correspond to the schedule and vials!
-    sample_times = [60,120,180,240,300,360] #in minutes <----- These numbers need to match the vials and the schedule!!!!!
+    sample_times = [1,6,11,20,30,45] #in minutes <----- These numbers need to match the vials and the schedule!!!!!
     sample_indices = [f"{t}_min_Reaction{set_suffix}" for t in sample_times]
 
 #-> Start from here! 
-    lash_e.grab_new_wellplate()
+    # Check if we need a new wellplate at the start of each workflow
+    total_wells_needed = len(sample_indices) * replicates
+    check_and_get_wellplate_if_needed(lash_e, total_wells_needed)
+    
     #Step 1: Add 1.95 mL "assay reagent" to sample vials
     for i in sample_indices:  #May want to use liquid calibration eg water
         lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water')
@@ -107,7 +138,7 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     print("Starting timed portion at: ", start_time)
     #Let's complete the items one at a time
     items_completed = 0
-    current_well_index = 0
+    current_well_index = global_well_index  # Use the global well index passed in
     time_increment = 60
     while items_completed < schedule.shape[0]: #While we still have items to complete in our schedule
         active_item = schedule.iloc[items_completed]
@@ -127,7 +158,11 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
                 dispense_from_photoreactor_into_sample(lash_e,cof_vial,sample_index,volume=0.05)
                 items_completed+=1
             elif action_required=="measure_samples":
-                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,current_well_index,MEASUREMENT_PROTOCOL_FILE,replicates, cof_output_dir,simulate=SIMULATE)
+                # Check if we need a new wellplate before measuring
+                check_and_get_wellplate_if_needed(lash_e, replicates)
+                # Recalculate well index based on current plate position
+                actual_well_index = current_well_count
+                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,actual_well_index,MEASUREMENT_PROTOCOL_FILE,replicates, cof_output_dir,simulate=SIMULATE)
                 current_well_index += replicates
                 items_completed+=1
                 measured_items+=1
@@ -143,13 +178,15 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
     lash_e.photoreactor.turn_off_reactor_led(reactor_num=0)
     lash_e.nr_robot.move_home()
-    lash_e.discard_used_wellplate()
+    # Don't discard wellplate here - let the well counting system handle it
     if not SIMULATE: 
         slack_agent.send_slack_message("Peroxide workflow completed!")
+    
+    return current_well_index  # Return the updated well index
 
 # Initialize the workstation ONCE before running all workflows
 
-NUMBER_OF_SAMPLES = 1
+NUMBER_OF_SAMPLES = 3
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
 SIMULATE = False
 
@@ -215,10 +252,26 @@ results = pipette_validator.validate_pipetting_accuracy(
                 conditioning_volume_ul=800
             )
 
+# Initialize well tracking
+global_well_index = 0
+print(f"Starting experiment with {NUMBER_OF_SAMPLES} COF samples")
+print(f"Each COF will use approximately {6 * 3} wells (6 samples x 3 replicates)")
+print(f"Total wells needed: {NUMBER_OF_SAMPLES * 6 * 3} wells")
 
 # Run the workflow N times with different Reagent+COF+sample sets, reusing the same lash_e instance
 for i in range(1, NUMBER_OF_SAMPLES+1):
     assay_reagent = f'Assay_reagent_{i}'
     cof_vial = f'COF_{i}'
     set_suffix = f'_Set{i}'
-    peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix, simulate=SIMULATE, output_dir=output_dir)
+    print(f"\n=== Starting COF {i} workflow ===")
+    global_well_index = peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix, simulate=SIMULATE, output_dir=output_dir, global_well_index=global_well_index)
+    print(f"=== COF {i} workflow completed. Global well index now at: {global_well_index} ===")
+
+# Discard final wellplate if one is in use
+if current_well_count > 0:
+    print("Discarding final wellplate")
+    lash_e.discard_used_wellplate()
+
+print(f"\nExperiment completed!")
+print(f"Total wellplates used: {wellplate_count}")
+print(f"Final well count: {current_well_count}")
