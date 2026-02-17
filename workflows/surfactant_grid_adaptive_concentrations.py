@@ -107,7 +107,10 @@ MIN_CONC = 10**-2  # 0.01 mM minimum concentration for all surfactants
 NUMBER_CONCENTRATIONS = 9  # Number of concentration steps for solo/2-step workflows
 
 ITERATIVE_CONCENTRATIONS = 5  # Number of concentration steps for iterative/adaptive workflows (5x5 grid)
-GRADIENT_SUGGESTIONS_PER_ITERATION = 12  # Number of gradient suggestions per iterative round
+GRADIENT_SUGGESTIONS_PER_ITERATION = 14  # Number of gradient suggestions per iterative round
+
+# Recommender optimization targets - choose which measurements to optimize 
+OPTIMIZE_METRIC = 'ratio'  # Options: 'turbidity', 'ratio', 'both' (for ratio + turbidity boundaries)
 
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
@@ -3410,17 +3413,27 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     except ImportError as e:
         raise ImportError(f"CRITICAL: DelaunayTriangleRecommender import failed: {e}. Adaptive algorithm cannot run without this!")
     
-    # Initialize the triangle recommender (focus on ratio AND turbidity boundaries)
+    # Initialize the triangle recommender with configurable optimization target
+    # Configure output columns based on optimization preference
+    if OPTIMIZE_METRIC == 'turbidity':
+        output_columns = ['turbidity_600']
+    elif OPTIMIZE_METRIC == 'ratio':
+        output_columns = ['ratio'] 
+    elif OPTIMIZE_METRIC == 'both':
+        output_columns = ['ratio', 'turbidity_600']
+    else:
+        raise ValueError(f"Invalid OPTIMIZE_METRIC: {OPTIMIZE_METRIC}. Must be 'turbidity', 'ratio', or 'both'")
+    
     recommender = DelaunayTriangleRecommender(
         input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
-        output_columns=['ratio', 'turbidity_600'],           # Focus on BOTH ratio and turbidity boundaries 
+        output_columns=output_columns,                        # Configurable optimization target
         log_transform_inputs=True,    # Work in log concentration space
         normalization_method='log_zscore'  # Log + z-score normalization
     )
     
     # Get recommendations from triangle analysis
     print(f"Running Delaunay triangle analysis for {n_suggestions} boundary suggestions...")
-    print(f"DEBUG: Using output columns: {recommender.output_columns}")
+    print(f"DEBUG: Optimization target: {OPTIMIZE_METRIC} -> output columns: {recommender.output_columns}")
     print(f"DEBUG: Input data shape: {experiment_data_df.shape}")
     print(f"DEBUG: Available columns: {list(experiment_data_df.columns)}")
     
