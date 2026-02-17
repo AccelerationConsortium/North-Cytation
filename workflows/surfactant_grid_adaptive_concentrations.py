@@ -82,8 +82,8 @@ SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
+SIMULATE = False # Set to False for actual hardware execution
+VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
 VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
 
@@ -3005,6 +3005,11 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         updated_results_path = os.path.join(results['output_folder'], "iterative_experiment_results.csv")
         merged_df.to_csv(updated_results_path, index=False)
         print(f"Updated results saved: {updated_results_path}")
+
+        if not simulate:
+            # Send Slack update with current progress
+            stage_info = f"Iteration {iteration} complete: {current_measurements}/{target_measurements} measurements, wellplate usage: {current_wellplate_wells}/96"
+            slack_agent.send_slack_message(stage_info)
         
         iteration += 1
         
