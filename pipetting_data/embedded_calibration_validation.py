@@ -49,6 +49,13 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import json
 
+# Import PipettingParameters for type hints
+try:
+    from pipetting_data.pipetting_parameters import PipettingParameters
+except ImportError:
+    # Fallback for type hints if import fails
+    PipettingParameters = None
+
 def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='water'):
     """Condition a pipette tip by aspirating and dispensing into source vial multiple times
     
@@ -68,7 +75,7 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL (fast dummy params)")
         
         # Simple dummy parameters - fast and reliable for conditioning only
-        from North_Safe import PipettingParameters
+        from pipetting_data.pipetting_parameters import PipettingParameters
         dummy_params = PipettingParameters(
             aspirate_speed=15,      # Fast aspirate
             dispense_speed=5,       # Fast dispense  
@@ -180,6 +187,7 @@ def validate_pipetting_accuracy(
     quality_std_threshold: float = None,
     condition_tip_enabled: bool = False,
     conditioning_volume_ul: float = 100,
+    parameters: Optional[PipettingParameters] = None,
 ) -> Dict:
     
 
@@ -202,6 +210,7 @@ def validate_pipetting_accuracy(
         quality_std_threshold: Standard deviation threshold for quality assessment (default: None = auto-calculate per volume)
         condition_tip_enabled: Whether to condition tip before validation (default: False)
         conditioning_volume_ul: Volume for tip conditioning in uL (default: 100)
+        parameters: Optional custom pipetting parameters to override liquid-calibrated settings (default: None)
         
     Returns:
         dict: Results summary containing accuracy metrics, file paths, and statistics
@@ -298,6 +307,7 @@ def validate_pipetting_accuracy(
                     source_vial_name=source_vial,
                     dest_vial_name=destination_vial,
                     volume=volume_ml,
+                    parameters=parameters,  # Pass through custom parameters if provided
                     liquid=liquid_type,
                     remove_tip=switch_pipet,  # Use built-in pipet removal control
                     use_safe_location=False,
