@@ -83,7 +83,7 @@ SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
 SIMULATE = False # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
+VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
 VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
 
