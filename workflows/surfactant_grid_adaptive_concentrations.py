@@ -1744,7 +1744,7 @@ def measure_turbidity(lash_e, well_indices, batch_recipes=None):
         
         # Run shake protocol first
         lash_e.logger.info(f"Running shake protocol: {SHAKE_PROTOCOL}")
-        lash_e.cytation.run_protocol(SHAKE_PROTOCOL, None)
+        lash_e.cytation.run_protocol(SHAKE_PROTOCOL, [0])
         
         # Run turbidity protocol
         lash_e.logger.info(f"Running turbidity protocol: {TURBIDITY_PROTOCOL_FILE}")
@@ -1817,7 +1817,7 @@ def measure_fluorescence(lash_e, well_indices, batch_recipes=None):
         
         # Run shake protocol first
         lash_e.logger.info(f"Running shake protocol: {SHAKE_PROTOCOL}")
-        lash_e.cytation.run_protocol(SHAKE_PROTOCOL, None)
+        lash_e.cytation.run_protocol(SHAKE_PROTOCOL, [0])
         
         # Run fluorescence protocol
         lash_e.logger.info(f"Running fluorescence protocol: {FLUORESCENCE_PROTOCOL_FILE}")
