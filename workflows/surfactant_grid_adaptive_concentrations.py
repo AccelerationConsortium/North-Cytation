@@ -129,9 +129,9 @@ MIN_WELL_PIPETTE_VOLUME_UL = 10.0  # Minimum volume for well dispensing
 MAX_SURFACTANT_VOLUME_UL = 90.0   # Maximum surfactant volume per well
 
 # Measurement protocol files for Cytation TODO: Add shaking for 10 minutes... 
-TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96_shake.prt"
-FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96_shake.prt"
-
+SHAKE_PROTOCOL = r"C:\Protocols\shake_5_wait_5.prt" #<----- Make this protocol
+TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
+FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
 
 
 # File paths
@@ -1739,12 +1739,20 @@ def measure_turbidity(lash_e, well_indices, batch_recipes=None):
     lash_e.logger.info(f"Measuring turbidity in wells {well_indices} using protocol {TURBIDITY_PROTOCOL_FILE}...")
     
     if not lash_e.simulate:
-        # Use the predefined turbidity protocol
-        turbidity_data = lash_e.measure_wellplate(
-            protocol_file_path=TURBIDITY_PROTOCOL_FILE,
-            wells_to_measure=well_indices,
-            plate_type="96 WELL PLATE"
-        )
+        # Move wellplate to cytation
+        lash_e.move_wellplate_to_cytation()
+        
+        # Run shake protocol first
+        lash_e.logger.info(f"Running shake protocol: {SHAKE_PROTOCOL}")
+        lash_e.cytation.run_protocol(SHAKE_PROTOCOL, None)
+        
+        # Run turbidity protocol
+        lash_e.logger.info(f"Running turbidity protocol: {TURBIDITY_PROTOCOL_FILE}")
+        turbidity_data = lash_e.cytation.run_protocol(TURBIDITY_PROTOCOL_FILE, well_indices)
+        
+        # Return wellplate to active area
+        lash_e.move_wellplate_back_from_cytation()
+        lash_e.nr_track.origin()
         
         # DEBUG: Show raw data structure
         lash_e.logger.info(f"TURBIDITY RAW DEBUG: type = {type(turbidity_data)}")
@@ -1804,12 +1812,20 @@ def measure_fluorescence(lash_e, well_indices, batch_recipes=None):
     lash_e.logger.info(f"Measuring fluorescence in wells {well_indices} using protocol {FLUORESCENCE_PROTOCOL_FILE}...")
     
     if not lash_e.simulate:
-        # Use the predefined fluorescence protocol
-        fluorescence_data = lash_e.measure_wellplate(
-            protocol_file_path=FLUORESCENCE_PROTOCOL_FILE,
-            wells_to_measure=well_indices,
-            plate_type="96 WELL PLATE"
-        )
+        # Move wellplate to cytation
+        lash_e.move_wellplate_to_cytation()
+        
+        # Run shake protocol first
+        lash_e.logger.info(f"Running shake protocol: {SHAKE_PROTOCOL}")
+        lash_e.cytation.run_protocol(SHAKE_PROTOCOL, None)
+        
+        # Run fluorescence protocol
+        lash_e.logger.info(f"Running fluorescence protocol: {FLUORESCENCE_PROTOCOL_FILE}")
+        fluorescence_data = lash_e.cytation.run_protocol(FLUORESCENCE_PROTOCOL_FILE, well_indices)
+        
+        # Return wellplate to active area
+        lash_e.move_wellplate_back_from_cytation()
+        lash_e.nr_track.origin()
         
         # DEBUG: Show raw data structure
         lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: type = {type(fluorescence_data)}")
