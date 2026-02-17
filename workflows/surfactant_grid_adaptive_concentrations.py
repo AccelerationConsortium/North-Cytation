@@ -104,7 +104,7 @@ ITERATIVE_MEASUREMENT_TOTAL= 192 #The number of measurements done
 ADD_BUFFER = True  # Set to False to skip buffer addition
 BUFFER_VOLUME_UL = 20  # uL buffer to add per well
 BUFFER_OPTIONS = ['MES', 'HEPES', 'CAPS']  # Available buffers
-SELECTED_BUFFER = 'HEPES'  # Choose from BUFFER_OPTIONS
+SELECTED_BUFFER = 'MES'  # Choose from BUFFER_OPTIONS
 
 # Volume calculation with buffer compensation
 # Always reserve space for buffer and pyrene to maintain consistent concentration ranges
