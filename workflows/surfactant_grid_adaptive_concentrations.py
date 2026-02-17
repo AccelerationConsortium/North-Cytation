@@ -50,31 +50,37 @@ SURFACTANT_LIBRARY = {
         "full_name": "Sodium Dodecyl Sulfate",
         "category": "anionic",
         "stock_conc": 50,  # mM
+        "cmc_mm": 8.6,  # mM (t = 10 min)
     },
     "NaDC": {
         "full_name": "Sodium Docusate", 
         "category": "anionic",
         "stock_conc": 25,  # mM
+        "cmc_mm": 5.51,  # mM (t = 10 min)
     },
     "NaC": {
         "full_name": "Sodium Cholate",
         "category": "anionic", 
         "stock_conc": 50,  # mM
+        "cmc_mm": 15.24,  # mM (t = 10 min)
     },
     "CTAB": {
         "full_name": "Hexadecyltrimethylammonium Bromide",
         "category": "cationic",
         "stock_conc": 5,  # mM
+        "cmc_mm": 1.1,  # mM (t = 10 min)
     },
     "DTAB": {
         "full_name": "Dodecyltrimethylammonium Bromide",
         "category": "cationic",
         "stock_conc": 50,  # mM
+        "cmc_mm": 14.56,  # mM (t = 10 min)
     },
     "TTAB": {
         "full_name": "Tetradecyltrimethylammonium Bromide", 
         "category": "cationic",
         "stock_conc": 50,  # mM
+        "cmc_mm": 3.77,  # mM (t = 10 min)
     }
 }
 
@@ -82,8 +88,8 @@ SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
-SIMULATE = False # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
+SIMULATE = True # Set to False for actual hardware execution
+VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
 VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
 
@@ -92,13 +98,21 @@ RUN_2_STAGE_WORKFLOW = False  # Set to True to run 2-stage adaptive workflow
 RUN_SINGLE_STAGE = False       # Set to True to run single-stage workflow
 RUN_ITERATIVE_WORKFLOW = True #Using triangles
 
+# CMC CONTROL WELLS OPTIONS
+ADD_CMC_CONTROLS = True  # Set to True to add CMC transition control wells
+CMC_CONTROL_POINTS = 8   # Number of concentration points around CMC (6-8 recommended)
+
 # Adaptive grid parameters - concentration ranges adapt to stock concentrations
-MIN_CONC = 10**-4  # 0.0001 mM minimum concentration for all surfactants
-NUMBER_CONCENTRATIONS = 9  # Number of concentration steps in logarithmic grid
+MIN_CONC = 10**-2  # 0.01 mM minimum concentration for all surfactants
+NUMBER_CONCENTRATIONS = 9  # Number of concentration steps for solo/2-step workflows
+
+ITERATIVE_CONCENTRATIONS = 5  # Number of concentration steps for iterative/adaptive workflows (5x5 grid)
+GRADIENT_SUGGESTIONS_PER_ITERATION = 12  # Number of gradient suggestions per iterative round
+
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
 PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
-ITERATIVE_MEASUREMENT_TOTAL= 192 #The number of measurements done
+ITERATIVE_MEASUREMENT_TOTAL= 96 #The number of measurements done
 
 # Buffer addition settings
 ADD_BUFFER = True  # Set to False to skip buffer addition
@@ -763,15 +777,19 @@ class SurfactantSubstockTracker:
         self.substocks = {}  # vial_name: {'surfactant_name': str, 'concentration_mm': float, 'volume_ml': float}
         self.next_available_substock = 0
         self.min_pipette_volume_ul = MIN_WELL_PIPETTE_VOLUME_UL  # Consistent with other functions
-        self.max_surfactant_volume_ul = MAX_SURFACTANT_VOLUME_UL  # Consistent with other functions
     
-    def find_best_solution_for_concentration(self, surfactant_name, target_conc_mm, lash_e=None):
+    def find_best_solution_for_concentration(self, surfactant_name, target_conc_mm, lash_e=None, max_surfactant_volume_ul=None):
         """
         Find best available solution (stock or substock) for achieving target concentration.
         Returns solution dict or None if no suitable solution exists within pipetting limits.
+        
+        Args:
+            max_surfactant_volume_ul: Maximum volume per well (defaults to MAX_SURFACTANT_VOLUME_UL for regular experiments)
         """
+        # Use provided max volume or default to standard limit
+        effective_max_volume_ul = max_surfactant_volume_ul if max_surfactant_volume_ul is not None else MAX_SURFACTANT_VOLUME_UL
         options = []
-        max_volume_ml = self.max_surfactant_volume_ul / 1000
+        max_volume_ml = effective_max_volume_ul / 1000
         
         # Check stock solution first
         if surfactant_name in SURFACTANT_LIBRARY:
@@ -782,7 +800,7 @@ class SurfactantSubstockTracker:
             vol_needed_ul = (target_conc_mm * WELL_VOLUME_UL) / stock_conc
             vol_needed_ml = vol_needed_ul / 1000
             
-            if vol_needed_ul >= self.min_pipette_volume_ul and vol_needed_ul <= self.max_surfactant_volume_ul:
+            if vol_needed_ul >= self.min_pipette_volume_ul and vol_needed_ul <= effective_max_volume_ul:
                 options.append({
                     'vial_name': f"{surfactant_name}_stock",
                     'concentration_mm': stock_conc,
@@ -801,7 +819,7 @@ class SurfactantSubstockTracker:
                 vol_needed_ml = vol_needed_ul / 1000
                 
                 if (vol_needed_ul >= self.min_pipette_volume_ul and 
-                    vol_needed_ul <= self.max_surfactant_volume_ul and
+                    vol_needed_ul <= effective_max_volume_ul and
                     contents['volume_ml'] >= vol_needed_ml):
                     
                     options.append({
@@ -1028,8 +1046,7 @@ def calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfac
     Uses serial dilutions when direct dilution would require volumes < 200 uL.
     """
     MIN_SUBSTOCK_VOLUME_UL = 200  # Minimum volume for accurate substock preparation
-    FINAL_SUBSTOCK_VOLUME_ML = 6.0
-    
+    FINAL_SUBSTOCK_VOLUME_ML = 7.5
     recipes = []
     
     lash_e.logger.info(f"\n=== SUBSTOCK DILUTION RECIPES ===")
@@ -1322,7 +1339,7 @@ def rank_options_with_conservation_external(options, lash_e, conservation_thresh
     # Return option with highest score
     return max(scored_options, key=lambda x: x[1])[0]
 
-def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, target_concentrations):
+def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, target_concentrations, max_volume_ul=None):
     """
     Create a dilution plan using existing stock solutions with proper dilution calculations.
     
@@ -1330,6 +1347,7 @@ def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, 
         existing_stock_solutions: List of stock solutions from previous stage
         surfactant_name: Name of surfactant (e.g., 'SDS', 'TTAB') 
         target_concentrations: List of concentrations needed for this stage
+        max_volume_ul: Maximum volume per well (defaults to MAX_SURFACTANT_VOLUME_UL)
         
     Returns:
         plan: Dictionary with concentration_map and substocks_needed (like calculate_smart_dilution_plan output)
@@ -1379,7 +1397,7 @@ def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, 
     for target_conc in target_concentrations:
         # Find best solution based on pipettable volumes (like the smart dilution planner)
         min_pipette_volume_ul = MIN_WELL_PIPETTE_VOLUME_UL  # Consistent across all functions
-        max_surfactant_volume_ul = MAX_SURFACTANT_VOLUME_UL  # Consistent across all functions
+        effective_max_volume_ul = max_volume_ul if max_volume_ul is not None else MAX_SURFACTANT_VOLUME_UL
         
         options = []
         
@@ -1392,7 +1410,7 @@ def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, 
                 
                 # Check if volume is pipettable
                 if (volume_needed_ul >= min_pipette_volume_ul and 
-                    volume_needed_ul <= max_surfactant_volume_ul):
+                    volume_needed_ul <= effective_max_volume_ul):
                     options.append({
                         'stock': stock,
                         'volume_needed_ul': volume_needed_ul,
@@ -1401,7 +1419,8 @@ def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, 
         
         if options:
             # Choose option using conservation-aware ranking
-            best_option = rank_options_with_conservation_external(options, lash_e)
+            # Use 0.0 threshold during planning - no conservation penalty needed
+            best_option = rank_options_with_conservation_external(options, lash_e, conservation_threshold=0.0)
             
             concentration_map[target_conc] = {
                 'vial_name': best_option['stock']['vial_name'],
@@ -1517,6 +1536,122 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
     })
     
     return controls
+
+def create_cmc_control_series(surfactant_name, num_points=7, concentration_span_factor=3.0):
+    """
+    Create CMC control wells - CMC-centered concentration series with dense sampling near transition.
+    Points are densely spaced near the CMC value and increasingly sparse toward bounds.
+    For odd num_points, includes exact CMC as center. For even, symmetric around CMC.
+    Uses existing vial selection system to choose optimal stock/substock solutions.
+    
+    Args:
+        surfactant_name: Name of surfactant (must have 'cmc_mm' in SURFACTANT_LIBRARY)
+        num_points: Number of concentration points (default 7)
+        concentration_span_factor: How many decades around CMC to span (default 3.0)
+        
+    Returns:
+        list: Control well specifications for CMC series (vial selection done later)
+    """
+    controls = []
+    
+    # Get CMC value from library
+    if surfactant_name not in SURFACTANT_LIBRARY:
+        return controls  # No CMC controls if surfactant not in library
+        
+    surfactant_info = SURFACTANT_LIBRARY[surfactant_name]
+    if 'cmc_mm' not in surfactant_info:
+        return controls  # No CMC controls if no CMC value available
+        
+    cmc_value = surfactant_info['cmc_mm']
+    
+    # Create concentration range around CMC (log scale)
+    # Span from CMC/span_factor to CMC*span_factor
+    min_conc = cmc_value / concentration_span_factor
+    max_conc = cmc_value * concentration_span_factor
+    
+    # Ensure we don't go below global minimum
+    min_conc = max(min_conc, MIN_CONC)
+    
+    # For CMC controls: Total volume = WELL_VOLUME_UL + PYRENE_VOLUME_UL = 205 µL
+    # Available volume for surfactant+water = 180 µL (reserve 20µL for buffer)
+    available_volume_ul = WELL_VOLUME_UL - BUFFER_VOLUME_UL  # 180 µL for surfactant+water (200-20)
+    total_well_volume_ul = WELL_VOLUME_UL + PYRENE_VOLUME_UL  # 205 µL total
+    
+    # Don't exceed what's achievable with available volume (after buffer) at stock concentration
+    stock_conc = surfactant_info['stock_conc']
+    max_achievable_with_stock = (stock_conc * available_volume_ul) / WELL_VOLUME_UL  # Scale down for buffer space
+    max_conc = min(max_conc, max_achievable_with_stock)
+    
+    # Generate CMC-centered concentration series with dense center, sparse edges
+    # Create symmetric points around CMC with increasing spacing
+    if num_points % 2 == 1:
+        # Odd number: include CMC as center point
+        half_points = (num_points - 1) // 2
+        # Generate points from 0 to 1, then apply stretching function
+        raw_spacing = np.linspace(0, 1, half_points + 1)[1:]  # Exclude 0, include 1
+        # Apply cubic stretching to increase spacing toward edges
+        stretched_spacing = raw_spacing ** 2  # Quadratic stretching
+        
+        # Map to log scale around CMC
+        log_cmc = np.log10(cmc_value)
+        log_span = np.log10(concentration_span_factor)
+        
+        # Create positive and negative sides
+        positive_logs = log_cmc + stretched_spacing * log_span
+        negative_logs = log_cmc - stretched_spacing * log_span
+        
+        # Combine: [low ... CMC ... high]
+        all_logs = np.concatenate([negative_logs[::-1], [log_cmc], positive_logs])
+        concentrations = 10 ** all_logs
+    else:
+        # Even number: no exact CMC point, symmetric around it
+        half_points = num_points // 2
+        raw_spacing = np.linspace(0, 1, half_points + 1)[1:]  # Exclude 0
+        stretched_spacing = raw_spacing ** 2
+        
+        log_cmc = np.log10(cmc_value)
+        log_span = np.log10(concentration_span_factor)
+        
+        positive_logs = log_cmc + stretched_spacing * log_span
+        negative_logs = log_cmc - stretched_spacing * log_span
+        
+        all_logs = np.concatenate([negative_logs[::-1], positive_logs])
+        concentrations = 10 ** all_logs
+    
+    # Ensure bounds are respected
+    concentrations = np.clip(concentrations, min_conc, max_conc)
+    
+    # Create control specifications (vial selection happens in create_well_recipe_from_control)
+    for i, conc in enumerate(concentrations):
+        # Determine which surfactant this is for
+        is_surfactant_a = (surfactant_name == SURFACTANT_A)
+        is_surfactant_b = (surfactant_name == SURFACTANT_B)
+        
+        controls.append({
+            'control_type': f'cmc_{surfactant_name}_{i+1}',
+            'description': f'{surfactant_name} CMC series: {conc:.4f} mM (single surfactant)',
+            'target_concentration_a_mm': conc if is_surfactant_a else 0.0,
+            'target_concentration_b_mm': conc if is_surfactant_b else 0.0,
+            'cmc_control': True,
+            'single_surfactant': False,  # Include buffer in CMC controls
+            'surfactant_for_cmc': surfactant_name,  # Which surfactant this series is for
+            'replicate': 1,
+            'is_control': True
+        })
+    
+    return controls
+    
+def get_cmc_concentrations_from_controls(cmc_controls, surfactant_name):
+    """Extract target concentrations from CMC control specifications."""
+    concentrations = []
+    for control in cmc_controls:
+        if control['surfactant_for_cmc'] == surfactant_name:
+            target_conc_a = control.get('target_concentration_a_mm', 0.0)
+            target_conc_b = control.get('target_concentration_b_mm', 0.0)
+            conc = target_conc_a if target_conc_a > 0 else target_conc_b
+            if conc > 0:
+                concentrations.append(conc)
+    return concentrations
     
 def measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data, batch_recipes=None):
     """Measure turbidity for a batch of wells and save data."""
@@ -1933,7 +2068,7 @@ def create_experiment_folder_structure(experiment_name):
     
     return subfolders
 
-def create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name):
+def create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, plan_a=None, plan_b=None):
     """Convert control well specification to well recipe DataFrame row."""
     # Start with base recipe structure using None for not-applicable values
     recipe = {
@@ -1957,20 +2092,57 @@ def create_well_recipe_from_control(control, well_index, surfactant_a_name, surf
         'replicate': control['replicate']
     }
     
-    # Handle different control types
-    if control.get('water_only', False):
-        # Water-only control: 200 ┬╡L water
-        recipe['water_volume_ul'] = 200.0
+    # Handle CMC control wells (single surfactant + water + pyrene, no buffer)
+    if control.get('cmc_control', False):
+        # CMC controls use proper existing stock matching pattern (same as iterative workflow)
+        target_conc_a = control.get('target_concentration_a_mm', 0.0)
+        target_conc_b = control.get('target_concentration_b_mm', 0.0)
+        
+        # Handle surfactant A CMC control
+        if target_conc_a > 0 and plan_a:
+            solution_a = plan_a['concentration_map'].get(target_conc_a)
+            if solution_a:
+                recipe['surf_A_conc_mm'] = target_conc_a
+                recipe['substock_A_name'] = solution_a['vial_name']
+                recipe['substock_A_conc_mm'] = solution_a['concentration_mm']
+                recipe['surf_A_volume_ul'] = solution_a['volume_needed_ul']
+            else:
+                raise ValueError(f"CMC concentration {target_conc_a:.3e} mM not available for {surfactant_a_name} (check stock matching)")
+                
+        # Handle surfactant B CMC control  
+        if target_conc_b > 0 and plan_b:
+            solution_b = plan_b['concentration_map'].get(target_conc_b)
+            if solution_b:
+                recipe['surf_B_conc_mm'] = target_conc_b
+                recipe['substock_B_name'] = solution_b['vial_name']
+                recipe['substock_B_conc_mm'] = solution_b['concentration_mm']
+                recipe['surf_B_volume_ul'] = solution_b['volume_needed_ul']
+            else:
+                raise ValueError(f"CMC concentration {target_conc_b:.3e} mM not available for {surfactant_b_name} (check stock matching)")
+        
+        # Calculate water volume: Total well volume (200 µL) - Surfactant - Buffer - NO pyrene in calculation
+        # (pyrene is added separately, so well contains 200 µL solution + 5 µL pyrene = 205 µL total)
+        total_surfactant_volume = recipe['surf_A_volume_ul'] + recipe['surf_B_volume_ul']
+        recipe['water_volume_ul'] = WELL_VOLUME_UL - total_surfactant_volume - BUFFER_VOLUME_UL  # Fill to 180 µL after buffer
+        recipe['buffer_volume_ul'] = BUFFER_VOLUME_UL if ADD_BUFFER else 0.0  # Include buffer in CMC controls
+        recipe['buffer_used'] = SELECTED_BUFFER if ADD_BUFFER else None
+        
+        return recipe
+    
+    # Handle other control types (existing logic)
+    elif control.get('water_only', False):
+        # Water-only control: 200 µL water
+        recipe['water_volume_ul'] = WELL_VOLUME_UL
         recipe['control_type'] = 'water_blank'
         
     elif control.get('buffer_only', False):
-        # Buffer-only control: 200 ┬╡L buffer  
-        recipe['buffer_volume_ul'] = 200.0
+        # Buffer-only control: 200 µL buffer  
+        recipe['buffer_volume_ul'] = WELL_VOLUME_UL
         recipe['water_volume_ul'] = 0.0
         recipe['control_type'] = 'buffer_blank'
         
     elif control['volume_a_ul'] > 0:
-        # Surfactant A control: 200 ┬╡L surfactant A stock
+        # Surfactant A control: 200 µL surfactant A stock
         recipe['surf_A_conc_mm'] = SURFACTANT_LIBRARY[surfactant_a_name]['stock_conc']
         recipe['substock_A_name'] = control['dilution_a_vial']
         recipe['substock_A_conc_mm'] = SURFACTANT_LIBRARY[surfactant_a_name]['stock_conc'] 
@@ -1980,7 +2152,7 @@ def create_well_recipe_from_control(control, well_index, surfactant_a_name, surf
         # surf_B stays None (not applicable)
         
     elif control['volume_b_ul'] > 0:
-        # Surfactant B control: 200 ┬╡L surfactant B stock
+        # Surfactant B control: 200 µL surfactant B stock
         recipe['surf_B_conc_mm'] = SURFACTANT_LIBRARY[surfactant_b_name]['stock_conc']
         recipe['substock_B_name'] = control['dilution_b_vial']
         recipe['substock_B_conc_mm'] = SURFACTANT_LIBRARY[surfactant_b_name]['stock_conc']
@@ -2098,7 +2270,7 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
             'source_concentration_mm': recipe_details.get('Source_Conc_mM', 'Unknown'),
             'source_volume_ml': recipe_details.get('Source_Volume_mL', 'Unknown'),
             'water_volume_ml': recipe_details.get('Water_Volume_mL', 'Unknown'),
-            'final_volume_ml': recipe_details.get('Final_Volume_mL', 6.0),
+            'final_volume_ml': recipe_details.get('Final_Volume_mL', 7.5),
             'dilution_factor': recipe_details.get('Dilution_Factor', 'Unknown')
         })
     
@@ -2114,9 +2286,32 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
             'source_concentration_mm': recipe_details.get('Source_Conc_mM', 'Unknown'),
             'source_volume_ml': recipe_details.get('Source_Volume_mL', 'Unknown'),
             'water_volume_ml': recipe_details.get('Water_Volume_mL', 'Unknown'),
-            'final_volume_ml': recipe_details.get('Final_Volume_mL', 6.0),
+            'final_volume_ml': recipe_details.get('Final_Volume_mL', 7.5),
             'dilution_factor': recipe_details.get('Dilution_Factor', 'Unknown')
         })
+    
+    # Step 4.5: Create CMC-specific plans using existing stock matching (if CMC controls enabled)
+    cmc_plan_a = None
+    cmc_plan_b = None
+    
+    if ADD_CMC_CONTROLS:
+        lash_e.logger.info("  Creating CMC-specific vial selection plans...")
+        
+        # Get CMC concentrations for each surfactant
+        cmc_controls_a_preview = create_cmc_control_series(surfactant_a_name, CMC_CONTROL_POINTS)
+        cmc_controls_b_preview = create_cmc_control_series(surfactant_b_name, CMC_CONTROL_POINTS)
+        
+        cmc_target_concs_a = get_cmc_concentrations_from_controls(cmc_controls_a_preview, surfactant_a_name)
+        cmc_target_concs_b = get_cmc_concentrations_from_controls(cmc_controls_b_preview, surfactant_b_name)
+        
+        # Use existing stock matching pattern (same as iterative workflow)
+        if cmc_target_concs_a:
+            cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, max_volume_ul=180.0)
+            lash_e.logger.info(f"    CMC plan for {surfactant_a_name}: {len(cmc_target_concs_a)} concentrations")
+            
+        if cmc_target_concs_b:
+            cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, max_volume_ul=180.0)
+            lash_e.logger.info(f"    CMC plan for {surfactant_b_name}: {len(cmc_target_concs_b)} concentrations")
     
     # Step 5: Create complete well-by-well recipes DataFrame
     lash_e.logger.info("  Creating complete well recipes...")
@@ -2126,9 +2321,29 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     # Add start control wells
     start_controls = create_control_wells(surfactant_a_name, surfactant_b_name, "start")
     for control in start_controls:
-        well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name)
+        well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, plan_a, plan_b)
         well_recipes.append(well_recipe)
         well_index += 1
+    
+    # Add CMC control series (optional)
+    if ADD_CMC_CONTROLS:
+        lash_e.logger.info(f"  Adding CMC control series ({CMC_CONTROL_POINTS} points each)...")
+        
+        # CMC controls for surfactant A
+        cmc_controls_a = create_cmc_control_series(surfactant_a_name, CMC_CONTROL_POINTS)
+        for control in cmc_controls_a:
+            well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, cmc_plan_a, cmc_plan_b)
+            well_recipes.append(well_recipe)
+            well_index += 1
+            
+        # CMC controls for surfactant B  
+        cmc_controls_b = create_cmc_control_series(surfactant_b_name, CMC_CONTROL_POINTS)
+        for control in cmc_controls_b:
+            well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, cmc_plan_a, cmc_plan_b)
+            well_recipes.append(well_recipe)
+            well_index += 1
+            
+        lash_e.logger.info(f"  Added {len(cmc_controls_a)} CMC controls for {surfactant_a_name}, {len(cmc_controls_b)} for {surfactant_b_name}")
     
     # Add grid experiment wells
     for conc_a in achievable_concs_a:
@@ -2141,12 +2356,12 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
                 well_recipes.append(well_recipe)
                 well_index += 1
     
-    # Add end control wells
-    end_controls = create_control_wells(surfactant_a_name, surfactant_b_name, "end")
-    for control in end_controls:
-        well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name)
-        well_recipes.append(well_recipe)
-        well_index += 1
+    # Add end control wells (DISABLED - not needed for most experiments)
+    # end_controls = create_control_wells(surfactant_a_name, surfactant_b_name, "end")
+    # for control in end_controls:
+    #     well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name)
+    #     well_recipes.append(well_recipe)
+    #     well_index += 1
     
     # Convert to DataFrame
     import pandas as pd
@@ -2177,7 +2392,13 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     stocks_df.to_csv(stocks_csv_path, index=False)
     lash_e.logger.info(f"  Saved stock solutions plan: {stocks_csv_path}")
     
-    lash_e.logger.info(f"+ Planning complete: {len(well_recipes)} total wells ({len(achievable_concs_a)} x {len(achievable_concs_b)} grid + {len(start_controls) + len(end_controls)} controls)")
+    # Calculate total control wells (start controls + CMC controls if enabled)
+    total_controls = len(start_controls)
+    if ADD_CMC_CONTROLS:
+        cmc_count = 2 * CMC_CONTROL_POINTS  # A and B series
+        total_controls += cmc_count
+    
+    lash_e.logger.info(f"+ Planning complete: {len(well_recipes)} total wells ({len(achievable_concs_a)} x {len(achievable_concs_b)} grid + {total_controls} controls)")
     
     return experiment_plan
 
@@ -2910,21 +3131,21 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     }
 
 def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB", 
-                              number_concentrations=5, target_measurements=96, 
-                              gradient_suggestions_per_iteration=12, lash_e=None, 
+                              number_concentrations=ITERATIVE_CONCENTRATIONS, target_measurements=96, 
+                              gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION, lash_e=None, 
                               experiment_output_folder=None, simulate=True):
     """
     Execute iterative surfactant screening with configurable number of concentrations.
     
-    This method allows for rapid initial screening with fewer concentrations (e.g., 5)
+    This method allows for rapid initial screening with fewer concentrations (e.g., ITERATIVE_CONCENTRATIONS)
     before proceeding to iterative gradient-based refinement until target measurements reached.
     
     Args:
         surfactant_a_name: Name of first surfactant (e.g., 'SDS')
         surfactant_b_name: Name of second surfactant (e.g., 'DTAB') 
-        number_concentrations: Number of concentration steps (default 5 for rapid screening)
+        number_concentrations: Number of concentration steps (default ITERATIVE_CONCENTRATIONS for rapid screening)
         target_measurements: Total measurements to reach (default 200)
-        gradient_suggestions_per_iteration: Number of gradient suggestions per iteration (default 12)
+        gradient_suggestions_per_iteration: Number of gradient suggestions per iteration (default GRADIENT_SUGGESTIONS_PER_ITERATION)
         simulate: Run in simulation mode
         
     Returns:
@@ -3048,7 +3269,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         
     return results
 
-def find_high_gradient_areas(existing_results, lash_e, n_suggestions=12, starting_well_index=None):
+def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, starting_well_index=None):
     """
     Find high-gradient areas from initial screening and perform targeted exploration.
     
@@ -3058,7 +3279,7 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=12, startin
     Args:
         existing_results: Results dict from execute_iterative_workflow() 
         lash_e: Lash_E coordinator instance (reused from initial screening)
-        n_suggestions: Number of concentration pairs to explore (default 12)
+        n_suggestions: Number of concentration pairs to explore (default GRADIENT_SUGGESTIONS_PER_ITERATION)
         starting_well_index: Starting well position (None = continue from last used well)
         
     Returns:
@@ -3155,7 +3376,7 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=12, startin
     logger.info(f"High-gradient exploration complete: {len(measured_suggestions_df)} wells measured")
     return measured_suggestions_df
 
-def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=12, output_dir=None):
+def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, output_dir=None):
     """
     Use Delaunay triangle refinement to suggest high-variation concentration pairs for exploration.
     
@@ -3448,9 +3669,9 @@ if __name__ == "__main__":
         results = execute_iterative_workflow(
             surfactant_a_name=SURFACTANT_A, 
             surfactant_b_name=SURFACTANT_B,
-            number_concentrations=5,  # Start with rapid 5x5 screening
+            number_concentrations=ITERATIVE_CONCENTRATIONS,  # Start with rapid 5x5 screening
             target_measurements=ITERATIVE_MEASUREMENT_TOTAL,   # Fill one wellplate with iterative exploration
-            gradient_suggestions_per_iteration=12,
+            gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION,
             lash_e=lash_e,
             experiment_output_folder=experiment_output_folder,
             simulate=SIMULATE
