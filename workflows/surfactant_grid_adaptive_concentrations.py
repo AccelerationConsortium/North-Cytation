@@ -101,7 +101,7 @@ PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
 ITERATIVE_MEASUREMENT_TOTAL= 192 #The number of measurements done
 
 # Buffer addition settings
-ADD_BUFFER = False  # Set to False to skip buffer addition
+ADD_BUFFER = True  # Set to False to skip buffer addition
 BUFFER_VOLUME_UL = 20  # uL buffer to add per well
 BUFFER_OPTIONS = ['MES', 'HEPES', 'CAPS']  # Available buffers
 SELECTED_BUFFER = 'HEPES'  # Choose from BUFFER_OPTIONS
