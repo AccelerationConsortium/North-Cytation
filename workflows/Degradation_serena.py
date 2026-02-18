@@ -1,6 +1,7 @@
 from shutil import move
 import sys
 import time
+from tkinter import YES
 from venv import create
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
@@ -59,17 +60,27 @@ def validate_key_liquids(lash_e, output_dir):
     except ImportError:
         lash_e.logger.info("Validation system not available, skipping...")
 
-#01/05/2025Question: how to incorporate the pipetting params?
+
+# Global well tracking
+current_well_count = 0
+
+def update_well_count(wells_used):
+    global current_well_count
+    current_well_count += wells_used
+    print(f"Used {wells_used} wells. Total wells used so far: {current_well_count}")
+
+# Gets the next well index to use based on the global well count
+def get_next_well_index():
+    return current_well_count
+
 # Take aliquot -> Wellplate measurement (3 replicate)-> Put sample back to wellplate
-def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_protocol_file_path, simulate,  sample_name, used_wells, heater_slot_map=None, replicates=3):
+def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_protocol_file_path, simulate,  sample_name, used_wells, replicates=3):
+
     create_samples_in_wellplate(lash_e, sample_name=sample_name, first_well_index=first_well_index, well_volume=0.15, replicates=replicates)
     wells = list(range(first_well_index, first_well_index + replicates))
     data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells, plate_type='quartz')
     save_data(data_out, output_dir, first_well_index, simulate,lash_e)
-    slot = heater_slot_map.get(sample_name) if heater_slot_map else None
-    move_lid_to_storage(lash_e)
-    pipet_sample_from_well_to_vial(lash_e, wells, sample_name, heater_slot=slot)
-    move_lid_to_wellplate(lash_e)
+    update_well_count(replicates)
     used_wells.extend(wells)
     lash_e.logger.info("Used wells so far: %s", used_wells)
 
@@ -156,6 +167,16 @@ def create_samples_in_wellplate(lash_e,sample_name,first_well_index,well_volume=
     lash_e.nr_robot.dispense_from_vials_into_wellplate(well_plate_df=well_plate_df, strategy="serial" )
 
     move_lid_to_wellplate(lash_e)
+    
+    # Pipette samples back from wells to vial
+    well_indices = list(range(first_well_index, first_well_index + replicates))
+    lash_e.logger.info(f"Returning samples from wells {well_indices} back to sample vial: {sample_name}")
+    move_lid_to_storage(lash_e)
+    for well in well_indices:
+        lash_e.nr_robot.pipet_from_wellplate(well, volume=well_volume, aspirate=True, well_plate_type="96 WELL PLATE")
+        lash_e.nr_robot.dispense_into_vial(sample_name, well_volume)
+    lash_e.nr_robot.remove_pipet()
+    move_lid_to_wellplate(lash_e)
 
 def save_data(data_out,output_dir,first_well_index,simulate,lash_e):
     if not simulate:
@@ -166,18 +187,22 @@ def save_data(data_out,output_dir,first_well_index,simulate,lash_e):
         lash_e.logger.info(f"Simulation mode: Would save data for well index {first_well_index}")
 
 
-# Clean well plate = Solvent wash *1 + Acetone wash *2 <- DO it serially (ie wash 5 wells at a time, and wash all wells w solvent first before moving on to acetone)
-def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state,well_volume=0.19, solvent_repeats=1, acetone_repeats=2):
+# Clean well plate = Solvent wash *1 + Acetone wash *1 <- DO it serially (ie wash 5 wells at a time, and wash all wells w solvent first before moving on to acetone)
+def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, well_volume=0.19, solvent_repeats=1, acetone_repeats=1):
     lash_e.logger.info(f"\nWashing wellplate wells: {used_wells}")
 
-    move_lid_to_storage(lash_e)
+    PLATE = "96 WELL PLATE"
+
+    # Pipette all measured samples from wells into waste
     current_waste = check_and_switch_waste_vial(lash_e, waste_state)
+    move_lid_to_storage(lash_e)
+
+
 
     def chunk(used_wells, n=4):
         for i in range(0, len(used_wells), n):
             yield used_wells[i:i+n]
 
-    PLATE = "96 WELL PLATE"
 
     # 1 * Solvent wash
     waste_temp_home = stage_vial_safe(lash_e, current_waste, safe_index=4)
@@ -268,7 +293,7 @@ ACID_LIBRARY = {
     'TFA': {'molar_mass': 114.02, 'molarity': 6.0},
 }
 
-def degradation_workflow(acid_type, acid_molar_excess):
+def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volume, solvent='2MeTHF'):
   
     # a. Initial State of your Vials, so the robot can know where to pipet:
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/degradation_vial_status.csv"
@@ -283,30 +308,30 @@ def degradation_workflow(acid_type, acid_molar_excess):
     SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
     
     # e. Number of replicate measurements per timepoint
-    REPLICATES = 3  # Number of wells to use for each measurement (default: 3)
+    REPLICATES = 1  # Number of wells to use for each measurement (default: 3)
 
-    # e. Initialize the workstation, which includes the robot, track, cytation and photoreactors
+    # f. Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_t8=True)
 
-    # f. Polymer dilution calculation:
+    # g. Polymer dilution calculation:
     sample_volume = 2.0 # Total volume of each polymer sample (mL)
     df = pd.read_csv(INPUT_VIAL_STATUS_FILE)
     sample_col = 'vial_name'  # Use vial_name column from CSV
 
-    # Get stock concentration
+    # h. Get stock concentration
     stock_conc = df.loc[df[sample_col] == 'polymer_stock', 'concentration(mg/mL)'].iloc[0] #This selects the row where vial_name == 'polymer_stock' and pulls its 'concentration(mg/mL)'
     lash_e.logger.info(f"Stock concentration: {stock_conc} mg/mL")
 
 
     
-    # Calculate dilution volumes for each sample
-    samples = df[df[sample_col].str.contains("sample", case=False, na=False)].copy() # case=false -> Select rows where vial_name contains ‘sample’ in any capitalization, na=false -> if vial_name is missing, treat it as not a match
+    # i. Calculate dilution volumes for each sample
+    samples = df[df[sample_col].str.contains("sample", case=False, na=False)].copy() # case=false -> Select rows where vial_name contains 'sample' in any capitalization, na=false -> if vial_name is missing, treat it as not a match
     samples['stock_volume'] = (samples['concentration(mg/mL)'] / stock_conc) * sample_volume # creates a new column 'stock_volume' in 'samples' df
     samples['solvent_volume'] = sample_volume - samples['stock_volume']
     lash_e.logger.info("Calculated volumes for each sample:")
     lash_e.logger.info("%s", samples[[sample_col, 'concentration(mg/mL)', 'stock_volume', 'solvent_volume']])
 
-    # g. acid amount calculation:
+    # j. acid amount calculation:
     polymer_molar_mass = 1353350 # molar mass in mg to simplify calculation afterwards
     
     # Get acid properties from library
@@ -323,16 +348,17 @@ def degradation_workflow(acid_type, acid_molar_excess):
     lash_e.logger.info("Calculated volumes for each sample:")
     lash_e.logger.info("%s", samples[[sample_col, 'acid_molar_excess', 'acid_volume']])
 
-    # Initialize waste vial management
+    # k. Initialize waste vial management
     waste_state = {
         "waste_index": 0,  # Start with waste_0
         "current_waste_vial": "waste_0"
     }
 
-    # Samples: derive dynamically from status file (any vial_name containing 'sample')
-    sample_solutions = set(samples[sample_col].unique())
-    if not sample_solutions:
-        raise ValueError("No sample vials found (expected vial_name containing 'sample').")
+    # Select only the specified sample
+    sample_name = f'sample_{sample_number}'
+    sample_solutions = {sample_name}
+    if sample_name not in samples[sample_col].values:
+        raise ValueError(f"Sample {sample_name} not found in vial status file.")
 
     # Create a dictionary to look up volumes by sample name
     volume_lookup = {}
@@ -344,8 +370,10 @@ def degradation_workflow(acid_type, acid_molar_excess):
             'acid_volume': row['acid_volume']
         }
 
-    # Water volume to add for hydrolysis (note: could be a variable in the future)
-    water_volume = 0.010
+
+    # l. Get stock concentration
+    stock_conc = df.loc[df[sample_col] == 'polymer_stock', 'concentration(mg/mL)'].iloc[0] #This selects the row where vial_name == 'polymer_stock' and pulls its 'concentration(mg/mL)'
+    lash_e.logger.info(f"Stock concentration: {stock_conc} mg/mL")
 
 
     # input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")    
@@ -375,20 +403,20 @@ def degradation_workflow(acid_type, acid_molar_excess):
     for sample in sample_solutions:
         solvent_vol = volume_lookup[sample]['solvent_volume']
         lash_e.logger.info(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
-        safe_pipet('2MeTHF', sample, solvent_vol, lash_e, 
-                  parameters=large_tip_2MeTHF_params, liquid='2MeTHF') 
+        safe_pipet(solvent, sample, solvent_vol, lash_e, 
+                  parameters=large_tip_2MeTHF_params, liquid=solvent) 
     
     for sample in sample_solutions:
         stock_vol = volume_lookup[sample]['stock_volume']
         lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
         safe_pipet('polymer_stock', sample, stock_vol, lash_e, 
-                  parameters=small_tip_2MeTHF_params, liquid='2MeTHF')
+                  parameters=small_tip_2MeTHF_params, liquid=solvent)
         lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
 
 
     # 2. Add acid and water to the polymer samples to initiate degradation and take scheduled UV-VIS measurements.
     t0_map = {} #Dictionary: sample -> start time (same time basis as start_time/current_time)
-    first_well_index = 0 #This is the first well index to use for the first sample
+    first_well_index = get_next_well_index() #Use the global well tracking to continue from where we left off
     # Tracks used wells as a list of integer indices
     used_wells = []
 
@@ -397,17 +425,14 @@ def degradation_workflow(acid_type, acid_molar_excess):
     heater_slot = {}  # sample_name -> heater index
 
     for sample in sample_solutions:
-        lash_e.logger.info("\nAdding water to sample: %s", sample)
+        lash_e.logger.info(f"\nAdding {water_volume} mL water to sample: {sample}")
         lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
         lash_e.nr_robot.remove_pipet()
-        lash_e.logger.info("\nAdding acid to sample: %s", sample)
-        
         acid_volume = round(float(volume_lookup[sample]['acid_volume']), 4)
-        print("Acid Volume:", acid_volume)
-        #acid_volume = 0.011
-        safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=False)
+        lash_e.logger.info(f"\nAdding {acid_volume} mL acid to sample: {sample}")
+        safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=True)
         lash_e.nr_robot.remove_pipet()
- 
+
         # Record per-sample start time using consistent basis (simulated clock = 0; real clock = wall time)
         t0_map[sample] = 0 if SIMULATE else time.time()
         create_samples_and_measure(lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample, used_wells=used_wells, replicates=REPLICATES)
@@ -425,8 +450,9 @@ def degradation_workflow(acid_type, acid_molar_excess):
         i+=1
 
     schedule = pd.read_csv(SCHEDULE_FILE, sep=",") #Read the schedule file
+    schedule = schedule[schedule['sample_index'] == sample_name]  # Filter to only this sample
     schedule = schedule.sort_values(by='start_time') #sort in ascending time order
-    lash_e.logger.info("Schedule: %s", schedule)
+    lash_e.logger.info("Schedule for %s: %s", sample_name, schedule)
 
     # Establish timing model.
     # Simulation: use an integer counter (seconds). Real run: wall clock seconds.
@@ -461,7 +487,7 @@ def degradation_workflow(acid_type, acid_molar_excess):
             lash_e.logger.info(f"\n[TRIGGER] {action_required} for {sample_index} at elapsed {elapsed_time:.0f}s (target {time_required}s)")
             if action_required in ("create_samples_and_measure","measure_samples"):
                 create_samples_and_measure(
-                    lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, heater_slot_map=heater_slot, sample_name=sample_index,used_wells=used_wells,replicates=REPLICATES)
+                    lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample_index,used_wells=used_wells,replicates=REPLICATES)
                 first_well_index += REPLICATES
             else:
                 lash_e.logger.info(f"[WARN] Unknown action '{action_required}' – skipping (row {items_completed})")
@@ -481,12 +507,15 @@ def degradation_workflow(acid_type, acid_molar_excess):
             time.sleep(0.25)
     lash_e.nr_robot.move_home()   
 
-    lash_e.nr_robot.return_vial_home(sample_index)
+    if 'sample_index' in locals():
+        lash_e.nr_robot.return_vial_home(sample_index)
+    else:
+        lash_e.nr_robot.return_vial_home(sample_name)
     lash_e.temp_controller.turn_off_stirring()
     lash_e.nr_robot.move_home()
 
     # 3. Clean the well plate after all measurements are done
-    wash_wellplate(lash_e, used_wells, solvent_vial='2MeTHF', acetone_vial='acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=1, well_volume=0.19)
+    wash_wellplate(lash_e, used_wells, solvent_vial=solvent, acetone_vial='acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=1, well_volume=0.19)
 
     # 4. Home all components at the end of the workflow
     lash_e.nr_robot.move_home()
@@ -494,6 +523,6 @@ def degradation_workflow(acid_type, acid_molar_excess):
     if not SIMULATE:   
         slack_agent.send_slack_message("Degradation workflow completed!")
 
-
-degradation_workflow(acid_type='6M_HCl', acid_molar_excess=None) #Run your workflow
+# Run my workflow here!
+degradation_workflow(sample_number=1, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=1000, water_volume=0.010)
 
