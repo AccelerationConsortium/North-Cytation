@@ -13,14 +13,14 @@ def sample_workflow():
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_biotek=False,initialize_t8=True)
 
-    STIR_TIME = 10
+    # STIR_TIME = 10
 
-    lash_e.temp_controller.turn_on_stirring(speed=3000) #Don't know what speed is best. 
+    # lash_e.temp_controller.turn_on_stirring(speed=3000) #Don't know what speed is best. 
 
-    time_e=0
-    while time_e < STIR_TIME:
-        time.sleep(1)
-        time_e+=1
+    # time_e=0
+    # while time_e < STIR_TIME:
+    #     time.sleep(1)
+    #     time_e+=1
 
     lash_e.temp_controller.turn_off_stirring()
 

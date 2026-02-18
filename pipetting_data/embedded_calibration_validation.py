@@ -108,7 +108,8 @@ LIQUID_DENSITIES = {
     "glycerol": 1.26,
     "PEG_Water": 1.05,
     "4%_hyaluronic_acid_water": 1.01,
-    "SDS": 1.00
+    "SDS": 1.00,
+    "6M_HCl": 1.10
 }
 
 def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) -> bool:

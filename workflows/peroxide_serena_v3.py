@@ -14,11 +14,7 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
     lash_e.nr_robot.dispense_from_vial_into_vial(reaction_mixture_index,sample_index,volume=volume, liquid='water')
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
     mix_current_sample(lash_e,sample_index)
-    lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.move_home()
-    # lash_e.nr_robot.c9.home_robot() #removed for now to save time
-    #for i in range (6,8):
-       # lash_e.nr_robot.home_axis(i) #Home the track
     print()
 
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=True,well_volume=0.2):
@@ -79,14 +75,15 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
         cof_output_dir = None
 
     #OAM Note: These times need to exactly correspond to the schedule and vials!
-    sample_times = [60,120,180,240,300,360] #in minutes <----- These numbers need to match the vials and the schedule!!!!!
+    sample_times = [1,6,11,20,30,45] #in minutes <----- These numbers need to match the vials and the schedule!!!!!
     sample_indices = [f"{t}_min_Reaction{set_suffix}" for t in sample_times]
 
 #-> Start from here! 
     lash_e.grab_new_wellplate()
     #Step 1: Add 1.95 mL "assay reagent" to sample vials
     for i in sample_indices:  #May want to use liquid calibration eg water
-        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water')
+        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water', remove_pipet=False)
+    lash_e.nr_robot.remove_pipet()
     
     # #Step 2: Move the reaction mixture vial to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_location(cof_vial, location="photoreactor_array", location_index=0)
@@ -174,46 +171,46 @@ if not SIMULATE:
 else:
     output_dir = None
 
-# Validate Pipetting Accuracy
-for cof in [f'COF_{i}' for i in range(1,NUMBER_OF_SAMPLES+1)]:
-    vial_name = cof
-    if output_dir is not None:
-        cof_subdir = output_dir / vial_name
-        cof_subdir.mkdir(parents=True, exist_ok=True)
-        validation_folder = cof_subdir / f'Pipetting_Validation_{vial_name}'
-    else:
-        validation_folder = None
-    results = pipette_validator.validate_pipetting_accuracy(
-                    lash_e=lash_e,
-                    source_vial=vial_name,
-                    destination_vial=vial_name,
-                    liquid_type="water",
-                    volumes_ml=[0.05],  # Convert 10 µL to 0.01 mL
-                    replicates=5,
-                    output_folder=validation_folder,
-                    plot_title=f"Pipetting Validation - {vial_name}",
-                    condition_tip_enabled=True,
-                    conditioning_volume_ul=100
-                )
+# # Validate Pipetting Accuracy
+# for cof in [f'COF_{i}' for i in range(1,NUMBER_OF_SAMPLES+1)]:
+#     vial_name = cof
+#     if output_dir is not None:
+#         cof_subdir = output_dir / vial_name
+#         cof_subdir.mkdir(parents=True, exist_ok=True)
+#         validation_folder = cof_subdir / f'Pipetting_Validation_{vial_name}'
+#     else:
+#         validation_folder = None
+#     results = pipette_validator.validate_pipetting_accuracy(
+#                     lash_e=lash_e,
+#                     source_vial=vial_name,
+#                     destination_vial=vial_name,
+#                     liquid_type="water",
+#                     volumes_ml=[0.05],  # Convert 10 µL to 0.01 mL
+#                     replicates=5,
+#                     output_folder=validation_folder,
+#                     plot_title=f"Pipetting Validation - {vial_name}",
+#                     condition_tip_enabled=True,
+#                     conditioning_volume_ul=100
+#                 )
 
-# Water validation - put in a general validation folder
-vial_name = 'water'
-if output_dir is not None:
-    validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
-else:
-    validation_folder = None
-results = pipette_validator.validate_pipetting_accuracy(
-                lash_e=lash_e,
-                source_vial=vial_name,
-                destination_vial=vial_name,
-                liquid_type="water",
-                volumes_ml=[0.2, 0.95],  # Convert 10 µL to 0.01 mL
-                replicates=5,
-                output_folder=validation_folder,
-                plot_title=f"Pipetting Validation - {vial_name}",
-                condition_tip_enabled=True,
-                conditioning_volume_ul=800
-            )
+# # Water validation - put in a general validation folder
+# vial_name = 'water'
+# if output_dir is not None:
+#     validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
+# else:
+#     validation_folder = None
+# results = pipette_validator.validate_pipetting_accuracy(
+#                 lash_e=lash_e,
+#                 source_vial=vial_name,
+#                 destination_vial=vial_name,
+#                 liquid_type="water",
+#                 volumes_ml=[0.2, 0.95],  # Convert 10 µL to 0.01 mL
+#                 replicates=5,
+#                 output_folder=validation_folder,
+#                 plot_title=f"Pipetting Validation - {vial_name}",
+#                 condition_tip_enabled=True,
+#                 conditioning_volume_ul=800
+#             )
 
 
 # Run the workflow N times with different Reagent+COF+sample sets, reusing the same lash_e instance
