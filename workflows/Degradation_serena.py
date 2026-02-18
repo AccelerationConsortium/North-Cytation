@@ -241,7 +241,6 @@ def check_and_switch_waste_vial(lash_e, waste_state):
 ACID_LIBRARY = {
     '6M_HCl': {'molar_mass': 36.46, 'molarity': 6.0},
     'TFA': {'molar_mass': 114.02, 'molarity': 6.0},
-    '12M_H2SO4': {'molar_mass': 98.08, 'molarity': 12.0},
 }
 
 def degradation_workflow(acid_type, acid_molar_excess):
@@ -249,8 +248,7 @@ def degradation_workflow(acid_type, acid_molar_excess):
     # a. Initial State of your Vials, so the robot can know where to pipet:
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/degradation_vial_status.csv"
 
-    # b. Cytation 5 UV-Vis Measurement protocol: (01/05/2026: the real cytation protocol did not work, so I used an old prt as a placeholder. try the real prt at some point)
-    #CYTATION_PROTOCOL_FILE = r"C:\Protocols\degradation_protocol.prt"
+    # b. Cytation 5 UV-Vis Measurement protocol:
     CYTATION_PROTOCOL_FILE = r"C:\Protocols\300_900_sweep.prt"
 
     # c. Time schedule for UV-VIS measurements: 
