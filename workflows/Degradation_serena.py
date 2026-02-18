@@ -4,11 +4,30 @@ import time
 from venv import create
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
+from pipetting_data.pipetting_parameters import PipettingParameters
 import pandas as pd
 from pathlib import Path
 
 # Configuration
 VALIDATE_LIQUIDS = False  # Set to True to run pipetting validation
+
+# Create custom pipetting parameters
+small_tip_2MeTHF_params = PipettingParameters(
+    aspirate_speed=15,           # Slower aspiration
+    dispense_speed=15,          # Medium dispense speed
+    post_asp_air_vol=0.05,     # Small air gap
+    pre_asp_air_vol=0.5,
+    asp_disp_cycles=0 # tested w/o the cycles and it worked ok (no droplet, no dripping) - maybe not needed for 2MeTHF
+)
+
+# Create custom pipetting parameters
+large_tip_2MeTHF_params = PipettingParameters(
+    aspirate_speed=13,           # Slower aspiration
+    dispense_speed=13,          # Medium dispense speed
+    post_asp_air_vol=0.05,     # Small air gap
+    pre_asp_air_vol=0.3,
+    asp_disp_cycles=3
+)
 
 
 def validate_key_liquids(lash_e, output_dir):
@@ -20,10 +39,10 @@ def validate_key_liquids(lash_e, output_dir):
         from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
         
         validation_tests = [
-            {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3},
-            {'vial': '2MeTHF', 'liquid': '2MeTHF', 'volumes': [0.15, 0.95], 'reps': 3},
-            {'vial': '6M_HCl', 'liquid': '6M_HCl', 'volumes': [0.025, 0.015, 0.005], 'reps': 3},
-            {'vial': 'polymer_stock', 'liquid': '2MeTHF', 'volumes': [0.100], 'reps': 3},
+            {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3, 'params': None},
+            {'vial': '2MeTHF', 'liquid': '2MeTHF', 'volumes': [0.15, 0.95], 'reps': 3, 'params': large_tip_2MeTHF_params},
+            {'vial': '6M_HCl', 'liquid': '6M_HCl', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
+            {'vial': 'polymer_stock', 'liquid': '2MeTHF', 'volumes': [0.100], 'reps': 3, 'params': small_tip_2MeTHF_params},
         ]
         
         lash_e.logger.info("Running compact liquid validation...")
@@ -31,10 +50,11 @@ def validate_key_liquids(lash_e, output_dir):
             result = validate_pipetting_accuracy(
                 lash_e=lash_e, source_vial=test['vial'], destination_vial=test['vial'],
                 liquid_type=test['liquid'], volumes_ml=test['volumes'], replicates=test['reps'],
-                output_folder=output_dir, switch_pipet=False, save_raw_data=not lash_e.simulate,
+                parameters=test['params'], output_folder=output_dir, switch_pipet=False, save_raw_data=not lash_e.simulate,
                 condition_tip_enabled=True, conditioning_volume_ul=max(test['volumes'])*1000
             )
-            lash_e.logger.info(f"  {test['vial']}: R^2={result['r_squared']:.3f}, Accuracy={result['mean_accuracy_pct']:.1f}%")
+            param_info = "custom params" if test['params'] else "default params"
+            lash_e.logger.info(f"  {test['vial']} ({param_info}): R^2={result['r_squared']:.3f}, Accuracy={result['mean_accuracy_pct']:.1f}%")
         
     except ImportError:
         lash_e.logger.info("Validation system not available, skipping...")
@@ -64,7 +84,7 @@ def pipet_sample_from_well_to_vial(lash_e, wells, sample_name, well_volume=0.15,
         lash_e.nr_robot.move_vial_to_location(vial_name=sample_name, location='heater', location_index=heater_slot)
 
 
-def safe_pipet(source_vial, dest_vial, volume, lash_e, return_home=True):
+def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='2MeTHF', return_home=True):
     source_home_location_index = lash_e.nr_robot.get_vial_info(source_vial, 'location_index')
     dest_home_location_index = lash_e.nr_robot.get_vial_info(dest_vial, 'location_index')
     move_source = (source_home_location_index > 5)
@@ -81,7 +101,12 @@ def safe_pipet(source_vial, dest_vial, volume, lash_e, return_home=True):
         lash_e.nr_robot.VIAL_DF.at[vial_index, 'home_location_index'] = 5
         lash_e.logger.info(f"Setting home location of {dest_vial} to 5 for safe pipetting")
 
-    lash_e.nr_robot.dispense_from_vial_into_vial(source_vial, dest_vial, volume, liquid='water', return_vial_home=return_home) #Change liquid later
+    lash_e.nr_robot.dispense_from_vial_into_vial(
+        source_vial, dest_vial, volume, 
+        parameters=parameters, 
+        liquid=liquid, 
+        return_vial_home=return_home
+    )
 
     if move_source: 
         vial_index = lash_e.nr_robot.get_vial_info(source_vial, 'vial_index')
@@ -350,12 +375,14 @@ def degradation_workflow(acid_type, acid_molar_excess):
     for sample in sample_solutions:
         solvent_vol = volume_lookup[sample]['solvent_volume']
         lash_e.logger.info(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
-        safe_pipet('2MeTHF',sample,solvent_vol, lash_e) 
+        safe_pipet('2MeTHF', sample, solvent_vol, lash_e, 
+                  parameters=large_tip_2MeTHF_params, liquid='2MeTHF') 
     
     for sample in sample_solutions:
         stock_vol = volume_lookup[sample]['stock_volume']
         lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
-        safe_pipet('polymer_stock',sample,stock_vol, lash_e)
+        safe_pipet('polymer_stock', sample, stock_vol, lash_e, 
+                  parameters=small_tip_2MeTHF_params, liquid='2MeTHF')
         lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
 
 
