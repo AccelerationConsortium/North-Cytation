@@ -1917,7 +1917,7 @@ class North_Robot(North_Base):
         tip_speed = self.get_config_parameter('pipet_tips', self.HELD_PIPET_TYPE, 'default_aspirate_speed', error_on_missing=True)
         return tip_speed
 
-    def _ensure_vial_accessible_for_pipetting(self, vial_name, use_safe_location=False, move_speed=None):
+    def _ensure_vial_accessible_for_pipetting(self, vial_name, use_safe_location=False):
         """
         Helper method to ensure a vial is accessible for pipetting by moving it to clamp if needed.
         
@@ -1941,15 +1941,15 @@ class North_Robot(North_Base):
                 vial_index = self.get_vial_index_from_name(vial_name)
                 if clamp_vial_index is not None and clamp_vial_index != vial_index:
                     self.logger.debug(f"Clamp occupied by vial {clamp_vial_index}, returning it home first")
-                    self.return_vial_home(clamp_vial_index, move_speed=move_speed)
+                    self.return_vial_home(clamp_vial_index)
                 
                 # Move vial to clamp and uncap only if it has a closed cap
-                self.move_vial_to_location(vial_num, location='clamp', location_index=0, move_speed=move_speed)
+                self.move_vial_to_location(vial_num, location='clamp', location_index=0)
                 
                 # Only uncap if vial has a closed cap (not open caps)
                 vial_cap_type = self.get_vial_info(vial_num, 'cap_type')
                 if vial_cap_type != 'open':
-                    self.uncap_clamp_vial(move_speed=move_speed)
+                    self.uncap_clamp_vial()
                 else:
                     self.logger.debug(f"Vial {vial_name} has open cap, skipping uncap operation")
                 
@@ -2151,16 +2151,16 @@ class North_Robot(North_Base):
         for i in range(repeats):
             last_run = (i == repeats - 1)
 
-            # Aspirate from source (at normal speed)
+            # Aspirate from source
             self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip, use_safe_location=use_safe_location)
 
-            # Set custom movement speed if specified - after aspiration when carrying liquid
+            # Set custom movement speed if specified
             original_vel = None
             if move_speed is not None:
                 original_vel = self.c9.default_vel
                 self.c9.default_vel = move_speed
 
-            # Dispense into destination (at modified speed)
+            # Dispense into destination
             dispense_result = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=measure_weight,
                                                       continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data)
             
@@ -2173,7 +2173,7 @@ class North_Robot(North_Base):
                 
             total_mass += mass_increment if mass_increment is not None else 0
 
-            # Restore original movement speed AFTER dispense but BEFORE recap/return operations
+            # Restore original movement speed if changed
             if move_speed is not None and original_vel is not None:
                 self.c9.default_vel = original_vel
 
@@ -2190,12 +2190,12 @@ class North_Robot(North_Base):
                     robot_has_cap = (self.GRIPPER_STATUS == "Cap")
                     
                     if not vial_is_capped and robot_has_cap:
-                        self.recap_clamp_vial()  # Use default speed for recapping
+                        self.recap_clamp_vial(move_speed=move_speed)
                     elif not vial_is_capped and not robot_has_cap:
                         self.logger.warning(f"Vial {clamp_vial_index} is uncapped but robot doesn't have cap - leaving uncapped")
                     # If vial is already capped, skip recapping
                     
-                    self.return_vial_home(clamp_vial_index)  # Use default speed for returning vial
+                    self.return_vial_home(clamp_vial_index, move_speed=move_speed)
 
 
         return total_mass, stability_info
@@ -2342,7 +2342,7 @@ class North_Robot(North_Base):
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
         # Ensure vial is accessible for pipetting (no use_safe_location for dispense)
-        if not self._ensure_vial_accessible_for_pipetting(dest_vial_name, use_safe_location=False, move_speed=move_speed):
+        if not self._ensure_vial_accessible_for_pipetting(dest_vial_name, use_safe_location=False):
             return
 
         measured_mass = None

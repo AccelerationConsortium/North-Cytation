@@ -8,8 +8,7 @@ import time
 #In this case we have two parameters: 
 def sample_workflow():
   
-    INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_capped_vial.txt"
-
+    INPUT_VIAL_STATUS_FILE = None
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_biotek=False,initialize_t8=True)
 

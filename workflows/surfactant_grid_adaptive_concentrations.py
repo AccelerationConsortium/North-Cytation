@@ -88,8 +88,8 @@ SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
+SIMULATE = False # Set to False for actual hardware execution
+VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
 VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
 
@@ -115,10 +115,10 @@ OPTIMIZE_METRIC = 'ratio'  # Options: 'turbidity', 'ratio', 'both' (for ratio + 
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
 PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
-ITERATIVE_MEASUREMENT_TOTAL= 96 #The number of measurements done
+ITERATIVE_MEASUREMENT_TOTAL= 192 #The number of measurements done
 
 # Buffer addition settings
-ADD_BUFFER = True  # Set to False to skip buffer addition
+ADD_BUFFER = False  # Set to False to skip buffer addition
 BUFFER_VOLUME_UL = 20  # uL buffer to add per well
 BUFFER_OPTIONS = ['MES', 'HEPES', 'CAPS']  # Available buffers
 SELECTED_BUFFER = 'MES'  # Choose from BUFFER_OPTIONS
@@ -1576,8 +1576,8 @@ def create_cmc_control_series(surfactant_name, num_points=7, concentration_span_
     min_conc = max(min_conc, MIN_CONC)
     
     # For CMC controls: Total volume = WELL_VOLUME_UL + PYRENE_VOLUME_UL = 205 µL
-    # Available volume for surfactant+water = 180 µL (reserve 20µL for buffer)
-    available_volume_ul = WELL_VOLUME_UL - BUFFER_VOLUME_UL  # 180 µL for surfactant+water (200-20)
+    # Available volume for surfactant+water depends on buffer setting
+    available_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # 200µL (no buffer) or 180µL (with buffer)
     total_well_volume_ul = WELL_VOLUME_UL + PYRENE_VOLUME_UL  # 205 µL total
     
     # Don't exceed what's achievable with available volume (after buffer) at stock concentration
@@ -2123,10 +2123,10 @@ def create_well_recipe_from_control(control, well_index, surfactant_a_name, surf
             else:
                 raise ValueError(f"CMC concentration {target_conc_b:.3e} mM not available for {surfactant_b_name} (check stock matching)")
         
-        # Calculate water volume: Total well volume (200 µL) - Surfactant - Buffer - NO pyrene in calculation
+        # Calculate water volume: Total well volume (200 µL) - Surfactant - Buffer (if used) - NO pyrene in calculation
         # (pyrene is added separately, so well contains 200 µL solution + 5 µL pyrene = 205 µL total)
         total_surfactant_volume = recipe['surf_A_volume_ul'] + recipe['surf_B_volume_ul']
-        recipe['water_volume_ul'] = WELL_VOLUME_UL - total_surfactant_volume - BUFFER_VOLUME_UL  # Fill to 180 µL after buffer
+        recipe['water_volume_ul'] = WELL_VOLUME_UL - total_surfactant_volume - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # Fill remaining space with water
         recipe['buffer_volume_ul'] = BUFFER_VOLUME_UL if ADD_BUFFER else 0.0  # Include buffer in CMC controls
         recipe['buffer_used'] = SELECTED_BUFFER if ADD_BUFFER else None
         
@@ -2308,12 +2308,15 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         cmc_target_concs_b = get_cmc_concentrations_from_controls(cmc_controls_b_preview, surfactant_b_name)
         
         # Use existing stock matching pattern (same as iterative workflow)
+        # Available volume for CMC controls depends on buffer setting
+        cmc_max_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # 200µL (no buffer) or 180µL (with buffer)
+        
         if cmc_target_concs_a:
-            cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, max_volume_ul=180.0)
+            cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_a_name}: {len(cmc_target_concs_a)} concentrations")
             
         if cmc_target_concs_b:
-            cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, max_volume_ul=180.0)
+            cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_b_name}: {len(cmc_target_concs_b)} concentrations")
     
     # Step 5: Create complete well-by-well recipes DataFrame

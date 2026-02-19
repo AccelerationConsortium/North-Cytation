@@ -78,7 +78,7 @@ class Lash_E:
     powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs"):
+    def __init__(self, vial_file=None, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs"):
         
         self.simulate = simulate
 

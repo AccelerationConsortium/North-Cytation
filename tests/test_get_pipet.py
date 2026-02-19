@@ -2,23 +2,29 @@ import sys
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 
-#NOte update to new syntax
+# Initialize Lash_E without vial status file (None is now supported)
+lash_e = Lash_E(None, initialize_biotek=False)
 
-input_vial_status_file="../utoronto_demo/status/color_matching_vials.txt"
+def test_get_pipet(tip_types):
+    """
+    Test pipet getting with proper tip type specification
+    Args:
+        tip_types: List of pipet tip types ('large_tip' or 'small_tip')
+    """
+    for tip_type in tip_types:
+        print(f"Testing pipet type: {tip_type}")
+        lash_e.nr_robot.get_pipet(tip_type)
+        lash_e.nr_robot.move_home()
+        lash_e.nr_robot.remove_pipet()
 
-lashe = Lash_E(input_vial_status_file, initialize_biotek=False)
+# Test with different pipet types (use strings, not indices)
+# Available types: 'large_tip', 'small_tip'
 
-lashe.nr_robot.check_input_file()
+# Test small tips multiple times
+test_get_pipet(['small_tip'] * 5)
 
-def test_get_pipet(index_list):
-    for i in index_list:
-        lashe.nr_robot.get_pipet(i)
-        lashe.nr_robot.move_home()
-        lashe.nr_robot.remove_pipet()
-        # nr.move_home()
-        # input("Waiting to move tip...")
-        # nr.remove_pipet()
+# Uncomment to test large tips:
+# test_get_pipet(['large_tip'] * 3)
 
-# test_get_pipet([lashe.nr_robot.HIGHER_PIPET_ARRAY_INDEX]*48)
-
-test_get_pipet([1])
+# Uncomment to test mixed types:
+# test_get_pipet(['small_tip', 'large_tip', 'small_tip'])
