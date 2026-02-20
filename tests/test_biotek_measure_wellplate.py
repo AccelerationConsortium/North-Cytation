@@ -12,9 +12,9 @@ def test_measure_wellplate(input_vial_status_file): #tests track movement of wel
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(input_vial_status_file)
 
-    protocol = r"C:\Protocols\300_900_sweep.prt"
+    #protocol = r"C:\Protocols\300_900_sweep.prt"
     #protocol = r"C:\Protocols\SQ_degradation_sweep.prt" 
-    #protocol = None
+    protocol = None
 
     data = lash_e.measure_wellplate(protocol, [0,1,2], plate_type='quartz')
 

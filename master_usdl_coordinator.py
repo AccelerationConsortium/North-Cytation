@@ -78,7 +78,7 @@ class Lash_E:
     powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs"):
+    def __init__(self, vial_file=None, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs"):
         
         self.simulate = simulate
         self.vial_file = vial_file  # Store vial file for GUI access
@@ -226,7 +226,7 @@ class Lash_E:
         if return_home:
             self.nr_robot.return_vial_home(vial) 
 
-    def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE", use_lid=False):
+    def move_wellplate_to_cytation(self,wellplate_index=0,plate_type="96 WELL PLATE", use_lid=False, safe_movement=True):
         self.logger.info(f"Moving wellplate {wellplate_index} to Cytation")
         
         # Get Cytation software's wellplate name from robot's wellplate configuration
@@ -237,7 +237,8 @@ class Lash_E:
         else:
             self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}' for CarrierIn")
         
-        self.nr_track.move_through_path(['cytation_safe_area'])
+        if safe_movement:
+            self.nr_track.move_through_path(['cytation_safe_area'])
         # Use robot's plate_type for robot movements
         self.nr_track.grab_wellplate_from_location('pipetting_area', plate_type)
         self.nr_track.move_through_path(['cytation_safe_area'])
@@ -276,7 +277,7 @@ class Lash_E:
         self.nr_track.release_wellplate_in_location('pipetting_area', plate_type)
 
     #Note from OAM: The data formatting from this can be annoying. Need to think about how to handle it. 
-    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1, use_lid=False):
+    def measure_wellplate(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1, use_lid=False, safe_movement=True):
         """
         Measure a wellplate on the Cytation reader. Supports multiple protocols and replicate measurements.
         Each replicate includes all protocols, e.g.:
@@ -299,7 +300,7 @@ class Lash_E:
             self.logger.debug(f"Using robot plate type '{plate_type}' -> Cytation plate type '{cytation_plate_type}'")
         
         self.nr_robot.move_home()
-        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid)
+        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid, safe_movement=safe_movement)
 
         all_data = []
 

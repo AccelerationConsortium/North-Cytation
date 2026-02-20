@@ -230,81 +230,80 @@ class North_Track(North_Base):
                 yaml.dump(track_status, file, default_flow_style=False)
 
     def check_input_file(self, pause_after_check=True, visualize=True):
-        return
-        # self.logger.info(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n Active wellplate position: {self.ACTIVE_WELLPLATE_POSITION}")
+        self.logger.info(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n Active wellplate position: {self.ACTIVE_WELLPLATE_POSITION}")
 
-        # if visualize:
-        #     self.logger.info("Visualizing wellplate status...")
+        if visualize:
+            self.logger.info("Visualizing wellplate status...")
             
-        #     # Debug matplotlib backend
-        #     try:
-        #         import matplotlib
-        #         self.logger.debug(f"Matplotlib backend: {matplotlib.get_backend()}")
+            # Debug matplotlib backend
+            try:
+                import matplotlib
+                self.logger.debug(f"Matplotlib backend: {matplotlib.get_backend()}")
                 
-        #         # Try to set an interactive backend for Windows
-        #         if matplotlib.get_backend() == 'Agg':
-        #             try:
-        #                 matplotlib.use('TkAgg')
-        #                 self.logger.info("Switched matplotlib backend to TkAgg")
-        #             except:
-        #                 try:
-        #                     matplotlib.use('Qt5Agg')
-        #                     self.logger.info("Switched matplotlib backend to Qt5Agg") 
-        #                 except:
-        #                     self.logger.warning("Could not set interactive backend, using default")
+                # Try to set an interactive backend for Windows
+                if matplotlib.get_backend() == 'Agg':
+                    try:
+                        matplotlib.use('TkAgg')
+                        self.logger.info("Switched matplotlib backend to TkAgg")
+                    except:
+                        try:
+                            matplotlib.use('Qt5Agg')
+                            self.logger.info("Switched matplotlib backend to Qt5Agg") 
+                        except:
+                            self.logger.warning("Could not set interactive backend, using default")
                 
-        #     except Exception as e:
-        #         self.logger.warning(f"Matplotlib backend check failed: {e}")
+            except Exception as e:
+                self.logger.warning(f"Matplotlib backend check failed: {e}")
             
-        #     fig, ax = plt.subplots(figsize=(10, 6))
+            fig, ax = plt.subplots(figsize=(10, 6))
 
-        #     plate_width = 2.5
-        #     plate_height = 0.4
-        #     spacing = 0.1
+            plate_width = 2.5
+            plate_height = 0.4
+            spacing = 0.1
 
-        #     for i in range(self.NUM_SOURCE):
-        #         rect = plt.Rectangle((1, i * (plate_height + spacing)), plate_width, plate_height,
-        #                             edgecolor='black', facecolor='lightblue')
-        #         ax.add_patch(rect)
-        #         ax.text(1 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
-        #                 self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
+            for i in range(self.NUM_SOURCE):
+                rect = plt.Rectangle((1, i * (plate_height + spacing)), plate_width, plate_height,
+                                    edgecolor='black', facecolor='lightblue')
+                ax.add_patch(rect)
+                ax.text(1 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
+                        self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
 
-        #     for i in range(self.NUM_WASTE):
-        #         rect = plt.Rectangle((5, i * (plate_height + spacing)), plate_width, plate_height,
-        #                             edgecolor='black', facecolor='lightcoral')
-        #         ax.add_patch(rect)
-        #         ax.text(5 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
-        #                 self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
+            for i in range(self.NUM_WASTE):
+                rect = plt.Rectangle((5, i * (plate_height + spacing)), plate_width, plate_height,
+                                    edgecolor='black', facecolor='lightcoral')
+                ax.add_patch(rect)
+                ax.text(5 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
+                        self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
 
-        #     if self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area':
-        #         rect = plt.Rectangle((9, 0), plate_width, plate_height,
-        #                             edgecolor='black', facecolor='khaki')
-        #         ax.add_patch(rect)
-        #         ax.text(9 + plate_width / 2, plate_height / 2,
-        #                 "Occupied", ha='center', va='center', fontsize=8)
-        #         ax.text(9 + plate_width / 2, plate_height + 0.2, "NR Pipette Area",
-        #                 ha='center', va='bottom', fontsize=10, weight='bold')
+            if self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area':
+                rect = plt.Rectangle((9, 0), plate_width, plate_height,
+                                    edgecolor='black', facecolor='khaki')
+                ax.add_patch(rect)
+                ax.text(9 + plate_width / 2, plate_height / 2,
+                        "Occupied", ha='center', va='center', fontsize=8)
+                ax.text(9 + plate_width / 2, plate_height + 0.2, "NR Pipette Area",
+                        ha='center', va='bottom', fontsize=10, weight='bold')
 
-        #     ax.text(1 + plate_width / 2, self.NUM_SOURCE * (plate_height + spacing) + 0.2, "Source Stack",
-        #             ha='center', va='bottom', fontsize=10, weight='bold')
-        #     ax.text(5 + plate_width / 2, self.NUM_WASTE * (plate_height + spacing) + 0.2, "Waste Stack",
-        #             ha='center', va='bottom', fontsize=10, weight='bold')
+            ax.text(1 + plate_width / 2, self.NUM_SOURCE * (plate_height + spacing) + 0.2, "Source Stack",
+                    ha='center', va='bottom', fontsize=10, weight='bold')
+            ax.text(5 + plate_width / 2, self.NUM_WASTE * (plate_height + spacing) + 0.2, "Waste Stack",
+                    ha='center', va='bottom', fontsize=10, weight='bold')
 
-        #     ax.set_xlim(0, 12)
-        #     ax.set_ylim(0, max(self.NUM_SOURCE, self.NUM_WASTE) * (plate_height + spacing) + 1)
-        #     ax.axis('off')
-        #     ax.set_title("-- Please Confirm Wellplate Status --", fontsize=14, weight='bold')
-        #     plt.tight_layout()
+            ax.set_xlim(0, 12)
+            ax.set_ylim(0, max(self.NUM_SOURCE, self.NUM_WASTE) * (plate_height + spacing) + 1)
+            ax.axis('off')
+            ax.set_title("-- Please Confirm Wellplate Status --", fontsize=14, weight='bold')
+            plt.tight_layout()
             
-        #     try:
-        #         plt.show(block=True)
-        #         self.logger.debug("Wellplate visualization displayed successfully")
-        #     except Exception as e:
-        #         self.logger.error(f"Failed to display wellplate visualization: {e}")
-        #         self.logger.info("Continuing without visualization...")
+            try:
+                plt.show(block=True)
+                self.logger.debug("Wellplate visualization displayed successfully")
+            except Exception as e:
+                self.logger.error(f"Failed to display wellplate visualization: {e}")
+                self.logger.info("Continuing without visualization...")
 
-        # if pause_after_check and not self.simulate:
-        #     input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
+        if pause_after_check and not self.simulate:
+            input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
 
     def reset_after_initialization(self):
         """Reset robot to known state after initialization"""
@@ -1250,11 +1249,11 @@ class North_Robot(North_Base):
         vial_status = pd.read_csv(self.VIAL_FILE, sep=",")
         self.logger.info(vial_status)
 
-        # if visualize:
-        #     self.visualize_racks(vial_status)
+        if visualize:
+            self.visualize_racks(vial_status)
 
-        # if pause_after_check and not self.simulate:
-        #     input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
+        if pause_after_check and not self.simulate:
+            input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
     # ====================================================================
     # 3. CORE ROBOT OPERATIONS
@@ -1918,7 +1917,7 @@ class North_Robot(North_Base):
         tip_speed = self.get_config_parameter('pipet_tips', self.HELD_PIPET_TYPE, 'default_aspirate_speed', error_on_missing=True)
         return tip_speed
 
-    def _ensure_vial_accessible_for_pipetting(self, vial_name, use_safe_location=False, move_speed=None):
+    def _ensure_vial_accessible_for_pipetting(self, vial_name, use_safe_location=False):
         """
         Helper method to ensure a vial is accessible for pipetting by moving it to clamp if needed.
         
@@ -1942,15 +1941,15 @@ class North_Robot(North_Base):
                 vial_index = self.get_vial_index_from_name(vial_name)
                 if clamp_vial_index is not None and clamp_vial_index != vial_index:
                     self.logger.debug(f"Clamp occupied by vial {clamp_vial_index}, returning it home first")
-                    self.return_vial_home(clamp_vial_index, move_speed=move_speed)
+                    self.return_vial_home(clamp_vial_index)
                 
                 # Move vial to clamp and uncap only if it has a closed cap
-                self.move_vial_to_location(vial_num, location='clamp', location_index=0, move_speed=move_speed)
+                self.move_vial_to_location(vial_num, location='clamp', location_index=0)
                 
                 # Only uncap if vial has a closed cap (not open caps)
                 vial_cap_type = self.get_vial_info(vial_num, 'cap_type')
                 if vial_cap_type != 'open':
-                    self.uncap_clamp_vial(move_speed=move_speed)
+                    self.uncap_clamp_vial()
                 else:
                     self.logger.debug(f"Vial {vial_name} has open cap, skipping uncap operation")
                 
@@ -2152,16 +2151,16 @@ class North_Robot(North_Base):
         for i in range(repeats):
             last_run = (i == repeats - 1)
 
-            # Aspirate from source (at normal speed)
+            # Aspirate from source
             self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip, use_safe_location=use_safe_location)
 
-            # Set custom movement speed if specified - after aspiration when carrying liquid
+            # Set custom movement speed if specified
             original_vel = None
             if move_speed is not None:
                 original_vel = self.c9.default_vel
                 self.c9.default_vel = move_speed
 
-            # Dispense into destination (at modified speed)
+            # Dispense into destination
             dispense_result = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=measure_weight,
                                                       continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data)
             
@@ -2174,7 +2173,7 @@ class North_Robot(North_Base):
                 
             total_mass += mass_increment if mass_increment is not None else 0
 
-            # Restore original movement speed AFTER dispense but BEFORE recap/return operations
+            # Restore original movement speed if changed
             if move_speed is not None and original_vel is not None:
                 self.c9.default_vel = original_vel
 
@@ -2191,12 +2190,12 @@ class North_Robot(North_Base):
                     robot_has_cap = (self.GRIPPER_STATUS == "Cap")
                     
                     if not vial_is_capped and robot_has_cap:
-                        self.recap_clamp_vial()  # Use default speed for recapping
+                        self.recap_clamp_vial(move_speed=move_speed)
                     elif not vial_is_capped and not robot_has_cap:
                         self.logger.warning(f"Vial {clamp_vial_index} is uncapped but robot doesn't have cap - leaving uncapped")
                     # If vial is already capped, skip recapping
                     
-                    self.return_vial_home(clamp_vial_index)  # Use default speed for returning vial
+                    self.return_vial_home(clamp_vial_index, move_speed=move_speed)
 
 
         return total_mass, stability_info
@@ -2343,7 +2342,7 @@ class North_Robot(North_Base):
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
         # Ensure vial is accessible for pipetting (no use_safe_location for dispense)
-        if not self._ensure_vial_accessible_for_pipetting(dest_vial_name, use_safe_location=False, move_speed=move_speed):
+        if not self._ensure_vial_accessible_for_pipetting(dest_vial_name, use_safe_location=False):
             return
 
         measured_mass = None

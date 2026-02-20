@@ -27,11 +27,7 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
     lash_e.nr_robot.dispense_from_vial_into_vial(reaction_mixture_index,sample_index,volume=volume, liquid='water')
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0,rpm=600)
     mix_current_sample(lash_e,sample_index)
-    lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.move_home()
-    # lash_e.nr_robot.c9.home_robot() #removed for now to save time
-    #for i in range (6,8):
-       # lash_e.nr_robot.home_axis(i) #Home the track
     print()
 
 def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=True,well_volume=0.2):
@@ -133,14 +129,15 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
         cof_output_dir = None
 
     #OAM Note: These times need to exactly correspond to the schedule and vials!
-    sample_times = [60,120,180,240,300,360] #in minutes <----- These numbers need to match the vials and the schedule!!!!!
+    sample_times = [1,6,11,20,30,45] #in minutes <----- These numbers need to match the vials and the schedule!!!!!
     sample_indices = [f"{t}_min_Reaction{set_suffix}" for t in sample_times]
 
 #-> Start from here! 
     lash_e.grab_new_wellplate()
     #Step 1: Add 1.95 mL "assay reagent" to sample vials
     for i in sample_indices:  #May want to use liquid calibration eg water
-        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water')
+        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water', remove_pipet=False)
+    lash_e.nr_robot.remove_pipet()
     
     # #Step 2: Move the reaction mixture vial to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_location(cof_vial, location="photoreactor_array", location_index=0)
