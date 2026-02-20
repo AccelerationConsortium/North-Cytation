@@ -2,11 +2,23 @@ import sys
 import time
 import datetime
 sys.path.append("../utoronto_demo")
+from backups.surfactant_grid_adaptive_concentrations_backup_consolidated_data_organization_20260203_172735 import VALIDATE_LIQUIDS
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
 from pathlib import Path
 import slack_agent
 import pipetting_data.embedded_calibration_validation as pipette_validator  
+
+#config params
+EXPERIMENT_NAME = "peroxide_assay_test"
+SIMULATE = True
+VALIDATE_LIQUIDS = False
+NUMBER_OF_SAMPLES = 1
+REPLICATES = 3
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
+MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
+
+
 
 def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_index,volume=0.05):
     print("\nDispensing from photoreactor into sample: ", sample_index)
@@ -49,6 +61,51 @@ def mix_current_sample(lash_e, sample_index):
     lash_e.nr_robot.vortex_vial(sample_index, 5)
     print()
 
+def validate_pipetting_accuracy_all_vials(lash_e, output_dir=None, number_of_samples=1):
+    """Validate pipetting accuracy for all COF vials and water."""
+    
+    # Validate Pipetting Accuracy for COF vials
+    for cof in [f'COF_{i}' for i in range(1, number_of_samples + 1)]:
+        vial_name = cof
+        if output_dir is not None:
+            cof_subdir = output_dir / vial_name
+            cof_subdir.mkdir(parents=True, exist_ok=True)
+            validation_folder = cof_subdir / f'Pipetting_Validation_{vial_name}'
+        else:
+            validation_folder = None
+        
+        results = pipette_validator.validate_pipetting_accuracy(
+            lash_e=lash_e,
+            source_vial=vial_name,
+            destination_vial=vial_name,
+            liquid_type="water",
+            volumes_ml=[0.05],  # Convert 50 µL to 0.05 mL
+            replicates=5,
+            output_folder=validation_folder,
+            plot_title=f"Pipetting Validation - {vial_name}",
+            condition_tip_enabled=True,
+            conditioning_volume_ul=100
+        )
+
+    # Water validation - put in a general validation folder
+    vial_name = 'water'
+    if output_dir is not None:
+        validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
+    else:
+        validation_folder = None
+    
+    results = pipette_validator.validate_pipetting_accuracy(
+        lash_e=lash_e,
+        source_vial=vial_name,
+        destination_vial=vial_name,
+        liquid_type="water",
+        volumes_ml=[0.2, 0.95],  # Larger volumes for water validation
+        replicates=5,
+        output_folder=validation_folder,
+        plot_title=f"Pipetting Validation - {vial_name}",
+        condition_tip_enabled=True,
+        conditioning_volume_ul=800
+    )
 
 def get_time(simulate,current_time=None):
     if not simulate:
@@ -60,12 +117,8 @@ def get_time(simulate,current_time=None):
             return current_time + 1
 
 #Define your workflow! Make sure that it has parameters that can be changed!
-def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1', set_suffix='',replicates=3, simulate=True, output_dir=None):
+def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1', set_suffix='',replicates=REPLICATES, output_dir=None):
   
-    MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
-
-    SIMULATE =  simulate #Set to True if you want to simulate the robot, False if you want to run it on the real robot
-
     # Create subdirectory based on COF_vial name
     if output_dir is not None:
         cof_output_dir = output_dir / cof_vial
@@ -146,76 +199,30 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
 
 # Initialize the workstation ONCE before running all workflows
 
-NUMBER_OF_SAMPLES = 1
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
-SIMULATE = False
-
-# Get experiment name at the start
-if not SIMULATE:
-    exp_name = input("Experiment name: ")
-else:
-    exp_name = "simulation_test"
-
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
-lash_e.nr_robot.check_input_file()
-lash_e.nr_track.check_input_file()
+# Setup configuration management and initialize Lash_E with automatic config handling
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, 
+                workflow_globals=globals(), workflow_name='peroxide_serena_v3')
 
 lash_e.nr_robot.home_robot_components()
 
 #create file name for the output data
 if not SIMULATE:
-    output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / exp_name #appends exp_name to the output directory
+    # Add timestamp to prevent duplicate experiment names
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    experiment_name_with_timestamp = f"{EXPERIMENT_NAME}_{timestamp}"
+    output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / experiment_name_with_timestamp #appends exp_name to the output directory
     output_dir.mkdir(parents=True, exist_ok=True)
     print("Output directory created at:", output_dir)
-    slack_agent.send_slack_message(f"Peroxide workflow '{exp_name}' started!")
+    slack_agent.send_slack_message(f"Peroxide workflow '{experiment_name_with_timestamp}' started!")
 else:
     output_dir = None
 
-# # Validate Pipetting Accuracy
-# for cof in [f'COF_{i}' for i in range(1,NUMBER_OF_SAMPLES+1)]:
-#     vial_name = cof
-#     if output_dir is not None:
-#         cof_subdir = output_dir / vial_name
-#         cof_subdir.mkdir(parents=True, exist_ok=True)
-#         validation_folder = cof_subdir / f'Pipetting_Validation_{vial_name}'
-#     else:
-#         validation_folder = None
-#     results = pipette_validator.validate_pipetting_accuracy(
-#                     lash_e=lash_e,
-#                     source_vial=vial_name,
-#                     destination_vial=vial_name,
-#                     liquid_type="water",
-#                     volumes_ml=[0.05],  # Convert 10 µL to 0.01 mL
-#                     replicates=5,
-#                     output_folder=validation_folder,
-#                     plot_title=f"Pipetting Validation - {vial_name}",
-#                     condition_tip_enabled=True,
-#                     conditioning_volume_ul=100
-#                 )
-
-# # Water validation - put in a general validation folder
-# vial_name = 'water'
-# if output_dir is not None:
-#     validation_folder = output_dir / f'Pipetting_Validation_{vial_name}'
-# else:
-#     validation_folder = None
-# results = pipette_validator.validate_pipetting_accuracy(
-#                 lash_e=lash_e,
-#                 source_vial=vial_name,
-#                 destination_vial=vial_name,
-#                 liquid_type="water",
-#                 volumes_ml=[0.2, 0.95],  # Convert 10 µL to 0.01 mL
-#                 replicates=5,
-#                 output_folder=validation_folder,
-#                 plot_title=f"Pipetting Validation - {vial_name}",
-#                 condition_tip_enabled=True,
-#                 conditioning_volume_ul=800
-#             )
-
+if VALIDATE_LIQUIDS:
+    validate_pipetting_accuracy_all_vials(lash_e, output_dir, NUMBER_OF_SAMPLES)
 
 # Run the workflow N times with different Reagent+COF+sample sets, reusing the same lash_e instance
 for i in range(1, NUMBER_OF_SAMPLES+1):
     assay_reagent = f'Assay_reagent_{i}'
     cof_vial = f'COF_{i}'
     set_suffix = f'_Set{i}'
-    peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix, simulate=SIMULATE, output_dir=output_dir)
+    peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix, output_dir=output_dir)

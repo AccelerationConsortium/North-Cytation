@@ -21,12 +21,12 @@ def remove_lid_from_wellplate():
     lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='quartz_lid', waypoint_locations=['cytation_safe_area'])
     lash_e.nr_track.release_wellplate_in_location('lid_storage', wellplate_type='quartz_lid')
 
-for i in range (0, 10):
+for i in range (0, 3):
     move_lid_to_wellplate()
 
     # lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='quartz')
     # lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type='quartz')
-    data = lash_e.measure_wellplate(protocol, [0,1,2], plate_type='quartz')
+    data = lash_e.measure_wellplate(protocol, [0], plate_type='quartz')
 
     print (data)
     

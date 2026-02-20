@@ -41,8 +41,74 @@ from master_usdl_coordinator import Lash_E, flatten_cytation_data
 import slack_agent
 
 # ================================================================================
+# WORKFLOW CONFIGURATION MANAGEMENT
+# ================================================================================
+
+
+# ================================================================================
 # GLOBAL CONFIGURATION AND CONSTANTS
 # ================================================================================
+
+
+SURFACTANT_A = "SDS"
+SURFACTANT_B = "TTAB"
+
+EXPERIMENT_TAG = "new_min_conc_plus_1d_cmc_assay"
+
+# WORKFLOW CONSTANTS
+SIMULATE = True # Set to False for actual hardware execution
+VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
+CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
+VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
+
+# WORKFLOW OPTIONS
+RUN_2_STAGE_WORKFLOW = False  # Set to True to run 2-stage adaptive workflow
+RUN_SINGLE_STAGE = False       # Set to True to run single-stage workflow
+RUN_ITERATIVE_WORKFLOW = True #Using triangles
+
+# CMC CONTROL WELLS OPTIONS
+ADD_CMC_CONTROLS = True  # Set to True to add CMC transition control wells
+CMC_CONTROL_POINTS = 8   # Number of concentration points around CMC (6-8 recommended)
+
+# Adaptive grid parameters - concentration ranges adapt to stock concentrations
+MIN_CONC = 10**-2  # 0.01 mM minimum concentration for all surfactants
+NUMBER_CONCENTRATIONS = 9  # Number of concentration steps for solo/2-step workflows
+
+ITERATIVE_CONCENTRATIONS = 5  # Number of concentration steps for iterative/adaptive workflows (5x5 grid)
+GRADIENT_SUGGESTIONS_PER_ITERATION = 14  # Number of gradient suggestions per iterative round
+
+# Recommender optimization targets - choose which measurements to optimize 
+OPTIMIZE_METRIC = 'ratio'  # Options: 'turbidity', 'ratio', 'both' (for ratio + turbidity boundaries)
+
+N_REPLICATES = 1
+WELL_VOLUME_UL = 200  # uL per well
+PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
+ITERATIVE_MEASUREMENT_TOTAL= 192 #The number of measurements done
+
+# Buffer addition settings
+ADD_BUFFER = False  # Set to False to skip buffer addition
+BUFFER_VOLUME_UL = 20  # uL buffer to add per well
+BUFFER_OPTIONS = ['MES', 'HEPES', 'CAPS']  # Available buffers
+SELECTED_BUFFER = 'MES'  # Choose from BUFFER_OPTIONS
+
+MAX_WELLS = 96 #Wellplate size
+
+# Constants
+FINAL_SUBSTOCK_VOLUME = 6  # mL final volume for each dilution
+MINIMUM_PIPETTE_VOLUME = 0.2  # mL (200 uL) - minimum volume for accurate pipetting
+MEASUREMENT_INTERVAL = 96    # Measure every N wells to prevent evaporation
+
+# Pipetting volume limits (consistent across all functions)
+MIN_WELL_PIPETTE_VOLUME_UL = 10.0  # Minimum volume for well dispensing
+MAX_SURFACTANT_VOLUME_UL = 90.0   # Maximum surfactant volume per well
+
+# Measurement protocol files for Cytation TODO: Add shaking for 10 minutes... 
+SHAKE_PROTOCOL = r"C:\Protocols\shake_5_wait_5.prt" #<----- Make this protocol
+TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
+FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
+
+# File paths
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
 
 # Surfactant library with stock concentrations (from cmc_exp_new.py)
 SURFACTANT_LIBRARY = {
@@ -84,75 +150,15 @@ SURFACTANT_LIBRARY = {
     }
 }
 
-SURFACTANT_A = "SDS"
-SURFACTANT_B = "TTAB"
+# Volume calculation functions (computed from config values)
+def get_effective_surfactant_volume():
+    """Calculate effective surfactant volume per well, accounting for buffer and pyrene."""
+    return (WELL_VOLUME_UL - BUFFER_VOLUME_UL) / 2
 
-# WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
-VALIDATE_LIQUIDS = False # Set to False to skip pipetting validation during initialization
-CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
-VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
+def get_concentration_correction_factor():
+    """Calculate concentration correction factor for buffer dilution."""
+    return WELL_VOLUME_UL / (2 * get_effective_surfactant_volume())
 
-# WORKFLOW OPTIONS
-RUN_2_STAGE_WORKFLOW = False  # Set to True to run 2-stage adaptive workflow
-RUN_SINGLE_STAGE = False       # Set to True to run single-stage workflow
-RUN_ITERATIVE_WORKFLOW = True #Using triangles
-
-# CMC CONTROL WELLS OPTIONS
-ADD_CMC_CONTROLS = True  # Set to True to add CMC transition control wells
-CMC_CONTROL_POINTS = 8   # Number of concentration points around CMC (6-8 recommended)
-
-# Adaptive grid parameters - concentration ranges adapt to stock concentrations
-MIN_CONC = 10**-2  # 0.01 mM minimum concentration for all surfactants
-NUMBER_CONCENTRATIONS = 9  # Number of concentration steps for solo/2-step workflows
-
-ITERATIVE_CONCENTRATIONS = 5  # Number of concentration steps for iterative/adaptive workflows (5x5 grid)
-GRADIENT_SUGGESTIONS_PER_ITERATION = 14  # Number of gradient suggestions per iterative round
-
-# Recommender optimization targets - choose which measurements to optimize 
-OPTIMIZE_METRIC = 'ratio'  # Options: 'turbidity', 'ratio', 'both' (for ratio + turbidity boundaries)
-
-N_REPLICATES = 1
-WELL_VOLUME_UL = 200  # uL per well
-PYRENE_VOLUME_UL = 5  # uL pyrene_DMSO to add per well
-ITERATIVE_MEASUREMENT_TOTAL= 96 #The number of measurements done
-
-# Buffer addition settings
-ADD_BUFFER = True  # Set to False to skip buffer addition
-BUFFER_VOLUME_UL = 20  # uL buffer to add per well
-BUFFER_OPTIONS = ['MES', 'HEPES', 'CAPS']  # Available buffers
-SELECTED_BUFFER = 'MES'  # Choose from BUFFER_OPTIONS
-
-# Volume calculation with buffer compensation
-# Always reserve space for buffer and pyrene to maintain consistent concentration ranges
-# This ensures max concentrations are always the same regardless of ADD_BUFFER setting
-EFFECTIVE_SURFACTANT_VOLUME = (WELL_VOLUME_UL - BUFFER_VOLUME_UL ) / 2  # Always reserve space
-#lash_e.logger.info(f"Effective surfactant volume: {EFFECTIVE_SURFACTANT_VOLUME} uL per surfactant (reserves space for buffer+pyrene)")
-
-# CRITICAL: Concentration correction factor for buffer dilution
-# When buffer is added, stock concentrations must be higher to compensate for dilution
-# This ensures final concentrations match intended values
-CONCENTRATION_CORRECTION_FACTOR = WELL_VOLUME_UL / (2 * EFFECTIVE_SURFACTANT_VOLUME)
-#lash_e.logger.info(f"Concentration correction factor: {CONCENTRATION_CORRECTION_FACTOR:.3f} (buffer={ADD_BUFFER}, buffer_vol={BUFFER_VOLUME_UL if ADD_BUFFER else 0}uL)")
-MAX_WELLS = 96 #Wellplate size
-
-# Constants
-FINAL_SUBSTOCK_VOLUME = 6  # mL final volume for each dilution
-MINIMUM_PIPETTE_VOLUME = 0.2  # mL (200 uL) - minimum volume for accurate pipetting
-MEASUREMENT_INTERVAL = 96    # Measure every N wells to prevent evaporation
-
-# Pipetting volume limits (consistent across all functions)
-MIN_WELL_PIPETTE_VOLUME_UL = 10.0  # Minimum volume for well dispensing
-MAX_SURFACTANT_VOLUME_UL = 90.0   # Maximum surfactant volume per well
-
-# Measurement protocol files for Cytation TODO: Add shaking for 10 minutes... 
-SHAKE_PROTOCOL = r"C:\Protocols\shake_5_wait_5.prt" #<----- Make this protocol
-TURBIDITY_PROTOCOL_FILE = r"C:\Protocols\CMC_Absorbance_96.prt"
-FLUORESCENCE_PROTOCOL_FILE = r"C:\Protocols\CMC_Fluorescence_96.prt"
-
-
-# File paths
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
 
 # ================================================================================
 # HEATMAP VISUALIZATION FUNCTIONS
@@ -894,7 +900,7 @@ class SurfactantSubstockTracker:
         
         # CRITICAL: Substock cannot be more concentrated than the stock!
         stock_conc = SURFACTANT_LIBRARY[surfactant_name]['stock_conc']
-        max_substock_conc = stock_conc * (EFFECTIVE_SURFACTANT_VOLUME / WELL_VOLUME_UL)  # 90/200 = 0.45
+        max_substock_conc = stock_conc * (get_effective_surfactant_volume() / WELL_VOLUME_UL)  # 90/200 = 0.45
         
         # Use the most restrictive constraint
         final_conc = min(optimal_conc, max_conc_absolute, max_substock_conc)
@@ -1272,7 +1278,7 @@ def calculate_grid_concentrations(lash_e, surfactant_name=None, min_conc=None, m
             stock_conc = SURFACTANT_LIBRARY[surfactant_name]["stock_conc"]
             # Maximum concentration is limited by volume allocation in the well
             # Max achievable: stock_conc * (allocated_volume / total_well_volume)
-            effective_max_conc = stock_conc * (EFFECTIVE_SURFACTANT_VOLUME / WELL_VOLUME_UL)
+            effective_max_conc = stock_conc * (get_effective_surfactant_volume() / WELL_VOLUME_UL)
         else:
             # Generic range if no surfactant specified
             effective_max_conc = 25  # Generic max for calculations
@@ -1469,7 +1475,7 @@ def get_achievable_concentrations(surfactant_name, target_concentrations):
             continue
         
         # Apply concentration correction factor for buffer dilution
-        required_stock_conc = target * CONCENTRATION_CORRECTION_FACTOR
+        required_stock_conc = target * get_concentration_correction_factor()
         
         # Check if this concentration is achievable given stock concentration and dilution limits  
         dilution_factor = stock_conc / required_stock_conc
@@ -1576,8 +1582,8 @@ def create_cmc_control_series(surfactant_name, num_points=7, concentration_span_
     min_conc = max(min_conc, MIN_CONC)
     
     # For CMC controls: Total volume = WELL_VOLUME_UL + PYRENE_VOLUME_UL = 205 µL
-    # Available volume for surfactant+water = 180 µL (reserve 20µL for buffer)
-    available_volume_ul = WELL_VOLUME_UL - BUFFER_VOLUME_UL  # 180 µL for surfactant+water (200-20)
+    # Available volume for surfactant+water depends on buffer setting
+    available_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # 200µL (no buffer) or 180µL (with buffer)
     total_well_volume_ul = WELL_VOLUME_UL + PYRENE_VOLUME_UL  # 205 µL total
     
     # Don't exceed what's achievable with available volume (after buffer) at stock concentration
@@ -2123,10 +2129,10 @@ def create_well_recipe_from_control(control, well_index, surfactant_a_name, surf
             else:
                 raise ValueError(f"CMC concentration {target_conc_b:.3e} mM not available for {surfactant_b_name} (check stock matching)")
         
-        # Calculate water volume: Total well volume (200 µL) - Surfactant - Buffer - NO pyrene in calculation
+        # Calculate water volume: Total well volume (200 µL) - Surfactant - Buffer (if used) - NO pyrene in calculation
         # (pyrene is added separately, so well contains 200 µL solution + 5 µL pyrene = 205 µL total)
         total_surfactant_volume = recipe['surf_A_volume_ul'] + recipe['surf_B_volume_ul']
-        recipe['water_volume_ul'] = WELL_VOLUME_UL - total_surfactant_volume - BUFFER_VOLUME_UL  # Fill to 180 µL after buffer
+        recipe['water_volume_ul'] = WELL_VOLUME_UL - total_surfactant_volume - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # Fill remaining space with water
         recipe['buffer_volume_ul'] = BUFFER_VOLUME_UL if ADD_BUFFER else 0.0  # Include buffer in CMC controls
         recipe['buffer_used'] = SELECTED_BUFFER if ADD_BUFFER else None
         
@@ -2308,12 +2314,15 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         cmc_target_concs_b = get_cmc_concentrations_from_controls(cmc_controls_b_preview, surfactant_b_name)
         
         # Use existing stock matching pattern (same as iterative workflow)
+        # Available volume for CMC controls depends on buffer setting
+        cmc_max_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # 200µL (no buffer) or 180µL (with buffer)
+        
         if cmc_target_concs_a:
-            cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, max_volume_ul=180.0)
+            cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_a_name}: {len(cmc_target_concs_a)} concentrations")
             
         if cmc_target_concs_b:
-            cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, max_volume_ul=180.0)
+            cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_b_name}: {len(cmc_target_concs_b)} concentrations")
     
     # Step 5: Create complete well-by-well recipes DataFrame
@@ -2409,7 +2418,7 @@ def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, s
     """Initialize experiment environment: create folders, set name, log header."""
     # Create experiment name with timestamp
     experiment_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}"
+    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}_{EXPERIMENT_TAG}"
     lash_e.current_experiment_name = experiment_name  # Store for access by other functions
     
     # Create organized experiment folder structure
@@ -3606,11 +3615,9 @@ if __name__ == "__main__":
     Run the adaptive surfactant grid screening workflow.
     """
     
-    # Initialize Lash_E and validate once
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
-    print("Validating robot and track status...")
-    lash_e.nr_robot.check_input_file()
-    lash_e.nr_track.check_input_file()
+    # Initialize Lash_E with automatic config handling
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, 
+                    workflow_globals=globals(), workflow_name='surfactant_grid_adaptive_concentrations')
 
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")

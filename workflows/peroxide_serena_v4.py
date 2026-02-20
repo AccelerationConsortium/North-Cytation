@@ -196,6 +196,7 @@ if not SIMULATE:
 else:
     exp_name = "simulation_test"
 
+# Initialize Lash_E (no ConfigManager needed - just direct init)
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
 lash_e.nr_robot.check_input_file()
 lash_e.nr_track.check_input_file()

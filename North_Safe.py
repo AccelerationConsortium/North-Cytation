@@ -143,6 +143,8 @@ class North_Track(North_Base):
         self.NUM_WASTE = 0
         self.CURRENT_WP_TYPE = "96 WELL PLATE"
         self.ACTIVE_WELLPLATE_POSITION = None  # null, 'gripper', 'pipetting_area', 'cytation_tray', etc.
+        self.CURRENT_GRIPPER_LOCATION = None  # Track where the gripper physically is: 'pipetting_area', 'cytation_tray', etc.
+        self.CURRENT_GRIPPER_POSITION = {'x': None, 'z': None}  # Track physical coordinates
         self.simulate = simulate
 
         #Load yaml data
@@ -204,6 +206,8 @@ class North_Track(North_Base):
             self.NUM_WASTE = track_status['num_in_waste']
             self.CURRENT_WP_TYPE = track_status['wellplate_type']
             self.ACTIVE_WELLPLATE_POSITION = track_status.get('active_wellplate_position')  # New unified field
+            self.CURRENT_GRIPPER_LOCATION = track_status.get('current_gripper_location')  # Track gripper location name
+            self.CURRENT_GRIPPER_POSITION = track_status.get('current_gripper_position', {'x': None, 'z': None})  # Track gripper coordinates
         except KeyError as e:
             self.pause_after_error(f"Missing required field in track status: {e}", False)
         except Exception as e:
@@ -215,7 +219,9 @@ class North_Track(North_Base):
             "num_in_source": self.NUM_SOURCE,
             "num_in_waste": self.NUM_WASTE,
             "wellplate_type": self.CURRENT_WP_TYPE,
-            "active_wellplate_position": self.ACTIVE_WELLPLATE_POSITION
+            "active_wellplate_position": self.ACTIVE_WELLPLATE_POSITION,
+            "current_gripper_location": self.CURRENT_GRIPPER_LOCATION,
+            "current_gripper_position": self.CURRENT_GRIPPER_POSITION
         }
 
         if not self.simulate: #not simulating
@@ -224,80 +230,91 @@ class North_Track(North_Base):
                 yaml.dump(track_status, file, default_flow_style=False)
 
     def check_input_file(self, pause_after_check=True, visualize=True):
-        self.logger.info(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n Active wellplate position: {self.ACTIVE_WELLPLATE_POSITION}")
+        print("\n" + "="*60)
+        print("DEPRECATION WARNING: check_input_file()")
+        print("="*60)
+        print("This method is deprecated. Please use the GUI launched during")
+        print("Lash_E initialization to check and modify robot states.")
+        print("Remove the .check_input_file() calls from your workflow.")
+        print("Press Enter to continue...")
+        print("="*60)
+        input()
+        
+        return
+        # self.logger.info(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n Active wellplate position: {self.ACTIVE_WELLPLATE_POSITION}")
 
-        if visualize:
-            self.logger.info("Visualizing wellplate status...")
+        # if visualize:
+        #     self.logger.info("Visualizing wellplate status...")
             
-            # Debug matplotlib backend
-            try:
-                import matplotlib
-                self.logger.debug(f"Matplotlib backend: {matplotlib.get_backend()}")
+        #     # Debug matplotlib backend
+        #     try:
+        #         import matplotlib
+        #         self.logger.debug(f"Matplotlib backend: {matplotlib.get_backend()}")
                 
-                # Try to set an interactive backend for Windows
-                if matplotlib.get_backend() == 'Agg':
-                    try:
-                        matplotlib.use('TkAgg')
-                        self.logger.info("Switched matplotlib backend to TkAgg")
-                    except:
-                        try:
-                            matplotlib.use('Qt5Agg')
-                            self.logger.info("Switched matplotlib backend to Qt5Agg") 
-                        except:
-                            self.logger.warning("Could not set interactive backend, using default")
+        #         # Try to set an interactive backend for Windows
+        #         if matplotlib.get_backend() == 'Agg':
+        #             try:
+        #                 matplotlib.use('TkAgg')
+        #                 self.logger.info("Switched matplotlib backend to TkAgg")
+        #             except:
+        #                 try:
+        #                     matplotlib.use('Qt5Agg')
+        #                     self.logger.info("Switched matplotlib backend to Qt5Agg") 
+        #                 except:
+        #                     self.logger.warning("Could not set interactive backend, using default")
                 
-            except Exception as e:
-                self.logger.warning(f"Matplotlib backend check failed: {e}")
+        #     except Exception as e:
+        #         self.logger.warning(f"Matplotlib backend check failed: {e}")
             
-            fig, ax = plt.subplots(figsize=(10, 6))
+        #     fig, ax = plt.subplots(figsize=(10, 6))
 
-            plate_width = 2.5
-            plate_height = 0.4
-            spacing = 0.1
+        #     plate_width = 2.5
+        #     plate_height = 0.4
+        #     spacing = 0.1
 
-            for i in range(self.NUM_SOURCE):
-                rect = plt.Rectangle((1, i * (plate_height + spacing)), plate_width, plate_height,
-                                    edgecolor='black', facecolor='lightblue')
-                ax.add_patch(rect)
-                ax.text(1 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
-                        self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
+        #     for i in range(self.NUM_SOURCE):
+        #         rect = plt.Rectangle((1, i * (plate_height + spacing)), plate_width, plate_height,
+        #                             edgecolor='black', facecolor='lightblue')
+        #         ax.add_patch(rect)
+        #         ax.text(1 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
+        #                 self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
 
-            for i in range(self.NUM_WASTE):
-                rect = plt.Rectangle((5, i * (plate_height + spacing)), plate_width, plate_height,
-                                    edgecolor='black', facecolor='lightcoral')
-                ax.add_patch(rect)
-                ax.text(5 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
-                        self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
+        #     for i in range(self.NUM_WASTE):
+        #         rect = plt.Rectangle((5, i * (plate_height + spacing)), plate_width, plate_height,
+        #                             edgecolor='black', facecolor='lightcoral')
+        #         ax.add_patch(rect)
+        #         ax.text(5 + plate_width / 2, i * (plate_height + spacing) + plate_height / 2,
+        #                 self.CURRENT_WP_TYPE, ha='center', va='center', fontsize=8)
 
-            if self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area':
-                rect = plt.Rectangle((9, 0), plate_width, plate_height,
-                                    edgecolor='black', facecolor='khaki')
-                ax.add_patch(rect)
-                ax.text(9 + plate_width / 2, plate_height / 2,
-                        "Occupied", ha='center', va='center', fontsize=8)
-                ax.text(9 + plate_width / 2, plate_height + 0.2, "NR Pipette Area",
-                        ha='center', va='bottom', fontsize=10, weight='bold')
+        #     if self.ACTIVE_WELLPLATE_POSITION == 'pipetting_area':
+        #         rect = plt.Rectangle((9, 0), plate_width, plate_height,
+        #                             edgecolor='black', facecolor='khaki')
+        #         ax.add_patch(rect)
+        #         ax.text(9 + plate_width / 2, plate_height / 2,
+        #                 "Occupied", ha='center', va='center', fontsize=8)
+        #         ax.text(9 + plate_width / 2, plate_height + 0.2, "NR Pipette Area",
+        #                 ha='center', va='bottom', fontsize=10, weight='bold')
 
-            ax.text(1 + plate_width / 2, self.NUM_SOURCE * (plate_height + spacing) + 0.2, "Source Stack",
-                    ha='center', va='bottom', fontsize=10, weight='bold')
-            ax.text(5 + plate_width / 2, self.NUM_WASTE * (plate_height + spacing) + 0.2, "Waste Stack",
-                    ha='center', va='bottom', fontsize=10, weight='bold')
+        #     ax.text(1 + plate_width / 2, self.NUM_SOURCE * (plate_height + spacing) + 0.2, "Source Stack",
+        #             ha='center', va='bottom', fontsize=10, weight='bold')
+        #     ax.text(5 + plate_width / 2, self.NUM_WASTE * (plate_height + spacing) + 0.2, "Waste Stack",
+        #             ha='center', va='bottom', fontsize=10, weight='bold')
 
-            ax.set_xlim(0, 12)
-            ax.set_ylim(0, max(self.NUM_SOURCE, self.NUM_WASTE) * (plate_height + spacing) + 1)
-            ax.axis('off')
-            ax.set_title("-- Please Confirm Wellplate Status --", fontsize=14, weight='bold')
-            plt.tight_layout()
+        #     ax.set_xlim(0, 12)
+        #     ax.set_ylim(0, max(self.NUM_SOURCE, self.NUM_WASTE) * (plate_height + spacing) + 1)
+        #     ax.axis('off')
+        #     ax.set_title("-- Please Confirm Wellplate Status --", fontsize=14, weight='bold')
+        #     plt.tight_layout()
             
-            try:
-                plt.show(block=True)
-                self.logger.debug("Wellplate visualization displayed successfully")
-            except Exception as e:
-                self.logger.error(f"Failed to display wellplate visualization: {e}")
-                self.logger.info("Continuing without visualization...")
+        #     try:
+        #         plt.show(block=True)
+        #         self.logger.debug("Wellplate visualization displayed successfully")
+        #     except Exception as e:
+        #         self.logger.error(f"Failed to display wellplate visualization: {e}")
+        #         self.logger.info("Continuing without visualization...")
 
-        if pause_after_check and not self.simulate:
-            input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
+        # if pause_after_check and not self.simulate:
+        #     input("Only hit enter if the status of the well plates is correct, otherwise hit ctrl-c")
 
     def reset_after_initialization(self):
         """Reset robot to known state after initialization"""
@@ -332,6 +349,24 @@ class North_Track(North_Base):
         """Set the current wellplate position (null, 'gripper', 'pipetting_area', 'cytation_tray', etc.)"""
         self.ACTIVE_WELLPLATE_POSITION = position
         self.save_track_status()
+    
+    def update_gripper_location(self, location_name, x=None, z=None):
+        """Update tracked gripper location when moving to a named position from track_positions.yaml"""
+        # Update coordinates first
+        if x is not None:
+            self.CURRENT_GRIPPER_POSITION['x'] = x
+        if z is not None:
+            self.CURRENT_GRIPPER_POSITION['z'] = z
+        
+        # Check for origin position (0,0) and override location name
+        if self.CURRENT_GRIPPER_POSITION.get('x') == 0 and self.CURRENT_GRIPPER_POSITION.get('z') == 0:
+            self.CURRENT_GRIPPER_LOCATION = "origin"
+            self.logger.debug(f"Detected origin position (0,0) - setting location to 'origin'")
+        else:
+            self.CURRENT_GRIPPER_LOCATION = location_name
+        
+        self.save_track_status()
+        self.logger.debug(f"Updated gripper location to: {self.CURRENT_GRIPPER_LOCATION} at position {self.CURRENT_GRIPPER_POSITION}")
     
     def get_speed(self, speed_name):
         """Get movement speed by name"""
@@ -419,6 +454,10 @@ class North_Track(North_Base):
         self.c9.move_axis(self.get_axis('z_axis'), self.get_limit('max_safe_height'), vel=self.get_speed('default_z')) #max_height
         self.c9.move_axis(self.get_axis('x_axis'), 0, vel=self.get_speed('default_x'))
         self.logger.debug("Moving North Track to home position")
+        
+        # Update gripper location tracking - now at home position (0, max_safe_height)
+        max_height = self.get_limit('max_safe_height')
+        self.update_gripper_location("home", x=0, z=max_height)
 
     def move_through_path(self, waypoint_locations):
         """
@@ -442,6 +481,9 @@ class North_Track(North_Base):
                 self.c9.move_axis(self.get_axis('x_axis'), waypoint['x'], vel=self.get_speed('default_x'))
             if 'z' in waypoint:
                 self.c9.move_axis(self.get_axis('z_axis'), waypoint['z'], vel=self.get_speed('default_z'))
+            
+            # Update gripper location tracking after successful movement
+            self.update_gripper_location(waypoint_name, x=waypoint.get('x'), z=waypoint.get('z'))
 
     # === 4. WELLPLATE MOVEMENT SEQUENCES ===
     def transfer_wellplate_via_path(self, destination_x, destination_z, waypoint_locations=None):
@@ -459,6 +501,16 @@ class North_Track(North_Base):
         # Move to final destination
         self.c9.move_axis(self.get_axis('z_axis'), destination_z, vel=self.get_speed('default_z'))
         self.c9.move_axis(self.get_axis('x_axis'), destination_x, vel=self.get_speed('default_x'))
+        
+        # Update gripper location tracking with final coordinates 
+        # Note: location_name not available in this function, but coordinates are tracked
+        self.CURRENT_GRIPPER_POSITION = {"x": destination_x, "z": destination_z}
+        
+        # Check for origin position (0,0) and set location accordingly
+        if destination_x == 0 and destination_z == 0:
+            self.CURRENT_GRIPPER_LOCATION = "origin"
+            self.logger.debug(f"Moved to origin position (0,0) - setting location to 'origin'")
+            self.save_track_status()
 
     def grab_wellplate_from_location(self, location_name, wellplate_type="96 WELL PLATE", waypoint_locations=None, z_override=None):
         """
@@ -505,6 +557,9 @@ class North_Track(North_Base):
         
         #Move to transfer height
         self.c9.move_axis(self.get_axis('z_axis'), z_transfer, vel=self.get_speed('default_z'))
+        
+        # Update gripper location tracking - now at this location with wellplate in gripper
+        self.update_gripper_location(location_name, x=x_pos, z=z_transfer)
        
     def release_wellplate_in_location(self, location_name, wellplate_type="96 WELL PLATE", waypoint_locations=None, z_override=None):
         """
@@ -554,6 +609,9 @@ class North_Track(North_Base):
         
         # Return to safe height
         self.c9.move_axis(self.get_axis('z_axis'), z_transfer, vel=self.get_speed('default_z'))
+        
+        # Update gripper location tracking - now at this location (without wellplate)
+        self.update_gripper_location(location_name, x=x_pos, z=z_transfer)
 
 
     # === 6. STACK MANAGEMENT ===
@@ -941,14 +999,19 @@ class North_Robot(North_Base):
         """Load all robot state YAML files (dynamic state that changes during operation)"""
         self.logger.debug("Loading robot state files...")
         
-        # Load vial DataFrame (CSV file)
-        try:
-            self.VIAL_DF = pd.read_csv(self.VIAL_FILE, sep=",")
-            self.VIAL_DF.index = self.VIAL_DF['vial_index'].values
-            self.logger.debug(f"Loaded vial data from {self.VIAL_FILE}")
-        except Exception as e:
-            self.logger.error(f"Issue reading vial status file {self.VIAL_FILE}: {e}")
-            self.pause_after_error("Issue reading vial status", False)
+        # Load vial DataFrame (CSV file) - only if vial file is provided
+        if self.VIAL_FILE is not None:
+            try:
+                self.VIAL_DF = pd.read_csv(self.VIAL_FILE, sep=",")
+                self.VIAL_DF.index = self.VIAL_DF['vial_index'].values
+                self.logger.debug(f"Loaded vial data from {self.VIAL_FILE}")
+            except Exception as e:
+                self.logger.error(f"Issue reading vial status file {self.VIAL_FILE}: {e}")
+                self.pause_after_error("Issue reading vial status", False)
+        else:
+            # Create empty vial DataFrame if no vial file provided
+            self.VIAL_DF = pd.DataFrame()
+            self.logger.info("No vial file provided - operating without vial tracking")
         
         # State files (robot status is required, wellplate positions are optional)
         state_files = {
@@ -1190,14 +1253,28 @@ class North_Robot(North_Base):
         """
         Prints the vial status dataframe for user to confirm the initial state of your vials.
         """
+        print("\n" + "="*60)
+        print("DEPRECATION WARNING: check_input_file()")
+        print("="*60)
+        print("This method is deprecated. Please use the GUI launched during")
+        print("Lash_E initialization to check and modify robot states.")
+        print("Remove the .check_input_file() calls from your workflow.")
+        print("Press Enter to continue...")
+        print("="*60)
+        input()
+        
+        if self.VIAL_FILE is None:
+            self.logger.info("No vial file loaded - skipping vial status check")
+            return
+            
         vial_status = pd.read_csv(self.VIAL_FILE, sep=",")
         self.logger.info(vial_status)
 
-        if visualize:
-            self.visualize_racks(vial_status)
+        # if visualize:
+        #     self.visualize_racks(vial_status)
 
-        if pause_after_check and not self.simulate:
-            input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
+        # if pause_after_check and not self.simulate:
+        #     input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
 
     # ====================================================================
     # 3. CORE ROBOT OPERATIONS
@@ -1248,6 +1325,13 @@ class North_Robot(North_Base):
                 self.p2.home_OL_stepper(0, 300)
                 
             self.logger.info("All robot components homed successfully")
+            
+            # Update gripper location tracking after homing - robot is now at home position
+            # After homing, track gripper should be at origin position (0, max_safe_height)
+            if hasattr(self, 'CURRENT_GRIPPER_LOCATION'):
+                max_height = self.get_limit('max_safe_height')
+                self.update_gripper_location("home", x=0, z=max_height)
+                self.logger.debug(f"Updated gripper location to home position after homing: (0, {max_height})")
             
         except Exception as e:
             self.logger.error(f"Failed to home robot components: {e}")
@@ -1854,7 +1938,7 @@ class North_Robot(North_Base):
         tip_speed = self.get_config_parameter('pipet_tips', self.HELD_PIPET_TYPE, 'default_aspirate_speed', error_on_missing=True)
         return tip_speed
 
-    def _ensure_vial_accessible_for_pipetting(self, vial_name, use_safe_location=False):
+    def _ensure_vial_accessible_for_pipetting(self, vial_name, use_safe_location=False, move_speed=None):
         """
         Helper method to ensure a vial is accessible for pipetting by moving it to clamp if needed.
         
@@ -1878,15 +1962,15 @@ class North_Robot(North_Base):
                 vial_index = self.get_vial_index_from_name(vial_name)
                 if clamp_vial_index is not None and clamp_vial_index != vial_index:
                     self.logger.debug(f"Clamp occupied by vial {clamp_vial_index}, returning it home first")
-                    self.return_vial_home(clamp_vial_index)
+                    self.return_vial_home(clamp_vial_index, move_speed=move_speed)
                 
                 # Move vial to clamp and uncap only if it has a closed cap
-                self.move_vial_to_location(vial_num, location='clamp', location_index=0)
+                self.move_vial_to_location(vial_num, location='clamp', location_index=0, move_speed=move_speed)
                 
                 # Only uncap if vial has a closed cap (not open caps)
                 vial_cap_type = self.get_vial_info(vial_num, 'cap_type')
                 if vial_cap_type != 'open':
-                    self.uncap_clamp_vial()
+                    self.uncap_clamp_vial(move_speed=move_speed)
                 else:
                     self.logger.debug(f"Vial {vial_name} has open cap, skipping uncap operation")
                 
@@ -2088,16 +2172,16 @@ class North_Robot(North_Base):
         for i in range(repeats):
             last_run = (i == repeats - 1)
 
-            # Aspirate from source
+            # Aspirate from source (at normal speed)
             self.aspirate_from_vial(source_vial_index, round(volume, 3), parameters=parameters, liquid=liquid, specified_tip=specified_tip, use_safe_location=use_safe_location)
 
-            # Set custom movement speed if specified
+            # Set custom movement speed if specified - after aspiration when carrying liquid
             original_vel = None
             if move_speed is not None:
                 original_vel = self.c9.default_vel
                 self.c9.default_vel = move_speed
 
-            # Dispense into destination
+            # Dispense into destination (at modified speed)
             dispense_result = self.dispense_into_vial(dest_vial_index, volume, parameters=parameters, liquid=liquid, move_speed=move_speed, measure_weight=measure_weight,
                                                       continuous_mass_monitoring=continuous_mass_monitoring, save_mass_data=save_mass_data)
             
@@ -2110,7 +2194,7 @@ class North_Robot(North_Base):
                 
             total_mass += mass_increment if mass_increment is not None else 0
 
-            # Restore original movement speed if changed
+            # Restore original movement speed AFTER dispense but BEFORE recap/return operations
             if move_speed is not None and original_vel is not None:
                 self.c9.default_vel = original_vel
 
@@ -2127,12 +2211,12 @@ class North_Robot(North_Base):
                     robot_has_cap = (self.GRIPPER_STATUS == "Cap")
                     
                     if not vial_is_capped and robot_has_cap:
-                        self.recap_clamp_vial()
+                        self.recap_clamp_vial()  # Use default speed for recapping
                     elif not vial_is_capped and not robot_has_cap:
                         self.logger.warning(f"Vial {clamp_vial_index} is uncapped but robot doesn't have cap - leaving uncapped")
                     # If vial is already capped, skip recapping
                     
-                    self.return_vial_home(clamp_vial_index)
+                    self.return_vial_home(clamp_vial_index)  # Use default speed for returning vial
 
 
         return total_mass, stability_info
@@ -2279,7 +2363,7 @@ class North_Robot(North_Base):
         dest_vial_num = self.normalize_vial_index(dest_vial_name) #Convert to int if needed
 
         # Ensure vial is accessible for pipetting (no use_safe_location for dispense)
-        if not self._ensure_vial_accessible_for_pipetting(dest_vial_name, use_safe_location=False):
+        if not self._ensure_vial_accessible_for_pipetting(dest_vial_name, use_safe_location=False, move_speed=move_speed):
             return
 
         measured_mass = None
@@ -3285,11 +3369,12 @@ class North_Robot(North_Base):
     # ====================================================================
 
     #Check the original status of the vial in order to send it to its home location
-    def return_vial_home(self,vial_name):
+    def return_vial_home(self,vial_name, move_speed=None):
         """
         Return the specified vial to its home location.
         Args:
             `vial_name` (str): Name of the vial to return home.
+            `move_speed` (float, optional): Speed override for vial movements
         """
         
 
@@ -3300,12 +3385,12 @@ class North_Robot(North_Base):
         
         vial_location = self.get_vial_info(vial_index,'location')
         if vial_location == 'clamp' and self.GRIPPER_STATUS == "Cap":
-            self.recap_clamp_vial()
-        self.move_vial_to_location(vial_index,home_location,home_location_index)
+            self.recap_clamp_vial(move_speed=move_speed)
+        self.move_vial_to_location(vial_index,home_location,home_location_index, move_speed=move_speed)
         self.save_robot_status()
 
     #Drop off a vial at a location that you already have
-    def drop_off_vial(self, vial_name, location, location_index):
+    def drop_off_vial(self, vial_name, location, location_index, move_speed=None):
 
         self.logger.debug(f"Dropping off vial {vial_name} at location {location} with index {location_index}")
 
@@ -3318,7 +3403,7 @@ class North_Robot(North_Base):
 
         self.check_for_errors([[destination_empty, True, "Cannot move vial to destination, destination full"]],True)
 
-        self.c9.goto_safe(destination) #move vial to destination
+        self.c9.goto_safe(destination, vel=move_speed if move_speed is not None else self.get_speed('default_robot')) #move vial to destination
         self.c9.open_gripper() #release vial
         
         self.VIAL_DF.at[vial_index, 'location']=location
@@ -3327,7 +3412,7 @@ class North_Robot(North_Base):
         self.GRIPPER_VIAL_INDEX = None
         self.save_robot_status() #Update in memory
 
-    def grab_vial(self,vial_name):
+    def grab_vial(self,vial_name, move_speed=None):
         
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
         
@@ -3336,7 +3421,7 @@ class North_Robot(North_Base):
         loc = self.get_vial_info(vial_index,'location')
 
         if loc == 'clamp' and self.GRIPPER_STATUS == "Cap":
-            self.recap_clamp_vial()
+            self.recap_clamp_vial(move_speed=move_speed)
 
         error_check_list = [] #List of specific errors for this method
         error_check_list.append([self.GRIPPER_STATUS is None, True, "Cannot move vial to destination, gripper full"])
@@ -3346,7 +3431,7 @@ class North_Robot(North_Base):
         self.check_for_errors(error_check_list,True) #Check for an error, and pause if there's an issue
 
         #self.open_gripper()
-        self.goto_location_if_not_there(initial_location) #move to vial
+        self.goto_location_if_not_there(initial_location, move_speed=move_speed) #move to vial
         self.c9.close_gripper() #grip vial
         
         self.GRIPPER_STATUS = "Vial" #Update the status of the robot
@@ -3354,7 +3439,7 @@ class North_Robot(North_Base):
         self.save_robot_status() #Save the status of the robot
 
     #Send the vial to a specified location
-    def move_vial_to_location(self,vial_name:str,location:str,location_index:int):
+    def move_vial_to_location(self,vial_name:str,location:str,location_index:int, move_speed=None):
         """
         Moves vial to specified location
 
@@ -3379,8 +3464,8 @@ class North_Robot(North_Base):
             return
 
         self.logger.info(f"Moving vial {self.get_vial_info(vial_index, 'vial_name')} to {location}: {location_index}")
-        self.grab_vial(vial_index) #Grab the vial
-        self.drop_off_vial(vial_index,location,location_index) #Drop off the vial
+        self.grab_vial(vial_index, move_speed=move_speed) #Grab the vial
+        self.drop_off_vial(vial_index,location,location_index, move_speed=move_speed) #Drop off the vial
 
     def get_vial_in_location(self, location_name, location_index):
         # Filter rows where both conditions match
@@ -3419,7 +3504,7 @@ class North_Robot(North_Base):
         self.save_robot_status()
 
     #Recap the vial in the clamp
-    def recap_clamp_vial(self, revs=2.0, torque_thresh = 600):
+    def recap_clamp_vial(self, revs=2.0, torque_thresh = 600, move_speed=None):
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -3433,7 +3518,7 @@ class North_Robot(North_Base):
 
         
         self.c9.close_clamp() #Make sure vial is clamped
-        self.goto_location_if_not_there(vial_clamp)
+        self.goto_location_if_not_there(vial_clamp, move_speed=move_speed)
         time.sleep(0.5)
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap
@@ -3445,10 +3530,10 @@ class North_Robot(North_Base):
         self.save_robot_status()
 
     #Checks first that you aren't already there... This mostly applies for cap/decap
-    def goto_location_if_not_there(self, location):
+    def goto_location_if_not_there(self, location, move_speed=None):
         difference_threshold = 550
         if self.get_location_distance(location, self.c9.get_robot_positions()) > difference_threshold:
-            self.c9.goto_safe(location, vel=self.get_speed('fast_approach'))
+            self.c9.goto_safe(location, vel=move_speed if move_speed is not None else self.get_speed('fast_approach'))
 
     #Measurement for how far two points are
     def get_location_distance(self, loc_1, loc_2):
@@ -3603,9 +3688,18 @@ class North_Robot(North_Base):
     # 9. VIAL INFO & LOCATION UTILITIES
     # ====================================================================
 
+    def _vials_available(self):
+        """Check if vial operations are available (i.e., if vial file was loaded)"""
+        return not self.VIAL_DF.empty
+
     #Get some piece of information about a vial
     #vial_index,vial_name,location,location_index,vial_volume,capped,cap_type,vial_type
     def get_vial_info(self,vial_name,column_name):
+        
+        # Check if vial data is available
+        if not self._vials_available():
+            self.logger.warning(f"Cannot get vial info for '{vial_name}' - no vial data loaded")
+            return None
 
         vial_index = self.normalize_vial_index(vial_name) #Convert to int if needed
 
@@ -3616,6 +3710,11 @@ class North_Robot(North_Base):
             return None  # Handle case where no match is found    
 
     def get_vial_index_from_name(self,vial_name):
+        # Check if vial data is available
+        if not self._vials_available():
+            self.logger.warning(f"Cannot get vial index for '{vial_name}' - no vial data loaded")
+            return None
+            
         values = self.VIAL_DF.loc[self.VIAL_DF['vial_name'] == vial_name, 'vial_index'].values
         if len(values) > 0:
             return values[0]  # Return the first match

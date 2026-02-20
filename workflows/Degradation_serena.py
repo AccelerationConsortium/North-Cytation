@@ -3,11 +3,13 @@ import sys
 import time
 from tkinter import YES
 from venv import create
+import yaml
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E 
 from pipetting_data.pipetting_parameters import PipettingParameters
 import pandas as pd
 from pathlib import Path
+from spectral_analyzer_program import process_degradation_spectral_data
 
 
 
@@ -17,7 +19,7 @@ small_tip_2MeTHF_params = PipettingParameters(
     dispense_speed=15,          # Medium dispense speed
     post_asp_air_vol=0.05,     # Small air gap
     pre_asp_air_vol=0.5,
-    asp_disp_cycles=0 # tested w/o the cycles and it worked ok (no droplet, no dripping) - maybe not needed for 2MeTHF
+    asp_disp_cycles=3 # tested w/o the cycles and it worked ok (no droplet, no dripping) - maybe not needed for 2MeTHF
 )
 
 # Create custom pipetting parameters
@@ -39,7 +41,7 @@ def validate_key_liquids(lash_e, output_dir):
             {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3, 'params': None},
             {'vial': '2MeTHF', 'liquid': '2MeTHF', 'volumes': [0.600], 'reps': 3, 'params': large_tip_2MeTHF_params},
             {'vial': '6M_HCl', 'liquid': '6M_HCl', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
-            {'vial': 'polymer_stock', 'liquid': '2MeTHF', 'volumes': [0.200], 'reps': 3, 'params': large_tip_2MeTHF_params},
+            {'vial': 'polymer_stock', 'liquid': '2MeTHF', 'volumes': [0.100, 0.150], 'reps': 3, 'params': small_tip_2MeTHF_params},
         ]
         
         lash_e.logger.info("Running compact liquid validation...")
@@ -58,7 +60,7 @@ def validate_key_liquids(lash_e, output_dir):
 
 
 # Global well tracking
-current_well_count = 0
+current_well_count = 7
 
 def update_well_count(wells_used):
     global current_well_count
@@ -70,13 +72,25 @@ def get_next_well_index():
     return current_well_count
 
 # Take aliquot -> Wellplate measurement (3 replicate)-> Put sample back to wellplate
-def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_protocol_file_path, simulate,  sample_name, used_wells, replicates=3):
+def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_protocol_file_path, simulate,  sample_name, used_wells, replicates=3,time=None):
 
     create_samples_in_wellplate(lash_e, sample_name=sample_name, first_well_index=first_well_index, well_volume=0.15, replicates=replicates)
    
     wells = list(range(first_well_index, first_well_index + replicates))
-    data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells, plate_type='quartz', safe_movement=False)
-    save_data(data_out, output_dir, first_well_index, simulate,lash_e)
+
+    # Check track status - if gripper is at origin, use safe movement
+    safe_movement = False
+    try:
+        with open('robot_state/track_status.yaml', 'r') as f:
+            track_status = yaml.safe_load(f)
+            if track_status.get('current_gripper_location') == 'origin':
+                safe_movement = True
+                lash_e.logger.info("Gripper at origin position - using safe movement for measurement")
+    except Exception as e:
+        lash_e.logger.debug(f"Could not read track status: {e}")
+    
+    data_out = lash_e.measure_wellplate(cytation_protocol_file_path, wells_to_measure=wells, plate_type='quartz', safe_movement=safe_movement)
+    save_data(data_out, output_dir, first_well_index, simulate,lash_e,time=time)
     update_well_count(replicates)
     #Return sample to vials if desired
     #return_samples_to_vial(lash_e, sample_name=sample_name, first_well_index=first_well_index, well_volume=0.15, replicates=replicates)
@@ -94,7 +108,7 @@ def pipet_sample_from_well_to_vial(lash_e, wells, sample_name, well_volume=0.15,
         lash_e.nr_robot.move_vial_to_location(vial_name=sample_name, location='heater', location_index=heater_slot)
 
 
-def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='2MeTHF', return_home=True):
+def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='2MeTHF', return_home=True, move_speed=None):
     source_home_location_index = lash_e.nr_robot.get_vial_info(source_vial, 'location_index')
     dest_home_location_index = lash_e.nr_robot.get_vial_info(dest_vial, 'location_index')
     move_source = (source_home_location_index > 5)
@@ -115,7 +129,7 @@ def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='
         source_vial, dest_vial, volume, 
         parameters=parameters, 
         liquid=liquid, 
-        return_vial_home=return_home
+        return_vial_home=return_home, move_speed=move_speed
     )
 
     if move_source: 
@@ -148,7 +162,16 @@ def move_lid_to_wellplate(lash_e):
     #lash_e.nr_track.origin()
 
 def move_lid_to_storage(lash_e):
-    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='quartz_lid')
+    waypoint_locations = None
+    try:
+        with open('robot_state/track_status.yaml', 'r') as f:
+            track_status = yaml.safe_load(f)
+            if track_status.get('current_gripper_location') == 'origin':
+                waypoint_locations = ['cytation_safe_area']
+                lash_e.logger.info("Gripper at origin position - using safe movement for measurement")
+    except Exception as e:
+        lash_e.logger.debug(f"Could not read track status: {e}")
+    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='quartz_lid', waypoint_locations=waypoint_locations)
     lash_e.nr_track.release_wellplate_in_location('lid_storage', wellplate_type='quartz_lid')
 
 
@@ -189,9 +212,12 @@ def return_samples_to_vial(lash_e, sample_name, first_well_index, well_volume=0.
     lash_e.nr_robot.remove_pipet()
     move_lid_to_wellplate(lash_e)
 
-def save_data(data_out,output_dir,first_well_index,simulate,lash_e):
+def save_data(data_out,output_dir,first_well_index,simulate,lash_e,time=None):
     if not simulate:
-        output_file = output_dir / f'output_{first_well_index}.txt'
+        if time is not None:
+            output_file = output_dir / f'output_{time}.txt'
+        else:
+            output_file = output_dir / f'output_{first_well_index}.txt'
         data_out.to_csv(output_file, sep=',')
         lash_e.logger.info("Data saved to: %s", output_file)
     else:
@@ -214,7 +240,12 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
         for i in range(0, len(used_wells), n):
             yield used_wells[i:i+n]
 
-
+    # take aliquots out
+    for well in used_wells:
+        lash_e.nr_robot.pipet_from_wellplate(well, volume=well_volume, aspirate=True, well_plate_type="quartz")
+        lash_e.nr_robot.dispense_into_vial('2MeTHF', well_volume)
+    lash_e.nr_robot.remove_pipet()
+    
     # 1 * Solvent wash
     waste_temp_home = stage_vial_safe(lash_e, current_waste, safe_index=4)
     solvent_temp_home = stage_vial_safe(lash_e, solvent_vial,safe_index=5)
@@ -225,18 +256,18 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
             dispense_volume = [well_volume] * len(wells)  # one volume per well
 
         # 1) Aspirate once from solvent vial
-            lash_e.nr_robot.aspirate_from_vial(solvent_vial, total, track_height=True, parameters=small_tip_2MeTHF_params)
+            lash_e.nr_robot.aspirate_from_vial(solvent_vial, total, track_height=True)
 
         # 2) Dispense into the wells (multi-well dispense)
-            lash_e.nr_robot.dispense_into_wellplate(wells, dispense_volume, well_plate_type=PLATE, parameters=small_tip_2MeTHF_params)
+            lash_e.nr_robot.dispense_into_wellplate(wells, dispense_volume, well_plate_type=PLATE)
 
         # 3) Mix each well
             for w in wells:
                 lash_e.nr_robot.mix_well_in_wellplate(w, well_volume, repeats=2, well_plate_type=PLATE)
         # 4) Empty each well into waste
             for w in wells:
-                lash_e.nr_robot.pipet_from_wellplate(w, well_volume, aspirate=True, well_plate_type=PLATE, parameters=small_tip_2MeTHF_params)
-                lash_e.nr_robot.dispense_into_vial(current_waste, well_volume, parameters=small_tip_2MeTHF_params)
+                lash_e.nr_robot.pipet_from_wellplate(w, well_volume, aspirate=True, well_plate_type=PLATE)
+                lash_e.nr_robot.dispense_into_vial(current_waste, well_volume)
 
     lash_e.nr_robot.remove_pipet()
     lash_e.nr_robot.recap_clamp_vial()  # Recaps whatever vial is currently in clamp
@@ -321,7 +352,9 @@ def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volu
     # Configuration
     VALIDATE_LIQUIDS = False  # Set to True to run pipetting validation 
 
-    PREP_SOLUTIONS = False
+    PREP_SOLUTIONS = True
+
+    #config_manager.add_variables(INPUT_VIAL_STATUS_FILE, acid_type)
     
     # e. Number of replicate measurements per timepoint
     REPLICATES = 1  # Number of wells to use for each measurement (default: 3)
@@ -434,20 +467,20 @@ def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volu
             stock_vol = volume_lookup[sample]['stock_volume']
             lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
             safe_pipet('polymer_stock', sample, stock_vol, lash_e, 
-                    parameters=small_tip_2MeTHF_params, liquid=solvent)
-            lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
+                    parameters=small_tip_2MeTHF_params, liquid=solvent, move_speed=5)
+            lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5) #move_speeddefault is 15
 
         for sample in sample_solutions:
             lash_e.logger.info(f"\nAdding {water_volume} mL water to sample: {sample}")
             lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
             acid_volume = round(float(volume_lookup[sample]['acid_volume']), 4)
             lash_e.logger.info(f"\nAdding {acid_volume} mL acid to sample: {sample}")
-            safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=True)
+            safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=True, liquid='6M_HCl')
             lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
 
     # Record per-sample start time using consistent basis (simulated clock = 0; real clock = wall time)
     t0_map[sample_name] = 0 if SIMULATE else time.time()
-    create_samples_and_measure(lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample_name, used_wells=used_wells, replicates=REPLICATES)
+    create_samples_and_measure(lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample_name, used_wells=used_wells, replicates=REPLICATES, time=0)
     first_well_index += REPLICATES  # Move to next set of wells for next sample        
 
     schedule = pd.read_csv(SCHEDULE_FILE, sep=",") #Read the schedule file
@@ -488,7 +521,7 @@ def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volu
             lash_e.logger.info(f"\n[TRIGGER] {action_required} for {sample_index} at elapsed {elapsed_time:.0f}s (target {time_required}s)")
             if action_required in ("create_samples_and_measure","measure_samples"):
                 create_samples_and_measure(
-                    lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample_index,used_wells=used_wells,replicates=REPLICATES)
+                    lash_e, output_dir, first_well_index, CYTATION_PROTOCOL_FILE, SIMULATE, sample_name=sample_index,used_wells=used_wells,replicates=REPLICATES, time=time_required)
                 first_well_index += REPLICATES
             else:
                 lash_e.logger.info(f"[WARN] Unknown action '{action_required}' – skipping (row {items_completed})")
@@ -521,9 +554,22 @@ def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volu
     # 4. Home all components at the end of the workflow
     lash_e.nr_robot.move_home()
     
+    # 5. Process the spectral data and create plots
+    if not SIMULATE and output_dir is not None:
+        lash_e.logger.info("Starting post-experiment spectral data analysis...")
+        try:
+            spectral_results = process_degradation_spectral_data(output_dir, lash_e.logger)
+            if spectral_results:
+                lash_e.logger.info("Spectral analysis completed successfully!")
+            else:
+                lash_e.logger.warning("Spectral analysis failed or no data found")
+        except Exception as e:
+            lash_e.logger.error(f"Error during spectral analysis: {str(e)}")
+    
     if not SIMULATE:   
         slack_agent.send_slack_message("Degradation workflow completed!")
 
 # Run my workflow here!
 degradation_workflow(sample_number=1, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=1000, water_volume=0.010)
+#degradation_workflow(sample_number=2, acid_type='TFA', solvent='2MeTHF', acid_molar_excess=1000, water_volume=0.010)
 
