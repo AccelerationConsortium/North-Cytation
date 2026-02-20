@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
     QSplitter, QGroupBox, QTextEdit, QDialogButtonBox, QTreeWidget,
     QTreeWidgetItem, QHeaderView, QSizePolicy
 )
-from PySide6.QtCore import Qt, Signal, QSize, QMimeData, QTimer
+from PySide6.QtCore import Qt, Signal, QSize, QMimeData, QTimer, QObject, QEvent
 from PySide6.QtGui import (
     QAction, QPalette, QPainter, QFont, QPixmap, 
     QDrag, QColor, QBrush, QPen
@@ -47,6 +47,14 @@ try:
     from config_manager import ConfigManager
 except ImportError:
     ConfigManager = None
+
+
+def disable_wheel_events(widget):
+    """Completely disable mouse wheel events on widget.
+    
+    This prevents accidental value changes when scrolling through forms.
+    """
+    widget.wheelEvent = lambda event: None
 
 
 class ClickableLabel(QLabel):
@@ -219,12 +227,14 @@ class VialEditDialog(QDialog):
         
         self.location_index_spin = QSpinBox()
         self.location_index_spin.setRange(0, 99)
+        disable_wheel_events(self.location_index_spin)  # Prevent scroll interference
         form_layout.addRow("Location Index:", self.location_index_spin)
         
         self.volume_spin = QDoubleSpinBox()
         self.volume_spin.setRange(0.0, 50.0)
         self.volume_spin.setDecimals(3)
         self.volume_spin.setSuffix(" mL")
+        disable_wheel_events(self.volume_spin)  # Prevent scroll interference
         form_layout.addRow("Volume:", self.volume_spin)
         
         self.capped_check = QCheckBox()
@@ -237,6 +247,7 @@ class VialEditDialog(QDialog):
         self.vial_type_combo = QComboBox()
         self.vial_type_combo.addItems(["8_mL", "20_mL", "50_mL", "custom"])
         self.vial_type_combo.setEditable(True)
+        disable_wheel_events(self.vial_type_combo)  # Prevent scroll interference
         form_layout.addRow("Vial Type:", self.vial_type_combo)
         
         # Home location
@@ -245,6 +256,7 @@ class VialEditDialog(QDialog):
         
         self.home_index_spin = QSpinBox()
         self.home_index_spin.setRange(0, 99)
+        disable_wheel_events(self.home_index_spin)  # Prevent scroll interference
         form_layout.addRow("Home Index:", self.home_index_spin)
         
         # Notes field (optional - for additional information)
@@ -1252,16 +1264,19 @@ class TrackStatusWidget(QWidget):
         # Number in source
         self.num_source_spin = QSpinBox()
         self.num_source_spin.setRange(0, 100)
+        disable_wheel_events(self.num_source_spin)  # Prevent scroll interference
         form_layout.addRow("Number in Source:", self.num_source_spin)
         
         # Number in waste
         self.num_waste_spin = QSpinBox()
         self.num_waste_spin.setRange(0, 100)
+        disable_wheel_events(self.num_waste_spin)  # Prevent scroll interference
         form_layout.addRow("Number in Waste:", self.num_waste_spin)
         
         # Wellplate type
         self.wellplate_type_combo = QComboBox()
         self.wellplate_type_combo.addItems(["96 WELL PLATE", "quartz", "48 WELL PLATE"])
+        disable_wheel_events(self.wellplate_type_combo)  # Prevent scroll interference
         form_layout.addRow("Wellplate Type:", self.wellplate_type_combo)
         
         layout.addWidget(form_widget)
@@ -1391,6 +1406,7 @@ class RobotStatusWidget(QWidget):
         self.pipet_fluid_volume_spin = QDoubleSpinBox()
         self.pipet_fluid_volume_spin.setRange(0.0, 1000.0)
         self.pipet_fluid_volume_spin.setDecimals(1)
+        disable_wheel_events(self.pipet_fluid_volume_spin)  # Prevent scroll interference
         pipet_layout.addRow("Pipet Fluid Volume:", self.pipet_fluid_volume_spin)
         
         scroll_layout.addWidget(pipet_group)
@@ -1401,18 +1417,22 @@ class RobotStatusWidget(QWidget):
         
         self.large_tip_rack_1_spin = QSpinBox()
         self.large_tip_rack_1_spin.setRange(0, 1000)
+        disable_wheel_events(self.large_tip_rack_1_spin)  # Prevent scroll interference
         pipets_layout.addRow("Large Tip Rack 1:", self.large_tip_rack_1_spin)
         
         self.large_tip_rack_2_spin = QSpinBox()
         self.large_tip_rack_2_spin.setRange(0, 1000)
+        disable_wheel_events(self.large_tip_rack_2_spin)  # Prevent scroll interference
         pipets_layout.addRow("Large Tip Rack 2:", self.large_tip_rack_2_spin)
         
         self.small_tip_rack_1_spin = QSpinBox()
         self.small_tip_rack_1_spin.setRange(0, 1000)
+        disable_wheel_events(self.small_tip_rack_1_spin)  # Prevent scroll interference
         pipets_layout.addRow("Small Tip Rack 1:", self.small_tip_rack_1_spin)
         
         self.small_tip_rack_2_spin = QSpinBox()
         self.small_tip_rack_2_spin.setRange(0, 1000)
+        disable_wheel_events(self.small_tip_rack_2_spin)  # Prevent scroll interference
         pipets_layout.addRow("Small Tip Rack 2:", self.small_tip_rack_2_spin)
         
         scroll_layout.addWidget(pipets_group)
@@ -1625,6 +1645,7 @@ class ConfigEditor(QWidget):
         elif isinstance(value, int):
             widget = QSpinBox()
             widget.setRange(-999999, 999999)
+            disable_wheel_events(widget)  # Prevent scroll interference
             widget.setValue(value)
             return widget
         
@@ -1632,6 +1653,7 @@ class ConfigEditor(QWidget):
             widget = QDoubleSpinBox()
             widget.setRange(-999999.0, 999999.0)
             widget.setDecimals(6)
+            disable_wheel_events(widget)  # Prevent scroll interference
             widget.setValue(value)
             return widget
         
