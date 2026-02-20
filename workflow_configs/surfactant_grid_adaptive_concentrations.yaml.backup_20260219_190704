@@ -1,0 +1,77 @@
+# Workflow Configuration File
+# Generated: 2026-02-19 19:06:29
+# Workflow: surfactant_grid_adaptive_concentrations
+#
+# Edit this file to customize workflow behavior.
+# Changes will be loaded automatically on next run.
+#
+
+SURFACTANT_A: SDS
+SURFACTANT_B: TTAB
+EXPERIMENT_TAG: new_min_conc_plus_1d_cmc_assay
+SIMULATE: true
+VALIDATE_LIQUIDS: false
+CREATE_WELLPLATE: true
+VALIDATION_ONLY: false
+RUN_2_STAGE_WORKFLOW: false
+RUN_SINGLE_STAGE: false
+RUN_ITERATIVE_WORKFLOW: true
+ADD_CMC_CONTROLS: true
+CMC_CONTROL_POINTS: 8
+MIN_CONC: 0.01
+NUMBER_CONCENTRATIONS: 9
+ITERATIVE_CONCENTRATIONS: 5
+GRADIENT_SUGGESTIONS_PER_ITERATION: 14
+OPTIMIZE_METRIC: ratio
+N_REPLICATES: 1
+WELL_VOLUME_UL: 200
+PYRENE_VOLUME_UL: 5
+ITERATIVE_MEASUREMENT_TOTAL: 96
+ADD_BUFFER: true
+BUFFER_VOLUME_UL: 20
+BUFFER_OPTIONS:
+- MES
+- HEPES
+- CAPS
+SELECTED_BUFFER: MES
+MAX_WELLS: 96
+FINAL_SUBSTOCK_VOLUME: 6
+MINIMUM_PIPETTE_VOLUME: 0.2
+MEASUREMENT_INTERVAL: 96
+MIN_WELL_PIPETTE_VOLUME_UL: 10.0
+MAX_SURFACTANT_VOLUME_UL: 90.0
+SHAKE_PROTOCOL: C:\Protocols\shake_5_wait_5.prt
+TURBIDITY_PROTOCOL_FILE: C:\Protocols\CMC_Absorbance_96.prt
+FLUORESCENCE_PROTOCOL_FILE: C:\Protocols\CMC_Fluorescence_96.prt
+INPUT_VIAL_STATUS_FILE: ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
+SURFACTANT_LIBRARY:
+  SDS:
+    full_name: Sodium Dodecyl Sulfate
+    category: anionic
+    stock_conc: 50
+    cmc_mm: 8.6
+  NaDC:
+    full_name: Sodium Docusate
+    category: anionic
+    stock_conc: 25
+    cmc_mm: 5.51
+  NaC:
+    full_name: Sodium Cholate
+    category: anionic
+    stock_conc: 50
+    cmc_mm: 15.24
+  CTAB:
+    full_name: Hexadecyltrimethylammonium Bromide
+    category: cationic
+    stock_conc: 5
+    cmc_mm: 1.1
+  DTAB:
+    full_name: Dodecyltrimethylammonium Bromide
+    category: cationic
+    stock_conc: 50
+    cmc_mm: 14.56
+  TTAB:
+    full_name: Tetradecyltrimethylammonium Bromide
+    category: cationic
+    stock_conc: 50
+    cmc_mm: 3.77

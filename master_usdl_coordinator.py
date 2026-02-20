@@ -81,6 +81,10 @@ class Lash_E:
     def __init__(self, vial_file, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs"):
         
         self.simulate = simulate
+        self.vial_file = vial_file  # Store vial file for GUI access
+        
+        # Flag to control workflow continuation
+        self._workflow_should_continue = True
 
         self.logger = logging.getLogger("my_logger")
         self.logger.setLevel(logging.DEBUG)
@@ -115,6 +119,14 @@ class Lash_E:
 
         # Make sure messages don't propagate to root logger (which might have its own handlers)
         self.logger.propagate = False
+
+        # Check input status before hardware initialization
+        self.check_input_status()
+        
+        # Exit early if workflow was aborted
+        if not self._workflow_should_continue:
+            self.logger.info("Workflow aborted by user - skipping hardware initialization")
+            return
 
         if not simulate:
             from north import NorthC9
@@ -155,6 +167,56 @@ class Lash_E:
             self.powder_dispenser = MagicMock()
             self.temp_controller = MagicMock()
             #self.nr_track = MagicMock(c9)
+
+    def check_input_status(self):
+        """Launch GUI for reviewing and finalizing robot states before hardware initialization."""
+        self.logger.info("Launching status review GUI...")
+        
+        try:
+            # Import and launch the GUI
+            from vial_manager_gui import VialManagerMainWindow
+            from PySide6.QtWidgets import QApplication
+            import sys
+            
+            # Create Qt application if it doesn't exist
+            app = QApplication.instance()
+            if app is None:
+                app = QApplication(sys.argv)
+            
+            # Create and configure the GUI window
+            gui = VialManagerMainWindow()
+            gui.setWindowTitle("Robot Status Review - Workflow Initialization")
+            
+            # Detect workflow name from main module
+            workflow_name = None
+            try:
+                import __main__
+                if hasattr(__main__, '__file__') and __main__.__file__:
+                    script_name = os.path.basename(__main__.__file__)
+                    workflow_name = os.path.splitext(script_name)[0]  # Remove .py extension
+                    self.logger.info(f"Detected workflow name: {workflow_name}")
+            except Exception as e:
+                self.logger.warning(f"Could not detect workflow name: {e}")
+            
+            # Configure GUI for workflow mode
+            gui._setup_workflow_mode(self.vial_file, self, workflow_name)
+            
+            # Show GUI and wait for user decision
+            gui.show()
+            app.exec()  # Block until GUI closes
+            
+            # Check if workflow should continue
+            self._workflow_should_continue = getattr(gui, '_workflow_continue', True)
+            
+            if self._workflow_should_continue:
+                self.logger.info("Status review completed - proceeding with hardware initialization")
+            else:
+                self.logger.info("Workflow aborted by user")
+                
+        except Exception as e:
+            self.logger.error(f"Error launching status GUI: {e}")
+            # Continue with workflow if GUI fails
+            self._workflow_should_continue = True
 
     def mass_dispense_into_vial(self,vial,mass_mg,channel=0, return_home=True):
         self.logger.info(f"Dispensing into vial: {vial} with mass: {mass_mg:.3f} mg") 
