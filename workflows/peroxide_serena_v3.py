@@ -7,8 +7,7 @@ from master_usdl_coordinator import Lash_E
 import pandas as pd
 from pathlib import Path
 import slack_agent
-import pipetting_data.embedded_calibration_validation as pipette_validator
-from config_manager import ConfigManager  
+import pipetting_data.embedded_calibration_validation as pipette_validator  
 
 #config params
 EXPERIMENT_NAME = "peroxide_assay_test"
@@ -200,12 +199,9 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
 
 # Initialize the workstation ONCE before running all workflows
 
-# Setup configuration management
-config_manager = ConfigManager()
-config_manager.setup_config_if_missing("peroxide_serena_v3", globals())
-
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
-updated_config = ConfigManager.load_and_update_globals('peroxide_serena_v3', globals(), lash_e.logger)
+# Setup configuration management and initialize Lash_E with automatic config handling
+lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, 
+                workflow_globals=globals(), workflow_name='peroxide_serena_v3')
 
 lash_e.nr_robot.home_robot_components()
 

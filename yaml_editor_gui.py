@@ -19,7 +19,6 @@ Features:
 import sys
 import os
 import yaml
-import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
@@ -224,17 +223,11 @@ class YAMLTreeWidget(QTreeWidget):
             return True  # Assume changes if we can't compare
     
     def save_yaml_file(self, backup: bool = True) -> bool:
-        """Save current data to YAML file with optional backup."""
+        """Save current data to YAML file."""
         if not self._file_path:
             return False
             
         try:
-            # Create backup if requested
-            if backup:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                backup_path = f"{self._file_path}.backup_{timestamp}"
-                shutil.copy2(self._file_path, backup_path)
-            
             # Save current data
             current_data = self.get_yaml_data()
             with open(self._file_path, 'w', encoding='utf-8') as file:

@@ -39,7 +39,6 @@ import json
 from datetime import datetime
 from master_usdl_coordinator import Lash_E, flatten_cytation_data
 import slack_agent
-from config_manager import ConfigManager
 
 # ================================================================================
 # WORKFLOW CONFIGURATION MANAGEMENT
@@ -51,14 +50,13 @@ from config_manager import ConfigManager
 # ================================================================================
 
 
-
 SURFACTANT_A = "SDS"
 SURFACTANT_B = "TTAB"
 
 EXPERIMENT_TAG = "new_min_conc_plus_1d_cmc_assay"
 
 # WORKFLOW CONSTANTS
-SIMULATE = False # Set to False for actual hardware execution
+SIMULATE = True # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
 VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
@@ -3617,16 +3615,9 @@ if __name__ == "__main__":
     Run the adaptive surfactant grid screening workflow.
     """
     
-    # Setup config file if it doesn't exist (preserves user edits if it does exist)
-    ConfigManager.setup_config_if_missing('surfactant_grid_adaptive_concentrations', globals())
-   
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
-    
-    # Load config from file (with user edits) and update globals
-    updated_config = ConfigManager.load_and_update_globals('surfactant_grid_adaptive_concentrations', globals(), lash_e.logger)
-    print(f"Loaded {len(updated_config)} config values from file")
-    print("EXPERIMENT_TAG:", EXPERIMENT_TAG)
-    input()
+    # Initialize Lash_E with automatic config handling
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, 
+                    workflow_globals=globals(), workflow_name='surfactant_grid_adaptive_concentrations')
 
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")

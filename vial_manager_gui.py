@@ -21,7 +21,8 @@ import sys
 import os
 import csv
 import yaml
-import shutil
+import re
+import glob
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -352,6 +353,242 @@ class VialEditDialog(QDialog):
                            'capped', 'cap_type', 'vial_type', 'home_location', 
                            'home_location_index', 'notes']}
         }
+
+
+class LogVialsWidget(QWidget):
+    """Widget to display vials found in the latest log file with status indicators."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.log_vials = set()
+        self.csv_vials = set()
+        self.errors_detected = False
+        print("[DEBUG] LogVialsWidget initialized")
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        """Setup the log vials display UI."""
+        layout = QVBoxLayout(self)
+        
+        # Header label
+        header = QLabel("Log File Vials")
+        header.setStyleSheet("font-weight: bold; font-size: 11px; padding: 2px;")
+        layout.addWidget(header)
+        
+        # Manual load button - below the label
+        self.load_button = QPushButton("Load Log File")
+        self.load_button.setFixedSize(100, 25)
+        self.load_button.setToolTip("Load log file manually")
+        self.load_button.clicked.connect(self._load_log_file_manually)
+        layout.addWidget(self.load_button)
+        
+        # Scrollable list - much narrower but taller
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFixedWidth(120)  # Much narrower
+        scroll.setMaximumHeight(500)  # Taller to use more vertical space
+        
+        self.vials_list_widget = QWidget()
+        self.vials_list_layout = QVBoxLayout(self.vials_list_widget)
+        self.vials_list_layout.setAlignment(Qt.AlignTop)
+        
+        scroll.setWidget(self.vials_list_widget)
+        layout.addWidget(scroll)
+        
+        # Error warning label (hidden by default)
+        self.error_warning = QLabel("⚠️ Errors Detected")
+        self.error_warning.setStyleSheet("""
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            border-radius: 3px;
+            padding: 3px;
+            font-size: 9px;
+            font-weight: bold;
+        """)
+        self.error_warning.hide()
+        layout.addWidget(self.error_warning)
+    
+    def update_log_vials(self):
+        """Find and parse the latest log file for vial names."""
+        try:
+            # Find the most recent log file
+            log_pattern = os.path.join("logs", "experiment_log*.log")
+            log_files = glob.glob(log_pattern)
+            
+            if not log_files:
+                print("[DEBUG] No log files found")
+                return
+            
+            # Sort by modification time, get the most recent
+            latest_log = max(log_files, key=os.path.getmtime)
+            log_name = os.path.basename(latest_log)
+            
+            # Parse the log file for vial names and errors
+            vial_names = set()
+            errors_found = False
+            pattern = r'Pipetting from vial\\s+([^,]+),'
+            
+            with open(latest_log, 'r', encoding='utf-8') as f:
+                for line in f:
+                    # Check for errors
+                    if '- ERROR -' in line:
+                        errors_found = True
+                    
+                    # Check for vial names
+                    matches = re.findall(pattern, line)
+                    for match in matches:
+                        vial_name = match.strip()
+                        if vial_name:
+                            vial_names.add(vial_name)
+            
+            self.log_vials = vial_names
+            self.errors_detected = errors_found
+            print(f"[DEBUG] Loaded from: {log_name} ({len(vial_names)} vials)")
+            self._update_display()
+            
+        except Exception as e:
+            print(f"[DEBUG] Error reading logs: {str(e)}")
+    
+    def update_csv_vials(self, csv_vials):
+        """Update the list of vials from the loaded CSV file."""
+        print(f"[DEBUG] Updating CSV vials: {csv_vials}")
+        self.csv_vials = set(csv_vials) if csv_vials else set()
+        print(f"[DEBUG] CSV vials set: {self.csv_vials}")
+        self._update_display()
+    
+    def _load_log_file_manually(self):
+        """Allow user to manually select a log file."""
+        print("[DEBUG] Manual log file selection requested")
+        from PySide6.QtWidgets import QFileDialog
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Log File",
+            "logs",
+            "Log Files (*.log);;All Files (*)"
+        )
+        
+        if file_path:
+            print(f"[DEBUG] User selected log file: {file_path}")
+            self._parse_specific_log_file(file_path)
+    
+    def _parse_specific_log_file(self, log_file_path):
+        """Parse a specific log file for vial names."""
+        print(f"[DEBUG] Parsing specific log file: {log_file_path}")
+        try:
+            if not os.path.exists(log_file_path):
+                print(f"[DEBUG] ERROR: Log file does not exist: {log_file_path}")
+                return
+                
+            file_size = os.path.getsize(log_file_path)
+            print(f"[DEBUG] Log file size: {file_size} bytes")
+            
+            # Parse the log file for vial names and errors
+            vial_names = set()
+            errors_found = False
+            patterns_to_try = [
+                r'Pipetting from vial\s+([^,]+),',
+                r'Pipetting from vial ([^,]+),',
+                r'from vial\s+([^,]+),',
+                r'from vial ([^,]+),'
+            ]
+            
+            line_count = 0
+            total_matches_found = 0
+            
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                for line_num, line in enumerate(f, 1):
+                    line_count += 1
+                    
+                    # Show first few lines for debugging
+                    if line_num <= 3:
+                        print(f"[DEBUG] Line {line_num}: {line.strip()[:80]}...")
+                    
+                    # Check for errors
+                    if '- ERROR -' in line:
+                        errors_found = True
+                        print(f"[DEBUG] Error detected on line {line_num}")
+                    
+                    # Try each pattern
+                    for i, pattern in enumerate(patterns_to_try):
+                        matches = re.findall(pattern, line)
+                        if matches:
+                            total_matches_found += 1
+                            for match in matches:
+                                vial_name = match.strip()
+                                if vial_name:
+                                    vial_names.add(vial_name)
+                                    print(f"[DEBUG] Pattern {i+1} found vial: '{vial_name}' (line {line_num})")
+            
+            print(f"[DEBUG] Processed {line_count} lines, found {total_matches_found} pipetting matches")
+            print(f"[DEBUG] Unique vials found: {sorted(vial_names)} (total: {len(vial_names)})")
+            
+            self.log_vials = vial_names
+            self.errors_detected = errors_found
+            log_name = os.path.basename(log_file_path)
+            if errors_found:
+                print(f"[DEBUG] Manual load complete: {log_name} ({len(vial_names)} vials, ERRORS DETECTED)")
+            else:
+                print(f"[DEBUG] Manual load complete: {log_name} ({len(vial_names)} vials)")
+            self._update_display()
+            
+        except Exception as e:
+            import traceback
+            error_msg = f"Error parsing log: {str(e)}"
+            print(f"[DEBUG] {error_msg}")
+            print(f"[DEBUG] Traceback: {traceback.format_exc()}")
+    
+    def _update_display(self):
+        """Update the visual display of log vials with status indicators."""
+        print(f"[DEBUG] Updating display with {len(self.log_vials)} log vials and {len(self.csv_vials)} CSV vials")
+        
+        # Clear existing items
+        for i in reversed(range(self.vials_list_layout.count())):
+            child = self.vials_list_layout.itemAt(i).widget()
+            if child:
+                child.deleteLater()
+        
+        # Add vials with status indicators
+        for vial_name in sorted(self.log_vials):
+            item_widget = QWidget()
+            item_layout = QHBoxLayout(item_widget)
+            item_layout.setContentsMargins(1, 1, 1, 1)  # Smaller margins
+            
+            # Status indicator
+            status_label = QLabel()
+            if vial_name in self.csv_vials:
+                status_label.setText("✅")
+                status_label.setToolTip(f"{vial_name} - Found in CSV")
+                item_widget.setStyleSheet("background-color: #e8f5e8; border-radius: 2px;")
+                print(f"[DEBUG] ✅ {vial_name} - found in CSV")
+            else:
+                status_label.setText("❌")
+                status_label.setToolTip(f"{vial_name} - Missing from CSV")
+                item_widget.setStyleSheet("background-color: #ffe8e8; border-radius: 2px;")
+                print(f"[DEBUG] ❌ {vial_name} - missing from CSV")
+            
+            status_label.setFixedWidth(16)  # Smaller icon
+            item_layout.addWidget(status_label)
+            
+            # Vial name - smaller text
+            name_label = QLabel(vial_name)
+            name_label.setStyleSheet("font-size: 8px; padding: 1px;")  # Smaller font
+            name_label.setWordWrap(True)
+            item_layout.addWidget(name_label)
+            
+            self.vials_list_layout.addWidget(item_widget)
+        
+        # Add stretch to push items to top
+        self.vials_list_layout.addStretch()
+        
+        # Update error warning visibility
+        if self.errors_detected:
+            self.error_warning.show()
+            print(f"[DEBUG] Display update complete - ERRORS DETECTED")
+        else:
+            self.error_warning.hide()
+            print(f"[DEBUG] Display update complete")
 
 
 class VialRackWidget(QScrollArea):
@@ -1090,12 +1327,6 @@ class TrackStatusWidget(QWidget):
                 'wellplate_type': self.wellplate_type_combo.currentText()
             }
             
-            # Create backup
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = f"{self.track_file_path}.backup_{timestamp}"
-            if os.path.exists(self.track_file_path):
-                shutil.copy2(self.track_file_path, backup_path)
-            
             # Save to file
             with open(self.track_file_path, 'w') as file:
                 yaml.dump(self.track_data, file, default_flow_style=False)
@@ -1263,12 +1494,6 @@ class RobotStatusWidget(QWidget):
                     'small_tip_rack_2': self.small_tip_rack_2_spin.value()
                 }
             }
-            
-            # Create backup
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = f"{self.robot_file_path}.backup_{timestamp}"
-            if os.path.exists(self.robot_file_path):
-                shutil.copy2(self.robot_file_path, backup_path)
             
             # Save to file
             with open(self.robot_file_path, 'w') as file:
@@ -1470,13 +1695,7 @@ class ConfigEditor(QWidget):
                     except yaml.YAMLError as e:
                         QMessageBox.warning(self, "YAML Error", f"Invalid YAML for {key}: {e}")
                         return
-            
-            # Create backup
-            if os.path.exists(self.config_file):
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                backup_path = f"{self.config_file}.backup_{timestamp}"
-                shutil.copy2(self.config_file, backup_path)
-            
+
             # Ensure directory exists
             os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
             
@@ -1662,6 +1881,7 @@ class VialManagerMainWindow(QMainWindow):
         """Load vials from CSV status file."""
         try:
             vials_data = []
+            original_fieldnames = None  # Store original field order
             with open(file_path, 'r', newline='', encoding='utf-8') as csvfile:
                 # Auto-detect delimiter
                 sample = csvfile.read(1024)
@@ -1670,6 +1890,7 @@ class VialManagerMainWindow(QMainWindow):
                 delimiter = sniffer.sniff(sample).delimiter
                 
                 reader = csv.DictReader(csvfile, delimiter=delimiter)
+                original_fieldnames = reader.fieldnames  # Preserve original order
                 for row in reader:
                     vials_data.append(row)
             
@@ -1678,10 +1899,16 @@ class VialManagerMainWindow(QMainWindow):
                 return False
             
             self.original_vials_data = vials_data.copy()
+            self.original_fieldnames = original_fieldnames  # Store field order
             self.status_file_path = file_path
             
             self._populate_racks(vials_data)
             self._update_ui_state()
+            
+            # Update log vials widget if it exists
+            if hasattr(self, 'log_vials_widget'):
+                current_vial_names = [v.get('vial_name', '') for v in vials_data if v.get('vial_name')]
+                self.log_vials_widget.update_csv_vials(current_vial_names)
             
             return True
             
@@ -1707,17 +1934,50 @@ class VialManagerMainWindow(QMainWindow):
         # Create special combined view for auxiliary locations
         aux_locations = {'large_vial_rack', 'photoreactor_array', 'clamp'}
         
-        # First add main_8mL_rack tab (ensure it's first)
+        # First add main_8mL_rack tab with log vials display (ensure it's first)
         main_locations = {loc for loc in locations if '8mL' in loc or 'main' in loc}
+        first_main_processed = False
         for location in sorted(main_locations):
             if location and location != 'unknown':
-                rack_widget = VialRackWidget(location)
-                rack_widget.vial_edited.connect(self._on_vial_edited)
-                rack_widget.vial_added.connect(self._on_vial_edited)  # Handle new vials
-                
-                self.tab_widget.addTab(rack_widget, location)
-                self.rack_widgets[location] = rack_widget
-                rack_widget.add_vials(vials_data)
+                if not first_main_processed:
+                    # Create horizontal layout for rack + log vials (first main tab only)
+                    main_tab_widget = QWidget()
+                    main_tab_layout = QHBoxLayout(main_tab_widget)
+                    
+                    # Add the rack widget to the left
+                    rack_widget = VialRackWidget(location)
+                    rack_widget.vial_edited.connect(self._on_vial_edited)
+                    rack_widget.vial_added.connect(self._on_vial_edited)  # Handle new vials
+                    rack_widget.add_vials(vials_data)
+                    main_tab_layout.addWidget(rack_widget)
+                    
+                    # Add log vials widget to the right - narrow sidebar
+                    self.log_vials_widget = LogVialsWidget()
+                    self.log_vials_widget.setMaximumWidth(130)  # Keep it narrow
+                    main_tab_layout.addWidget(self.log_vials_widget)
+                    
+                    # CRITICAL: Actually call the update method!
+                    print("[DEBUG] About to call update_log_vials()")
+                    self.log_vials_widget.update_log_vials()
+                    print("[DEBUG] Called update_log_vials()")
+                    
+                    # Update with current CSV vials
+                    current_vial_names = [v.get('vial_name', '') for v in vials_data if v.get('vial_name')]
+                    self.log_vials_widget.update_csv_vials(current_vial_names)
+                    print(f"[DEBUG] CSV vials loaded: {current_vial_names}")
+                    
+                    self.tab_widget.addTab(main_tab_widget, location)
+                    self.rack_widgets[location] = rack_widget
+                    first_main_processed = True
+                else:
+                    # Regular rack widget for additional main locations
+                    rack_widget = VialRackWidget(location)
+                    rack_widget.vial_edited.connect(self._on_vial_edited)
+                    rack_widget.vial_added.connect(self._on_vial_edited)  # Handle new vials
+                    
+                    self.tab_widget.addTab(rack_widget, location)
+                    self.rack_widgets[location] = rack_widget
+                    rack_widget.add_vials(vials_data)
         
         # Then add auxiliary racks tab (always show, even if empty)        
         # Create combined auxiliary rack widget
@@ -1777,6 +2037,11 @@ class VialManagerMainWindow(QMainWindow):
                         if before_count != after_count:
                             print(f"Cleaned {before_count - after_count} ghost vials from {widget_name}")
                 
+            # Update log vials widget after removal
+            if hasattr(self, 'log_vials_widget'):
+                current_vial_names = [v.get('vial_name', '') for v in self.original_vials_data if v.get('vial_name')]
+                self.log_vials_widget.update_csv_vials(current_vial_names)
+                
             self.status_bar.showMessage("Vial removed - remember to save changes")
         else:
             # Handle vial edit or addition
@@ -1795,6 +2060,11 @@ class VialManagerMainWindow(QMainWindow):
                     # Add new vial (remove _remove flag)
                     clean_data = {k: v for k, v in updated_vial_data.items() if k != '_remove'}
                     self.original_vials_data.append(clean_data)
+            
+            # Update log vials widget if it exists
+            if hasattr(self, 'log_vials_widget'):
+                current_vial_names = [v.get('vial_name', '') for v in self.original_vials_data if v.get('vial_name')]
+                self.log_vials_widget.update_csv_vials(current_vial_names)
             
             self.status_bar.showMessage("Vial data modified - remember to save changes")
         
@@ -2034,6 +2304,9 @@ class VialManagerMainWindow(QMainWindow):
             self._workflow_continue = False
             if self._lash_e_instance:
                 self._lash_e_instance.logger.info("User selected: Abort Workflow")
+            # Immediately terminate the workflow
+            print("🛑 Workflow aborted by user")
+            sys.exit(1)  # Force immediate workflow termination
         self.close()
     
     def _update_ui_state(self):
@@ -2069,11 +2342,6 @@ class VialManagerMainWindow(QMainWindow):
             return
             
         try:
-            # Create backup
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = f"{self.status_file_path}.backup_{timestamp}"
-            shutil.copy2(self.status_file_path, backup_path)
-            
             # Collect all current vial data from rack widgets ONLY
             all_vials_data = []
             for rack_widget in self.rack_widgets.values():
@@ -2115,18 +2383,41 @@ class VialManagerMainWindow(QMainWindow):
             
             # Write to CSV
             if all_vials_data:
-                # Collect all unique fieldnames from all vials
-                all_fieldnames = set()
-                for vial in all_vials_data:
-                    all_fieldnames.update(vial.keys())
-                fieldnames = sorted(all_fieldnames)  # Sort for consistent column order
+                # Use original field order if available, otherwise use standard order
+                if hasattr(self, 'original_fieldnames') and self.original_fieldnames:
+                    # Start with original field order
+                    fieldnames = list(self.original_fieldnames)
+                    
+                    # Add any new fields that weren't in original (append at end)
+                    all_fieldnames = set()
+                    for vial in all_vials_data:
+                        all_fieldnames.update(vial.keys())
+                    
+                    for field in all_fieldnames:
+                        if field not in fieldnames:
+                            fieldnames.append(field)
+                else:
+                    # Fallback to preferred standard order
+                    preferred_order = ['vial_index', 'vial_name', 'location', 'location_index', 
+                                     'vial_volume', 'capped', 'cap_type', 'vial_type', 
+                                     'home_location', 'home_location_index', 'notes']
+                    
+                    all_fieldnames = set()
+                    for vial in all_vials_data:
+                        all_fieldnames.update(vial.keys())
+                    
+                    # Use preferred order for known fields, then add any extras
+                    fieldnames = [f for f in preferred_order if f in all_fieldnames]
+                    for field in sorted(all_fieldnames):
+                        if field not in fieldnames:
+                            fieldnames.append(field)
                 
                 with open(self.status_file_path, 'w', newline='', encoding='utf-8') as csvfile:
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writeheader()
                     writer.writerows(all_vials_data)
                 
-                self.status_bar.showMessage(f"File saved successfully (backup: {Path(backup_path).name})")
+                self.status_bar.showMessage("File saved successfully")
                 
         except Exception as e:
             QMessageBox.critical(self, "Save Error", 
@@ -2142,6 +2433,8 @@ class VialManagerMainWindow(QMainWindow):
             )
             if reply == QMessageBox.Yes:
                 self.load_status_file(self.status_file_path)
+
+
 
 
 def main():

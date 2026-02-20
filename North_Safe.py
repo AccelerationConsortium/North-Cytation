@@ -230,6 +230,16 @@ class North_Track(North_Base):
                 yaml.dump(track_status, file, default_flow_style=False)
 
     def check_input_file(self, pause_after_check=True, visualize=True):
+        print("\n" + "="*60)
+        print("DEPRECATION WARNING: check_input_file()")
+        print("="*60)
+        print("This method is deprecated. Please use the GUI launched during")
+        print("Lash_E initialization to check and modify robot states.")
+        print("Remove the .check_input_file() calls from your workflow.")
+        print("Press Enter to continue...")
+        print("="*60)
+        input()
+        
         return
         # self.logger.info(f"--Wellplate status-- \n Wellplate type: {self.CURRENT_WP_TYPE} \n Number in source: {self.NUM_SOURCE} \n Number in waste: {self.NUM_WASTE} \n Active wellplate position: {self.ACTIVE_WELLPLATE_POSITION}")
 
@@ -1243,6 +1253,16 @@ class North_Robot(North_Base):
         """
         Prints the vial status dataframe for user to confirm the initial state of your vials.
         """
+        print("\n" + "="*60)
+        print("DEPRECATION WARNING: check_input_file()")
+        print("="*60)
+        print("This method is deprecated. Please use the GUI launched during")
+        print("Lash_E initialization to check and modify robot states.")
+        print("Remove the .check_input_file() calls from your workflow.")
+        print("Press Enter to continue...")
+        print("="*60)
+        input()
+        
         if self.VIAL_FILE is None:
             self.logger.info("No vial file loaded - skipping vial status check")
             return
