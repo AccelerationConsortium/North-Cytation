@@ -772,14 +772,23 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='wa
         cycles = 5
         volume_per_cycle_ul = conditioning_volume_ul
         volume_per_cycle_ml = volume_per_cycle_ul / 1000
+
+        # Simple dummy parameters - fast and reliable for conditioning only
+        from pipetting_data.pipetting_parameters import PipettingParameters
+        dummy_params = PipettingParameters(
+            aspirate_speed=15,      # Fast aspirate
+            dispense_speed=5,       # Fast dispense  
+            dispense_wait_time=0.0, # No waiting
+            blowout_vol=0.5         # Minimal blowout
+        )
         
         lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL")
         
         for cycle in range(cycles):
             # Aspirate from vial 
-            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type)
+            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type, parameters=dummy_params)
             # Dispense back into same vial
-            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type)
+            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, liquid=liquid_type, parameters=dummy_params)
         
         lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
         
@@ -1953,6 +1962,8 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     
     logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells (sorted by volume, then well order)")
     
+    condition_tip(lash_e, vial_name, conditioning_volume_ul=200)
+
     # Dispense to each well individually
     for _, row in wells_needing_component.iterrows():
         well_idx = row['wellplate_index']
