@@ -4312,8 +4312,8 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
     lash_e.logger.info("Step 4: Starting time-series kinetics measurements...")
     
     # Time-series configuration - elapsed time intervals up to 4 hours
-    measurement_intervals = [120, 300, 600, 900, 1800, 2700, 3600, 5400, 7200, 9000, 10800, 12600, 14400]  
-    # 2min, 5min, 10min, 15min, 30min, 45min, 1hr, 1.5hr, 2hr, 2.5hr, 3hr, 3.5hr, 4hr
+    measurement_intervals = [300, 600, 900, 1800, 2700, 3600, 5400, 7200, 9000, 10800, 12600, 14400]  
+    # 5min, 10min, 15min, 30min, 45min, 1hr, 1.5hr, 2hr, 2.5hr, 3hr, 3.5hr, 4hr
     time_series_data = []
     
     for i, wait_time in enumerate(measurement_intervals):
