@@ -135,8 +135,8 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     lash_e.grab_new_wellplate()
     #Step 1: Add 1.95 mL "assay reagent" to sample vials
     for i in sample_indices:  #May want to use liquid calibration eg water
-        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water', remove_pipet=False)
-    lash_e.nr_robot.remove_pipet()
+        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water')
+    #lash_e.nr_robot.remove_pipet()
     
     # #Step 2: Move the reaction mixture vial to the photoreactor to start the reaction.
     lash_e.nr_robot.move_vial_to_location(cof_vial, location="photoreactor_array", location_index=0)

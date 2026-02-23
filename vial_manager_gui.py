@@ -44,7 +44,7 @@ from PySide6.QtGui import (
 
 # Import ConfigManager for workflow config handling
 try:
-    from config_manager import ConfigManager
+    from workflow_config_manager import ConfigManager
 except ImportError:
     ConfigManager = None
 

@@ -36,7 +36,7 @@ except ImportError:
         OptimizationConstraints, OptimizationConfig, OptimizerType,
         OptimizationObjectives, OptimizationTrial, OptimizationState
     )
-    from config_manager import ExperimentConfig
+    from .config_manager import ExperimentConfig
 
 logger = logging.getLogger(__name__)
 import logging
@@ -637,7 +637,7 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
 
 if __name__ == "__main__":
     # Test the optimizer
-    from config_manager import ExperimentConfig
+    from .config_manager import ExperimentConfig
     
     # Mock config for testing
     class MockConfig:

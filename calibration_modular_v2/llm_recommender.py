@@ -16,7 +16,7 @@ import numpy as np
 from pathlib import Path
 
 from data_structures import PipettingParameters, VolumeCalibrationResult, CalibrationParameters, HardwareParameters
-from config_manager import ExperimentConfig
+from .config_manager import ExperimentConfig
 from llm_config_generator import LLMConfigGenerator
 
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.2.1] - 2026-02-20
+
+### Fixed
+- **Post-Experiment Analysis Error Handling**: Fixed runtime errors in automatic analysis integration
+  - **Unicode Logging Fix**: Replaced Unicode symbols (❌✅) with [ERROR]/[SUCCESS] text to prevent cp1252 encoding crashes on Windows
+  - **Contour Level Calculation**: Added error handling for matplotlib contour levels that must be increasing - fallback to imshow visualization when contour calculation fails
+  - **Import Path Fix**: Fixed analysis module imports to properly reference analysis/ folder from workflows directory
+  - **Plot Display Fix**: Removed plt.show() calls to prevent popup windows during automatic analysis - plots now save only and close properly to free memory
+  - **Adaptive Simulation Data**: Made simulation function adaptive to use existing MIN_CONC global and dynamically scale to any concentration range - no longer hardcoded for specific ranges
+  - Added comprehensive error handling with fallback visualization modes for turbidity, ratio, and fluorescence contour plots
+  - Creates backups: `backups/surfactant_contour_simple_backup_*.py` and `backups/surfactant_grid_adaptive_concentrations_backup_*.py`
+
+## [1.2.0] - 2026-02-20
+
+### Fixed
+- **CRITICAL: Pandas DataFrame Volume Filtering Bug**: Fixed silent filtering failures in surfactant workflow where CMC control wells (wells 2-18) weren't receiving pyrene probe due to pandas string vs numeric data type mismatch
+  - Added `validate_and_convert_recipe_volumes()` function to ensure all volume columns are numeric before filtering operations
+  - Modified `dispense_component_to_wellplate()` to validate volume data types at function entry with fail-loud error handling
+  - Prevents silent failures in `batch_df[batch_df[volume_column] > 0]` filtering when volumes are stored as strings instead of numbers
+  - Comprehensive validation of all volume columns: surf_A_volume_ul, surf_B_volume_ul, water_volume_ul, buffer_volume_ul, pyrene_volume_ul
+  - Creates backup: `backups/surfactant_grid_adaptive_concentrations_backup_*_before_validation.py`
+
 ## [1.1.1] - 2026-02-19
 
 ### Fixed
