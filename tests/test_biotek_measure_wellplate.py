@@ -16,7 +16,7 @@ def test_measure_wellplate(input_vial_status_file): #tests track movement of wel
     #protocol = r"C:\Protocols\SQ_degradation_sweep.prt" 
     protocol = None
 
-    data = lash_e.measure_wellplate(protocol, [0,1,2], plate_type='quartz')
+    data = lash_e.measure_wellplate(protocol, [0,1,2], plate_type='96 WELL PLATE')
 
     #data = lash_e.cytation.run_protocol(protocols, wells=range(0,3), plate_type="48 WELL PLATE")
 

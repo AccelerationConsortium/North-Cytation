@@ -180,24 +180,12 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
     logger.info("RUNNING POST-EXPERIMENT ANALYSIS")
     logger.info("=" * 60)
     
-    # Configure matplotlib to prevent popup windows
-    import matplotlib
-    matplotlib.use('Agg')  # Use non-interactive backend
-    import matplotlib.pyplot as plt
-    
     # Run contour analysis (always)
     logger.info("1. Generating contour plots...")
     try:
         import sys
         import os
         sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'analysis'))
-        
-        # Force matplotlib backend for analysis imports
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        plt.ioff()  # Turn off interactive mode
-        
         from surfactant_contour_simple import create_contour_maps
         
         fig, ax1, ax2, ax3 = create_contour_maps(
@@ -205,10 +193,6 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
             surfactant_a_name=surfactant_a_name,
             surfactant_b_name=surfactant_b_name
         )
-        
-        # Explicitly close the figure to prevent display
-        if fig is not None:
-            plt.close(fig)
         
         logger.info("   [SUCCESS] Contour plots generated successfully")
         
@@ -227,12 +211,6 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
             if analysis_path not in sys.path:
                 sys.path.insert(0, analysis_path)
             
-            # Force matplotlib backend for CMC analysis imports
-            import matplotlib
-            matplotlib.use('Agg')
-            import matplotlib.pyplot as plt
-            plt.ioff()  # Turn off interactive mode
-            
             from control_cmc_analysis import analyze_cmc_controls
             
             fig_cmc, ax1_cmc, ax2_cmc = analyze_cmc_controls(
@@ -240,10 +218,6 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
                 surfactant_a_name=surfactant_a_name, 
                 surfactant_b_name=surfactant_b_name
             )
-            
-            # Explicitly close the CMC figure to prevent display
-            if fig_cmc is not None:
-                plt.close(fig_cmc)
             
             logger.info("   [SUCCESS] CMC analysis completed successfully")
             
@@ -2870,8 +2844,9 @@ def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
     """
     Generate realistic simulation data for turbidity and ratio based on surfactant concentrations.
     
-    Creates 2D patterns that transition between baseline and elevated states.
-    Now adaptive to actual concentration ranges used in the experiment.
+    Creates 2D boundary patterns that transition between baseline and elevated states:
+    - Ratio: Diagonal boundary from bottom-left to top-right
+    - Turbidity: Circular boundary with different center
     
     Args:
         surf_a_conc: Surfactant A concentration in mM
@@ -2888,70 +2863,22 @@ def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
     log_a = np.log10(surf_a_conc)
     log_b = np.log10(surf_b_conc)
     
-    # ADAPTIVE SCALING: Calculate log ranges from global configuration
-    # Use existing MIN_CONC and estimate typical max concentration
-    log_min = np.log10(MIN_CONC)  # Use global minimum
-    log_max_estimate = np.log10(25.0)  # Typical max concentration (25 mM)
-    log_range = log_max_estimate - log_min
-    log_center = (log_min + log_max_estimate) / 2.0
+    # RATIO SIMULATION: Diagonal boundary (sigmoid transition)
+    # Boundary runs from (-6, -4) to (-3, -1) in log space
+    diagonal_distance = (log_a + log_b + 5.0) / np.sqrt(2)  # Distance from diagonal line
+    ratio_transition = 1.0 / (1.0 + np.exp(-8.0 * diagonal_distance))  # Sharp sigmoid
+    ratio_baseline = 0.6   # Low ratio state
+    ratio_elevated = 1.4   # High ratio state 
+    simulated_ratio = ratio_baseline + (ratio_elevated - ratio_baseline) * ratio_transition
     
-    # RATIO SIMULATION: Multiple overlapping patterns for smooth variation
-    # Adaptive scaling based on actual concentration ranges    
-    # Pattern 1: Diagonal gradient (adaptive scaling)
-    diagonal_sum = log_a + log_b  # Sum of log concentrations
-    diagonal_min = 2 * log_min  # Minimum possible sum
-    diagonal_max = 2 * log_max_estimate  # Maximum possible sum
-    diagonal_factor = (diagonal_sum - diagonal_min) / (diagonal_max - diagonal_min)
-    diagonal_factor = max(0, min(1, diagonal_factor))  # Ensure 0-1
-    
-    # Pattern 2: Individual concentration effects (adaptive)
-    surf_a_factor = (log_a - log_min) / log_range  # Normalize to 0-1
-    surf_b_factor = (log_b - log_min) / log_range  # Normalize to 0-1
-    surf_a_factor = max(0, min(1, surf_a_factor))
-    surf_b_factor = max(0, min(1, surf_b_factor))
-    conc_effect = 0.5 * (surf_a_factor + surf_b_factor)  # Average effect
-    
-    # Pattern 3: Spatial wave pattern for variation (adaptive scaling)
-    normalized_log_a = (log_a - log_center) / log_range * 6.0  # Scale to ±3 range
-    normalized_log_b = (log_b - log_center) / log_range * 6.0  # Scale to ±3 range
-    wave_pattern = 0.5 + 0.4 * np.sin(normalized_log_a + 3.14) * np.cos(normalized_log_b + 1.57)
-    wave_pattern = max(0, min(1, wave_pattern))  # Ensure 0-1 range
-    
-    # Combine patterns with more emphasis on variation
-    ratio_baseline = 0.75   # Low ratio state
-    ratio_elevated = 0.9    # High ratio state 
-    combined_ratio_factor = 0.3 * diagonal_factor + 0.4 * conc_effect + 0.3 * wave_pattern
-    combined_ratio_factor = max(0, min(1, combined_ratio_factor))  # Ensure 0-1 range
-    simulated_ratio = ratio_baseline + (ratio_elevated - ratio_baseline) * combined_ratio_factor
-    
-    # TURBIDITY SIMULATION: Multiple overlapping patterns for smooth variation
-    # Adaptive scaling based on actual concentration ranges
-    # Pattern 1: Radial distance from center (adaptive)
-    center_a_log = log_center + 0.2 * log_range  # Slightly off-center for asymmetry
-    center_b_log = log_center - 0.1 * log_range  # Different offset for variety
-    radius_distance = np.sqrt((log_a - center_a_log)**2 + (log_b - center_b_log)**2)
-    max_radius = np.sqrt((log_range)**2 + (log_range)**2)  # Max possible distance
-    radial_factor = radius_distance / max_radius  # Normalize to 0-1
-    radial_factor = min(1, radial_factor)  # Cap at 1
-    
-    # Pattern 2: Linear combination of concentrations (adaptive scaling)
-    linear_a = (log_a - log_min) / log_range  # Normalize to 0-1
-    linear_b = (log_b - log_min) / log_range  # Normalize to 0-1
-    linear_effect = 0.6 * linear_a + 0.4 * linear_b  # Weighted combination
-    linear_effect = max(0, min(1, linear_effect))
-    
-    # Pattern 3: Cross-interaction pattern (adaptive scaling)
-    norm_a = (log_a - log_min) / log_range  # Normalize to 0-1
-    norm_b = (log_b - log_min) / log_range  # Normalize to 0-1
-    interaction_val = norm_a * norm_b  # Product gives interaction strength
-    interaction_pattern = np.tanh(4.0 * interaction_val)  # Smooth S-curve from 0 to 1
-    
-    # Combine patterns for rich variation  
-    turbidity_baseline = 0.04  # Low turbidity state
-    turbidity_elevated = 1.0   # High turbidity state
-    combined_turb_factor = 0.3 * radial_factor + 0.4 * linear_effect + 0.3 * interaction_pattern
-    combined_turb_factor = max(0, min(1, combined_turb_factor))  # Ensure 0-1 range
-    simulated_turbidity = turbidity_baseline + (turbidity_elevated - turbidity_baseline) * combined_turb_factor
+    # TURBIDITY SIMULATION: Circular boundary (different center)
+    # Circle centered at (-4.5, -2.5) in log space with radius 1.2
+    center_a, center_b = -4.5, -2.5
+    radius_distance = np.sqrt((log_a - center_a)**2 + (log_b - center_b)**2)
+    turbidity_transition = 1.0 / (1.0 + np.exp(-5.0 * (radius_distance - 1.2)))
+    turbidity_baseline = 0.15  # Low turbidity state
+    turbidity_elevated = 0.85  # High turbidity state
+    simulated_turbidity = turbidity_baseline + (turbidity_elevated - turbidity_baseline) * turbidity_transition
     
     # FLUORESCENCE: Derive from ratio (realistic relationship)
     # F384 stays relatively constant, F373 varies with ratio
@@ -2973,9 +2900,9 @@ def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
         # Recalculate ratio from potentially noisy fluorescence
         simulated_ratio = f373_base / f384_base if f384_base > 0 else simulated_ratio
     
-    # Ensure physically reasonable bounds (updated for realistic ranges)
-    simulated_ratio = max(0.70, min(0.95, simulated_ratio))  # Constrain to 0.70-0.95 range
-    simulated_turbidity = max(0.02, min(1.2, simulated_turbidity))  # Allow 0.02-1.2 range
+    # Ensure physically reasonable bounds
+    simulated_ratio = max(0.1, min(3.0, simulated_ratio))
+    simulated_turbidity = max(0.01, min(1.5, simulated_turbidity))
     f373_base = max(10.0, min(300.0, f373_base))
     f384_base = max(10.0, min(300.0, f384_base))
     
@@ -3679,7 +3606,7 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         tol_factor=0.1,         # Tolerance for duplicate detection
         triangle_score_method='max',  # Use max distance for sensitivity
         output_dir=output_dir,  # Save triangle visualizations to output folder
-        create_visualization=False  # Disable visualization to prevent popup windows
+        create_visualization=True  # Create and save triangle analysis plots
     )
     
     print(f"DEBUG: Triangle recommender returned {len(recommendations_df)} suggestions")
@@ -3845,12 +3772,6 @@ if __name__ == "__main__":
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, 
                     workflow_globals=globals(), workflow_name='surfactant_grid_adaptive_concentrations')
 
-    # Configure matplotlib globally to prevent popup windows
-    import matplotlib
-    matplotlib.use('Agg')  # Use non-interactive backend
-    import matplotlib.pyplot as plt
-    plt.ioff()  # Turn off interactive mode
-    
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")
 

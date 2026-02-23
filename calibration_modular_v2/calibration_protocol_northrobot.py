@@ -127,7 +127,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
             
             # Validate hardware files
-            lash_e.nr_robot.check_input_file()
+            #lash_e.nr_robot.check_input_file()
             #lash_e.nr_track.check_input_file()
             lash_e.nr_robot.home_robot_components()
             
@@ -278,7 +278,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         results = []
         lash_e = state['lash_e']
 
-        if state.get('continuous_mass_monitoring', False):
+        if state.get('continuous_mass_monitoring', True):
             continuous_mass_monitoring=True
             save_mass_data=True
         else:
