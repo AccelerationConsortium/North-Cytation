@@ -22,7 +22,8 @@ def find_output_files(folder_path):
     """
     Find all output_# files in the specified folder
     """
-    pattern = os.path.join(folder_path, "output_*.txt")
+    # Updated pattern to handle sample prefixes like "sample_1_output_*.txt" 
+    pattern = os.path.join(folder_path, "*output_*.txt")
     files = glob.glob(pattern)
     
     # Sort files by the number after output_

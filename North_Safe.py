@@ -3478,7 +3478,7 @@ class North_Robot(North_Base):
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self, revs=3):
+    def uncap_clamp_vial(self, revs=3, move_speed=None):
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -3492,7 +3492,7 @@ class North_Robot(North_Base):
         
         
         self.c9.close_clamp() #clamp vial
-        self.goto_location_if_not_there(vial_clamp) #Maybe check if it is already there or not  
+        self.goto_location_if_not_there(vial_clamp, move_speed=move_speed) #Maybe check if it is already there or not  
         time.sleep(0.5) 
         self.c9.close_gripper()
         self.c9.uncap(revs=revs)
@@ -3518,7 +3518,7 @@ class North_Robot(North_Base):
 
         
         self.c9.close_clamp() #Make sure vial is clamped
-        self.goto_location_if_not_there(vial_clamp, move_speed=move_speed)
+        self.goto_location_if_not_there(vial_clamp_cap, move_speed=move_speed)
         time.sleep(0.5)
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap

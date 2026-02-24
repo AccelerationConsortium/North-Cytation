@@ -3,6 +3,7 @@ home = [0.0, 0.0, 0.0, 0.0]
 #Location of the clamp (gripper)
 #vial_clamp = [2482, 7540, 44004, 17350] #17700
 vial_clamp = [2476, 7635, 44106, 17350]
+vial_clamp_cap = [2476, 7635, 44106, 16950]
 #vial_clamp_pip = [2443, 5805, 39725, 11501]
 vial_clamp_pip = [2440, 5885, 39839, 11501]
 

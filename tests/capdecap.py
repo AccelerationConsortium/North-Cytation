@@ -16,4 +16,4 @@ def cap_decap(vial, repeats):
     lash_e.nr_robot.return_vial_home(vial)
     lash_e.nr_robot.move_home()
 
-cap_decap(2,3)
+cap_decap('water',3)

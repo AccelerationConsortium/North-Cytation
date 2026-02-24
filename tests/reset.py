@@ -21,4 +21,4 @@ def reset(input_vial_status_file):
 
     #lash_e.nr_robot.c9.move_pump(1, 0)
 
-reset("../utoronto_demo/status/calibration_vials_short.csv")
+reset(None)

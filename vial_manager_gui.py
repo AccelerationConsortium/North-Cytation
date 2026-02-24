@@ -306,7 +306,7 @@ class VialEditDialog(QDialog):
         self.location_edit.setText(str(self.vial_data.get('location', '')))
         
         try:
-            loc_index = int(self.vial_data.get('location_index', 0))
+            loc_index = int(float(self.vial_data.get('location_index', 0)))
         except (ValueError, TypeError):
             loc_index = 0
         self.location_index_spin.setValue(loc_index)
@@ -339,7 +339,7 @@ class VialEditDialog(QDialog):
         self.home_location_edit.setText(str(self.vial_data.get('home_location', '')))
         
         try:
-            home_index = int(self.vial_data.get('home_location_index', 0))
+            home_index = int(float(self.vial_data.get('home_location_index', 0)))
         except (ValueError, TypeError):
             home_index = 0
         self.home_index_spin.setValue(home_index)
@@ -675,14 +675,18 @@ class VialRackWidget(QScrollArea):
     def add_vials(self, vials_data: List[Dict]):
         """Add vials to the rack."""
         self.vial_data_list = [v for v in vials_data if v.get('location') == self.location_name]
+        print(f"[DEBUG] VialRackWidget({self.location_name}): Found {len(self.vial_data_list)} vials for this location")
         
         for vial_data in self.vial_data_list:
             try:
-                location_index = int(vial_data.get('location_index', 0))
+                location_index = int(float(vial_data.get('location_index', 0)))  # Convert float string to int
+                print(f"[DEBUG] Processing vial: {vial_data.get('vial_name', 'unknown')} at index {location_index}")
             except (ValueError, TypeError):
+                print(f"[DEBUG] Failed to parse location_index for vial: {vial_data}")
                 continue
                 
             if location_index >= self.grid_rows * self.grid_cols:
+                print(f"[DEBUG] Skipping vial {vial_data.get('vial_name', 'unknown')}: index {location_index} out of bounds ({self.grid_rows}x{self.grid_cols})")
                 continue  # Skip if position is out of bounds
             
             # Calculate grid position: 0=top-right, 47=bottom-left
@@ -691,6 +695,8 @@ class VialRackWidget(QScrollArea):
             row = location_index % self.grid_rows              # Which row within that column
             col = (self.grid_cols - 1) - column_number         # Flip horizontally (rightmost column = 0)
             
+            print(f"[DEBUG] Grid position for {vial_data.get('vial_name', 'unknown')}: row={row}, col={col}")
+            
             # Remove placeholder and add vial widget
             old_item = self.grid_layout.itemAtPosition(row, col)
             if old_item:
@@ -698,12 +704,18 @@ class VialRackWidget(QScrollArea):
                 if old_widget:
                     old_widget.deleteLater()
             
-            # Create vial widget
-            vial_widget = VialWidget(vial_data)
-            vial_widget.vial_clicked.connect(self._on_vial_clicked)
-            
-            self.grid_layout.addWidget(vial_widget, row, col)
-            self.vials[location_index] = vial_widget
+            try:
+                # Create vial widget
+                vial_widget = VialWidget(vial_data)
+                vial_widget.vial_clicked.connect(self._on_vial_clicked)
+                
+                self.grid_layout.addWidget(vial_widget, row, col)
+                self.vials[location_index] = vial_widget
+                print(f"[DEBUG] Successfully added vial widget for {vial_data.get('vial_name', 'unknown')}")
+            except Exception as e:
+                print(f"[DEBUG] ERROR creating VialWidget for {vial_data.get('vial_name', 'unknown')}: {e}")
+                import traceback
+                traceback.print_exc()
     
     def _on_vial_clicked(self, vial_data: Dict):
         """Handle vial click to open edit dialog."""
@@ -712,7 +724,7 @@ class VialRackWidget(QScrollArea):
             updated_data = dialog.get_vial_data()
             
             # Get location index for grid operations
-            location_index = int(vial_data.get('location_index', 0))
+            location_index = int(float(vial_data.get('location_index', 0)))
             
             # Check for vial removal
             if updated_data.get('_remove'):
@@ -982,7 +994,7 @@ class CombinedRackWidget(QScrollArea):
             location = vial_data.get('location')
             
             try:
-                location_index = int(vial_data.get('location_index', 0))
+                location_index = int(float(vial_data.get('location_index', 0)))
             except (ValueError, TypeError):
                 continue
             
@@ -1022,7 +1034,7 @@ class CombinedRackWidget(QScrollArea):
             
             # Get keys for operations
             location = vial_data.get('location')
-            location_index = int(vial_data.get('location_index', 0))
+            location_index = int(float(vial_data.get('location_index', 0)))
             key = (location, location_index)
             
             # Check for vial removal
@@ -2399,7 +2411,7 @@ class VialManagerMainWindow(QMainWindow):
             
             # Sort by vial_index if present
             try:
-                all_vials_data.sort(key=lambda x: int(x.get('vial_index', 999)))
+                all_vials_data.sort(key=lambda x: int(float(x.get('vial_index', 999))))
             except (ValueError, TypeError):
                 pass  # Keep original order if sorting fails
             
