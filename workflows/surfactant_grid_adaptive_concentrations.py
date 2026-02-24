@@ -3353,11 +3353,22 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     
     # STEP 5: Execute dispensing and measurements in clear phases
     if skip_measurements:
-        lash_e.logger.info("Step 5: Executing dispensing only (no measurements)...")
-        well_recipes_df = execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_enabled=False)
+        lash_e.logger.info("Step 5: Skipping dispensing and measurements (substocks-only mode)")
+        lash_e.logger.info("Returning experiment plan for later use...")
+        # Return early - just the experiment plan without measurements or analysis
+        return {
+            'surfactant_a': surfactant_a_name,
+            'surfactant_b': surfactant_b_name, 
+            'well_recipes_df': well_recipes_df,  # Plan only, no measurements
+            'experiment_plan': experiment_plan,  # CRITICAL: Needed for stock_solutions_needed
+            'output_folder': experiment_output_folder,
+            'experiment_name': experiment_name,
+            'substocks_only': True  # Flag to indicate this is planning phase
+        }
     else:
         lash_e.logger.info("Step 5: Executing dispensing and measurements...")
         well_recipes_df = execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_enabled=True)
+        
     # STEP 6: Save results to experiment folder
     lash_e.logger.info("Step 6: Saving results...")
     output_folder = experiment_output_folder
@@ -4234,6 +4245,11 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
     Returns:
         dict: Results from this kinetics sequence
     """
+
+    fill_water_vial(lash_e, "water")
+    fill_water_vial(lash_e, "water_2")
+
+
     lash_e.logger.info(f"Executing kinetics sequence: {sequence}")
     
     # Use existing well recipes from dispensing phase
