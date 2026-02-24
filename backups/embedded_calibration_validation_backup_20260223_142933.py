@@ -765,135 +765,61 @@ def _create_validation_plots(df: pd.DataFrame, stats_df: pd.DataFrame, overall_s
                            output_folder: str, plot_title: Optional[str], liquid_type: str) -> str:
     """Create validation plots and save to file."""
     
+    # Set up the plot
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
+    
+    if plot_title:
+        fig.suptitle(f"{plot_title} - {liquid_type.title()} Validation", fontsize=16)
+    else:
+        fig.suptitle(f"Pipetting Validation - {liquid_type.title()}", fontsize=16)
+    
     # Convert to uL for plotting
     df['target_ul'] = df['target_volume_ml'] * 1000
     df['measured_ul'] = df['measured_volume_ml'] * 1000
     
-    # Check if this is a single-volume calibration
-    unique_volumes = df['target_volume_ml'].nunique()
-    is_single_volume = (unique_volumes == 1)
+    # Plot 1: Target vs Measured with perfect line
+    ax1.scatter(df['target_ul'], df['measured_ul'], alpha=0.7, s=50)
     
-    if is_single_volume:
-        # Single volume case - use histogram-focused layout
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
-        
-        if plot_title:
-            fig.suptitle(f"{plot_title} - {liquid_type.title()} Single-Volume Validation", fontsize=16)
-        else:
-            fig.suptitle(f"Single-Volume Pipetting Validation - {liquid_type.title()}", fontsize=16)
-        
-        target_volume_ul = df['target_ul'].iloc[0]  # All targets are the same
-        
-        # Plot 1: Histogram of measured volumes with target reference
-        ax1.hist(df['measured_ul'], bins=max(5, len(df)//2), alpha=0.7, edgecolor='black', color='skyblue')
-        ax1.axvline(x=target_volume_ul, color='red', linestyle='--', linewidth=2, 
-                   label=f'Target: {target_volume_ul:.1f}uL')
-        ax1.axvline(x=df['measured_ul'].mean(), color='orange', linestyle='-', linewidth=2,
-                   label=f'Mean: {df["measured_ul"].mean():.1f}uL')
-        ax1.set_xlabel('Measured Volume (uL)')
-        ax1.set_ylabel('Frequency')
-        ax1.set_title('Distribution of Measured Volumes')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Plot 2: Individual measurements with target line
-        measurement_indices = range(1, len(df) + 1)
-        ax2.scatter(measurement_indices, df['measured_ul'], s=60, alpha=0.8, color='blue')
-        ax2.axhline(y=target_volume_ul, color='red', linestyle='--', linewidth=2, 
-                   label=f'Target: {target_volume_ul:.1f}uL')
-        ax2.axhline(y=df['measured_ul'].mean(), color='orange', linestyle='-', linewidth=1,
-                   label=f'Mean: {df["measured_ul"].mean():.1f}uL')
-        ax2.set_xlabel('Measurement #')
-        ax2.set_ylabel('Measured Volume (uL)')
-        ax2.set_title('Individual Measurements')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-        
-        # Plot 3: Accuracy and precision summary
-        accuracy_pct = stats_df['accuracy_pct'].iloc[0]
-        precision_cv_pct = stats_df['precision_cv_pct'].iloc[0]
-        
-        metrics = ['Accuracy (%)', 'Precision CV (%)']
-        values = [accuracy_pct, precision_cv_pct]
-        colors = ['green' if accuracy_pct > -5 else 'orange' if accuracy_pct > -10 else 'red',
-                 'green' if precision_cv_pct < 5 else 'orange' if precision_cv_pct < 10 else 'red']
-        
-        bars = ax3.bar(metrics, values, color=colors, alpha=0.7, edgecolor='black')
-        ax3.axhline(y=0, color='black', linestyle='-', alpha=0.5)
-        ax3.set_ylabel('Percentage (%)')
-        ax3.set_title('Performance Summary')
-        ax3.grid(True, alpha=0.3)
-        
-        # Add value labels on bars
-        for bar, value in zip(bars, values):
-            height = bar.get_height()
-            ax3.text(bar.get_x() + bar.get_width()/2., height + (0.5 if height >= 0 else -1),
-                    f'{value:.1f}%', ha='center', va='bottom' if height >= 0 else 'top')
-        
-        # Plot 4: Error from target
-        df['error_ul'] = df['measured_ul'] - target_volume_ul
-        ax4.hist(df['error_ul'], bins=max(5, len(df)//2), alpha=0.7, edgecolor='black', color='lightcoral')
-        ax4.axvline(x=0, color='red', linestyle='--', linewidth=2, label='Perfect accuracy')
-        ax4.axvline(x=df['error_ul'].mean(), color='orange', linestyle='-', linewidth=2,
-                   label=f'Mean error: {df["error_ul"].mean():.1f}uL')
-        ax4.set_xlabel('Error from Target (uL)')
-        ax4.set_ylabel('Frequency')
-        ax4.set_title('Error Distribution')
-        ax4.legend()
-        ax4.grid(True, alpha=0.3)
-        
-    else:
-        # Multi-volume case - use existing scatter plot approach
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
-        
-        if plot_title:
-            fig.suptitle(f"{plot_title} - {liquid_type.title()} Validation", fontsize=16)
-        else:
-            fig.suptitle(f"Pipetting Validation - {liquid_type.title()}", fontsize=16)
-        
-        # Plot 1: Target vs Measured with perfect line
-        ax1.scatter(df['target_ul'], df['measured_ul'], alpha=0.7, s=50)
-        
-        # Add perfect line
-        min_vol = min(df['target_ul'].min(), df['measured_ul'].min())
-        max_vol = max(df['target_ul'].max(), df['measured_ul'].max())
-        ax1.plot([min_vol, max_vol], [min_vol, max_vol], 'r--', label='Perfect accuracy', linewidth=2)
-        
-        # Add regression line
-        slope, intercept = overall_stats['slope'], overall_stats['intercept']
-        x_fit = np.array([min_vol, max_vol]) / 1000  # Convert back to mL for calculation
-        y_fit = (slope * x_fit + intercept) * 1000  # Convert result to uL
-        ax1.plot(x_fit * 1000, y_fit, 'b-', label=f'Linear fit (R² = {overall_stats["r_squared"]:.4f})', linewidth=2)
-        
-        ax1.set_xlabel('Target Volume (uL)')
-        ax1.set_ylabel('Measured Volume (uL)')
-        ax1.set_title('Accuracy')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Plot 2: Accuracy per volume
-        ax2.bar(stats_df['target_volume_ul'], stats_df['accuracy_pct'])
-        ax2.axhline(y=0, color='r', linestyle='--', alpha=0.7)
-        ax2.set_xlabel('Target Volume (uL)')
-        ax2.set_ylabel('Accuracy (%)')
-        ax2.set_title('Accuracy by Volume')
-        ax2.grid(True, alpha=0.3)
-        
-        # Plot 3: Precision (CV) per volume
-        ax3.bar(stats_df['target_volume_ul'], stats_df['precision_cv_pct'])
-        ax3.set_xlabel('Target Volume (uL)')
-        ax3.set_ylabel('Precision CV (%)')
-        ax3.set_title('Precision by Volume')
-        ax3.grid(True, alpha=0.3)
-        
-        # Plot 4: Error distribution
-        df['error_pct'] = ((df['measured_volume_ml'] - df['target_volume_ml']) / df['target_volume_ml']) * 100
-        ax4.hist(df['error_pct'], bins=max(10, len(df)//3), alpha=0.7, edgecolor='black')
-        ax4.axvline(x=0, color='r', linestyle='--', alpha=0.7)
-        ax4.set_xlabel('Error (%)')
-        ax4.set_ylabel('Frequency')
-        ax4.set_title('Error Distribution')
-        ax4.grid(True, alpha=0.3)
+    # Add perfect line
+    min_vol = min(df['target_ul'].min(), df['measured_ul'].min())
+    max_vol = max(df['target_ul'].max(), df['measured_ul'].max())
+    ax1.plot([min_vol, max_vol], [min_vol, max_vol], 'r--', label='Perfect accuracy', linewidth=2)
+    
+    # Add regression line
+    slope, intercept = overall_stats['slope'], overall_stats['intercept']
+    x_fit = np.array([min_vol, max_vol]) / 1000  # Convert back to mL for calculation
+    y_fit = (slope * x_fit + intercept) * 1000  # Convert result to uL
+    ax1.plot(x_fit * 1000, y_fit, 'b-', label=f'Linear fit (R² = {overall_stats["r_squared"]:.4f})', linewidth=2)
+    
+    ax1.set_xlabel('Target Volume (uL)')
+    ax1.set_ylabel('Measured Volume (uL)')
+    ax1.set_title('Accuracy')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    # Plot 2: Accuracy per volume
+    ax2.bar(stats_df['target_volume_ul'], stats_df['accuracy_pct'])
+    ax2.axhline(y=0, color='r', linestyle='--', alpha=0.7)
+    ax2.set_xlabel('Target Volume (uL)')
+    ax2.set_ylabel('Accuracy (%)')
+    ax2.set_title('Accuracy by Volume')
+    ax2.grid(True, alpha=0.3)
+    
+    # Plot 3: Precision (CV) per volume
+    ax3.bar(stats_df['target_volume_ul'], stats_df['precision_cv_pct'])
+    ax3.set_xlabel('Target Volume (uL)')
+    ax3.set_ylabel('Precision CV (%)')
+    ax3.set_title('Precision by Volume')
+    ax3.grid(True, alpha=0.3)
+    
+    # Plot 4: Error distribution
+    df['error_pct'] = ((df['measured_volume_ml'] - df['target_volume_ml']) / df['target_volume_ml']) * 100
+    ax4.hist(df['error_pct'], bins=max(10, len(df)//3), alpha=0.7, edgecolor='black')
+    ax4.axvline(x=0, color='r', linestyle='--', alpha=0.7)
+    ax4.set_xlabel('Error (%)')
+    ax4.set_ylabel('Frequency')
+    ax4.set_title('Error Distribution')
+    ax4.grid(True, alpha=0.3)
     
     plt.tight_layout()
     

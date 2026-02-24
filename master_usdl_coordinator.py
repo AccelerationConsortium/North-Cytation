@@ -13,7 +13,7 @@ import logging
 
 # Import ConfigManager for workflow config handling
 try:
-    from config_manager import ConfigManager
+    from workflow_config_manager import ConfigManager
 except ImportError:
     ConfigManager = None
 
@@ -164,8 +164,19 @@ class Lash_E:
         if not self._workflow_should_continue:
             self.logger.info("Workflow aborted by user - skipping hardware initialization")
             return
+            
+        # Reload config from file after GUI may have updated YAML values
+        if workflow_globals is not None and workflow_name is not None and ConfigManager is not None:
+            self.logger.debug("Reloading config after status check to get updated values")
+            updated_config = ConfigManager.load_and_update_globals(workflow_name, workflow_globals, self.logger)
+            
+            # Update simulate flag with fresh value from file
+            updated_simulate = workflow_globals.get('SIMULATE', self.simulate)
+            if updated_simulate != self.simulate:
+                self.update_simulate_flag(updated_simulate)
 
-        if not simulate:
+        # Create hardware objects AFTER config reload to use correct simulate flag
+        if not self.simulate:
             from north import NorthC9
             c9 = NorthC9("A", network_serial="AU06CNCF")
             c8 = NorthC9('D', network=c9.network)
@@ -175,17 +186,17 @@ class Lash_E:
             c8 = MagicMock()
 
         if initialize_robot:
-            self.nr_robot = North_Robot(c9, c8, vial_file,simulate=simulate, logger=self.logger)
+            self.nr_robot = North_Robot(c9, c8, vial_file,simulate=self.simulate, logger=self.logger)
             # Pass log filename to robot for organized mass measurement file storage
             self.nr_robot.log_filename = self.log_filename
-            self.spinner = North_Spin(c9, c8, simulate=simulate, logger=self.logger)
+            self.spinner = North_Spin(c9, c8, simulate=self.simulate, logger=self.logger)
 
         if initialize_biotek:
             from biotek_new import Biotek_Wrapper
-            self.cytation = Biotek_Wrapper(simulate=simulate, logger=self.logger)
+            self.cytation = Biotek_Wrapper(simulate=self.simulate, logger=self.logger)
         
         if initialize_track:
-            self.nr_track = North_Track(c9, simulate=simulate, logger=self.logger)
+            self.nr_track = North_Track(c9, simulate=self.simulate, logger=self.logger)
         
 
         # Photoreactor initialization
@@ -194,9 +205,9 @@ class Lash_E:
             self.photoreactor = Photoreactor_Controller() #ADd logger
 
             if initialize_p2:
-                self.powder_dispenser = North_Powder(c9, simulate=simulate, logger=self.logger)
+                self.powder_dispenser = North_Powder(c9, simulate=self.simulate, logger=self.logger)
             if initialize_t8:
-                self.temp_controller = North_Temp(c9, c8, simulate=simulate, logger=self.logger)
+                self.temp_controller = North_Temp(c9, c8, simulate=self.simulate, logger=self.logger)
 
         else:
             from unittest.mock import MagicMock
