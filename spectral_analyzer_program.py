@@ -11,6 +11,7 @@ This program:
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import os
 import glob
 import re
@@ -89,46 +90,54 @@ def create_wavelength_time_plots(processed_data_dir, combined_data, files):
         abs_555nm.append(abs_555)
         abs_458nm.append(abs_458)
     
+    # Convert timepoints from seconds to minutes
+    timepoints = [t / 60.0 for t in timepoints]
+    
     # Calculate 458/555 ratio
     ratio_458_555 = np.array(abs_458nm) / np.array(abs_555nm)
     
     # Create the three plots
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle('Wavelength-Specific Analysis Over Time', fontsize=16, fontweight='bold')
+    fig.suptitle('Wavelength-Specific Analysis Over Time', fontsize=18, fontweight='bold')
     
     # Plot 1: 555 nm over time
-    axes[0, 0].plot(timepoints, abs_555nm, 'o-', color='red', linewidth=2, markersize=8)
-    axes[0, 0].set_xlabel('Timepoint')
-    axes[0, 0].set_ylabel('Absorbance')
-    axes[0, 0].set_title('555 nm Absorbance vs Time')
-    axes[0, 0].grid(True, alpha=0.3)
+    axes[0, 0].plot(timepoints, abs_555nm, 'o-', color='#4A3A7F', linewidth=2, markersize=8)
+    axes[0, 0].set_xlabel('Time (min)', fontsize=14)
+    axes[0, 0].set_ylabel('Absorbance (a.u.)', fontsize=14)
+    axes[0, 0].set_title('555 nm Absorbance vs Time', fontsize=14)
+    axes[0, 0].tick_params(axis='both', which='major', labelsize=12, direction='in')
+    axes[0, 0].grid(False)
     
     # Plot 2: 458 nm over time
-    axes[0, 1].plot(timepoints, abs_458nm, 'o-', color='blue', linewidth=2, markersize=8)
-    axes[0, 1].set_xlabel('Timepoint')
-    axes[0, 1].set_ylabel('Absorbance')
-    axes[0, 1].set_title('458 nm Absorbance vs Time')
-    axes[0, 1].grid(True, alpha=0.3)
+    axes[0, 1].plot(timepoints, abs_458nm, 'o-', color="#859DE6", linewidth=2, markersize=8)
+    axes[0, 1].set_xlabel('Time (min)', fontsize=14)
+    axes[0, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
+    axes[0, 1].set_title('458 nm Absorbance vs Time', fontsize=14)
+    axes[0, 1].tick_params(axis='both', which='major', labelsize=12, direction='in')
+    axes[0, 1].grid(False)
     
     # Plot 3: 458/555 ratio over time
-    axes[1, 0].plot(timepoints, ratio_458_555, 'o-', color='green', linewidth=2, markersize=8)
-    axes[1, 0].set_xlabel('Timepoint')
-    axes[1, 0].set_ylabel('Absorbance Ratio (458/555)')
-    axes[1, 0].set_title('458/555 nm Ratio vs Time')
-    axes[1, 0].grid(True, alpha=0.3)
+    axes[1, 0].plot(timepoints, ratio_458_555, 'o-', color="#9B6BA8", linewidth=2, markersize=8)
+    axes[1, 0].set_xlabel('Time (min)', fontsize=14)
+    axes[1, 0].set_ylabel('Absorbance Ratio (458/555 nm)', fontsize=14)
+    axes[1, 0].set_title('458/555 nm Ratio vs Time', fontsize=14)
+    axes[1, 0].tick_params(axis='both', which='major', labelsize=12, direction='in')
+    axes[1, 0].grid(False)
     
     # Plot 4: Combined comparison
-    axes[1, 1].plot(timepoints, abs_555nm, 'o-', color='red', linewidth=2, markersize=6, label='555 nm')
-    axes[1, 1].plot(timepoints, abs_458nm, 'o-', color='blue', linewidth=2, markersize=6, label='458 nm')
+    axes[1, 1].plot(timepoints, abs_555nm, 'o-', color='#4A3A7F', linewidth=2, markersize=6, label='555 nm')
+    axes[1, 1].plot(timepoints, abs_458nm, 'o-', color='#859DE6', linewidth=2, markersize=6, label='458 nm')
     ax2 = axes[1, 1].twinx()
-    ax2.plot(timepoints, ratio_458_555, 's-', color='green', linewidth=2, markersize=6, label='458/555 Ratio')
-    axes[1, 1].set_xlabel('Timepoint')
-    axes[1, 1].set_ylabel('Absorbance')
-    ax2.set_ylabel('Ratio (458/555)', color='green')
-    axes[1, 1].set_title('Combined Analysis')
-    axes[1, 1].legend(loc='upper left')
-    ax2.legend(loc='upper right')
-    axes[1, 1].grid(True, alpha=0.3)
+    ax2.plot(timepoints, ratio_458_555, 's-', color='#9B6BA8', linewidth=2, markersize=6, label='458/555 nm Ratio')
+    axes[1, 1].set_xlabel('Time (min)', fontsize=14)
+    axes[1, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
+    ax2.set_ylabel('Absorbance Ratio (458/555 nm)', color="#000000", fontsize=14)
+    axes[1, 1].set_title('Combined Analysis', fontsize=14)
+    axes[1, 1].tick_params(axis='both', which='major', labelsize=12, direction='in')
+    ax2.tick_params(axis='both', which='major', labelsize=12, direction='in')
+    axes[1, 1].legend(loc='upper left', fontsize=12)
+    ax2.legend(loc='upper right', fontsize=12)
+    axes[1, 1].grid(False)
     
     plt.tight_layout()
     
@@ -191,7 +200,10 @@ def analyze_spectral_data(folder_path, processed_data_dir=None):
     
     # Set up the plot
     plt.figure(figsize=(12, 8))
-    colors = plt.cm.viridis(np.linspace(0, 1, len(files)))  # Color series
+    # Create custom gradient: dark blue-purple -> purple -> magenta -> pink -> peachy cream
+    custom_colors = ['#4A3A7F', '#9B6BA8', '#D485C0', "#E0A5C9", "#F1CE9A"]
+    custom_cmap = mcolors.LinearSegmentedColormap.from_list('peach_pink_purple_blue', custom_colors)
+    colors = custom_cmap(np.linspace(0, 1, len(files)))  # Color series
     
     print("\nReading and processing files...")
     
@@ -200,13 +212,14 @@ def analyze_spectral_data(folder_path, processed_data_dir=None):
             # Extract timepoint number from filename
             timepoint = re.search(r'output_(\d+)', os.path.basename(filepath))
             timepoint_num = int(timepoint.group(1)) if timepoint else i
+            timepoint_min = timepoint_num / 60.0  # Convert to minutes
             
             # Read spectral data
             wavelength, absorbance = read_spectral_file(filepath)
             
             # Plot with color series
             plt.plot(wavelength, absorbance, color=colors[i], 
-                    label=f'Timepoint {timepoint_num}', linewidth=2)
+                    label=f'{int(timepoint_min)} min', linewidth=2)
             
             # Create or update combined DataFrame
             if combined_data is None:
@@ -220,11 +233,13 @@ def analyze_spectral_data(folder_path, processed_data_dir=None):
             print(f"  ✗ Error processing {os.path.basename(filepath)}: {e}")
     
     # Customize the plot
-    plt.xlabel('Wavelength (nm)', fontsize=12)
-    plt.ylabel('Absorbance', fontsize=12)
-    plt.title('Spectral Data Over Time', fontsize=14, fontweight='bold')
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.grid(True, alpha=0.3)
+    plt.xlabel('Wavelength (nm)', fontsize=16)
+    plt.ylabel('Absorbance (a.u.)', fontsize=16)
+    plt.xlim(300, 900)
+    plt.title('Spectral Data Over Time', fontsize=18, fontweight='bold')
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=16)
+    plt.tick_params(axis='both', which='major', labelsize=14, direction='in')
+    plt.grid(False)
     plt.tight_layout()
     
     # Save the plot to processed data directory

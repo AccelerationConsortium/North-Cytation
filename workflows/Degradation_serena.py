@@ -107,7 +107,6 @@ def pipet_sample_from_well_to_vial(lash_e, wells, sample_name, well_volume=0.15,
     if heater_slot is not None:
         lash_e.nr_robot.move_vial_to_location(vial_name=sample_name, location='heater', location_index=heater_slot)
 
-
 def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='2MeTHF', return_home=True, move_speed=None):
     source_home_location_index = lash_e.nr_robot.get_vial_info(source_vial, 'location_index')
     dest_home_location_index = lash_e.nr_robot.get_vial_info(dest_vial, 'location_index')
