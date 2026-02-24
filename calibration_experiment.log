@@ -1055,3 +1055,811 @@ Results saved to: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_
 2026-02-23 11:21:12,730 - __main__ - INFO -   - experiment_summary.json (complete statistics)
 2026-02-23 11:21:12,730 - __main__ - INFO - 
 [SUCCESS] Calibration experiment completed successfully!
+2026-02-24 16:46:10,115 - __main__ - INFO - Starting Universal Calibration System
+2026-02-24 16:46:10,115 - __main__ - INFO - Loading configuration from c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\experiment_config.yaml
+2026-02-24 16:46:10,142 - calibration_modular_v2.config_manager - INFO - Configuration validated successfully
+2026-02-24 16:46:10,142 - calibration_modular_v2.config_manager - INFO - Experiment: multi_volume_calibration_test
+2026-02-24 16:46:10,142 - calibration_modular_v2.config_manager - INFO - Target volumes: [0.05, 0.025, 0.01, 0.005] mL
+2026-02-24 16:46:10,142 - calibration_modular_v2.config_manager - INFO - Simulation mode: False
+2026-02-24 16:46:10,142 - __main__ - INFO - Configuration loaded: multi_volume_calibration_test
+2026-02-24 16:46:10,142 - __main__ - INFO - Target volumes: [0.05, 0.025, 0.01, 0.005] mL
+2026-02-24 16:46:10,142 - __main__ - INFO - Execution mode: Hardware
+2026-02-24 16:46:10,142 - __main__ - INFO - Validating protocol interface...
+2026-02-24 16:46:10,142 - __main__ - INFO - Running in hardware mode
+2026-02-24 16:46:10,142 - calibration_modular_v2.experiment - INFO - Calibration experiment initialized
+2026-02-24 16:46:10,142 - calibration_modular_v2.experiment - INFO - Experiment: multi_volume_calibration_test
+2026-02-24 16:46:10,142 - calibration_modular_v2.experiment - INFO - Output directory: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570
+2026-02-24 16:46:10,142 - __main__ - INFO - Starting experiment execution...
+2026-02-24 16:46:10,142 - calibration_modular_v2.experiment - INFO - Starting calibration experiment
+2026-02-24 16:46:10,142 - calibration_modular_v2.experiment - INFO - Initializing protocol...
+2026-02-24 16:48:02,167 - calibration_modular_v2.experiment - INFO - Protocol initialized: calibration_protocol_northrobot
+2026-02-24 16:48:02,167 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.05 mL (1/4) - Budget: 150 measurements
+2026-02-24 16:48:02,167 - calibration_modular_v2.experiment - INFO - Starting calibration for 50.0uL
+2026-02-24 16:48:02,167 - calibration_modular_v2.experiment - INFO - Running screening phase (first volume)
+2026-02-24 16:48:02,167 - calibration_modular_v2.experiment - INFO - Running normal screening phase
+2026-02-24 16:48:02,167 - calibration_modular_v2.bayesian_recommender - INFO - Using config default overaspirate bounds: [0.0, 7.5] uL
+2026-02-24 16:48:02,167 - calibration_modular_v2.bayesian_recommender - WARNING - Failed to get constraints from protocol: 'HardwareCalibrationProtocol' object has no attribute 'config'
+2026-02-24 16:48:02,167 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 6 SOBOL trials
+2026-02-24 16:48:02,167 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: 6 SOBOL trials -> Bayesian optimization
+2026-02-24 16:48:02,167 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2026-02-24 16:48:02,167 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'pre_asp_air_vol']
+2026-02-24 16:48:02,167 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2026-02-24 16:48:02,167 - calibration_modular_v2.experiment - INFO - Created SOBOL optimizer for screening phase (6 trials)
+2026-02-24 16:48:02,217 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.0022771807014942166, 'aspirate_speed': 15, 'dispense_speed': 11, 'aspirate_wait_time': 0.6722165644168854, 'pre_asp_air_vol': 0.24317214488983152}
+2026-02-24 16:48:02,217 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0023, 'aspirate_speed': 15, 'dispense_speed': 11, 'aspirate_wait_time': 0.7000000000000001, 'pre_asp_air_vol': 0.243}
+2026-02-24 16:48:02,219 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 0) using Unknown
+2026-02-24 16:48:02,220 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0023, 'aspirate_speed': 15, 'dispense_speed': 11, 'aspirate_wait_time': 0.7000000000000001, 'pre_asp_air_vol': 0.243}
+2026-02-24 16:48:02,220 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 0
+2026-02-24 16:48:20,107 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 4.5% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:48:35,978 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 4.0% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:48:52,172 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 3.9% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:49:07,987 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 4.0% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:49:23,787 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 4.0% > 10% threshold or max replicates reached
+2026-02-24 16:49:23,787 - calibration_modular_v2.experiment - INFO - === TRIAL screening_0 RESULT: FAIL ===
+2026-02-24 16:49:23,787 - calibration_modular_v2.experiment - INFO -   Accuracy: 4.0% dev (limit: 1.5uL)
+2026-02-24 16:49:23,787 - calibration_modular_v2.experiment - INFO -   Precision: 0.4% CV (limit: <=3.0%)
+2026-02-24 16:49:23,787 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 0.5
+2026-02-24 16:49:23,787 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:49:23,787 - calibration_modular_v2.experiment - INFO - Screening trial 1/6: 48.0uL measured (4.0% dev, 16.3s)
+2026-02-24 16:49:23,806 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.004378638246562332, 'aspirate_speed': 16, 'dispense_speed': 13, 'aspirate_wait_time': 3.6688500363379717, 'pre_asp_air_vol': 0.035284717474132775}
+2026-02-24 16:49:23,806 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0044, 'aspirate_speed': 16, 'dispense_speed': 13, 'aspirate_wait_time': 3.7, 'pre_asp_air_vol': 0.035}
+2026-02-24 16:49:23,808 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 1) using Unknown
+2026-02-24 16:49:23,808 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0044, 'aspirate_speed': 16, 'dispense_speed': 13, 'aspirate_wait_time': 3.7, 'pre_asp_air_vol': 0.035}
+2026-02-24 16:49:23,808 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 1
+2026-02-24 16:49:41,498 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 2.2% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:49:59,168 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 2.5% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:50:16,766 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 2.4% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:50:34,767 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 2.5% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:50:52,367 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 2.3% > 10% threshold or max replicates reached
+2026-02-24 16:50:52,367 - calibration_modular_v2.experiment - INFO - === TRIAL screening_1 RESULT: PASS ===
+2026-02-24 16:50:52,367 - calibration_modular_v2.experiment - INFO -   Accuracy: 2.3% dev (limit: 1.5uL)
+2026-02-24 16:50:52,367 - calibration_modular_v2.experiment - INFO -   Precision: 2.5% CV (limit: <=3.0%)
+2026-02-24 16:50:52,367 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.6
+2026-02-24 16:50:52,367 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:50:52,367 - calibration_modular_v2.experiment - INFO - Screening trial 2/6: 49.7uL measured (0.5% dev, 17.7s)
+2026-02-24 16:50:52,383 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.006444017069879919, 'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 1.759245772846043, 'pre_asp_air_vol': 0.09207584615796804}
+2026-02-24 16:50:52,383 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0064, 'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 1.8, 'pre_asp_air_vol': 0.092}
+2026-02-24 16:50:52,383 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 2) using Unknown
+2026-02-24 16:50:52,383 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0064, 'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 1.8, 'pre_asp_air_vol': 0.092}
+2026-02-24 16:50:52,384 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 2
+2026-02-24 16:51:07,580 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 4.0% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:51:22,776 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 4.4% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:51:37,975 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 4.2% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:51:53,155 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 4.3% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:52:08,375 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 4.2% > 10% threshold or max replicates reached
+2026-02-24 16:52:08,375 - calibration_modular_v2.experiment - INFO - === TRIAL screening_2 RESULT: FAIL ===
+2026-02-24 16:52:08,375 - calibration_modular_v2.experiment - INFO -   Accuracy: 4.2% dev (limit: 1.5uL)
+2026-02-24 16:52:08,375 - calibration_modular_v2.experiment - INFO -   Precision: 0.4% CV (limit: <=3.0%)
+2026-02-24 16:52:08,375 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 0.5
+2026-02-24 16:52:08,375 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:52:08,375 - calibration_modular_v2.experiment - INFO - Screening trial 3/6: 52.1uL measured (4.2% dev, 15.2s)
+2026-02-24 16:52:08,391 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 9.475660510361194e-05, 'aspirate_speed': 19, 'dispense_speed': 17, 'aspirate_wait_time': 3.820834392681718, 'pre_asp_air_vol': 0.1863994580693543}
+2026-02-24 16:52:08,391 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0001, 'aspirate_speed': 19, 'dispense_speed': 17, 'aspirate_wait_time': 3.8000000000000003, 'pre_asp_air_vol': 0.186}
+2026-02-24 16:52:08,391 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 3) using Unknown
+2026-02-24 16:52:08,392 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0001, 'aspirate_speed': 19, 'dispense_speed': 17, 'aspirate_wait_time': 3.8000000000000003, 'pre_asp_air_vol': 0.186}
+2026-02-24 16:52:08,392 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 3
+2026-02-24 16:52:34,364 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 3.1% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:53:00,379 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 7.9% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:53:26,367 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 9.2% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:53:52,161 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 9.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:54:18,173 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 9.7% > 10% threshold or max replicates reached
+2026-02-24 16:54:18,173 - calibration_modular_v2.experiment - INFO - === TRIAL screening_3 RESULT: FAIL ===
+2026-02-24 16:54:18,173 - calibration_modular_v2.experiment - INFO -   Accuracy: 9.7% dev (limit: 1.5uL)
+2026-02-24 16:54:18,173 - calibration_modular_v2.experiment - INFO -   Precision: 4.3% CV (limit: <=3.0%)
+2026-02-24 16:54:18,173 - calibration_modular_v2.experiment - INFO -   Quality: outside_tolerance | Score: 1.1
+2026-02-24 16:54:18,173 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:54:18,173 - calibration_modular_v2.experiment - INFO - Screening trial 4/6: 45.2uL measured (9.7% dev, 26.0s)
+2026-02-24 16:54:18,184 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.0011340361973270774, 'aspirate_speed': 11, 'dispense_speed': 16, 'aspirate_wait_time': 4.95706360321492, 'pre_asp_air_vol': 0.2184828202240169}
+2026-02-24 16:54:18,184 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0011, 'aspirate_speed': 11, 'dispense_speed': 16, 'aspirate_wait_time': 5.0, 'pre_asp_air_vol': 0.218}
+2026-02-24 16:54:18,184 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 4) using Unknown
+2026-02-24 16:54:18,184 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0011, 'aspirate_speed': 11, 'dispense_speed': 16, 'aspirate_wait_time': 5.0, 'pre_asp_air_vol': 0.218}
+2026-02-24 16:54:18,184 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 4
+2026-02-24 16:54:40,757 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 7.2% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:55:03,155 - calibration_modular_v2.analysis - INFO - High deviation (10.3% > 10.0%) - applying precision penalty: 100.0%
+2026-02-24 16:55:03,155 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 10.3% > 10% threshold or max replicates reached
+2026-02-24 16:55:03,171 - calibration_modular_v2.analysis - INFO - High deviation (10.3% > 10.0%) - applying precision penalty: 100.0%
+2026-02-24 16:55:03,171 - calibration_modular_v2.experiment - INFO - === TRIAL screening_4 RESULT: FAIL ===
+2026-02-24 16:55:03,171 - calibration_modular_v2.experiment - INFO -   Accuracy: 10.3% dev (limit: 1.5uL)
+2026-02-24 16:55:03,171 - calibration_modular_v2.experiment - INFO -   Precision: 100.0% CV (limit: <=3.0%)
+2026-02-24 16:55:03,171 - calibration_modular_v2.experiment - INFO -   Quality: outside_tolerance | Score: 1.5
+2026-02-24 16:55:03,171 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:55:03,171 - calibration_modular_v2.experiment - INFO - Screening trial 5/6: 44.8uL measured (10.3% dev, 22.5s)
+2026-02-24 16:55:03,171 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.00745537377661094, 'aspirate_speed': 18, 'dispense_speed': 10, 'aspirate_wait_time': 1.9628527201712132, 'pre_asp_air_vol': 0.12647837363183498}
+2026-02-24 16:55:03,171 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.007500000000000001, 'aspirate_speed': 18, 'dispense_speed': 10, 'aspirate_wait_time': 2.0, 'pre_asp_air_vol': 0.126}
+2026-02-24 16:55:03,171 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 5) using Unknown
+2026-02-24 16:55:03,171 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.007500000000000001, 'aspirate_speed': 18, 'dispense_speed': 10, 'aspirate_wait_time': 2.0, 'pre_asp_air_vol': 0.126}
+2026-02-24 16:55:03,171 - calibration_modular_v2.experiment - INFO - Using SOBOL-generated parameters for screening trial 5
+2026-02-24 16:55:20,596 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 4.0% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:55:37,970 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 4.0% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:55:55,828 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 4.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:56:13,360 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 4.9% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 4.9% > 10% threshold or max replicates reached
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO - === TRIAL screening_5 RESULT: FAIL ===
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO -   Accuracy: 4.9% dev (limit: 1.5uL)
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO -   Precision: 0.9% CV (limit: <=3.0%)
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 0.6
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO - Screening trial 6/6: 52.4uL measured (4.9% dev, 17.5s)
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using best screening candidate
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO - Using best screening candidate for 50.0uL two-point calibration
+2026-02-24 16:56:30,563 - calibration_modular_v2.experiment - INFO - Best screening trial variability: 0.22uL
+2026-02-24 16:56:30,573 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 6.4uL
+2026-02-24 16:56:45,587 - calibration_modular_v2.experiment - INFO - === TRIAL two_point_cal_point1_0.05 RESULT: FAIL ===
+2026-02-24 16:56:45,587 - calibration_modular_v2.experiment - INFO -   Accuracy: 4.7% dev (limit: 1.5uL)
+2026-02-24 16:56:45,587 - calibration_modular_v2.experiment - INFO -   Precision: 0.0% CV (limit: <=3.0%)
+2026-02-24 16:56:45,587 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 1.0
+2026-02-24 16:56:45,587 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:56:45,587 - calibration_modular_v2.experiment - INFO - Shortfall analysis: -2.4uL shortfall + 1.5uL tolerance = 3.9uL spread
+2026-02-24 16:56:45,587 - calibration_modular_v2.experiment - INFO - Point 2: Testing with decreased overaspirate 2.5uL (-3.9uL)
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - === TRIAL two_point_cal_point2_0.05 RESULT: FAIL ===
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO -   Accuracy: 3.5% dev (limit: 1.5uL)
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO -   Precision: 0.0% CV (limit: <=3.0%)
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 1.0
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:57:00,776 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.2uL (original: 0.2uL, cap: 2.5uL)
+2026-02-24 16:57:00,776 - calibration_modular_v2.constraint_calibration - INFO - Expanded bounds to include existing trials:
+2026-02-24 16:57:00,776 - calibration_modular_v2.constraint_calibration - INFO -   Original bounds: [2.5, 5.8]uL
+2026-02-24 16:57:00,776 - calibration_modular_v2.constraint_calibration - INFO -   Existing data range: [0.1, 7.5]uL
+2026-02-24 16:57:00,776 - calibration_modular_v2.constraint_calibration - INFO -   Final bounds: [0.1, 7.5]uL
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO -   New bounds: [0.1, 7.5] uL
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=1.059uL/uL, tolerance=+/-1.5uL, error_margin=+/-1.0% for 50.0uL target
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=0.0001, max_value=0.0075, justification='Two-point calibration: efficiency=1.059uL/uL, tolerance=+/-1.5uL, error_margin=+/-1.0% for 50.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.05, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0064, measured_volume_ml=0.05236363636364028, measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0064), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 1.8, 'pre_asp_air_vol': 0.092}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0025363636363597204, measured_volume_ml=0.04827272727272781, measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0025363636363597204), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 1.8, 'pre_asp_air_vol': 0.092}))), volume_efficiency_ul_per_ul=1.0588235294115675, shortfall_ml=-0.00236363636364028, optimal_overaspirate_ml=0.004167676767672651, min_overaspirate_ml=0.0001, max_overaspirate_ml=0.0075, tolerance_range_ml=0.0015000000000000002), optimal_overaspirate_ml=0.004167676767672651)
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=1.059uL/uL, tolerance=+/-1.5uL, error_margin=+/-1.0% for 50.0uL target
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 52.4uL (target: 50.0uL)
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 48.3uL (target: 50.0uL)
+2026-02-24 16:57:00,776 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 16:57:00,783 - calibration_modular_v2.experiment - INFO - Constraint calibration results saved to: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\constraint_calibration_results.txt
+2026-02-24 16:57:00,783 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2026-02-24 16:57:00,783 - calibration_modular_v2.bayesian_recommender - INFO - Applied constraint update for overaspirate_vol: [0.1, 7.5] uL
+2026-02-24 16:57:00,784 - calibration_modular_v2.bayesian_recommender - INFO - Justification: Two-point calibration: efficiency=1.059uL/uL, tolerance=+/-1.5uL, error_margin=+/-1.0% for 50.0uL target
+2026-02-24 16:57:00,784 - calibration_modular_v2.bayesian_recommender - WARNING - Failed to get constraints from protocol: 'HardwareCalibrationProtocol' object has no attribute 'config'
+2026-02-24 16:57:00,785 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 0 SOBOL trials
+2026-02-24 16:57:00,785 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: Pure Bayesian optimization (no exploration)
+2026-02-24 16:57:00,785 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qNEHVI optimizer
+2026-02-24 16:57:00,786 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'pre_asp_air_vol']
+2026-02-24 16:57:00,786 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {}
+2026-02-24 16:57:00,786 - calibration_modular_v2.experiment - INFO - Created qNEHVI optimizer for volume 50uL
+2026-02-24 16:57:00,786 - calibration_modular_v2.experiment - INFO - Stopping criteria: 6 good trial(s) for first volume
+2026-02-24 16:57:00,786 - calibration_modular_v2.experiment - INFO - Loading 6 screening trials into optimizer
+2026-02-24 16:57:00,786 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 16:57:00,786 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 16:57:00,786 - calibration_modular_v2.experiment - INFO -   Deviation: 4.0% (tolerance: +/-3.0%)
+2026-02-24 16:57:00,786 - calibration_modular_v2.experiment - INFO -   Variability: 0.4% CV (tolerance: <=3.0%)
+2026-02-24 16:57:00,787 - calibration_modular_v2.experiment - INFO -   Deviation check: False (4.0 <= 3.0)
+2026-02-24 16:57:00,787 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.4 <= 3.0)
+2026-02-24 16:57:00,787 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 16:57:00,799 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=4.0% (included in ranking)
+2026-02-24 16:57:00,799 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 16:57:00,799 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 16:57:00,799 - calibration_modular_v2.experiment - INFO -   Deviation: 2.3% (tolerance: +/-3.0%)
+2026-02-24 16:57:00,799 - calibration_modular_v2.experiment - INFO -   Variability: 2.5% CV (tolerance: <=3.0%)
+2026-02-24 16:57:00,800 - calibration_modular_v2.experiment - INFO -   Deviation check: True (2.3 <= 3.0)
+2026-02-24 16:57:00,800 - calibration_modular_v2.experiment - INFO -   Variability check: True (2.5 <= 3.0)
+2026-02-24 16:57:00,800 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 16:57:00,807 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=2.3% (included in ranking)
+2026-02-24 16:57:00,808 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 16:57:00,808 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 16:57:00,808 - calibration_modular_v2.experiment - INFO -   Deviation: 4.2% (tolerance: +/-3.0%)
+2026-02-24 16:57:00,808 - calibration_modular_v2.experiment - INFO -   Variability: 0.4% CV (tolerance: <=3.0%)
+2026-02-24 16:57:00,808 - calibration_modular_v2.experiment - INFO -   Deviation check: False (4.2 <= 3.0)
+2026-02-24 16:57:00,808 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.4 <= 3.0)
+2026-02-24 16:57:00,808 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 16:57:00,817 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=4.2% (included in ranking)
+2026-02-24 16:57:00,817 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 16:57:00,817 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 16:57:00,817 - calibration_modular_v2.experiment - INFO -   Deviation: 9.7% (tolerance: +/-3.0%)
+2026-02-24 16:57:00,818 - calibration_modular_v2.experiment - INFO -   Variability: 4.3% CV (tolerance: <=3.0%)
+2026-02-24 16:57:00,818 - calibration_modular_v2.experiment - INFO -   Deviation check: False (9.7 <= 3.0)
+2026-02-24 16:57:00,818 - calibration_modular_v2.experiment - INFO -   Variability check: False (4.3 <= 3.0)
+2026-02-24 16:57:00,818 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 16:57:00,827 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=9.7% (included in ranking)
+2026-02-24 16:57:00,827 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 16:57:00,827 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 16:57:00,828 - calibration_modular_v2.experiment - INFO -   Deviation: 10.3% (tolerance: +/-3.0%)
+2026-02-24 16:57:00,828 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV (tolerance: <=3.0%)
+2026-02-24 16:57:00,828 - calibration_modular_v2.experiment - INFO -   Deviation check: False (10.3 <= 3.0)
+2026-02-24 16:57:00,828 - calibration_modular_v2.experiment - INFO -   Variability check: False (100.0 <= 3.0)
+2026-02-24 16:57:00,828 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 16:57:00,835 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=10.3% (included in ranking)
+2026-02-24 16:57:00,835 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 16:57:00,835 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 16:57:00,837 - calibration_modular_v2.experiment - INFO -   Deviation: 4.9% (tolerance: +/-3.0%)
+2026-02-24 16:57:00,837 - calibration_modular_v2.experiment - INFO -   Variability: 0.9% CV (tolerance: <=3.0%)
+2026-02-24 16:57:00,837 - calibration_modular_v2.experiment - INFO -   Deviation check: False (4.9 <= 3.0)
+2026-02-24 16:57:00,837 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.9 <= 3.0)
+2026-02-24 16:57:00,837 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 16:57:00,844 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=4.9% (included in ranking)
+2026-02-24 16:57:00,844 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2026-02-24 16:57:03,085 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.004778420446538524, 'aspirate_speed': 14, 'dispense_speed': 8, 'aspirate_wait_time': 2.059918369914798, 'pre_asp_air_vol': 0.007683838823790884}
+2026-02-24 16:57:03,085 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0048000000000000004, 'aspirate_speed': 14, 'dispense_speed': 8, 'aspirate_wait_time': 2.1, 'pre_asp_air_vol': 0.008}
+2026-02-24 16:57:03,085 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 6) using Unknown
+2026-02-24 16:57:03,085 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0048000000000000004, 'aspirate_speed': 14, 'dispense_speed': 8, 'aspirate_wait_time': 2.1, 'pre_asp_air_vol': 0.008}
+2026-02-24 16:57:03,085 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 16:57:18,375 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 4.4% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:57:33,784 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 4.5% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:57:49,172 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 4.1% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:58:04,580 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 3.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:58:20,022 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 4.1% > 10% threshold or max replicates reached
+2026-02-24 16:58:20,022 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_1 RESULT: FAIL ===
+2026-02-24 16:58:20,024 - calibration_modular_v2.experiment - INFO -   Accuracy: 4.1% dev (limit: 1.5uL)
+2026-02-24 16:58:20,024 - calibration_modular_v2.experiment - INFO -   Precision: 1.2% CV (limit: <=3.0%)
+2026-02-24 16:58:20,024 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 0.7
+2026-02-24 16:58:20,024 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:58:20,024 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 16:58:20,024 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 16:58:20,024 - calibration_modular_v2.experiment - INFO -   Deviation: 4.1% (tolerance: +/-3.0%)
+2026-02-24 16:58:20,024 - calibration_modular_v2.experiment - INFO -   Variability: 1.2% CV (tolerance: <=3.0%)
+2026-02-24 16:58:20,026 - calibration_modular_v2.experiment - INFO -   Deviation check: False (4.1 <= 3.0)
+2026-02-24 16:58:20,026 - calibration_modular_v2.experiment - INFO -   Variability check: True (1.2 <= 3.0)
+2026-02-24 16:58:20,026 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 16:58:20,034 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=4.1%, trial=6
+2026-02-24 16:58:20,034 - calibration_modular_v2.experiment - INFO - Trial 1: deviation=4.1%, good_trials=1
+2026-02-24 16:58:20,036 - calibration_modular_v2.experiment - INFO - Optimization iteration 2
+2026-02-24 16:58:23,684 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.004671045742994338, 'aspirate_speed': 10, 'dispense_speed': 10, 'aspirate_wait_time': 3.1953592628341587, 'pre_asp_air_vol': 0.056479822642769295}
+2026-02-24 16:58:23,684 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0047, 'aspirate_speed': 10, 'dispense_speed': 10, 'aspirate_wait_time': 3.2, 'pre_asp_air_vol': 0.056}
+2026-02-24 16:58:23,684 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 7) using Unknown
+2026-02-24 16:58:23,684 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0047, 'aspirate_speed': 10, 'dispense_speed': 10, 'aspirate_wait_time': 3.2, 'pre_asp_air_vol': 0.056}
+2026-02-24 16:58:23,684 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 16:58:40,178 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 1.6% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:58:56,378 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 1.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:59:12,571 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 2.3% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:59:28,790 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 1.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 1.9% > 10% threshold or max replicates reached
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_2 RESULT: PASS ===
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO -   Accuracy: 1.9% dev (limit: 1.5uL)
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO -   Precision: 1.3% CV (limit: <=3.0%)
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.5
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO -   Deviation: 1.9% (tolerance: +/-3.0%)
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO -   Variability: 1.3% CV (tolerance: <=3.0%)
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.9 <= 3.0)
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO -   Variability check: True (1.3 <= 3.0)
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 16:59:44,985 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=1.9%, trial=7
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO - Trial 2: deviation=1.9%, good_trials=2
+2026-02-24 16:59:44,985 - calibration_modular_v2.experiment - INFO - Optimization iteration 3
+2026-02-24 16:59:46,928 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.004277616955822539, 'aspirate_speed': 16, 'dispense_speed': 6, 'aspirate_wait_time': 0.8377978111947103, 'pre_asp_air_vol': 0.18109559397478828}
+2026-02-24 16:59:46,928 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0043, 'aspirate_speed': 16, 'dispense_speed': 6, 'aspirate_wait_time': 0.8, 'pre_asp_air_vol': 0.181}
+2026-02-24 16:59:46,928 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 8) using Unknown
+2026-02-24 16:59:46,928 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0043, 'aspirate_speed': 16, 'dispense_speed': 6, 'aspirate_wait_time': 0.8, 'pre_asp_air_vol': 0.181}
+2026-02-24 16:59:46,928 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 17:00:02,169 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 3.3% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:00:17,389 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 3.1% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:00:32,997 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 2.4% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:00:48,602 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 2.0% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:01:03,982 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 2.0% > 10% threshold or max replicates reached
+2026-02-24 17:01:03,982 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_3 RESULT: PASS ===
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO -   Accuracy: 2.0% dev (limit: 1.5uL)
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO -   Precision: 2.5% CV (limit: <=3.0%)
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.5
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO -   Deviation: 2.0% (tolerance: +/-3.0%)
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO -   Variability: 2.5% CV (tolerance: <=3.0%)
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO -   Deviation check: True (2.0 <= 3.0)
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO -   Variability check: True (2.5 <= 3.0)
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:01:03,983 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=2.0%, trial=8
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO - Trial 3: deviation=2.0%, good_trials=3
+2026-02-24 17:01:03,983 - calibration_modular_v2.experiment - INFO - Optimization iteration 4
+2026-02-24 17:01:06,877 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.004386702551354555, 'aspirate_speed': 12, 'dispense_speed': 15, 'aspirate_wait_time': 0.9497050340845745, 'pre_asp_air_vol': 0.13664863558327436}
+2026-02-24 17:01:06,877 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0044, 'aspirate_speed': 12, 'dispense_speed': 15, 'aspirate_wait_time': 0.9, 'pre_asp_air_vol': 0.137}
+2026-02-24 17:01:06,877 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 9) using Unknown
+2026-02-24 17:01:06,877 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0044, 'aspirate_speed': 12, 'dispense_speed': 15, 'aspirate_wait_time': 0.9, 'pre_asp_air_vol': 0.137}
+2026-02-24 17:01:06,879 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 17:01:23,174 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 1.3% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:01:39,389 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 2.1% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:01:55,585 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 1.6% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:02:11,968 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 2.3% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 1.9% > 10% threshold or max replicates reached
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_4 RESULT: PASS ===
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO -   Accuracy: 1.9% dev (limit: 1.5uL)
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO -   Precision: 2.4% CV (limit: <=3.0%)
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.6
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO -   Deviation: 1.9% (tolerance: +/-3.0%)
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO -   Variability: 2.4% CV (tolerance: <=3.0%)
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.9 <= 3.0)
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO -   Variability check: True (2.4 <= 3.0)
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:02:28,188 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=1.9%, trial=9
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO - Trial 4: deviation=1.9%, good_trials=4
+2026-02-24 17:02:28,188 - calibration_modular_v2.experiment - INFO - Optimization iteration 5
+2026-02-24 17:02:32,796 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.004504475774211617, 'aspirate_speed': 10, 'dispense_speed': 5, 'aspirate_wait_time': 1.800483999960236, 'pre_asp_air_vol': 0.15311067766564085}
+2026-02-24 17:02:32,796 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0045000000000000005, 'aspirate_speed': 10, 'dispense_speed': 5, 'aspirate_wait_time': 1.8, 'pre_asp_air_vol': 0.153}
+2026-02-24 17:02:32,796 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 10) using Unknown
+2026-02-24 17:02:32,796 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0045000000000000005, 'aspirate_speed': 10, 'dispense_speed': 5, 'aspirate_wait_time': 1.8, 'pre_asp_air_vol': 0.153}
+2026-02-24 17:02:32,796 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 17:02:48,171 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 2.9% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:03:03,576 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 1.5% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:03:18,989 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 2.0% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:03:34,388 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 1.9% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:03:49,768 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 1.9% > 10% threshold or max replicates reached
+2026-02-24 17:03:49,768 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_5 RESULT: PASS ===
+2026-02-24 17:03:49,768 - calibration_modular_v2.experiment - INFO -   Accuracy: 1.9% dev (limit: 1.5uL)
+2026-02-24 17:03:49,784 - calibration_modular_v2.experiment - INFO -   Precision: 1.3% CV (limit: <=3.0%)
+2026-02-24 17:03:49,784 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.5
+2026-02-24 17:03:49,784 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:03:49,784 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 17:03:49,784 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:03:49,784 - calibration_modular_v2.experiment - INFO -   Deviation: 1.9% (tolerance: +/-3.0%)
+2026-02-24 17:03:49,785 - calibration_modular_v2.experiment - INFO -   Variability: 1.3% CV (tolerance: <=3.0%)
+2026-02-24 17:03:49,785 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.9 <= 3.0)
+2026-02-24 17:03:49,785 - calibration_modular_v2.experiment - INFO -   Variability check: True (1.3 <= 3.0)
+2026-02-24 17:03:49,785 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:03:49,785 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=1.9%, trial=10
+2026-02-24 17:03:49,785 - calibration_modular_v2.experiment - INFO - Trial 5: deviation=1.9%, good_trials=5
+2026-02-24 17:03:49,785 - calibration_modular_v2.experiment - INFO - Optimization iteration 6
+2026-02-24 17:03:55,384 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.0036359457399008184, 'aspirate_speed': 10, 'dispense_speed': 6, 'aspirate_wait_time': 0.0, 'pre_asp_air_vol': 0.16719774618317676}
+2026-02-24 17:03:55,384 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0036000000000000003, 'aspirate_speed': 10, 'dispense_speed': 6, 'aspirate_wait_time': 0.0, 'pre_asp_air_vol': 0.167}
+2026-02-24 17:03:55,385 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 11) using Unknown
+2026-02-24 17:03:55,385 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0036000000000000003, 'aspirate_speed': 10, 'dispense_speed': 6, 'aspirate_wait_time': 0.0, 'pre_asp_air_vol': 0.167}
+2026-02-24 17:03:55,385 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 17:04:09,399 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 0.1% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:04:23,385 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 2.2% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:04:37,360 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 2.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:04:51,387 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 3.1% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:05:05,371 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 3.3% > 10% threshold or max replicates reached
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_6 RESULT: FAIL ===
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO -   Accuracy: 3.3% dev (limit: 1.5uL)
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO -   Precision: 1.9% CV (limit: <=3.0%)
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 0.8
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO -   Deviation: 3.3% (tolerance: +/-3.0%)
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO -   Variability: 1.9% CV (tolerance: <=3.0%)
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO -   Deviation check: False (3.3 <= 3.0)
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO -   Variability check: True (1.9 <= 3.0)
+2026-02-24 17:05:05,373 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 17:05:05,384 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=3.3%, trial=11
+2026-02-24 17:05:05,384 - calibration_modular_v2.experiment - INFO - Trial 6: deviation=3.3%, good_trials=5
+2026-02-24 17:05:05,384 - calibration_modular_v2.experiment - INFO - Optimization iteration 7
+2026-02-24 17:05:12,519 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.004425088338722484, 'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.3325857606432635, 'pre_asp_air_vol': 0.25578781355940594}
+2026-02-24 17:05:12,519 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0044, 'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}
+2026-02-24 17:05:12,519 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 12) using Unknown
+2026-02-24 17:05:12,519 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0044, 'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}
+2026-02-24 17:05:12,519 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 17:05:27,176 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 0.9% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:05:41,771 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 0.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:05:56,364 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 0.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:06:11,179 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 0.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 0.7% > 10% threshold or max replicates reached
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_7 RESULT: PASS ===
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO -   Accuracy: 0.7% dev (limit: 1.5uL)
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO -   Precision: 0.7% CV (limit: <=3.0%)
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.2
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO -   Deviation: 0.7% (tolerance: +/-3.0%)
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO -   Variability: 0.7% CV (tolerance: <=3.0%)
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO -   Deviation check: True (0.7 <= 3.0)
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.7 <= 3.0)
+2026-02-24 17:06:25,777 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:06:25,792 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=0.7%, trial=12
+2026-02-24 17:06:25,792 - calibration_modular_v2.experiment - INFO - Trial 7: deviation=0.7%, good_trials=6
+2026-02-24 17:06:25,792 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:06:25,793 - calibration_modular_v2.experiment - INFO - OPTIMIZATION SUMMARY
+2026-02-24 17:06:25,793 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:06:25,793 - calibration_modular_v2.experiment - INFO - Status: converged
+2026-02-24 17:06:25,793 - calibration_modular_v2.experiment - INFO - Convergence reason: Found 6 good trials
+2026-02-24 17:06:25,793 - calibration_modular_v2.experiment - INFO - Total trials: 13
+2026-02-24 17:06:25,793 - calibration_modular_v2.experiment - INFO - Good trials (within tolerance): 6
+2026-02-24 17:06:25,794 - calibration_modular_v2.experiment - INFO - Best accuracy achieved: 0.7% deviation
+2026-02-24 17:06:25,794 - calibration_modular_v2.experiment - INFO - Best overaspirate volume: 4.4uL
+2026-02-24 17:06:25,794 - calibration_modular_v2.experiment - INFO - Best hardware parameters:
+2026-02-24 17:06:25,794 - calibration_modular_v2.experiment - INFO -   aspirate_speed: 10.0
+2026-02-24 17:06:25,795 - calibration_modular_v2.experiment - INFO -   dispense_speed: 7.0
+2026-02-24 17:06:25,795 - calibration_modular_v2.experiment - INFO -   aspirate_wait_time: 0.3
+2026-02-24 17:06:25,795 - calibration_modular_v2.experiment - INFO -   pre_asp_air_vol: 0.3
+2026-02-24 17:06:25,795 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:06:25,802 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'converged', 'convergence_reason': 'Found 6 good trials', 'total_trials': 13, 'good_trials': 6, 'best_accuracy': 0.690909090909092, 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0044), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}))}
+2026-02-24 17:06:25,802 - calibration_modular_v2.experiment - INFO - Volume 50.0uL calibration completed: 64 measurements, 5 good trials
+2026-02-24 17:06:25,802 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 50uL
+2026-02-24 17:06:25,802 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:06:25,802 - calibration_modular_v2.experiment - INFO -   Deviation: 0.7% (tolerance: +/-3.0%)
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - INFO -   Variability: 0.7% CV (tolerance: <=3.0%)
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - INFO -   Deviation check: True (0.7 <= 3.0)
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - INFO -   Variability check: True (0.7 <= 3.0)
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - INFO - Skipping first volume final calibration - current best trial already meets success criteria
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - INFO - Current best: 0.7% deviation, 0.7% CV
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - WARNING - Failed to save incremental optimal conditions (non-critical): local variable 'asdict' referenced before assignment
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.025 mL (2/4) - Budget: 45 measurements
+2026-02-24 17:06:25,803 - calibration_modular_v2.experiment - INFO - Starting calibration for 25.0uL
+2026-02-24 17:06:25,804 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2026-02-24 17:06:25,804 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using previous volume parameters
+2026-02-24 17:06:25,804 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2026-02-24 17:06:25,804 - calibration_modular_v2.experiment - INFO - Using optimized parameters from 50.0uL volume for 25.0uL calibration
+2026-02-24 17:06:25,804 - calibration_modular_v2.experiment - INFO - Best trial variability from first volume: 0.32uL
+2026-02-24 17:06:25,804 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 4.4uL
+2026-02-24 17:06:40,375 - calibration_modular_v2.experiment - INFO - === TRIAL two_point_cal_point1_0.025 RESULT: FAIL ===
+2026-02-24 17:06:40,377 - calibration_modular_v2.experiment - INFO -   Accuracy: 9.5% dev (limit: 0.8uL)
+2026-02-24 17:06:40,377 - calibration_modular_v2.experiment - INFO -   Precision: 0.0% CV (limit: <=3.0%)
+2026-02-24 17:06:40,377 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 1.0
+2026-02-24 17:06:40,377 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:06:40,377 - calibration_modular_v2.experiment - INFO - Shortfall analysis: -2.4uL shortfall + 0.8uL tolerance = 3.1uL spread
+2026-02-24 17:06:40,377 - calibration_modular_v2.experiment - INFO - Point 2: Testing with decreased overaspirate 1.3uL (-3.1uL)
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - === TRIAL two_point_cal_point2_0.025 RESULT: FAIL ===
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO -   Accuracy: 5.8% dev (limit: 0.8uL)
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO -   Precision: 0.0% CV (limit: <=3.0%)
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 1.0
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:06:54,974 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.3uL (original: 0.3uL, cap: 1.3uL)
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO -   New bounds: [1.5, 3.4] uL
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=1.226uL/uL, tolerance=+/-0.8uL, error_margin=+/-1.0% for 25.0uL target
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=0.0015369304127224336, max_value=0.0034080912322976597, justification='Two-point calibration: efficiency=1.226uL/uL, tolerance=+/-0.8uL, error_margin=+/-1.0% for 25.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.025, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0044, measured_volume_ml=0.027363636363637183, measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0044), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0012863636363628183, measured_volume_ml=0.023545454545454574, measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0012863636363628183), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}))), volume_efficiency_ul_per_ul=1.2262773722627054, shortfall_ml=-0.0023636363636371817, optimal_overaspirate_ml=0.0024725108225100464, min_overaspirate_ml=0.0015369304127224336, max_overaspirate_ml=0.0034080912322976597, tolerance_range_ml=0.0007500000000000001), optimal_overaspirate_ml=0.0024725108225100464)
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=1.226uL/uL, tolerance=+/-0.8uL, error_margin=+/-1.0% for 25.0uL target
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 27.4uL (target: 25.0uL)
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 23.5uL (target: 25.0uL)
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - Constraint calibration results saved to: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\constraint_calibration_results.txt
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - Running inherited trial with optimal overaspirate from two-point calibration
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - Using optimal overaspirate: 2.47uL
+2026-02-24 17:06:54,974 - calibration_modular_v2.experiment - INFO - Executing inherited trial: overaspirate=2.47uL
+2026-02-24 17:07:09,569 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 1.8% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:07:24,193 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 2.4% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:07:38,775 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 1.8% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:07:53,382 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 2.0% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 1.7% > 10% threshold or max replicates reached
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO - === TRIAL inherited_optimal RESULT: PASS ===
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Accuracy: 1.7% dev (limit: 0.8uL)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Precision: 1.0% CV (limit: <=3.0%)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.5
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 25uL
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Deviation: 1.7% (tolerance: +/-3.0%)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Variability: 1.0% CV (tolerance: <=3.0%)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.7 <= 3.0)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Variability check: True (1.0 <= 3.0)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO - [SUCCESS] Inherited trial SUCCEEDED - using optimal parameters directly
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Measured: -1.7% deviation
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Variability: 1.0% CV
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 25uL
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Deviation: 1.7% (tolerance: +/-3.0%)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Variability: 1.0% CV (tolerance: <=3.0%)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.7 <= 3.0)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Variability check: True (1.0 <= 3.0)
+2026-02-24 17:08:07,988 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:08:07,998 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 3.0% for 25uL
+2026-02-24 17:08:07,998 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:08:07,998 - calibration_modular_v2.experiment - INFO -   Deviation: 1.7% (tolerance: +/-3.0%)
+2026-02-24 17:08:07,998 - calibration_modular_v2.experiment - INFO -   Variability: 1.0% CV (tolerance: <=3.0%)
+2026-02-24 17:08:07,998 - calibration_modular_v2.experiment - INFO -   Deviation check: True (1.7 <= 3.0)
+2026-02-24 17:08:07,998 - calibration_modular_v2.experiment - INFO -   Variability check: True (1.0 <= 3.0)
+2026-02-24 17:08:07,999 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:08:07,999 - calibration_modular_v2.experiment - INFO - Using successful inherited trial as optimal result
+2026-02-24 17:08:07,999 - calibration_modular_v2.experiment - INFO - Volume 25.0uL calibration completed: 7 measurements, 1 good trials
+2026-02-24 17:08:07,999 - calibration_modular_v2.experiment - WARNING - Failed to save incremental optimal conditions (non-critical): local variable 'asdict' referenced before assignment
+2026-02-24 17:08:07,999 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.01 mL (3/4) - Budget: 64 measurements
+2026-02-24 17:08:07,999 - calibration_modular_v2.experiment - INFO - Starting calibration for 10.0uL
+2026-02-24 17:08:08,000 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2026-02-24 17:08:08,000 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using previous volume parameters
+2026-02-24 17:08:08,000 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2026-02-24 17:08:08,000 - calibration_modular_v2.experiment - INFO - Using optimized parameters from 50.0uL volume for 10.0uL calibration
+2026-02-24 17:08:08,000 - calibration_modular_v2.experiment - INFO - Best trial variability from first volume: 0.32uL
+2026-02-24 17:08:08,000 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 4.4uL
+2026-02-24 17:08:22,598 - calibration_modular_v2.analysis - INFO - High deviation (32.7% > 10.0%) - applying precision penalty: 100.0%
+2026-02-24 17:08:22,600 - calibration_modular_v2.experiment - INFO - === TRIAL two_point_cal_point1_0.01 RESULT: FAIL ===
+2026-02-24 17:08:22,600 - calibration_modular_v2.experiment - INFO -   Accuracy: 32.7% dev (limit: 0.5uL)
+2026-02-24 17:08:22,600 - calibration_modular_v2.experiment - INFO -   Precision: 100.0% CV (limit: <=5.0%)
+2026-02-24 17:08:22,600 - calibration_modular_v2.experiment - INFO -   Quality: outside_tolerance | Score: 2.2
+2026-02-24 17:08:22,600 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:08:22,600 - calibration_modular_v2.experiment - INFO - Shortfall analysis: -3.3uL shortfall + 0.5uL tolerance = 3.8uL spread
+2026-02-24 17:08:22,600 - calibration_modular_v2.experiment - INFO - Point 2: Testing with decreased overaspirate 0.6uL (-3.8uL)
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - === TRIAL two_point_cal_point2_0.01 RESULT: FAIL ===
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO -   Accuracy: 6.7% dev (limit: 0.5uL)
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO -   Precision: 0.0% CV (limit: <=5.0%)
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 1.0
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:08:37,200 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.3uL (original: 0.3uL, cap: 0.5uL)
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO -   New bounds: [0.5, 2.1] uL
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=1.046uL/uL, tolerance=+/-0.5uL, error_margin=+/-100.0% for 10.0uL target
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=0.0004684649400235165, max_value=0.0020726326720408267, justification='Two-point calibration: efficiency=1.046uL/uL, tolerance=+/-0.5uL, error_margin=+/-100.0% for 10.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.01, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0044, measured_volume_ml=0.013272727272728636, measurement_count=1, variability_pct=100.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0044), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0006272727272713641, measured_volume_ml=0.009327272727271659, measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0006272727272713641), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}))), volume_efficiency_ul_per_ul=1.0457831325303872, shortfall_ml=-0.003272727272728636, optimal_overaspirate_ml=0.0012705488060321714, min_overaspirate_ml=0.0004684649400235165, max_overaspirate_ml=0.0020726326720408267, tolerance_range_ml=0.0005), optimal_overaspirate_ml=0.0012705488060321714)
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=1.046uL/uL, tolerance=+/-0.5uL, error_margin=+/-100.0% for 10.0uL target
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 13.3uL (target: 10.0uL)
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 9.3uL (target: 10.0uL)
+2026-02-24 17:08:37,200 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:08:37,208 - calibration_modular_v2.experiment - INFO - Constraint calibration results saved to: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\constraint_calibration_results.txt
+2026-02-24 17:08:37,208 - calibration_modular_v2.experiment - INFO - Running inherited trial with optimal overaspirate from two-point calibration
+2026-02-24 17:08:37,208 - calibration_modular_v2.experiment - INFO - Using optimal overaspirate: 1.27uL
+2026-02-24 17:08:37,208 - calibration_modular_v2.experiment - INFO - Executing inherited trial: overaspirate=1.27uL
+2026-02-24 17:08:51,578 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 5.5% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:09:06,375 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 4.8% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:09:21,224 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 4.4% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:09:35,406 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 5.4% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 5.0% > 10% threshold or max replicates reached
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO - === TRIAL inherited_optimal RESULT: FAIL ===
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Accuracy: 5.0% dev (limit: 0.5uL)
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Precision: 2.0% CV (limit: <=5.0%)
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Quality: partial_tolerance | Score: 0.7
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 5.0% for 10uL
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Deviation: 5.0% (tolerance: +/-5.0%)
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Variability: 2.0% CV (tolerance: <=5.0%)
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Deviation check: False (5.0 <= 5.0)
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Variability check: True (2.0 <= 5.0)
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO - [FAILED] Inherited trial FAILED - will proceed with optimization
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Measured: -5.0% deviation
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Variability: 2.0% CV
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 5.0% for 10uL
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:09:50,382 - calibration_modular_v2.experiment - INFO -   Deviation: 5.0% (tolerance: +/-5.0%)
+2026-02-24 17:09:50,386 - calibration_modular_v2.experiment - INFO -   Variability: 2.0% CV (tolerance: <=5.0%)
+2026-02-24 17:09:50,386 - calibration_modular_v2.experiment - INFO -   Deviation check: False (5.0 <= 5.0)
+2026-02-24 17:09:50,386 - calibration_modular_v2.experiment - INFO -   Variability check: True (2.0 <= 5.0)
+2026-02-24 17:09:50,386 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 17:09:50,386 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2026-02-24 17:09:50,386 - calibration_modular_v2.experiment - INFO - DEBUG: Volume dependent parameters from config: ['overaspirate_vol', 'pre_asp_air_vol']
+2026-02-24 17:09:50,386 - calibration_modular_v2.experiment - INFO - Using transfer learning - fixing non-volume-dependent parameters
+2026-02-24 17:09:50,387 - calibration_modular_v2.experiment - INFO - DEBUG: All parameters from previous best: {'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256, 'overaspirate_vol': 0.0024725108225100464}
+2026-02-24 17:09:50,387 - calibration_modular_v2.experiment - INFO - DEBUG: Previous best overaspirate_vol: 0.0024725108225100464
+2026-02-24 17:09:50,387 - calibration_modular_v2.experiment - INFO - DEBUG: Parameters being fixed by transfer learning: {'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004}
+2026-02-24 17:09:50,387 - calibration_modular_v2.experiment - INFO - GOOD: overaspirate_vol correctly NOT being fixed by transfer learning
+2026-02-24 17:09:50,387 - calibration_modular_v2.bayesian_recommender - INFO - Applied constraint update for overaspirate_vol: [0.5, 2.1] uL
+2026-02-24 17:09:50,387 - calibration_modular_v2.bayesian_recommender - INFO - Justification: Two-point calibration: efficiency=1.046uL/uL, tolerance=+/-0.5uL, error_margin=+/-100.0% for 10.0uL target
+2026-02-24 17:09:50,388 - calibration_modular_v2.bayesian_recommender - WARNING - Failed to get constraints from protocol: 'HardwareCalibrationProtocol' object has no attribute 'config'
+2026-02-24 17:09:50,388 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 0 SOBOL trials
+2026-02-24 17:09:50,388 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: Pure Bayesian optimization (no exploration)
+2026-02-24 17:09:50,389 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qLogEI optimizer
+2026-02-24 17:09:50,389 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'pre_asp_air_vol']
+2026-02-24 17:09:50,389 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004}
+2026-02-24 17:09:50,389 - calibration_modular_v2.experiment - INFO - Created qLogEI optimizer for volume 10uL
+2026-02-24 17:09:50,389 - calibration_modular_v2.experiment - INFO - Stopping criteria: 1 good trial(s) for subsequent volume
+2026-02-24 17:09:50,389 - calibration_modular_v2.experiment - INFO - Loading inherited trial into optimizer for learning
+2026-02-24 17:09:50,390 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 5.0% for 10uL
+2026-02-24 17:09:50,390 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:09:50,390 - calibration_modular_v2.experiment - INFO -   Deviation: 5.0% (tolerance: +/-5.0%)
+2026-02-24 17:09:50,390 - calibration_modular_v2.experiment - INFO -   Variability: 2.0% CV (tolerance: <=5.0%)
+2026-02-24 17:09:50,390 - calibration_modular_v2.experiment - INFO -   Deviation check: False (5.0 <= 5.0)
+2026-02-24 17:09:50,390 - calibration_modular_v2.experiment - INFO -   Variability check: True (2.0 <= 5.0)
+2026-02-24 17:09:50,390 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 17:09:50,398 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=5.0% (included in ranking)
+2026-02-24 17:09:50,398 - calibration_modular_v2.experiment - INFO - Loading 2 two-point calibration trials into optimizer
+2026-02-24 17:09:50,398 - calibration_modular_v2.experiment - INFO - Note: Only using for subsequent volumes (single-objective accuracy optimization)
+2026-02-24 17:09:50,398 - calibration_modular_v2.experiment - INFO - [EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)
+2026-02-24 17:09:50,398 - calibration_modular_v2.bayesian_recommender - INFO - Skipping historical trial: overaspirate_vol=0.004400 outside bounds [0.000468, 0.002073]
+2026-02-24 17:09:50,398 - calibration_modular_v2.experiment - INFO - [EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)
+2026-02-24 17:09:50,407 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=6.7% (included in ranking)
+2026-02-24 17:09:50,407 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2026-02-24 17:09:51,669 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.001556504484205611, 'pre_asp_air_vol': 0.25600605855284275}
+2026-02-24 17:09:51,669 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0016, 'pre_asp_air_vol': 0.256}
+2026-02-24 17:09:51,669 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 2) using Unknown
+2026-02-24 17:09:51,669 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0016, 'pre_asp_air_vol': 0.256}
+2026-02-24 17:09:51,669 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 17:10:06,193 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 2.7% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:10:20,779 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 1.8% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:10:35,402 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 5.2% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:10:49,985 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 4.8% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 4.2% > 10% threshold or max replicates reached
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_1 RESULT: PASS ===
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO -   Accuracy: 4.2% dev (limit: 0.5uL)
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO -   Precision: 5.0% CV (limit: <=5.0%)
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.9
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 5.0% for 10uL
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO -   Deviation: 4.2% (tolerance: +/-5.0%)
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO -   Variability: 5.0% CV (tolerance: <=5.0%)
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO -   Deviation check: True (4.2 <= 5.0)
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO -   Variability check: True (5.0 <= 5.0)
+2026-02-24 17:11:04,588 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:11:04,601 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=4.2%, trial=2
+2026-02-24 17:11:04,601 - calibration_modular_v2.experiment - INFO - Trial 1: deviation=4.2%, good_trials=1
+2026-02-24 17:11:04,601 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:11:04,601 - calibration_modular_v2.experiment - INFO - OPTIMIZATION SUMMARY
+2026-02-24 17:11:04,602 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:11:04,602 - calibration_modular_v2.experiment - INFO - Status: converged
+2026-02-24 17:11:04,602 - calibration_modular_v2.experiment - INFO - Convergence reason: Found 1 good trials
+2026-02-24 17:11:04,602 - calibration_modular_v2.experiment - INFO - Total trials: 3
+2026-02-24 17:11:04,603 - calibration_modular_v2.experiment - INFO - Good trials (within tolerance): 1
+2026-02-24 17:11:04,603 - calibration_modular_v2.experiment - INFO - Best accuracy achieved: 4.2% deviation
+2026-02-24 17:11:04,603 - calibration_modular_v2.experiment - INFO - Best overaspirate volume: 1.6uL
+2026-02-24 17:11:04,603 - calibration_modular_v2.experiment - INFO - Best hardware parameters:
+2026-02-24 17:11:04,603 - calibration_modular_v2.experiment - INFO -   pre_asp_air_vol: 0.3
+2026-02-24 17:11:04,603 - calibration_modular_v2.experiment - INFO -   aspirate_speed: 10.0
+2026-02-24 17:11:04,603 - calibration_modular_v2.experiment - INFO -   dispense_speed: 7.0
+2026-02-24 17:11:04,604 - calibration_modular_v2.experiment - INFO -   aspirate_wait_time: 0.3
+2026-02-24 17:11:04,604 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:11:04,605 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'converged', 'convergence_reason': 'Found 1 good trials', 'total_trials': 3, 'good_trials': 1, 'best_accuracy': 4.181818181812628, 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0016), hardware=HardwareParameters(parameters={'pre_asp_air_vol': 0.256, 'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004}))}
+2026-02-24 17:11:04,605 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 5.0% for 10uL
+2026-02-24 17:11:04,605 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:11:04,606 - calibration_modular_v2.experiment - INFO -   Deviation: 5.0% (tolerance: +/-5.0%)
+2026-02-24 17:11:04,606 - calibration_modular_v2.experiment - INFO -   Variability: 2.0% CV (tolerance: <=5.0%)
+2026-02-24 17:11:04,606 - calibration_modular_v2.experiment - INFO -   Deviation check: False (5.0 <= 5.0)
+2026-02-24 17:11:04,606 - calibration_modular_v2.experiment - INFO -   Variability check: True (2.0 <= 5.0)
+2026-02-24 17:11:04,606 - calibration_modular_v2.experiment - INFO -   Result: FAIL
+2026-02-24 17:11:04,606 - calibration_modular_v2.experiment - INFO - Volume 10.0uL calibration completed: 12 measurements, 2 good trials
+2026-02-24 17:11:04,606 - calibration_modular_v2.experiment - WARNING - Failed to save incremental optimal conditions (non-critical): local variable 'asdict' referenced before assignment
+2026-02-24 17:11:04,606 - calibration_modular_v2.experiment - INFO - Starting calibration for volume 0.005 mL (4/4) - Budget: 117 measurements
+2026-02-24 17:11:04,607 - calibration_modular_v2.experiment - INFO - Starting calibration for 5.0uL
+2026-02-24 17:11:04,607 - calibration_modular_v2.experiment - INFO - Skipping screening phase (using transfer learning from first volume)
+2026-02-24 17:11:04,607 - calibration_modular_v2.experiment - INFO - Running two-point constraint calibration using previous volume parameters
+2026-02-24 17:11:04,607 - calibration_modular_v2.experiment - INFO - Starting two-point constraint calibration
+2026-02-24 17:11:04,607 - calibration_modular_v2.experiment - INFO - Using optimized parameters from 50.0uL volume for 5.0uL calibration
+2026-02-24 17:11:04,607 - calibration_modular_v2.experiment - INFO - Best trial variability from first volume: 0.32uL
+2026-02-24 17:11:04,607 - calibration_modular_v2.experiment - INFO - Point 1: Testing with base overaspirate 4.4uL
+2026-02-24 17:11:18,783 - calibration_modular_v2.analysis - INFO - High deviation (61.8% > 10.0%) - applying precision penalty: 100.0%
+2026-02-24 17:11:18,783 - calibration_modular_v2.experiment - INFO - === TRIAL two_point_cal_point1_0.005 RESULT: FAIL ===
+2026-02-24 17:11:18,783 - calibration_modular_v2.experiment - INFO -   Accuracy: 61.8% dev (limit: 0.2uL)
+2026-02-24 17:11:18,783 - calibration_modular_v2.experiment - INFO -   Precision: 100.0% CV (limit: <=5.0%)
+2026-02-24 17:11:18,783 - calibration_modular_v2.experiment - INFO -   Quality: outside_tolerance | Score: 2.3
+2026-02-24 17:11:18,783 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:11:18,783 - calibration_modular_v2.experiment - INFO - Shortfall analysis: -3.1uL shortfall + 0.2uL tolerance = 3.3uL spread
+2026-02-24 17:11:18,783 - calibration_modular_v2.experiment - INFO - Point 2: Testing with decreased overaspirate 1.1uL (-3.3uL)
+2026-02-24 17:11:33,163 - calibration_modular_v2.experiment - INFO - === TRIAL two_point_cal_point2_0.005 RESULT: PASS ===
+2026-02-24 17:11:33,163 - calibration_modular_v2.experiment - INFO -   Accuracy: 3.6% dev (limit: 0.2uL)
+2026-02-24 17:11:33,163 - calibration_modular_v2.experiment - INFO -   Precision: 0.0% CV (limit: <=5.0%)
+2026-02-24 17:11:33,163 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.8
+2026-02-24 17:11:33,163 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:11:33,179 - calibration_modular_v2.constraint_calibration - INFO - Applied capped variability adjustment: +/-0.2uL (original: 0.3uL, cap: 0.2uL)
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - Two-point calibration successful:
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO -   New bounds: [0.3, 1.4] uL
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO -   Justification: Two-point calibration: efficiency=0.871uL/uL, tolerance=+/-0.2uL, error_margin=+/-100.0% for 5.0uL target
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - TWO-POINT CALIBRATION COMPLETE - PAUSING FOR INSPECTION
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - Constraint update: ConstraintBoundsUpdate(parameter_name='overaspirate_vol', min_value=0.0003131747159074714, max_value=0.0013873934659076243, justification='Two-point calibration: efficiency=0.871uL/uL, tolerance=+/-0.2uL, error_margin=+/-100.0% for 5.0uL target', source_calibration=TwoPointCalibrationResult(target_volume_ml=0.005, point_1=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0044, measured_volume_ml=0.008090909090909612, measurement_count=1, variability_pct=100.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0044), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}))), point_2=TwoPointCalibrationPoint(overaspirate_vol_ml=0.0010590909090903884, measured_volume_ml=0.005181818181819024, measurement_count=1, variability_pct=0.0, parameters_used=PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0010590909090903884), hardware=HardwareParameters(parameters={'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256}))), volume_efficiency_ul_per_ul=0.870748299319496, shortfall_ml=-0.0030909090909096116, optimal_overaspirate_ml=0.0008502840909075477, min_overaspirate_ml=0.0003131747159074714, max_overaspirate_ml=0.0013873934659076243, tolerance_range_ml=0.00025), optimal_overaspirate_ml=0.0008502840909075477)
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - Efficiency: Two-point calibration: efficiency=0.871uL/uL, tolerance=+/-0.2uL, error_margin=+/-100.0% for 5.0uL target
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - Two-point trials executed: 2
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO -   Trial 1: trial_1 -> 8.1uL (target: 5.0uL)
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO -   Trial 2: trial_2 -> 5.2uL (target: 5.0uL)
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - Constraint calibration results saved to: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\constraint_calibration_results.txt
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - Running inherited trial with optimal overaspirate from two-point calibration
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - Using optimal overaspirate: 0.85uL
+2026-02-24 17:11:33,179 - calibration_modular_v2.experiment - INFO - Executing inherited trial: overaspirate=0.85uL
+2026-02-24 17:11:47,574 - calibration_modular_v2.analysis - INFO - High deviation (10.9% > 10.0%) - applying precision penalty: 100.0%
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 10.9% > 10% threshold or max replicates reached
+2026-02-24 17:11:47,574 - calibration_modular_v2.analysis - INFO - High deviation (10.9% > 10.0%) - applying precision penalty: 100.0%
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - === TRIAL inherited_optimal RESULT: FAIL ===
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO -   Accuracy: 10.9% dev (limit: 0.2uL)
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO -   Precision: 100.0% CV (limit: <=5.0%)
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO -   Quality: outside_tolerance | Score: 2.0
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - [EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - [FAILED] Inherited trial FAILED - will proceed with optimization
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO -   Measured: -10.9% deviation
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO -   Variability: 100.0% CV
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - [EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - Starting Bayesian optimization phase
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - DEBUG: Volume dependent parameters from config: ['overaspirate_vol', 'pre_asp_air_vol']
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - Using transfer learning - fixing non-volume-dependent parameters
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - DEBUG: All parameters from previous best: {'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004, 'pre_asp_air_vol': 0.256, 'overaspirate_vol': 0.0012705488060321714}
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - DEBUG: Previous best overaspirate_vol: 0.0012705488060321714
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - DEBUG: Parameters being fixed by transfer learning: {'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004}
+2026-02-24 17:11:47,574 - calibration_modular_v2.experiment - INFO - GOOD: overaspirate_vol correctly NOT being fixed by transfer learning
+2026-02-24 17:11:47,574 - calibration_modular_v2.bayesian_recommender - INFO - Applied constraint update for overaspirate_vol: [0.3, 1.4] uL
+2026-02-24 17:11:47,574 - calibration_modular_v2.bayesian_recommender - INFO - Justification: Two-point calibration: efficiency=0.871uL/uL, tolerance=+/-0.2uL, error_margin=+/-100.0% for 5.0uL target
+2026-02-24 17:11:47,574 - calibration_modular_v2.bayesian_recommender - WARNING - Failed to get constraints from protocol: 'HardwareCalibrationProtocol' object has no attribute 'config'
+2026-02-24 17:11:47,580 - calibration_modular_v2.bayesian_recommender - INFO - Created Ax client with 0 SOBOL trials
+2026-02-24 17:11:47,580 - calibration_modular_v2.bayesian_recommender - INFO -   Mode: Pure Bayesian optimization (no exploration)
+2026-02-24 17:11:47,580 - calibration_modular_v2.bayesian_recommender - INFO - Initialized qLogEI optimizer
+2026-02-24 17:11:47,580 - calibration_modular_v2.bayesian_recommender - INFO - Optimizing: ['overaspirate_vol', 'pre_asp_air_vol']
+2026-02-24 17:11:47,580 - calibration_modular_v2.bayesian_recommender - INFO - Fixed: {'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004}
+2026-02-24 17:11:47,580 - calibration_modular_v2.experiment - INFO - Created qLogEI optimizer for volume 5uL
+2026-02-24 17:11:47,580 - calibration_modular_v2.experiment - INFO - Stopping criteria: 1 good trial(s) for subsequent volume
+2026-02-24 17:11:47,581 - calibration_modular_v2.experiment - INFO - Loading inherited trial into optimizer for learning
+2026-02-24 17:11:47,581 - calibration_modular_v2.experiment - INFO - [EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)
+2026-02-24 17:11:47,589 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=10.9% (included in ranking)
+2026-02-24 17:11:47,589 - calibration_modular_v2.experiment - INFO - Loading 2 two-point calibration trials into optimizer
+2026-02-24 17:11:47,589 - calibration_modular_v2.experiment - INFO - Note: Only using for subsequent volumes (single-objective accuracy optimization)
+2026-02-24 17:11:47,589 - calibration_modular_v2.experiment - INFO - [EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)
+2026-02-24 17:11:47,589 - calibration_modular_v2.bayesian_recommender - INFO - Skipping historical trial: overaspirate_vol=0.004400 outside bounds [0.000313, 0.001387]
+2026-02-24 17:11:47,590 - calibration_modular_v2.experiment - INFO - [EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)
+2026-02-24 17:11:47,597 - calibration_modular_v2.bayesian_recommender - INFO - Seeded optimizer with historical data: deviation=3.6% (included in ranking)
+2026-02-24 17:11:47,597 - calibration_modular_v2.experiment - INFO - Optimization iteration 1
+2026-02-24 17:11:48,665 - calibration_modular_v2.bayesian_recommender - INFO - RAW AX PARAMETERS: {'overaspirate_vol': 0.001168306917796238, 'pre_asp_air_vol': 0.25600014786065295}
+2026-02-24 17:11:48,665 - calibration_modular_v2.bayesian_recommender - INFO - AFTER ROUNDING: {'overaspirate_vol': 0.0012000000000000001, 'pre_asp_air_vol': 0.256}
+2026-02-24 17:11:48,665 - calibration_modular_v2.bayesian_recommender - INFO - Generated suggestion (trial 2) using Unknown
+2026-02-24 17:11:48,665 - calibration_modular_v2.bayesian_recommender - INFO - FINAL PARAMETERS: {'overaspirate_vol': 0.0012000000000000001, 'pre_asp_air_vol': 0.256}
+2026-02-24 17:11:48,665 - calibration_modular_v2.experiment - INFO - Generated parameter suggestion from Ax optimizer
+2026-02-24 17:12:02,986 - calibration_modular_v2.experiment - INFO - Adding replicate 2 - deviation 1.8% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:12:17,174 - calibration_modular_v2.experiment - INFO - Adding replicate 3 - deviation 3.6% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:12:31,563 - calibration_modular_v2.experiment - INFO - Adding replicate 4 - deviation 4.2% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:13:00,174 - calibration_modular_v2.experiment - INFO - Adding replicate 5 - deviation 3.2% <= 10% threshold (good accuracy, worth optimizing)
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO - No more replicates needed - deviation 2.9% > 10% threshold or max replicates reached
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO - === TRIAL BAYESIAN_OPT_1 RESULT: PASS ===
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO -   Accuracy: 2.9% dev (limit: 0.2uL)
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO -   Precision: 2.5% CV (limit: <=5.0%)
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO -   Quality: within_tolerance | Score: 0.5
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO - ===============================
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO - [DEBUG] Calculated tolerance: 5.0% for 5uL
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO - Trial success evaluation:
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO -   Deviation: 2.9% (tolerance: +/-5.0%)
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO -   Variability: 2.5% CV (tolerance: <=5.0%)
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO -   Deviation check: True (2.9 <= 5.0)
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO -   Variability check: True (2.5 <= 5.0)
+2026-02-24 17:13:14,590 - calibration_modular_v2.experiment - INFO -   Result: PASS
+2026-02-24 17:13:14,600 - calibration_modular_v2.bayesian_recommender - INFO - Updated with result: deviation=2.9%, trial=2
+2026-02-24 17:13:14,600 - calibration_modular_v2.experiment - INFO - Trial 1: deviation=2.9%, good_trials=1
+2026-02-24 17:13:14,600 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:13:14,600 - calibration_modular_v2.experiment - INFO - OPTIMIZATION SUMMARY
+2026-02-24 17:13:14,600 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:13:14,603 - calibration_modular_v2.experiment - INFO - Status: converged
+2026-02-24 17:13:14,603 - calibration_modular_v2.experiment - INFO - Convergence reason: Found 1 good trials
+2026-02-24 17:13:14,603 - calibration_modular_v2.experiment - INFO - Total trials: 3
+2026-02-24 17:13:14,603 - calibration_modular_v2.experiment - INFO - Good trials (within tolerance): 1
+2026-02-24 17:13:14,604 - calibration_modular_v2.experiment - INFO - Best accuracy achieved: 2.9% deviation
+2026-02-24 17:13:14,604 - calibration_modular_v2.experiment - INFO - Best overaspirate volume: 1.2uL
+2026-02-24 17:13:14,604 - calibration_modular_v2.experiment - INFO - Best hardware parameters:
+2026-02-24 17:13:14,604 - calibration_modular_v2.experiment - INFO -   pre_asp_air_vol: 0.3
+2026-02-24 17:13:14,604 - calibration_modular_v2.experiment - INFO -   aspirate_speed: 10.0
+2026-02-24 17:13:14,605 - calibration_modular_v2.experiment - INFO -   dispense_speed: 7.0
+2026-02-24 17:13:14,605 - calibration_modular_v2.experiment - INFO -   aspirate_wait_time: 0.3
+2026-02-24 17:13:14,605 - calibration_modular_v2.experiment - INFO - ============================================================
+2026-02-24 17:13:14,606 - calibration_modular_v2.experiment - INFO - Optimization completed: {'status': 'converged', 'convergence_reason': 'Found 1 good trials', 'total_trials': 3, 'good_trials': 1, 'best_accuracy': 2.9090909090975745, 'best_parameters': PipettingParameters(calibration=CalibrationParameters(overaspirate_vol=0.0012000000000000001), hardware=HardwareParameters(parameters={'pre_asp_air_vol': 0.256, 'aspirate_speed': 10, 'dispense_speed': 7, 'aspirate_wait_time': 0.30000000000000004}))}
+2026-02-24 17:13:14,606 - calibration_modular_v2.experiment - INFO - [EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)
+2026-02-24 17:13:14,606 - calibration_modular_v2.experiment - INFO - Volume 5.0uL calibration completed: 8 measurements, 1 good trials
+2026-02-24 17:13:14,606 - calibration_modular_v2.experiment - WARNING - Failed to save incremental optimal conditions (non-critical): local variable 'asdict' referenced before assignment
+2026-02-24 17:13:26,801 - calibration_modular_v2.experiment - WARNING - Protocol cleanup reported issues
+2026-02-24 17:13:26,812 - calibration_modular_v2.experiment - INFO - Exported optimal conditions JSON to c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\optimal_conditions.json
+2026-02-24 17:13:26,838 - calibration_modular_v2.experiment - INFO - Exported raw measurements JSON to c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\raw_measurements.json
+2026-02-24 17:13:26,840 - calibration_modular_v2.experiment - INFO - Exported experiment summary to c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\experiment_summary.json
+2026-02-24 17:13:26,872 - calibration_modular_v2.experiment - INFO - Saved config file used for this run to c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\experiment_config_used.yaml
+2026-02-24 17:13:26,872 - calibration_modular_v2.experiment - INFO - Generating enhanced outputs...
+2026-02-24 17:13:26,892 - calibration_modular_v2.experiment - INFO - Generating calibration plots...
+2026-02-24 17:13:26,893 - calibration_modular_v2.visualization - INFO - Generating calibration visualization plots...
+2026-02-24 17:13:26,901 - calibration_modular_v2.visualization - INFO - Creating Time vs Deviation scatter for 4 volumes: [5.0, 10.0, 25.0, 50.0] uL
+2026-02-24 17:13:27,277 - calibration_modular_v2.visualization - INFO - [OK] Time vs deviation scatter plot saved
+2026-02-24 17:13:27,803 - calibration_modular_v2.visualization - INFO - [OK] Measured volume over time plot saved
+2026-02-24 17:13:28,177 - calibration_modular_v2.visualization - INFO - [OK] Improvement summary saved
+2026-02-24 17:13:28,177 - calibration_modular_v2.visualization - INFO - [SUCCESS] All plots saved to: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\plots
+2026-02-24 17:13:28,177 - calibration_modular_v2.experiment - INFO - Exporting clean CSV files...
+2026-02-24 17:13:28,177 - calibration_modular_v2.csv_export - INFO - Exporting clean CSV files...
+2026-02-24 17:13:28,177 - calibration_modular_v2.csv_export - INFO - Exported 26 trial results to trial_results.csv
+2026-02-24 17:13:28,177 - calibration_modular_v2.csv_export - INFO - Exported 4 optimal conditions to optimal_conditions.csv
+2026-02-24 17:13:28,189 - calibration_modular_v2.csv_export - INFO - Exported 91 raw measurements to raw_measurements.csv
+2026-02-24 17:13:28,189 - calibration_modular_v2.csv_export - INFO - [SUCCESS] Clean CSV files exported successfully
+2026-02-24 17:13:28,193 - calibration_modular_v2.csv_export - INFO - Exported experiment summary to experiment_summary.csv
+2026-02-24 17:13:28,193 - calibration_modular_v2.experiment - INFO - Generating analysis insights...
+2026-02-24 17:13:28,193 - calibration_modular_v2.experiment_analysis - INFO - Performing calibration experiment analysis...
+2026-02-24 17:13:28,328 - calibration_modular_v2.experiment_analysis - INFO - [SUCCESS] Experiment analysis completed
+2026-02-24 17:13:28,329 - calibration_modular_v2.experiment_analysis - INFO - Analysis report saved to: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570\analysis_report.txt
+2026-02-24 17:13:28,331 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated 3 visualization plots in plots/
+2026-02-24 17:13:28,331 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated 5 CSV files
+2026-02-24 17:13:28,331 - calibration_modular_v2.experiment - INFO - [SUCCESS] Generated analysis insights and recommendations
+2026-02-24 17:13:28,332 - calibration_modular_v2.experiment - INFO - Calibration experiment completed successfully
+2026-02-24 17:13:28,332 - calibration_modular_v2.experiment - INFO - Total measurements: 91
+2026-02-24 17:13:28,332 - calibration_modular_v2.experiment - INFO - Total duration: 1636.7s
+2026-02-24 17:13:28,332 - __main__ - INFO - ============================================================
+2026-02-24 17:13:28,332 - __main__ - INFO - CALIBRATION COMPLETED SUCCESSFULLY
+2026-02-24 17:13:28,332 - __main__ - INFO - ============================================================
+2026-02-24 17:13:28,332 - __main__ - INFO - Experiment: multi_volume_calibration_test
+2026-02-24 17:13:28,332 - __main__ - INFO - Total measurements: 91
+2026-02-24 17:13:28,333 - __main__ - INFO - Total duration: 1636.7 seconds
+2026-02-24 17:13:28,333 - __main__ - INFO - Volumes calibrated: 4
+2026-02-24 17:13:28,333 - __main__ - INFO - Success rate: 38.5%
+2026-02-24 17:13:28,333 - __main__ - INFO - Mean score: 0.900
+2026-02-24 17:13:28,334 - __main__ - INFO - High quality trials: 10
+2026-02-24 17:13:28,334 - __main__ - INFO - 
+Results saved to: c:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1771969570
+2026-02-24 17:13:28,334 - __main__ - INFO - Files generated:
+2026-02-24 17:13:28,334 - __main__ - INFO -   - optimal_conditions.csv (best parameters for each volume)
+2026-02-24 17:13:28,334 - __main__ - INFO -   - raw_measurements.csv (all measurement data)
+2026-02-24 17:13:28,334 - __main__ - INFO -   - experiment_summary.json (complete statistics)
+2026-02-24 17:13:28,334 - __main__ - INFO - 
+[SUCCESS] Calibration experiment completed successfully!
