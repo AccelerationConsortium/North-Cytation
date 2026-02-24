@@ -11,7 +11,7 @@ import pandas as pd
 from pathlib import Path
 from spectral_analyzer_program import process_degradation_spectral_data
 
-
+NUMBER_OF_SAMPLES = 2  # Define at module level
 
 # Create custom pipetting parameters <--- Work for acetone/toluene/2MeTHF (but we might replace with liquid=solvent later once calib done)
 small_tip_2MeTHF_params = PipettingParameters(
@@ -60,7 +60,7 @@ def validate_key_liquids(lash_e, output_dir):
 
 
 # Global well tracking
-current_well_count = 7
+current_well_count = 0
 
 def update_well_count(wells_used):
     global current_well_count
@@ -335,7 +335,7 @@ ACID_LIBRARY = {
     'TFA': {'molar_mass': 114.02, 'molarity': 6.0},
 }
 
-def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volume, solvent='2MeTHF'):
+def degradation_workflow(i, acid_type, acid_molar_excess, water_volume, solvent='2MeTHF'):
   
     # a. Initial State of your Vials, so the robot can know where to pipet:
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/degradation_vial_status.csv"
@@ -358,6 +358,8 @@ def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volu
     
     # e. Number of replicate measurements per timepoint
     REPLICATES = 1  # Number of wells to use for each measurement (default: 3)
+
+    # NUMBER_OF_SAMPLES now defined at module level
 
     # f. Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_t8=True)
@@ -404,7 +406,7 @@ def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volu
     }
 
     # Select only the specified sample
-    sample_name = f'sample_{sample_number}'
+    sample_name = f'sample_{i}'
     sample_solutions = {sample_name}
     if sample_name not in samples[sample_col].values:
         raise ValueError(f"Sample {sample_name} not found in vial status file.")
@@ -570,6 +572,8 @@ def degradation_workflow(sample_number, acid_type, acid_molar_excess, water_volu
         slack_agent.send_slack_message("Degradation workflow completed!")
 
 # Run my workflow here!
-degradation_workflow(sample_number=1, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=1000, water_volume=0.010)
-#degradation_workflow(sample_number=2, acid_type='TFA', solvent='2MeTHF', acid_molar_excess=1000, water_volume=0.010)
+
+for i in range(1, NUMBER_OF_SAMPLES+1): 
+    degradation_workflow(i, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=1000, water_volume=0.010)
+
 
