@@ -360,6 +360,54 @@ def check_and_switch_waste_vial(lash_e, waste_state):
         lash_e.logger.warning(f"Could not check waste vial volume: {e}, continuing with {current_waste}")
         return current_waste
 
+def process_sample_spectral_data(output_dir, sample_name, logger=None):
+    """
+    Process spectral data for a specific sample only
+    """
+    import glob
+    import os
+    
+    # Find files that match this specific sample
+    pattern = os.path.join(str(output_dir), f"{sample_name}_output_*.txt")
+    sample_files = glob.glob(pattern)
+    
+    if not sample_files:
+        if logger:
+            logger.warning(f"No output files found for {sample_name}")
+        return False
+    
+    if logger:
+        logger.info(f"Found {len(sample_files)} files for {sample_name}: {[os.path.basename(f) for f in sample_files]}")
+    
+    # Create a temporary directory with just this sample's files
+    import tempfile
+    import shutil
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Copy only this sample's files to temp directory  
+        for file_path in sample_files:
+            shutil.copy2(file_path, temp_dir)
+        
+        # Run the spectral analyzer on the temp directory containing only this sample
+        try:
+            spectral_results = process_degradation_spectral_data(temp_dir, logger)
+            
+            # Move results back to main output directory with sample prefix
+            temp_processed = os.path.join(temp_dir, 'processed_data')
+            main_processed = os.path.join(str(output_dir), f'{sample_name}_processed_data')
+            
+            if os.path.exists(temp_processed):
+                if os.path.exists(main_processed):
+                    shutil.rmtree(main_processed)
+                shutil.copytree(temp_processed, main_processed)
+                
+            return spectral_results
+            
+        except Exception as e:
+            if logger:
+                logger.error(f"Error processing {sample_name}: {str(e)}")
+            return False
+
 def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, solvent='2MeTHF'):
   
     # g. Polymer dilution calculation:
@@ -549,20 +597,21 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
     # 4. Home all components at the end of the workflow
     lash_e.nr_robot.move_home()
     
-    # 5. Process the spectral data and create plots
+    # 5. Process the spectral data and create plots for this sample only
     if not SIMULATE and output_dir is not None:
-        lash_e.logger.info("Starting post-experiment spectral data analysis...")
+        lash_e.logger.info(f"Starting post-experiment spectral data analysis for {sample_name}...")
         try:
-            spectral_results = process_degradation_spectral_data(output_dir, lash_e.logger)
-            if spectral_results:
-                lash_e.logger.info("Spectral analysis completed successfully!")
+            # Create sample-specific analysis by temporarily moving other sample files
+            sample_spectral_results = process_sample_spectral_data(output_dir, sample_name, lash_e.logger)
+            if sample_spectral_results:
+                lash_e.logger.info(f"Spectral analysis completed successfully for {sample_name}!")
             else:
-                lash_e.logger.warning("Spectral analysis failed or no data found")
+                lash_e.logger.warning(f"Spectral analysis failed or no data found for {sample_name}")
         except Exception as e:
-            lash_e.logger.error(f"Error during spectral analysis: {str(e)}")
+            lash_e.logger.error(f"Error during spectral analysis for {sample_name}: {str(e)}")
     
     if not SIMULATE:   
-        slack_agent.send_slack_message("Degradation workflow completed!")
+        slack_agent.send_slack_message(f"Degradation workflow for {sample_name} completed!")
 
 # Run my workflow here!
 
