@@ -3764,11 +3764,28 @@ def execute_kinetics_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB",
         turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
         if turbidity_data is not None:
-            for _, row in turbidity_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = well_recipes_df['wellplate_index'] == well_index
-                well_recipes_df.loc[mask, 'turbidity_600'] = row['turbidity_600']
-            lash_e.logger.info(f"  Turbidity measured for {len(turbidity_data)} wells")
+            try:
+                # Use well position mapping (same logic as iterative workflow)
+                def well_index_to_position(well_idx):
+                    """Convert well index (0-95) to well position (A1-H12)"""
+                    row = well_idx // 12  # 12 columns per row  
+                    col = well_idx % 12
+                    return f"{chr(65 + row)}{col + 1}"
+                
+                turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
+                
+                for well_idx in well_indices:
+                    well_position = well_index_to_position(well_idx)
+                    matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
+                    
+                    if len(matching_rows) > 0:
+                        turbidity_value = matching_rows.iloc[0][turbidity_col]
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
+                
+                lash_e.logger.info(f"  Turbidity measured for {len(turbidity_data)} wells")
+            except Exception as e:
+                lash_e.logger.warning(f"  Could not integrate turbidity data: {e}")
+                lash_e.logger.warning(f"  Raw turbidity data saved, continuing...")
         
         lash_e.logger.info("  Sequence complete: Turbidity-only kinetics ready")
         
@@ -3797,22 +3814,56 @@ def execute_kinetics_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB",
         turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
         if turbidity_data is not None:
-            for _, row in turbidity_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = well_recipes_df['wellplate_index'] == well_index
-                well_recipes_df.loc[mask, 'turbidity_600'] = row['turbidity_600']
+            try:
+                # Use well position mapping (same logic as iterative workflow)
+                def well_index_to_position(well_idx):
+                    """Convert well index (0-95) to well position (A1-H12)"""
+                    row = well_idx // 12  # 12 columns per row
+                    col = well_idx % 12
+                    return f"{chr(65 + row)}{col + 1}"
+                
+                turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
+                
+                for well_idx in well_indices:
+                    well_position = well_index_to_position(well_idx)
+                    matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
+                    
+                    if len(matching_rows) > 0:
+                        turbidity_value = matching_rows.iloc[0][turbidity_col]
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
+            except Exception as e:
+                lash_e.logger.warning(f"    Could not integrate turbidity data: {e}")
+                lash_e.logger.warning(f"    Raw turbidity data saved, continuing...")
         
         # Measure fluorescence for ratio
         lash_e.logger.info("    Step C: Measuring fluorescence for ratio...")
         fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
         if fluorescence_data is not None:
-            for _, row in fluorescence_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = well_recipes_df['wellplate_index'] == well_index
-                well_recipes_df.loc[mask, 'fluorescence_334_373'] = row['fluorescence_334_373']
-                well_recipes_df.loc[mask, 'fluorescence_334_384'] = row['fluorescence_334_384']
-                well_recipes_df.loc[mask, 'ratio'] = row['ratio']
+            try:
+                # Use well position mapping (same logic as iterative workflow)
+                def well_index_to_position(well_idx):
+                    """Convert well index (0-95) to well position (A1-H12)"""
+                    row = well_idx // 12  # 12 columns per row
+                    col = well_idx % 12
+                    return f"{chr(65 + row)}{col + 1}"
+                
+                for well_idx in well_indices:
+                    well_position = well_index_to_position(well_idx)
+                    matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
+                    
+                    if len(matching_rows) > 0:
+                        row = matching_rows.iloc[0]
+                        # Check which fluorescence columns exist
+                        if 'fluorescence_334_373' in row:
+                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = row['fluorescence_334_373']
+                        if 'fluorescence_334_384' in row:
+                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = row['fluorescence_334_384']
+                        if 'ratio' in row:
+                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = row['ratio']
+            except Exception as e:
+                lash_e.logger.warning(f"    Could not integrate fluorescence data: {e}")
+                lash_e.logger.warning(f"    Raw fluorescence data saved, continuing...")
         
         lash_e.logger.info("  Sequence complete: DMSO-first kinetics ready")
         
@@ -3825,11 +3876,28 @@ def execute_kinetics_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB",
         turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
         if turbidity_data is not None:
-            for _, row in turbidity_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = well_recipes_df['wellplate_index'] == well_index
-                well_recipes_df.loc[mask, 'turbidity_600'] = row['turbidity_600']
-            lash_e.logger.info(f"    Initial turbidity measured for {len(turbidity_data)} wells")
+            try:
+                # Use well position mapping (same logic as iterative workflow)
+                def well_index_to_position(well_idx):
+                    """Convert well index (0-95) to well position (A1-H12)"""
+                    row = well_idx // 12  # 12 columns per row
+                    col = well_idx % 12
+                    return f"{chr(65 + row)}{col + 1}"
+                
+                turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
+                
+                for well_idx in well_indices:
+                    well_position = well_index_to_position(well_idx)
+                    matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
+                    
+                    if len(matching_rows) > 0:
+                        turbidity_value = matching_rows.iloc[0][turbidity_col]
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
+                
+                lash_e.logger.info(f"    Initial turbidity measured for {len(turbidity_data)} wells")
+            except Exception as e:
+                lash_e.logger.warning(f"    Could not integrate initial turbidity data: {e}")
+                lash_e.logger.warning(f"    Raw turbidity data saved, continuing...")
         
         # Add DMSO second
         lash_e.logger.info("    Step B: Adding DMSO...")
@@ -3852,12 +3920,30 @@ def execute_kinetics_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB",
         fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
         if fluorescence_data is not None:
-            for _, row in fluorescence_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = well_recipes_df['wellplate_index'] == well_index
-                well_recipes_df.loc[mask, 'fluorescence_334_373'] = row['fluorescence_334_373']
-                well_recipes_df.loc[mask, 'fluorescence_334_384'] = row['fluorescence_334_384']
-                well_recipes_df.loc[mask, 'ratio'] = row['ratio']
+            try:
+                # Use well position mapping (same logic as iterative workflow)
+                def well_index_to_position(well_idx):
+                    """Convert well index (0-95) to well position (A1-H12)"""
+                    row = well_idx // 12  # 12 columns per row
+                    col = well_idx % 12
+                    return f"{chr(65 + row)}{col + 1}"
+                
+                for well_idx in well_indices:
+                    well_position = well_index_to_position(well_idx)
+                    matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
+                    
+                    if len(matching_rows) > 0:
+                        row = matching_rows.iloc[0]
+                        # Check which fluorescence columns exist
+                        if 'fluorescence_334_373' in row:
+                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = row['fluorescence_334_373']
+                        if 'fluorescence_334_384' in row:
+                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = row['fluorescence_334_384']
+                        if 'ratio' in row:
+                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = row['ratio']
+            except Exception as e:
+                lash_e.logger.warning(f"    Could not integrate fluorescence ratio data: {e}")
+                lash_e.logger.warning(f"    Raw fluorescence data saved, continuing...")
         
         lash_e.logger.info("  Sequence complete: Turbidity-first kinetics ready")
         
@@ -3891,11 +3977,28 @@ def execute_kinetics_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB",
         
         if post_shake_turbidity is not None:
             # Store as separate column for post-shake data
-            for _, row in post_shake_turbidity.iterrows():
-                well_index = row['wellplate_index']
-                mask = well_recipes_df['wellplate_index'] == well_index
-                well_recipes_df.loc[mask, 'post_shake_turbidity_600'] = row['turbidity_600']
-            lash_e.logger.info(f"  Post-shake turbidity measured for {len(post_shake_turbidity)} wells")
+            try:
+                # Use well position mapping (same logic as iterative workflow)
+                def well_index_to_position(well_idx):
+                    """Convert well index (0-95) to well position (A1-H12)"""
+                    row = well_idx // 12  # 12 columns per row
+                    col = well_idx % 12
+                    return f"{chr(65 + row)}{col + 1}"
+                
+                turbidity_col = 'turbidity_600' if 'turbidity_600' in post_shake_turbidity.columns else post_shake_turbidity.columns[-1]
+                
+                for well_idx in well_indices:
+                    well_position = well_index_to_position(well_idx)
+                    matching_rows = post_shake_turbidity[post_shake_turbidity['well_position'] == well_position]
+                    
+                    if len(matching_rows) > 0:
+                        turbidity_value = matching_rows.iloc[0][turbidity_col]
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'post_shake_turbidity_600'] = turbidity_value
+                
+                lash_e.logger.info(f"  Post-shake turbidity measured for {len(post_shake_turbidity)} wells")
+            except Exception as e:
+                lash_e.logger.warning(f"  Could not integrate post-shake turbidity data: {e}")
+                lash_e.logger.warning(f"  Raw post-shake turbidity data saved, continuing...")
         
     else:  # Both ratio sequences need turbidity + ratio post-shake
         # Post-shake turbidity measurement
@@ -3908,18 +4011,26 @@ def execute_kinetics_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB",
         
         # Store post-shake data in separate columns
         if post_shake_turbidity is not None:
-            for _, row in post_shake_turbidity.iterrows():
-                well_index = row['wellplate_index']
-                mask = well_recipes_df['wellplate_index'] == well_index
-                well_recipes_df.loc[mask, 'post_shake_turbidity_600'] = row['turbidity_600']
+            try:
+                for _, row in post_shake_turbidity.iterrows():
+                    well_index = row['wellplate_index']
+                    mask = well_recipes_df['wellplate_index'] == well_index
+                    well_recipes_df.loc[mask, 'post_shake_turbidity_600'] = row['turbidity_600']
+            except Exception as e:
+                lash_e.logger.warning(f"  Could not integrate post-shake turbidity data: {e}")
+                lash_e.logger.warning(f"  Raw post-shake turbidity data saved, continuing...")
         
         if post_shake_fluorescence is not None:
-            for _, row in post_shake_fluorescence.iterrows():
-                well_index = row['wellplate_index']
-                mask = well_recipes_df['wellplate_index'] == well_index
-                well_recipes_df.loc[mask, 'post_shake_fluorescence_334_373'] = row['fluorescence_334_373']
-                well_recipes_df.loc[mask, 'post_shake_fluorescence_334_384'] = row['fluorescence_334_384']
-                well_recipes_df.loc[mask, 'post_shake_ratio'] = row['ratio']
+            try:
+                for _, row in post_shake_fluorescence.iterrows():
+                    well_index = row['wellplate_index']
+                    mask = well_recipes_df['wellplate_index'] == well_index
+                    well_recipes_df.loc[mask, 'post_shake_fluorescence_334_373'] = row['fluorescence_334_373']
+                    well_recipes_df.loc[mask, 'post_shake_fluorescence_334_384'] = row['fluorescence_334_384']
+                    well_recipes_df.loc[mask, 'post_shake_ratio'] = row['ratio']
+            except Exception as e:
+                lash_e.logger.warning(f"  Could not integrate post-shake fluorescence data: {e}")
+                lash_e.logger.warning(f"  Raw post-shake fluorescence data saved, continuing...")
         
         lash_e.logger.info(f"  Post-shake measurements complete (turbidity + ratio)")
     
