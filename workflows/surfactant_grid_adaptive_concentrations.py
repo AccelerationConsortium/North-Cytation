@@ -717,6 +717,8 @@ def calculate_adaptive_concentration_bounds(experiment_df, surfactant_a_name, su
 # ================================================================================
 # DATA BACKUP AND RECOVERY FUNCTIONS
 # ================================================================================
+
+def backup_measurement_data(lash_e, measurement_entry, plate_number, wells_measured, experiment_name):
     """
     Immediately backup raw measurement data to prevent data loss if processing crashes.
     
@@ -1457,7 +1459,7 @@ def rank_options_with_conservation_external(options, lash_e, conservation_thresh
     # Return option with highest score
     return max(scored_options, key=lambda x: x[1])[0]
 
-def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, target_concentrations, max_volume_ul=None):
+def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, target_concentrations, lash_e=None, max_volume_ul=None):
     """
     Create a dilution plan using existing stock solutions with proper dilution calculations.
     
@@ -1477,11 +1479,10 @@ def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, 
     # Add the stock solution itself (always available)
     stock_vial_name = f"{surfactant_name}_stock"
     
-    print(f"DEBUG: Looking for surfactant: {surfactant_name}")
-    print(f"DEBUG: SURFACTANT_LIBRARY keys: {list(SURFACTANT_LIBRARY.keys())}")
+    if surfactant_name not in SURFACTANT_LIBRARY:
+        raise ValueError(f"Surfactant '{surfactant_name}' not found in SURFACTANT_LIBRARY. Available: {list(SURFACTANT_LIBRARY.keys())}")
     
     surfactant_info = SURFACTANT_LIBRARY[surfactant_name]
-    print(f"DEBUG: Surfactant info: {surfactant_info}")
     
     # Look for stock concentration in the surfactant info
     if isinstance(surfactant_info, dict) and 'stock_conc' in surfactant_info:
@@ -1489,24 +1490,16 @@ def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, 
     elif isinstance(surfactant_info, (int, float)):
         stock_conc = surfactant_info  # Direct concentration value
     else:
-        # Default fallback - assume 50 mM for common surfactants
-        stock_conc = 50.0
-        print(f"DEBUG: Using default stock concentration 50 mM for {surfactant_name}")
+        raise ValueError(f"Cannot extract stock concentration for {surfactant_name}: {surfactant_info}")
     
     surfactant_stocks.append({
         'vial_name': stock_vial_name,
         'target_concentration_mm': stock_conc,
         'surfactant': surfactant_name
     })
-    print(f"DEBUG: Added stock solution {stock_vial_name} = {stock_conc} mM")
-
     
     # Sort by concentration (highest first)
     surfactant_stocks.sort(key=lambda x: x['target_concentration_mm'], reverse=True)
-    
-    print(f"DEBUG: Available stocks for {surfactant_name}:")
-    for stock in surfactant_stocks:
-        print(f"  {stock['vial_name']}: {stock['target_concentration_mm']} mM")
     
     # Create concentration map: {target_conc: {vial_name, concentration_mm, volume_needed_ul}}
     concentration_map = {}
@@ -1554,7 +1547,6 @@ def create_plan_from_existing_stocks(existing_stock_solutions, surfactant_name, 
                     'needed_for': [target_conc]
                 })
                 
-            print(f"DEBUG: {target_conc:.3e} mM -> {best_option['stock']['vial_name']} ({best_option['volume_needed_ul']:.1f} uL)")
         else:
             # No pipettable solution found
             raise ValueError(f"No pipettable stock solution found for {target_conc:.3e} mM {surfactant_name} (volumes would be too small or too large)")
@@ -1941,9 +1933,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
         # For other components (water, buffer, PYRENE), use safe filtering logic
         # CRITICAL: Extra safety for pyrene to prevent string vs numeric comparison errors
         if volume_column == 'pyrene_volume_ul':
-            logger.info(f"  PYRENE DEBUG: Column dtype = {batch_df[volume_column].dtype}")
-            logger.info(f"  PYRENE DEBUG: Sample values = {batch_df[volume_column].head(3).tolist()}")
-            logger.info(f"  PYRENE DEBUG: Unique values = {batch_df[volume_column].unique()}")
+            logger.debug(f"  PYRENE: Column dtype = {batch_df[volume_column].dtype}")
             
         # Safe filtering with explicit numeric conversion
         try:
@@ -1975,7 +1965,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
         volume_ul = row[volume_column]
         volume_ml = volume_ul / 1000
         
-        logger.info(f"    Well {well_idx}: {volume_ul:.1f}uL from {vial_name}")
+        logger.debug(f"    Well {well_idx}: {volume_ul:.1f}uL from {vial_name}")
         
         # Robot actions (Lash_E handles simulation internally)
         lash_e.nr_robot.aspirate_from_vial(vial_name, volume_ml, liquid=liquid_type)
@@ -1990,7 +1980,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
 def position_surfactant_vials_by_concentration(lash_e, vial_names, batch_df, vial_type):
     """
     Cute little method to sort surfactant vials by concentration and move to safe positions.
-    Prevents contamination by going concentrated ΓåÆ dilute, starting at clamp.
+    Prevents contamination by going concentrated -> dilute, starting at clamp.
     
     Args:
         lash_e: Robot coordinator
@@ -2107,18 +2097,15 @@ def measure_turbidity(lash_e, well_indices, batch_recipes=None, shake_and_wait=T
             lash_e.nr_track.origin()
         
         # DEBUG: Show raw data structure
-        lash_e.logger.info(f"TURBIDITY RAW DEBUG: type = {type(turbidity_data)}")
+        lash_e.logger.debug(f"TURBIDITY RAW: type = {type(turbidity_data)}")
         if hasattr(turbidity_data, 'shape'):
-            lash_e.logger.info(f"TURBIDITY RAW DEBUG: shape = {turbidity_data.shape}")
-            lash_e.logger.info(f"TURBIDITY RAW DEBUG: columns = {list(turbidity_data.columns)}")
-            lash_e.logger.info(f"TURBIDITY RAW DEBUG: first 3 rows:\n{turbidity_data.head(3)}")
+            lash_e.logger.debug(f"TURBIDITY RAW: shape = {turbidity_data.shape}")
+            lash_e.logger.debug(f"TURBIDITY RAW: columns = {list(turbidity_data.columns)}")
         
         # Process Cytation format using utility function
         turbidity_data = flatten_cytation_data(turbidity_data, 'turbidity')
         if turbidity_data is not None:
-            lash_e.logger.info(f"TURBIDITY PROCESSING: Final columns = {list(turbidity_data.columns)}")
-            lash_e.logger.info(f"TURBIDITY PROCESSING: Final shape = {turbidity_data.shape}")
-            lash_e.logger.info(f"TURBIDITY PROCESSING: First few processed rows:\n{turbidity_data.head(3)}")
+            lash_e.logger.debug(f"TURBIDITY PROCESSED: shape = {turbidity_data.shape}, columns = {list(turbidity_data.columns)}")
         
         lash_e.logger.info(f"Successfully measured turbidity for {len(well_indices)} wells")
         return turbidity_data
@@ -2201,18 +2188,14 @@ def measure_fluorescence(lash_e, well_indices, batch_recipes=None, shake_and_wai
             lash_e.logger.info("Leaving wellplate at cytation for repeated measurements...")
         
         # DEBUG: Show raw data structure
-        lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: type = {type(fluorescence_data)}")
+        lash_e.logger.debug(f"FLUORESCENCE RAW: type = {type(fluorescence_data)}")
         if hasattr(fluorescence_data, 'shape'):
-            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: shape = {fluorescence_data.shape}")
-            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: columns = {list(fluorescence_data.columns)}")
-            lash_e.logger.info(f"FLUORESCENCE RAW DEBUG: first 3 rows:\n{fluorescence_data.head(3)}")
+            lash_e.logger.debug(f"FLUORESCENCE RAW: shape = {fluorescence_data.shape}")
         
         # Process Cytation format using utility function
         fluorescence_data = flatten_cytation_data(fluorescence_data, 'fluorescence')
         if fluorescence_data is not None:
-            lash_e.logger.info(f"FLUORESCENCE PROCESSING: Final columns = {list(fluorescence_data.columns)}")
-            lash_e.logger.info(f"FLUORESCENCE PROCESSING: Final shape = {fluorescence_data.shape}")
-            lash_e.logger.info(f"FLUORESCENCE PROCESSING: First few processed rows:\n{fluorescence_data.head(3)}")
+            lash_e.logger.debug(f"FLUORESCENCE PROCESSED: shape = {fluorescence_data.shape}, columns = {list(fluorescence_data.columns)}")
             
             # Post-process for kinetics workflow compatibility
             # Convert well positions to well indices if needed
@@ -2502,8 +2485,8 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     if existing_stock_solutions:
         lash_e.logger.info("  Using existing stock solutions from previous stage...")
         # Convert existing stock solutions to plan format
-        plan_a = create_plan_from_existing_stocks(existing_stock_solutions, surfactant_a_name, achievable_concs_a)
-        plan_b = create_plan_from_existing_stocks(existing_stock_solutions, surfactant_b_name, achievable_concs_b)
+        plan_a = create_plan_from_existing_stocks(existing_stock_solutions, surfactant_a_name, achievable_concs_a, lash_e)
+        plan_b = create_plan_from_existing_stocks(existing_stock_solutions, surfactant_b_name, achievable_concs_b, lash_e)
         tracker_a = None
         tracker_b = None
     else:
@@ -2571,11 +2554,11 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         cmc_max_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # 200µL (no buffer) or 180µL (with buffer)
         
         if cmc_target_concs_a:
-            cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, max_volume_ul=cmc_max_volume_ul)
+            cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, lash_e, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_a_name}: {len(cmc_target_concs_a)} concentrations")
             
         if cmc_target_concs_b:
-            cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, max_volume_ul=cmc_max_volume_ul)
+            cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, lash_e, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_b_name}: {len(cmc_target_concs_b)} concentrations")
     
     # Step 5: Create complete well-by-well recipes DataFrame
@@ -2621,12 +2604,7 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
                 well_recipes.append(well_recipe)
                 well_index += 1
     
-    # Add end control wells (DISABLED - not needed for most experiments)
-    # end_controls = create_control_wells(surfactant_a_name, surfactant_b_name, "end")
-    # for control in end_controls:
-    #     well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name)
-    #     well_recipes.append(well_recipe)
-    #     well_index += 1
+    # End controls disabled - not needed for most experiments
     
     # Convert to DataFrame
     import pandas as pd
@@ -2737,7 +2715,7 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
         surf_b_vials = batch_df[batch_df['surf_B_volume_ul'] > 0]['substock_B_name'].dropna().unique()
         
         if CREATE_WELLPLATE:
-            # Position surfactant A vials by concentration (concentrated ΓåÆ dilute)
+            # Position surfactant A vials by concentration (concentrated -> dilute)
             if len(surf_a_vials) > 0:
                 sorted_surf_a_vials = position_surfactant_vials_by_concentration(lash_e, surf_a_vials, batch_df, 'A')
                 
@@ -2782,7 +2760,7 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
                 lash_e.nr_robot.remove_pipet()
                 lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
             
-            # Position surfactant B vials by concentration (concentrated ΓåÆ dilute)
+            # Position surfactant B vials by concentration (concentrated -> dilute)
             if len(surf_b_vials) > 0:
                 sorted_surf_b_vials = position_surfactant_vials_by_concentration(lash_e, surf_b_vials, batch_df, 'B')
                 
@@ -2801,15 +2779,7 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
         turbidity_entry, turbidity_data = measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data, batch_df)
         
         # DEBUG: Show what turbidity data we got
-        lash_e.logger.info(f"  TURBIDITY DEBUG: wells measured = {wells_in_batch}")
-        lash_e.logger.info(f"  TURBIDITY DEBUG: backup entry = {turbidity_entry}")
-        lash_e.logger.info(f"  TURBIDITY DEBUG: data type = {type(turbidity_data)}")
-        if hasattr(turbidity_data, 'columns'):
-            lash_e.logger.info(f"  TURBIDITY DEBUG: columns = {list(turbidity_data.columns)}")
-            lash_e.logger.info(f"  TURBIDITY DEBUG: shape = {turbidity_data.shape}")
-            lash_e.logger.info(f"  TURBIDITY DEBUG: first few rows:\n{turbidity_data.head()}")
-        else:
-            lash_e.logger.info(f"  TURBIDITY DEBUG: raw data = {turbidity_data}")
+        lash_e.logger.debug(f"Turbidity measured for {len(wells_in_batch)} wells")
         
         # Add turbidity data to DataFrame by well position mapping
         if turbidity_data is not None:
@@ -2868,15 +2838,7 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
         fluorescence_entry, fluorescence_data = measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data, batch_df)
         
         # DEBUG: Show what fluorescence data we got
-        lash_e.logger.info(f"  FLUORESCENCE DEBUG: wells measured = {wells_in_batch}")
-        lash_e.logger.info(f"  FLUORESCENCE DEBUG: backup entry = {fluorescence_entry}")
-        lash_e.logger.info(f"  FLUORESCENCE DEBUG: data type = {type(fluorescence_data)}")
-        if hasattr(fluorescence_data, 'columns'):
-            lash_e.logger.info(f"  FLUORESCENCE DEBUG: columns = {list(fluorescence_data.columns)}")
-            lash_e.logger.info(f"  FLUORESCENCE DEBUG: shape = {fluorescence_data.shape}")
-            lash_e.logger.info(f"  FLUORESCENCE DEBUG: first few rows:\n{fluorescence_data.head()}")
-        else:
-            lash_e.logger.info(f"  FLUORESCENCE DEBUG: raw data = {fluorescence_data}")
+        lash_e.logger.debug(f"Fluorescence measured for {len(wells_in_batch)} wells")
         
         # Add fluorescence data to DataFrame by well position mapping (only if measurements enabled)
         if measurements_enabled and fluorescence_data is not None:
@@ -3647,8 +3609,8 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SU
     target_concs_b = [pair[1] for pair in suggested_concentrations]
     
     # Use smart matching with existing substocks (NO new dilutions)
-    plan_a = create_plan_from_existing_stocks(available_substocks, surfactant_a_name, target_concs_a)
-    plan_b = create_plan_from_existing_stocks(available_substocks, surfactant_b_name, target_concs_b)
+    plan_a = create_plan_from_existing_stocks(available_substocks, surfactant_a_name, target_concs_a, lash_e)
+    plan_b = create_plan_from_existing_stocks(available_substocks, surfactant_b_name, target_concs_b, lash_e)
     
     # STEP 3: Create well recipes for suggestions
     logger.info("Creating well recipes for targeted exploration...")
