@@ -97,14 +97,14 @@ def get_absorbance_at_wavelength(wavelength_array, absorbance_array, target_wave
 
 def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, files, sample_name=None, plot_filename=None, csv_filename=None):
     """
-    Create time series plots for specific wavelengths (555 nm, 458 nm, and 458/555 ratio)
+    Create time series plots for specific wavelengths (556 nm, 428 nm, and 428/556 ratio)
     """
     print("\nCreating wavelength-specific time series plots...")
     
     # Initialize data storage for time series
     timepoints = []
-    abs_555nm = []
-    abs_458nm = []
+    abs_556nm = []
+    abs_428nm = []
     
     # Extract timepoints and absorbance values at specific wavelengths
     for i, filepath in enumerate(files):
@@ -115,9 +115,9 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
         # Get wavelength and absorbance data
         wavelength, absorbance = read_spectral_file(filepath)
         
-        # Extract absorbance at 555 nm and 458 nm
-        abs_555 = get_absorbance_at_wavelength(wavelength, absorbance, 555)
-        abs_458 = get_absorbance_at_wavelength(wavelength, absorbance, 458)
+        # Extract absorbance at 556 nm and 428 nm
+        abs_555 = get_absorbance_at_wavelength(wavelength, absorbance, 556)
+        abs_458 = get_absorbance_at_wavelength(wavelength, absorbance, 428)
         
         abs_555nm.append(abs_555)
         abs_458nm.append(abs_458)
@@ -125,46 +125,46 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     # Convert timepoints from seconds to minutes
     timepoints = [t / 60.0 for t in timepoints]
     
-    # Calculate 458/555 ratio
-    ratio_458_555 = np.array(abs_458nm) / np.array(abs_555nm)
+    # Calculate 428/556 ratio
+    ratio_428_556 = np.array(abs_458nm) / np.array(abs_555nm)
     
     # Create the three plots
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
     sample_label = f" - Sample {sample_name}" if sample_name is not None else ""
     fig.suptitle(f'Wavelength-Specific Analysis Over Time{sample_label}', fontsize=18, fontweight='bold')
     
-    # Plot 1: 555 nm over time
+    # Plot 1: 556 nm over time
     axes[0, 0].plot(timepoints, abs_555nm, 'o-', color='#4A3A7F', linewidth=2, markersize=8)
     axes[0, 0].set_xlabel('Time (min)', fontsize=14)
     axes[0, 0].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    axes[0, 0].set_title('555 nm Absorbance vs Time', fontsize=14)
+    axes[0, 0].set_title('556 nm Absorbance vs Time', fontsize=14)
     axes[0, 0].tick_params(axis='both', which='major', labelsize=12, direction='in')
     axes[0, 0].grid(False)
     
-    # Plot 2: 458 nm over time
+    # Plot 2: 428 nm over time
     axes[0, 1].plot(timepoints, abs_458nm, 'o-', color="#859DE6", linewidth=2, markersize=8)
     axes[0, 1].set_xlabel('Time (min)', fontsize=14)
     axes[0, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    axes[0, 1].set_title('458 nm Absorbance vs Time', fontsize=14)
+    axes[0, 1].set_title('428 nm Absorbance vs Time', fontsize=14)
     axes[0, 1].tick_params(axis='both', which='major', labelsize=12, direction='in')
     axes[0, 1].grid(False)
     
-    # Plot 3: 458/555 ratio over time
-    axes[1, 0].plot(timepoints, ratio_458_555, 'o-', color="#9B6BA8", linewidth=2, markersize=8)
+    # Plot 3: 428/556 ratio over time
+    axes[1, 0].plot(timepoints, ratio_428_556, 'o-', color="#9B6BA8", linewidth=2, markersize=8)
     axes[1, 0].set_xlabel('Time (min)', fontsize=14)
-    axes[1, 0].set_ylabel('Absorbance Ratio (458/555 nm)', fontsize=14)
-    axes[1, 0].set_title('458/555 nm Ratio vs Time', fontsize=14)
+    axes[1, 0].set_ylabel('Absorbance Ratio (428/556 nm)', fontsize=14)
+    axes[1, 0].set_title('428/556 nm Ratio vs Time', fontsize=14)
     axes[1, 0].tick_params(axis='both', which='major', labelsize=12, direction='in')
     axes[1, 0].grid(False)
     
     # Plot 4: Combined comparison
-    axes[1, 1].plot(timepoints, abs_555nm, 'o-', color='#4A3A7F', linewidth=2, markersize=6, label='555 nm')
-    axes[1, 1].plot(timepoints, abs_458nm, 'o-', color='#859DE6', linewidth=2, markersize=6, label='458 nm')
+    axes[1, 1].plot(timepoints, abs_555nm, 'o-', color='#4A3A7F', linewidth=2, markersize=6, label='556 nm')
+    axes[1, 1].plot(timepoints, abs_458nm, 'o-', color='#859DE6', linewidth=2, markersize=6, label='428 nm')
     ax2 = axes[1, 1].twinx()
-    ax2.plot(timepoints, ratio_458_555, 's-', color='#9B6BA8', linewidth=2, markersize=6, label='458/555 nm Ratio')
+    ax2.plot(timepoints, ratio_428_556, 's-', color='#9B6BA8', linewidth=2, markersize=6, label='428/556 nm Ratio')
     axes[1, 1].set_xlabel('Time (min)', fontsize=14)
     axes[1, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    ax2.set_ylabel('Absorbance Ratio (458/555 nm)', color="#000000", fontsize=14)
+    ax2.set_ylabel('Absorbance Ratio (428/556 nm)', color="#000000", fontsize=14)
     axes[1, 1].set_title('Combined Analysis', fontsize=14)
     axes[1, 1].tick_params(axis='both', which='major', labelsize=12, direction='in')
     ax2.tick_params(axis='both', which='major', labelsize=12, direction='in')
@@ -181,15 +181,14 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
         csv_filename = os.path.join(processed_data_dir, 'wavelength_time_series.csv')
     
     plt.savefig(plot_filename, dpi=300, bbox_inches='tight')
-    plt.show()
     print(f"✓ Wavelength time series plots saved as: {plot_filename}")
     
     # Create and save time series data
     time_series_data = pd.DataFrame({
         'timepoint': timepoints,
-        'abs_555nm': abs_555nm,
-        'abs_458nm': abs_458nm,
-        'ratio_458_555': ratio_458_555
+        'abs_556nm': abs_556nm,
+        'abs_428nm': abs_428nm,
+        'ratio_428_556': ratio_428_556
     })
     
     time_series_data.to_csv(csv_filename, index=False)
@@ -197,9 +196,9 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     
     # Print summary statistics
     print(f"\nWavelength Analysis Summary:")
-    print(f"  555 nm - Range: {min(abs_555nm):.4f} to {max(abs_555nm):.4f}")
-    print(f"  458 nm - Range: {min(abs_458nm):.4f} to {max(abs_458nm):.4f}") 
-    print(f"  458/555 Ratio - Range: {min(ratio_458_555):.4f} to {max(ratio_458_555):.4f}")
+    print(f"  556 nm - Range: {min(abs_556nm):.4f} to {max(abs_556nm):.4f}")
+    print(f"  428 nm - Range: {min(abs_428nm):.4f} to {max(abs_428nm):.4f}") 
+    print(f"  428/556 Ratio - Range: {min(ratio_428_556):.4f} to {max(ratio_428_556):.4f}")
     
     return time_series_data
 
@@ -294,7 +293,6 @@ def analyze_spectral_data(folder_path, processed_data_dir=None, sample_name=None
         ts_csv_filename = os.path.join(processed_data_dir, 'wavelength_time_series.csv')
     
     plt.savefig(plot_filename, dpi=300, bbox_inches='tight')
-    plt.show()
     print(f"\n✓ Plot saved as: {plot_filename}")
     
     # Save combined data

@@ -8,7 +8,7 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
 import pandas as pd
 from pathlib import Path
-from spectral_analyzer_program import process_degradation_spectral_data
+from degradation_spectral_analyzer_program import process_degradation_spectral_data
 
 EXPERIMENT_REPEATS = 2  # Define at module level
 
