@@ -10,13 +10,13 @@ def strip_tuples(d):
 def test_measure_wellplate(input_vial_status_file): #tests track movement of wellplate to and from cytation + obtaining biotek measurements (default: wells 0,1,2)
  
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(input_vial_status_file)
+    lash_e = Lash_E(input_vial_status_file, simulate=False)
 
     #protocol = r"C:\Protocols\300_900_sweep.prt"
     #protocol = r"C:\Protocols\SQ_degradation_sweep.prt" 
-    protocol = None
+    protocol = r"C:\Protocols\shake_5.prt"
 
-    data = lash_e.measure_wellplate(protocol, [0,1,2], plate_type='96 WELL PLATE')
+    data = lash_e.measure_wellplate(protocol, [0], plate_type='96 WELL PLATE')
 
     #data = lash_e.cytation.run_protocol(protocols, wells=range(0,3), plate_type="48 WELL PLATE")
 

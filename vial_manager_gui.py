@@ -2191,7 +2191,7 @@ class VialManagerMainWindow(QMainWindow):
     def _set_interface_readonly(self, readonly=True):
         """Enable or disable interface editing."""
         
-        self.save_button.setEnabled(not readonly)
+        self.save_all_button.setEnabled(not readonly)
         self.reload_button.setEnabled(not readonly and self.status_file_path is not None)
         # Note: Individual vial editing will be handled by the widgets themselves
     
