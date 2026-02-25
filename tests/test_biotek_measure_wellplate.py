@@ -19,4 +19,5 @@ def test_measure_wellplate(): #tests track movement of wellplate to and from cyt
  
 
 #asd
-test_measure_wellplate()
+for i in range (0, 10):
+    test_measure_wellplate(None)

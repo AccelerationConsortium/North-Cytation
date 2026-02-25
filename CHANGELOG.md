@@ -31,7 +31,7 @@
 
 ### Added
 - **Spectral Data Analysis Integration**: Integrated spectral analyzer with degradation workflow
-  - Added `process_degradation_spectral_data()` function with try-except error handling
+  - Added `process_workflow_spectral_data()` function with try-except error handling (renamed from process_degradation_spectral_data)
   - Automatic processing of output_# files after degradation workflow completion
   - Wavelength-specific time series plots for 555nm, 458nm, and 458/555 ratio analysis
   - Dynamic output directory handling with processed_data subfolder creation

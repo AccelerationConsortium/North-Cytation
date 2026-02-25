@@ -2,12 +2,12 @@ import sys
 import time
 import datetime
 sys.path.append("../utoronto_demo")
-from backups.surfactant_grid_adaptive_concentrations_backup_consolidated_data_organization_20260203_172735 import VALIDATE_LIQUIDS
 from master_usdl_coordinator import Lash_E 
 import pandas as pd
 from pathlib import Path
 import slack_agent
-import pipetting_data.embedded_calibration_validation as pipette_validator  
+import pipetting_data.embedded_calibration_validation as pipette_validator
+from spectral_analyzer_program import process_workflow_spectral_data  
 
 #config params
 EXPERIMENT_NAME = "peroxide_assay_test"
@@ -15,7 +15,7 @@ SIMULATE = True
 VALIDATE_LIQUIDS = False
 NUMBER_OF_SAMPLES = 1
 REPLICATES = 3
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status_v3.csv"
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/peroxide_assay_vial_status_v3_2.csv"
 MEASUREMENT_PROTOCOL_FILE =r"C:\Protocols\SQ_Peroxide.prt"
 
 
@@ -29,7 +29,7 @@ def dispense_from_photoreactor_into_sample(lash_e,reaction_mixture_index,sample_
     lash_e.nr_robot.move_home()
     print()
 
-def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=True,well_volume=0.2):
+def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_well_index,cytation_protocol_file_path,replicates,output_dir,simulate=True,well_volume=0.2, time_required=None):
     print("\nTransferring sample: ", sample_index, " to wellplate at well index: ", first_well_index)
     lash_e.nr_robot.move_vial_to_location(sample_index, location="main_8mL_rack", location_index=44) #Move sample to safe pipetting position
     
@@ -44,7 +44,10 @@ def transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,first_w
     # output_file = r'C:\Users\Imaging Controller\Desktop\SQ\output_'+str(first_well_index)+'.txt'
     if not simulate:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = output_dir / f'output_{first_well_index}_{timestamp}.txt'
+        if time_required is not None:
+            output_file = output_dir / f'output_{time_required}_{timestamp}.txt'
+        else:
+            output_file = output_dir / f'output_{first_well_index}_{timestamp}.txt'
         data_out.to_csv(output_file, sep=',')
         #Use analyzer to analyze the data
     print()
@@ -128,14 +131,14 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
         cof_output_dir = None
 
     #OAM Note: These times need to exactly correspond to the schedule and vials!
-    sample_times = [1,6,11,20,30,45] #in minutes <----- These numbers need to match the vials and the schedule!!!!!
+    sample_times = [0,5,10,15,20,25,45] #in minutes <----- These numbers need to match the vials and the schedule!!!!!
     sample_indices = [f"{t}_min_Reaction{set_suffix}" for t in sample_times]
 
 #-> Start from here! 
     lash_e.grab_new_wellplate()
-    #Step 1: Add 1.95 mL "assay reagent" to sample vials
+    #Step 1:t.d Add 1.95 mL "assay reagent" to sample vials
     for i in sample_indices:  #May want to use liquid calibration eg water
-        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.95, liquid='water')
+        lash_e.nr_robot.dispense_from_vial_into_vial(assay_reagent,i,use_safe_location=False, volume=1.1, liquid='water')
     #lash_e.nr_robot.remove_pipet()
     
     # #Step 2: Move the reaction mixture vial to the photoreactor to start the reaction.
@@ -147,7 +150,7 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     #Step 3: Add 200 µL "reaction mixture" (vial in the photoreactor) to ("assay reagent")" (vial_index 1-6). 
     # 6 aliquots added at 1, 5, 10, 20, 30, 45 min time marks for measuerement
     
-    SCHEDULE_FILE = "../utoronto_demo/status/peroxide_assay_schedule.csv"
+    SCHEDULE_FILE = "../utoronto_demo/status/peroxide_assay_schedule_2.csv"
     schedule = pd.read_csv(SCHEDULE_FILE, sep=",") #Read the schedule file
 
     schedule = schedule.sort_values(by='start_time') #sort in ascending time order
@@ -174,10 +177,10 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
             print(f"Intended Elapsed Time: {(time_required)/60} minutes")
 
             if action_required=="dispense_from_reactor":
-                dispense_from_photoreactor_into_sample(lash_e,cof_vial,sample_index,volume=0.05)
+                dispense_from_photoreactor_into_sample(lash_e,cof_vial,sample_index,volume=0.2)
                 items_completed+=1
             elif action_required=="measure_samples":
-                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,current_well_index,MEASUREMENT_PROTOCOL_FILE,replicates, cof_output_dir,simulate=SIMULATE)
+                transfer_samples_into_wellplate_and_characterize(lash_e,sample_index,current_well_index,MEASUREMENT_PROTOCOL_FILE,replicates, cof_output_dir,simulate=SIMULATE, time_required=time_required)
                 current_well_index += replicates
                 items_completed+=1
                 measured_items+=1
@@ -188,6 +191,21 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
         if not SIMULATE:
             time.sleep(1)
     lash_e.nr_robot.move_home()   
+
+    # Process spectral data and create plots with 595nm/450nm ratio analysis
+    if not SIMULATE and cof_output_dir is not None:
+        print(f"Starting post-experiment spectral data analysis for {cof_vial}...")
+        try:
+            spectral_results = process_workflow_spectral_data(cof_output_dir, lash_e.logger, wavelength1=595, wavelength2=450)
+            if spectral_results:
+                print(f"Spectral analysis completed successfully for {cof_vial}!")
+                print(f"Results saved in: {cof_output_dir / 'processed_data'}")
+                print("Analysis includes 595nm, 450nm, and 450/595 ratio plots")
+            else:
+                print(f"Spectral analysis failed or no data found for {cof_vial}")
+        except Exception as e:
+            print(f"Error during spectral analysis for {cof_vial}: {str(e)}")
+            lash_e.logger.error(f"Spectral analysis error for {cof_vial}: {str(e)}")
 
     lash_e.nr_robot.return_vial_home(cof_vial)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
@@ -222,7 +240,7 @@ if VALIDATE_LIQUIDS:
 
 # Run the workflow N times with different Reagent+COF+sample sets, reusing the same lash_e instance
 for i in range(1, NUMBER_OF_SAMPLES+1):
-    assay_reagent = f'Assay_reagent_{i}'
+    assay_reagent = f'Assay_reagent_1'
     cof_vial = f'COF_{i}'
     set_suffix = f'_Set{i}'
     peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix, output_dir=output_dir)
