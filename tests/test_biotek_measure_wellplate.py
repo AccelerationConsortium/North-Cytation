@@ -1,16 +1,11 @@
 import sys
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
-import pandas as pd
 
-def strip_tuples(d):
-    """Convert any (x, None) → x in a flat dict."""
-    return {k: (v if not (isinstance(v, tuple) and v[1] is None) else v[0]) for k, v in d.items()}
-
-def test_measure_wellplate(input_vial_status_file): #tests track movement of wellplate to and from cytation + obtaining biotek measurements (default: wells 0,1,2)
+def test_measure_wellplate(): #tests track movement of wellplate to and from cytation + obtaining biotek measurements (default: wells 0,1,2)
  
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(input_vial_status_file)
+    lash_e = Lash_E(None, simulate=True)
 
     #protocol = r"C:\Protocols\300_900_sweep.prt"
     #protocol = r"C:\Protocols\SQ_degradation_sweep.prt" 
@@ -21,11 +16,7 @@ def test_measure_wellplate(input_vial_status_file): #tests track movement of wel
     #data = lash_e.cytation.run_protocol(protocols, wells=range(0,3), plate_type="48 WELL PLATE")
 
     print (data)
-
-    # print(strip_tuples(data))
-
-    # data.to_csv("../utoronto_demo/output/test.csv", mode='a', index=False)
  
 
 #asd
-test_measure_wellplate("../utoronto_demo/status/sample_input_vials.csv")
+test_measure_wellplate()
