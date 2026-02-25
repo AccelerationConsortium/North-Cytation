@@ -119,14 +119,14 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
         abs_555 = get_absorbance_at_wavelength(wavelength, absorbance, 556)
         abs_458 = get_absorbance_at_wavelength(wavelength, absorbance, 428)
         
-        abs_555nm.append(abs_555)
-        abs_458nm.append(abs_458)
+        abs_556nm.append(abs_555)
+        abs_428nm.append(abs_458)
     
     # Convert timepoints from seconds to minutes
     timepoints = [t / 60.0 for t in timepoints]
     
     # Calculate 428/556 ratio
-    ratio_428_556 = np.array(abs_458nm) / np.array(abs_555nm)
+    ratio_428_556 = np.array(abs_428nm) / np.array(abs_556nm)
     
     # Create the three plots
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
@@ -134,7 +134,7 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     fig.suptitle(f'Wavelength-Specific Analysis Over Time{sample_label}', fontsize=18, fontweight='bold')
     
     # Plot 1: 556 nm over time
-    axes[0, 0].plot(timepoints, abs_555nm, 'o-', color='#4A3A7F', linewidth=2, markersize=8)
+    axes[0, 0].plot(timepoints, abs_556nm, 'o-', color='#4A3A7F', linewidth=2, markersize=8)
     axes[0, 0].set_xlabel('Time (min)', fontsize=14)
     axes[0, 0].set_ylabel('Absorbance (a.u.)', fontsize=14)
     axes[0, 0].set_title('556 nm Absorbance vs Time', fontsize=14)
@@ -142,7 +142,7 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     axes[0, 0].grid(False)
     
     # Plot 2: 428 nm over time
-    axes[0, 1].plot(timepoints, abs_458nm, 'o-', color="#859DE6", linewidth=2, markersize=8)
+    axes[0, 1].plot(timepoints, abs_428nm, 'o-', color="#859DE6", linewidth=2, markersize=8)
     axes[0, 1].set_xlabel('Time (min)', fontsize=14)
     axes[0, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
     axes[0, 1].set_title('428 nm Absorbance vs Time', fontsize=14)
@@ -158,8 +158,8 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     axes[1, 0].grid(False)
     
     # Plot 4: Combined comparison
-    axes[1, 1].plot(timepoints, abs_555nm, 'o-', color='#4A3A7F', linewidth=2, markersize=6, label='556 nm')
-    axes[1, 1].plot(timepoints, abs_458nm, 'o-', color='#859DE6', linewidth=2, markersize=6, label='428 nm')
+    axes[1, 1].plot(timepoints, abs_556nm, 'o-', color='#4A3A7F', linewidth=2, markersize=6, label='556 nm')
+    axes[1, 1].plot(timepoints, abs_428nm, 'o-', color='#859DE6', linewidth=2, markersize=6, label='428 nm')
     ax2 = axes[1, 1].twinx()
     ax2.plot(timepoints, ratio_428_556, 's-', color='#9B6BA8', linewidth=2, markersize=6, label='428/556 nm Ratio')
     axes[1, 1].set_xlabel('Time (min)', fontsize=14)
