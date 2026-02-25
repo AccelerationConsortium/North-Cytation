@@ -28,4 +28,5 @@ def test_measure_wellplate(input_vial_status_file): #tests track movement of wel
  
 
 #asd
-test_measure_wellplate("../utoronto_demo/status/sample_input_vials.csv")
+for i in range (0, 10):
+    test_measure_wellplate(None)

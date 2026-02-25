@@ -1,10 +1,11 @@
 home = [0.0, 0.0, 0.0, 0.0]
 
+#{gripper, shoulder, elbow, z-axis}
+#For the z-axis 100 units ~ 1 mm, lower is higher for z-axis
+
 #Location of the clamp (gripper)
-#vial_clamp = [2482, 7540, 44004, 17350] #17700
 vial_clamp = [2476, 7635, 44106, 17350]
 vial_clamp_cap = [2476, 7635, 44106, 16950]
-#vial_clamp_pip = [2443, 5805, 39725, 11501]
 vial_clamp_pip = [2440, 5885, 39839, 11501]
 
 #Tip removal
