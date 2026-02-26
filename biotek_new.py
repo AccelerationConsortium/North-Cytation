@@ -317,43 +317,46 @@ class Biotek_Wrapper:
             RuntimeError: If experiment creation fails
         """
         self.biotek.app.data_export_enabled = True
-        experiment = self.biotek.new_experiment(protocol_path)
-        protocol_data = pd.DataFrame()
+        if not self.simulate:
+            experiment = self.biotek.new_experiment(protocol_path)
+            protocol_data = pd.DataFrame()
 
-        if experiment:
-            self._log('debug', "Experiment created successfully.")
-            self._log('debug', f"Experiment Protocol Type: {experiment.protocol_type}")
-            plates = experiment.plates
-            
-            if wells is not None:
-                # Group wells for sequential reads (handles plate layout constraints)
-                grouped_wells = self.group_wells(wells, plate_type)
+            if experiment:
+                self._log('debug', "Experiment created successfully.")
+                self._log('debug', f"Experiment Protocol Type: {experiment.protocol_type}")
+                plates = experiment.plates
+                
+                if wells is not None:
+                    # Group wells for sequential reads (handles plate layout constraints)
+                    grouped_wells = self.group_wells(wells, plate_type)
+                else:
+                    # Use all wells if none specified
+                    if plate_type == "96 WELL PLATE" or plate_type == "96 QUARTZ LID":
+                        grouped_wells = [self.well_index_to_label(i, 12) for i in range(96)]
+                    else:  # 48 WELL PLATE
+                        grouped_wells = [self.well_index_to_label(i, 8) for i in range(48)]
+                    grouped_wells = [grouped_wells]  # Single group with all wells
+                    
+                # Process each group of wells sequentially
+                for well_group in grouped_wells:
+                    plate = plates.add()
+                    prot_type = self.determine_read_type(plate)
+                    data_group = self.run_plate(plate, well_group, prot_type=prot_type)
+                    
+                    # Combine data based on protocol type
+                    if protocol_data.empty:
+                        protocol_data = data_group
+                    elif prot_type == "spectra":
+                        # Merge spectral data on wavelength column
+                        protocol_data = protocol_data.merge(data_group, on="Wavelengths", how='outer')     
+                    elif prot_type == "read":
+                        # Concatenate endpoint data
+                        protocol_data = pd.concat([protocol_data, data_group])      
             else:
-                # Use all wells if none specified
-                if plate_type == "96 WELL PLATE" or plate_type == "96 QUARTZ LID":
-                    grouped_wells = [self.well_index_to_label(i, 12) for i in range(96)]
-                else:  # 48 WELL PLATE
-                    grouped_wells = [self.well_index_to_label(i, 8) for i in range(48)]
-                grouped_wells = [grouped_wells]  # Single group with all wells
-                
-            # Process each group of wells sequentially
-            for well_group in grouped_wells:
-                plate = plates.add()
-                prot_type = self.determine_read_type(plate)
-                data_group = self.run_plate(plate, well_group, prot_type=prot_type)
-                
-                # Combine data based on protocol type
-                if protocol_data.empty:
-                    protocol_data = data_group
-                elif prot_type == "spectra":
-                    # Merge spectral data on wavelength column
-                    protocol_data = protocol_data.merge(data_group, on="Wavelengths", how='outer')     
-                elif prot_type == "read":
-                    # Concatenate endpoint data
-                    protocol_data = pd.concat([protocol_data, data_group])      
+                self._log('error', "Experiment creation failed.")
+                raise RuntimeError("Failed to create experiment from protocol file")
         else:
-            self._log('error', "Experiment creation failed.")
-            raise RuntimeError("Failed to create experiment from protocol file")
+            return None
 
         return protocol_data
 

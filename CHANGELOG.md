@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.2.2] - 2026-02-26
+
+### Fixed
+- **PERFORMANCE: Simulation Mode Timing Loop Optimization**: Fixed major performance bottleneck in `Degradation_serena.py` workflow
+  - **Issue**: Even in simulation mode, timing loop was advancing by only 1 second per iteration, causing thousands of unnecessary loop cycles for long measurement intervals (e.g., 3600 iterations for 1-hour measurements)
+  - **Fix**: Simulation mode now jumps directly to each scheduled measurement time instead of incrementing through every second
+  - **Impact**: Reduces simulation runtime from potentially hours to seconds for workflows with long time intervals
+  - Removed unnecessary heartbeat logging in simulation mode to reduce log noise
+  - Performance gain: ~3600x faster for workflows with 1-hour measurement intervals
+- **CRITICAL: Unconditional Sleep Calls in North_Safe.py**: Fixed simulation mode delays caused by hardware timing sleeps
+  - **Issue**: Cap/uncap operations (0.5s each) and weight monitoring loops (0.01-0.1s) were running unconditionally even in simulation mode
+  - **Fix**: Made all time.sleep() calls conditional on `if not self.simulate:` in North_Safe.py functions
+  - **Files**: Fixed uncap_vial_in_clamp(), cap_vial_in_clamp(), and continuous weight monitoring functions
+  - **Impact**: Eliminates cumulative seconds of delays per workflow operation in simulation mode
+- **CRITICAL: Volume Accumulation Bug in Degradation Workflow**: Fixed sample vial volume tracking between workflow iterations
+  - **Issue**: Robot's vial volume tracking (VIAL_DF) persisted across iterations, causing sample_3 to inherit accumulated volumes from sample_1 and sample_2
+  - **Root cause**: Each workflow iteration should start with empty sample vials (0.0 mL) but robot remembered previous volumes
+  - **Fix**: Added vial volume reset at start of each degradation_workflow() iteration to restore original CSV state
+  - **Impact**: Ensures consistent sample preparation volumes across all workflow repeats
+- **CRITICAL: Missing Schedule Entries Causing Volume Inconsistency**: Fixed sample_3 having different final volume than sample_1 and sample_2
+  - **Issue**: degradation_vial_schedule.csv only contained entries for sample_1 and sample_2, missing sample_3 completely
+  - **Root cause**: When sample_3 workflow ran, schedule filtering resulted in empty schedule, skipping all timed measurements (only initial measurement occurred)
+  - **Volume impact**: sample_1 & sample_2 had 7 measurements (1.05 mL removed), sample_3 had only 1 measurement (0.15 mL removed), creating 0.9 mL difference
+  - **Fix**: Added complete sample_3 measurement schedule (300s, 600s, 900s, 1200s, 1800s, 2400s, 3600s) to match sample_1 and sample_2
+  - **Result**: All samples now follow identical 7-measurement schedules for consistent volume tracking
+
 ## [1.2.1] - 2026-02-20
 
 ### Fixed

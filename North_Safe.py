@@ -573,6 +573,15 @@ class North_Track(North_Base):
         """
         self.logger.info(f"Releasing wellplate at location: {location_name}")
         
+        # COLLISION PREVENTION: Check if destination location is already occupied
+        self.get_track_status()  # Refresh current wellplate position
+        if self.ACTIVE_WELLPLATE_POSITION == location_name:
+            self.pause_after_error(
+                f"COLLISION PREVENTION: Cannot release wellplate at '{location_name}' - "
+                f"location already occupied. Current wellplate position: {self.ACTIVE_WELLPLATE_POSITION}",
+                send_slack=True
+            )
+        
         # Get location position from YAML
         location_pos = self.get_position(location_name)
         if not location_pos:
@@ -2720,11 +2729,13 @@ class North_Robot(North_Base):
                     self.logger.debug(f"Weight: {weight:.6f}g at {time_relative:.3f}s (steady={steady_status})")
                     
                     # Minimal sleep to prevent excessive CPU usage
-                    time.sleep(0.01)
+                    if not self.simulate:
+                        time.sleep(0.01)
                     
                 except Exception as e:
                     self.logger.warning(f"Scale reading failed: {e}")
-                    time.sleep(0.1)
+                    if not self.simulate:
+                        time.sleep(0.1)
             
             total_duration = time.time() - start_time
             actual_rate = len(weight_data) / total_duration if total_duration > 0 else 0
@@ -3493,7 +3504,8 @@ class North_Robot(North_Base):
         
         self.c9.close_clamp() #clamp vial
         self.goto_location_if_not_there(vial_clamp, move_speed=move_speed) #Maybe check if it is already there or not  
-        time.sleep(0.5) 
+        if not self.simulate:
+            time.sleep(0.5) 
         self.c9.close_gripper()
         self.c9.uncap(revs=revs)
         self.GRIPPER_STATUS = "Cap"
@@ -3519,7 +3531,8 @@ class North_Robot(North_Base):
         
         self.c9.close_clamp() #Make sure vial is clamped
         self.goto_location_if_not_there(vial_clamp_cap, move_speed=move_speed)
-        time.sleep(0.5)
+        if not self.simulate:
+            time.sleep(0.5)
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap
         self.GRIPPER_STATUS = None

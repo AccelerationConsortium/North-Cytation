@@ -30,7 +30,10 @@ VALIDATE_LIQUIDS = False  # Set to True to run pipetting validation
 PREP_SOLUTIONS = True
 
 EXPERIMENT_NAME = "degradation_experiment"  # Used for naming output folder
-    
+
+ACID_MOLAR_EXCESS = 500
+WATER_VOLUME = 0.010
+
     # e. Number of replicate measurements per timepoint
 REPLICATES = 1  # Number of wells to use for each measurement (default: 3)
 
@@ -256,24 +259,25 @@ def save_data(data_out,output_dir,first_well_index,simulate,lash_e,time=None,sam
 
 
 # Clean well plate = Solvent wash *1 + Acetone wash *1 <- DO it serially (ie wash 5 wells at a time, and wash all wells w solvent first before moving on to acetone)
-def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, well_volume=0.19, solvent_repeats=1, acetone_repeats=1):
+def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, well_volume=0.20, solvent_repeats=0, acetone_repeats=2):
     lash_e.logger.info(f"\nWashing wellplate wells: {used_wells}")
 
     PLATE = "96 WELL PLATE"
 
     # Pipette all measured samples from wells into waste
-    current_waste = check_and_switch_waste_vial(lash_e, waste_state)
+    
     move_lid_to_storage(lash_e)
-
-
 
     def chunk(used_wells, n=4):
         for i in range(0, len(used_wells), n):
             yield used_wells[i:i+n]
 
     # take aliquots out
+    current_waste = waste_state["current_waste_vial"]
     waste_temp_home = stage_vial_safe(lash_e, current_waste, safe_index=4)
     solvent_temp_home = stage_vial_safe(lash_e, solvent_vial,safe_index=5)
+
+    current_waste,waste_temp_home  = check_and_switch_waste_vial(lash_e, waste_state, waste_temp_home)
 
     for well in used_wells:
         lash_e.nr_robot.pipet_from_wellplate(well, volume=well_volume, aspirate=True, well_plate_type="quartz")
@@ -283,6 +287,7 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
     # 1 * Solvent wash
  
     for _ in range(solvent_repeats):
+        current_waste, waste_temp_home = check_and_switch_waste_vial(lash_e, waste_state, waste_temp_home)
         for wells in chunk(used_wells, 4):
             total = well_volume * len(wells)            # total to aspirate for this chunk (<= 0.8 mL if well_volume=0.2)
             dispense_volume = [well_volume] * len(wells)  # one volume per well
@@ -313,6 +318,7 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
     acetone_temp_home = stage_vial_safe(lash_e, acetone_vial, safe_index=5)
  
     for _ in range(acetone_repeats):
+        current_waste, waste_temp_home = check_and_switch_waste_vial(lash_e, waste_state, waste_temp_home)
         for wells in chunk(used_wells, 4):
             total = well_volume * len(wells)           
             dispense_volume = [well_volume] * len(wells)
@@ -341,7 +347,7 @@ def get_time(simulate,current_time=None):
         else:
             return current_time + 1
 
-def check_and_switch_waste_vial(lash_e, waste_state):
+def check_and_switch_waste_vial(lash_e, waste_state, original_waste_home):
     """Check if current waste vial is full and switch to next one if needed"""
     current_waste = waste_state["current_waste_vial"]
     try:
@@ -351,14 +357,18 @@ def check_and_switch_waste_vial(lash_e, waste_state):
             waste_state["waste_index"] += 1
             new_waste_vial = f"waste_{waste_state['waste_index']}"
             waste_state["current_waste_vial"] = new_waste_vial
+            lash_e.nr_robot.remove_pipet()
+            restore_vial_home(lash_e, vial_name=current_waste, original_home_index=original_waste_home)
+            waste_home_index = stage_vial_safe(lash_e, new_waste_vial, safe_index=4)  # Move current waste to safe position
+
             lash_e.logger.info(f"[info] Waste vial {current_waste} is full ({current_vol:.1f}mL), switching to {new_waste_vial}")
             lash_e.logger.info(f"Switching from {current_waste} to {new_waste_vial} (was {current_vol:.1f}mL)")
-            return new_waste_vial
+            return new_waste_vial, waste_home_index
         else:
-            return current_waste
+            return current_waste, original_waste_home
     except Exception as e:
         lash_e.logger.warning(f"Could not check waste vial volume: {e}, continuing with {current_waste}")
-        return current_waste
+        return current_waste, original_waste_home
 
 def process_sample_spectral_data(output_dir, sample_name, logger=None):
     """
@@ -544,16 +554,17 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
     max_schedule_time = schedule['start_time'].max()
     safety_cutoff = max_schedule_time + 120  # 2 minute buffer beyond last scheduled event
 
-    SIM_TICK_SECONDS = 1  # Advance by 1 simulated second per loop when SIMULATE=True
-
     while items_completed < schedule.shape[0]: #While we still have items to complete
         active_item = schedule.iloc[items_completed]
         time_required = active_item['start_time']
         action_required = active_item['action']
         sample_index = active_item['sample_index']
-        # Advance time
+        
+        # Advance time - SIMULATION FIX: Jump directly to next scheduled time
         if SIMULATE:
-            current_time += SIM_TICK_SECONDS
+            # In simulation, jump directly to the next required time
+            target_time = start_time + time_required
+            current_time = target_time
         else:
             current_time = time.time()
 
@@ -571,8 +582,8 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
                 lash_e.logger.info(f"[WARN] Unknown action '{action_required}' – skipping (row {items_completed})")
             items_completed += 1
         else:
-            # Heartbeat
-            if total_elapsed >= time_increment:
+            # Heartbeat - only relevant for real time mode
+            if not SIMULATE and total_elapsed >= time_increment:
                 lash_e.logger.info(f"Total time elapsed={total_elapsed:.0f}s; Next event in={time_required - elapsed_time:.0f}s -> {sample_index}")
                 time_increment += 60
 
@@ -581,6 +592,7 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
             lash_e.logger.info(f"[SAFETY STOP] Elapsed {total_elapsed:.0f}s exceeded schedule max {max_schedule_time}s + buffer. Breaking loop.")
             break
 
+        # Only sleep in real mode, not simulation
         if not SIMULATE:
             time.sleep(0.25)
     lash_e.nr_robot.move_home()   
@@ -593,7 +605,7 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
     lash_e.nr_robot.move_home()
 
     # 3. Clean the well plate after all measurements are done
-    wash_wellplate(lash_e, used_wells, solvent_vial=solvent, acetone_vial='acetone', waste_state=waste_state, solvent_repeats=1, acetone_repeats=1, well_volume=0.19)
+    wash_wellplate(lash_e, used_wells, solvent_vial=solvent, acetone_vial='acetone', waste_state=waste_state, solvent_repeats=0, acetone_repeats=1, well_volume=0.20)
 
     # 4. Home all components at the end of the workflow
     lash_e.nr_robot.move_home()
@@ -621,6 +633,6 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_t8=True, workflow_globals=globals(), workflow_name='Degradation_serena')
 
 for i in range(1, EXPERIMENT_REPEATS+1): 
-    degradation_workflow(lash_e, i, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=1000, water_volume=0.010)
+    degradation_workflow(lash_e, i, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=ACID_MOLAR_EXCESS, water_volume=WATER_VOLUME)
 
-
+print(lash_e.nr_robot.VIAL_DF)

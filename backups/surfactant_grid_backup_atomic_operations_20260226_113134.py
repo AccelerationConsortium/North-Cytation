@@ -2073,63 +2073,38 @@ def return_water_vial_home(lash_e, vial_name):
     logger.info(f"  Returning {vial_name} -> home")
     lash_e.nr_robot.return_vial_home(vial_name)
 
-# =============================================================================
-# ATOMIC MEASUREMENT OPERATIONS (Smart positioning + protocol execution)
-# =============================================================================
-
-def position_wellplate_at_cytation(lash_e):
-    """Smart positioning - only moves wellplate to cytation if not already there."""
-    # Refresh track status to get current position
-    lash_e.nr_track.get_track_status()
-    current_pos = lash_e.nr_track.ACTIVE_WELLPLATE_POSITION
+def measure_turbidity(lash_e, well_indices, batch_recipes=None, shake_and_wait=True, return_wellplate=True):
+    """Measure turbidity using Cytation plate reader with predefined protocol.
     
-    if current_pos != 'cytation':
+    Args:
+        lash_e: Lash_E coordinator instance
+        well_indices: List of well indices to measure
+        batch_recipes: DataFrame with well recipes for simulation
+        shake_and_wait: If True, run shake protocol before measurement (default True)
+        return_wellplate: If True, return wellplate to active area after measurement (default True)
+    """
+    shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
+    lash_e.logger.info(f"Measuring turbidity in wells {well_indices} ({shake_msg}) using protocol {TURBIDITY_PROTOCOL_FILE}...")
+    
+    if not lash_e.simulate:
+        # Move wellplate to cytation
         lash_e.move_wellplate_to_cytation()
-        lash_e.nr_track.set_wellplate_position('cytation')
-    # If already at cytation, do nothing (idempotent)
-
-def position_wellplate_at_track(lash_e):
-    """Smart positioning - only returns wellplate to track if not already there."""
-    # Refresh track status to get current position
-    lash_e.nr_track.get_track_status()
-    current_pos = lash_e.nr_track.ACTIVE_WELLPLATE_POSITION
-    
-    if current_pos != 'pipetting_area':
-        lash_e.move_wellplate_back_from_cytation()
-        lash_e.nr_track.origin()
-        lash_e.nr_track.set_wellplate_position('pipetting_area')
-    # If already at track, do nothing (idempotent)
-
-def pause_kinetics_measurements(lash_e):
-    """Send carrier out during kinetics wait periods - minimizes evaporation."""
-    lash_e.logger.info("Pausing kinetics measurements - sending carrier out (minimizes evaporation during wait times)...")
-    
-    # Send carrier out
-    lash_e.carrier_out()
-    lash_e.logger.info("Carrier sent out - kinetics measurements paused")
-
-def resume_kinetics_measurements(lash_e):
-    """Bring carrier in to resume kinetics measurements."""
-    lash_e.logger.info("Resuming kinetics measurements - bringing carrier in...")
-    
-    # Bring carrier in
-    lash_e.carrier_in()
-    lash_e.logger.info("Carrier retrieved - ready for measurements")
-
-def shake_wellplate(lash_e):
-    """Execute shake protocol only - assumes wellplate is at cytation."""
-    if not lash_e.simulate:
-        lash_e.logger.info(f"Running shake protocol: {SHAKE_WAIT_PROTOCOL}")
-        lash_e.cytation.run_protocol(SHAKE_WAIT_PROTOCOL, [0])
-    else:
-        lash_e.logger.info("Shake protocol simulated")
-
-def measure_turbidity_protocol_only(lash_e, well_indices, batch_recipes=None):
-    """Execute turbidity measurement protocol only - assumes wellplate is at cytation."""
-    lash_e.logger.info(f"Running turbidity protocol: {TURBIDITY_PROTOCOL_FILE}")
-    
-    if not lash_e.simulate:
+        
+        # Run shake protocol first (if enabled)
+        if shake_and_wait:
+            lash_e.logger.info(f"Running shake and wait protocol: {SHAKE_WAIT_PROTOCOL}")
+            lash_e.cytation.run_protocol(SHAKE_WAIT_PROTOCOL, [0])
+        else:
+            lash_e.logger.info("Skipping shake protocol (kinetics mode)")
+        
+        # Run turbidity protocol
+        lash_e.logger.info(f"Running turbidity protocol: {TURBIDITY_PROTOCOL_FILE}")
         turbidity_data = lash_e.cytation.run_protocol(TURBIDITY_PROTOCOL_FILE, well_indices)
+        
+        # Return wellplate to active area (if requested)
+        if return_wellplate:
+            lash_e.move_wellplate_back_from_cytation()
+            lash_e.nr_track.origin()
         
         # DEBUG: Show raw data structure
         lash_e.logger.debug(f"TURBIDITY RAW: type = {type(turbidity_data)}")
@@ -2141,12 +2116,14 @@ def measure_turbidity_protocol_only(lash_e, well_indices, batch_recipes=None):
         turbidity_data = flatten_cytation_data(turbidity_data, 'turbidity')
         if turbidity_data is not None:
             lash_e.logger.debug(f"TURBIDITY PROCESSED: shape = {turbidity_data.shape}, columns = {list(turbidity_data.columns)}")
-            
+        
         lash_e.logger.info(f"Successfully measured turbidity for {len(well_indices)} wells")
         return turbidity_data
+
     else:
-        # Simulation mode - generate realistic turbidity data
         lash_e.logger.info("Simulation mode - generating realistic turbidity data")
+        
+        # Use passed batch recipe data for simulation
         simulated_data = []
         
         for well_idx in well_indices:
@@ -2171,26 +2148,54 @@ def measure_turbidity_protocol_only(lash_e, well_indices, batch_recipes=None):
                         simulated_data.append(0.35)  # Other controls
                 else:
                     # Well not found in recipe - use simple pattern
-                    simulated_data.append(0.05 + (well_idx * 0.01) % 0.50)
+                    simulated_data.append(0.25 + 0.1 * (well_idx % 5) / 5.0)
             else:
-                # No recipe provided - use simple pattern
-                simulated_data.append(0.05 + (well_idx * 0.01) % 0.50)
+                # No recipe available - use simple pattern
+                simulated_data.append(0.25 + 0.1 * (well_idx % 5) / 5.0)
         
-        # Create realistic DataFrame format
+        lash_e.logger.info(f"Generated realistic turbidity data for {len(well_indices)} wells (range: {min(simulated_data):.3f}-{max(simulated_data):.3f})")
+        
+        # Return DataFrame format to match hardware mode (after flatten_cytation_data processing)
         turbidity_df = pd.DataFrame({
             'wellplate_index': well_indices,
             'turbidity_600': simulated_data
         })
-        
-        lash_e.logger.info(f"Successfully simulated turbidity for {len(well_indices)} wells")
         return turbidity_df
 
-def measure_fluorescence_protocol_only(lash_e, well_indices, batch_recipes=None):
-    """Execute fluorescence measurement protocol only - assumes wellplate is at cytation."""
-    lash_e.logger.info(f"Running fluorescence protocol: {FLUORESCENCE_PROTOCOL_FILE}")
+def measure_fluorescence(lash_e, well_indices, batch_recipes=None, shake_and_wait=True, return_wellplate=True):
+    """Measure fluorescence using Cytation plate reader with predefined protocol.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        well_indices: List of well indices to measure
+        batch_recipes: DataFrame with well recipes for simulation
+        shake_and_wait: If True, run shake protocol before measurement (default True)
+        return_wellplate: If True, return wellplate to active area after measurement (default True)
+    """
+    shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
+    lash_e.logger.info(f"Measuring fluorescence in wells {well_indices} ({shake_msg}) using protocol {FLUORESCENCE_PROTOCOL_FILE}...")
     
     if not lash_e.simulate:
+        # Move wellplate to cytation
+        lash_e.move_wellplate_to_cytation()
+        
+        # Run shake protocol first (if enabled)
+        if shake_and_wait:
+            lash_e.logger.info(f"Running shake and wait protocol: {SHAKE_WAIT_PROTOCOL}")
+            lash_e.cytation.run_protocol(SHAKE_WAIT_PROTOCOL, [0])
+        else:
+            lash_e.logger.info("Skipping shake protocol (kinetics mode)")
+        
+        # Run fluorescence protocol
+        lash_e.logger.info(f"Running fluorescence protocol: {FLUORESCENCE_PROTOCOL_FILE}")
         fluorescence_data = lash_e.cytation.run_protocol(FLUORESCENCE_PROTOCOL_FILE, well_indices)
+        
+        # Return wellplate to active area (if requested)
+        if return_wellplate:
+            lash_e.move_wellplate_back_from_cytation()
+            lash_e.nr_track.origin()
+        else:
+            lash_e.logger.info("Leaving wellplate at cytation for repeated measurements...")
         
         # DEBUG: Show raw data structure
         lash_e.logger.debug(f"FLUORESCENCE RAW: type = {type(fluorescence_data)}")
@@ -2213,17 +2218,23 @@ def measure_fluorescence_protocol_only(lash_e, well_indices, batch_recipes=None)
             
             # Rename columns to match kinetics workflow expectations
             if '334_373' in fluorescence_data.columns:
-                fluorescence_data.rename(columns={'334_373': 'fluorescence_334_373'}, inplace=True)
+                fluorescence_data = fluorescence_data.rename(columns={'334_373': 'fluorescence_334_373'})
             if '334_384' in fluorescence_data.columns:
-                fluorescence_data.rename(columns={'334_384': 'fluorescence_334_384'}, inplace=True)
+                fluorescence_data = fluorescence_data.rename(columns={'334_384': 'fluorescence_334_384'})
+            
+            # Calculate ratio (I3/I1 = F373/F384 for pyrene CMC determination) 
+            if 'fluorescence_334_373' in fluorescence_data.columns and 'fluorescence_334_384' in fluorescence_data.columns:
+                fluorescence_data['ratio'] = fluorescence_data['fluorescence_334_373'] / fluorescence_data['fluorescence_334_384']
         
         lash_e.logger.info(f"Successfully measured fluorescence for {len(well_indices)} wells")
         return fluorescence_data
+
     else:
-        # Simulation mode - generate realistic fluorescence data
         lash_e.logger.info("Simulation mode - generating realistic fluorescence data")
-        simulated_373 = []
-        simulated_384 = []
+        
+        # Use passed batch recipe data for simulation
+        f373_data = []
+        f384_data = []
         
         for well_idx in well_indices:
             # Try to find recipe for this well
@@ -2232,115 +2243,53 @@ def measure_fluorescence_protocol_only(lash_e, well_indices, batch_recipes=None)
                 if len(well_recipe) > 0:
                     row = well_recipe.iloc[0]
                     
-                    # Experiment wells: use sophisticated simulation  
+                    # Experiment wells: use sophisticated simulation
                     if (row['well_type'] == 'experiment' and 
                         pd.notna(row['surf_A_conc_mm']) and pd.notna(row['surf_B_conc_mm'])):
                         surf_a_conc = row['surf_A_conc_mm']
                         surf_b_conc = row['surf_B_conc_mm']
                         sim_result = simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True)
-                        simulated_373.append(sim_result['fluorescence_334_373'])
-                        simulated_384.append(sim_result['fluorescence_334_384'])
+                        f373_data.append(sim_result['fluorescence_334_373'])
+                        f384_data.append(sim_result['fluorescence_334_384'])
                         
                     # Control wells: simple baseline values
                     elif 'water' in str(row['control_type']).lower():
-                        simulated_373.append(800)   # Water blank fluorescence
-                        simulated_384.append(1200)
+                        f373_data.append(5.0)   # Water blank
+                        f384_data.append(8.0)
                     else:
-                        simulated_373.append(1500)  # Other controls
-                        simulated_384.append(2200)
+                        f373_data.append(70.0)  # Other controls
+                        f384_data.append(90.0)
                 else:
                     # Well not found in recipe - use simple pattern
-                    simulated_373.append(800 + (well_idx * 50) % 2000)
-                    simulated_384.append(1200 + (well_idx * 75) % 3000)
+                    f373_data.append(70.0 + 20.0 * (well_idx % 7) / 7.0)
+                    f384_data.append(90.0 + 15.0 * (well_idx % 7) / 7.0)
             else:
-                # No recipe provided - use simple pattern
-                simulated_373.append(800 + (well_idx * 50) % 2000)
-                simulated_384.append(1200 + (well_idx * 75) % 3000)
+                # No recipe available - use simple pattern
+                f373_data.append(70.0 + 20.0 * (well_idx % 7) / 7.0)
+                f384_data.append(90.0 + 15.0 * (well_idx % 7) / 7.0)
         
-        # Create realistic DataFrame format with ratio calculation
+        lash_e.logger.info(f"Generated realistic fluorescence data for {len(well_indices)} wells")
+        lash_e.logger.info(f"  F373 range: {min(f373_data):.1f}-{max(f373_data):.1f}")
+        lash_e.logger.info(f"  F384 range: {min(f384_data):.1f}-{max(f384_data):.1f}")
+        
+        # Calculate ratio (I3/I1 = F373/F384 for pyrene CMC determination)
+        ratio_data = [f373/f384 for f373, f384 in zip(f373_data, f384_data)]
+        
+        # Return DataFrame format to match hardware mode (after flatten_cytation_data processing)
+        # Use column names expected by kinetics workflow
         fluorescence_df = pd.DataFrame({
             'wellplate_index': well_indices,
-            'fluorescence_334_373': simulated_373,
-            'fluorescence_334_384': simulated_384
+            'fluorescence_334_373': f373_data,
+            'fluorescence_334_384': f384_data,
+            'ratio': ratio_data
         })
-        
-        # Calculate ratio (I334_373 / I334_384)
-        fluorescence_df['ratio'] = fluorescence_df['fluorescence_334_373'] / fluorescence_df['fluorescence_334_384']
-        
-        lash_e.logger.info(f"Successfully simulated fluorescence for {len(well_indices)} wells")
         return fluorescence_df
-
-# =============================================================================
-# HIGH-LEVEL MEASUREMENT FUNCTIONS (Composed from atomic operations)
-# =============================================================================
-
-def measure_turbidity(lash_e, well_indices, batch_recipes=None, shake_and_wait=True, return_wellplate=True):
-    """Measure turbidity using Cytation plate reader with atomic operations.
-    
-    Args:
-        lash_e: Lash_E coordinator instance
-        well_indices: List of well indices to measure
-        batch_recipes: DataFrame with well recipes for simulation
-        shake_and_wait: If True, run shake protocol before measurement (default True)
-        return_wellplate: If True, return wellplate to active area after measurement (default True)
-    """
-    shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
-    lash_e.logger.info(f"Measuring turbidity in wells {well_indices} ({shake_msg}) using atomic operations...")
-    
-    # Step 1: Smart positioning (only moves if needed)
-    position_wellplate_at_cytation(lash_e)
-    
-    # Step 2: Optional shake protocol
-    if shake_and_wait:
-        shake_wellplate(lash_e)
-    else:
-        lash_e.logger.info("Skipping shake protocol (kinetics mode)")
-    
-    # Step 3: Execute measurement protocol
-    turbidity_data = measure_turbidity_protocol_only(lash_e, well_indices, batch_recipes)
-    
-    # Step 4: Smart return (only moves if requested and not already there)
-    if return_wellplate:
-        position_wellplate_at_track(lash_e)
-    
-    return turbidity_data
-
-def measure_fluorescence(lash_e, well_indices, batch_recipes=None, shake_and_wait=True, return_wellplate=True):
-    """Measure fluorescence using Cytation plate reader with atomic operations.
-    
-    Args:
-        lash_e: Lash_E coordinator instance
-        well_indices: List of well indices to measure
-        batch_recipes: DataFrame with well recipes for simulation
-        shake_and_wait: If True, run shake protocol before measurement (default True)
-        return_wellplate: If True, return wellplate to active area after measurement (default True)
-    """
-    shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
-    lash_e.logger.info(f"Measuring fluorescence in wells {well_indices} ({shake_msg}) using atomic operations...")
-    
-    # Step 1: Smart positioning (only moves if needed)
-    position_wellplate_at_cytation(lash_e)
-    
-    # Step 2: Optional shake protocol
-    if shake_and_wait:
-        shake_wellplate(lash_e)
-    else:
-        lash_e.logger.info("Skipping shake protocol (kinetics mode)")
-    
-    # Step 3: Execute measurement protocol
-    fluorescence_data = measure_fluorescence_protocol_only(lash_e, well_indices, batch_recipes)
-    
-    # Step 4: Smart return (only moves if requested and not already there)
-    if return_wellplate:
-        position_wellplate_at_track(lash_e)
-    else:
-        lash_e.logger.info("Leaving wellplate at cytation for repeated measurements...")
-    
-    return fluorescence_data
 
 # ================================================================================
 # SECTION 6: FULL WORKFLOW EXECUTION WITH LASH_E INTEGRATION
 # ================================================================================
+
+
 
 def create_experiment_folder_structure(experiment_name):
     """
@@ -4296,10 +4245,6 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         lash_e.logger.info(f"  Post-shake measurements complete (turbidity + ratio)")
     
     lash_e.logger.info("Step 3 complete: Shake protocol and post-shake measurements done")
-    
-    # Send carrier out to minimize evaporation during wait times
-    lash_e.logger.info("Sending carrier out between measurements...")
-    pause_kinetics_measurements(lash_e)
         
     # STEP 4: Time-series kinetics measurements
     lash_e.logger.info("Step 4: Starting time-series kinetics measurements...")
@@ -4330,16 +4275,10 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         
         lash_e.logger.info(f"  Timepoint {i+1}: t={wait_time/60:.0f}min ({timestamp})")
         
-        # Retrieve carrier from storage for this measurement
-        resume_kinetics_measurements(lash_e)
-        
-        # Determine final measurement behavior
-        is_final_measurement = (i == len(measurement_intervals)-1)
-        
         if sequence == 'prep_turbidity':
             # WAIT → TURBIDITY (no shake needed, already done in Step 3)
             turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                             shake_and_wait=False, return_wellplate=is_final_measurement)
+                                             shake_and_wait=False, return_wellplate=(i == len(measurement_intervals)-1))
             
             # Save CSV using helper function
             save_measurement_csv(turbidity_data, f"kinetics_single_timeseries_t{wait_time/60:.0f}min_turb", 
@@ -4367,7 +4306,7 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
             turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
                                              shake_and_wait=False, return_wellplate=False)
             fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                                   shake_and_wait=False, return_wellplate=is_final_measurement)
+                                                   shake_and_wait=False, return_wellplate=(i == len(measurement_intervals)-1))
             
             # Save CSVs using helper
             save_measurement_csv(turbidity_data, f"kinetics_single_timeseries_t{wait_time/60:.0f}min_turb", 
@@ -4394,13 +4333,6 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
             except Exception as e:
                 lash_e.logger.error(f"    WARNING: Failed to merge time-series data: {e}")
                 lash_e.logger.info(f"    Raw turbidity & fluorescence CSVs saved, continuing time-series...")
-        
-        # Send carrier back out after measurement (unless it's the final one)
-        if not is_final_measurement:
-            lash_e.logger.info(f"  Measurement complete - sending carrier out for next wait period...")
-            pause_kinetics_measurements(lash_e)
-        else:
-            lash_e.logger.info(f"  Final measurement complete - carrier stays in for workflow completion")
     
     # STEP 5: Save sequence-specific results
     lash_e.logger.info("Step 5: Saving sequence-specific results...")
