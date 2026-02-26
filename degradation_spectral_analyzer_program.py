@@ -57,37 +57,27 @@ def get_all_samples(folder_path):
     pattern = os.path.join(folder_path, "*output_*.txt")
     files = glob.glob(pattern)
     
-    # If there are any output files, just process them all as one dataset
-    if files:
-        return [None]  # Process all files together
-    else:
-        return []  # No files found
+    samples = set()
+    for f in files:
+        sample_num = extract_sample_name(f)
+        if sample_num is not None:
+            samples.add(sample_num)
+    
+    return sorted(list(samples))
 
 
 def read_spectral_file(filepath):
     """
-    Read a single spectral data file and return wavelength, averaged absorbance, and individual replicates
-    Returns:
-        wavelength: array of wavelengths
-        absorbance_avg: averaged absorbance across all replicates
-        absorbance_replicates: list of individual replicate absorbance arrays
+    Read a single spectral data file and return wavelength, absorbance arrays
     """
     # Read the file, skip the first 2 header rows
     df = pd.read_csv(filepath, skiprows=2, header=None)
     
-    # Extract wavelength (column 1)
+    # Extract wavelength (column 1) and absorbance (column 2) 
     wavelength = df.iloc[:, 1].values
+    absorbance = df.iloc[:, 2].values
     
-    # Extract all replicate columns (column 2 onwards)
-    replicate_columns = df.iloc[:, 2:].values  # All columns from index 2 onwards
-    
-    # Calculate average absorbance across replicates for spectral plots
-    absorbance_avg = np.mean(replicate_columns, axis=1)
-    
-    # Individual replicates for wavelength-specific analysis
-    absorbance_replicates = [replicate_columns[:, i] for i in range(replicate_columns.shape[1])]
-    
-    return wavelength, absorbance_avg, absorbance_replicates
+    return wavelength, absorbance
 
 
 def get_absorbance_at_wavelength(wavelength_array, absorbance_array, target_wavelength):
@@ -105,88 +95,77 @@ def get_absorbance_at_wavelength(wavelength_array, absorbance_array, target_wave
     return np.interp(target_wavelength, wavelength_array, absorbance_array)
 
 
-def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, files, sample_name=None, plot_filename=None, csv_filename=None, wavelength1=555, wavelength2=458):
+def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, files, sample_name=None, plot_filename=None, csv_filename=None):
     """
-    Create time series plots for specific wavelengths and their ratio
-    Args:
-        wavelength1: Primary wavelength (default: 555nm)  
-        wavelength2: Secondary wavelength (default: 458nm)
+    Create time series plots for specific wavelengths (556 nm, 428 nm, and 428/556 ratio)
     """
-    print(f"\nCreating wavelength-specific time series plots for {wavelength1}nm and {wavelength2}nm...")
+    print("\nCreating wavelength-specific time series plots...")
     
     # Initialize data storage for time series
     timepoints = []
-    abs_wl1 = []
-    abs_wl2 = []
+    abs_556nm = []
+    abs_428nm = []
     
     # Extract timepoints and absorbance values at specific wavelengths
-    timepoints_all_reps = []  # Will store timepoint for each replicate measurement
-    abs_wl1 = []
-    abs_wl2 = []
-    
     for i, filepath in enumerate(files):
         timepoint = re.search(r'output_(\d+)', os.path.basename(filepath))
-        timepoint_num = int(timepoint.group(1)) if timepoint else i * 300
+        timepoint_num = int(timepoint.group(1)) if timepoint else i
+        timepoints.append(timepoint_num)
         
-        # Get wavelength and absorbance data (including replicates)
-        wavelength, absorbance_avg, absorbance_replicates = read_spectral_file(filepath)
+        # Get wavelength and absorbance data
+        wavelength, absorbance = read_spectral_file(filepath)
         
-        # Extract absorbance at specified wavelengths for each replicate
-        for abs_replicate in absorbance_replicates:
-            abs_1 = get_absorbance_at_wavelength(wavelength, abs_replicate, wavelength1)
-            abs_2 = get_absorbance_at_wavelength(wavelength, abs_replicate, wavelength2)
-            
-            abs_wl1.append(abs_1)
-            abs_wl2.append(abs_2)
-            timepoints_all_reps.append(timepoint_num)
-    
-    # Update timepoints to use the expanded list
-    timepoints = timepoints_all_reps
+        # Extract absorbance at 556 nm and 428 nm
+        abs_555 = get_absorbance_at_wavelength(wavelength, absorbance, 556)
+        abs_458 = get_absorbance_at_wavelength(wavelength, absorbance, 428)
+        
+        abs_556nm.append(abs_555)
+        abs_428nm.append(abs_458)
     
     # Convert timepoints from seconds to minutes
     timepoints = [t / 60.0 for t in timepoints]
     
-    # Calculate ratio
-    ratio_wl2_wl1 = np.array(abs_wl2) / np.array(abs_wl1)
+    # Calculate 428/556 ratio
+    ratio_428_556 = np.array(abs_428nm) / np.array(abs_556nm)
     
     # Create the three plots
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
     sample_label = f" - Sample {sample_name}" if sample_name is not None else ""
     fig.suptitle(f'Wavelength-Specific Analysis Over Time{sample_label}', fontsize=18, fontweight='bold')
     
-    # Plot 1: wavelength1 over time (scatter plot for individual replicates)
-    axes[0, 0].scatter(timepoints, abs_wl1, color='#4A3A7F', s=50, alpha=0.7)
+    # Plot 1: 556 nm over time
+    axes[0, 0].plot(timepoints, abs_556nm, 'o-', color='#4A3A7F', linewidth=2, markersize=8)
     axes[0, 0].set_xlabel('Time (min)', fontsize=14)
     axes[0, 0].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    axes[0, 0].set_title(f'{wavelength1} nm Absorbance vs Time', fontsize=14)
+    axes[0, 0].set_title('556 nm Absorbance vs Time', fontsize=14)
     axes[0, 0].tick_params(axis='both', which='major', labelsize=12, direction='in')
     axes[0, 0].grid(False)
     
-    # Plot 2: wavelength2 over time (scatter plot for individual replicates)
-    axes[0, 1].scatter(timepoints, abs_wl2, color="#859DE6", s=50, alpha=0.7)
+    # Plot 2: 428 nm over time
+    axes[0, 1].plot(timepoints, abs_428nm, 'o-', color="#859DE6", linewidth=2, markersize=8)
     axes[0, 1].set_xlabel('Time (min)', fontsize=14)
     axes[0, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    axes[0, 1].set_title(f'{wavelength2} nm Absorbance vs Time', fontsize=14)
+    axes[0, 1].set_title('428 nm Absorbance vs Time', fontsize=14)
     axes[0, 1].tick_params(axis='both', which='major', labelsize=12, direction='in')
     axes[0, 1].grid(False)
     
-    # Plot 3: ratio over time (scatter plot for individual replicates)
-    axes[1, 0].scatter(timepoints, ratio_wl2_wl1, color="#9B6BA8", s=50, alpha=0.7)
+    # Plot 3: 428/556 ratio over time
+    axes[1, 0].plot(timepoints, ratio_428_556, 'o-', color="#9B6BA8", linewidth=2, markersize=8)
     axes[1, 0].set_xlabel('Time (min)', fontsize=14)
-    axes[1, 0].set_ylabel(f'Absorbance Ratio ({wavelength2}/{wavelength1} nm)', fontsize=14)
-    axes[1, 0].set_title(f'{wavelength2}/{wavelength1} nm Ratio vs Time', fontsize=14)
+    axes[1, 0].set_ylabel('Absorbance Ratio (428/556 nm)', fontsize=14)
+    axes[1, 0].set_title('428/556 nm Ratio vs Time', fontsize=14)
     axes[1, 0].tick_params(axis='both', which='major', labelsize=12, direction='in')
     axes[1, 0].grid(False)
     
-    # Plot 4: Combined comparison (scatter plots for individual replicates)
-    axes[1, 1].scatter(timepoints, abs_wl1, color='#4A3A7F', s=40, alpha=0.7, label=f'{wavelength1} nm')
-    axes[1, 1].scatter(timepoints, abs_wl2, color='#859DE6', s=40, alpha=0.7, label=f'{wavelength2} nm')
+    # Plot 4: Combined comparison
+    axes[1, 1].plot(timepoints, abs_556nm, 'o-', color='#4A3A7F', linewidth=2, markersize=6, label='556 nm')
+    axes[1, 1].plot(timepoints, abs_428nm, 'o-', color='#859DE6', linewidth=2, markersize=6, label='428 nm')
     ax2 = axes[1, 1].twinx()
-    ax2.scatter(timepoints, ratio_wl2_wl1, color='#9B6BA8', s=40, alpha=0.7, label=f'{wavelength2}/{wavelength1} nm Ratio', marker='s')
+    ax2.plot(timepoints, ratio_428_556, 's-', color='#9B6BA8', linewidth=2, markersize=6, label='428/556 nm Ratio')
     axes[1, 1].set_xlabel('Time (min)', fontsize=14)
     axes[1, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    ax2.set_ylabel(f'Absorbance Ratio ({wavelength2}/{wavelength1} nm)', color="#000000", fontsize=14)
-    axes[1, 1].set_title('Combined Analysis (Individual Replicates)', fontsize=14)
+    ax2.set_ylabel('Absorbance Ratio (428/556 nm)', color="#000000", fontsize=14)
+    axes[1, 1].set_title('Combined Analysis', fontsize=14)
     axes[1, 1].tick_params(axis='both', which='major', labelsize=12, direction='in')
     ax2.tick_params(axis='both', which='major', labelsize=12, direction='in')
     axes[1, 1].legend(loc='upper left', fontsize=12)
@@ -204,13 +183,12 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     plt.savefig(plot_filename, dpi=300, bbox_inches='tight')
     print(f"✓ Wavelength time series plots saved as: {plot_filename}")
     
-    # Create and save time series data with all individual replicate measurements
+    # Create and save time series data
     time_series_data = pd.DataFrame({
-        'timepoint_min': timepoints,
-        'timepoint_sec': [t * 60 for t in timepoints],  # Also save in seconds
-        f'abs_{wavelength1}nm': abs_wl1,
-        f'abs_{wavelength2}nm': abs_wl2,
-        f'ratio_{wavelength2}_{wavelength1}': ratio_wl2_wl1
+        'timepoint': timepoints,
+        'abs_556nm': abs_556nm,
+        'abs_428nm': abs_428nm,
+        'ratio_428_556': ratio_428_556
     })
     
     time_series_data.to_csv(csv_filename, index=False)
@@ -218,22 +196,20 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     
     # Print summary statistics
     print(f"\nWavelength Analysis Summary:")
-    print(f"  {wavelength1}nm - Range: {min(abs_wl1):.4f} to {max(abs_wl1):.4f}")
-    print(f"  {wavelength2}nm - Range: {min(abs_wl2):.4f} to {max(abs_wl2):.4f}") 
-    print(f"  {wavelength2}/{wavelength1} Ratio - Range: {min(ratio_wl2_wl1):.4f} to {max(ratio_wl2_wl1):.4f}")
+    print(f"  556 nm - Range: {min(abs_556nm):.4f} to {max(abs_556nm):.4f}")
+    print(f"  428 nm - Range: {min(abs_428nm):.4f} to {max(abs_428nm):.4f}") 
+    print(f"  428/556 Ratio - Range: {min(ratio_428_556):.4f} to {max(ratio_428_556):.4f}")
     
     return time_series_data
 
 
-def analyze_spectral_data(folder_path, processed_data_dir=None, sample_name=None, wavelength1=555, wavelength2=458):
+def analyze_spectral_data(folder_path, processed_data_dir=None, sample_name=None):
     """
     Main function to analyze spectral data from output_# files
     Args:
         folder_path: Directory containing output_# files
         processed_data_dir: Optional directory to save processed results (defaults to folder_path/processed_data)
         sample_name: Optional sample number to filter (e.g., 1 for sample_1)
-        wavelength1: Primary wavelength for analysis (default: 555nm)
-        wavelength2: Secondary wavelength for analysis (default: 458nm)
     """
     sample_label = f" (Sample {sample_name})" if sample_name is not None else ""
     print(f"Analyzing spectral data in: {folder_path}{sample_label}")
@@ -272,23 +248,23 @@ def analyze_spectral_data(folder_path, processed_data_dir=None, sample_name=None
         try:
             # Extract timepoint number from filename
             timepoint = re.search(r'output_(\d+)', os.path.basename(filepath))
-            timepoint_num = int(timepoint.group(1)) if timepoint else i * 300
-            timepoint_min = timepoint_num / 60.0  # Convert seconds to minutes
+            timepoint_num = int(timepoint.group(1)) if timepoint else i
+            timepoint_min = timepoint_num / 60.0  # Convert to minutes
             
-            # Read spectral data (use averaged absorbance for clean spectral plot)
-            wavelength, absorbance_avg, absorbance_replicates = read_spectral_file(filepath)
+            # Read spectral data
+            wavelength, absorbance = read_spectral_file(filepath)
             
-            # Plot with color series using averaged data
-            plt.plot(wavelength, absorbance_avg, color=colors[i], 
+            # Plot with color series
+            plt.plot(wavelength, absorbance, color=colors[i], 
                     label=f'{int(timepoint_min)} min', linewidth=2)
             
-            # Create or update combined DataFrame using averaged data
+            # Create or update combined DataFrame
             if combined_data is None:
                 combined_data = pd.DataFrame({'wavelength': wavelength})
             
-            combined_data[f'absorbance_t{timepoint_num}'] = absorbance_avg
+            combined_data[f'absorbance_t{timepoint_num}'] = absorbance
             
-            print(f"  ✓ Processed {os.path.basename(filepath)} (timepoint {timepoint_num}, {len(absorbance_replicates)} replicates)")
+            print(f"  ✓ Processed {os.path.basename(filepath)} (timepoint {timepoint_num})")
             
         except Exception as e:
             print(f"  ✗ Error processing {os.path.basename(filepath)}: {e}")
@@ -333,22 +309,20 @@ def analyze_spectral_data(folder_path, processed_data_dir=None, sample_name=None
         print(f"Columns: {list(combined_data.columns)}")
         
         # Create wavelength-specific time series plots
-        time_series_data = create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, files, sample_name, ts_filename, ts_csv_filename, wavelength1, wavelength2)
+        time_series_data = create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, files, sample_name, ts_filename, ts_csv_filename)
         
         return combined_data, time_series_data
     
     return None
 
 
-def process_workflow_spectral_data(output_dir, logger=None, sample_name=None, wavelength1=555, wavelength2=458):
+def process_degradation_spectral_data(output_dir, logger=None, sample_name=None):
     """
-    Process spectral data from workflow output directory
+    Process spectral data from degradation workflow output directory
     Args:
         output_dir: Path or string - directory containing output_# files
         logger: Optional logger instance for consistent logging
         sample_name: Optional sample number to process (e.g., 1, 2)
-        wavelength1: Primary wavelength for analysis (default: 555nm)
-        wavelength2: Secondary wavelength for analysis (default: 458nm)
     Returns:
         tuple: (combined_df, time_series_df) or None if failed
     """
@@ -373,7 +347,7 @@ def process_workflow_spectral_data(output_dir, logger=None, sample_name=None, wa
             return None
         
         # Analyze the spectral data (with sample filter if specified)
-        results = analyze_spectral_data(folder_path, processed_data_dir, sample_name=sample_name, wavelength1=wavelength1, wavelength2=wavelength2)
+        results = analyze_spectral_data(folder_path, processed_data_dir, sample_name=sample_name)
         
         if results is not None:
             if isinstance(results, tuple):
@@ -413,7 +387,7 @@ def main():
     Main function - specify your folder path here (for standalone testing)
     """
     # User-specified folder path
-    folder_path = r'C:\Users\Imaging Controller\Desktop\SQ\PL _COF_ph_new_white_pierce_20260225_124615\COF_2'
+    folder_path = r"C:\Users\Imaging Controller\Desktop\SQ\p(IDT-TIT)-SQ003F-1000xHCl-0.05mgml"
     
     # Get all samples in the folder
     samples = get_all_samples(folder_path)
@@ -428,17 +402,12 @@ def main():
     # Process each sample separately
     all_results = {}
     for sample_num in samples:
-        if sample_num is None:
-            print(f"\n{'='*60}")
-            print(f"Processing All Files (No Sample Prefixes)")
-            print(f"{'='*60}")
-        else:
-            print(f"\n{'='*60}")
-            print(f"Processing Sample {sample_num}")
-            print(f"{'='*60}")
+        print(f"\n{'='*60}")
+        print(f"Processing Sample {sample_num}")
+        print(f"{'='*60}")
         
-        # Use the new function for processing this specific sample (using default 555nm/458nm wavelengths)
-        results = process_workflow_spectral_data(folder_path, sample_name=sample_num, wavelength1=595, wavelength2=450)
+        # Use the new function for processing this specific sample
+        results = process_degradation_spectral_data(folder_path, sample_name=sample_num)
         all_results[sample_num] = results
         
         if results is not None:
@@ -448,25 +417,14 @@ def main():
                 combined_df = results
                 time_series_df = None
                 
-            if sample_num is None:
-                print(f"\nAll Files - Generated in processed_data folder:")
-                print(f"  1. spectral_analysis_plot.png - Full spectral time series")
-                print(f"  2. combined_spectral_data.csv - Combined dataset")
-                if time_series_df is not None:
-                    print(f"  3. wavelength_time_analysis.png - Wavelength-specific and ratio plots")
-                    print(f"  4. wavelength_time_series.csv - Time series for specific wavelengths")
-            else:
-                print(f"\nSample {sample_num} - Files generated in processed_data folder:")
-                print(f"  1. spectral_analysis_plot_sample_{sample_num}.png - Full spectral time series")
-                print(f"  2. combined_spectral_data_sample_{sample_num}.csv - Combined dataset")
-                if time_series_df is not None:
-                    print(f"  3. wavelength_time_analysis_sample_{sample_num}.png - Wavelength-specific and ratio plots")
-                    print(f"  4. wavelength_time_series_sample_{sample_num}.csv - Time series for specific wavelengths")
+            print(f"\nSample {sample_num} - Files generated in processed_data folder:")
+            print(f"  1. spectral_analysis_plot_sample_{sample_num}.png - Full spectral time series")
+            print(f"  2. combined_spectral_data_sample_{sample_num}.csv - Combined dataset")
+            if time_series_df is not None:
+                print(f"  3. wavelength_time_analysis_sample_{sample_num}.png - 555nm, 458nm, and ratio plots")
+                print(f"  4. wavelength_time_series_sample_{sample_num}.csv - Time series for specific wavelengths")
         else:
-            if sample_num is None:
-                print(f"\nAll files analysis failed - no data processed.")
-            else:
-                print(f"\nSample {sample_num} analysis failed - no data processed.")
+            print(f"\nSample {sample_num} analysis failed - no data processed.")
     
     print("\n" + "="*60)
     print("ALL SAMPLES PROCESSED!")

@@ -8,7 +8,7 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
 import pandas as pd
 from pathlib import Path
-from spectral_analyzer_program import process_workflow_spectral_data
+from degradation_spectral_analyzer_program import process_degradation_spectral_data
 
 EXPERIMENT_REPEATS = 2  # Define at module level
 
@@ -400,8 +400,7 @@ def process_sample_spectral_data(output_dir, sample_name, logger=None):
         
         # Run the spectral analyzer on the temp directory containing only this sample
         try:
-            # Use 555nm and 458nm for degradation analysis (maintains existing behavior)
-            spectral_results = process_workflow_spectral_data(temp_dir, logger, wavelength1=555, wavelength2=458)
+            spectral_results = process_degradation_spectral_data(temp_dir, logger)
             
             # Move results back to main output directory with sample prefix
             temp_processed = os.path.join(temp_dir, 'processed_data')
