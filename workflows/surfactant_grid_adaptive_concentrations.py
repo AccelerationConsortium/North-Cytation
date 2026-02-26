@@ -60,20 +60,28 @@ def save_measurement_csv(measurement_data, measurement_type, output_folder, lash
         return None
     
     try:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        # Build filename with abbreviated components for Windows path limits
+        filename_parts = []
         
-        # Build filename
-        filename_parts = [measurement_type]
+        # Abbreviate measurement_type to reduce length
+        abbreviated_type = measurement_type.replace("kinetics_single_", "ks_").replace("_turbidity", "_turb").replace("_fluorescence", "_fluor").replace("prep_dmso_turbidity_ratio", "pdtr").replace("prep_turbidity_dmso_ratio", "ptdr").replace("prep_turbidity", "pt")
+        filename_parts.append(abbreviated_type)
+        
         if sequence_info:
             filename_parts.append(sequence_info)
         if well_indices:
-            filename_parts.append(f"wells{well_indices[0]}-{well_indices[-1]}")
-        filename_parts.append(timestamp)
+            filename_parts.append(f"w{well_indices[0]}-{well_indices[-1]}")
+        
+        # Shorter timestamp
+        short_timestamp = datetime.now().strftime("%m%d_%H%M%S_%f")[:-3]
+        filename_parts.append(short_timestamp)
         
         filename = "_".join(filename_parts) + ".csv"
         
         csv_path = os.path.join(output_folder, filename)
-        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        
+        # Ensure output directory exists (sequence folders already created by workflow)
+        os.makedirs(output_folder, exist_ok=True)
         measurement_data.to_csv(csv_path, index=True)
         
         mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
@@ -161,6 +169,7 @@ CMC_CONTROL_POINTS = 8   # Number of concentration points around CMC (6-8 recomm
 # Adaptive grid parameters - concentration ranges adapt to stock concentrations
 MIN_CONC = 10**-2  # 0.01 mM minimum concentration for all surfactants
 NUMBER_CONCENTRATIONS = 9  # Number of concentration steps for solo/2-step workflows
+NUM_SUBSTOCKS = 6  # Number of substock dilutions created per surfactant (4-8 recommended)
 
 ITERATIVE_CONCENTRATIONS = 5  # Number of concentration steps for iterative/adaptive workflows (5x5 grid)
 GRADIENT_SUGGESTIONS_PER_ITERATION = 14  # Number of gradient suggestions per iterative round
@@ -182,8 +191,9 @@ SELECTED_BUFFER = 'MES'  # Choose from BUFFER_OPTIONS
 MAX_WELLS = 96 #Wellplate size
 
 # Constants
-FINAL_SUBSTOCK_VOLUME = 6  # mL final volume for each dilution
+FINAL_SUBSTOCK_VOLUME_ML = 4.0  # mL final volume for each substock dilution (reduced from 7.5)
 MINIMUM_PIPETTE_VOLUME = 0.2  # mL (200 uL) - minimum volume for accurate pipetting
+MIN_SUBSTOCK_VOLUME_UL = 200  # Minimum volume for accurate substock preparation
 MEASUREMENT_INTERVAL = 96    # Measure every N wells to prevent evaporation
 
 # Pipetting volume limits (consistent across all functions)
@@ -236,6 +246,36 @@ SURFACTANT_LIBRARY = {
         "category": "cationic",
         "stock_conc": 50,  # mM
         "cmc_mm": 3.77,  # mM (t = 10 min)
+    },
+    "DSS": {
+        "full_name": "Docusate Sodium Salt",
+        "category": "anionic",
+        "stock_conc": 25,  # mM
+    },
+    "SDBS": {
+        "full_name": "Sodium Dodecylbenzenesulfonate",
+        "category": "anionic", 
+        "stock_conc": 50,  # mM
+    },
+    "NaLS": {
+        "full_name": "N-Lauroylsarcosine Sodium Salt",
+        "category": "anionic",
+        "stock_conc": 50,  # mM
+    },
+    "BDDAC": {
+        "full_name": "Benzyldimethyldodecylammonium Chloride",
+        "category": "cationic",
+        "stock_conc": 50,  # mM
+    },
+    "BZT": {
+        "full_name": "Benzethonium Chloride",
+        "category": "cationic", 
+        "stock_conc": 50,  # mM
+    },
+    "CHAPS": {
+        "full_name": "3-[(Cholamidopropyl) Dimethylammonio]-1-Propanesulfonate",
+        "category": "zwitterionic",
+        "stock_conc": 30,  # mM
     }
 }
 
@@ -994,9 +1034,9 @@ class SurfactantSubstockTracker:
         # Check stock solution first
         if surfactant_name in SURFACTANT_LIBRARY:
             stock_conc = SURFACTANT_LIBRARY[surfactant_name]["stock_conc"]
-            # Calculate volume needed for target final concentration in 200 uL well
-            # Final_conc = (stock_conc * vol_needed) / 200 uL
-            # Therefore: vol_needed = (target_conc * 200) / stock_conc
+            # Calculate volume needed for target final concentration in WELL_VOLUME_UL well
+            # Final_conc = (stock_conc * vol_needed) / WELL_VOLUME_UL
+            # Therefore: vol_needed = (target_conc * WELL_VOLUME_UL) / stock_conc
             vol_needed_ul = (target_conc_mm * WELL_VOLUME_UL) / stock_conc
             vol_needed_ml = vol_needed_ul / 1000
             
@@ -1050,9 +1090,9 @@ class SurfactantSubstockTracker:
                 if lash_e is not None:
                     current_vial_volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
                 else:
-                    current_vial_volume = 6.0  # Conservative default
+                    current_vial_volume = FINAL_SUBSTOCK_VOLUME_ML  # Conservative default
             except:
-                current_vial_volume = 6.0  # Default for simulation/errors
+                current_vial_volume = FINAL_SUBSTOCK_VOLUME_ML  # Default for simulation/errors
             
             # Conservation penalty: penalize high usage from low vials
             if current_vial_volume < conservation_threshold:
@@ -1081,8 +1121,8 @@ class SurfactantSubstockTracker:
         # Target 25 uL volumes for efficient, reusable solutions (configurable)
         target_volume_ul = 25  # Increased from 15 to push volumes higher
         # Calculate concentration needed to achieve target final concentration with target volume
-        # target_conc_mm = (optimal_conc * target_volume_ul) / 200
-        # Therefore: optimal_conc = (target_conc_mm * 200) / target_volume_ul
+        # target_conc_mm = (optimal_conc * target_volume_ul) / WELL_VOLUME_UL
+        # Therefore: optimal_conc = (target_conc_mm * WELL_VOLUME_UL) / target_volume_ul
         optimal_conc = (target_conc_mm * WELL_VOLUME_UL) / target_volume_ul
         
         # Ensure we don't go below minimum pipette volume
@@ -1128,8 +1168,10 @@ class SurfactantSubstockTracker:
         safe_conc = final_conc * 0.8
         return round_to_nice_concentration(safe_conc)
     
-    def add_substock(self, surfactant_name, concentration_mm, volume_ml=6.0):
+    def add_substock(self, surfactant_name, concentration_mm, volume_ml=None):
         """Add a new substock to tracking."""
+        if volume_ml is None:
+            volume_ml = FINAL_SUBSTOCK_VOLUME_ML
         vial_name = f"{surfactant_name}_dilution_{self.next_available_substock}"
         self.substocks[vial_name] = {
             'surfactant_name': surfactant_name,
@@ -1139,7 +1181,7 @@ class SurfactantSubstockTracker:
         self.next_available_substock += 1
         return vial_name
 
-def calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, num_substocks=6, target_volume_ul=25):
+def calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, num_substocks=NUM_SUBSTOCKS, target_volume_ul=25):
     """
     Calculate a systematic dilution series with even decreases to cover the concentration range.
     Can be optimized for target pipetting volumes.
@@ -1198,11 +1240,14 @@ def calculate_systematic_dilution_series(surfactant_name, target_concentrations_
     
     return sorted(rounded_concentrations, reverse=True)
 
-def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations_mm):
+def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations_mm, num_substocks=None):
     """
     Calculate optimal dilution strategy for a surfactant across all target concentrations.
     Uses systematic dilution series for better coverage.
     """
+    if num_substocks is None:
+        num_substocks = NUM_SUBSTOCKS
+    
     tracker = SurfactantSubstockTracker()
     plan = {'substocks_needed': [], 'concentration_map': {}}
     
@@ -1210,7 +1255,7 @@ def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations
     lash_e.logger.info(f"Target concentrations: {[f'{c:.2e}' for c in target_concentrations_mm]} mM")
     
     # Pre-calculate systematic dilution series optimized for 30-40 ╬╝L volumes
-    systematic_series = calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, target_volume_ul=35)
+    systematic_series = calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, num_substocks=num_substocks, target_volume_ul=35)
     lash_e.logger.info(f"Systematic dilution series: {[f'{c:.2g}' for c in systematic_series]} mM")
     
     # Add systematic substocks to tracker
@@ -1245,8 +1290,6 @@ def calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfac
     Calculate the exact dilution recipes for each substock that needs to be created.
     Uses serial dilutions when direct dilution would require volumes < 200 uL.
     """
-    MIN_SUBSTOCK_VOLUME_UL = 200  # Minimum volume for accurate substock preparation
-    FINAL_SUBSTOCK_VOLUME_ML = 7.5
     recipes = []
     
     lash_e.logger.info(f"\n=== SUBSTOCK DILUTION RECIPES ===")
@@ -2105,7 +2148,7 @@ def pause_kinetics_measurements(lash_e):
     lash_e.logger.info("Pausing kinetics measurements - sending carrier out (minimizes evaporation during wait times)...")
     
     # Send carrier out
-    lash_e.carrier_out()
+    lash_e.cytation.CarrierOut()
     lash_e.logger.info("Carrier sent out - kinetics measurements paused")
 
 def resume_kinetics_measurements(lash_e):
@@ -2113,7 +2156,7 @@ def resume_kinetics_measurements(lash_e):
     lash_e.logger.info("Resuming kinetics measurements - bringing carrier in...")
     
     # Bring carrier in
-    lash_e.carrier_in()
+    lash_e.cytation.CarrierIn()
     lash_e.logger.info("Carrier retrieved - ready for measurements")
 
 def shake_wellplate(lash_e):
@@ -2509,11 +2552,14 @@ def create_well_recipe_from_concentrations(conc_a, conc_b, plan_a, plan_b, well_
 
 def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name,
                                   surf_a_min=None, surf_a_max=None, surf_b_min=None, surf_b_max=None, 
-                                  existing_stock_solutions=None, number_concentrations=9):
-    """
+                                  existing_stock_solutions=None, number_concentrations=9, num_substocks=None):
+    """  
     Create complete experiment plan with simplified, clear data structure.
     Returns: experiment_plan dict with surfactants, stock_solutions_needed, and well_recipes_df
     """
+    if num_substocks is None:
+        num_substocks = NUM_SUBSTOCKS
+        
     lash_e.logger.info("Step 2: Creating complete experiment plan...")
     
     # Step 1: Calculate concentration grids (with optional custom bounds)
@@ -2552,8 +2598,8 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         tracker_b = None
     else:
         lash_e.logger.info("  Calculating optimal dilution strategies...")
-        plan_a, tracker_a = calculate_smart_dilution_plan(lash_e, surfactant_a_name, achievable_concs_a)
-        plan_b, tracker_b = calculate_smart_dilution_plan(lash_e, surfactant_b_name, achievable_concs_b)
+        plan_a, tracker_a = calculate_smart_dilution_plan(lash_e, surfactant_a_name, achievable_concs_a, num_substocks)
+        plan_b, tracker_b = calculate_smart_dilution_plan(lash_e, surfactant_b_name, achievable_concs_b, num_substocks)
     
     # Step 4: Create stock solutions list with dilution recipes
     stock_solutions_needed = []
@@ -3429,7 +3475,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                                          surf_a_min=None, surf_a_max=None,
                                          surf_b_min=None, surf_b_max=None, 
                                          lash_e=None, existing_stock_solutions=None, 
-                                         number_concentrations=9, experiment_output_folder=None, 
+                                         number_concentrations=9, num_substocks=None, experiment_output_folder=None, 
                                          simulate=True, skip_measurements=False):
     """
     Execute the complete surfactant grid screening workflow using adaptive concentrations.
@@ -3440,6 +3486,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
         surf_a_min, surf_a_max: Custom concentration bounds for surfactant A (None = use defaults)
         surf_b_min, surf_b_max: Custom concentration bounds for surfactant B (None = use defaults)
         lash_e: Existing Lash_E instance (if None, creates new one)
+        number_concentrations: Number of concentration points in the grid (default 9)
+        num_substocks: Number of substock dilutions to create per surfactant (default uses NUM_SUBSTOCKS)
         simulate: Run in simulation mode
         skip_measurements: If True, perform dispensing only (no measurements)
         
@@ -3465,7 +3513,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     # STEP 2: Create complete experiment plan with simplified structure
     experiment_plan = create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name,
                                                      surf_a_min, surf_a_max, surf_b_min, surf_b_max, 
-                                                     existing_stock_solutions, number_concentrations)
+                                                     existing_stock_solutions, number_concentrations, num_substocks)
     
     # Extract the well recipes DataFrame
     well_recipes_df = experiment_plan['well_recipes_df']
@@ -3641,7 +3689,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     }
 
 def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB", 
-                              number_concentrations=ITERATIVE_CONCENTRATIONS, target_measurements=96, 
+                              number_concentrations=ITERATIVE_CONCENTRATIONS, num_substocks=None, target_measurements=96, 
                               gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION, lash_e=None, 
                               experiment_output_folder=None, simulate=True):
     """
@@ -3654,6 +3702,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         surfactant_a_name: Name of first surfactant (e.g., 'SDS')
         surfactant_b_name: Name of second surfactant (e.g., 'DTAB') 
         number_concentrations: Number of concentration steps (default ITERATIVE_CONCENTRATIONS for rapid screening)
+        num_substocks: Number of substock dilutions to create per surfactant (default uses NUM_SUBSTOCKS)
         target_measurements: Total measurements to reach (default 200)
         gradient_suggestions_per_iteration: Number of gradient suggestions per iteration (default GRADIENT_SUGGESTIONS_PER_ITERATION)
         simulate: Run in simulation mode
@@ -3682,6 +3731,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         lash_e=lash_e,
         existing_stock_solutions=None,  # Fresh start, no existing solutions
         number_concentrations=number_concentrations,  # Configurable parameter
+        num_substocks=num_substocks,  # Pass through num_substocks
         experiment_output_folder=experiment_output_folder,
         simulate=simulate
     )
@@ -4728,6 +4778,7 @@ if __name__ == "__main__":
         results = execute_adaptive_surfactant_screening(
             surfactant_a_name=SURFACTANT_A, 
             surfactant_b_name=SURFACTANT_B,
+            num_substocks=NUM_SUBSTOCKS,  # Use configurable number of substocks
             lash_e=lash_e,
             experiment_output_folder=experiment_output_folder,
             simulate=SIMULATE
@@ -4763,6 +4814,7 @@ if __name__ == "__main__":
             surfactant_a_name=SURFACTANT_A, 
             surfactant_b_name=SURFACTANT_B,
             number_concentrations=ITERATIVE_CONCENTRATIONS,  # Start with rapid 5x5 screening
+            num_substocks=NUM_SUBSTOCKS,  # Use configurable number of substocks
             target_measurements=ITERATIVE_MEASUREMENT_TOTAL,   # Fill one wellplate with iterative exploration
             gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION,
             lash_e=lash_e,
