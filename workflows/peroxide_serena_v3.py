@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 import slack_agent
 import pipetting_data.embedded_calibration_validation as pipette_validator
-from spectral_analyzer_program import process_workflow_spectral_data  
+
 
 #config params
 EXPERIMENT_NAME = "peroxide_assay_test"
@@ -240,7 +240,7 @@ if VALIDATE_LIQUIDS:
 
 # Run the workflow N times with different Reagent+COF+sample sets, reusing the same lash_e instance
 for i in range(1, NUMBER_OF_SAMPLES+1):
-    assay_reagent = f'Assay_reagent_1'
+    assay_reagent = f'Assay_reagent_{i}'
     cof_vial = f'COF_{i}'
     set_suffix = f'_Set{i}'
     peroxide_workflow(lash_e, assay_reagent=assay_reagent, cof_vial=cof_vial, set_suffix=set_suffix, output_dir=output_dir)
