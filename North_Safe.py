@@ -3489,7 +3489,7 @@ class North_Robot(North_Base):
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self, revs=3, move_speed=None):
+    def uncap_clamp_vial(self, revs=4, move_speed=None):
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
