@@ -2159,6 +2159,29 @@ def resume_kinetics_measurements(lash_e):
     lash_e.cytation.CarrierIn()
     lash_e.logger.info("Carrier retrieved - ready for measurements")
 
+def sleep_with_progress(lash_e, total_seconds, target_time_min):
+    """Sleep for specified duration with periodic progress updates every minute."""
+    import time
+    
+    if total_seconds <= 60:
+        # Short wait - no need for progress updates
+        time.sleep(total_seconds)
+        return
+    
+    # Break into 1-minute chunks for longer waits
+    minutes_remaining = int(total_seconds // 60)
+    final_seconds = total_seconds % 60
+    
+    for minute in range(minutes_remaining):
+        time.sleep(60)  # Sleep for 1 minute
+        elapsed_min = minute + 1
+        remaining_min = minutes_remaining - elapsed_min + (1 if final_seconds > 0 else 0)
+        lash_e.logger.info(f"    Progress: {elapsed_min}min elapsed, {remaining_min}min remaining until t={target_time_min:.0f}min measurement")
+    
+    # Sleep any remaining seconds
+    if final_seconds > 0:
+        time.sleep(final_seconds)
+
 def shake_wellplate(lash_e):
     """Execute shake protocol only - assumes wellplate is at cytation."""
     if not lash_e.simulate:
@@ -4364,14 +4387,14 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         if i == 0:
             lash_e.logger.info(f"  Waiting {wait_time}s for t={wait_time/60:.0f}min timepoint...")
             if not simulate:
-                time.sleep(wait_time)
+                sleep_with_progress(lash_e, wait_time, wait_time/60)
             else:
                 lash_e.logger.info("  Simulated wait time")
         else:
             gap_time = wait_time - measurement_intervals[i-1] 
             lash_e.logger.info(f"  Waiting {gap_time}s more for t={wait_time/60:.0f}min timepoint...")
             if not simulate:
-                time.sleep(gap_time)
+                sleep_with_progress(lash_e, gap_time, wait_time/60)
             else:
                 lash_e.logger.info("  Simulated wait time")
         
