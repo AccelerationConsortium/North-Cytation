@@ -92,7 +92,10 @@ def create_contour_maps(csv_file_path, surfactant_a_name="SurfA", surfactant_b_n
     ax1.set_title(f'Turbidity (600nm) vs Surfactant Concentrations\\n({surfactant_a_name} vs {surfactant_b_name})', fontsize=14, fontweight='bold')
     
     # Create log-spaced contour levels for turbidity with better error handling
-    turb_min, turb_max = np.nanmin(turbidity_grid), np.nanmax(turbidity_grid)
+    # Use original data range, not interpolated grid range
+    turb_min, turb_max = exp_data['turbidity_600'].min(), exp_data['turbidity_600'].max()
+    print(f"DEBUG: Original turbidity range: {turb_min:.4f} - {turb_max:.4f}")
+    print(f"DEBUG: Interpolated grid range: {np.nanmin(turbidity_grid):.4f} - {np.nanmax(turbidity_grid):.4f}")
     
     # Safety check for contour levels
     if turb_max <= turb_min or turb_max <= 0 or np.isnan(turb_min) or np.isnan(turb_max):
@@ -102,21 +105,34 @@ def create_contour_maps(csv_file_path, surfactant_a_name="SurfA", surfactant_b_n
         cbar1.set_label('Turbidity (600nm)', fontsize=12)
         ax1.set_title(f'Turbidity (600nm) - Image View\\n({surfactant_a_name} vs {surfactant_b_name})', fontsize=14, fontweight='bold')
     else:
-        # Use fewer contour levels and ensure proper range
-        turb_levels = np.logspace(np.log10(max(turb_min, 0.01)), np.log10(turb_max), 8)
+        # Fix: Ensure min < max after adjustment for log scale
+        turb_min_adj = max(turb_min, 0.01)  # Minimum for log scale
+        if turb_max <= turb_min_adj:
+            turb_max = turb_min_adj * 10  # Ensure separation for log scale
         
-        # Create filled contour plot with log norm
-        cs1 = ax1.contourf(Xi, Yi, turbidity_grid, levels=turb_levels, 
-                           norm=LogNorm(), cmap='viridis', alpha=0.8)
-        
-        # Add contour lines
-        cs1_lines = ax1.contour(Xi, Yi, turbidity_grid, levels=turb_levels, 
-                               colors='black', alpha=0.4, linewidths=0.8)
-        ax1.clabel(cs1_lines, inline=True, fontsize=9, fmt='%.3f')
-        
-        # Add colorbar
-        cbar1 = plt.colorbar(cs1, ax=ax1)
-        cbar1.set_label('Turbidity (600nm)', fontsize=12)
+        try:
+            # Use fewer contour levels and ensure proper range
+            turb_levels = np.logspace(np.log10(turb_min_adj), np.log10(turb_max), 8)
+            
+            # Create filled contour plot with log norm
+            cs1 = ax1.contourf(Xi, Yi, turbidity_grid, levels=turb_levels, 
+                               norm=LogNorm(), cmap='viridis', alpha=0.8)
+            
+            # Add contour lines
+            cs1_lines = ax1.contour(Xi, Yi, turbidity_grid, levels=turb_levels, 
+                                   colors='black', alpha=0.4, linewidths=0.8)
+            ax1.clabel(cs1_lines, inline=True, fontsize=9, fmt='%.3f')
+            
+            # Add colorbar
+            cbar1 = plt.colorbar(cs1, ax=ax1)
+            cbar1.set_label('Turbidity (600nm)', fontsize=12)
+        except (ValueError, RuntimeError) as e:
+            # Fallback if contour plotting still fails
+            print(f"Contour plotting failed, using imshow: {str(e)}")
+            im1 = ax1.imshow(turbidity_grid, aspect='auto', cmap='viridis', origin='lower')
+            cbar1 = plt.colorbar(im1, ax=ax1)
+            cbar1.set_label('Turbidity (600nm)', fontsize=12)
+            ax1.set_title(f'Turbidity (600nm) - Image View\\n({surfactant_a_name} vs {surfactant_b_name})', fontsize=14, fontweight='bold')
     
     # Plot actual data points
     scatter1 = ax1.scatter(x, y, c=turbidity, s=25, edgecolors='white', 
@@ -125,39 +141,35 @@ def create_contour_maps(csv_file_path, surfactant_a_name="SurfA", surfactant_b_n
     # --- Ratio Contour Plot (Linear Scale) - Capped at water baseline ---
     ax2.set_title(f'Fluorescence Ratio vs Surfactant Concentrations\\n({surfactant_a_name} vs {surfactant_b_name})', fontsize=14, fontweight='bold')
     
-    # Create linear contour levels for ratio - cap at water baseline with error handling
-    ratio_min, ratio_max = np.nanmin(ratio_grid), min(np.nanmax(ratio_grid), water_baseline_ratio)
+    # Create linear contour levels for ratio - use raw data range
+    ratio_min, ratio_max = exp_data['ratio'].min(), exp_data['ratio'].max()
+    print(f"DEBUG: Ratio range for contours: {ratio_min:.4f} - {ratio_max:.4f}")
     
     # Safety check for contour levels
     if ratio_max <= ratio_min or np.isnan(ratio_min) or np.isnan(ratio_max) or (ratio_max - ratio_min) < 1e-10:
         # Fallback to simple visualization if contour levels can't be calculated
-        ratio_grid_clipped = np.clip(ratio_grid, None, water_baseline_ratio)
-        im2 = ax2.imshow(ratio_grid_clipped, aspect='auto', cmap='plasma', origin='lower')
+        im2 = ax2.imshow(ratio_grid, aspect='auto', cmap='plasma', origin='lower')
         cbar2 = plt.colorbar(im2, ax=ax2)
-        cbar2.set_label(f'Fluorescence Ratio (capped at water baseline: {water_baseline_ratio:.3f})', fontsize=12)
+        cbar2.set_label('Fluorescence Ratio', fontsize=12)
         ax2.set_title(f'Fluorescence Ratio - Image View\\n({surfactant_a_name} vs {surfactant_b_name})', fontsize=14, fontweight='bold')
     else:
         ratio_levels = np.linspace(ratio_min, ratio_max, 10)  # Fewer levels for 96 points
         
-        # Clip ratio values to max of water baseline for better scaling
-        ratio_grid_clipped = np.clip(ratio_grid, None, water_baseline_ratio)
-        
-        # Create filled contour plot
-        cs2 = ax2.contourf(Xi, Yi, ratio_grid_clipped, levels=ratio_levels, 
+        # Create filled contour plot using raw data
+        cs2 = ax2.contourf(Xi, Yi, ratio_grid, levels=ratio_levels, 
                            cmap='plasma', alpha=0.8)
         
         # Add contour lines
-        cs2_lines = ax2.contour(Xi, Yi, ratio_grid_clipped, levels=ratio_levels, 
+        cs2_lines = ax2.contour(Xi, Yi, ratio_grid, levels=ratio_levels, 
                                colors='black', alpha=0.4, linewidths=0.8)
         ax2.clabel(cs2_lines, inline=True, fontsize=9, fmt='%.3f')
         
         # Add colorbar
         cbar2 = plt.colorbar(cs2, ax=ax2)
-        cbar2.set_label(f'Fluorescence Ratio (capped at water baseline: {water_baseline_ratio:.3f})', fontsize=12)
+        cbar2.set_label('Fluorescence Ratio', fontsize=12)
     
-    # Plot actual data points - also clip for consistent coloring
-    ratio_clipped = np.clip(ratio, None, water_baseline_ratio)
-    scatter2 = ax2.scatter(x, y, c=ratio_clipped, s=25, edgecolors='white', 
+    # Plot actual data points using raw data
+    scatter2 = ax2.scatter(x, y, c=ratio, s=25, edgecolors='white', 
                           linewidth=0.5, cmap='plasma')
     
     # --- Average Fluorescence Intensity Contour Plot ---
@@ -170,7 +182,10 @@ def create_contour_maps(csv_file_path, surfactant_a_name="SurfA", surfactant_b_n
     avg_fluor_grid = griddata((x, y), avg_fluorescence, (Xi, Yi), method='cubic')
     
     # Create linear contour levels for average fluorescence with error handling
-    fluor_min, fluor_max = np.nanmin(avg_fluor_grid), np.nanmax(avg_fluor_grid)
+    # Use original data range, not interpolated grid range
+    fluor_min, fluor_max = avg_fluorescence.min(), avg_fluorescence.max()
+    print(f"DEBUG: Original fluorescence range: {fluor_min:.1f} - {fluor_max:.1f}")
+    print(f"DEBUG: Interpolated fluorescence range: {np.nanmin(avg_fluor_grid):.1f} - {np.nanmax(avg_fluor_grid):.1f}")
     
     # Safety check for contour levels
     if fluor_max <= fluor_min or np.isnan(fluor_min) or np.isnan(fluor_max) or (fluor_max - fluor_min) < 1e-10:
@@ -210,6 +225,8 @@ def create_contour_maps(csv_file_path, surfactant_a_name="SurfA", surfactant_b_n
     y_ticks_3 = ax3.get_yticks()
     x_labels_3 = [f'{10**tick:.1e}' if tick < -2 else f'{10**tick:.2f}' for tick in x_ticks_3]
     y_labels_3 = [f'{10**tick:.1e}' if tick < -2 else f'{10**tick:.2f}' for tick in y_ticks_3]
+    ax3.set_xticks(x_ticks_3)
+    ax3.set_yticks(y_ticks_3)
     ax3.set_xticklabels(x_labels_3, rotation=45)
     ax3.set_yticklabels(y_labels_3, rotation=45)
     
@@ -225,6 +242,8 @@ def create_contour_maps(csv_file_path, surfactant_a_name="SurfA", surfactant_b_n
         y_ticks = ax.get_yticks()
         x_labels = [f'{10**tick:.1e}' if tick < -2 else f'{10**tick:.2f}' for tick in x_ticks]
         y_labels = [f'{10**tick:.1e}' if tick < -2 else f'{10**tick:.2f}' for tick in y_ticks]
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
         ax.set_xticklabels(x_labels, rotation=45)
         ax.set_yticklabels(y_labels, rotation=45)
     
