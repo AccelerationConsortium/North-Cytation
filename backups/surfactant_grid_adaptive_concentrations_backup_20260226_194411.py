@@ -148,10 +148,10 @@ SURFACTANT_B = "TTAB"
 EXPERIMENT_TAG = "new_min_conc_plus_1d_cmc_assay"
 
 # WORKFLOW CONSTANTS
-SIMULATE = False # Set to False for actual hardware execution
+SIMULATE = True # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
-VALIDATION_ONLY = True  # Set to True to run only pipetting validation and skip experiment (great for testing)
+VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
 
 # WORKFLOW TYPE - Choose one of: 'single', '2_stage', 'iterative', 'double_iterative', 'kinetics'
 WORKFLOW_TYPE = 'double_iterative'  # Current active workflow
@@ -176,9 +176,6 @@ GRADIENT_SUGGESTIONS_PER_ITERATION = 14  # Number of gradient suggestions per it
 
 # Recommender optimization targets - choose which measurements to optimize 
 OPTIMIZE_METRIC = 'ratio'  # Options: 'turbidity', 'ratio', 'both' (for ratio + turbidity boundaries)
-
-# Recommender algorithm selection
-RECOMMENDER_TYPE = 'bayesian'  # Options: 'delaunay', 'bayesian' - choose algorithm for boundary exploration
 
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
@@ -340,33 +337,6 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
         import matplotlib.pyplot as plt
         plt.ioff()  # Turn off interactive mode
         
-        # Pre-validate data for contour plotting to prevent "minvalue/maxvalue" error
-        logger.info("   Validating data for contour plotting...")
-        try:
-            df_check = pd.read_csv(experiment_results_csv)
-            exp_data = df_check[df_check['well_type'] == 'experiment']
-            
-            # Check if we have enough data points and value variation
-            if len(exp_data) < 4:
-                raise ValueError(f"Insufficient data points for contour plotting: {len(exp_data)} < 4")
-            
-            # Check turbidity variation
-            turb_values = exp_data['turbidity_600'].dropna()
-            if len(turb_values) == 0 or turb_values.min() >= turb_values.max():
-                raise ValueError(f"Invalid turbidity range: min={turb_values.min():.3f}, max={turb_values.max():.3f}")
-                
-            # Check ratio variation  
-            ratio_values = exp_data['ratio'].dropna()
-            if len(ratio_values) == 0 or ratio_values.min() >= ratio_values.max():
-                raise ValueError(f"Invalid ratio range: min={ratio_values.min():.3f}, max={ratio_values.max():.3f}")
-            
-            logger.info(f"   Data validation passed: {len(exp_data)} points, turb range [{turb_values.min():.3f}, {turb_values.max():.3f}], ratio range [{ratio_values.min():.3f}, {ratio_values.max():.3f}]")
-            
-        except Exception as validation_error:
-            logger.warning(f"   Data validation failed: {validation_error}")
-            logger.warning("   Skipping contour plot generation due to insufficient data variation")
-            raise validation_error
-        
         from surfactant_contour_simple import create_contour_maps
         
         fig, ax1, ax2, ax3 = create_contour_maps(
@@ -384,7 +354,6 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
     except Exception as e:
         logger.error(f"   [ERROR] Contour plot generation failed: {str(e)}")
         logger.error(f"      File: {experiment_results_csv}")
-        logger.info("   Continuing analysis without contour plots...")
     
     # Run CMC analysis (only if CMC controls are enabled)  
     if ADD_CMC_CONTROLS:
@@ -2200,29 +2169,6 @@ def resume_kinetics_measurements(lash_e):
     lash_e.cytation.CarrierIn()
     lash_e.logger.info("Carrier retrieved - ready for measurements")
 
-def sleep_with_progress(lash_e, total_seconds, target_time_min):
-    """Sleep for specified duration with periodic progress updates every minute."""
-    import time
-    
-    if total_seconds <= 60:
-        # Short wait - no need for progress updates
-        time.sleep(total_seconds)
-        return
-    
-    # Break into 1-minute chunks for longer waits
-    minutes_remaining = int(total_seconds // 60)
-    final_seconds = total_seconds % 60
-    
-    for minute in range(minutes_remaining):
-        time.sleep(60)  # Sleep for 1 minute
-        elapsed_min = minute + 1
-        remaining_min = minutes_remaining - elapsed_min + (1 if final_seconds > 0 else 0)
-        lash_e.logger.info(f"    Progress: {elapsed_min}min elapsed, {remaining_min}min remaining until t={target_time_min:.0f}min measurement")
-    
-    # Sleep any remaining seconds
-    if final_seconds > 0:
-        time.sleep(final_seconds)
-
 def shake_wellplate(lash_e):
     """Execute shake protocol only - assumes wellplate is at cytation."""
     if not lash_e.simulate:
@@ -2826,7 +2772,7 @@ def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, s
     """Initialize experiment environment: create folders, set name, log header."""
     # Create experiment name with timestamp
     experiment_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}"
+    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}_{EXPERIMENT_TAG}"
     lash_e.current_experiment_name = experiment_name  # Store for access by other functions
     
     # Create organized experiment folder structure
@@ -2977,7 +2923,7 @@ def measure_and_process_turbidity(lash_e, well_recipes_df, shake_and_wait=True):
         
         # Measure turbidity
         lash_e.logger.info("  Measuring turbidity...")
-        turbidity_data = measure_turbidity(lash_e, wells_in_batch, batch_df, shake_and_wait=shake_and_wait, return_wellplate=False)
+        turbidity_data = measure_turbidity(lash_e, wells_in_batch, batch_df, shake_and_wait=shake_and_wait)
         
         # Save and integrate turbidity data
         if turbidity_data is not None:
@@ -3124,7 +3070,7 @@ def measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=Tru
         
         # Measure fluorescence
         lash_e.logger.info("  Measuring fluorescence...")
-        fluorescence_data = measure_fluorescence(lash_e, wells_in_batch, batch_df, shake_and_wait=shake_and_wait, return_wellplate=True)
+        fluorescence_data = measure_fluorescence(lash_e, wells_in_batch, batch_df, shake_and_wait=shake_and_wait)
         
         # Save and integrate fluorescence data
         if fluorescence_data is not None:
@@ -3219,9 +3165,10 @@ def measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=Tru
 
 def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
     """
-    Generate realistic simulation data with sharp, independent transitions.
+    Generate realistic simulation data for turbidity and ratio based on surfactant concentrations.
     
-    Creates sharp CMC-like transitions that are different for turbidity vs ratio.
+    Creates 2D patterns that transition between baseline and elevated states.
+    Now adaptive to actual concentration ranges used in the experiment.
     
     Args:
         surf_a_conc: Surfactant A concentration in mM
@@ -3238,83 +3185,96 @@ def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
     log_a = np.log10(surf_a_conc)
     log_b = np.log10(surf_b_conc)
     
-    # Adaptive scaling based on typical ranges
+    # ADAPTIVE SCALING: Calculate log ranges from global configuration
+    # Use existing MIN_CONC and estimate typical max concentration
     log_min = np.log10(MIN_CONC)  # Use global minimum
     log_max_estimate = np.log10(25.0)  # Typical max concentration (25 mM)
     log_range = log_max_estimate - log_min
+    log_center = (log_min + log_max_estimate) / 2.0
     
-    # Normalize concentrations to 0-1 range
-    norm_a = (log_a - log_min) / log_range
-    norm_b = (log_b - log_min) / log_range
-    norm_a = max(0, min(1, norm_a))
-    norm_b = max(0, min(1, norm_b))
+    # RATIO SIMULATION: Multiple overlapping patterns for smooth variation
+    # Adaptive scaling based on actual concentration ranges    
+    # Pattern 1: Diagonal gradient (adaptive scaling)
+    diagonal_sum = log_a + log_b  # Sum of log concentrations
+    diagonal_min = 2 * log_min  # Minimum possible sum
+    diagonal_max = 2 * log_max_estimate  # Maximum possible sum
+    diagonal_factor = (diagonal_sum - diagonal_min) / (diagonal_max - diagonal_min)
+    diagonal_factor = max(0, min(1, diagonal_factor))  # Ensure 0-1
     
-    # ===== RATIO SIMULATION: Sharp diagonal transition =====
-    # Sharp transition along diagonal (additive CMC effect)
-    diagonal_sum = norm_a + norm_b
-    ratio_threshold = 0.6  # Transition occurs when sum > 0.6
-    ratio_sharpness = 15   # Very sharp transition
-    ratio_transition = np.tanh(ratio_sharpness * (diagonal_sum - ratio_threshold))
-    ratio_factor = 0.5 + 0.5 * ratio_transition  # Maps (-1,1) to (0,1)
+    # Pattern 2: Individual concentration effects (adaptive)
+    surf_a_factor = (log_a - log_min) / log_range  # Normalize to 0-1
+    surf_b_factor = (log_b - log_min) / log_range  # Normalize to 0-1
+    surf_a_factor = max(0, min(1, surf_a_factor))
+    surf_b_factor = max(0, min(1, surf_b_factor))
+    conc_effect = 0.5 * (surf_a_factor + surf_b_factor)  # Average effect
     
-    # Add minor asymmetry (A vs B different effects)
-    asymmetry = 0.1 * (norm_a - norm_b)  # Small directional bias
-    ratio_factor += 0.05 * asymmetry
-    ratio_factor = max(0, min(1, ratio_factor))
+    # Pattern 3: Spatial wave pattern for variation (adaptive scaling)
+    normalized_log_a = (log_a - log_center) / log_range * 6.0  # Scale to ±3 range
+    normalized_log_b = (log_b - log_center) / log_range * 6.0  # Scale to ±3 range
+    wave_pattern = 0.5 + 0.4 * np.sin(normalized_log_a + 3.14) * np.cos(normalized_log_b + 1.57)
+    wave_pattern = max(0, min(1, wave_pattern))  # Ensure 0-1 range
     
+    # Combine patterns with more emphasis on variation
     ratio_baseline = 0.75   # Low ratio state
-    ratio_elevated = 0.92   # High ratio state 
-    simulated_ratio = ratio_baseline + (ratio_elevated - ratio_baseline) * ratio_factor
+    ratio_elevated = 0.9    # High ratio state 
+    combined_ratio_factor = 0.3 * diagonal_factor + 0.4 * conc_effect + 0.3 * wave_pattern
+    combined_ratio_factor = max(0, min(1, combined_ratio_factor))  # Ensure 0-1 range
+    simulated_ratio = ratio_baseline + (ratio_elevated - ratio_baseline) * combined_ratio_factor
     
-    # ===== TURBIDITY SIMULATION: Sharp L-shaped boundary =====
-    # Different pattern - turbidity increases when EITHER conc is high
-    # Creates L-shaped boundary instead of diagonal
-    turb_threshold_a = 0.4  # A threshold
-    turb_threshold_b = 0.5  # B threshold (different from A)
-    turb_sharpness = 12     # Sharp transitions
+    # TURBIDITY SIMULATION: Multiple overlapping patterns for smooth variation
+    # Adaptive scaling based on actual concentration ranges
+    # Pattern 1: Radial distance from center (adaptive)
+    center_a_log = log_center + 0.2 * log_range  # Slightly off-center for asymmetry
+    center_b_log = log_center - 0.1 * log_range  # Different offset for variety
+    radius_distance = np.sqrt((log_a - center_a_log)**2 + (log_b - center_b_log)**2)
+    max_radius = np.sqrt((log_range)**2 + (log_range)**2)  # Max possible distance
+    radial_factor = radius_distance / max_radius  # Normalize to 0-1
+    radial_factor = min(1, radial_factor)  # Cap at 1
     
-    # Independent thresholds - turbidity high if EITHER exceeds threshold
-    transition_a = np.tanh(turb_sharpness * (norm_a - turb_threshold_a))
-    transition_b = np.tanh(turb_sharpness * (norm_b - turb_threshold_b))
+    # Pattern 2: Linear combination of concentrations (adaptive scaling)
+    linear_a = (log_a - log_min) / log_range  # Normalize to 0-1
+    linear_b = (log_b - log_min) / log_range  # Normalize to 0-1
+    linear_effect = 0.6 * linear_a + 0.4 * linear_b  # Weighted combination
+    linear_effect = max(0, min(1, linear_effect))
     
-    # Combine with OR logic (max of transitions)
-    combined_transition = np.maximum(transition_a, transition_b)
-    turb_factor = 0.5 + 0.5 * combined_transition  # Maps (-1,1) to (0,1)
+    # Pattern 3: Cross-interaction pattern (adaptive scaling)
+    norm_a = (log_a - log_min) / log_range  # Normalize to 0-1
+    norm_b = (log_b - log_min) / log_range  # Normalize to 0-1
+    interaction_val = norm_a * norm_b  # Product gives interaction strength
+    interaction_pattern = np.tanh(4.0 * interaction_val)  # Smooth S-curve from 0 to 1
     
-    # Add interaction term for corner region
-    if norm_a > turb_threshold_a and norm_b > turb_threshold_b:
-        interaction_boost = 0.3 * (norm_a - turb_threshold_a) * (norm_b - turb_threshold_b)
-        turb_factor += interaction_boost
+    # Combine patterns for rich variation  
+    turbidity_baseline = 0.04  # Low turbidity state
+    turbidity_elevated = 1.0   # High turbidity state
+    combined_turb_factor = 0.3 * radial_factor + 0.4 * linear_effect + 0.3 * interaction_pattern
+    combined_turb_factor = max(0, min(1, combined_turb_factor))  # Ensure 0-1 range
+    simulated_turbidity = turbidity_baseline + (turbidity_elevated - turbidity_baseline) * combined_turb_factor
     
-    turb_factor = max(0, min(1, turb_factor))
-    
-    turbidity_baseline = 0.03  # Low turbidity state
-    turbidity_elevated = 0.8   # High turbidity state (reduced range for realism)
-    simulated_turbidity = turbidity_baseline + (turbidity_elevated - turbidity_baseline) * turb_factor
-    
-    # ===== FLUORESCENCE: Derive from ratio =====
-    # F384 stays relatively constant with minor spatial variation
-    f384_base = 95.0 + 5.0 * np.sin(2.0 * (norm_a + norm_b))  # Gentle variation
+    # FLUORESCENCE: Derive from ratio (realistic relationship)
+    # F384 stays relatively constant, F373 varies with ratio
+    f384_base = 95.0 + 10.0 * np.sin(log_a + log_b)  # Slight spatial variation
     f373_base = simulated_ratio * f384_base  # F373/F384 = ratio
     
-    # Add realistic experimental noise
+    # Add realistic experimental noise if requested
     if add_noise:
-        noise_scale = 0.015  # 1.5% coefficient of variation
+        noise_scale = 0.01  # 1% coefficient of variation (reduced from 5%)
         ratio_noise = 1.0 + np.random.normal(0, noise_scale)
-        turbidity_noise = 1.0 + np.random.normal(0, noise_scale * 1.5)  # Turbidity more noisy
-        fluorescence_noise = 1.0 + np.random.normal(0, noise_scale * 0.7)  # Fluorescence less noisy
+        turbidity_noise = 1.0 + np.random.normal(0, noise_scale)
+        fluorescence_noise = 1.0 + np.random.normal(0, noise_scale * 0.5)  # Lower noise for fluorescence
         
         simulated_ratio *= ratio_noise
         simulated_turbidity *= turbidity_noise
         f373_base *= fluorescence_noise
         f384_base *= fluorescence_noise
         
-        # Recalculate ratio from noisy fluorescence
+        # Recalculate ratio from potentially noisy fluorescence
         simulated_ratio = f373_base / f384_base if f384_base > 0 else simulated_ratio
     
-    # Ensure physically reasonable bounds
-    simulated_ratio = max(0.70, min(0.95, simulated_ratio))
-    simulated_turbidity = max(0.02, min(1.0, simulated_turbidity))
+    # Ensure physically reasonable bounds (updated for realistic ranges)
+    simulated_ratio = max(0.70, min(0.95, simulated_ratio))  # Constrain to 0.70-0.95 range
+    simulated_turbidity = max(0.02, min(1.2, simulated_turbidity))  # Allow 0.02-1.2 range
+    f373_base = max(10.0, min(300.0, f373_base))
+    f384_base = max(10.0, min(300.0, f384_base))
     
     return {
         'turbidity_600': round(simulated_turbidity, 4),
@@ -3632,9 +3592,9 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     else:
         lash_e.logger.info("Step 5: Executing dispensing and measurements...")
         well_recipes_df = execute_dispensing(lash_e, well_recipes_df)
-        well_recipes_df = dispense_dmso(lash_e, well_recipes_df)
         well_recipes_df = measure_and_process_turbidity(lash_e, well_recipes_df, shake_and_wait=True)
-        well_recipes_df = measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=False)
+        well_recipes_df = dispense_dmso(lash_e, well_recipes_df)
+        well_recipes_df = measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=True)
         
     # STEP 6: Save results to experiment folder
     lash_e.logger.info("Step 6: Saving results...")
@@ -3824,8 +3784,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         gradient_results = find_high_gradient_areas(
             results, lash_e, 
             n_suggestions=gradient_suggestions_requested,
-            starting_well_index=current_wellplate_wells,  # Start from current position in wellplate
-            iteration_number=iteration  # Pass iteration for proper file naming
+            starting_well_index=current_wellplate_wells  # Start from current position in wellplate
         )
         
         # Limit the actual measurements to what we can process
@@ -3880,7 +3839,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         
     return results
 
-def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, starting_well_index=None, iteration_number=None):
+def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, starting_well_index=None):
     """
     Find high-gradient areas from initial screening and perform targeted exploration.
     
@@ -3892,7 +3851,6 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SU
         lash_e: Lash_E coordinator instance (reused from initial screening)
         n_suggestions: Number of concentration pairs to explore (default GRADIENT_SUGGESTIONS_PER_ITERATION)
         starting_well_index: Starting well position (None = continue from last used well)
-        iteration_number: Current iteration number for sequential file naming (None = use default naming)
         
     Returns:
         DataFrame: New measurement data from targeted exploration
@@ -3916,8 +3874,7 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SU
         surfactant_a_name, 
         surfactant_b_name, 
         n_suggestions=n_suggestions,
-        output_dir=existing_results['output_folder'],  # Pass output directory for visualizations
-        iteration_number=iteration_number  # Pass iteration for sequential file naming
+        output_dir=existing_results['output_folder']  # Pass output directory for visualizations
     )
     
     logger.info(f"Generated {len(suggested_concentrations)} concentration suggestions")
@@ -3985,9 +3942,9 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SU
     # Execute dispensing and measurements using existing infrastructure
     logger.info("Executing targeted dispensing and measurements...")
     measured_suggestions_df = execute_dispensing(lash_e, suggestions_df)
-    measured_suggestions_df = dispense_dmso(lash_e, measured_suggestions_df)
     measured_suggestions_df = measure_and_process_turbidity(lash_e, measured_suggestions_df, shake_and_wait=True)
-    measured_suggestions_df = measure_and_process_fluorescence(lash_e, measured_suggestions_df, shake_and_wait=False)
+    measured_suggestions_df = dispense_dmso(lash_e, measured_suggestions_df)
+    measured_suggestions_df = measure_and_process_fluorescence(lash_e, measured_suggestions_df, shake_and_wait=True)
     
     logger.info(f"High-gradient exploration complete: {len(measured_suggestions_df)} wells measured")
     return measured_suggestions_df
@@ -4417,14 +4374,14 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         if i == 0:
             lash_e.logger.info(f"  Waiting {wait_time}s for t={wait_time/60:.0f}min timepoint...")
             if not simulate:
-                sleep_with_progress(lash_e, wait_time, wait_time/60)
+                time.sleep(wait_time)
             else:
                 lash_e.logger.info("  Simulated wait time")
         else:
             gap_time = wait_time - measurement_intervals[i-1] 
             lash_e.logger.info(f"  Waiting {gap_time}s more for t={wait_time/60:.0f}min timepoint...")
             if not simulate:
-                sleep_with_progress(lash_e, gap_time, wait_time/60)
+                time.sleep(gap_time)
             else:
                 lash_e.logger.info("  Simulated wait time")
         
@@ -4538,7 +4495,7 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         'sequence_complete': True
     }
 
-def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, output_dir=None, iteration_number=None):
+def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, output_dir=None):
     """
     Use Delaunay triangle refinement to suggest high-variation concentration pairs for exploration.
     
@@ -4561,22 +4518,16 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     print(f"Analyzing triangle boundaries in {surfactant_a_name}+{surfactant_b_name} data...")
     print(f"Input data: {len(experiment_data_df)} experimental wells")
     
-    # Import the selected recommender algorithm
+    # Import the Delaunay triangle recommender
     try:
         import sys
         import os
         recommender_path = os.path.join(os.path.dirname(__file__), '..', 'recommenders')
         if recommender_path not in sys.path:
             sys.path.append(recommender_path)
-        
-        if RECOMMENDER_TYPE == 'delaunay':
-            from recommenders.delaunay_triangle_recommender import DelaunayTriangleRecommender
-        elif RECOMMENDER_TYPE == 'bayesian':
-            from recommenders.bayesian_transition_recommender import BayesianTransitionRecommender
-        else:
-            raise ValueError(f"Invalid RECOMMENDER_TYPE: {RECOMMENDER_TYPE}. Must be 'delaunay' or 'bayesian'")
+        from recommenders.delaunay_triangle_recommender import DelaunayTriangleRecommender
     except ImportError as e:
-        raise ImportError(f"CRITICAL: {RECOMMENDER_TYPE.title()} recommender import failed: {e}. Adaptive algorithm cannot run without this!")
+        raise ImportError(f"CRITICAL: DelaunayTriangleRecommender import failed: {e}. Adaptive algorithm cannot run without this!")
     
     # Initialize the triangle recommender with configurable optimization target
     # Configure output columns based on optimization preference
@@ -4609,98 +4560,36 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     else:
         raise ValueError(f"Invalid OPTIMIZE_METRIC: {OPTIMIZE_METRIC}. Must be 'turbidity', 'ratio', or 'both'")
     
-    # Apply log transformation to turbidity for consistency between algorithms
-    # Delaunay uses log+zscore, so we pre-log the data for Bayesian's zscore-only normalization
-    data_for_recommender = experiment_data_df.copy()  # Don't modify original
-    if 'turbidity_600' in data_for_recommender.columns and 'turbidity_600' in output_columns:
-        epsilon = 1e-6
-        original_turbidity = data_for_recommender['turbidity_600'].copy()
-        # Create separate log-transformed column for optimizer (preserve original for plotting)
-        data_for_recommender['turbidity_600_log'] = (data_for_recommender['turbidity_600'] + epsilon).apply(lambda x: np.log10(x))
-        
-        # Update output_columns to use log-transformed column for recommender
-        log_output_columns = []
-        for col in output_columns:
-            if col == 'turbidity_600':
-                log_output_columns.append('turbidity_600_log')  # Use log version for optimizer
-            else:
-                log_output_columns.append(col)  # Keep ratio as-is
-        
-        print(f"Applied log10 transform to turbidity_600 for algorithm consistency")
-        print(f"  Original range: [{original_turbidity.min():.4f}, {original_turbidity.max():.4f}]")
-        print(f"  Log-transformed: [{data_for_recommender['turbidity_600_log'].min():.3f}, {data_for_recommender['turbidity_600_log'].max():.3f}]")
-        print(f"  Optimizer will use columns: {log_output_columns}")
-    else:
-        log_output_columns = output_columns  # No change needed
+    recommender = DelaunayTriangleRecommender(
+        input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
+        output_columns=output_columns,                        # Configurable optimization target
+        log_transform_inputs=True,    # Work in log concentration space
+        normalization_method='log_zscore'  # Log + z-score normalization
+    )
     
-    # Initialize the selected recommender algorithm
-    if RECOMMENDER_TYPE == 'delaunay':
-        recommender = DelaunayTriangleRecommender(
-            input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
-            output_columns=log_output_columns,                    # Use log-transformed columns when applicable
-            log_transform_inputs=True,    # Work in log concentration space
-            normalization_method='log_zscore'  # Log + z-score normalization
-        )
-        algorithm_name = "Delaunay triangulation"
-    elif RECOMMENDER_TYPE == 'bayesian':
-        recommender = BayesianTransitionRecommender(
-            input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
-            output_columns=log_output_columns,                    # Use log-transformed columns when applicable
-            log_transform_inputs=True,    # Work in log concentration space
-            delta=0.03,      # Step size for directional gradients
-            K=24,            # Number of random directions
-            lam=0.05,        # Exploration weight (lower = focus on boundaries)
-            candidate_pool=50000  # Sobol candidate pool size
-        )
-        algorithm_name = "Bayesian optimization"
-    
-    # Get recommendations from selected algorithm
-    print(f"Running {algorithm_name} analysis for {n_suggestions} boundary suggestions...")
-    print(f"DEBUG: Algorithm: {RECOMMENDER_TYPE} ({algorithm_name})")
-    print(f"DEBUG: Optimization target: {OPTIMIZE_METRIC} -> output columns: {log_output_columns}")
+    # Get recommendations from triangle analysis
+    print(f"Running Delaunay triangle analysis for {n_suggestions} boundary suggestions...")
+    print(f"DEBUG: Optimization target: {OPTIMIZE_METRIC} -> output columns: {recommender.output_columns}")
     print(f"DEBUG: Input data shape: {experiment_data_df.shape}")
-    print(f"DEBUG: Available columns: {list(data_for_recommender.columns)}")
+    print(f"DEBUG: Available columns: {list(experiment_data_df.columns)}")
     
-    # Get recommendations with algorithm-specific parameters
-    if RECOMMENDER_TYPE == 'delaunay':
-        recommendations_df = recommender.get_recommendations(
-            data_for_recommender,   # Use log-transformed data
-            n_points=n_suggestions,
-            min_spacing_factor=0.5,  # Minimum spacing between triangle centroids
-            tol_factor=0.1,         # Tolerance for duplicate detection
-            triangle_score_method='max',  # Use max distance for sensitivity
-            output_dir=output_dir,  # Save triangle visualizations to output folder
-            create_visualization=False  # Disable visualization to prevent popup windows
-        )
-    elif RECOMMENDER_TYPE == 'bayesian':
-        recommendations_df = recommender.get_recommendations(
-            data_for_recommender,   # Use log-transformed data
-            n_points=n_suggestions,
-            iteration=None,         # No iteration tracking for now
-            boundary_func=None      # No ground truth boundary function
-        )
-        
-        # Add Bayesian-specific visualization
-        if output_dir is not None:
-            print(f"Creating Bayesian recommendation visualization...")
-            # Use iteration number for sequential file naming (like Delaunay triangulation)
-            if iteration_number is not None:
-                step_id = f"iter_{iteration_number:02d}"  # Format as iter_01, iter_02, etc.
-            else:
-                step_id = "iter_00"  # Fallback for initial/single runs
-            _create_bayesian_visualization(
-                experiment_data_df, recommendations_df,  # Use original data for visualization (not log-transformed)
-                surfactant_a_name, surfactant_b_name, output_dir, 
-                step_id=step_id
-            )
+    recommendations_df = recommender.get_recommendations(
+        experiment_data_df, 
+        n_points=n_suggestions,
+        min_spacing_factor=0.5,  # Minimum spacing between triangle centroids
+        tol_factor=0.1,         # Tolerance for duplicate detection
+        triangle_score_method='max',  # Use max distance for sensitivity
+        output_dir=output_dir,  # Save triangle visualizations to output folder
+        create_visualization=False  # Disable visualization to prevent popup windows
+    )
     
-    print(f"DEBUG: {algorithm_name} recommender returned {len(recommendations_df)} suggestions")
+    print(f"DEBUG: Triangle recommender returned {len(recommendations_df)} suggestions")
     if len(recommendations_df) > 0:
         print(f"DEBUG: First few suggestions:")
         print(recommendations_df[['surf_A_conc_mm', 'surf_B_conc_mm']].head())
     
     if len(recommendations_df) == 0:
-        raise RuntimeError(f"CRITICAL: {algorithm_name} returned 0 recommendations! Algorithm is broken. Input data shape: {experiment_data_df.shape}, columns: {list(experiment_data_df.columns)}, output columns: {recommender.output_columns}")
+        raise RuntimeError(f"CRITICAL: Triangle analysis returned 0 recommendations! Algorithm is broken. Input data shape: {experiment_data_df.shape}, columns: {list(experiment_data_df.columns)}, output columns: {recommender.output_columns}")
     
     # Extract concentration pairs from recommendations
     concentration_pairs = []
@@ -4709,91 +4598,16 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         conc_b = row['surf_B_conc_mm']
         concentration_pairs.append((conc_a, conc_b))
     
-    print(f"{algorithm_name} analysis complete: {len(concentration_pairs)} concentration pairs identified")
-    
-    # Algorithm-specific score display
-    if RECOMMENDER_TYPE == 'delaunay' and 'triangle_score' in recommendations_df.columns:
-        print(f"Triangle score range: {recommendations_df['triangle_score'].min():.4f} - {recommendations_df['triangle_score'].max():.4f}")
-    elif RECOMMENDER_TYPE == 'bayesian':
-        print(f"Bayesian acquisition-based selection completed")
+    print(f"Triangle analysis complete: {len(concentration_pairs)} concentration pairs identified")
+    print(f"Triangle score range: {recommendations_df['triangle_score'].min():.4f} - {recommendations_df['triangle_score'].max():.4f}")
     
     # Show sample of recommendations for verification
     print("Sample recommendations:")
     for i, (conc_a, conc_b) in enumerate(concentration_pairs[:5]):
-        if RECOMMENDER_TYPE == 'delaunay' and 'triangle_score' in recommendations_df.columns:
-            score = recommendations_df.iloc[i]['triangle_score']
-            print(f"  {i+1}: {surfactant_a_name}={conc_a:.3e} mM, {surfactant_b_name}={conc_b:.3e} mM (triangle_score: {score:.4f})")
-        else:
-            print(f"  {i+1}: {surfactant_a_name}={conc_a:.3e} mM, {surfactant_b_name}={conc_b:.3e} mM")
+        score = recommendations_df.iloc[i]['triangle_score']
+        print(f"  {i+1}: {surfactant_a_name}={conc_a:.3e} mM, {surfactant_b_name}={conc_b:.3e} mM (score: {score:.4f})")
     
     return concentration_pairs
-
-def _create_bayesian_visualization(experiment_data_df, recommendations_df, surfactant_a_name, surfactant_b_name, output_dir, step_id="step1"):
-    """Create simple Bayesian recommendation visualization - similar to Delaunay style."""
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import os
-    
-    # Create subfolder for Bayesian recommendations (like Delaunay does)
-    bayesian_viz_dir = os.path.join(output_dir, "bayesian_recommendations")
-    os.makedirs(bayesian_viz_dir, exist_ok=True)
-    
-    # Get experiment data
-    exp_data = experiment_data_df[experiment_data_df['well_type'] == 'experiment'].copy()
-    
-    # Convert to log space for plotting if needed
-    exp_x = np.log10(exp_data['surf_A_conc_mm'])
-    exp_y = np.log10(exp_data['surf_B_conc_mm'])
-    rec_x = np.log10(recommendations_df['surf_A_conc_mm']) 
-    rec_y = np.log10(recommendations_df['surf_B_conc_mm'])
-    
-    # Create figure
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
-    fig.suptitle(f'Bayesian Recommendations: {surfactant_a_name} + {surfactant_b_name} ({step_id})', fontsize=14)
-    
-    # Plot 1: Existing data colored by ratio
-    ax1 = axes[0]
-    if 'ratio' in exp_data.columns:
-        scatter1 = ax1.scatter(exp_x, exp_y, c=exp_data['ratio'], s=60, 
-                              cmap='viridis', alpha=0.8, edgecolors='black', linewidth=0.5)
-        plt.colorbar(scatter1, ax=ax1, label='Ratio')
-        ax1.set_title('Existing Data (Ratio) + Recommendations')
-    else:
-        ax1.scatter(exp_x, exp_y, c='blue', s=60, alpha=0.8, edgecolors='black', linewidth=0.5)
-        ax1.set_title('Existing Data + Recommendations')
-    
-    # Add recommendations as red stars
-    ax1.scatter(rec_x, rec_y, c='red', s=120, marker='*', 
-               edgecolors='black', linewidth=1, label='New Recommendations', zorder=5)
-    ax1.set_xlabel(f'{surfactant_a_name} log(conc mM)')
-    ax1.set_ylabel(f'{surfactant_b_name} log(conc mM)')
-    ax1.legend()
-    
-    # Plot 2: Existing data colored by turbidity  
-    ax2 = axes[1]
-    if 'turbidity_600' in exp_data.columns:
-        scatter2 = ax2.scatter(exp_x, exp_y, c=exp_data['turbidity_600'], s=60,
-                              cmap='plasma', alpha=0.8, edgecolors='black', linewidth=0.5)
-        plt.colorbar(scatter2, ax=ax2, label='Turbidity 600nm')
-        ax2.set_title('Existing Data (Turbidity) + Recommendations')
-    else:
-        ax2.scatter(exp_x, exp_y, c='blue', s=60, alpha=0.8, edgecolors='black', linewidth=0.5) 
-        ax2.set_title('Existing Data + Recommendations')
-        
-    # Add recommendations as red stars
-    ax2.scatter(rec_x, rec_y, c='red', s=120, marker='*',
-               edgecolors='black', linewidth=1, label='New Recommendations', zorder=5)
-    ax2.set_xlabel(f'{surfactant_a_name} log(conc mM)')
-    ax2.set_ylabel(f'{surfactant_b_name} log(conc mM)')
-    ax2.legend()
-    
-    plt.tight_layout()
-    
-    # Save plot with unique filename in subfolder
-    plot_path = os.path.join(bayesian_viz_dir, f'bayesian_recommendations_{step_id}.png')
-    plt.savefig(plot_path, dpi=150, bbox_inches='tight')
-    print(f"Bayesian visualization saved: {plot_path}")
-    plt.close()
 
 def execute_2_stage_workflow(lash_e, surfactant_a_name="SDS", surfactant_b_name="DTAB", 
                             experiment_output_folder=None, simulate=True):

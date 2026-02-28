@@ -1,5 +1,5 @@
 # Workflow Configuration File
-# Generated: 2026-02-26 18:00:28
+# Generated: 2026-02-27 13:30:16
 # Workflow: surfactant_grid_adaptive_concentrations
 #
 # Edit this file to customize workflow behavior.
@@ -8,24 +8,23 @@
 
 SURFACTANT_A: SDS
 SURFACTANT_B: TTAB
-EXPERIMENT_TAG: kinetics_thursday_overnight
-SIMULATE: false
-VALIDATE_LIQUIDS: true
-CREATE_WELLPLATE: true
-VALIDATION_ONLY: false
-WORKFLOW_TYPE: kinetics_all
-ADD_CMC_CONTROLS: true
-CMC_CONTROL_POINTS: 8
-MIN_CONC: 0.1
-NUMBER_CONCENTRATIONS: 9
+WORKFLOW_TYPE: iterative
+EXPERIMENT_TAG: testing_2experiments
+SIMULATE: true
+VALIDATE_LIQUIDS: false
+MIN_CONC: 0.01
+FINAL_SUBSTOCK_VOLUME_ML: 6.0
+PAIRING_QUEUE: '[{''SURFACTANT_A'': ''SDS'', ''SURFACTANT_B'': ''TTAB'', ''ADD_BUFFER'':
+  False}, {''SURFACTANT_A'': ''SDS'', ''SURFACTANT_B'': ''DTAB'', ''ADD_BUFFER'':
+  False}]'
+NUM_SUBSTOCKS: 6
 ITERATIVE_CONCENTRATIONS: 5
-NUM_SUBSTOCKS: 4
 GRADIENT_SUGGESTIONS_PER_ITERATION: 14
 OPTIMIZE_METRIC: both
-N_REPLICATES: 1
-WELL_VOLUME_UL: 200
-PYRENE_VOLUME_UL: 5
-ITERATIVE_MEASUREMENT_TOTAL: 96
+RECOMMENDER_TYPE: bayesian
+ITERATIVE_MEASUREMENT_TOTAL: 192
+ADD_CMC_CONTROLS: true
+CMC_CONTROL_POINTS: 8
 ADD_BUFFER: false
 BUFFER_VOLUME_UL: 20
 BUFFER_OPTIONS:
@@ -33,23 +32,48 @@ BUFFER_OPTIONS:
 - HEPES
 - CAPS
 SELECTED_BUFFER: MES
+VALIDATION_ONLY: false
+CREATE_WELLPLATE: true
 MAX_WELLS: 96
-FINAL_SUBSTOCK_VOLUME: 6
+NUMBER_CONCENTRATIONS: 9
+N_REPLICATES: 1
+WELL_VOLUME_UL: 200
+PYRENE_VOLUME_UL: 5
 MINIMUM_PIPETTE_VOLUME: 0.2
+MIN_SUBSTOCK_VOLUME_UL: 200
 MEASUREMENT_INTERVAL: 96
 MIN_WELL_PIPETTE_VOLUME_UL: 10.0
 MAX_SURFACTANT_VOLUME_UL: 90.0
+KINETICS_SEQUENCE: prep_turbidity_dmso_ratio
 SHAKE_WAIT_PROTOCOL: C:\Protocols\shake_5_wait_5.prt
-SHAKE_PROTOCOL: C:\Protocols\shake_5.prt
 TURBIDITY_PROTOCOL_FILE: C:\Protocols\CMC_Absorbance_96.prt
 FLUORESCENCE_PROTOCOL_FILE: C:\Protocols\CMC_Fluorescence_96.prt
+SHAKE_PROTOCOL: C:\Protocols\shake_5.prt
 INPUT_VIAL_STATUS_FILE: ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
 SURFACTANT_LIBRARY:
+  BDDAC:
+    category: cationic
+    full_name: Benzyldimethyldodecylammonium Chloride
+    stock_conc: 50
+  BZT:
+    category: cationic
+    full_name: Benzethonium Chloride
+    stock_conc: 50
+  CHAPS:
+    category: zwitterionic
+    cmc_mm: 6.99
+    full_name: 3-[(Cholamidopropyl) Dimethylammonio]-1-Propanesulfonate
+    stock_conc: 30
   CTAB:
     category: cationic
     cmc_mm: 1.1
     full_name: Hexadecyltrimethylammonium Bromide
     stock_conc: 5
+  DSS:
+    category: anionic
+    cmc_mm: 5.51
+    full_name: Docusate Sodium Salt
+    stock_conc: 25
   DTAB:
     category: cationic
     cmc_mm: 14.56
@@ -60,11 +84,14 @@ SURFACTANT_LIBRARY:
     cmc_mm: 15.24
     full_name: Sodium Cholate
     stock_conc: 50
-  NaDC:
+  NaLS:
     category: anionic
-    cmc_mm: 5.51
-    full_name: Sodium Docusate
-    stock_conc: 25
+    full_name: N-Lauroylsarcosine Sodium Salt
+    stock_conc: 50
+  SDBS:
+    category: anionic
+    full_name: Sodium Dodecylbenzenesulfonate
+    stock_conc: 50
   SDS:
     category: anionic
     cmc_mm: 8.6
