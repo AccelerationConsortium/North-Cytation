@@ -1,0 +1,318 @@
+2026-02-20 16:36:08,444 - INFO - Workflow config loaded: surfactant_grid_adaptive_concentrations
+2026-02-20 16:36:08,445 - INFO - Config keys updated: 36 (SURFACTANT_A, SURFACTANT_B, EXPERIMENT_TAG, SIMULATE, VALIDATE_LIQUIDS, CREATE_WELLPLATE, VALIDATION_ONLY, RUN_2_STAGE_WORKFLOW, RUN_SINGLE_STAGE, RUN_ITERATIVE_WORKFLOW, ADD_CMC_CONTROLS, CMC_CONTROL_POINTS, MIN_CONC, NUMBER_CONCENTRATIONS, ITERATIVE_CONCENTRATIONS, GRADIENT_SUGGESTIONS_PER_ITERATION, OPTIMIZE_METRIC, N_REPLICATES, WELL_VOLUME_UL, PYRENE_VOLUME_UL, ITERATIVE_MEASUREMENT_TOTAL, ADD_BUFFER, BUFFER_VOLUME_UL, BUFFER_OPTIONS, SELECTED_BUFFER, MAX_WELLS, FINAL_SUBSTOCK_VOLUME, MINIMUM_PIPETTE_VOLUME, MEASUREMENT_INTERVAL, MIN_WELL_PIPETTE_VOLUME_UL, MAX_SURFACTANT_VOLUME_UL, SHAKE_PROTOCOL, TURBIDITY_PROTOCOL_FILE, FLUORESCENCE_PROTOCOL_FILE, INPUT_VIAL_STATUS_FILE, SURFACTANT_LIBRARY)
+2026-02-20 16:36:08,446 - INFO - SIMULATE mode: True
+2026-02-20 16:36:08,446 - INFO - Launching status review GUI...
+2026-02-20 16:36:08,772 - INFO - Detected workflow name: surfactant_grid_adaptive_concentrations
+2026-02-20 16:36:09,142 - INFO - Config editor loaded for workflow: surfactant_grid_adaptive_concentrations
+2026-02-20 16:36:20,836 - INFO - User selected: Run Workflow
+2026-02-20 16:36:20,844 - INFO - Status review completed - proceeding with hardware initialization
+2026-02-20 16:36:20,861 - DEBUG - Reloading config after status check to get updated values
+2026-02-20 16:36:20,908 - INFO - Config Manager: Updated 36 workflow constants from surfactant_grid_adaptive_concentrations.yaml
+2026-02-20 16:36:20,912 - INFO - Initializing North Robot...
+2026-02-20 16:36:20,912 - DEBUG - Loading robot configuration files...
+2026-02-20 16:36:20,930 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-02-20 16:36:20,936 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-02-20 16:36:20,943 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-02-20 16:36:20,950 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-02-20 16:36:20,955 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-20 16:36:20,960 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-20 16:36:20,960 - DEBUG - Loading robot state files...
+2026-02-20 16:36:20,972 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
+2026-02-20 16:36:20,977 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-02-20 16:36:20,983 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-02-20 16:36:20,983 - DEBUG - Robot status loaded successfully
+2026-02-20 16:36:20,983 - INFO - Physical initialization of North Robot...
+2026-02-20 16:36:20,985 - DEBUG - Loading pumps from YAML configuration...
+2026-02-20 16:36:20,988 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-02-20 16:36:20,988 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-02-20 16:36:20,988 - INFO - Robot reports having a vial index for liquid but only 0.000 mL volume - skipping dispense
+2026-02-20 16:36:20,988 - WARNING - The robot reports having a tip, removing the tip
+2026-02-20 16:36:20,988 - INFO - Removing pipet
+2026-02-20 16:36:20,991 - INFO - Moving robot to home position
+2026-02-20 16:36:20,992 - DEBUG - Initializing centrifuge controller...
+2026-02-20 16:36:20,998 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='2263535225056'>
+2026-02-20 16:36:20,998 - INFO - Initializing North Track...
+2026-02-20 16:36:20,998 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-02-20 16:36:20,998 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-02-20 16:36:21,000 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-02-20 16:36:21,000 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-02-20 16:36:21,011 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-02-20 16:36:21,012 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-02-20 16:36:21,015 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-20 16:36:21,018 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-20 16:36:21,019 - DEBUG - Moving North Track to home position
+2026-02-20 16:36:21,019 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-02-20 16:36:21,019 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-02-20 16:36:21,024 - INFO -     Filling water vial 'water': 7.43mL -> 8.00mL (adding 0.57mL)
+2026-02-20 16:36:21,024 - INFO - Dispensing into vial 3 from reservoir 1: 0.570 mL
+2026-02-20 16:36:21,024 - DEBUG - Reservoir parameters: aspirate_speed=11, dispense_speed=11, overaspirate=0.000 mL
+2026-02-20 16:36:21,025 - INFO - Moving vial water to clamp: 0
+2026-02-20 16:36:21,026 - DEBUG - Grabbing vial 3 with index 3
+2026-02-20 16:36:21,028 - DEBUG - Dropping off vial 3 at location clamp with index 0
+2026-02-20 16:36:21,029 - WARNING - Cannot move vial to destination, destination full
+2026-02-20 16:36:21,029 - ERROR - Cannot move vial to destination, destination full
+2026-02-20 16:36:21,029 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial to destination, destination full
+2026-02-20 16:36:21,031 - INFO - Moving robot to home position
+2026-02-20 16:36:21,031 - INFO - DISPENSING DEBUG: simulate=True, volume=0.570mL, overaspirate=0.000mL
+2026-02-20 16:36:21,031 - INFO - DISPENSING DEBUG: total_vol=0.570mL, num_dispenses=1, dispense_vol=0.570mL, actual_dispense=0.570mL
+2026-02-20 16:36:21,031 - DEBUG - Dispensing 0.570 mL (with 0.000 mL overaspirate) 1 times
+2026-02-20 16:36:21,031 - INFO - DISPENSING LOOP 1/1: simulate=True
+2026-02-20 16:36:21,032 - INFO - ASPIRATING: 0.570mL from reservoir 1
+2026-02-20 16:36:21,034 - INFO - DISPENSING: 0.570mL into vial 3
+2026-02-20 16:36:21,039 - INFO - Returning vial water to home location: main_8mL_rack index 3
+2026-02-20 16:36:21,041 - INFO - Moving vial water to main_8mL_rack: 3
+2026-02-20 16:36:21,041 - DEBUG - Grabbing vial 3 with index 3
+2026-02-20 16:36:21,043 - DEBUG - Dropping off vial 3 at location main_8mL_rack with index 3
+2026-02-20 16:36:21,046 - INFO -     Water vial 'water' filled successfully to 8.00mL
+2026-02-20 16:36:21,048 - INFO -     Filling water vial 'water_2': 7.39mL -> 8.00mL (adding 0.61mL)
+2026-02-20 16:36:21,049 - INFO - Dispensing into vial 4 from reservoir 1: 0.609 mL
+2026-02-20 16:36:21,049 - DEBUG - Reservoir parameters: aspirate_speed=11, dispense_speed=11, overaspirate=0.000 mL
+2026-02-20 16:36:21,050 - INFO - Moving vial water_2 to clamp: 0
+2026-02-20 16:36:21,050 - DEBUG - Grabbing vial 4 with index 4
+2026-02-20 16:36:21,052 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2026-02-20 16:36:21,052 - WARNING - Cannot move vial to destination, destination full
+2026-02-20 16:36:21,052 - ERROR - Cannot move vial to destination, destination full
+2026-02-20 16:36:21,052 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial to destination, destination full
+2026-02-20 16:36:21,054 - INFO - Moving robot to home position
+2026-02-20 16:36:21,054 - INFO - DISPENSING DEBUG: simulate=True, volume=0.609mL, overaspirate=0.000mL
+2026-02-20 16:36:21,054 - INFO - DISPENSING DEBUG: total_vol=0.609mL, num_dispenses=1, dispense_vol=0.609mL, actual_dispense=0.609mL
+2026-02-20 16:36:21,054 - DEBUG - Dispensing 0.609 mL (with 0.000 mL overaspirate) 1 times
+2026-02-20 16:36:21,054 - INFO - DISPENSING LOOP 1/1: simulate=True
+2026-02-20 16:36:21,054 - INFO - ASPIRATING: 0.609mL from reservoir 1
+2026-02-20 16:36:21,054 - INFO - DISPENSING: 0.609mL into vial 4
+2026-02-20 16:36:21,056 - INFO - Returning vial water_2 to home location: main_8mL_rack index 4
+2026-02-20 16:36:21,057 - INFO - Moving vial water_2 to main_8mL_rack: 4
+2026-02-20 16:36:21,057 - DEBUG - Grabbing vial 4 with index 4
+2026-02-20 16:36:21,059 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 4
+2026-02-20 16:36:21,059 - INFO -     Water vial 'water_2' filled successfully to 8.00mL
+2026-02-20 16:36:21,061 - INFO - Experiment: surfactant_grid_SDS_TTAB_20260220_163621_new_bounds_control_assay
+2026-02-20 16:36:21,061 - INFO - Output folder: output\surfactant_grid_SDS_TTAB_20260220_163621_new_bounds_control_assay
+2026-02-20 16:36:21,061 - INFO - Organized subfolders: validation, measurement_backups, substocks, analysis, logs
+2026-02-20 16:36:21,061 - INFO - ================================================================================
+2026-02-20 16:36:21,061 - INFO - ADAPTIVE SURFACTANT GRID SCREENING WORKFLOW
+2026-02-20 16:36:21,061 - INFO - ================================================================================
+2026-02-20 16:36:21,061 - INFO - Surfactants: SDS + TTAB
+2026-02-20 16:36:21,062 - INFO - Mode: SIMULATION
+2026-02-20 16:36:21,062 - INFO - 
+2026-02-20 16:36:21,062 - INFO - Grabbing new wellplate
+2026-02-20 16:36:21,062 - INFO - Moving robot to home position
+2026-02-20 16:36:21,062 - INFO - Getting new wellplate from source stack
+2026-02-20 16:36:21,062 - DEBUG - Calculating well plate stack height for num: 1, wp_type: 96 WELL PLATE, stack: source_stack, operation: grab
+2026-02-20 16:36:21,062 - ERROR - Cannot get wellplate, NR pipetting area is occupied
+2026-02-20 16:36:21,063 - WARNING - SIMULATION MODE: Would pause for error: Cannot get wellplate, NR pipetting area is occupied
+2026-02-20 16:36:21,063 - INFO - Using existing Lash_E instance for workflow stage...
+2026-02-20 16:36:21,063 - INFO -   Refilling water vials to reset volume tracking...
+2026-02-20 16:36:21,063 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-02-20 16:36:21,065 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-02-20 16:36:21,065 - INFO - Using existing experiment folder: output\surfactant_grid_SDS_TTAB_20260220_163621_new_bounds_control_assay
+2026-02-20 16:36:21,065 - INFO - Step 2: Creating complete experiment plan...
+2026-02-20 16:36:21,065 - INFO -   Calculating adaptive concentration grids...
+2026-02-20 16:36:21,065 - INFO - Adaptive grid for SDS: 1.0e-02 to 22.5 mM (5 steps)
+2026-02-20 16:36:21,065 - INFO -   Concentrations: ['1.000e-02', '6.887e-02', '4.743e-01', '3.267e+00', '2.250e+01']
+2026-02-20 16:36:21,066 - INFO - Adaptive grid for TTAB: 1.0e-02 to 22.5 mM (5 steps)
+2026-02-20 16:36:21,066 - INFO -   Concentrations: ['1.000e-02', '6.887e-02', '4.743e-01', '3.267e+00', '2.250e+01']
+2026-02-20 16:36:21,066 - INFO - 
+Adaptive concentration grid summary:
+2026-02-20 16:36:21,066 - INFO -   SDS: 5 concentrations from 1.000e-02 to 2.250e+01 mM
+2026-02-20 16:36:21,066 - INFO -   TTAB: 5 concentrations from 1.000e-02 to 2.250e+01 mM
+2026-02-20 16:36:21,066 - INFO -   Total combinations: 5 x 5 = 25 wells (x 1 replicates = 25 total wells)
+2026-02-20 16:36:21,066 - INFO -   SDS: 5/5 concentrations achievable
+2026-02-20 16:36:21,067 - INFO -   TTAB: 5/5 concentrations achievable
+2026-02-20 16:36:21,067 - INFO -   Calculating optimal dilution strategies...
+2026-02-20 16:36:21,067 - INFO - 
+=== Analyzing dilution strategy for SDS ===
+2026-02-20 16:36:21,067 - INFO - Target concentrations: ['1.00e-02', '6.89e-02', '4.74e-01', '3.27e+00', '2.25e+01'] mM
+2026-02-20 16:36:21,068 - INFO - Systematic dilution series: ['10', '4', '1.5', '0.7', '0.3', '0.1'] mM
+2026-02-20 16:36:21,070 - INFO -   1.00e-02 mM: Use SDS_dilution_5 (20.0 uL)
+2026-02-20 16:36:21,072 - INFO -   6.89e-02 mM: Use SDS_dilution_4 (45.9 uL)
+2026-02-20 16:36:21,074 - INFO -   4.74e-01 mM: Use SDS_dilution_2 (63.2 uL)
+2026-02-20 16:36:21,075 - INFO -   3.27e+00 mM: Use SDS_dilution_0 (65.3 uL)
+2026-02-20 16:36:21,075 - INFO -   2.25e+01 mM: Use SDS_stock (90.0 uL)
+2026-02-20 16:36:21,076 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-02-20 16:36:21,076 - INFO - Target concentrations: ['1.00e-02', '6.89e-02', '4.74e-01', '3.27e+00', '2.25e+01'] mM
+2026-02-20 16:36:21,076 - INFO - Systematic dilution series: ['10', '4', '1.5', '0.7', '0.3', '0.1'] mM
+2026-02-20 16:36:21,077 - INFO -   1.00e-02 mM: Use TTAB_dilution_5 (20.0 uL)
+2026-02-20 16:36:21,078 - INFO -   6.89e-02 mM: Use TTAB_dilution_4 (45.9 uL)
+2026-02-20 16:36:21,079 - INFO -   4.74e-01 mM: Use TTAB_dilution_2 (63.2 uL)
+2026-02-20 16:36:21,080 - INFO -   3.27e+00 mM: Use TTAB_dilution_0 (65.3 uL)
+2026-02-20 16:36:21,081 - INFO -   2.25e+01 mM: Use TTAB_stock (90.0 uL)
+2026-02-20 16:36:21,082 - INFO - 
+=== SUBSTOCK DILUTION RECIPES ===
+2026-02-20 16:36:21,082 - INFO - For each substock showing: source + volume -> target_concentration
+2026-02-20 16:36:21,082 - INFO - (Using minimum 200uL pipetting volumes for accuracy)
+2026-02-20 16:36:21,082 - INFO - 
+SDS substocks:
+2026-02-20 16:36:21,082 - INFO -   SDS_dilution_0: 1500uL SDS_stock + 6000uL water -> 1.00e+01 mM
+2026-02-20 16:36:21,082 - INFO -     (Dilution factor: 5.0x from 5.00e+01 mM stock)
+2026-02-20 16:36:21,082 - INFO -   SDS_dilution_1: 600uL SDS_stock + 6900uL water -> 4.00e+00 mM
+2026-02-20 16:36:21,082 - INFO -     (Dilution factor: 12.5x from 5.00e+01 mM stock)
+2026-02-20 16:36:21,083 - INFO -   SDS_dilution_2: 225uL SDS_stock + 7275uL water -> 1.50e+00 mM
+2026-02-20 16:36:21,083 - INFO -     (Dilution factor: 33.3x from 5.00e+01 mM stock)
+2026-02-20 16:36:21,083 - INFO -   SDS_dilution_3: 525uL SDS_dilution_0 + 6975uL water -> 7.00e-01 mM
+2026-02-20 16:36:21,083 - INFO -     (Dilution factor: 14.3x from 1.00e+01 mM dilution)
+2026-02-20 16:36:21,083 - INFO -   SDS_dilution_4: 225uL SDS_dilution_0 + 7275uL water -> 3.00e-01 mM
+2026-02-20 16:36:21,083 - INFO -     (Dilution factor: 33.3x from 1.00e+01 mM dilution)
+2026-02-20 16:36:21,083 - INFO -   SDS_dilution_5: 500uL SDS_dilution_2 + 7000uL water -> 1.00e-01 mM
+2026-02-20 16:36:21,083 - INFO -     (Dilution factor: 15.0x from 1.50e+00 mM dilution)
+2026-02-20 16:36:21,083 - INFO - 
+TTAB substocks:
+2026-02-20 16:36:21,083 - INFO -   TTAB_dilution_0: 1500uL TTAB_stock + 6000uL water -> 1.00e+01 mM
+2026-02-20 16:36:21,084 - INFO -     (Dilution factor: 5.0x from 5.00e+01 mM stock)
+2026-02-20 16:36:21,084 - INFO -   TTAB_dilution_1: 600uL TTAB_stock + 6900uL water -> 4.00e+00 mM
+2026-02-20 16:36:21,084 - INFO -     (Dilution factor: 12.5x from 5.00e+01 mM stock)
+2026-02-20 16:36:21,084 - INFO -   TTAB_dilution_2: 225uL TTAB_stock + 7275uL water -> 1.50e+00 mM
+2026-02-20 16:36:21,084 - INFO -     (Dilution factor: 33.3x from 5.00e+01 mM stock)
+2026-02-20 16:36:21,084 - INFO -   TTAB_dilution_3: 525uL TTAB_dilution_0 + 6975uL water -> 7.00e-01 mM
+2026-02-20 16:36:21,084 - INFO -     (Dilution factor: 14.3x from 1.00e+01 mM dilution)
+2026-02-20 16:36:21,084 - INFO -   TTAB_dilution_4: 225uL TTAB_dilution_0 + 7275uL water -> 3.00e-01 mM
+2026-02-20 16:36:21,084 - INFO -     (Dilution factor: 33.3x from 1.00e+01 mM dilution)
+2026-02-20 16:36:21,084 - INFO -   TTAB_dilution_5: 500uL TTAB_dilution_2 + 7000uL water -> 1.00e-01 mM
+2026-02-20 16:36:21,085 - INFO -     (Dilution factor: 15.0x from 1.50e+00 mM dilution)
+2026-02-20 16:36:21,085 - INFO -   Creating CMC-specific vial selection plans...
+2026-02-20 16:36:21,093 - INFO -     CMC plan for SDS: 8 concentrations
+2026-02-20 16:36:21,108 - INFO -     CMC plan for TTAB: 8 concentrations
+2026-02-20 16:36:21,108 - INFO -   Creating complete well recipes...
+2026-02-20 16:36:21,108 - INFO -   Adding CMC control series (8 points each)...
+2026-02-20 16:36:21,109 - INFO -   Added 8 CMC controls for SDS, 8 for TTAB
+2026-02-20 16:36:21,126 - INFO -   Saved experiment plan: output\surfactant_grid_SDS_TTAB_20260220_163621_new_bounds_control_assay\experiment_plan_well_recipes.csv
+2026-02-20 16:36:21,129 - INFO -   Saved stock solutions plan: output\surfactant_grid_SDS_TTAB_20260220_163621_new_bounds_control_assay\experiment_plan_stock_solutions.csv
+2026-02-20 16:36:21,129 - INFO - + Planning complete: 44 total wells (5 x 5 grid + 19 controls)
+2026-02-20 16:36:21,129 - INFO - + Experiment plan created: 44 wells planned
+2026-02-20 16:36:21,129 - INFO - + Stock solutions needed: 12
+2026-02-20 16:36:21,130 - INFO - Step 4: Creating physical substocks from calculated recipes...
+2026-02-20 16:36:21,130 - INFO - Checking for existing substocks and creating 12 new ones as needed
+2026-02-20 16:36:21,133 - INFO - Found existing substock: SDS_stock (7.9 mL)
+2026-02-20 16:36:21,134 - INFO - Found existing substock: TTAB_stock (7.8 mL)
+2026-02-20 16:36:21,134 - INFO - Found existing substock: pyrene_DMSO (3.7 mL)
+2026-02-20 16:36:21,134 - INFO - Found existing substock: water (7.4 mL)
+2026-02-20 16:36:21,134 - INFO - Found existing substock: water_2 (7.4 mL)
+2026-02-20 16:36:21,135 - INFO - Found existing substock: MES (8.0 mL)
+2026-02-20 16:36:21,135 - INFO - Found existing substock: SDS_dilution_0 (6.2 mL)
+2026-02-20 16:36:21,135 - INFO - Found existing substock: SDS_dilution_1 (7.1 mL)
+2026-02-20 16:36:21,135 - INFO - Found existing substock: SDS_dilution_2 (7.0 mL)
+2026-02-20 16:36:21,135 - INFO - Found existing substock: SDS_dilution_3 (7.3 mL)
+2026-02-20 16:36:21,135 - INFO - Found existing substock: SDS_dilution_4 (7.4 mL)
+2026-02-20 16:36:21,135 - INFO - Found existing substock: SDS_dilution_5 (7.2 mL)
+2026-02-20 16:36:21,136 - INFO - Found existing substock: TTAB_dilution_0 (6.4 mL)
+2026-02-20 16:36:21,136 - INFO - Found existing substock: TTAB_dilution_1 (6.7 mL)
+2026-02-20 16:36:21,136 - INFO - Found existing substock: TTAB_dilution_2 (6.8 mL)
+2026-02-20 16:36:21,136 - INFO - Found existing substock: TTAB_dilution_3 (7.3 mL)
+2026-02-20 16:36:21,136 - INFO - Found existing substock: TTAB_dilution_4 (7.3 mL)
+2026-02-20 16:36:21,137 - INFO - Found existing substock: TTAB_dilution_5 (7.3 mL)
+2026-02-20 16:36:21,137 - INFO - Found existing substock: SDS_refill (4.8 mL)
+2026-02-20 16:36:21,137 - INFO - Found existing substock: TTAB_refill (4.9 mL)
+2026-02-20 16:36:21,137 - INFO - Skipping SDS_dilution_0: already exists with 6.2 mL
+2026-02-20 16:36:21,138 - INFO - Skipping TTAB_dilution_0: already exists with 6.4 mL
+2026-02-20 16:36:21,138 - INFO - Skipping SDS_dilution_1: already exists with 7.1 mL
+2026-02-20 16:36:21,138 - INFO - Skipping TTAB_dilution_1: already exists with 6.7 mL
+2026-02-20 16:36:21,138 - INFO - Skipping SDS_dilution_2: already exists with 7.0 mL
+2026-02-20 16:36:21,138 - INFO - Skipping TTAB_dilution_2: already exists with 6.8 mL
+2026-02-20 16:36:21,138 - INFO - Skipping SDS_dilution_3: already exists with 7.3 mL
+2026-02-20 16:36:21,138 - INFO - Skipping TTAB_dilution_3: already exists with 7.3 mL
+2026-02-20 16:36:21,138 - INFO - Skipping SDS_dilution_4: already exists with 7.4 mL
+2026-02-20 16:36:21,138 - INFO - Skipping TTAB_dilution_4: already exists with 7.3 mL
+2026-02-20 16:36:21,139 - INFO - Skipping SDS_dilution_5: already exists with 7.2 mL
+2026-02-20 16:36:21,139 - INFO - Skipping TTAB_dilution_5: already exists with 7.3 mL
+2026-02-20 16:36:21,139 - INFO - Substock summary: 0 newly created, 12 already existed, 12 total available
+2026-02-20 16:36:21,139 - INFO - + Substock creation complete: 0 newly created, 12 already existed, 0 failed
+2026-02-20 16:36:21,140 - INFO - Substocks already existed (OK):
+2026-02-20 16:36:21,140 - INFO -   SDS_dilution_0: already available
+2026-02-20 16:36:21,140 - INFO -   TTAB_dilution_0: already available
+2026-02-20 16:36:21,141 - INFO -   SDS_dilution_1: already available
+2026-02-20 16:36:21,141 - INFO -   TTAB_dilution_1: already available
+2026-02-20 16:36:21,141 - INFO -   SDS_dilution_2: already available
+2026-02-20 16:36:21,141 - INFO -   TTAB_dilution_2: already available
+2026-02-20 16:36:21,141 - INFO -   SDS_dilution_3: already available
+2026-02-20 16:36:21,141 - INFO -   TTAB_dilution_3: already available
+2026-02-20 16:36:21,141 - INFO -   SDS_dilution_4: already available
+2026-02-20 16:36:21,141 - INFO -   TTAB_dilution_4: already available
+2026-02-20 16:36:21,141 - INFO -   SDS_dilution_5: already available
+2026-02-20 16:36:21,142 - INFO -   TTAB_dilution_5: already available
+2026-02-20 16:36:21,142 - INFO - Step 5: Executing dispensing and measurements...
+2026-02-20 16:36:21,142 - INFO - Executing dispensing and measurements...
+2026-02-20 16:36:21,144 - INFO - Total wells to process: 44
+2026-02-20 16:36:21,144 - INFO - 
+Processing batch 1: wells 0-43
+2026-02-20 16:36:21,149 - INFO -   Positioning surfactant A vials by concentration (concentrated -> dilute):
+2026-02-20 16:36:21,149 - INFO -     SDS_stock (50.00mM) -> main_8mL_rack[47]
+2026-02-20 16:36:21,151 - INFO - Moving vial SDS_stock to main_8mL_rack: 47
+2026-02-20 16:36:21,152 - DEBUG - Grabbing vial 0 with index 0
+2026-02-20 16:36:21,153 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 47
+2026-02-20 16:36:21,153 - INFO -     SDS_dilution_0 (10.00mM) -> main_8mL_rack[46]
+2026-02-20 16:36:21,154 - INFO - Moving vial SDS_dilution_0 to main_8mL_rack: 46
+2026-02-20 16:36:21,154 - DEBUG - Grabbing vial 6 with index 6
+2026-02-20 16:36:21,156 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 46
+2026-02-20 16:36:21,157 - INFO -     SDS_dilution_1 (4.00mM) -> main_8mL_rack[45]
+2026-02-20 16:36:21,159 - INFO - Moving vial SDS_dilution_1 to main_8mL_rack: 45
+2026-02-20 16:36:21,159 - DEBUG - Grabbing vial 7 with index 7
+2026-02-20 16:36:21,163 - DEBUG - Dropping off vial 7 at location main_8mL_rack with index 45
+2026-02-20 16:36:21,165 - INFO -     SDS_dilution_2 (1.50mM) -> main_8mL_rack[44]
+2026-02-20 16:36:21,166 - INFO - Moving vial SDS_dilution_2 to main_8mL_rack: 44
+2026-02-20 16:36:21,167 - DEBUG - Grabbing vial 8 with index 8
+2026-02-20 16:36:21,169 - DEBUG - Dropping off vial 8 at location main_8mL_rack with index 44
+2026-02-20 16:36:21,169 - INFO -     SDS_dilution_4 (0.30mM) -> clamp
+2026-02-20 16:36:21,170 - INFO - Moving vial SDS_dilution_4 to clamp: 0
+2026-02-20 16:36:21,170 - DEBUG - Grabbing vial 10 with index 10
+2026-02-20 16:36:21,173 - DEBUG - Dropping off vial 10 at location clamp with index 0
+2026-02-20 16:36:21,173 - WARNING - Cannot move vial to destination, destination full
+2026-02-20 16:36:21,174 - ERROR - Cannot move vial to destination, destination full
+2026-02-20 16:36:21,174 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial to destination, destination full
+2026-02-20 16:36:21,174 - INFO -     SDS_dilution_5 (0.10mM) -> main_8mL_rack[43]
+2026-02-20 16:36:21,177 - INFO - Moving vial SDS_dilution_5 to main_8mL_rack: 43
+2026-02-20 16:36:21,177 - DEBUG - Grabbing vial 11 with index 11
+2026-02-20 16:36:21,178 - DEBUG - Dropping off vial 11 at location main_8mL_rack with index 43
+2026-02-20 16:36:21,179 - INFO -   Dispensing order will be: dilute -> concentrated
+2026-02-20 16:36:21,179 - INFO -   SURF A DEBUG: batch_df shape = (44, 22)
+2026-02-20 16:36:21,180 - INFO -   SURF A DEBUG: wellplate_index range = 0-43
+2026-02-20 16:36:21,182 - INFO -   SURF A DEBUG: surf_A_volume_ul volumes = surf_A_volume_ul
+0.000000      10
+20.000000      5
+45.914977      5
+63.245553      5
+65.338158      5
+90.000000      5
+200.000000     1
+143.333333     1
+92.714517      1
+130.691738     1
+160.586254     1
+184.224983     1
+45.272946      1
+63.817406      1
+103.200000     1
+Name: count, dtype: int64
+2026-02-20 16:36:21,183 - INFO -   SURF A DEBUG: data types = surf_A_volume_ul: float64
+2026-02-20 16:36:21,184 - INFO -   SURF A VALIDATION: Expected wells = [0, 3, 4, 5, 6, 7, 8, 9, 10, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43]
+2026-02-20 16:36:21,184 - INFO -   SURF A VALIDATION: Found wells = [19, 20, 21, 22, 23]
+2026-02-20 16:36:21,184 - ERROR -   SURF A CRITICAL ERROR: Missing wells = [0, 3, 4, 5, 6, 7, 8, 9, 10, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43]
+2026-02-20 16:36:21,184 - ERROR -   SURF A DEBUG: Missing well data:
+2026-02-20 16:36:21,185 - ERROR -     Well 0: surf_A_volume_ul = '200.0' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,186 - ERROR -     Well 3: surf_A_volume_ul = '143.33333333333334' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,187 - ERROR -     Well 4: surf_A_volume_ul = '92.71451720257087' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,188 - ERROR -     Well 5: surf_A_volume_ul = '130.6917379320739' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,189 - ERROR -     Well 6: surf_A_volume_ul = '160.58625439407143' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,190 - ERROR -     Well 7: surf_A_volume_ul = '184.22498308854125' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,191 - ERROR -     Well 8: surf_A_volume_ul = '45.27294604556574' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,191 - ERROR -     Well 9: surf_A_volume_ul = '63.817406146574115' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,192 - ERROR -     Well 10: surf_A_volume_ul = '103.19999999999999' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,194 - ERROR -     Well 24: surf_A_volume_ul = '45.91497693322865' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,194 - ERROR -     Well 25: surf_A_volume_ul = '45.91497693322865' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,196 - ERROR -     Well 26: surf_A_volume_ul = '45.91497693322865' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,196 - ERROR -     Well 27: surf_A_volume_ul = '45.91497693322865' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,198 - ERROR -     Well 28: surf_A_volume_ul = '45.91497693322865' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,198 - ERROR -     Well 29: surf_A_volume_ul = '63.2455532033676' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,199 - ERROR -     Well 30: surf_A_volume_ul = '63.2455532033676' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,200 - ERROR -     Well 31: surf_A_volume_ul = '63.2455532033676' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,200 - ERROR -     Well 32: surf_A_volume_ul = '63.2455532033676' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,200 - ERROR -     Well 33: surf_A_volume_ul = '63.2455532033676' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,201 - ERROR -     Well 34: surf_A_volume_ul = '65.33815762039296' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,202 - ERROR -     Well 35: surf_A_volume_ul = '65.33815762039296' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,205 - ERROR -     Well 36: surf_A_volume_ul = '65.33815762039296' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,206 - ERROR -     Well 37: surf_A_volume_ul = '65.33815762039296' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,207 - ERROR -     Well 38: surf_A_volume_ul = '65.33815762039296' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,208 - ERROR -     Well 39: surf_A_volume_ul = '90.0' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,208 - ERROR -     Well 40: surf_A_volume_ul = '90.0' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,209 - ERROR -     Well 41: surf_A_volume_ul = '90.0' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,210 - ERROR -     Well 42: surf_A_volume_ul = '90.0' (type: <class 'numpy.float64'>)
+2026-02-20 16:36:21,211 - ERROR -     Well 43: surf_A_volume_ul = '90.0' (type: <class 'numpy.float64'>)

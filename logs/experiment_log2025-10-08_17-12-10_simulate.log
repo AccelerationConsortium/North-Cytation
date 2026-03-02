@@ -1,0 +1,454 @@
+2025-10-08 17:12:10,090 - INFO - Initializing North Robot...
+2025-10-08 17:12:10,091 - DEBUG - Loading robot configuration files...
+2025-10-08 17:12:10,100 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2025-10-08 17:12:10,103 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2025-10-08 17:12:10,107 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2025-10-08 17:12:10,109 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2025-10-08 17:12:10,111 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-10-08 17:12:10,114 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-10-08 17:12:10,114 - DEBUG - Loading robot state files...
+2025-10-08 17:12:10,119 - DEBUG - Loaded vial data from ../utoronto_demo/status/degradation_vial_status.csv
+2025-10-08 17:12:10,121 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2025-10-08 17:12:10,123 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2025-10-08 17:12:10,123 - DEBUG - Robot status loaded successfully
+2025-10-08 17:12:10,123 - DEBUG - Physical initialization of North Robot...
+2025-10-08 17:12:10,125 - INFO - Moving robot to home position
+2025-10-08 17:12:10,125 - DEBUG - Loading pumps from YAML configuration...
+2025-10-08 17:12:10,127 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-10-08 17:12:10,127 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-10-08 17:12:10,165 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='2634269858144'>
+2025-10-08 17:12:10,165 - INFO - Initializing North Track...
+2025-10-08 17:12:10,165 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2025-10-08 17:12:10,165 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2025-10-08 17:12:10,165 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2025-10-08 17:12:10,165 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2025-10-08 17:12:10,165 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2025-10-08 17:12:10,165 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2025-10-08 17:12:10,165 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-10-08 17:12:10,181 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-10-08 17:12:10,185 - INFO -    vial_index      vial_name       location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index  concentration
+0           0  polymer_stock  main_8mL_rack               0            4    True    close      8_mL  main_8mL_rack                    0           10.0
+1           1         2MeTHF  main_8mL_rack              25            5    True    close      8_mL  main_8mL_rack                   25            0.0
+2           2          water  main_8mL_rack              26            8    True    close      8_mL  main_8mL_rack                   26            0.0
+3           3         6M_HCl  main_8mL_rack               1            4    True    close      8_mL  main_8mL_rack                    1            0.0
+4           4       sample_1  main_8mL_rack               2            0    True    close      8_mL  main_8mL_rack                    2            0.5
+5           5       sample_2  main_8mL_rack               3            0    True    close      8_mL  main_8mL_rack                    3            1.0
+6           8        acetone  main_8mL_rack              27           24    True    close      8_mL  main_8mL_rack                   27            0.0
+7           9          waste  main_8mL_rack              28            0    True    close      8_mL  main_8mL_rack                   28            0.0
+2025-10-08 17:12:10,200 - INFO - Visualizing vial racks...
+2025-10-08 17:12:10,371 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2025-10-08 17:12:10,469 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2025-10-08 17:12:14,567 - INFO - Dispensing 0.150 mL from polymer_stock to sample_1
+2025-10-08 17:12:14,572 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,573 - INFO - Moving vial 0 to safe pipetting location
+2025-10-08 17:12:14,575 - INFO - Moving vial polymer_stock to clamp: 0
+2025-10-08 17:12:14,575 - DEBUG - Grabbing vial 0 with index 0
+2025-10-08 17:12:14,579 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-10-08 17:12:14,579 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,586 - DEBUG - Selected small_tip for volume 0.150 mL
+2025-10-08 17:12:14,586 - INFO - Getting small_tip (pipet number 10) from rack: small_tip_rack_1
+2025-10-08 17:12:14,591 - INFO - Pipetting from vial polymer_stock, amount: 0.15 mL
+2025-10-08 17:12:14,593 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-08 17:12:14,594 - DEBUG - Aspirating 0.150 mL then waiting 1.0 s
+2025-10-08 17:12:14,599 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,601 - INFO - Moving vial 4 to safe pipetting location
+2025-10-08 17:12:14,603 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-10-08 17:12:14,604 - INFO - Returning vial polymer_stock to home location
+2025-10-08 17:12:14,606 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,610 - INFO - Moving vial polymer_stock to main_8mL_rack: 0
+2025-10-08 17:12:14,610 - DEBUG - Grabbing vial 0 with index 0
+2025-10-08 17:12:14,613 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-10-08 17:12:14,615 - INFO - Moving vial sample_1 to clamp: 0
+2025-10-08 17:12:14,615 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,617 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2025-10-08 17:12:14,619 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,621 - INFO - Pipetting into vial sample_1, amount: 0.15 mL
+2025-10-08 17:12:14,622 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-08 17:12:14,623 - DEBUG - Dispensing 0.150 mL then waiting 1.0 s
+2025-10-08 17:12:14,623 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,626 - INFO - Removing pipet
+2025-10-08 17:12:14,628 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,628 - INFO - Returning vial sample_1 to home location
+2025-10-08 17:12:14,632 - INFO - Moving vial sample_1 to main_8mL_rack: 2
+2025-10-08 17:12:14,632 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,633 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 2
+2025-10-08 17:12:14,634 - INFO - Removing pipet
+2025-10-08 17:12:14,636 - INFO - Dispensing 0.300 mL from polymer_stock to sample_2
+2025-10-08 17:12:14,636 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,636 - INFO - Moving vial 0 to safe pipetting location
+2025-10-08 17:12:14,640 - INFO - Moving vial polymer_stock to clamp: 0
+2025-10-08 17:12:14,640 - DEBUG - Grabbing vial 0 with index 0
+2025-10-08 17:12:14,642 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-10-08 17:12:14,642 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,642 - DEBUG - Selected large_tip for volume 0.300 mL
+2025-10-08 17:12:14,642 - INFO - Getting large_tip (pipet number 6) from rack: large_tip_rack_1
+2025-10-08 17:12:14,645 - INFO - Pipetting from vial polymer_stock, amount: 0.3 mL
+2025-10-08 17:12:14,647 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,647 - DEBUG - Aspirating 0.300 mL then waiting 1.0 s
+2025-10-08 17:12:14,648 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,649 - INFO - Moving vial 5 to safe pipetting location
+2025-10-08 17:12:14,650 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-10-08 17:12:14,650 - INFO - Returning vial polymer_stock to home location
+2025-10-08 17:12:14,653 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,653 - INFO - Moving vial polymer_stock to main_8mL_rack: 0
+2025-10-08 17:12:14,653 - DEBUG - Grabbing vial 0 with index 0
+2025-10-08 17:12:14,658 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-10-08 17:12:14,660 - INFO - Moving vial sample_2 to clamp: 0
+2025-10-08 17:12:14,660 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,662 - DEBUG - Dropping off vial 5 at location clamp with index 0
+2025-10-08 17:12:14,663 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,663 - INFO - Pipetting into vial sample_2, amount: 0.3 mL
+2025-10-08 17:12:14,666 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,667 - DEBUG - Dispensing 0.300 mL then waiting 1.0 s
+2025-10-08 17:12:14,667 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,667 - INFO - Removing pipet
+2025-10-08 17:12:14,671 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,671 - INFO - Returning vial sample_2 to home location
+2025-10-08 17:12:14,674 - INFO - Moving vial sample_2 to main_8mL_rack: 3
+2025-10-08 17:12:14,674 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,675 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 3
+2025-10-08 17:12:14,676 - INFO - Removing pipet
+2025-10-08 17:12:14,676 - INFO - Dispensing 2.850 mL from 2MeTHF to sample_1
+2025-10-08 17:12:14,677 - INFO - Volume too high for single transfer, splitting into 3 transfers of 0.95 mL each
+2025-10-08 17:12:14,678 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,679 - INFO - Moving vial 1 to safe pipetting location
+2025-10-08 17:12:14,681 - INFO - Moving vial 2MeTHF to clamp: 0
+2025-10-08 17:12:14,681 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,683 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-10-08 17:12:14,683 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,684 - DEBUG - Selected large_tip for volume 0.950 mL
+2025-10-08 17:12:14,686 - INFO - Getting large_tip (pipet number 7) from rack: large_tip_rack_1
+2025-10-08 17:12:14,688 - INFO - Pipetting from vial 2MeTHF, amount: 0.95 mL
+2025-10-08 17:12:14,688 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,690 - DEBUG - Aspirating 0.950 mL then waiting 1.0 s
+2025-10-08 17:12:14,690 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,691 - INFO - Moving vial 4 to safe pipetting location
+2025-10-08 17:12:14,691 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-10-08 17:12:14,691 - INFO - Returning vial 2MeTHF to home location
+2025-10-08 17:12:14,693 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,694 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,694 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,696 - INFO - Moving vial 2MeTHF to main_8mL_rack: 25
+2025-10-08 17:12:14,696 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,698 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 25
+2025-10-08 17:12:14,700 - INFO - Moving vial sample_1 to clamp: 0
+2025-10-08 17:12:14,700 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,704 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2025-10-08 17:12:14,704 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,707 - INFO - Pipetting into vial sample_1, amount: 0.95 mL
+2025-10-08 17:12:14,708 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,708 - DEBUG - Dispensing 0.950 mL then waiting 1.0 s
+2025-10-08 17:12:14,708 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,709 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,710 - INFO - Moving vial 1 to safe pipetting location
+2025-10-08 17:12:14,710 - DEBUG - Clamp occupied by vial 4, returning it home first
+2025-10-08 17:12:14,711 - INFO - Returning vial sample_1 to home location
+2025-10-08 17:12:14,712 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,713 - INFO - Moving vial sample_1 to main_8mL_rack: 2
+2025-10-08 17:12:14,713 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,716 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 2
+2025-10-08 17:12:14,720 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,720 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,721 - INFO - Moving vial 2MeTHF to clamp: 0
+2025-10-08 17:12:14,721 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,722 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-10-08 17:12:14,722 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,722 - DEBUG - Selected large_tip for volume 0.950 mL
+2025-10-08 17:12:14,722 - INFO - Pipetting from vial 2MeTHF, amount: 0.95 mL
+2025-10-08 17:12:14,722 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,727 - DEBUG - Aspirating 0.950 mL then waiting 1.0 s
+2025-10-08 17:12:14,727 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,728 - INFO - Moving vial 4 to safe pipetting location
+2025-10-08 17:12:14,728 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-10-08 17:12:14,729 - INFO - Returning vial 2MeTHF to home location
+2025-10-08 17:12:14,730 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,731 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,731 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,732 - INFO - Moving vial 2MeTHF to main_8mL_rack: 25
+2025-10-08 17:12:14,732 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,734 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 25
+2025-10-08 17:12:14,734 - INFO - Moving vial sample_1 to clamp: 0
+2025-10-08 17:12:14,737 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,738 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2025-10-08 17:12:14,739 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,740 - INFO - Pipetting into vial sample_1, amount: 0.95 mL
+2025-10-08 17:12:14,741 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,742 - DEBUG - Dispensing 0.950 mL then waiting 1.0 s
+2025-10-08 17:12:14,742 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,743 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,743 - INFO - Moving vial 1 to safe pipetting location
+2025-10-08 17:12:14,743 - DEBUG - Clamp occupied by vial 4, returning it home first
+2025-10-08 17:12:14,746 - INFO - Returning vial sample_1 to home location
+2025-10-08 17:12:14,747 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,750 - INFO - Moving vial sample_1 to main_8mL_rack: 2
+2025-10-08 17:12:14,750 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,754 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 2
+2025-10-08 17:12:14,755 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,756 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,757 - INFO - Moving vial 2MeTHF to clamp: 0
+2025-10-08 17:12:14,758 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,759 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-10-08 17:12:14,759 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,759 - DEBUG - Selected large_tip for volume 0.950 mL
+2025-10-08 17:12:14,763 - INFO - Pipetting from vial 2MeTHF, amount: 0.95 mL
+2025-10-08 17:12:14,765 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,765 - DEBUG - Aspirating 0.950 mL then waiting 1.0 s
+2025-10-08 17:12:14,765 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,766 - INFO - Moving vial 4 to safe pipetting location
+2025-10-08 17:12:14,767 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-10-08 17:12:14,767 - INFO - Returning vial 2MeTHF to home location
+2025-10-08 17:12:14,770 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,771 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,771 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,773 - INFO - Moving vial 2MeTHF to main_8mL_rack: 25
+2025-10-08 17:12:14,773 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,774 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 25
+2025-10-08 17:12:14,775 - INFO - Moving vial sample_1 to clamp: 0
+2025-10-08 17:12:14,775 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,776 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2025-10-08 17:12:14,777 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,778 - INFO - Pipetting into vial sample_1, amount: 0.95 mL
+2025-10-08 17:12:14,779 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,779 - DEBUG - Dispensing 0.950 mL then waiting 1.0 s
+2025-10-08 17:12:14,779 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,780 - INFO - Removing pipet
+2025-10-08 17:12:14,780 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,782 - INFO - Returning vial sample_1 to home location
+2025-10-08 17:12:14,783 - INFO - Moving vial sample_1 to main_8mL_rack: 2
+2025-10-08 17:12:14,783 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,784 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 2
+2025-10-08 17:12:14,784 - INFO - Removing pipet
+2025-10-08 17:12:14,788 - INFO - Vortexing Vial: sample_1
+2025-10-08 17:12:14,788 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,790 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 2
+2025-10-08 17:12:14,791 - INFO - Dispensing 2.700 mL from 2MeTHF to sample_2
+2025-10-08 17:12:14,792 - INFO - Volume too high for single transfer, splitting into 3 transfers of 0.9 mL each
+2025-10-08 17:12:14,793 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,793 - INFO - Moving vial 1 to safe pipetting location
+2025-10-08 17:12:14,793 - INFO - Moving vial 2MeTHF to clamp: 0
+2025-10-08 17:12:14,793 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,797 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-10-08 17:12:14,797 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,797 - DEBUG - Selected large_tip for volume 0.900 mL
+2025-10-08 17:12:14,797 - INFO - Getting large_tip (pipet number 8) from rack: large_tip_rack_1
+2025-10-08 17:12:14,799 - INFO - Pipetting from vial 2MeTHF, amount: 0.9 mL
+2025-10-08 17:12:14,800 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,800 - DEBUG - Aspirating 0.900 mL then waiting 1.0 s
+2025-10-08 17:12:14,800 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,800 - INFO - Moving vial 5 to safe pipetting location
+2025-10-08 17:12:14,802 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-10-08 17:12:14,804 - INFO - Returning vial 2MeTHF to home location
+2025-10-08 17:12:14,805 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,805 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,807 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,808 - INFO - Moving vial 2MeTHF to main_8mL_rack: 25
+2025-10-08 17:12:14,808 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,810 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 25
+2025-10-08 17:12:14,811 - INFO - Moving vial sample_2 to clamp: 0
+2025-10-08 17:12:14,811 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,813 - DEBUG - Dropping off vial 5 at location clamp with index 0
+2025-10-08 17:12:14,813 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,816 - INFO - Pipetting into vial sample_2, amount: 0.9 mL
+2025-10-08 17:12:14,817 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,817 - DEBUG - Dispensing 0.900 mL then waiting 1.0 s
+2025-10-08 17:12:14,817 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,817 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,817 - INFO - Moving vial 1 to safe pipetting location
+2025-10-08 17:12:14,817 - DEBUG - Clamp occupied by vial 5, returning it home first
+2025-10-08 17:12:14,817 - INFO - Returning vial sample_2 to home location
+2025-10-08 17:12:14,824 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,825 - INFO - Moving vial sample_2 to main_8mL_rack: 3
+2025-10-08 17:12:14,825 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,827 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 3
+2025-10-08 17:12:14,828 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,828 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,829 - INFO - Moving vial 2MeTHF to clamp: 0
+2025-10-08 17:12:14,829 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,831 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-10-08 17:12:14,831 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,832 - DEBUG - Selected large_tip for volume 0.900 mL
+2025-10-08 17:12:14,834 - INFO - Pipetting from vial 2MeTHF, amount: 0.9 mL
+2025-10-08 17:12:14,836 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,836 - DEBUG - Aspirating 0.900 mL then waiting 1.0 s
+2025-10-08 17:12:14,836 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,836 - INFO - Moving vial 5 to safe pipetting location
+2025-10-08 17:12:14,836 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-10-08 17:12:14,839 - INFO - Returning vial 2MeTHF to home location
+2025-10-08 17:12:14,840 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,841 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,841 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,842 - INFO - Moving vial 2MeTHF to main_8mL_rack: 25
+2025-10-08 17:12:14,842 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,843 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 25
+2025-10-08 17:12:14,844 - INFO - Moving vial sample_2 to clamp: 0
+2025-10-08 17:12:14,845 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,846 - DEBUG - Dropping off vial 5 at location clamp with index 0
+2025-10-08 17:12:14,847 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,848 - INFO - Pipetting into vial sample_2, amount: 0.9 mL
+2025-10-08 17:12:14,849 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,849 - DEBUG - Dispensing 0.900 mL then waiting 1.0 s
+2025-10-08 17:12:14,850 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,851 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,851 - INFO - Moving vial 1 to safe pipetting location
+2025-10-08 17:12:14,851 - DEBUG - Clamp occupied by vial 5, returning it home first
+2025-10-08 17:12:14,855 - INFO - Returning vial sample_2 to home location
+2025-10-08 17:12:14,856 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,857 - INFO - Moving vial sample_2 to main_8mL_rack: 3
+2025-10-08 17:12:14,857 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,858 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 3
+2025-10-08 17:12:14,859 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,859 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,861 - INFO - Moving vial 2MeTHF to clamp: 0
+2025-10-08 17:12:14,861 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,863 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-10-08 17:12:14,863 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,864 - DEBUG - Selected large_tip for volume 0.900 mL
+2025-10-08 17:12:14,865 - ERROR - Cannot aspirate more volume than in vial
+2025-10-08 17:12:14,865 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2025-10-08 17:12:14,866 - INFO - Pipetting from vial 2MeTHF, amount: 0.9 mL
+2025-10-08 17:12:14,866 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,868 - DEBUG - Aspirating 0.900 mL then waiting 1.0 s
+2025-10-08 17:12:14,868 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,870 - INFO - Moving vial 5 to safe pipetting location
+2025-10-08 17:12:14,870 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-10-08 17:12:14,870 - INFO - Returning vial 2MeTHF to home location
+2025-10-08 17:12:14,870 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,874 - ERROR - Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,874 - WARNING - SIMULATION MODE: Would pause for error: Cannot move vial 1 while holding pipet - only main_8mL_rack positions 0-5 and clamp position 0 are safe
+2025-10-08 17:12:14,875 - INFO - Moving vial 2MeTHF to main_8mL_rack: 25
+2025-10-08 17:12:14,875 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,877 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 25
+2025-10-08 17:12:14,878 - INFO - Moving vial sample_2 to clamp: 0
+2025-10-08 17:12:14,879 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,880 - DEBUG - Dropping off vial 5 at location clamp with index 0
+2025-10-08 17:12:14,881 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,882 - INFO - Pipetting into vial sample_2, amount: 0.9 mL
+2025-10-08 17:12:14,883 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,884 - DEBUG - Dispensing 0.900 mL then waiting 1.0 s
+2025-10-08 17:12:14,884 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,884 - INFO - Removing pipet
+2025-10-08 17:12:14,884 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,884 - INFO - Returning vial sample_2 to home location
+2025-10-08 17:12:14,891 - INFO - Moving vial sample_2 to main_8mL_rack: 3
+2025-10-08 17:12:14,891 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,892 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 3
+2025-10-08 17:12:14,892 - INFO - Removing pipet
+2025-10-08 17:12:14,893 - INFO - Vortexing Vial: sample_2
+2025-10-08 17:12:14,893 - DEBUG - Grabbing vial 5 with index 5
+2025-10-08 17:12:14,894 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 3
+2025-10-08 17:12:14,895 - INFO - Dispensing 0.050 mL from 6M_HCl to sample_1
+2025-10-08 17:12:14,895 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,897 - INFO - Moving vial 3 to safe pipetting location
+2025-10-08 17:12:14,898 - INFO - Moving vial 6M_HCl to clamp: 0
+2025-10-08 17:12:14,898 - DEBUG - Grabbing vial 3 with index 3
+2025-10-08 17:12:14,899 - DEBUG - Dropping off vial 3 at location clamp with index 0
+2025-10-08 17:12:14,899 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,904 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-08 17:12:14,904 - INFO - Getting small_tip (pipet number 11) from rack: small_tip_rack_1
+2025-10-08 17:12:14,906 - INFO - Pipetting from vial 6M_HCl, amount: 0.05 mL
+2025-10-08 17:12:14,907 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-08 17:12:14,907 - DEBUG - Aspirating 0.050 mL then waiting 1.0 s
+2025-10-08 17:12:14,908 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,908 - INFO - Moving vial 4 to safe pipetting location
+2025-10-08 17:12:14,911 - DEBUG - Clamp occupied by vial 3, returning it home first
+2025-10-08 17:12:14,912 - INFO - Returning vial 6M_HCl to home location
+2025-10-08 17:12:14,913 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,915 - INFO - Moving vial 6M_HCl to main_8mL_rack: 1
+2025-10-08 17:12:14,915 - DEBUG - Grabbing vial 3 with index 3
+2025-10-08 17:12:14,916 - DEBUG - Dropping off vial 3 at location main_8mL_rack with index 1
+2025-10-08 17:12:14,921 - INFO - Moving vial sample_1 to clamp: 0
+2025-10-08 17:12:14,921 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,923 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2025-10-08 17:12:14,924 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,925 - INFO - Pipetting into vial sample_1, amount: 0.05 mL
+2025-10-08 17:12:14,926 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-08 17:12:14,926 - DEBUG - Dispensing 0.050 mL then waiting 1.0 s
+2025-10-08 17:12:14,926 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,927 - INFO - Removing pipet
+2025-10-08 17:12:14,927 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,930 - INFO - Returning vial sample_1 to home location
+2025-10-08 17:12:14,932 - INFO - Moving vial sample_1 to main_8mL_rack: 2
+2025-10-08 17:12:14,932 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,933 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 2
+2025-10-08 17:12:14,936 - INFO - Removing pipet
+2025-10-08 17:12:14,940 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,941 - INFO - Moving vial sample_1 to safe pipetting location
+2025-10-08 17:12:14,942 - INFO - Moving vial sample_1 to clamp: 0
+2025-10-08 17:12:14,942 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,943 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2025-10-08 17:12:14,944 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,945 - DEBUG - Selected large_tip for volume 0.600 mL
+2025-10-08 17:12:14,945 - INFO - Getting large_tip (pipet number 9) from rack: large_tip_rack_1
+2025-10-08 17:12:14,946 - INFO - Pipetting from vial sample_1, amount: 0.6 mL
+2025-10-08 17:12:14,948 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,948 - DEBUG - Aspirating 0.600 mL then waiting 1.0 s
+2025-10-08 17:12:14,949 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,949 - INFO - Transferring 0.200 mL into well #0 of 96 WELL PLATE
+2025-10-08 17:12:14,949 - DEBUG - Dispensing 0.200 mL then waiting 1.0 s
+2025-10-08 17:12:14,949 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,949 - INFO - Transferring 0.200 mL into well #1 of 96 WELL PLATE
+2025-10-08 17:12:14,949 - DEBUG - Dispensing 0.200 mL then waiting 1.0 s
+2025-10-08 17:12:14,950 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,950 - INFO - Transferring 0.200 mL into well #2 of 96 WELL PLATE
+2025-10-08 17:12:14,950 - DEBUG - Dispensing 0.200 mL then waiting 1.0 s
+2025-10-08 17:12:14,951 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,951 - INFO - Removing pipet
+2025-10-08 17:12:14,951 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\degradation_protocol.prt
+2025-10-08 17:12:14,951 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2025-10-08 17:12:14,954 - INFO - Moving robot to home position
+2025-10-08 17:12:14,954 - INFO - Moving wellplate 0 to Cytation
+2025-10-08 17:12:14,954 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2025-10-08 17:12:14,954 - INFO - Grabbing wellplate from location: pipetting_area
+2025-10-08 17:12:14,954 - DEBUG - No waypoint locations provided, skipping path movement
+2025-10-08 17:12:14,954 - DEBUG - Opening gripper
+2025-10-08 17:12:14,957 - DEBUG - Closing gripper
+2025-10-08 17:12:14,957 - INFO - Releasing wellplate at location: cytation_tray
+2025-10-08 17:12:14,957 - DEBUG - No waypoint locations provided, skipping path movement
+2025-10-08 17:12:14,957 - DEBUG - Opening gripper
+2025-10-08 17:12:14,957 - INFO - Moving wellplate 0 back from Cytation
+2025-10-08 17:12:14,958 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2025-10-08 17:12:14,958 - INFO - Grabbing wellplate from location: cytation_tray
+2025-10-08 17:12:14,958 - DEBUG - No waypoint locations provided, skipping path movement
+2025-10-08 17:12:14,958 - DEBUG - Opening gripper
+2025-10-08 17:12:14,958 - DEBUG - Closing gripper
+2025-10-08 17:12:14,958 - INFO - Releasing wellplate at location: pipetting_area
+2025-10-08 17:12:14,958 - DEBUG - No waypoint locations provided, skipping path movement
+2025-10-08 17:12:14,958 - DEBUG - Opening gripper
+2025-10-08 17:12:14,959 - DEBUG - Moving North Track to home position
+2025-10-08 17:12:14,960 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:14,961 - INFO - Moving vial 2MeTHF to safe pipetting location
+2025-10-08 17:12:14,962 - DEBUG - Clamp occupied by vial 4, returning it home first
+2025-10-08 17:12:14,962 - INFO - Returning vial sample_1 to home location
+2025-10-08 17:12:14,964 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:14,964 - INFO - Moving vial sample_1 to main_8mL_rack: 2
+2025-10-08 17:12:14,964 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:14,966 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 2
+2025-10-08 17:12:14,969 - INFO - Moving vial 2MeTHF to clamp: 0
+2025-10-08 17:12:14,969 - DEBUG - Grabbing vial 1 with index 1
+2025-10-08 17:12:14,969 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-10-08 17:12:14,973 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:14,975 - DEBUG - Selected large_tip for volume 0.300 mL
+2025-10-08 17:12:14,975 - INFO - Getting large_tip (pipet number 10) from rack: large_tip_rack_1
+2025-10-08 17:12:14,977 - ERROR - Cannot aspirate more volume than in vial
+2025-10-08 17:12:14,977 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2025-10-08 17:12:14,977 - INFO - Pipetting from vial 2MeTHF, amount: 0.3 mL
+2025-10-08 17:12:14,979 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,979 - DEBUG - Aspirating 0.300 mL then waiting 1.0 s
+2025-10-08 17:12:14,980 - INFO - Mixing well 0 in well plate of type 96 WELL PLATE with volume 0.300 mL for 2 repeats
+2025-10-08 17:12:14,980 - DEBUG - Pipetting aspirating 0.300 mL from well plate index 0 of type 96 WELL PLATE
+2025-10-08 17:12:14,980 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,980 - DEBUG - Aspirating 0.300 mL then waiting 1.0 s
+2025-10-08 17:12:14,981 - DEBUG - Pipetting dispensing 0.300 mL from well plate index 0 of type 96 WELL PLATE
+2025-10-08 17:12:14,981 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,981 - DEBUG - Dispensing 0.300 mL then waiting 1.0 s
+2025-10-08 17:12:14,981 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,981 - DEBUG - Pipetting aspirating 0.300 mL from well plate index 0 of type 96 WELL PLATE
+2025-10-08 17:12:14,981 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,981 - DEBUG - Aspirating 0.300 mL then waiting 1.0 s
+2025-10-08 17:12:14,981 - DEBUG - Pipetting dispensing 0.300 mL from well plate index 0 of type 96 WELL PLATE
+2025-10-08 17:12:14,981 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,981 - DEBUG - Dispensing 0.300 mL then waiting 1.0 s
+2025-10-08 17:12:14,981 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:14,981 - DEBUG - Pipetting aspirating 0.300 mL from well plate index 0 of type 96 WELL PLATE
+2025-10-08 17:12:14,981 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-08 17:12:14,981 - DEBUG - Aspirating 0.300 mL then waiting 1.0 s

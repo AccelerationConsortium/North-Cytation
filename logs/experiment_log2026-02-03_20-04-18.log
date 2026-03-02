@@ -1,0 +1,434 @@
+2026-02-03 20:04:18,949 - INFO - Initializing North Robot...
+2026-02-03 20:04:18,949 - DEBUG - Loading robot configuration files...
+2026-02-03 20:04:18,949 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-02-03 20:04:18,965 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-02-03 20:04:18,969 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-02-03 20:04:18,971 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-02-03 20:04:18,971 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-03 20:04:18,971 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-03 20:04:18,971 - DEBUG - Loading robot state files...
+2026-02-03 20:04:18,971 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
+2026-02-03 20:04:18,986 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-02-03 20:04:18,986 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-02-03 20:04:18,986 - DEBUG - Robot status loaded successfully
+2026-02-03 20:04:18,986 - INFO - Physical initialization of North Robot...
+2026-02-03 20:04:22,513 - DEBUG - Loading pumps from YAML configuration...
+2026-02-03 20:04:22,609 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-02-03 20:04:22,704 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-02-03 20:04:22,704 - INFO - Moving robot to home position
+2026-02-03 20:04:23,110 - DEBUG - Initializing centrifuge controller...
+2026-02-03 20:04:28,353 - DEBUG - Current reader status: 0
+2026-02-03 20:04:28,353 - INFO - Cytation5 is connected and ready
+2026-02-03 20:04:28,353 - INFO - Initializing North Track...
+2026-02-03 20:04:28,353 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-02-03 20:04:28,353 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-02-03 20:04:28,353 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-02-03 20:04:28,353 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-02-03 20:04:28,353 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-02-03 20:04:28,353 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-02-03 20:04:28,367 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-03 20:04:28,370 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-03 20:04:28,441 - DEBUG - Moving North Track to home position
+2026-02-03 20:04:28,443 - INFO - Step 1: Initializing Lash_E coordinator...
+2026-02-03 20:04:28,443 - INFO -   Mode: Hardware
+2026-02-03 20:04:28,445 - INFO - Experiment: surfactant_grid_SDS_TTAB_20260203_200428
+2026-02-03 20:04:28,445 - INFO - Output folder: output\surfactant_grid_SDS_TTAB_20260203_200428
+2026-02-03 20:04:28,445 - INFO - Organized subfolders: validation, measurement_backups, substocks, analysis, logs
+2026-02-03 20:04:28,445 - INFO - ================================================================================
+2026-02-03 20:04:28,445 - INFO - ADAPTIVE SURFACTANT GRID SCREENING WORKFLOW
+2026-02-03 20:04:28,445 - INFO - ================================================================================
+2026-02-03 20:04:28,446 - INFO - Surfactants: SDS + TTAB
+2026-02-03 20:04:28,446 - INFO - Mode: HARDWARE
+2026-02-03 20:04:28,446 - INFO - 
+2026-02-03 20:04:28,446 - INFO -   Validating robot and track status...
+2026-02-03 20:04:28,448 - INFO -     vial_index        vial_name       location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index
+0            0        SDS_stock  main_8mL_rack               0     4.816435    True     open      8_mL  main_8mL_rack                    0
+1            1       TTAB_stock  main_8mL_rack               1     5.216435    True     open      8_mL  main_8mL_rack                    1
+2            2      pyrene_DMSO  main_8mL_rack               2     4.565000    True     open      8_mL  main_8mL_rack                    2
+3            3            water  main_8mL_rack               3     8.000000    True     open      8_mL  main_8mL_rack                    3
+4            4          water_2  main_8mL_rack               4     8.000000    True     open      8_mL  main_8mL_rack                    4
+5            5            HEPES  main_8mL_rack               5     0.000000    True     open      8_mL  main_8mL_rack                    5
+6            6   SDS_dilution_0  main_8mL_rack               6     5.640000    True     open      8_mL  main_8mL_rack                    6
+7            7   SDS_dilution_1  main_8mL_rack               7     4.607990    True     open      8_mL  main_8mL_rack                    7
+8            8   SDS_dilution_2  main_8mL_rack               8     5.803986    True     open      8_mL  main_8mL_rack                    8
+9            9   SDS_dilution_3  main_8mL_rack               9     5.234093    True     open      8_mL  main_8mL_rack                    9
+10          10   SDS_dilution_4  main_8mL_rack              10     4.159395    True     open      8_mL  main_8mL_rack                   10
+11          11   SDS_dilution_5  main_8mL_rack              11     4.580327    True     open      8_mL  main_8mL_rack                   11
+12          12  TTAB_dilution_0  main_8mL_rack              12     5.640000    True     open      8_mL  main_8mL_rack                   12
+13          13  TTAB_dilution_1  main_8mL_rack              13     4.607990    True     open      8_mL  main_8mL_rack                   13
+14          14  TTAB_dilution_2  main_8mL_rack              14     5.803986    True     open      8_mL  main_8mL_rack                   14
+15          15  TTAB_dilution_3  main_8mL_rack              15     5.234093    True     open      8_mL  main_8mL_rack                   15
+16          16  TTAB_dilution_4  main_8mL_rack              16     4.159395    True     open      8_mL  main_8mL_rack                   16
+17          17  TTAB_dilution_5  main_8mL_rack              17     4.580327    True     open      8_mL  main_8mL_rack                   17
+2026-02-03 20:04:28,463 - INFO - Visualizing vial racks...
+2026-02-03 20:04:28,484 - DEBUG - Matplotlib backend: tkagg
+2026-02-03 20:04:28,588 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2026-02-03 20:04:28,714 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2026-02-03 20:04:30,973 - DEBUG - Vial visualization displayed successfully
+2026-02-03 20:04:32,072 - INFO - --Wellplate status-- 
+ Wellplate type: 96 WELL PLATE 
+ Number in source: 0 
+ Number in waste: 0 
+ Active wellplate position: pipetting_area
+2026-02-03 20:04:32,072 - INFO - Visualizing wellplate status...
+2026-02-03 20:04:32,073 - DEBUG - Matplotlib backend: tkagg
+2026-02-03 20:04:33,946 - DEBUG - Wellplate visualization displayed successfully
+2026-02-03 20:04:34,821 - INFO -   Ensuring water vials are full before workflow...
+2026-02-03 20:04:34,821 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-02-03 20:04:34,821 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-02-03 20:04:34,821 - INFO -   Pipetting validation disabled (set VALIDATE_LIQUIDS=True or VALIDATION_ONLY=True to enable)
+2026-02-03 20:04:34,821 - INFO -   Robot ready for operations
+2026-02-03 20:04:34,821 - INFO -   Using existing wellplate (CREATE_WELLPLATE = False)
+2026-02-03 20:04:34,821 - INFO - + Lash_E initialization complete
+2026-02-03 20:04:34,821 - INFO - 
+2026-02-03 20:04:34,821 - INFO - Step 2: Calculating adaptive concentration grids...
+2026-02-03 20:04:34,821 - INFO - Adaptive grid for SDS: 1.0e-04 to 22.5 mM (9 steps)
+2026-02-03 20:04:34,821 - INFO -   Concentrations: ['1.000e-04', '4.667e-04', '2.178e-03', '1.016e-02', '4.743e-02', '2.214e-01', '1.033e+00', '4.821e+00', '2.250e+01']
+2026-02-03 20:04:34,821 - INFO - Adaptive grid for TTAB: 1.0e-04 to 22.5 mM (9 steps)
+2026-02-03 20:04:34,821 - INFO -   Concentrations: ['1.000e-04', '4.667e-04', '2.178e-03', '1.016e-02', '4.743e-02', '2.214e-01', '1.033e+00', '4.821e+00', '2.250e+01']
+2026-02-03 20:04:34,821 - INFO - 
+Adaptive concentration grid summary:
+2026-02-03 20:04:34,821 - INFO -   SDS: 9 concentrations from 1.000e-04 to 2.250e+01 mM
+2026-02-03 20:04:34,821 - INFO -   TTAB: 9 concentrations from 1.000e-04 to 2.250e+01 mM
+2026-02-03 20:04:34,821 - INFO -   Total combinations: 9 × 9 = 81 wells (× 1 replicates = 81 total wells)
+2026-02-03 20:04:34,821 - INFO - Concentration analysis:
+2026-02-03 20:04:34,821 - INFO -   SDS: 9/9 concentrations achievable
+2026-02-03 20:04:34,821 - INFO -   TTAB: 9/9 concentrations achievable
+2026-02-03 20:04:34,821 - INFO - 
+2026-02-03 20:04:34,828 - INFO - Step 3: Calculating optimal dilution strategies...
+2026-02-03 20:04:34,828 - INFO - 
+=== Analyzing dilution strategy for SDS ===
+2026-02-03 20:04:34,828 - INFO - Target concentrations: ['1.00e-04', '4.67e-04', '2.18e-03', '1.02e-02', '4.74e-02', '2.21e-01', '1.03e+00', '4.82e+00', '2.25e+01'] mM
+2026-02-03 20:04:34,829 - INFO -   1.03e+00 mM: Use SDS_dilution_5 (68.9 uL)
+2026-02-03 20:04:34,829 - INFO -   4.82e+00 mM: Use SDS_stock (19.3 uL)
+2026-02-03 20:04:34,829 - INFO -   2.25e+01 mM: Use SDS_stock (90.0 uL)
+2026-02-03 20:04:34,829 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-02-03 20:04:34,829 - INFO - Target concentrations: ['1.00e-04', '4.67e-04', '2.18e-03', '1.02e-02', '4.74e-02', '2.21e-01', '1.03e+00', '4.82e+00', '2.25e+01'] mM
+2026-02-03 20:04:34,830 - INFO -   1.03e+00 mM: Use TTAB_dilution_5 (68.9 uL)
+2026-02-03 20:04:34,830 - INFO -   4.82e+00 mM: Use TTAB_stock (19.3 uL)
+2026-02-03 20:04:34,830 - INFO -   2.25e+01 mM: Use TTAB_stock (90.0 uL)
+2026-02-03 20:04:34,830 - INFO - 
+=== SUBSTOCK DILUTION RECIPES ===
+2026-02-03 20:04:34,830 - INFO - For each substock showing: source + volume -> target_concentration
+2026-02-03 20:04:34,830 - INFO - (Using minimum 200uL pipetting volumes for accuracy)
+2026-02-03 20:04:34,830 - INFO - 
+SDS substocks:
+2026-02-03 20:04:34,830 - INFO -   SDS_dilution_5: 400uL SDS_stock + 5600uL water -> 3.00e+00 mM
+2026-02-03 20:04:34,831 - INFO -     (Dilution factor: 15.0x from 5.00e+01 mM stock, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,831 - INFO -   SDS_dilution_4: 667uL SDS_dilution_5 + 5333uL water -> 3.00e-01 mM
+2026-02-03 20:04:34,831 - INFO -     (Dilution factor: 9.0x from 3.00e+00 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,831 - INFO -   SDS_dilution_3: 1111uL SDS_dilution_4 + 4889uL water -> 5.00e-02 mM
+2026-02-03 20:04:34,831 - INFO -     (Dilution factor: 5.4x from 3.00e-01 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,831 - INFO -   SDS_dilution_2: 444uL SDS_dilution_4 + 5556uL water -> 2.00e-02 mM
+2026-02-03 20:04:34,831 - INFO -     (Dilution factor: 13.5x from 3.00e-01 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,831 - INFO -   SDS_dilution_1: 400uL SDS_dilution_3 + 5600uL water -> 3.00e-03 mM
+2026-02-03 20:04:34,831 - INFO -     (Dilution factor: 15.0x from 5.00e-02 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,831 - INFO -   SDS_dilution_0: 1111uL SDS_dilution_1 + 4889uL water -> 5.00e-04 mM
+2026-02-03 20:04:34,832 - INFO -     (Dilution factor: 5.4x from 3.00e-03 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,832 - INFO - 
+TTAB substocks:
+2026-02-03 20:04:34,832 - INFO -   TTAB_dilution_5: 400uL TTAB_stock + 5600uL water -> 3.00e+00 mM
+2026-02-03 20:04:34,832 - INFO -     (Dilution factor: 15.0x from 5.00e+01 mM stock, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,832 - INFO -   TTAB_dilution_4: 667uL TTAB_dilution_5 + 5333uL water -> 3.00e-01 mM
+2026-02-03 20:04:34,832 - INFO -     (Dilution factor: 9.0x from 3.00e+00 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,832 - INFO -   TTAB_dilution_3: 1111uL TTAB_dilution_4 + 4889uL water -> 5.00e-02 mM
+2026-02-03 20:04:34,832 - INFO -     (Dilution factor: 5.4x from 3.00e-01 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,832 - INFO -   TTAB_dilution_2: 444uL TTAB_dilution_4 + 5556uL water -> 2.00e-02 mM
+2026-02-03 20:04:34,833 - INFO -     (Dilution factor: 13.5x from 3.00e-01 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,833 - INFO -   TTAB_dilution_1: 400uL TTAB_dilution_3 + 5600uL water -> 3.00e-03 mM
+2026-02-03 20:04:34,833 - INFO -     (Dilution factor: 15.0x from 5.00e-02 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,833 - INFO -   TTAB_dilution_0: 1111uL TTAB_dilution_1 + 4889uL water -> 5.00e-04 mM
+2026-02-03 20:04:34,833 - INFO -     (Dilution factor: 5.4x from 3.00e-03 mM dilution, corrected for 1.11x buffer factor)
+2026-02-03 20:04:34,833 - INFO - + Planning complete: 9 x 9 concentration grid
+2026-02-03 20:04:34,833 - INFO - 
+=== DILUTION STRATEGY SUMMARY ===
+2026-02-03 20:04:34,833 - INFO - SDS: 6 substocks needed for 9 concentrations
+2026-02-03 20:04:34,833 - INFO - TTAB: 6 substocks needed for 9 concentrations
+2026-02-03 20:04:34,834 - INFO - 
+Substocks to create:
+2026-02-03 20:04:34,834 - INFO -   SDS_dilution_0: 5.00e-04 mM
+2026-02-03 20:04:34,834 - INFO -   SDS_dilution_1: 3.00e-03 mM
+2026-02-03 20:04:34,834 - INFO -   SDS_dilution_2: 2.00e-02 mM
+2026-02-03 20:04:34,834 - INFO -   SDS_dilution_3: 5.00e-02 mM
+2026-02-03 20:04:34,834 - INFO -   SDS_dilution_4: 3.00e-01 mM
+2026-02-03 20:04:34,834 - INFO -   SDS_dilution_5: 3.00e+00 mM
+2026-02-03 20:04:34,834 - INFO -   TTAB_dilution_0: 5.00e-04 mM
+2026-02-03 20:04:34,834 - INFO -   TTAB_dilution_1: 3.00e-03 mM
+2026-02-03 20:04:34,835 - INFO -   TTAB_dilution_2: 2.00e-02 mM
+2026-02-03 20:04:34,835 - INFO -   TTAB_dilution_3: 5.00e-02 mM
+2026-02-03 20:04:34,835 - INFO -   TTAB_dilution_4: 3.00e-01 mM
+2026-02-03 20:04:34,835 - INFO -   TTAB_dilution_5: 3.00e+00 mM
+2026-02-03 20:04:34,835 - INFO - 
+=== DETAILED PIPETTING PLAN ===
+2026-02-03 20:04:34,835 - INFO - For each target concentration, showing: vial_to_use (volume_to_pipette)
+2026-02-03 20:04:34,835 - INFO - 
+SDS concentrations:
+2026-02-03 20:04:34,835 - INFO -   1.00e-04 mM: SDS_dilution_0 (40.0uL) + 50.0uL water
+2026-02-03 20:04:34,835 - INFO -   4.67e-04 mM: SDS_dilution_1 (31.1uL) + 58.9uL water
+2026-02-03 20:04:34,835 - INFO -   2.18e-03 mM: SDS_dilution_2 (21.8uL) + 68.2uL water
+2026-02-03 20:04:34,835 - INFO -   1.02e-02 mM: SDS_dilution_3 (40.7uL) + 49.3uL water
+2026-02-03 20:04:34,835 - INFO -   4.74e-02 mM: SDS_dilution_4 (31.6uL) + 58.4uL water
+2026-02-03 20:04:34,835 - INFO -   2.21e-01 mM: SDS_dilution_5 (14.8uL) + 75.2uL water
+2026-02-03 20:04:34,836 - INFO -   1.03e+00 mM: SDS_dilution_5 (68.9uL) + 21.1uL water
+2026-02-03 20:04:34,836 - INFO -   4.82e+00 mM: SDS_stock (19.3uL) + 70.7uL water
+2026-02-03 20:04:34,836 - INFO -   2.25e+01 mM: SDS_stock (90.0uL) + 0.0uL water
+2026-02-03 20:04:34,836 - INFO - 
+TTAB concentrations:
+2026-02-03 20:04:34,836 - INFO -   1.00e-04 mM: TTAB_dilution_0 (40.0uL) + 50.0uL water
+2026-02-03 20:04:34,836 - INFO -   4.67e-04 mM: TTAB_dilution_1 (31.1uL) + 58.9uL water
+2026-02-03 20:04:34,836 - INFO -   2.18e-03 mM: TTAB_dilution_2 (21.8uL) + 68.2uL water
+2026-02-03 20:04:34,836 - INFO -   1.02e-02 mM: TTAB_dilution_3 (40.7uL) + 49.3uL water
+2026-02-03 20:04:34,836 - INFO -   4.74e-02 mM: TTAB_dilution_4 (31.6uL) + 58.4uL water
+2026-02-03 20:04:34,836 - INFO -   2.21e-01 mM: TTAB_dilution_5 (14.8uL) + 75.2uL water
+2026-02-03 20:04:34,837 - INFO -   1.03e+00 mM: TTAB_dilution_5 (68.9uL) + 21.1uL water
+2026-02-03 20:04:34,837 - INFO -   4.82e+00 mM: TTAB_stock (19.3uL) + 70.7uL water
+2026-02-03 20:04:34,837 - INFO -   2.25e+01 mM: TTAB_stock (90.0uL) + 0.0uL water
+2026-02-03 20:04:34,837 - INFO - 
+=== WELL COMPOSITION BREAKDOWN ===
+2026-02-03 20:04:34,837 - INFO - Total well volume: 200 uL
+2026-02-03 20:04:34,837 - INFO -   Surfactant A allocation: 90.0 uL (solution + water)
+2026-02-03 20:04:34,837 - INFO -   Surfactant B allocation: 90.0 uL (solution + water)
+2026-02-03 20:04:34,837 - INFO -   Pyrene (added later): 5 uL
+2026-02-03 20:04:34,837 - INFO -   Additional water: 15.0 uL
+2026-02-03 20:04:34,838 - INFO - 
+==================================================
+2026-02-03 20:04:34,838 - INFO - 
+=== CONCENTRATION VERIFICATION ===
+2026-02-03 20:04:34,845 - INFO - Verification complete:
+2026-02-03 20:04:34,845 - INFO -   Maximum error: 0.00%
+2026-02-03 20:04:34,846 - INFO -   Average error: 0.00%
+2026-02-03 20:04:34,846 - INFO -   Exported detailed calculations to: output\surfactant_grid_SDS_TTAB_20260203_200428\concentration_verification.csv
+2026-02-03 20:04:34,846 - INFO -   Exported well composition to: output\surfactant_grid_SDS_TTAB_20260203_200428\well_composition.csv
+2026-02-03 20:04:34,846 - INFO -   + All concentration errors < 5%
+2026-02-03 20:04:34,846 - INFO - 
+==================================================
+2026-02-03 20:04:34,846 - INFO - Proceeding with automated execution...
+2026-02-03 20:04:34,846 - INFO - 
+2026-02-03 20:04:34,846 - INFO - Step 4: Creating physical substocks from calculated recipes...
+2026-02-03 20:04:34,847 - INFO - Checking for existing substocks and creating 12 new ones as needed
+2026-02-03 20:04:34,848 - INFO - Found existing substock: SDS_stock (4.8 mL)
+2026-02-03 20:04:34,848 - INFO - Found existing substock: TTAB_stock (5.2 mL)
+2026-02-03 20:04:34,849 - INFO - Found existing substock: pyrene_DMSO (4.6 mL)
+2026-02-03 20:04:34,849 - INFO - Found existing substock: water (8.0 mL)
+2026-02-03 20:04:34,849 - INFO - Found existing substock: water_2 (8.0 mL)
+2026-02-03 20:04:34,849 - INFO - Found existing substock: SDS_dilution_0 (5.6 mL)
+2026-02-03 20:04:34,849 - INFO - Found existing substock: SDS_dilution_1 (4.6 mL)
+2026-02-03 20:04:34,850 - INFO - Found existing substock: SDS_dilution_2 (5.8 mL)
+2026-02-03 20:04:34,850 - INFO - Found existing substock: SDS_dilution_3 (5.2 mL)
+2026-02-03 20:04:34,851 - INFO - Found existing substock: SDS_dilution_4 (4.2 mL)
+2026-02-03 20:04:34,851 - INFO - Found existing substock: SDS_dilution_5 (4.6 mL)
+2026-02-03 20:04:34,851 - INFO - Found existing substock: TTAB_dilution_0 (5.6 mL)
+2026-02-03 20:04:34,851 - INFO - Found existing substock: TTAB_dilution_1 (4.6 mL)
+2026-02-03 20:04:34,851 - INFO - Found existing substock: TTAB_dilution_2 (5.8 mL)
+2026-02-03 20:04:34,851 - INFO - Found existing substock: TTAB_dilution_3 (5.2 mL)
+2026-02-03 20:04:34,851 - INFO - Found existing substock: TTAB_dilution_4 (4.2 mL)
+2026-02-03 20:04:34,852 - INFO - Found existing substock: TTAB_dilution_5 (4.6 mL)
+2026-02-03 20:04:34,852 - INFO - Skipping SDS_dilution_5: already exists with 4.6 mL
+2026-02-03 20:04:34,852 - INFO - Skipping SDS_dilution_4: already exists with 4.2 mL
+2026-02-03 20:04:34,852 - INFO - Skipping SDS_dilution_3: already exists with 5.2 mL
+2026-02-03 20:04:34,852 - INFO - Skipping SDS_dilution_2: already exists with 5.8 mL
+2026-02-03 20:04:34,852 - INFO - Skipping SDS_dilution_1: already exists with 4.6 mL
+2026-02-03 20:04:34,852 - INFO - Skipping SDS_dilution_0: already exists with 5.6 mL
+2026-02-03 20:04:34,852 - INFO - Skipping TTAB_dilution_5: already exists with 4.6 mL
+2026-02-03 20:04:34,852 - INFO - Skipping TTAB_dilution_4: already exists with 4.2 mL
+2026-02-03 20:04:34,852 - INFO - Skipping TTAB_dilution_3: already exists with 5.2 mL
+2026-02-03 20:04:34,852 - INFO - Skipping TTAB_dilution_2: already exists with 5.8 mL
+2026-02-03 20:04:34,852 - INFO - Skipping TTAB_dilution_1: already exists with 4.6 mL
+2026-02-03 20:04:34,852 - INFO - Skipping TTAB_dilution_0: already exists with 5.6 mL
+2026-02-03 20:04:34,852 - INFO - Substock summary: 0 newly created, 12 already existed, 12 total available
+2026-02-03 20:04:34,852 - INFO - + Substock creation complete: 0/12 successful
+2026-02-03 20:04:34,852 - INFO - Failed substocks:
+2026-02-03 20:04:34,852 - INFO -   SDS_dilution_5: Unknown error
+2026-02-03 20:04:34,852 - INFO -   SDS_dilution_4: Unknown error
+2026-02-03 20:04:34,852 - INFO -   SDS_dilution_3: Unknown error
+2026-02-03 20:04:34,852 - INFO -   SDS_dilution_2: Unknown error
+2026-02-03 20:04:34,852 - INFO -   SDS_dilution_1: Unknown error
+2026-02-03 20:04:34,852 - INFO -   SDS_dilution_0: Unknown error
+2026-02-03 20:04:34,852 - INFO -   TTAB_dilution_5: Unknown error
+2026-02-03 20:04:34,852 - INFO -   TTAB_dilution_4: Unknown error
+2026-02-03 20:04:34,852 - INFO -   TTAB_dilution_3: Unknown error
+2026-02-03 20:04:34,852 - INFO -   TTAB_dilution_2: Unknown error
+2026-02-03 20:04:34,852 - INFO -   TTAB_dilution_1: Unknown error
+2026-02-03 20:04:34,852 - INFO -   TTAB_dilution_0: Unknown error
+2026-02-03 20:04:34,852 - INFO - 
+2026-02-03 20:04:34,852 - INFO - Step 5: Concentration Grid Summary
+2026-02-03 20:04:34,852 - INFO - Grid analysis:
+2026-02-03 20:04:34,852 - INFO -   SDS: 9/9 concentrations achievable
+2026-02-03 20:04:34,852 - INFO -   TTAB: 9/9 concentrations achievable
+2026-02-03 20:04:34,852 - INFO -   Total combinations: 81/81 achievable
+2026-02-03 20:04:34,852 - INFO - 
+2026-02-03 20:04:34,852 - INFO - 
+2026-02-03 20:04:34,856 - INFO - Step 6: Executing pipetting and measurements in separate phases...
+2026-02-03 20:04:34,856 - INFO -   CREATE_WELLPLATE = False: Skipping wellplate creation, measuring existing wells...
+2026-02-03 20:04:34,856 - INFO -   Phase 6b: Measuring turbidity...
+2026-02-03 20:04:34,856 - INFO -   Measuring turbidity for wells 0-95 (with buffer present)
+2026-02-03 20:04:34,856 - INFO - Measuring turbidity in wells [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95] using protocol C:\Protocols\CMC_Absorbance_96.prt...
+2026-02-03 20:04:34,856 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\CMC_Absorbance_96.prt
+2026-02-03 20:04:34,857 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-02-03 20:04:34,857 - INFO - Moving robot to home position
+2026-02-03 20:04:35,058 - INFO - Moving wellplate 0 to Cytation
+2026-02-03 20:04:35,058 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-02-03 20:04:36,144 - INFO - Grabbing wellplate from location: pipetting_area
+2026-02-03 20:04:36,144 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-03 20:04:39,626 - DEBUG - Opening gripper
+2026-02-03 20:04:42,478 - DEBUG - Closing gripper
+2026-02-03 20:04:48,988 - INFO - Releasing wellplate at location: cytation_tray
+2026-02-03 20:04:48,989 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-03 20:04:51,600 - DEBUG - Opening gripper
+2026-02-03 20:04:56,540 - DEBUG - Experiment created successfully.
+2026-02-03 20:04:56,540 - DEBUG - Experiment Protocol Type: Standard
+2026-02-03 20:04:56,540 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-02-03 20:04:56,556 - INFO - Running plate with wells: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10', 'A11', 'A12'] and protocol type: read
+2026-02-03 20:04:58,972 - INFO - Read started. Waiting for completion...
+2026-02-03 20:05:10,568 - INFO - Plate read completed successfully.
+2026-02-03 20:05:10,568 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:05:10,583 - DEBUG - Measurement types: ['600']
+2026-02-03 20:05:10,598 - INFO - Running plate with wells: ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12'] and protocol type: read
+2026-02-03 20:05:13,009 - INFO - Read started. Waiting for completion...
+2026-02-03 20:05:25,484 - INFO - Plate read completed successfully.
+2026-02-03 20:05:25,484 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:05:25,500 - DEBUG - Measurement types: ['600']
+2026-02-03 20:05:25,514 - INFO - Running plate with wells: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10', 'C11', 'C12'] and protocol type: read
+2026-02-03 20:05:27,919 - INFO - Read started. Waiting for completion...
+2026-02-03 20:05:38,630 - INFO - Plate read completed successfully.
+2026-02-03 20:05:38,630 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:05:38,635 - DEBUG - Measurement types: ['600']
+2026-02-03 20:05:38,649 - INFO - Running plate with wells: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12'] and protocol type: read
+2026-02-03 20:05:41,057 - INFO - Read started. Waiting for completion...
+2026-02-03 20:05:51,723 - INFO - Plate read completed successfully.
+2026-02-03 20:05:51,723 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:05:51,728 - DEBUG - Measurement types: ['600']
+2026-02-03 20:05:51,741 - INFO - Running plate with wells: ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10', 'E11', 'E12'] and protocol type: read
+2026-02-03 20:05:54,149 - INFO - Read started. Waiting for completion...
+2026-02-03 20:06:04,755 - INFO - Plate read completed successfully.
+2026-02-03 20:06:04,755 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:06:04,764 - DEBUG - Measurement types: ['600']
+2026-02-03 20:06:04,783 - INFO - Running plate with wells: ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'] and protocol type: read
+2026-02-03 20:06:07,198 - INFO - Read started. Waiting for completion...
+2026-02-03 20:06:17,739 - INFO - Plate read completed successfully.
+2026-02-03 20:06:17,739 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:06:17,739 - DEBUG - Measurement types: ['600']
+2026-02-03 20:06:17,767 - INFO - Running plate with wells: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12'] and protocol type: read
+2026-02-03 20:06:20,166 - INFO - Read started. Waiting for completion...
+2026-02-03 20:06:30,706 - INFO - Plate read completed successfully.
+2026-02-03 20:06:30,706 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:06:30,706 - DEBUG - Measurement types: ['600']
+2026-02-03 20:06:30,732 - INFO - Running plate with wells: ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10', 'H11', 'H12'] and protocol type: read
+2026-02-03 20:06:33,136 - INFO - Read started. Waiting for completion...
+2026-02-03 20:06:43,689 - INFO - Plate read completed successfully.
+2026-02-03 20:06:43,689 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:06:43,696 - DEBUG - Measurement types: ['600']
+2026-02-03 20:06:43,774 - INFO - Moving wellplate 0 back from Cytation
+2026-02-03 20:06:43,774 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-02-03 20:06:45,989 - INFO - Grabbing wellplate from location: cytation_tray
+2026-02-03 20:06:45,989 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-03 20:06:46,061 - DEBUG - Opening gripper
+2026-02-03 20:06:48,641 - DEBUG - Closing gripper
+2026-02-03 20:06:54,077 - INFO - Releasing wellplate at location: pipetting_area
+2026-02-03 20:06:54,077 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-03 20:06:58,310 - DEBUG - Opening gripper
+2026-02-03 20:07:05,169 - DEBUG - Moving North Track to home position
+2026-02-03 20:07:05,169 - INFO - Successfully measured turbidity for 96 wells
+2026-02-03 20:07:05,169 - INFO -     Saved raw turbidity data: turbidity_plate1_wells0-95_20260203_200705_169.csv
+2026-02-03 20:07:05,169 - INFO -   Phase 6c: Skipping DMSO addition (CREATE_WELLPLATE = False)
+2026-02-03 20:07:05,169 - INFO -   Phase 6d: Measuring fluorescence...
+2026-02-03 20:07:05,169 - INFO -   Measuring fluorescence for wells 0-95
+2026-02-03 20:07:05,169 - INFO - Measuring fluorescence in wells [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95] using protocol C:\Protocols\CMC_Fluorescence_96.prt...
+2026-02-03 20:07:05,169 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\CMC_Fluorescence_96.prt
+2026-02-03 20:07:05,169 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-02-03 20:07:05,169 - INFO - Moving robot to home position
+2026-02-03 20:07:05,370 - INFO - Moving wellplate 0 to Cytation
+2026-02-03 20:07:05,370 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-02-03 20:07:06,459 - INFO - Grabbing wellplate from location: pipetting_area
+2026-02-03 20:07:06,459 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-03 20:07:09,929 - DEBUG - Opening gripper
+2026-02-03 20:07:12,776 - DEBUG - Closing gripper
+2026-02-03 20:07:19,258 - INFO - Releasing wellplate at location: cytation_tray
+2026-02-03 20:07:19,258 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-03 20:07:21,879 - DEBUG - Opening gripper
+2026-02-03 20:07:26,873 - DEBUG - Experiment created successfully.
+2026-02-03 20:07:26,885 - DEBUG - Experiment Protocol Type: Standard
+2026-02-03 20:07:26,887 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-02-03 20:07:26,895 - INFO - Running plate with wells: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10', 'A11', 'A12'] and protocol type: read
+2026-02-03 20:07:29,480 - INFO - Read started. Waiting for completion...
+2026-02-03 20:08:02,302 - INFO - Plate read completed successfully.
+2026-02-03 20:08:02,302 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:08:02,302 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-03 20:08:02,331 - INFO - Running plate with wells: ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12'] and protocol type: read
+2026-02-03 20:08:04,898 - INFO - Read started. Waiting for completion...
+2026-02-03 20:08:37,726 - INFO - Plate read completed successfully.
+2026-02-03 20:08:37,726 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:08:37,732 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-03 20:08:37,752 - INFO - Running plate with wells: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10', 'C11', 'C12'] and protocol type: read
+2026-02-03 20:08:40,320 - INFO - Read started. Waiting for completion...
+2026-02-03 20:09:11,130 - INFO - Plate read completed successfully.
+2026-02-03 20:09:11,130 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:09:11,130 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-03 20:09:11,159 - INFO - Running plate with wells: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12'] and protocol type: read
+2026-02-03 20:09:13,733 - INFO - Read started. Waiting for completion...
+2026-02-03 20:09:44,492 - INFO - Plate read completed successfully.
+2026-02-03 20:09:44,492 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:09:44,492 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-03 20:09:44,511 - INFO - Running plate with wells: ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10', 'E11', 'E12'] and protocol type: read
+2026-02-03 20:09:47,075 - INFO - Read started. Waiting for completion...
+2026-02-03 20:10:17,794 - INFO - Plate read completed successfully.
+2026-02-03 20:10:17,796 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:10:17,800 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-03 20:10:17,817 - INFO - Running plate with wells: ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'] and protocol type: read
+2026-02-03 20:10:20,397 - INFO - Read started. Waiting for completion...
+2026-02-03 20:10:51,030 - INFO - Plate read completed successfully.
+2026-02-03 20:10:51,030 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:10:51,030 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-03 20:10:51,057 - INFO - Running plate with wells: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12'] and protocol type: read
+2026-02-03 20:10:53,628 - INFO - Read started. Waiting for completion...
+2026-02-03 20:11:24,216 - INFO - Plate read completed successfully.
+2026-02-03 20:11:24,216 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:11:24,216 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-03 20:11:24,249 - INFO - Running plate with wells: ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10', 'H11', 'H12'] and protocol type: read
+2026-02-03 20:11:26,827 - INFO - Read started. Waiting for completion...
+2026-02-03 20:11:57,392 - INFO - Plate read completed successfully.
+2026-02-03 20:11:57,392 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-03 20:11:57,392 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-03 20:11:57,470 - INFO - Moving wellplate 0 back from Cytation
+2026-02-03 20:11:57,470 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-02-03 20:11:59,705 - INFO - Grabbing wellplate from location: cytation_tray
+2026-02-03 20:11:59,705 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-03 20:11:59,772 - DEBUG - Opening gripper
+2026-02-03 20:12:02,353 - DEBUG - Closing gripper
+2026-02-03 20:12:08,129 - INFO - Releasing wellplate at location: pipetting_area
+2026-02-03 20:12:08,129 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-03 20:12:12,380 - DEBUG - Opening gripper
+2026-02-03 20:12:19,241 - DEBUG - Moving North Track to home position
+2026-02-03 20:12:19,241 - INFO - Successfully measured fluorescence for 96 wells
+2026-02-03 20:12:19,241 - INFO -     Saved raw fluorescence data: fluorescence_plate1_wells0-95_20260203_201219_241.csv
+2026-02-03 20:12:19,241 - INFO - + Workflow completed!
+2026-02-03 20:12:19,241 - INFO -   Wells processed: 0
+2026-02-03 20:12:19,241 - INFO -   Measurements taken: 2
+2026-02-03 20:12:19,241 - INFO - 
+2026-02-03 20:12:19,241 - INFO - Step 7: Saving results...
+2026-02-03 20:12:19,241 - INFO -   Dilution info saved to: output\surfactant_grid_SDS_TTAB_20260203_200428\dilution_info.json
+2026-02-03 20:12:19,241 - INFO - + Results saved to: output\surfactant_grid_SDS_TTAB_20260203_200428
+2026-02-03 20:12:19,241 - INFO - \n============================================================
+2026-02-03 20:12:19,241 - INFO - CONSOLIDATED DATA ORGANIZATION SUMMARY
+2026-02-03 20:12:19,241 - INFO - ============================================================
+2026-02-03 20:12:19,255 - INFO - All experiment data saved to: surfactant_grid_SDS_TTAB_20260203_200428/
+2026-02-03 20:12:19,267 - INFO - ============================================================
+2026-02-03 20:12:19,267 - INFO - + Pipette tips used: 25 large, 14 small (total: 39) (actual)
+2026-02-03 20:12:19,267 - INFO - 
+2026-02-03 20:12:19,267 - INFO - + CORRECTED phase order used:
+2026-02-03 20:12:19,267 - INFO -   1. Add Surfactant A
+2026-02-03 20:12:19,267 - INFO -   2. Add Surfactant B
+2026-02-03 20:12:19,267 - INFO -   3. Add Buffer (BEFORE turbidity measurement)
+2026-02-03 20:12:19,267 - INFO -   4. Measure Turbidity (with buffer present)
+2026-02-03 20:12:19,267 - INFO -   5. Add Pyrene
+2026-02-03 20:12:19,267 - INFO -   6. Measure Fluorescence
+2026-02-03 20:12:19,267 - INFO - 
+2026-02-03 20:12:19,267 - INFO - 
+2026-02-03 20:12:19,267 - INFO - Creating consolidated measurement CSV...
+2026-02-03 20:12:19,294 - INFO -   Merged turbidity data: 97 measurements
+2026-02-03 20:12:19,297 - INFO -   Merged fluorescence data: 97 measurements
+2026-02-03 20:12:19,300 - INFO -   Saved consolidated CSV: output\surfactant_grid_SDS_TTAB_20260203_200428\consolidated_measurements.csv
+2026-02-03 20:12:19,300 - INFO -   Total rows: 96
+2026-02-03 20:12:19,300 - INFO -   Columns: ['well', 'well_position', 'plate', 'surfactant_a', 'surfactant_b', 'conc_a_mm', 'conc_b_mm', 'replicate', 'is_control', 'control_type']
+2026-02-03 20:12:19,301 - INFO - + Consolidated CSV created with 96 rows

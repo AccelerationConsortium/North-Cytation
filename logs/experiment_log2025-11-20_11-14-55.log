@@ -1,0 +1,911 @@
+2025-11-20 11:14:55,633 - INFO - Initializing North Robot...
+2025-11-20 11:14:55,633 - DEBUG - Loading robot configuration files...
+2025-11-20 11:14:55,649 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2025-11-20 11:14:55,651 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2025-11-20 11:14:55,655 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2025-11-20 11:14:55,655 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2025-11-20 11:14:55,655 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-11-20 11:14:55,655 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-11-20 11:14:55,655 - DEBUG - Loading robot state files...
+2025-11-20 11:14:55,667 - DEBUG - Loaded vial data from status/calibration_vials_overnight.csv
+2025-11-20 11:14:55,669 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2025-11-20 11:14:55,672 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2025-11-20 11:14:55,672 - DEBUG - Robot status loaded successfully
+2025-11-20 11:14:55,672 - DEBUG - Loading pumps from YAML configuration...
+2025-11-20 11:14:56,650 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-11-20 11:14:57,584 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-11-20 11:14:57,584 - DEBUG - Physical initialization of North Robot...
+2025-11-20 11:14:57,900 - WARNING - The robot reports having a vial in the gripper... Returning that vial home...
+2025-11-20 11:14:57,901 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 43
+2025-11-20 11:14:58,263 - WARNING - Physical cleanup failed (attempt 1/2): Main: HOME REQUIRED: Home the robot or aux axis before moving
+2025-11-20 11:14:58,263 - INFO - Homing robot components before pump initialization...
+2025-11-20 11:14:58,264 - INFO - Homing all robot components...
+2025-11-20 11:14:58,264 - DEBUG - Homing carousel...
+2025-11-20 11:15:05,973 - DEBUG - Homing robot axes...
+2025-11-20 11:15:48,215 - DEBUG - Homing pump 0...
+2025-11-20 11:15:49,987 - DEBUG - Homing pump 1...
+2025-11-20 11:15:51,702 - DEBUG - Homing track axes...
+2025-11-20 11:15:51,702 - DEBUG - Homing track axis z_axis (axis 6)...
+2025-11-20 11:15:55,250 - DEBUG - Homing track axis x_axis (axis 7)...
+2025-11-20 11:15:59,252 - INFO - All robot components homed successfully
+2025-11-20 11:15:59,252 - WARNING - The robot reports having a vial in the gripper... Returning that vial home...
+2025-11-20 11:15:59,252 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 43
+2025-11-20 11:16:01,822 - INFO - Moving robot to home position
+2025-11-20 11:16:04,550 - INFO - Initializing North Track...
+2025-11-20 11:16:04,551 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2025-11-20 11:16:04,551 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2025-11-20 11:16:04,552 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2025-11-20 11:16:04,552 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2025-11-20 11:16:04,558 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2025-11-20 11:16:04,558 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2025-11-20 11:16:04,561 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-11-20 11:16:04,564 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-11-20 11:16:04,673 - DEBUG - Moving North Track to home position
+2025-11-20 11:16:04,673 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-20 11:16:04,673 - DEBUG - Grabbing vial 1 with index 1
+2025-11-20 11:16:06,719 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-20 11:16:10,426 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:16:10,426 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.06mL, measurement(measurement_vial_0)=1.99mL, min_threshold=2.5mL
+2025-11-20 11:16:10,426 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:16:10,426 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.06mL, measurement(measurement_vial_0)=1.99mL, min_threshold=2.5mL
+2025-11-20 11:16:10,438 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:16:10,438 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:16:10,439 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:16:10,439 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:16:10,439 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:16:10,439 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:16:10,439 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:16:10,439 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:16:10,439 - DEBUG - Selected small_tip for volume 0.049 mL
+2025-11-20 11:16:10,439 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_1
+2025-11-20 11:16:15,599 - INFO - Pipetting from vial liquid_source_0, amount: 0.008 mL
+2025-11-20 11:16:15,599 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:16:15,603 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:16:15,603 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:16:19,421 - DEBUG - Aspirating 0.013 mL then waiting 1.498713851 s
+2025-11-20 11:16:21,948 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:16:22,348 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:16:22,348 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:16:22,348 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:16:22,348 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:16:22,348 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:16:22,348 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:16:22,348 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:16:22,348 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:16:22,348 - INFO - Pipetting into vial measurement_vial_0, amount: 0.008 mL
+2025-11-20 11:16:24,027 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:16:24,027 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:16:28,026 - DEBUG - Dispensing 0.049 mL then waiting 0.368627548 s
+2025-11-20 11:16:28,026 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:16:28,730 - DEBUG - Blowing out 0.112 mL
+2025-11-20 11:16:33,029 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:16:33,029 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.05mL, measurement(measurement_vial_0)=2.00mL, min_threshold=2.5mL
+2025-11-20 11:16:33,040 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:16:33,040 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:16:33,040 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:16:33,040 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:16:33,040 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:16:33,040 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:16:33,040 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:16:33,040 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:16:33,040 - DEBUG - Selected small_tip for volume 0.049 mL
+2025-11-20 11:16:33,040 - INFO - Pipetting from vial liquid_source_0, amount: 0.008 mL
+2025-11-20 11:16:33,040 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:16:33,047 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:16:33,047 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:16:37,224 - DEBUG - Aspirating 0.013 mL then waiting 1.498713851 s
+2025-11-20 11:16:39,702 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:16:40,103 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:16:40,103 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:16:40,103 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:16:40,103 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:16:40,103 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:16:40,103 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:16:40,103 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:16:40,103 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:16:40,103 - INFO - Pipetting into vial measurement_vial_0, amount: 0.008 mL
+2025-11-20 11:16:43,613 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:16:43,613 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:16:47,620 - DEBUG - Dispensing 0.049 mL then waiting 0.368627548 s
+2025-11-20 11:16:47,620 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:16:48,307 - DEBUG - Blowing out 0.112 mL
+2025-11-20 11:16:51,614 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:16:51,614 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.04mL, measurement(measurement_vial_0)=2.01mL, min_threshold=2.5mL
+2025-11-20 11:16:51,627 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:16:51,627 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:16:51,627 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:16:51,627 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:16:51,627 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:16:51,627 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:16:51,627 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:16:51,627 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:16:51,628 - DEBUG - Selected small_tip for volume 0.049 mL
+2025-11-20 11:16:51,629 - INFO - Pipetting from vial liquid_source_0, amount: 0.008 mL
+2025-11-20 11:16:51,629 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:16:51,632 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:16:51,632 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:16:55,805 - DEBUG - Aspirating 0.013 mL then waiting 1.498713851 s
+2025-11-20 11:16:58,369 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:16:58,782 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:16:58,782 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:16:58,782 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:16:58,782 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:16:58,782 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:16:58,782 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:16:58,782 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:16:58,782 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:16:58,782 - INFO - Pipetting into vial measurement_vial_0, amount: 0.008 mL
+2025-11-20 11:17:00,030 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:17:00,030 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:17:04,031 - DEBUG - Dispensing 0.049 mL then waiting 0.368627548 s
+2025-11-20 11:17:04,032 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:17:04,715 - DEBUG - Blowing out 0.112 mL
+2025-11-20 11:17:08,216 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:17:08,216 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.03mL, measurement(measurement_vial_0)=2.02mL, min_threshold=2.5mL
+2025-11-20 11:17:08,228 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:17:08,228 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:17:08,228 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:17:08,228 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:17:08,228 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:17:08,228 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:17:08,228 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:17:08,230 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:17:08,230 - DEBUG - Selected small_tip for volume 0.049 mL
+2025-11-20 11:17:08,232 - INFO - Pipetting from vial liquid_source_0, amount: 0.008 mL
+2025-11-20 11:17:08,232 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:17:08,234 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:17:08,234 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:17:12,413 - DEBUG - Aspirating 0.013 mL then waiting 1.498713851 s
+2025-11-20 11:17:14,972 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:17:15,362 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:17:15,362 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:17:15,362 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:17:15,362 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:17:15,362 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:17:15,362 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:17:15,362 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:17:15,362 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:17:15,362 - INFO - Pipetting into vial measurement_vial_0, amount: 0.008 mL
+2025-11-20 11:17:16,827 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:17:16,827 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:17:20,826 - DEBUG - Dispensing 0.049 mL then waiting 0.368627548 s
+2025-11-20 11:17:20,826 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:17:21,506 - DEBUG - Blowing out 0.112 mL
+2025-11-20 11:17:26,824 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:17:26,824 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.02mL, measurement(measurement_vial_0)=2.03mL, min_threshold=2.5mL
+2025-11-20 11:17:26,824 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:17:26,824 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:17:26,824 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:17:26,824 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:17:26,824 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:17:26,824 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:17:26,824 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:17:26,824 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:17:26,824 - DEBUG - Selected small_tip for volume 0.049 mL
+2025-11-20 11:17:26,824 - INFO - Pipetting from vial liquid_source_0, amount: 0.008 mL
+2025-11-20 11:17:26,824 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:17:26,837 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:17:26,837 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:17:31,012 - DEBUG - Aspirating 0.013 mL then waiting 1.498713851 s
+2025-11-20 11:17:33,558 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:17:33,923 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.008mL
+2025-11-20 11:17:33,923 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.008mL
+2025-11-20 11:17:33,923 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.008mL
+2025-11-20 11:17:33,923 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.008mL
+2025-11-20 11:17:33,923 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.008mL
+2025-11-20 11:17:33,923 - DEBUG - Using calibrated blowout_vol=0.11167601760000001 for water at 0.008mL
+2025-11-20 11:17:33,923 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.008mL
+2025-11-20 11:17:33,923 - DEBUG - Using calibrated overaspirate_vol=0.0045066184 for water at 0.008mL
+2025-11-20 11:17:33,923 - INFO - Pipetting into vial measurement_vial_0, amount: 0.008 mL
+2025-11-20 11:17:35,613 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:17:35,613 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:17:39,584 - DEBUG - Dispensing 0.049 mL then waiting 0.368627548 s
+2025-11-20 11:17:39,584 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:17:40,274 - DEBUG - Blowing out 0.112 mL
+2025-11-20 11:17:44,034 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:17:44,034 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.02mL, measurement(measurement_vial_0)=2.03mL, min_threshold=2.5mL
+2025-11-20 11:17:44,034 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:17:44,034 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.02mL, measurement(measurement_vial_0)=2.03mL, min_threshold=2.5mL
+2025-11-20 11:17:44,034 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:17:44,034 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:17:44,034 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:17:44,034 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:17:44,034 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:17:44,034 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:17:44,034 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:17:44,034 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:17:44,034 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-11-20 11:17:44,034 - INFO - Pipetting from vial liquid_source_0, amount: 0.012 mL
+2025-11-20 11:17:44,034 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:17:44,049 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:17:44,049 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:17:48,212 - DEBUG - Aspirating 0.017 mL then waiting 1.498713851 s
+2025-11-20 11:17:50,800 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:17:51,210 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:17:51,210 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:17:51,210 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:17:51,210 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:17:51,210 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:17:51,210 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:17:51,210 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:17:51,210 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:17:51,212 - INFO - Pipetting into vial measurement_vial_0, amount: 0.012 mL
+2025-11-20 11:17:53,823 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:17:53,823 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:17:57,886 - DEBUG - Dispensing 0.053 mL then waiting 0.368627548 s
+2025-11-20 11:17:57,886 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:17:58,593 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:18:02,429 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:18:02,432 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=3.00mL, measurement(measurement_vial_0)=2.05mL, min_threshold=2.5mL
+2025-11-20 11:18:02,432 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:18:02,432 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:18:02,432 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:18:02,432 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:18:02,432 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:18:02,432 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:18:02,432 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:18:02,432 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:18:02,432 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-11-20 11:18:02,432 - INFO - Pipetting from vial liquid_source_0, amount: 0.012 mL
+2025-11-20 11:18:02,432 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:18:02,441 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:18:02,441 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:18:06,635 - DEBUG - Aspirating 0.017 mL then waiting 1.498713851 s
+2025-11-20 11:18:09,179 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:18:09,579 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:18:09,579 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:18:09,579 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:18:09,579 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:18:09,579 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:18:09,579 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:18:09,579 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:18:09,579 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:18:09,579 - INFO - Pipetting into vial measurement_vial_0, amount: 0.012 mL
+2025-11-20 11:18:14,021 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:18:14,021 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:18:18,039 - DEBUG - Dispensing 0.053 mL then waiting 0.368627548 s
+2025-11-20 11:18:18,039 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:18:18,736 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:18:22,232 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:18:22,232 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.99mL, measurement(measurement_vial_0)=2.06mL, min_threshold=2.5mL
+2025-11-20 11:18:22,236 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:18:22,236 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:18:22,236 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:18:22,238 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:18:22,238 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:18:22,238 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:18:22,238 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:18:22,238 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:18:22,239 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-11-20 11:18:22,240 - INFO - Pipetting from vial liquid_source_0, amount: 0.012 mL
+2025-11-20 11:18:22,241 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:18:22,242 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:18:22,242 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:18:26,384 - DEBUG - Aspirating 0.017 mL then waiting 1.498713851 s
+2025-11-20 11:18:28,909 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:18:29,250 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:18:29,250 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:18:29,250 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:18:29,250 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:18:29,250 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:18:29,250 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:18:29,250 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:18:29,250 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:18:29,250 - INFO - Pipetting into vial measurement_vial_0, amount: 0.012 mL
+2025-11-20 11:18:31,636 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:18:31,636 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:18:35,634 - DEBUG - Dispensing 0.053 mL then waiting 0.368627548 s
+2025-11-20 11:18:35,635 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:18:36,395 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:18:40,435 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:18:40,436 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.98mL, measurement(measurement_vial_0)=2.07mL, min_threshold=2.5mL
+2025-11-20 11:18:40,440 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:18:40,440 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:18:40,440 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:18:40,440 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:18:40,440 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:18:40,440 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:18:40,440 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:18:40,440 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:18:40,441 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-11-20 11:18:40,442 - INFO - Pipetting from vial liquid_source_0, amount: 0.012 mL
+2025-11-20 11:18:40,443 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:18:40,444 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:18:40,444 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:18:44,638 - DEBUG - Aspirating 0.017 mL then waiting 1.498713851 s
+2025-11-20 11:18:47,176 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:18:47,570 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:18:47,570 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:18:47,570 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:18:47,570 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:18:47,570 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:18:47,570 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:18:47,570 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:18:47,570 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:18:47,570 - INFO - Pipetting into vial measurement_vial_0, amount: 0.012 mL
+2025-11-20 11:18:51,021 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:18:51,021 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:18:54,990 - DEBUG - Dispensing 0.053 mL then waiting 0.368627548 s
+2025-11-20 11:18:54,990 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:18:55,772 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:19:01,435 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:19:01,437 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.97mL, measurement(measurement_vial_0)=2.08mL, min_threshold=2.5mL
+2025-11-20 11:19:01,440 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:19:01,440 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:19:01,440 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:19:01,440 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:19:01,440 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:19:01,440 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:19:01,440 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:19:01,440 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:19:01,440 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-11-20 11:19:01,440 - INFO - Pipetting from vial liquid_source_0, amount: 0.012 mL
+2025-11-20 11:19:01,440 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:19:01,445 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:19:01,445 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:19:05,595 - DEBUG - Aspirating 0.017 mL then waiting 1.498713851 s
+2025-11-20 11:19:08,104 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:19:08,485 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.012mL
+2025-11-20 11:19:08,485 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.012mL
+2025-11-20 11:19:08,485 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.012mL
+2025-11-20 11:19:08,485 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.012mL
+2025-11-20 11:19:08,485 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.012mL
+2025-11-20 11:19:08,485 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.012mL
+2025-11-20 11:19:08,485 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.012mL
+2025-11-20 11:19:08,485 - DEBUG - Using calibrated overaspirate_vol=0.0048851090666666664 for water at 0.012mL
+2025-11-20 11:19:08,487 - INFO - Pipetting into vial measurement_vial_0, amount: 0.012 mL
+2025-11-20 11:19:10,631 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:19:10,631 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:19:14,612 - DEBUG - Dispensing 0.053 mL then waiting 0.368627548 s
+2025-11-20 11:19:14,612 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:19:15,310 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:19:19,031 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:19:19,032 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.96mL, measurement(measurement_vial_0)=2.09mL, min_threshold=2.5mL
+2025-11-20 11:19:19,033 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:19:19,035 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.96mL, measurement(measurement_vial_0)=2.09mL, min_threshold=2.5mL
+2025-11-20 11:19:19,039 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:19:19,040 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:19:19,040 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:19:19,040 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:19:19,040 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:19:19,040 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:19:19,040 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:19:19,040 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:19:19,043 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-11-20 11:19:19,044 - INFO - Pipetting from vial liquid_source_0, amount: 0.020 mL
+2025-11-20 11:19:19,044 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:19:19,046 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:19:19,046 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:19:23,235 - DEBUG - Aspirating 0.024 mL then waiting 1.498713851 s
+2025-11-20 11:19:25,772 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:19:26,177 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:19:26,177 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:19:26,177 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:19:26,178 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:19:26,178 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:19:26,178 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:19:26,178 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:19:26,178 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:19:26,179 - INFO - Pipetting into vial measurement_vial_0, amount: 0.020 mL
+2025-11-20 11:19:27,422 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:19:27,422 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:19:31,428 - DEBUG - Dispensing 0.060 mL then waiting 0.368627548 s
+2025-11-20 11:19:32,189 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:19:35,631 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:19:35,631 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.94mL, measurement(measurement_vial_0)=2.11mL, min_threshold=2.5mL
+2025-11-20 11:19:35,637 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:19:35,639 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:19:35,639 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:19:35,639 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:19:35,639 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:19:35,639 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:19:35,639 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:19:35,639 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:19:35,639 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-11-20 11:19:35,641 - INFO - Pipetting from vial liquid_source_0, amount: 0.020 mL
+2025-11-20 11:19:35,641 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:19:35,643 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:19:35,643 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:19:39,790 - DEBUG - Aspirating 0.024 mL then waiting 1.498713851 s
+2025-11-20 11:19:42,347 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:19:42,731 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:19:42,731 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:19:42,731 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:19:42,731 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:19:42,731 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:19:42,731 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:19:42,731 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:19:42,731 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:19:42,731 - INFO - Pipetting into vial measurement_vial_0, amount: 0.020 mL
+2025-11-20 11:19:44,015 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:19:44,015 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:19:48,043 - DEBUG - Dispensing 0.060 mL then waiting 0.368627548 s
+2025-11-20 11:19:48,833 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:19:58,234 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:19:58,234 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.92mL, measurement(measurement_vial_0)=2.13mL, min_threshold=2.5mL
+2025-11-20 11:19:58,238 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:19:58,238 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:19:58,238 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:19:58,238 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:19:58,238 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:19:58,238 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:19:58,238 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:19:58,238 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:19:58,238 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-11-20 11:19:58,238 - INFO - Pipetting from vial liquid_source_0, amount: 0.020 mL
+2025-11-20 11:19:58,238 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:19:58,243 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:19:58,243 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:20:02,390 - DEBUG - Aspirating 0.024 mL then waiting 1.498713851 s
+2025-11-20 11:20:04,925 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:20:05,292 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:20:05,292 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:20:05,292 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:20:05,292 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:20:05,292 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:20:05,292 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:20:05,292 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:20:05,292 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:20:05,292 - INFO - Pipetting into vial measurement_vial_0, amount: 0.020 mL
+2025-11-20 11:20:06,418 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:20:06,418 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:20:10,404 - DEBUG - Dispensing 0.060 mL then waiting 0.368627548 s
+2025-11-20 11:20:11,178 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:20:15,028 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:20:15,028 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.90mL, measurement(measurement_vial_0)=2.15mL, min_threshold=2.5mL
+2025-11-20 11:20:15,028 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:20:15,028 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:20:15,028 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:20:15,028 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:20:15,028 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:20:15,028 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:20:15,028 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:20:15,028 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:20:15,028 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-11-20 11:20:15,028 - INFO - Pipetting from vial liquid_source_0, amount: 0.020 mL
+2025-11-20 11:20:15,028 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:20:15,038 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:20:15,039 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:20:19,233 - DEBUG - Aspirating 0.024 mL then waiting 1.498713851 s
+2025-11-20 11:20:21,802 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:20:22,143 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:20:22,143 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:20:22,143 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:20:22,143 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:20:22,143 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:20:22,143 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:20:22,143 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:20:22,143 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:20:22,143 - INFO - Pipetting into vial measurement_vial_0, amount: 0.020 mL
+2025-11-20 11:20:24,224 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:20:24,224 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:20:28,222 - DEBUG - Dispensing 0.060 mL then waiting 0.368627548 s
+2025-11-20 11:20:29,003 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:20:32,828 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:20:32,828 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.88mL, measurement(measurement_vial_0)=2.17mL, min_threshold=2.5mL
+2025-11-20 11:20:32,828 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:20:32,828 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:20:32,828 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:20:32,828 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:20:32,828 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:20:32,828 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:20:32,828 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:20:32,828 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:20:32,828 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-11-20 11:20:32,839 - INFO - Pipetting from vial liquid_source_0, amount: 0.020 mL
+2025-11-20 11:20:32,839 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:20:32,841 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:20:32,841 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:20:37,009 - DEBUG - Aspirating 0.024 mL then waiting 1.498713851 s
+2025-11-20 11:20:39,573 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-11-20 11:20:39,946 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.020mL
+2025-11-20 11:20:39,946 - DEBUG - Using calibrated dispense_speed=7.0 for water at 0.020mL
+2025-11-20 11:20:39,946 - DEBUG - Using calibrated aspirate_wait_time=1.498713851 for water at 0.020mL
+2025-11-20 11:20:39,946 - DEBUG - Using calibrated dispense_wait_time=0.368627548 for water at 0.020mL
+2025-11-20 11:20:39,946 - DEBUG - Using calibrated retract_speed=8.707314253 for water at 0.020mL
+2025-11-20 11:20:39,946 - DEBUG - Using calibrated blowout_vol=0.153127754 for water at 0.020mL
+2025-11-20 11:20:39,946 - DEBUG - Using calibrated post_asp_air_vol=0.036266738 for water at 0.020mL
+2025-11-20 11:20:39,946 - DEBUG - Using calibrated overaspirate_vol=0.004004425333333334 for water at 0.020mL
+2025-11-20 11:20:39,946 - INFO - Pipetting into vial measurement_vial_0, amount: 0.020 mL
+2025-11-20 11:20:43,034 - DEBUG - Adjusting pump 0 speed to 7.0
+2025-11-20 11:20:43,034 - WARNING - Converting pump speed 7.0 to integer 7
+2025-11-20 11:20:47,048 - DEBUG - Dispensing 0.060 mL then waiting 0.368627548 s
+2025-11-20 11:20:47,820 - DEBUG - Blowing out 0.153 mL
+2025-11-20 11:20:53,031 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:20:53,031 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.86mL, measurement(measurement_vial_0)=2.19mL, min_threshold=2.5mL
+2025-11-20 11:20:53,031 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:20:53,031 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.86mL, measurement(measurement_vial_0)=2.19mL, min_threshold=2.5mL
+2025-11-20 11:20:53,031 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:20:53,031 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:20:53,031 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:20:53,031 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:20:53,031 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:20:53,031 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:20:53,031 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:20:53,031 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:20:53,031 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-11-20 11:20:53,031 - INFO - Pipetting from vial liquid_source_0, amount: 0.040 mL
+2025-11-20 11:20:53,031 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:20:53,046 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:20:53,046 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:20:57,253 - DEBUG - Aspirating 0.044 mL then waiting 0.5994855404 s
+2025-11-20 11:20:58,885 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-11-20 11:20:59,192 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:20:59,192 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:20:59,192 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:20:59,192 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:20:59,192 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:20:59,192 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:20:59,192 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:20:59,192 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:20:59,194 - INFO - Pipetting into vial measurement_vial_0, amount: 0.040 mL
+2025-11-20 11:20:59,429 - DEBUG - Adjusting pump 0 speed to 11.2
+2025-11-20 11:20:59,429 - WARNING - Converting pump speed 11.2 to integer 11
+2025-11-20 11:21:03,447 - DEBUG - Dispensing 0.065 mL then waiting 2.2736821792 s
+2025-11-20 11:21:03,447 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:21:06,224 - DEBUG - Blowing out 0.071 mL
+2025-11-20 11:21:09,230 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:21:09,230 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.82mL, measurement(measurement_vial_0)=2.23mL, min_threshold=2.5mL
+2025-11-20 11:21:09,241 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:21:09,241 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:21:09,241 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:21:09,241 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:21:09,241 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:21:09,241 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:21:09,241 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:21:09,241 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:21:09,241 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-11-20 11:21:09,241 - INFO - Pipetting from vial liquid_source_0, amount: 0.040 mL
+2025-11-20 11:21:09,241 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:21:09,245 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:21:09,245 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:21:13,472 - DEBUG - Aspirating 0.044 mL then waiting 0.5994855404 s
+2025-11-20 11:21:15,183 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-11-20 11:21:15,492 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:21:15,492 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:21:15,492 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:21:15,492 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:21:15,492 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:21:15,492 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:21:15,492 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:21:15,492 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:21:15,492 - INFO - Pipetting into vial measurement_vial_0, amount: 0.040 mL
+2025-11-20 11:21:17,423 - DEBUG - Adjusting pump 0 speed to 11.2
+2025-11-20 11:21:17,423 - WARNING - Converting pump speed 11.2 to integer 11
+2025-11-20 11:21:21,447 - DEBUG - Dispensing 0.065 mL then waiting 2.2736821792 s
+2025-11-20 11:21:21,447 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:21:24,205 - DEBUG - Blowing out 0.071 mL
+2025-11-20 11:21:27,833 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:21:27,833 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.78mL, measurement(measurement_vial_0)=2.27mL, min_threshold=2.5mL
+2025-11-20 11:21:27,833 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:21:27,833 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:21:27,833 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:21:27,833 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:21:27,833 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:21:27,833 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:21:27,833 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:21:27,833 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:21:27,833 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-11-20 11:21:27,833 - INFO - Pipetting from vial liquid_source_0, amount: 0.040 mL
+2025-11-20 11:21:27,833 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:21:27,847 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:21:27,848 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:21:32,042 - DEBUG - Aspirating 0.044 mL then waiting 0.5994855404 s
+2025-11-20 11:21:33,704 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-11-20 11:21:34,035 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:21:34,035 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:21:34,035 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:21:34,035 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:21:34,035 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:21:34,035 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:21:34,035 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:21:34,035 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:21:34,035 - INFO - Pipetting into vial measurement_vial_0, amount: 0.040 mL
+2025-11-20 11:21:36,425 - DEBUG - Adjusting pump 0 speed to 11.2
+2025-11-20 11:21:36,425 - WARNING - Converting pump speed 11.2 to integer 11
+2025-11-20 11:21:40,439 - DEBUG - Dispensing 0.065 mL then waiting 2.2736821792 s
+2025-11-20 11:21:40,439 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:21:43,208 - DEBUG - Blowing out 0.071 mL
+2025-11-20 11:21:46,231 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:21:46,231 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.74mL, measurement(measurement_vial_0)=2.31mL, min_threshold=2.5mL
+2025-11-20 11:21:46,231 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:21:46,231 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:21:46,231 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:21:46,231 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:21:46,231 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:21:46,231 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:21:46,231 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:21:46,231 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:21:46,231 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-11-20 11:21:46,231 - INFO - Pipetting from vial liquid_source_0, amount: 0.040 mL
+2025-11-20 11:21:46,231 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:21:46,243 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:21:46,243 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:21:50,429 - DEBUG - Aspirating 0.044 mL then waiting 0.5994855404 s
+2025-11-20 11:21:52,132 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-11-20 11:21:52,459 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:21:52,459 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:21:52,459 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:21:52,459 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:21:52,459 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:21:52,459 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:21:52,460 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:21:52,460 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:21:52,461 - INFO - Pipetting into vial measurement_vial_0, amount: 0.040 mL
+2025-11-20 11:21:53,634 - DEBUG - Adjusting pump 0 speed to 11.2
+2025-11-20 11:21:53,635 - WARNING - Converting pump speed 11.2 to integer 11
+2025-11-20 11:21:57,633 - DEBUG - Dispensing 0.065 mL then waiting 2.2736821792 s
+2025-11-20 11:21:57,634 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:22:00,383 - DEBUG - Blowing out 0.071 mL
+2025-11-20 11:22:04,434 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:22:04,435 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.70mL, measurement(measurement_vial_0)=2.35mL, min_threshold=2.5mL
+2025-11-20 11:22:04,440 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:22:04,440 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:22:04,440 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:22:04,440 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:22:04,440 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:22:04,440 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:22:04,440 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:22:04,440 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:22:04,441 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-11-20 11:22:04,442 - INFO - Pipetting from vial liquid_source_0, amount: 0.040 mL
+2025-11-20 11:22:04,443 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:22:04,444 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:22:04,444 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:22:08,591 - DEBUG - Aspirating 0.044 mL then waiting 0.5994855404 s
+2025-11-20 11:22:10,285 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-11-20 11:22:10,595 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.040mL
+2025-11-20 11:22:10,595 - DEBUG - Using calibrated dispense_speed=11.2 for water at 0.040mL
+2025-11-20 11:22:10,595 - DEBUG - Using calibrated aspirate_wait_time=0.5994855404 for water at 0.040mL
+2025-11-20 11:22:10,595 - DEBUG - Using calibrated dispense_wait_time=2.2736821792 for water at 0.040mL
+2025-11-20 11:22:10,595 - DEBUG - Using calibrated retract_speed=9.6394137292 for water at 0.040mL
+2025-11-20 11:22:10,595 - DEBUG - Using calibrated blowout_vol=0.0709464404 for water at 0.040mL
+2025-11-20 11:22:10,595 - DEBUG - Using calibrated post_asp_air_vol=0.0208553588 for water at 0.040mL
+2025-11-20 11:22:10,595 - DEBUG - Using calibrated overaspirate_vol=0.004226418200000002 for water at 0.040mL
+2025-11-20 11:22:10,596 - INFO - Pipetting into vial measurement_vial_0, amount: 0.040 mL
+2025-11-20 11:22:10,822 - DEBUG - Adjusting pump 0 speed to 11.2
+2025-11-20 11:22:10,822 - WARNING - Converting pump speed 11.2 to integer 11
+2025-11-20 11:22:14,845 - DEBUG - Dispensing 0.065 mL then waiting 2.2736821792 s
+2025-11-20 11:22:14,845 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:22:17,577 - DEBUG - Blowing out 0.071 mL
+2025-11-20 11:22:22,828 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:22:22,828 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.66mL, measurement(measurement_vial_0)=2.39mL, min_threshold=2.5mL
+2025-11-20 11:22:22,828 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:22:22,828 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.66mL, measurement(measurement_vial_0)=2.39mL, min_threshold=2.5mL
+2025-11-20 11:22:22,828 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.075mL
+2025-11-20 11:22:22,828 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.075mL
+2025-11-20 11:22:22,828 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.075mL
+2025-11-20 11:22:22,828 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.075mL
+2025-11-20 11:22:22,828 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.075mL
+2025-11-20 11:22:22,828 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.075mL
+2025-11-20 11:22:22,828 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.075mL
+2025-11-20 11:22:22,828 - DEBUG - Using calibrated overaspirate_vol=0.004111365000000005 for water at 0.075mL
+2025-11-20 11:22:22,828 - DEBUG - Selected small_tip for volume 0.090 mL
+2025-11-20 11:22:22,828 - INFO - Pipetting from vial liquid_source_0, amount: 0.075 mL
+2025-11-20 11:22:22,828 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:22:22,840 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:22:22,840 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:22:27,048 - DEBUG - Aspirating 0.079 mL then waiting 0.0 s
+2025-11-20 11:22:28,120 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2025-11-20 11:22:28,388 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.075mL
+2025-11-20 11:22:28,388 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.075mL
+2025-11-20 11:22:28,388 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.075mL
+2025-11-20 11:22:28,388 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.075mL
+2025-11-20 11:22:28,388 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.075mL
+2025-11-20 11:22:28,388 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.075mL
+2025-11-20 11:22:28,388 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.075mL
+2025-11-20 11:22:28,388 - DEBUG - Using calibrated overaspirate_vol=0.004111365000000005 for water at 0.075mL
+2025-11-20 11:22:28,389 - INFO - Pipetting into vial measurement_vial_0, amount: 0.075 mL
+2025-11-20 11:22:31,830 - DEBUG - Adjusting pump 0 speed to 14.0
+2025-11-20 11:22:31,830 - WARNING - Converting pump speed 14.0 to integer 14
+2025-11-20 11:22:35,814 - DEBUG - Dispensing 0.090 mL then waiting 3.5437186 s
+2025-11-20 11:22:35,814 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:22:40,203 - DEBUG - Blowing out 0.016 mL
+2025-11-20 11:22:43,238 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:22:43,239 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.58mL, measurement(measurement_vial_0)=2.47mL, min_threshold=2.5mL
+2025-11-20 11:22:43,239 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.075mL
+2025-11-20 11:22:43,239 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.075mL
+2025-11-20 11:22:43,239 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.075mL
+2025-11-20 11:22:43,239 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.075mL
+2025-11-20 11:22:43,239 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.075mL
+2025-11-20 11:22:43,239 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.075mL
+2025-11-20 11:22:43,239 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.075mL
+2025-11-20 11:22:43,239 - DEBUG - Using calibrated overaspirate_vol=0.004111365000000005 for water at 0.075mL
+2025-11-20 11:22:43,239 - DEBUG - Selected small_tip for volume 0.090 mL
+2025-11-20 11:22:43,239 - INFO - Pipetting from vial liquid_source_0, amount: 0.075 mL
+2025-11-20 11:22:43,239 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:22:43,247 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:22:43,247 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:22:47,426 - DEBUG - Aspirating 0.079 mL then waiting 0.0 s
+2025-11-20 11:22:48,498 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2025-11-20 11:22:48,781 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.075mL
+2025-11-20 11:22:48,781 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.075mL
+2025-11-20 11:22:48,781 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.075mL
+2025-11-20 11:22:48,781 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.075mL
+2025-11-20 11:22:48,781 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.075mL
+2025-11-20 11:22:48,781 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.075mL
+2025-11-20 11:22:48,781 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.075mL
+2025-11-20 11:22:48,781 - DEBUG - Using calibrated overaspirate_vol=0.004111365000000005 for water at 0.075mL
+2025-11-20 11:22:48,781 - INFO - Pipetting into vial measurement_vial_0, amount: 0.075 mL
+2025-11-20 11:22:50,033 - DEBUG - Adjusting pump 0 speed to 14.0
+2025-11-20 11:22:50,033 - WARNING - Converting pump speed 14.0 to integer 14
+2025-11-20 11:22:54,048 - DEBUG - Dispensing 0.090 mL then waiting 3.5437186 s
+2025-11-20 11:22:54,048 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:22:58,413 - DEBUG - Blowing out 0.016 mL
+2025-11-20 11:23:01,233 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:23:01,234 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.51mL, measurement(measurement_vial_0)=2.54mL, min_threshold=2.5mL
+2025-11-20 11:23:01,237 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.075mL
+2025-11-20 11:23:01,237 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.075mL
+2025-11-20 11:23:01,237 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.075mL
+2025-11-20 11:23:01,237 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.075mL
+2025-11-20 11:23:01,237 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.075mL
+2025-11-20 11:23:01,237 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.075mL
+2025-11-20 11:23:01,238 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.075mL
+2025-11-20 11:23:01,238 - DEBUG - Using calibrated overaspirate_vol=0.004111365000000005 for water at 0.075mL
+2025-11-20 11:23:01,239 - DEBUG - Selected small_tip for volume 0.090 mL
+2025-11-20 11:23:01,240 - INFO - Pipetting from vial liquid_source_0, amount: 0.075 mL
+2025-11-20 11:23:01,240 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:23:01,241 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:23:01,241 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:23:05,436 - DEBUG - Aspirating 0.079 mL then waiting 0.0 s
+2025-11-20 11:23:06,519 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2025-11-20 11:23:06,832 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.075mL
+2025-11-20 11:23:06,832 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.075mL
+2025-11-20 11:23:06,832 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.075mL
+2025-11-20 11:23:06,832 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.075mL
+2025-11-20 11:23:06,832 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.075mL
+2025-11-20 11:23:06,832 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.075mL
+2025-11-20 11:23:06,832 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.075mL
+2025-11-20 11:23:06,832 - DEBUG - Using calibrated overaspirate_vol=0.004111365000000005 for water at 0.075mL
+2025-11-20 11:23:06,832 - INFO - Pipetting into vial measurement_vial_0, amount: 0.075 mL
+2025-11-20 11:23:07,217 - DEBUG - Adjusting pump 0 speed to 14.0
+2025-11-20 11:23:07,217 - WARNING - Converting pump speed 14.0 to integer 14
+2025-11-20 11:23:11,226 - DEBUG - Dispensing 0.090 mL then waiting 3.5437186 s
+2025-11-20 11:23:11,226 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:23:15,623 - DEBUG - Blowing out 0.016 mL
+2025-11-20 11:23:20,634 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:23:20,635 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=2.43mL, measurement(measurement_vial_0)=2.62mL, min_threshold=2.5mL
+2025-11-20 11:23:20,635 - INFO - Removing pipet
+2025-11-20 11:23:23,946 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 44
+2025-11-20 11:23:23,947 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 44
+2025-11-20 11:23:23,948 - DEBUG - Grabbing vial 1 with index 1
+2025-11-20 11:23:26,396 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 44
+2025-11-20 11:23:30,108 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-20 11:23:30,108 - DEBUG - Grabbing vial 0 with index 0
+2025-11-20 11:23:32,251 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-20 11:23:35,954 - INFO - [swap] Swapped roles: source->measurement_vial_0 measurement->liquid_source_0
+2025-11-20 11:23:35,954 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.075mL
+2025-11-20 11:23:35,954 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.075mL
+2025-11-20 11:23:35,954 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.075mL
+2025-11-20 11:23:35,954 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.075mL
+2025-11-20 11:23:35,954 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.075mL
+2025-11-20 11:23:35,954 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.075mL
+2025-11-20 11:23:35,954 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.075mL
+2025-11-20 11:23:35,954 - DEBUG - Using calibrated overaspirate_vol=0.004111365000000005 for water at 0.075mL
+2025-11-20 11:23:35,954 - DEBUG - Selected small_tip for volume 0.090 mL
+2025-11-20 11:23:35,954 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_1
+2025-11-20 11:23:41,092 - INFO - Pipetting from vial liquid_source_0, amount: 0.075 mL
+2025-11-20 11:23:41,092 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-20 11:23:41,093 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:23:41,093 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:23:44,480 - DEBUG - Aspirating 0.079 mL then waiting 0.0 s
+2025-11-20 11:23:45,595 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2025-11-20 11:23:45,894 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.075mL
+2025-11-20 11:23:45,894 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.075mL
+2025-11-20 11:23:45,894 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.075mL
+2025-11-20 11:23:45,894 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.075mL
+2025-11-20 11:23:45,894 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.075mL
+2025-11-20 11:23:45,894 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.075mL
+2025-11-20 11:23:45,894 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.075mL
+2025-11-20 11:23:45,894 - DEBUG - Using calibrated overaspirate_vol=0.004111365000000005 for water at 0.075mL
+2025-11-20 11:23:45,895 - INFO - Pipetting into vial measurement_vial_0, amount: 0.075 mL
+2025-11-20 11:23:45,896 - DEBUG - Adjusting pump 0 speed to 14.0
+2025-11-20 11:23:45,896 - WARNING - Converting pump speed 14.0 to integer 14
+2025-11-20 11:23:49,726 - DEBUG - Dispensing 0.090 mL then waiting 3.5437186 s
+2025-11-20 11:23:49,727 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:23:54,102 - DEBUG - Blowing out 0.016 mL
+2025-11-20 11:23:55,559 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:23:55,563 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:23:55,563 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:23:55,564 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:23:55,570 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.120mL
+2025-11-20 11:23:55,570 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.120mL
+2025-11-20 11:23:55,570 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.120mL
+2025-11-20 11:23:55,570 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.120mL
+2025-11-20 11:23:55,570 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.120mL
+2025-11-20 11:23:55,570 - DEBUG - Using calibrated blowout_vol=0.032272286 for water at 0.120mL
+2025-11-20 11:23:55,570 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.120mL
+2025-11-20 11:23:55,570 - DEBUG - Using calibrated overaspirate_vol=0.004885335200000007 for water at 0.120mL
+2025-11-20 11:23:55,571 - DEBUG - Selected small_tip for volume 0.135 mL
+2025-11-20 11:23:55,572 - INFO - Pipetting from vial measurement_vial_0, amount: 0.120 mL
+2025-11-20 11:23:55,572 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-20 11:23:55,574 - DEBUG - Adjusting pump 0 speed to 8.0
+2025-11-20 11:23:55,574 - WARNING - Converting pump speed 8.0 to integer 8
+2025-11-20 11:23:58,235 - DEBUG - Aspirating 0.125 mL then waiting 0.0 s
+2025-11-20 11:23:59,498 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2025-11-20 11:23:59,818 - DEBUG - Using calibrated aspirate_speed=8.0 for water at 0.120mL
+2025-11-20 11:23:59,818 - DEBUG - Using calibrated dispense_speed=14.0 for water at 0.120mL
+2025-11-20 11:23:59,818 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.120mL
+2025-11-20 11:23:59,818 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.120mL
+2025-11-20 11:23:59,818 - DEBUG - Using calibrated retract_speed=10.26081338 for water at 0.120mL
+2025-11-20 11:23:59,818 - DEBUG - Using calibrated blowout_vol=0.032272286 for water at 0.120mL
+2025-11-20 11:23:59,818 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.120mL
+2025-11-20 11:23:59,818 - DEBUG - Using calibrated overaspirate_vol=0.004885335200000007 for water at 0.120mL
+2025-11-20 11:23:59,818 - INFO - Pipetting into vial measurement_vial_0, amount: 0.120 mL
+2025-11-20 11:23:59,818 - DEBUG - Adjusting pump 0 speed to 14.0
+2025-11-20 11:23:59,818 - WARNING - Converting pump speed 14.0 to integer 14
+2025-11-20 11:24:02,197 - DEBUG - Dispensing 0.135 mL then waiting 3.5437186 s
+2025-11-20 11:24:02,197 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-20 11:24:06,907 - DEBUG - Blowing out 0.032 mL
+2025-11-20 11:24:09,918 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:09,932 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:09,933 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:09,934 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:09,935 - DEBUG - Selected small_tip for volume 0.008 mL
+2025-11-20 11:24:09,936 - INFO - Pipetting from vial measurement_vial_0, amount: 0.008 mL
+2025-11-20 11:24:09,936 - INFO - Additional volume from calibration, amount: 0.000 mL
+2025-11-20 11:24:09,938 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:12,573 - DEBUG - Aspirating 0.008 mL then waiting 0.0 s
+2025-11-20 11:24:13,526 - INFO - Pipetting into vial measurement_vial_0, amount: 0.008 mL
+2025-11-20 11:24:13,526 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:15,804 - DEBUG - Dispensing 0.008 mL then waiting 0.0 s
+2025-11-20 11:24:16,054 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:16,054 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:16,054 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:16,054 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:16,054 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-11-20 11:24:16,062 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-11-20 11:24:16,062 - INFO - Additional volume from calibration, amount: 0.000 mL
+2025-11-20 11:24:16,063 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:18,610 - DEBUG - Aspirating 0.012 mL then waiting 0.0 s
+2025-11-20 11:24:19,523 - INFO - Pipetting into vial measurement_vial_0, amount: 0.012 mL
+2025-11-20 11:24:19,523 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:21,841 - DEBUG - Dispensing 0.012 mL then waiting 0.0 s
+2025-11-20 11:24:22,061 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:22,061 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:22,061 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:22,061 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:22,061 - DEBUG - Selected small_tip for volume 0.020 mL
+2025-11-20 11:24:22,061 - INFO - Pipetting from vial measurement_vial_0, amount: 0.020 mL
+2025-11-20 11:24:22,061 - INFO - Additional volume from calibration, amount: 0.000 mL
+2025-11-20 11:24:22,073 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:24,627 - DEBUG - Aspirating 0.020 mL then waiting 0.0 s
+2025-11-20 11:24:25,559 - INFO - Pipetting into vial measurement_vial_0, amount: 0.020 mL
+2025-11-20 11:24:25,559 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:27,826 - DEBUG - Dispensing 0.020 mL then waiting 0.0 s
+2025-11-20 11:24:28,128 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:28,128 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:28,128 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:28,128 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:28,128 - DEBUG - Selected small_tip for volume 0.040 mL
+2025-11-20 11:24:28,128 - INFO - Pipetting from vial measurement_vial_0, amount: 0.040 mL
+2025-11-20 11:24:28,128 - INFO - Additional volume from calibration, amount: 0.000 mL
+2025-11-20 11:24:28,137 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:30,678 - DEBUG - Aspirating 0.040 mL then waiting 0.0 s
+2025-11-20 11:24:31,670 - INFO - Pipetting into vial measurement_vial_0, amount: 0.040 mL
+2025-11-20 11:24:31,670 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:33,968 - DEBUG - Dispensing 0.040 mL then waiting 0.0 s
+2025-11-20 11:24:34,281 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:34,284 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:34,285 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:34,286 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:34,287 - DEBUG - Selected small_tip for volume 0.075 mL
+2025-11-20 11:24:34,288 - INFO - Pipetting from vial measurement_vial_0, amount: 0.075 mL
+2025-11-20 11:24:34,288 - INFO - Additional volume from calibration, amount: 0.000 mL
+2025-11-20 11:24:34,289 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:36,830 - DEBUG - Aspirating 0.075 mL then waiting 0.0 s
+2025-11-20 11:24:37,968 - INFO - Pipetting into vial measurement_vial_0, amount: 0.075 mL
+2025-11-20 11:24:37,970 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:40,270 - DEBUG - Dispensing 0.075 mL then waiting 0.0 s
+2025-11-20 11:24:40,717 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:40,717 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:40,717 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-20 11:24:40,717 - INFO - [swap] Pre-swap volumes: source(measurement_vial_0)=2.69mL, measurement(liquid_source_0)=2.36mL, min_threshold=2.5mL
+2025-11-20 11:24:40,717 - DEBUG - Selected small_tip for volume 0.120 mL
+2025-11-20 11:24:40,717 - INFO - Pipetting from vial measurement_vial_0, amount: 0.120 mL
+2025-11-20 11:24:40,717 - INFO - Additional volume from calibration, amount: 0.000 mL
+2025-11-20 11:24:40,726 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:43,277 - DEBUG - Aspirating 0.120 mL then waiting 0.0 s
+2025-11-20 11:24:44,638 - INFO - Pipetting into vial measurement_vial_0, amount: 0.120 mL
+2025-11-20 11:24:44,640 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-20 11:24:46,924 - DEBUG - Dispensing 0.120 mL then waiting 0.0 s

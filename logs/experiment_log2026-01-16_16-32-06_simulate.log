@@ -1,0 +1,2161 @@
+2026-01-16 16:32:06,847 - INFO - Initializing North Robot...
+2026-01-16 16:32:06,847 - DEBUG - Loading robot configuration files...
+2026-01-16 16:32:06,855 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-01-16 16:32:06,855 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-01-16 16:32:06,860 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-01-16 16:32:06,863 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-01-16 16:32:06,873 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-01-16 16:32:06,882 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-01-16 16:32:06,882 - DEBUG - Loading robot state files...
+2026-01-16 16:32:06,886 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
+2026-01-16 16:32:06,886 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-01-16 16:32:06,892 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-01-16 16:32:06,892 - DEBUG - Robot status loaded successfully
+2026-01-16 16:32:06,892 - INFO - Physical initialization of North Robot...
+2026-01-16 16:32:06,894 - DEBUG - Loading pumps from YAML configuration...
+2026-01-16 16:32:06,897 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-01-16 16:32:06,897 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-01-16 16:32:06,897 - WARNING - The robot reports having a vial in the gripper... Returning that vial home...
+2026-01-16 16:32:06,901 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2026-01-16 16:32:06,903 - INFO - Moving robot to home position
+2026-01-16 16:32:06,904 - DEBUG - Initializing centrifuge controller...
+2026-01-16 16:32:06,961 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='2285478609632'>
+2026-01-16 16:32:06,961 - INFO - Initializing North Track...
+2026-01-16 16:32:06,963 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-01-16 16:32:06,963 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-01-16 16:32:06,964 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-01-16 16:32:06,964 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-01-16 16:32:06,967 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-01-16 16:32:06,970 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-01-16 16:32:06,970 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-01-16 16:32:06,970 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-01-16 16:32:06,970 - DEBUG - Moving North Track to home position
+2026-01-16 16:32:06,979 - INFO -     vial_index        vial_name       location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index
+0            0        SDS_stock  main_8mL_rack               0         8.00    True     open      8_mL  main_8mL_rack                    0
+1            1       DTAB_stock  main_8mL_rack               1         8.00    True     open      8_mL  main_8mL_rack                    1
+2            2      pyrene_DMSO  main_8mL_rack               2         5.28    True     open      8_mL  main_8mL_rack                    2
+3            3            water  main_8mL_rack               3         2.00    True     open      8_mL  main_8mL_rack                    3
+4            6   SDS_dilution_0  main_8mL_rack               6         0.00    True     open      8_mL  main_8mL_rack                    6
+5            7   SDS_dilution_1  main_8mL_rack               7         0.00    True     open      8_mL  main_8mL_rack                    7
+6            8   SDS_dilution_2  main_8mL_rack               8         0.00    True     open      8_mL  main_8mL_rack                    8
+7            9   SDS_dilution_3  main_8mL_rack               9         0.00    True     open      8_mL  main_8mL_rack                    9
+8           10   SDS_dilution_4  main_8mL_rack              10         0.00    True     open      8_mL  main_8mL_rack                   10
+9           11   SDS_dilution_5  main_8mL_rack              11         0.00    True     open      8_mL  main_8mL_rack                   11
+10          12  DTAB_dilution_0  main_8mL_rack              12         0.00    True     open      8_mL  main_8mL_rack                   12
+11          13  DTAB_dilution_1  main_8mL_rack              13         0.00    True     open      8_mL  main_8mL_rack                   13
+12          14  DTAB_dilution_2  main_8mL_rack              14         0.00    True     open      8_mL  main_8mL_rack                   14
+13          15  DTAB_dilution_3  main_8mL_rack              15         0.00    True     open      8_mL  main_8mL_rack                   15
+14          16  DTAB_dilution_4  main_8mL_rack              16         0.00    True     open      8_mL  main_8mL_rack                   16
+15          17  DTAB_dilution_5  main_8mL_rack              17         0.00    True     open      8_mL  main_8mL_rack                   17
+2026-01-16 16:32:07,086 - INFO - Visualizing vial racks...
+2026-01-16 16:32:07,131 - DEBUG - Matplotlib backend: tkagg
+2026-01-16 16:32:07,277 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2026-01-16 16:32:07,377 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2026-01-16 16:32:08,821 - DEBUG - Vial visualization displayed successfully
+2026-01-16 16:32:08,821 - INFO - --Wellplate status-- 
+ Wellplate type: 96 WELL PLATE 
+ Number in source: 1 
+ Number in waste: 0 
+ Active wellplate position: None
+2026-01-16 16:32:08,821 - INFO - Visualizing wellplate status...
+2026-01-16 16:32:08,821 - DEBUG - Matplotlib backend: tkagg
+2026-01-16 16:32:09,999 - DEBUG - Wellplate visualization displayed successfully
+2026-01-16 16:32:09,999 - INFO - Getting new wellplate from source stack
+2026-01-16 16:32:10,000 - DEBUG - Calculating well plate stack height for num: 1, wp_type: 96 WELL PLATE, stack: source_stack, operation: grab
+2026-01-16 16:32:10,000 - DEBUG - Getting 1st wellplate from source at 85500
+2026-01-16 16:32:10,000 - INFO - Grabbing wellplate from location: source_stack
+2026-01-16 16:32:10,000 - DEBUG - Opening gripper
+2026-01-16 16:32:10,001 - DEBUG - Closing gripper
+2026-01-16 16:32:10,002 - INFO - Releasing wellplate at location: pipetting_area
+2026-01-16 16:32:10,002 - DEBUG - Opening gripper
+2026-01-16 16:32:10,002 - DEBUG - Moving North Track to home position
+2026-01-16 16:35:18,213 - INFO - Preparing substocks for SDS
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_0 = 1.00e-04 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_1 = 4.67e-04 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_2 = 2.18e-03 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_3 = 1.02e-02 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_4 = 4.74e-02 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_5 = 2.21e-01 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_6 = 1.03e+00 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_7 = 4.82e+00 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: SDS_dilution_8 = 2.25e+01 mM
+2026-01-16 16:35:18,213 - INFO - Preparing substocks for DTAB
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_0 = 1.00e-04 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_1 = 4.67e-04 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_2 = 2.18e-03 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_3 = 1.02e-02 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_4 = 4.74e-02 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_5 = 2.21e-01 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_6 = 1.03e+00 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_7 = 4.82e+00 mM
+2026-01-16 16:35:18,213 - INFO - Simulated dilution: DTAB_dilution_8 = 2.25e+01 mM
+2026-01-16 16:35:18,213 - INFO - Starting grid pipetting: 9x9 grid with 1 replicates each
+2026-01-16 16:35:18,213 - INFO - Grid summary: 81/81 wells achievable (0 skipped due to non-achievable concentrations)
+2026-01-16 16:35:18,225 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,226 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,226 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,226 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,226 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,226 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,226 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,226 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,227 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,228 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,229 - INFO - Moving vial SDS_dilution_0 to clamp: 0
+2026-01-16 16:35:18,229 - DEBUG - Grabbing vial 6 with index 6
+2026-01-16 16:35:18,232 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-01-16 16:35:18,232 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,233 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,233 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_2
+2026-01-16 16:35:18,235 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,235 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,237 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,237 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,239 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,239 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,239 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,240 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,245 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,246 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,246 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,246 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,246 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,246 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,246 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,246 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,246 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,246 - INFO - Transferring 0.090 mL into well #0 of 96 WELL PLATE
+2026-01-16 16:35:18,246 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,247 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,252 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,252 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,252 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,252 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,252 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,252 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,252 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,252 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,253 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,253 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,255 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-01-16 16:35:18,256 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,256 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,257 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,257 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,257 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,257 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,259 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,260 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,260 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,260 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,261 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,261 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,261 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,261 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,261 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,261 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,261 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,261 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,261 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,261 - INFO - Transferring 0.090 mL into well #1 of 96 WELL PLATE
+2026-01-16 16:35:18,261 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,261 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,271 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,271 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,271 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,271 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,271 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,271 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,271 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,271 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,272 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,273 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,273 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-01-16 16:35:18,273 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,273 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,273 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,273 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,273 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,273 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,273 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,273 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,273 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,273 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,279 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,279 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,279 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,279 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,279 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,279 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,279 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,279 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,279 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,279 - INFO - Transferring 0.090 mL into well #2 of 96 WELL PLATE
+2026-01-16 16:35:18,279 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,279 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,286 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,286 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,286 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,286 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,286 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,286 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,286 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,286 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,287 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,287 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,289 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-01-16 16:35:18,289 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,289 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,289 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,289 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,289 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,289 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,289 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,289 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,289 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,289 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,296 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,296 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,296 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,296 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,296 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,296 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,296 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,296 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,296 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,296 - INFO - Transferring 0.090 mL into well #3 of 96 WELL PLATE
+2026-01-16 16:35:18,296 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,296 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,302 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,302 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,302 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,303 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,303 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,303 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,303 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,303 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,304 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,304 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,306 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-01-16 16:35:18,306 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,306 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,308 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,308 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,308 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,308 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,310 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,310 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,311 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,311 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,318 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,318 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,318 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,318 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,319 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,319 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,319 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,319 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,319 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,319 - INFO - Transferring 0.090 mL into well #4 of 96 WELL PLATE
+2026-01-16 16:35:18,320 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,320 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,326 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,326 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,326 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,326 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,326 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,326 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,326 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,326 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,327 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,327 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,329 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-01-16 16:35:18,329 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,329 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,331 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,331 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,331 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,331 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,334 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,334 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,334 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,334 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,340 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,340 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,340 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,340 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,340 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,340 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,340 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,340 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,340 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,340 - INFO - Transferring 0.090 mL into well #5 of 96 WELL PLATE
+2026-01-16 16:35:18,340 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,340 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,345 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,345 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,345 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,346 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,346 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,346 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,346 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,346 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,346 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,347 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,349 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-01-16 16:35:18,349 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,350 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,350 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,350 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,350 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,350 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,352 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,352 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,353 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,353 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,358 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,358 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,358 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,358 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,358 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,358 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,358 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,358 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,358 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,358 - INFO - Transferring 0.090 mL into well #6 of 96 WELL PLATE
+2026-01-16 16:35:18,358 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,359 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,362 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,362 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,362 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,362 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,362 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,362 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,362 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,362 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,362 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,362 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,366 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-01-16 16:35:18,366 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,366 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,367 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,367 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,367 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,367 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,369 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,369 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,369 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,369 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,374 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,374 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,374 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,375 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,375 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,375 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,375 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,375 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,375 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,375 - INFO - Transferring 0.090 mL into well #7 of 96 WELL PLATE
+2026-01-16 16:35:18,375 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,375 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,380 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,380 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,380 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,381 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,381 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,381 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,381 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,381 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,381 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,382 - INFO - Moving vial SDS_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,384 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-01-16 16:35:18,384 - DEBUG - Vial SDS_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,384 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,384 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,386 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,386 - INFO - Pipetting from vial SDS_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,386 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,388 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,388 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,388 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,388 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,391 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,391 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,391 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,391 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,391 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,391 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,391 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,391 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,391 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,391 - INFO - Transferring 0.090 mL into well #8 of 96 WELL PLATE
+2026-01-16 16:35:18,391 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,391 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,391 - INFO - Removing pipet
+2026-01-16 16:35:18,396 - INFO - Returning vial SDS_dilution_0 to home location: main_8mL_rack index 6
+2026-01-16 16:35:18,398 - INFO - Moving vial SDS_dilution_0 to main_8mL_rack: 6
+2026-01-16 16:35:18,398 - DEBUG - Grabbing vial 6 with index 6
+2026-01-16 16:35:18,399 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 6
+2026-01-16 16:35:18,404 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,404 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,404 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,404 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,404 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,404 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,404 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,404 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,405 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,405 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,406 - INFO - Moving vial SDS_dilution_1 to clamp: 0
+2026-01-16 16:35:18,406 - DEBUG - Grabbing vial 7 with index 7
+2026-01-16 16:35:18,406 - DEBUG - Dropping off vial 7 at location clamp with index 0
+2026-01-16 16:35:18,409 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,409 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,409 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_2
+2026-01-16 16:35:18,409 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,409 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,409 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,413 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,414 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,414 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,414 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,414 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,420 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,420 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,420 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,420 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,420 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,420 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,420 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,420 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,420 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,420 - INFO - Transferring 0.090 mL into well #9 of 96 WELL PLATE
+2026-01-16 16:35:18,421 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,421 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,427 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,427 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,427 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,427 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,427 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,427 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,427 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,427 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,429 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,429 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,431 - INFO - Vial 7 already at clamp index 0, no move needed
+2026-01-16 16:35:18,432 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,432 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,433 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,433 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,433 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,433 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,435 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,436 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,436 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,436 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,442 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,442 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,442 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,442 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,442 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,442 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,442 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,442 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,442 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,442 - INFO - Transferring 0.090 mL into well #10 of 96 WELL PLATE
+2026-01-16 16:35:18,442 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,443 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,446 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,446 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,446 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,446 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,446 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,446 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,446 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,446 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,446 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,446 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,450 - INFO - Vial 7 already at clamp index 0, no move needed
+2026-01-16 16:35:18,450 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,450 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,451 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,451 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,452 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,452 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,453 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,453 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,454 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,454 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,459 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,459 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,459 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,459 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,459 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,459 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,459 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,459 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,459 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,459 - INFO - Transferring 0.090 mL into well #11 of 96 WELL PLATE
+2026-01-16 16:35:18,459 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,459 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,464 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,464 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,464 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,464 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,464 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,464 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,464 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,464 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,465 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,465 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,467 - INFO - Vial 7 already at clamp index 0, no move needed
+2026-01-16 16:35:18,468 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,468 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,468 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,469 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,469 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,470 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,471 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,471 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,471 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,471 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,477 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,477 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,477 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,477 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,477 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,477 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,477 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,477 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,477 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,477 - INFO - Transferring 0.090 mL into well #12 of 96 WELL PLATE
+2026-01-16 16:35:18,477 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,477 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,481 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,482 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,482 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,482 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,482 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,482 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,482 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,482 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,482 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,483 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,485 - INFO - Vial 7 already at clamp index 0, no move needed
+2026-01-16 16:35:18,485 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,485 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,486 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,486 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,487 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,487 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,488 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,489 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,489 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,489 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,493 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,494 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,494 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,494 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,494 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,494 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,494 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,494 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,494 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,494 - INFO - Transferring 0.090 mL into well #13 of 96 WELL PLATE
+2026-01-16 16:35:18,494 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,494 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,498 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,498 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,498 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,498 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,498 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,498 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,498 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,498 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,499 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,499 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,501 - INFO - Vial 7 already at clamp index 0, no move needed
+2026-01-16 16:35:18,503 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,503 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,504 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,505 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,505 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,505 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,507 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,507 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,507 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,507 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,511 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,511 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,511 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,511 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,512 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,512 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,512 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,512 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,512 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,512 - INFO - Transferring 0.090 mL into well #14 of 96 WELL PLATE
+2026-01-16 16:35:18,512 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,512 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,517 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,517 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,517 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,518 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,518 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,518 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,518 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,518 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,519 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,520 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,523 - INFO - Vial 7 already at clamp index 0, no move needed
+2026-01-16 16:35:18,523 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,524 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,524 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,524 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,525 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,525 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,526 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,526 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,526 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,527 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,530 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,530 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,530 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,530 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,530 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,530 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,530 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,530 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,530 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,530 - INFO - Transferring 0.090 mL into well #15 of 96 WELL PLATE
+2026-01-16 16:35:18,530 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,530 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,539 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,539 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,539 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,539 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,539 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,539 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,539 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,539 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,540 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,540 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,543 - INFO - Vial 7 already at clamp index 0, no move needed
+2026-01-16 16:35:18,543 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,543 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,545 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,545 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,546 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,546 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,547 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,547 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,549 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,549 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,555 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,555 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,555 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,555 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,555 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,555 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,555 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,555 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,555 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,555 - INFO - Transferring 0.090 mL into well #16 of 96 WELL PLATE
+2026-01-16 16:35:18,555 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,556 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,561 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,561 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,561 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,561 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,561 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,561 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,561 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,561 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,562 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,562 - INFO - Moving vial SDS_dilution_1 to safe pipetting location
+2026-01-16 16:35:18,565 - INFO - Vial 7 already at clamp index 0, no move needed
+2026-01-16 16:35:18,566 - DEBUG - Vial SDS_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:18,566 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,566 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,566 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,567 - INFO - Pipetting from vial SDS_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:18,567 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,569 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,569 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,570 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,570 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,575 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,575 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,575 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,575 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,575 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,575 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,575 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,575 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,575 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,575 - INFO - Transferring 0.090 mL into well #17 of 96 WELL PLATE
+2026-01-16 16:35:18,576 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,576 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,576 - INFO - Removing pipet
+2026-01-16 16:35:18,577 - INFO - Returning vial SDS_dilution_1 to home location: main_8mL_rack index 7
+2026-01-16 16:35:18,579 - INFO - Moving vial SDS_dilution_1 to main_8mL_rack: 7
+2026-01-16 16:35:18,579 - DEBUG - Grabbing vial 7 with index 7
+2026-01-16 16:35:18,580 - DEBUG - Dropping off vial 7 at location main_8mL_rack with index 7
+2026-01-16 16:35:18,586 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,586 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,586 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,586 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,586 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,586 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,586 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,586 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,587 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,587 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,589 - INFO - Moving vial SDS_dilution_2 to clamp: 0
+2026-01-16 16:35:18,589 - DEBUG - Grabbing vial 8 with index 8
+2026-01-16 16:35:18,590 - DEBUG - Dropping off vial 8 at location clamp with index 0
+2026-01-16 16:35:18,591 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,591 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,591 - INFO - Getting small_tip (pipet number 22) from rack: small_tip_rack_2
+2026-01-16 16:35:18,592 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,592 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,592 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,592 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,595 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,595 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,595 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,595 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,599 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,599 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,599 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,599 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,599 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,599 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,599 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,599 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,599 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,599 - INFO - Transferring 0.090 mL into well #18 of 96 WELL PLATE
+2026-01-16 16:35:18,599 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,599 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,606 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,606 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,606 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,606 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,606 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,606 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,606 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,606 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,607 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,608 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,609 - INFO - Vial 8 already at clamp index 0, no move needed
+2026-01-16 16:35:18,609 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,609 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,609 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,609 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,609 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,609 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,612 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,612 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,612 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,612 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,616 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,616 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,616 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,616 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,616 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,616 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,616 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,616 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,616 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,618 - INFO - Transferring 0.090 mL into well #19 of 96 WELL PLATE
+2026-01-16 16:35:18,618 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,618 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,622 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,622 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,624 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,624 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,624 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,624 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,624 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,624 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,624 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,625 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,626 - INFO - Vial 8 already at clamp index 0, no move needed
+2026-01-16 16:35:18,627 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,627 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,627 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,627 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,627 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,629 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,629 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,629 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,631 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,631 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,635 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,635 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,635 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,635 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,635 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,635 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,635 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,635 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,635 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,635 - INFO - Transferring 0.090 mL into well #20 of 96 WELL PLATE
+2026-01-16 16:35:18,635 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,635 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,640 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,640 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,640 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,640 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,640 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,640 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,640 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,640 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,642 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,643 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,645 - INFO - Vial 8 already at clamp index 0, no move needed
+2026-01-16 16:35:18,645 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,645 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,647 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,647 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,647 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,647 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,650 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,650 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,650 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,650 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,657 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,657 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,657 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,657 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,657 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,657 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,657 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,657 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,657 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,657 - INFO - Transferring 0.090 mL into well #21 of 96 WELL PLATE
+2026-01-16 16:35:18,657 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,659 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,659 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,659 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,659 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,659 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,659 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,659 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,659 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,659 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,659 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,659 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,667 - INFO - Vial 8 already at clamp index 0, no move needed
+2026-01-16 16:35:18,667 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,667 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,669 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,669 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,669 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,670 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,671 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,671 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,671 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,671 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,677 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,677 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,677 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,677 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,677 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,677 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,677 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,677 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,677 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,678 - INFO - Transferring 0.090 mL into well #22 of 96 WELL PLATE
+2026-01-16 16:35:18,678 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,678 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,683 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,683 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,683 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,683 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,683 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,683 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,683 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,683 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,683 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,683 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,687 - INFO - Vial 8 already at clamp index 0, no move needed
+2026-01-16 16:35:18,687 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,687 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,688 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,688 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,688 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,688 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,689 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,690 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,690 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,690 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,696 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,697 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,697 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,697 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,697 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,697 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,697 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,697 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,697 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,697 - INFO - Transferring 0.090 mL into well #23 of 96 WELL PLATE
+2026-01-16 16:35:18,697 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,697 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,701 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,703 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,703 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,703 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,703 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,703 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,703 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,703 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,704 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,705 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,706 - INFO - Vial 8 already at clamp index 0, no move needed
+2026-01-16 16:35:18,707 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,707 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,708 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,708 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,708 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,708 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,710 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,710 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,710 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,710 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,713 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,713 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,713 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,713 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,713 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,713 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,713 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,713 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,713 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,713 - INFO - Transferring 0.090 mL into well #24 of 96 WELL PLATE
+2026-01-16 16:35:18,713 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,713 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,720 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,721 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,721 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,721 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,721 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,721 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,721 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,721 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,721 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,722 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,723 - INFO - Vial 8 already at clamp index 0, no move needed
+2026-01-16 16:35:18,723 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,723 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,723 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,723 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,723 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,723 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,723 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,723 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,723 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,723 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,729 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,729 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,729 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,729 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,729 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,729 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,729 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,729 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,729 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,729 - INFO - Transferring 0.090 mL into well #25 of 96 WELL PLATE
+2026-01-16 16:35:18,729 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,729 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,738 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,738 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,738 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,738 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,738 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,738 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,739 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,739 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,740 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,741 - INFO - Moving vial SDS_dilution_2 to safe pipetting location
+2026-01-16 16:35:18,741 - INFO - Vial 8 already at clamp index 0, no move needed
+2026-01-16 16:35:18,741 - DEBUG - Vial SDS_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:18,741 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,743 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,743 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,743 - INFO - Pipetting from vial SDS_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:18,745 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,746 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,746 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,746 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,747 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,751 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,751 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,751 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,751 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,751 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,751 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,751 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,751 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,752 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,752 - INFO - Transferring 0.090 mL into well #26 of 96 WELL PLATE
+2026-01-16 16:35:18,753 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,753 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,753 - INFO - Removing pipet
+2026-01-16 16:35:18,754 - INFO - Returning vial SDS_dilution_2 to home location: main_8mL_rack index 8
+2026-01-16 16:35:18,755 - INFO - Moving vial SDS_dilution_2 to main_8mL_rack: 8
+2026-01-16 16:35:18,755 - DEBUG - Grabbing vial 8 with index 8
+2026-01-16 16:35:18,757 - DEBUG - Dropping off vial 8 at location main_8mL_rack with index 8
+2026-01-16 16:35:18,762 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,762 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,762 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,762 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,762 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,762 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,762 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,762 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,762 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,765 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,766 - INFO - Moving vial SDS_dilution_3 to clamp: 0
+2026-01-16 16:35:18,766 - DEBUG - Grabbing vial 9 with index 9
+2026-01-16 16:35:18,767 - DEBUG - Dropping off vial 9 at location clamp with index 0
+2026-01-16 16:35:18,767 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,767 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,767 - INFO - Getting small_tip (pipet number 23) from rack: small_tip_rack_2
+2026-01-16 16:35:18,767 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,769 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,769 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,769 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,771 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,772 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,772 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,772 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,779 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,779 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,779 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,779 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,779 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,779 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,779 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,779 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,779 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,779 - INFO - Transferring 0.090 mL into well #27 of 96 WELL PLATE
+2026-01-16 16:35:18,779 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,779 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,785 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,785 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,785 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,785 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,785 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,785 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,785 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,785 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,786 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,787 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,789 - INFO - Vial 9 already at clamp index 0, no move needed
+2026-01-16 16:35:18,789 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,789 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,789 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,789 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,789 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,789 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,792 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,792 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,792 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,792 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,796 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,796 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,796 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,796 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,796 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,796 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,796 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,796 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,796 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,796 - INFO - Transferring 0.090 mL into well #28 of 96 WELL PLATE
+2026-01-16 16:35:18,796 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,796 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,800 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,800 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,801 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,801 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,801 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,801 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,801 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,801 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,801 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,802 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,804 - INFO - Vial 9 already at clamp index 0, no move needed
+2026-01-16 16:35:18,805 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,805 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,805 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,805 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,805 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,805 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,809 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,809 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,809 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,809 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,813 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,813 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,813 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,813 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,813 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,813 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,813 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,813 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,813 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,813 - INFO - Transferring 0.090 mL into well #29 of 96 WELL PLATE
+2026-01-16 16:35:18,813 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,813 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,818 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,818 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,818 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,818 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,818 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,818 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,818 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,818 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,819 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,820 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,822 - INFO - Vial 9 already at clamp index 0, no move needed
+2026-01-16 16:35:18,823 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,823 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,823 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,823 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,823 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,823 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,826 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,826 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,826 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,826 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,831 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,831 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,831 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,831 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,831 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,831 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,831 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,831 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,831 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,831 - INFO - Transferring 0.090 mL into well #30 of 96 WELL PLATE
+2026-01-16 16:35:18,831 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,831 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,838 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,838 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,838 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,838 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,838 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,838 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,838 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,838 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,838 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,838 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,840 - INFO - Vial 9 already at clamp index 0, no move needed
+2026-01-16 16:35:18,840 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,840 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,842 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,842 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,842 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,842 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,842 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,842 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,842 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,842 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,842 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,842 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,842 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,842 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,842 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,849 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,849 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,849 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,849 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,849 - INFO - Transferring 0.090 mL into well #31 of 96 WELL PLATE
+2026-01-16 16:35:18,849 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,849 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,855 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,855 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,855 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,855 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,855 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,855 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,855 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,855 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,856 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,856 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,859 - INFO - Vial 9 already at clamp index 0, no move needed
+2026-01-16 16:35:18,859 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,859 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,860 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,860 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,860 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,862 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,863 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,863 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,863 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,863 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,866 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,866 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,866 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,866 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,866 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,866 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,866 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,866 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,866 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,866 - INFO - Transferring 0.090 mL into well #32 of 96 WELL PLATE
+2026-01-16 16:35:18,866 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,866 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,871 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,872 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,872 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,872 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,872 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,872 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,872 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,872 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,872 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,873 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,874 - INFO - Vial 9 already at clamp index 0, no move needed
+2026-01-16 16:35:18,874 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,876 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,876 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,876 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,876 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,876 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,879 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,879 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,879 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,880 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,884 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,884 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,884 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,884 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,884 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,884 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,884 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,884 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,884 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,884 - INFO - Transferring 0.090 mL into well #33 of 96 WELL PLATE
+2026-01-16 16:35:18,884 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,884 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,890 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,890 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,890 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,890 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,890 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,890 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,890 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,890 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,892 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,893 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,896 - INFO - Vial 9 already at clamp index 0, no move needed
+2026-01-16 16:35:18,896 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,896 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,897 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,897 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,898 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,898 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,901 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,901 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,901 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,901 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,907 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,907 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,907 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,908 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,908 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,908 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,908 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,908 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,908 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,908 - INFO - Transferring 0.090 mL into well #34 of 96 WELL PLATE
+2026-01-16 16:35:18,909 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,909 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,915 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,915 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,915 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,915 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,915 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,915 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,915 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,915 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,915 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,916 - INFO - Moving vial SDS_dilution_3 to safe pipetting location
+2026-01-16 16:35:18,918 - INFO - Vial 9 already at clamp index 0, no move needed
+2026-01-16 16:35:18,918 - DEBUG - Vial SDS_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:18,918 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,919 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,919 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,920 - INFO - Pipetting from vial SDS_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:18,920 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,922 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,922 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,923 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,923 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,928 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,928 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,928 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,928 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,928 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,928 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,928 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,928 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,928 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,928 - INFO - Transferring 0.090 mL into well #35 of 96 WELL PLATE
+2026-01-16 16:35:18,929 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,929 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,929 - INFO - Removing pipet
+2026-01-16 16:35:18,931 - INFO - Returning vial SDS_dilution_3 to home location: main_8mL_rack index 9
+2026-01-16 16:35:18,932 - INFO - Moving vial SDS_dilution_3 to main_8mL_rack: 9
+2026-01-16 16:35:18,932 - DEBUG - Grabbing vial 9 with index 9
+2026-01-16 16:35:18,934 - DEBUG - Dropping off vial 9 at location main_8mL_rack with index 9
+2026-01-16 16:35:18,939 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,939 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,939 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,939 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,939 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,939 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,939 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,939 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,940 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,940 - INFO - Moving vial DTAB_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,943 - INFO - Moving vial DTAB_dilution_0 to clamp: 0
+2026-01-16 16:35:18,943 - DEBUG - Grabbing vial 12 with index 12
+2026-01-16 16:35:18,945 - DEBUG - Dropping off vial 12 at location clamp with index 0
+2026-01-16 16:35:18,946 - DEBUG - Vial DTAB_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,946 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,946 - INFO - Getting small_tip (pipet number 24) from rack: small_tip_rack_2
+2026-01-16 16:35:18,948 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,948 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,948 - INFO - Pipetting from vial DTAB_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,949 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,950 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,950 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,950 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,950 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,955 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,957 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,957 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,957 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,957 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,957 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,957 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,957 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,957 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,957 - INFO - Transferring 0.090 mL into well #0 of 96 WELL PLATE
+2026-01-16 16:35:18,958 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,958 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,964 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,964 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,964 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,964 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,964 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,964 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,964 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,964 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,964 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,965 - INFO - Moving vial DTAB_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,966 - INFO - Vial 12 already at clamp index 0, no move needed
+2026-01-16 16:35:18,967 - DEBUG - Vial DTAB_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,967 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,967 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,967 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,969 - INFO - Pipetting from vial DTAB_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,969 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,970 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,970 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,970 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,970 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,977 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,978 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,978 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,978 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,978 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,978 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,978 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,978 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,978 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,978 - INFO - Transferring 0.090 mL into well #9 of 96 WELL PLATE
+2026-01-16 16:35:18,978 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,978 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:18,983 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,983 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,983 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,983 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,983 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,983 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,983 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,983 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,984 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:18,984 - INFO - Moving vial DTAB_dilution_0 to safe pipetting location
+2026-01-16 16:35:18,987 - INFO - Vial 12 already at clamp index 0, no move needed
+2026-01-16 16:35:18,987 - DEBUG - Vial DTAB_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:18,988 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:18,988 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,988 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:18,989 - INFO - Pipetting from vial DTAB_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:18,989 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:18,990 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:18,990 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:18,990 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:18,990 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:18,991 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:18,991 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:18,991 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:18,991 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:18,991 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:18,991 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:18,991 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:18,991 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:18,991 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:18,991 - INFO - Transferring 0.090 mL into well #18 of 96 WELL PLATE
+2026-01-16 16:35:18,991 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:18,991 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,000 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,000 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,001 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,001 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,001 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,001 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,001 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,001 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,001 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,002 - INFO - Moving vial DTAB_dilution_0 to safe pipetting location
+2026-01-16 16:35:19,003 - INFO - Vial 12 already at clamp index 0, no move needed
+2026-01-16 16:35:19,004 - DEBUG - Vial DTAB_dilution_0 has open cap, skipping uncap operation
+2026-01-16 16:35:19,004 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,005 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,005 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,005 - INFO - Pipetting from vial DTAB_dilution_0, amount: 0.090 mL
+2026-01-16 16:35:19,005 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,007 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,007 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,007 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,007 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,014 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,014 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,014 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,014 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,014 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,014 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,014 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,014 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,014 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,014 - INFO - Transferring 0.090 mL into well #27 of 96 WELL PLATE
+2026-01-16 16:35:19,014 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,015 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,015 - INFO - Removing pipet
+2026-01-16 16:35:19,016 - INFO - Returning vial DTAB_dilution_0 to home location: main_8mL_rack index 12
+2026-01-16 16:35:19,016 - INFO - Moving vial DTAB_dilution_0 to main_8mL_rack: 12
+2026-01-16 16:35:19,016 - DEBUG - Grabbing vial 12 with index 12
+2026-01-16 16:35:19,020 - DEBUG - Dropping off vial 12 at location main_8mL_rack with index 12
+2026-01-16 16:35:19,025 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,025 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,026 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,026 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,026 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,026 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,026 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,026 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,027 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,028 - INFO - Moving vial DTAB_dilution_1 to safe pipetting location
+2026-01-16 16:35:19,029 - INFO - Moving vial DTAB_dilution_1 to clamp: 0
+2026-01-16 16:35:19,029 - DEBUG - Grabbing vial 13 with index 13
+2026-01-16 16:35:19,031 - DEBUG - Dropping off vial 13 at location clamp with index 0
+2026-01-16 16:35:19,031 - DEBUG - Vial DTAB_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:19,031 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,031 - INFO - Getting small_tip (pipet number 25) from rack: small_tip_rack_2
+2026-01-16 16:35:19,032 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,032 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,033 - INFO - Pipetting from vial DTAB_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:19,033 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,034 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,034 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,034 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,034 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,041 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,041 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,041 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,041 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,041 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,041 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,041 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,041 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,041 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,041 - INFO - Transferring 0.090 mL into well #1 of 96 WELL PLATE
+2026-01-16 16:35:19,041 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,041 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,047 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,047 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,047 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,047 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,047 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,047 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,047 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,047 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,048 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,049 - INFO - Moving vial DTAB_dilution_1 to safe pipetting location
+2026-01-16 16:35:19,049 - INFO - Vial 13 already at clamp index 0, no move needed
+2026-01-16 16:35:19,049 - DEBUG - Vial DTAB_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:19,049 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,052 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,052 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,052 - INFO - Pipetting from vial DTAB_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:19,052 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,053 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,054 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,054 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,054 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,060 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,060 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,060 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,060 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,060 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,060 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,060 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,060 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,060 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,060 - INFO - Transferring 0.090 mL into well #10 of 96 WELL PLATE
+2026-01-16 16:35:19,061 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,061 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,063 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,063 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,063 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,063 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,063 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,063 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,063 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,063 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,063 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,063 - INFO - Moving vial DTAB_dilution_1 to safe pipetting location
+2026-01-16 16:35:19,069 - INFO - Vial 13 already at clamp index 0, no move needed
+2026-01-16 16:35:19,070 - DEBUG - Vial DTAB_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:19,070 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,071 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,071 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,071 - INFO - Pipetting from vial DTAB_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:19,071 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,074 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,074 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,074 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,074 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,079 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,079 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,079 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,079 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,079 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,079 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,079 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,079 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,079 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,079 - INFO - Transferring 0.090 mL into well #19 of 96 WELL PLATE
+2026-01-16 16:35:19,079 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,079 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,083 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,083 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,083 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,083 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,083 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,083 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,083 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,083 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,084 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,084 - INFO - Moving vial DTAB_dilution_1 to safe pipetting location
+2026-01-16 16:35:19,086 - INFO - Vial 13 already at clamp index 0, no move needed
+2026-01-16 16:35:19,087 - DEBUG - Vial DTAB_dilution_1 has open cap, skipping uncap operation
+2026-01-16 16:35:19,087 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,088 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,089 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,089 - INFO - Pipetting from vial DTAB_dilution_1, amount: 0.090 mL
+2026-01-16 16:35:19,089 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,092 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,092 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,092 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,092 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,096 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,096 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,096 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,096 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,096 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,096 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,096 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,096 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,096 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,096 - INFO - Transferring 0.090 mL into well #28 of 96 WELL PLATE
+2026-01-16 16:35:19,096 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,096 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,096 - INFO - Removing pipet
+2026-01-16 16:35:19,099 - INFO - Returning vial DTAB_dilution_1 to home location: main_8mL_rack index 13
+2026-01-16 16:35:19,100 - INFO - Moving vial DTAB_dilution_1 to main_8mL_rack: 13
+2026-01-16 16:35:19,101 - DEBUG - Grabbing vial 13 with index 13
+2026-01-16 16:35:19,102 - DEBUG - Dropping off vial 13 at location main_8mL_rack with index 13
+2026-01-16 16:35:19,108 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,108 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,108 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,108 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,108 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,108 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,109 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,109 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,109 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,110 - INFO - Moving vial DTAB_dilution_2 to safe pipetting location
+2026-01-16 16:35:19,111 - INFO - Moving vial DTAB_dilution_2 to clamp: 0
+2026-01-16 16:35:19,111 - DEBUG - Grabbing vial 14 with index 14
+2026-01-16 16:35:19,114 - DEBUG - Dropping off vial 14 at location clamp with index 0
+2026-01-16 16:35:19,114 - DEBUG - Vial DTAB_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:19,114 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,114 - INFO - Getting small_tip (pipet number 26) from rack: small_tip_rack_2
+2026-01-16 16:35:19,115 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,115 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,116 - INFO - Pipetting from vial DTAB_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:19,116 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,118 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,118 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,118 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,118 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,125 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,126 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,126 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,126 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,126 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,126 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,126 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,126 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,126 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,126 - INFO - Transferring 0.090 mL into well #2 of 96 WELL PLATE
+2026-01-16 16:35:19,126 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,126 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,130 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,130 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,130 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,130 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,130 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,130 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,130 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,130 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,132 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,133 - INFO - Moving vial DTAB_dilution_2 to safe pipetting location
+2026-01-16 16:35:19,133 - INFO - Vial 14 already at clamp index 0, no move needed
+2026-01-16 16:35:19,133 - DEBUG - Vial DTAB_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:19,133 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,138 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,140 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,141 - INFO - Pipetting from vial DTAB_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:19,141 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,143 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,143 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,144 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,144 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,151 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,151 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,151 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,151 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,151 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,151 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,151 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,151 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,151 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,152 - INFO - Transferring 0.090 mL into well #11 of 96 WELL PLATE
+2026-01-16 16:35:19,152 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,153 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,157 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,157 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,158 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,158 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,158 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,158 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,158 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,158 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,158 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,159 - INFO - Moving vial DTAB_dilution_2 to safe pipetting location
+2026-01-16 16:35:19,160 - INFO - Vial 14 already at clamp index 0, no move needed
+2026-01-16 16:35:19,162 - DEBUG - Vial DTAB_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:19,162 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,162 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,162 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,163 - INFO - Pipetting from vial DTAB_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:19,163 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,165 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,165 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,165 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,165 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,169 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,169 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,169 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,169 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,170 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,170 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,170 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,170 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,170 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,170 - INFO - Transferring 0.090 mL into well #20 of 96 WELL PLATE
+2026-01-16 16:35:19,170 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,171 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,176 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,176 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,176 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,176 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,176 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,176 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,176 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,176 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,177 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,177 - INFO - Moving vial DTAB_dilution_2 to safe pipetting location
+2026-01-16 16:35:19,178 - INFO - Vial 14 already at clamp index 0, no move needed
+2026-01-16 16:35:19,179 - DEBUG - Vial DTAB_dilution_2 has open cap, skipping uncap operation
+2026-01-16 16:35:19,179 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,179 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,179 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,179 - INFO - Pipetting from vial DTAB_dilution_2, amount: 0.090 mL
+2026-01-16 16:35:19,181 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,182 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,182 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,182 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,182 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,186 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,186 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,186 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,186 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,186 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,186 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,186 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,186 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,186 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,186 - INFO - Transferring 0.090 mL into well #29 of 96 WELL PLATE
+2026-01-16 16:35:19,187 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,187 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,187 - INFO - Removing pipet
+2026-01-16 16:35:19,189 - INFO - Returning vial DTAB_dilution_2 to home location: main_8mL_rack index 14
+2026-01-16 16:35:19,191 - INFO - Moving vial DTAB_dilution_2 to main_8mL_rack: 14
+2026-01-16 16:35:19,191 - DEBUG - Grabbing vial 14 with index 14
+2026-01-16 16:35:19,192 - DEBUG - Dropping off vial 14 at location main_8mL_rack with index 14
+2026-01-16 16:35:19,198 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,198 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,198 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,198 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,198 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,198 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,198 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,198 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,199 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,199 - INFO - Moving vial DTAB_dilution_3 to safe pipetting location
+2026-01-16 16:35:19,201 - INFO - Moving vial DTAB_dilution_3 to clamp: 0
+2026-01-16 16:35:19,201 - DEBUG - Grabbing vial 15 with index 15
+2026-01-16 16:35:19,202 - DEBUG - Dropping off vial 15 at location clamp with index 0
+2026-01-16 16:35:19,203 - DEBUG - Vial DTAB_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:19,203 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,203 - INFO - Getting small_tip (pipet number 27) from rack: small_tip_rack_2
+2026-01-16 16:35:19,204 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,204 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,205 - INFO - Pipetting from vial DTAB_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:19,205 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,207 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,207 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,207 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,207 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,211 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,211 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,211 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,211 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,211 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,211 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,211 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,211 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,211 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,213 - INFO - Transferring 0.090 mL into well #3 of 96 WELL PLATE
+2026-01-16 16:35:19,213 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,213 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,218 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,218 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,218 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,218 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,218 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,218 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,218 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,218 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,218 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,218 - INFO - Moving vial DTAB_dilution_3 to safe pipetting location
+2026-01-16 16:35:19,221 - INFO - Vial 15 already at clamp index 0, no move needed
+2026-01-16 16:35:19,222 - DEBUG - Vial DTAB_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:19,222 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,222 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,222 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,222 - INFO - Pipetting from vial DTAB_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:19,222 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,224 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,224 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,224 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,224 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,229 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,229 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,229 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,229 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,229 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,229 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,229 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,229 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,229 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,229 - INFO - Transferring 0.090 mL into well #12 of 96 WELL PLATE
+2026-01-16 16:35:19,229 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,229 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,233 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,233 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,233 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,233 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,233 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,234 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,234 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,234 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,234 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,234 - INFO - Moving vial DTAB_dilution_3 to safe pipetting location
+2026-01-16 16:35:19,236 - INFO - Vial 15 already at clamp index 0, no move needed
+2026-01-16 16:35:19,236 - DEBUG - Vial DTAB_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:19,236 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,238 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,238 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,239 - INFO - Pipetting from vial DTAB_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:19,239 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,239 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,239 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,239 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,239 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,244 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,244 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,244 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,244 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,244 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,244 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,244 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,244 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,244 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,244 - INFO - Transferring 0.090 mL into well #21 of 96 WELL PLATE
+2026-01-16 16:35:19,244 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,244 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,251 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,251 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,251 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,251 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,251 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,251 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,251 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,251 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,251 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,251 - INFO - Moving vial DTAB_dilution_3 to safe pipetting location
+2026-01-16 16:35:19,254 - INFO - Vial 15 already at clamp index 0, no move needed
+2026-01-16 16:35:19,256 - DEBUG - Vial DTAB_dilution_3 has open cap, skipping uncap operation
+2026-01-16 16:35:19,256 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,256 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,256 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,256 - INFO - Pipetting from vial DTAB_dilution_3, amount: 0.090 mL
+2026-01-16 16:35:19,256 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,258 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,258 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,258 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,258 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,261 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,261 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,261 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,261 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,261 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,261 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,261 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,261 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,261 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,261 - INFO - Transferring 0.090 mL into well #30 of 96 WELL PLATE
+2026-01-16 16:35:19,261 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,261 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,261 - INFO - Removing pipet
+2026-01-16 16:35:19,266 - INFO - Returning vial DTAB_dilution_3 to home location: main_8mL_rack index 15
+2026-01-16 16:35:19,267 - INFO - Moving vial DTAB_dilution_3 to main_8mL_rack: 15
+2026-01-16 16:35:19,267 - DEBUG - Grabbing vial 15 with index 15
+2026-01-16 16:35:19,268 - DEBUG - Dropping off vial 15 at location main_8mL_rack with index 15
+2026-01-16 16:35:19,273 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,273 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,273 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,273 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,273 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,273 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,273 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,273 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,273 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,273 - INFO - Moving vial DTAB_dilution_4 to safe pipetting location
+2026-01-16 16:35:19,276 - INFO - Moving vial DTAB_dilution_4 to clamp: 0
+2026-01-16 16:35:19,277 - DEBUG - Grabbing vial 16 with index 16
+2026-01-16 16:35:19,278 - DEBUG - Dropping off vial 16 at location clamp with index 0
+2026-01-16 16:35:19,278 - DEBUG - Vial DTAB_dilution_4 has open cap, skipping uncap operation
+2026-01-16 16:35:19,278 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,278 - INFO - Getting small_tip (pipet number 28) from rack: small_tip_rack_2
+2026-01-16 16:35:19,279 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,279 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,279 - INFO - Pipetting from vial DTAB_dilution_4, amount: 0.090 mL
+2026-01-16 16:35:19,279 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,281 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,281 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,281 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,281 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,284 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,284 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,286 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,286 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,286 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,286 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,286 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,286 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,286 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,286 - INFO - Transferring 0.090 mL into well #4 of 96 WELL PLATE
+2026-01-16 16:35:19,286 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,287 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,291 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,291 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,291 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,291 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,293 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,293 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,293 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,293 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,293 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,294 - INFO - Moving vial DTAB_dilution_4 to safe pipetting location
+2026-01-16 16:35:19,295 - INFO - Vial 16 already at clamp index 0, no move needed
+2026-01-16 16:35:19,295 - DEBUG - Vial DTAB_dilution_4 has open cap, skipping uncap operation
+2026-01-16 16:35:19,295 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,296 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,296 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,296 - INFO - Pipetting from vial DTAB_dilution_4, amount: 0.090 mL
+2026-01-16 16:35:19,296 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,298 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,298 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,298 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,298 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,303 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,303 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,304 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,304 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,304 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,304 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,304 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,304 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,304 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,304 - INFO - Transferring 0.090 mL into well #13 of 96 WELL PLATE
+2026-01-16 16:35:19,304 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,304 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,309 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,309 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,309 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,309 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,309 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,309 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,309 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,309 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,310 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,310 - INFO - Moving vial DTAB_dilution_4 to safe pipetting location
+2026-01-16 16:35:19,311 - INFO - Vial 16 already at clamp index 0, no move needed
+2026-01-16 16:35:19,311 - DEBUG - Vial DTAB_dilution_4 has open cap, skipping uncap operation
+2026-01-16 16:35:19,311 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,313 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,313 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,314 - INFO - Pipetting from vial DTAB_dilution_4, amount: 0.090 mL
+2026-01-16 16:35:19,314 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,316 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,316 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,316 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,316 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,321 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,321 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,321 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,321 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,321 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,321 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,321 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,321 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,321 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,321 - INFO - Transferring 0.090 mL into well #22 of 96 WELL PLATE
+2026-01-16 16:35:19,321 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,322 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,327 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,328 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,328 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,328 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,328 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,328 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,328 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,328 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,328 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,329 - INFO - Moving vial DTAB_dilution_4 to safe pipetting location
+2026-01-16 16:35:19,330 - INFO - Vial 16 already at clamp index 0, no move needed
+2026-01-16 16:35:19,331 - DEBUG - Vial DTAB_dilution_4 has open cap, skipping uncap operation
+2026-01-16 16:35:19,331 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,332 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,332 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,332 - INFO - Pipetting from vial DTAB_dilution_4, amount: 0.090 mL
+2026-01-16 16:35:19,332 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,334 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,334 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,334 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,334 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,339 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,340 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,340 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,340 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,340 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,340 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,340 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,340 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,340 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,340 - INFO - Transferring 0.090 mL into well #31 of 96 WELL PLATE
+2026-01-16 16:35:19,342 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,342 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,342 - INFO - Removing pipet
+2026-01-16 16:35:19,343 - INFO - Returning vial DTAB_dilution_4 to home location: main_8mL_rack index 16
+2026-01-16 16:35:19,345 - INFO - Moving vial DTAB_dilution_4 to main_8mL_rack: 16
+2026-01-16 16:35:19,345 - DEBUG - Grabbing vial 16 with index 16
+2026-01-16 16:35:19,346 - DEBUG - Dropping off vial 16 at location main_8mL_rack with index 16
+2026-01-16 16:35:19,351 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,351 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,351 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,351 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,351 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,351 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,351 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,351 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,352 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,352 - INFO - Moving vial DTAB_dilution_5 to safe pipetting location
+2026-01-16 16:35:19,354 - INFO - Moving vial DTAB_dilution_5 to clamp: 0
+2026-01-16 16:35:19,355 - DEBUG - Grabbing vial 17 with index 17
+2026-01-16 16:35:19,356 - DEBUG - Dropping off vial 17 at location clamp with index 0
+2026-01-16 16:35:19,357 - DEBUG - Vial DTAB_dilution_5 has open cap, skipping uncap operation
+2026-01-16 16:35:19,357 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,357 - INFO - Getting small_tip (pipet number 29) from rack: small_tip_rack_2
+2026-01-16 16:35:19,359 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,359 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,360 - INFO - Pipetting from vial DTAB_dilution_5, amount: 0.090 mL
+2026-01-16 16:35:19,360 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,361 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,361 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,361 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,361 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,365 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,365 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,365 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,365 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,365 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,365 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,365 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,365 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,365 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,365 - INFO - Transferring 0.090 mL into well #5 of 96 WELL PLATE
+2026-01-16 16:35:19,365 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,365 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,372 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,373 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,373 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,373 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,373 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,373 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,373 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,374 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,374 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,375 - INFO - Moving vial DTAB_dilution_5 to safe pipetting location
+2026-01-16 16:35:19,376 - INFO - Vial 17 already at clamp index 0, no move needed
+2026-01-16 16:35:19,376 - DEBUG - Vial DTAB_dilution_5 has open cap, skipping uncap operation
+2026-01-16 16:35:19,376 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,376 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,376 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,379 - INFO - Pipetting from vial DTAB_dilution_5, amount: 0.090 mL
+2026-01-16 16:35:19,380 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,381 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,381 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,381 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,381 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,385 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,385 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,385 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,385 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,385 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,385 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,385 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,385 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,385 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,385 - INFO - Transferring 0.090 mL into well #14 of 96 WELL PLATE
+2026-01-16 16:35:19,385 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,385 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,391 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,391 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,391 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,391 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,391 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,391 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,391 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,391 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,392 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,392 - INFO - Moving vial DTAB_dilution_5 to safe pipetting location
+2026-01-16 16:35:19,394 - INFO - Vial 17 already at clamp index 0, no move needed
+2026-01-16 16:35:19,394 - DEBUG - Vial DTAB_dilution_5 has open cap, skipping uncap operation
+2026-01-16 16:35:19,394 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,395 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,395 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,397 - INFO - Pipetting from vial DTAB_dilution_5, amount: 0.090 mL
+2026-01-16 16:35:19,397 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,398 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,398 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,398 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,398 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,403 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,403 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,403 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,403 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,403 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,403 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,403 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,403 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,403 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,404 - INFO - Transferring 0.090 mL into well #23 of 96 WELL PLATE
+2026-01-16 16:35:19,404 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,404 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,411 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,412 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,412 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,412 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,412 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,412 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,412 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,412 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,412 - DEBUG - Vial move required for pipetting
+2026-01-16 16:35:19,413 - INFO - Moving vial DTAB_dilution_5 to safe pipetting location
+2026-01-16 16:35:19,414 - INFO - Vial 17 already at clamp index 0, no move needed
+2026-01-16 16:35:19,415 - DEBUG - Vial DTAB_dilution_5 has open cap, skipping uncap operation
+2026-01-16 16:35:19,415 - DEBUG - Selected small_tip for volume 0.104 mL
+2026-01-16 16:35:19,415 - ERROR - Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,415 - WARNING - SIMULATION MODE: Would pause for error: Cannot aspirate more volume than in vial
+2026-01-16 16:35:19,415 - INFO - Pipetting from vial DTAB_dilution_5, amount: 0.090 mL
+2026-01-16 16:35:19,415 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-16 16:35:19,419 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-16 16:35:19,419 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-16 16:35:19,419 - DEBUG - Aspirating 0.094 mL then waiting 0.0 s
+2026-01-16 16:35:19,419 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-16 16:35:19,426 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,426 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,426 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,426 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,426 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,426 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,426 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,426 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL
+2026-01-16 16:35:19,426 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-16 16:35:19,427 - INFO - Transferring 0.090 mL into well #32 of 96 WELL PLATE
+2026-01-16 16:35:19,427 - DEBUG - Dispensing 0.104 mL then waiting 3.5437186 s
+2026-01-16 16:35:19,427 - DEBUG - Blowing out 0.016 mL
+2026-01-16 16:35:19,427 - INFO - Removing pipet
+2026-01-16 16:35:19,428 - INFO - Returning vial DTAB_dilution_5 to home location: main_8mL_rack index 17
+2026-01-16 16:35:19,429 - INFO - Moving vial DTAB_dilution_5 to main_8mL_rack: 17
+2026-01-16 16:35:19,430 - DEBUG - Grabbing vial 17 with index 17
+2026-01-16 16:35:19,432 - DEBUG - Dropping off vial 17 at location main_8mL_rack with index 17
+2026-01-16 16:35:19,438 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.090mL
+2026-01-16 16:35:19,438 - DEBUG - Using calibrated dispense_speed=14 for water at 0.090mL
+2026-01-16 16:35:19,438 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.090mL
+2026-01-16 16:35:19,438 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.090mL
+2026-01-16 16:35:19,438 - DEBUG - Using calibrated retract_speed=10 for water at 0.090mL
+2026-01-16 16:35:19,438 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.090mL
+2026-01-16 16:35:19,438 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.090mL
+2026-01-16 16:35:19,438 - DEBUG - Using calibrated overaspirate_vol=0.003733365000000006 for water at 0.090mL

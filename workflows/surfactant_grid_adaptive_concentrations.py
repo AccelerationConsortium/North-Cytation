@@ -41,6 +41,98 @@ from master_usdl_coordinator import Lash_E, flatten_cytation_data
 import slack_agent
 
 # ================================================================================
+# MEASUREMENT DATA HANDLING HELPERS
+# ================================================================================
+
+def save_measurement_csv(measurement_data, measurement_type, output_folder, lash_e, well_indices=None, sequence_info=""):
+    """
+    Standardized CSV saving for all measurement data
+    
+    Args:
+        measurement_data: DataFrame to save
+        measurement_type: str like 'turbidity', 'fluorescence', 'kinetics_timeseries'
+        output_folder: where to save
+        lash_e: coordinator for logging and simulation status
+        well_indices: optional well range for filename
+        sequence_info: optional additional info for filename
+    """
+    if measurement_data is None:
+        return None
+    
+    try:
+        # Build filename with abbreviated components for Windows path limits
+        filename_parts = []
+        
+        # Abbreviate measurement_type to reduce length
+        abbreviated_type = measurement_type.replace("kinetics_single_", "ks_").replace("_turbidity", "_turb").replace("_fluorescence", "_fluor").replace("prep_dmso_turbidity_ratio", "pdtr").replace("prep_turbidity_dmso_ratio", "ptdr").replace("prep_turbidity", "pt")
+        filename_parts.append(abbreviated_type)
+        
+        if sequence_info:
+            filename_parts.append(sequence_info)
+        if well_indices:
+            filename_parts.append(f"w{well_indices[0]}-{well_indices[-1]}")
+        
+        # Shorter timestamp
+        short_timestamp = datetime.now().strftime("%m%d_%H%M%S_%f")[:-3]
+        filename_parts.append(short_timestamp)
+        
+        filename = "_".join(filename_parts) + ".csv"
+        
+        csv_path = os.path.join(output_folder, filename)
+        
+        # Ensure output directory exists (sequence folders already created by workflow)
+        os.makedirs(output_folder, exist_ok=True)
+        measurement_data.to_csv(csv_path, index=True)
+        
+        mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
+        lash_e.logger.info(f"    {mode_label} Saved {measurement_type}: {filename}")
+        return csv_path
+        
+    except Exception as e:
+        lash_e.logger.error(f"    WARNING: Failed to save {measurement_type} CSV: {e}")
+        return None
+
+def merge_measurement_data(measurement_data, target_df, column_mapping, lash_e, operation_description=""):
+    """
+    Standardized data merging with error handling
+    
+    Args:
+        measurement_data: DataFrame with measurement results
+        target_df: DataFrame to update (like dispensed_wells_df)
+        column_mapping: dict mapping source columns to target columns
+                       e.g., {'turbidity_600': 'turbidity_600'}
+        lash_e: coordinator for logging
+        operation_description: description for error messages
+    """
+    if measurement_data is None:
+        return False
+    
+    try:
+        for _, row in measurement_data.iterrows():
+            well_index = row['wellplate_index']
+            mask = target_df['wellplate_index'] == well_index
+            
+            for source_col, target_col in column_mapping.items():
+                if source_col in row:
+                    target_df.loc[mask, target_col] = row[source_col]
+        
+        return True
+        
+    except Exception as e:
+        error_desc = operation_description or "measurement data"
+        lash_e.logger.error(f"  WARNING: Failed to integrate {error_desc}: {e}")
+        lash_e.logger.info(f"  Raw CSV saved, continuing...")
+        return False
+
+def save_and_merge_measurement(measurement_data, measurement_type, target_df, column_mapping, 
+                              output_folder, lash_e, well_indices=None, sequence_info=""):
+    """
+    Combined save + merge operation - the most common pattern
+    """
+    save_measurement_csv(measurement_data, measurement_type, output_folder, lash_e, well_indices, sequence_info)
+    merge_measurement_data(measurement_data, target_df, column_mapping, lash_e, measurement_type)
+
+# ================================================================================
 # WORKFLOW CONFIGURATION MANAGEMENT
 # ================================================================================
 
@@ -56,13 +148,13 @@ SURFACTANT_B = "TTAB"
 EXPERIMENT_TAG = "new_min_conc_plus_1d_cmc_assay"
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
+SIMULATE = False # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
-VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
+VALIDATION_ONLY = True  # Set to True to run only pipetting validation and skip experiment (great for testing)
 
-# WORKFLOW TYPE - Choose one of: 'single', '2_stage', 'iterative', 'kinetics'
-WORKFLOW_TYPE = 'iterative'  # Current active workflow
+# WORKFLOW TYPE - Choose one of: 'single', '2_stage', 'iterative', 'double_iterative', 'kinetics'
+WORKFLOW_TYPE = 'double_iterative'  # Current active workflow
 
 # KINETICS WORKFLOW OPTIONS - Choose measurement sequence:
 # 'prep_turbidity'           = Prep solutions → Measure turbidity
@@ -77,12 +169,16 @@ CMC_CONTROL_POINTS = 8   # Number of concentration points around CMC (6-8 recomm
 # Adaptive grid parameters - concentration ranges adapt to stock concentrations
 MIN_CONC = 10**-2  # 0.01 mM minimum concentration for all surfactants
 NUMBER_CONCENTRATIONS = 9  # Number of concentration steps for solo/2-step workflows
+NUM_SUBSTOCKS = 6  # Number of substock dilutions created per surfactant (4-8 recommended)
 
 ITERATIVE_CONCENTRATIONS = 5  # Number of concentration steps for iterative/adaptive workflows (5x5 grid)
 GRADIENT_SUGGESTIONS_PER_ITERATION = 14  # Number of gradient suggestions per iterative round
 
 # Recommender optimization targets - choose which measurements to optimize 
 OPTIMIZE_METRIC = 'ratio'  # Options: 'turbidity', 'ratio', 'both' (for ratio + turbidity boundaries)
+
+# Recommender algorithm selection
+RECOMMENDER_TYPE = 'bayesian'  # Options: 'delaunay', 'bayesian' - choose algorithm for boundary exploration
 
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
@@ -95,11 +191,26 @@ BUFFER_VOLUME_UL = 20  # uL buffer to add per well
 BUFFER_OPTIONS = ['MES', 'HEPES', 'CAPS']  # Available buffers
 SELECTED_BUFFER = 'MES'  # Choose from BUFFER_OPTIONS
 
+# DOUBLE ITERATIVE WORKFLOW SETTINGS - Configure pairing queue
+PAIRING_QUEUE = [
+    {
+        'SURFACTANT_A': 'SDS',
+        'SURFACTANT_B': 'TTAB',
+        'ADD_BUFFER': False
+    },
+    {
+        'SURFACTANT_A': 'SDS',
+        'SURFACTANT_B': 'DTAB',
+        'ADD_BUFFER': False
+    }
+]
+
 MAX_WELLS = 96 #Wellplate size
 
 # Constants
-FINAL_SUBSTOCK_VOLUME = 6  # mL final volume for each dilution
+FINAL_SUBSTOCK_VOLUME_ML = 6.0  # mL final volume for each substock dilution (reduced from 7.5)
 MINIMUM_PIPETTE_VOLUME = 0.2  # mL (200 uL) - minimum volume for accurate pipetting
+MIN_SUBSTOCK_VOLUME_UL = 200  # Minimum volume for accurate substock preparation
 MEASUREMENT_INTERVAL = 96    # Measure every N wells to prevent evaporation
 
 # Pipetting volume limits (consistent across all functions)
@@ -122,12 +233,6 @@ SURFACTANT_LIBRARY = {
         "category": "anionic",
         "stock_conc": 50,  # mM
         "cmc_mm": 8.6,  # mM (t = 10 min)
-    },
-    "NaDC": {
-        "full_name": "Sodium Docusate", 
-        "category": "anionic",
-        "stock_conc": 25,  # mM
-        "cmc_mm": 5.51,  # mM (t = 10 min)
     },
     "NaC": {
         "full_name": "Sodium Cholate",
@@ -152,6 +257,38 @@ SURFACTANT_LIBRARY = {
         "category": "cationic",
         "stock_conc": 50,  # mM
         "cmc_mm": 3.77,  # mM (t = 10 min)
+    },
+    "DSS": {
+        "full_name": "Docusate Sodium Salt",
+        "category": "anionic",
+        "stock_conc": 25,  # mM
+        "cmc_mm": 5.51, 
+    },
+    "SDBS": {
+        "full_name": "Sodium Dodecylbenzenesulfonate",
+        "category": "anionic", 
+        "stock_conc": 50,  # mM
+    },
+    "NaLS": {
+        "full_name": "N-Lauroylsarcosine Sodium Salt",
+        "category": "anionic",
+        "stock_conc": 50,  # mM
+    },
+    "BDDAC": {
+        "full_name": "Benzyldimethyldodecylammonium Chloride",
+        "category": "cationic",
+        "stock_conc": 50,  # mM
+    },
+    "BZT": {
+        "full_name": "Benzethonium Chloride",
+        "category": "cationic", 
+        "stock_conc": 50,  # mM
+    },
+    "CHAPS": {
+        "full_name": "3-[(Cholamidopropyl) Dimethylammonio]-1-Propanesulfonate",
+        "category": "zwitterionic",
+        "stock_conc": 30,  # mM,
+        "cmc_mm": 6.99
     }
 }
 
@@ -203,6 +340,33 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
         import matplotlib.pyplot as plt
         plt.ioff()  # Turn off interactive mode
         
+        # Pre-validate data for contour plotting to prevent "minvalue/maxvalue" error
+        logger.info("   Validating data for contour plotting...")
+        try:
+            df_check = pd.read_csv(experiment_results_csv)
+            exp_data = df_check[df_check['well_type'] == 'experiment']
+            
+            # Check if we have enough data points and value variation
+            if len(exp_data) < 4:
+                raise ValueError(f"Insufficient data points for contour plotting: {len(exp_data)} < 4")
+            
+            # Check turbidity variation
+            turb_values = exp_data['turbidity_600'].dropna()
+            if len(turb_values) == 0 or turb_values.min() >= turb_values.max():
+                raise ValueError(f"Invalid turbidity range: min={turb_values.min():.3f}, max={turb_values.max():.3f}")
+                
+            # Check ratio variation  
+            ratio_values = exp_data['ratio'].dropna()
+            if len(ratio_values) == 0 or ratio_values.min() >= ratio_values.max():
+                raise ValueError(f"Invalid ratio range: min={ratio_values.min():.3f}, max={ratio_values.max():.3f}")
+            
+            logger.info(f"   Data validation passed: {len(exp_data)} points, turb range [{turb_values.min():.3f}, {turb_values.max():.3f}], ratio range [{ratio_values.min():.3f}, {ratio_values.max():.3f}]")
+            
+        except Exception as validation_error:
+            logger.warning(f"   Data validation failed: {validation_error}")
+            logger.warning("   Skipping contour plot generation due to insufficient data variation")
+            raise validation_error
+        
         from surfactant_contour_simple import create_contour_maps
         
         fig, ax1, ax2, ax3 = create_contour_maps(
@@ -220,6 +384,7 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
     except Exception as e:
         logger.error(f"   [ERROR] Contour plot generation failed: {str(e)}")
         logger.error(f"      File: {experiment_results_csv}")
+        logger.info("   Continuing analysis without contour plots...")
     
     # Run CMC analysis (only if CMC controls are enabled)  
     if ADD_CMC_CONTROLS:
@@ -742,12 +907,7 @@ def backup_measurement_data(lash_e, measurement_entry, plate_number, wells_measu
         backup_filename = f"raw_measurement_plate{plate_number}_wells{wells_measured[0]}-{wells_measured[-1]}_{timestamp}.json"
         backup_path = os.path.join(backup_dir, backup_filename)
         
-        # Skip file saving during simulation
-        if hasattr(lash_e, 'simulate') and lash_e.simulate:
-            lash_e.logger.info(f"    [SIMULATED] Would save backup: {backup_filename}")
-            return
-        
-        # Save raw measurement data
+        # Save raw measurement data (always save, even in simulation)
         backup_data = {
             'measurement_entry': measurement_entry,
             'plate_number': plate_number,
@@ -759,7 +919,8 @@ def backup_measurement_data(lash_e, measurement_entry, plate_number, wells_measu
         with open(backup_path, 'w') as f:
             json.dump(backup_data, f, indent=2, default=str)  # default=str handles datetime objects
         
-        lash_e.logger.info(f"OK Backed up measurement data to: {backup_path}")
+        mode_label = "[SIMULATED]" if (hasattr(lash_e, 'simulate') and lash_e.simulate) else "[HARDWARE]"
+        lash_e.logger.info(f"    {mode_label} Backed up measurement data to: {backup_filename}")
         
     except Exception as e:
         lash_e.logger.info(f"WARNING: Failed to backup measurement data: {e}")
@@ -914,9 +1075,9 @@ class SurfactantSubstockTracker:
         # Check stock solution first
         if surfactant_name in SURFACTANT_LIBRARY:
             stock_conc = SURFACTANT_LIBRARY[surfactant_name]["stock_conc"]
-            # Calculate volume needed for target final concentration in 200 uL well
-            # Final_conc = (stock_conc * vol_needed) / 200 uL
-            # Therefore: vol_needed = (target_conc * 200) / stock_conc
+            # Calculate volume needed for target final concentration in WELL_VOLUME_UL well
+            # Final_conc = (stock_conc * vol_needed) / WELL_VOLUME_UL
+            # Therefore: vol_needed = (target_conc * WELL_VOLUME_UL) / stock_conc
             vol_needed_ul = (target_conc_mm * WELL_VOLUME_UL) / stock_conc
             vol_needed_ml = vol_needed_ul / 1000
             
@@ -970,9 +1131,9 @@ class SurfactantSubstockTracker:
                 if lash_e is not None:
                     current_vial_volume = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
                 else:
-                    current_vial_volume = 6.0  # Conservative default
+                    current_vial_volume = FINAL_SUBSTOCK_VOLUME_ML  # Conservative default
             except:
-                current_vial_volume = 6.0  # Default for simulation/errors
+                current_vial_volume = FINAL_SUBSTOCK_VOLUME_ML  # Default for simulation/errors
             
             # Conservation penalty: penalize high usage from low vials
             if current_vial_volume < conservation_threshold:
@@ -1001,8 +1162,8 @@ class SurfactantSubstockTracker:
         # Target 25 uL volumes for efficient, reusable solutions (configurable)
         target_volume_ul = 25  # Increased from 15 to push volumes higher
         # Calculate concentration needed to achieve target final concentration with target volume
-        # target_conc_mm = (optimal_conc * target_volume_ul) / 200
-        # Therefore: optimal_conc = (target_conc_mm * 200) / target_volume_ul
+        # target_conc_mm = (optimal_conc * target_volume_ul) / WELL_VOLUME_UL
+        # Therefore: optimal_conc = (target_conc_mm * WELL_VOLUME_UL) / target_volume_ul
         optimal_conc = (target_conc_mm * WELL_VOLUME_UL) / target_volume_ul
         
         # Ensure we don't go below minimum pipette volume
@@ -1048,8 +1209,10 @@ class SurfactantSubstockTracker:
         safe_conc = final_conc * 0.8
         return round_to_nice_concentration(safe_conc)
     
-    def add_substock(self, surfactant_name, concentration_mm, volume_ml=6.0):
+    def add_substock(self, surfactant_name, concentration_mm, volume_ml=None):
         """Add a new substock to tracking."""
+        if volume_ml is None:
+            volume_ml = FINAL_SUBSTOCK_VOLUME_ML
         vial_name = f"{surfactant_name}_dilution_{self.next_available_substock}"
         self.substocks[vial_name] = {
             'surfactant_name': surfactant_name,
@@ -1059,7 +1222,7 @@ class SurfactantSubstockTracker:
         self.next_available_substock += 1
         return vial_name
 
-def calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, num_substocks=6, target_volume_ul=25):
+def calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, num_substocks=NUM_SUBSTOCKS, target_volume_ul=25):
     """
     Calculate a systematic dilution series with even decreases to cover the concentration range.
     Can be optimized for target pipetting volumes.
@@ -1118,11 +1281,14 @@ def calculate_systematic_dilution_series(surfactant_name, target_concentrations_
     
     return sorted(rounded_concentrations, reverse=True)
 
-def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations_mm):
+def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations_mm, num_substocks=None):
     """
     Calculate optimal dilution strategy for a surfactant across all target concentrations.
     Uses systematic dilution series for better coverage.
     """
+    if num_substocks is None:
+        num_substocks = NUM_SUBSTOCKS
+    
     tracker = SurfactantSubstockTracker()
     plan = {'substocks_needed': [], 'concentration_map': {}}
     
@@ -1130,7 +1296,7 @@ def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations
     lash_e.logger.info(f"Target concentrations: {[f'{c:.2e}' for c in target_concentrations_mm]} mM")
     
     # Pre-calculate systematic dilution series optimized for 30-40 ╬╝L volumes
-    systematic_series = calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, target_volume_ul=35)
+    systematic_series = calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, num_substocks=num_substocks, target_volume_ul=35)
     lash_e.logger.info(f"Systematic dilution series: {[f'{c:.2g}' for c in systematic_series]} mM")
     
     # Add systematic substocks to tracker
@@ -1165,8 +1331,6 @@ def calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfac
     Calculate the exact dilution recipes for each substock that needs to be created.
     Uses serial dilutions when direct dilution would require volumes < 200 uL.
     """
-    MIN_SUBSTOCK_VOLUME_UL = 200  # Minimum volume for accurate substock preparation
-    FINAL_SUBSTOCK_VOLUME_ML = 7.5
     recipes = []
     
     lash_e.logger.info(f"\n=== SUBSTOCK DILUTION RECIPES ===")
@@ -1763,76 +1927,6 @@ def get_cmc_concentrations_from_controls(cmc_controls, surfactant_name):
                 concentrations.append(conc)
     return concentrations
     
-def measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data, batch_recipes=None):
-    """Measure turbidity for a batch of wells and save data."""
-    from datetime import datetime
-    import os
-    
-    lash_e.logger.info(f"  Measuring turbidity for wells {wells_in_batch[0]}-{wells_in_batch[-1]} (with buffer present)")
-    turbidity_data = measure_turbidity(lash_e, wells_in_batch, batch_recipes, shake_and_wait=True)
-    
-    # Save raw turbidity data to CSV immediately (skip in simulation)
-    turbidity_filename = None
-    if turbidity_data is not None and not lash_e.simulate:
-        experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        turbidity_filename = f"turbidity_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-        turbidity_path = os.path.join("output", experiment_name, "measurement_backups", turbidity_filename)
-        
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(turbidity_path), exist_ok=True)
-        
-        # Save actual DataFrame to CSV
-        turbidity_data.to_csv(turbidity_path, index=True)
-        lash_e.logger.info(f"    Saved raw turbidity data: {turbidity_filename}")
-    
-    # Store turbidity measurement data (keep for compatibility)
-    turbidity_entry = {
-        'plate_number': wellplate_data['current_plate'],
-        'wells_measured': wells_in_batch,
-        'measurement_type': 'turbidity_batch',
-        'data_file': turbidity_filename,
-        'timestamp': datetime.now().isoformat()
-    }
-    wellplate_data['measurements'].append(turbidity_entry)
-    
-    return turbidity_entry, turbidity_data
-
-def measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data, batch_recipes=None):
-    """Measure fluorescence for a batch of wells and save data."""
-    from datetime import datetime
-    import os
-    
-    lash_e.logger.info(f"  Measuring fluorescence for wells {wells_in_batch[0]}-{wells_in_batch[-1]}")
-    fluorescence_data = measure_fluorescence(lash_e, wells_in_batch, batch_recipes, shake_and_wait=True)
-    
-    # Save raw fluorescence data to CSV immediately (skip in simulation)
-    fluorescence_filename = None
-    if fluorescence_data is not None and not lash_e.simulate:
-        experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        fluorescence_filename = f"fluorescence_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-        fluorescence_path = os.path.join("output", experiment_name, "measurement_backups", fluorescence_filename)
-        
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(fluorescence_path), exist_ok=True)
-        
-        # Save actual DataFrame to CSV
-        fluorescence_data.to_csv(fluorescence_path, index=True)
-        lash_e.logger.info(f"    Saved raw fluorescence data: {fluorescence_filename}")
-    
-    # Store fluorescence measurement data (keep for compatibility)
-    fluorescence_entry = {
-        'plate_number': wellplate_data['current_plate'],
-        'wells_measured': wells_in_batch,
-        'measurement_type': 'fluorescence_batch', 
-        'data_file': fluorescence_filename,
-        'timestamp': datetime.now().isoformat()
-    }
-    wellplate_data['measurements'].append(fluorescence_entry)
-    
-    return fluorescence_entry, fluorescence_data
-
 def validate_and_convert_recipe_volumes(batch_df):
     """
     Comprehensive volume validation and type conversion for recipe DataFrames.
@@ -2063,38 +2157,86 @@ def return_water_vial_home(lash_e, vial_name):
     logger.info(f"  Returning {vial_name} -> home")
     lash_e.nr_robot.return_vial_home(vial_name)
 
-def measure_turbidity(lash_e, well_indices, batch_recipes=None, shake_and_wait=True, return_wellplate=True):
-    """Measure turbidity using Cytation plate reader with predefined protocol.
+# =============================================================================
+# ATOMIC MEASUREMENT OPERATIONS (Smart positioning + protocol execution)
+# =============================================================================
+
+def position_wellplate_at_cytation(lash_e):
+    """Smart positioning - only moves wellplate to cytation if not already there."""
+    # Refresh track status to get current position
+    lash_e.nr_track.get_track_status()
+    current_pos = lash_e.nr_track.ACTIVE_WELLPLATE_POSITION
     
-    Args:
-        lash_e: Lash_E coordinator instance
-        well_indices: List of well indices to measure
-        batch_recipes: DataFrame with well recipes for simulation
-        shake_and_wait: If True, run shake protocol before measurement (default True)
-        return_wellplate: If True, return wellplate to active area after measurement (default True)
-    """
-    shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
-    lash_e.logger.info(f"Measuring turbidity in wells {well_indices} ({shake_msg}) using protocol {TURBIDITY_PROTOCOL_FILE}...")
+    if current_pos != 'cytation':
+        lash_e.move_wellplate_to_cytation()
+        lash_e.nr_track.set_wellplate_position('cytation')
+    # If already at cytation, do nothing (idempotent)
+
+def position_wellplate_at_track(lash_e):
+    """Smart positioning - only returns wellplate to track if not already there."""
+    # Refresh track status to get current position
+    lash_e.nr_track.get_track_status()
+    current_pos = lash_e.nr_track.ACTIVE_WELLPLATE_POSITION
+    
+    if current_pos != 'pipetting_area':
+        lash_e.move_wellplate_back_from_cytation()
+        lash_e.nr_track.origin()
+        lash_e.nr_track.set_wellplate_position('pipetting_area')
+    # If already at track, do nothing (idempotent)
+
+def pause_kinetics_measurements(lash_e):
+    """Send carrier out during kinetics wait periods - minimizes evaporation."""
+    lash_e.logger.info("Pausing kinetics measurements - sending carrier out (minimizes evaporation during wait times)...")
+    
+    # Send carrier out
+    lash_e.cytation.CarrierOut()
+    lash_e.logger.info("Carrier sent out - kinetics measurements paused")
+
+def resume_kinetics_measurements(lash_e):
+    """Bring carrier in to resume kinetics measurements."""
+    lash_e.logger.info("Resuming kinetics measurements - bringing carrier in...")
+    
+    # Bring carrier in
+    lash_e.cytation.CarrierIn()
+    lash_e.logger.info("Carrier retrieved - ready for measurements")
+
+def sleep_with_progress(lash_e, total_seconds, target_time_min):
+    """Sleep for specified duration with periodic progress updates every minute."""
+    import time
+    
+    if total_seconds <= 60:
+        # Short wait - no need for progress updates
+        time.sleep(total_seconds)
+        return
+    
+    # Break into 1-minute chunks for longer waits
+    minutes_remaining = int(total_seconds // 60)
+    final_seconds = total_seconds % 60
+    
+    for minute in range(minutes_remaining):
+        time.sleep(60)  # Sleep for 1 minute
+        elapsed_min = minute + 1
+        remaining_min = minutes_remaining - elapsed_min + (1 if final_seconds > 0 else 0)
+        lash_e.logger.info(f"    Progress: {elapsed_min}min elapsed, {remaining_min}min remaining until t={target_time_min:.0f}min measurement")
+    
+    # Sleep any remaining seconds
+    if final_seconds > 0:
+        time.sleep(final_seconds)
+
+def shake_wellplate(lash_e):
+    """Execute shake protocol only - assumes wellplate is at cytation."""
+    if not lash_e.simulate:
+        lash_e.logger.info(f"Running shake protocol: {SHAKE_WAIT_PROTOCOL}")
+        lash_e.cytation.run_protocol(SHAKE_WAIT_PROTOCOL, [0])
+    else:
+        lash_e.logger.info("Shake protocol simulated")
+
+def measure_turbidity_protocol_only(lash_e, well_indices, batch_recipes=None):
+    """Execute turbidity measurement protocol only - assumes wellplate is at cytation."""
+    lash_e.logger.info(f"Running turbidity protocol: {TURBIDITY_PROTOCOL_FILE}")
     
     if not lash_e.simulate:
-        # Move wellplate to cytation
-        lash_e.move_wellplate_to_cytation()
-        
-        # Run shake protocol first (if enabled)
-        if shake_and_wait:
-            lash_e.logger.info(f"Running shake and wait protocol: {SHAKE_WAIT_PROTOCOL}")
-            lash_e.cytation.run_protocol(SHAKE_WAIT_PROTOCOL, [0])
-        else:
-            lash_e.logger.info("Skipping shake protocol (kinetics mode)")
-        
-        # Run turbidity protocol
-        lash_e.logger.info(f"Running turbidity protocol: {TURBIDITY_PROTOCOL_FILE}")
         turbidity_data = lash_e.cytation.run_protocol(TURBIDITY_PROTOCOL_FILE, well_indices)
-        
-        # Return wellplate to active area (if requested)
-        if return_wellplate:
-            lash_e.move_wellplate_back_from_cytation()
-            lash_e.nr_track.origin()
         
         # DEBUG: Show raw data structure
         lash_e.logger.debug(f"TURBIDITY RAW: type = {type(turbidity_data)}")
@@ -2106,14 +2248,12 @@ def measure_turbidity(lash_e, well_indices, batch_recipes=None, shake_and_wait=T
         turbidity_data = flatten_cytation_data(turbidity_data, 'turbidity')
         if turbidity_data is not None:
             lash_e.logger.debug(f"TURBIDITY PROCESSED: shape = {turbidity_data.shape}, columns = {list(turbidity_data.columns)}")
-        
+            
         lash_e.logger.info(f"Successfully measured turbidity for {len(well_indices)} wells")
         return turbidity_data
-
     else:
+        # Simulation mode - generate realistic turbidity data
         lash_e.logger.info("Simulation mode - generating realistic turbidity data")
-        
-        # Use passed batch recipe data for simulation
         simulated_data = []
         
         for well_idx in well_indices:
@@ -2138,54 +2278,26 @@ def measure_turbidity(lash_e, well_indices, batch_recipes=None, shake_and_wait=T
                         simulated_data.append(0.35)  # Other controls
                 else:
                     # Well not found in recipe - use simple pattern
-                    simulated_data.append(0.25 + 0.1 * (well_idx % 5) / 5.0)
+                    simulated_data.append(0.05 + (well_idx * 0.01) % 0.50)
             else:
-                # No recipe available - use simple pattern
-                simulated_data.append(0.25 + 0.1 * (well_idx % 5) / 5.0)
+                # No recipe provided - use simple pattern
+                simulated_data.append(0.05 + (well_idx * 0.01) % 0.50)
         
-        lash_e.logger.info(f"Generated realistic turbidity data for {len(well_indices)} wells (range: {min(simulated_data):.3f}-{max(simulated_data):.3f})")
-        
-        # Return DataFrame format to match hardware mode (after flatten_cytation_data processing)
+        # Create realistic DataFrame format
         turbidity_df = pd.DataFrame({
             'wellplate_index': well_indices,
             'turbidity_600': simulated_data
         })
+        
+        lash_e.logger.info(f"Successfully simulated turbidity for {len(well_indices)} wells")
         return turbidity_df
 
-def measure_fluorescence(lash_e, well_indices, batch_recipes=None, shake_and_wait=True, return_wellplate=True):
-    """Measure fluorescence using Cytation plate reader with predefined protocol.
-    
-    Args:
-        lash_e: Lash_E coordinator instance
-        well_indices: List of well indices to measure
-        batch_recipes: DataFrame with well recipes for simulation
-        shake_and_wait: If True, run shake protocol before measurement (default True)
-        return_wellplate: If True, return wellplate to active area after measurement (default True)
-    """
-    shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
-    lash_e.logger.info(f"Measuring fluorescence in wells {well_indices} ({shake_msg}) using protocol {FLUORESCENCE_PROTOCOL_FILE}...")
+def measure_fluorescence_protocol_only(lash_e, well_indices, batch_recipes=None):
+    """Execute fluorescence measurement protocol only - assumes wellplate is at cytation."""
+    lash_e.logger.info(f"Running fluorescence protocol: {FLUORESCENCE_PROTOCOL_FILE}")
     
     if not lash_e.simulate:
-        # Move wellplate to cytation
-        lash_e.move_wellplate_to_cytation()
-        
-        # Run shake protocol first (if enabled)
-        if shake_and_wait:
-            lash_e.logger.info(f"Running shake and wait protocol: {SHAKE_WAIT_PROTOCOL}")
-            lash_e.cytation.run_protocol(SHAKE_WAIT_PROTOCOL, [0])
-        else:
-            lash_e.logger.info("Skipping shake protocol (kinetics mode)")
-        
-        # Run fluorescence protocol
-        lash_e.logger.info(f"Running fluorescence protocol: {FLUORESCENCE_PROTOCOL_FILE}")
         fluorescence_data = lash_e.cytation.run_protocol(FLUORESCENCE_PROTOCOL_FILE, well_indices)
-        
-        # Return wellplate to active area (if requested)
-        if return_wellplate:
-            lash_e.move_wellplate_back_from_cytation()
-            lash_e.nr_track.origin()
-        else:
-            lash_e.logger.info("Leaving wellplate at cytation for repeated measurements...")
         
         # DEBUG: Show raw data structure
         lash_e.logger.debug(f"FLUORESCENCE RAW: type = {type(fluorescence_data)}")
@@ -2208,23 +2320,17 @@ def measure_fluorescence(lash_e, well_indices, batch_recipes=None, shake_and_wai
             
             # Rename columns to match kinetics workflow expectations
             if '334_373' in fluorescence_data.columns:
-                fluorescence_data = fluorescence_data.rename(columns={'334_373': 'fluorescence_334_373'})
+                fluorescence_data.rename(columns={'334_373': 'fluorescence_334_373'}, inplace=True)
             if '334_384' in fluorescence_data.columns:
-                fluorescence_data = fluorescence_data.rename(columns={'334_384': 'fluorescence_334_384'})
-            
-            # Calculate ratio (I3/I1 = F373/F384 for pyrene CMC determination) 
-            if 'fluorescence_334_373' in fluorescence_data.columns and 'fluorescence_334_384' in fluorescence_data.columns:
-                fluorescence_data['ratio'] = fluorescence_data['fluorescence_334_373'] / fluorescence_data['fluorescence_334_384']
+                fluorescence_data.rename(columns={'334_384': 'fluorescence_334_384'}, inplace=True)
         
         lash_e.logger.info(f"Successfully measured fluorescence for {len(well_indices)} wells")
         return fluorescence_data
-
     else:
+        # Simulation mode - generate realistic fluorescence data
         lash_e.logger.info("Simulation mode - generating realistic fluorescence data")
-        
-        # Use passed batch recipe data for simulation
-        f373_data = []
-        f384_data = []
+        simulated_373 = []
+        simulated_384 = []
         
         for well_idx in well_indices:
             # Try to find recipe for this well
@@ -2233,53 +2339,115 @@ def measure_fluorescence(lash_e, well_indices, batch_recipes=None, shake_and_wai
                 if len(well_recipe) > 0:
                     row = well_recipe.iloc[0]
                     
-                    # Experiment wells: use sophisticated simulation
+                    # Experiment wells: use sophisticated simulation  
                     if (row['well_type'] == 'experiment' and 
                         pd.notna(row['surf_A_conc_mm']) and pd.notna(row['surf_B_conc_mm'])):
                         surf_a_conc = row['surf_A_conc_mm']
                         surf_b_conc = row['surf_B_conc_mm']
                         sim_result = simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True)
-                        f373_data.append(sim_result['fluorescence_334_373'])
-                        f384_data.append(sim_result['fluorescence_334_384'])
+                        simulated_373.append(sim_result['fluorescence_334_373'])
+                        simulated_384.append(sim_result['fluorescence_334_384'])
                         
                     # Control wells: simple baseline values
                     elif 'water' in str(row['control_type']).lower():
-                        f373_data.append(5.0)   # Water blank
-                        f384_data.append(8.0)
+                        simulated_373.append(800)   # Water blank fluorescence
+                        simulated_384.append(1200)
                     else:
-                        f373_data.append(70.0)  # Other controls
-                        f384_data.append(90.0)
+                        simulated_373.append(1500)  # Other controls
+                        simulated_384.append(2200)
                 else:
                     # Well not found in recipe - use simple pattern
-                    f373_data.append(70.0 + 20.0 * (well_idx % 7) / 7.0)
-                    f384_data.append(90.0 + 15.0 * (well_idx % 7) / 7.0)
+                    simulated_373.append(800 + (well_idx * 50) % 2000)
+                    simulated_384.append(1200 + (well_idx * 75) % 3000)
             else:
-                # No recipe available - use simple pattern
-                f373_data.append(70.0 + 20.0 * (well_idx % 7) / 7.0)
-                f384_data.append(90.0 + 15.0 * (well_idx % 7) / 7.0)
+                # No recipe provided - use simple pattern
+                simulated_373.append(800 + (well_idx * 50) % 2000)
+                simulated_384.append(1200 + (well_idx * 75) % 3000)
         
-        lash_e.logger.info(f"Generated realistic fluorescence data for {len(well_indices)} wells")
-        lash_e.logger.info(f"  F373 range: {min(f373_data):.1f}-{max(f373_data):.1f}")
-        lash_e.logger.info(f"  F384 range: {min(f384_data):.1f}-{max(f384_data):.1f}")
-        
-        # Calculate ratio (I3/I1 = F373/F384 for pyrene CMC determination)
-        ratio_data = [f373/f384 for f373, f384 in zip(f373_data, f384_data)]
-        
-        # Return DataFrame format to match hardware mode (after flatten_cytation_data processing)
-        # Use column names expected by kinetics workflow
+        # Create realistic DataFrame format with ratio calculation
         fluorescence_df = pd.DataFrame({
             'wellplate_index': well_indices,
-            'fluorescence_334_373': f373_data,
-            'fluorescence_334_384': f384_data,
-            'ratio': ratio_data
+            'fluorescence_334_373': simulated_373,
+            'fluorescence_334_384': simulated_384
         })
+        
+        # Calculate ratio (I334_373 / I334_384)
+        fluorescence_df['ratio'] = fluorescence_df['fluorescence_334_373'] / fluorescence_df['fluorescence_334_384']
+        
+        lash_e.logger.info(f"Successfully simulated fluorescence for {len(well_indices)} wells")
         return fluorescence_df
+
+# =============================================================================
+# HIGH-LEVEL MEASUREMENT FUNCTIONS (Composed from atomic operations)
+# =============================================================================
+
+def measure_turbidity(lash_e, well_indices, batch_recipes=None, shake_and_wait=True, return_wellplate=True):
+    """Measure turbidity using Cytation plate reader with atomic operations.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        well_indices: List of well indices to measure
+        batch_recipes: DataFrame with well recipes for simulation
+        shake_and_wait: If True, run shake protocol before measurement (default True)
+        return_wellplate: If True, return wellplate to active area after measurement (default True)
+    """
+    shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
+    lash_e.logger.info(f"Measuring turbidity in wells {well_indices} ({shake_msg}) using atomic operations...")
+    
+    # Step 1: Smart positioning (only moves if needed)
+    position_wellplate_at_cytation(lash_e)
+    
+    # Step 2: Optional shake protocol
+    if shake_and_wait:
+        shake_wellplate(lash_e)
+    else:
+        lash_e.logger.info("Skipping shake protocol (kinetics mode)")
+    
+    # Step 3: Execute measurement protocol
+    turbidity_data = measure_turbidity_protocol_only(lash_e, well_indices, batch_recipes)
+    
+    # Step 4: Smart return (only moves if requested and not already there)
+    if return_wellplate:
+        position_wellplate_at_track(lash_e)
+    
+    return turbidity_data
+
+def measure_fluorescence(lash_e, well_indices, batch_recipes=None, shake_and_wait=True, return_wellplate=True):
+    """Measure fluorescence using Cytation plate reader with atomic operations.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        well_indices: List of well indices to measure
+        batch_recipes: DataFrame with well recipes for simulation
+        shake_and_wait: If True, run shake protocol before measurement (default True)
+        return_wellplate: If True, return wellplate to active area after measurement (default True)
+    """
+    shake_msg = "with shake protocol" if shake_and_wait else "without shake protocol"
+    lash_e.logger.info(f"Measuring fluorescence in wells {well_indices} ({shake_msg}) using atomic operations...")
+    
+    # Step 1: Smart positioning (only moves if needed)
+    position_wellplate_at_cytation(lash_e)
+    
+    # Step 2: Optional shake protocol
+    if shake_and_wait:
+        shake_wellplate(lash_e)
+    else:
+        lash_e.logger.info("Skipping shake protocol (kinetics mode)")
+    
+    # Step 3: Execute measurement protocol
+    fluorescence_data = measure_fluorescence_protocol_only(lash_e, well_indices, batch_recipes)
+    
+    # Step 4: Smart return (only moves if requested and not already there)
+    if return_wellplate:
+        position_wellplate_at_track(lash_e)
+    else:
+        lash_e.logger.info("Leaving wellplate at cytation for repeated measurements...")
+    
+    return fluorescence_data
 
 # ================================================================================
 # SECTION 6: FULL WORKFLOW EXECUTION WITH LASH_E INTEGRATION
 # ================================================================================
-
-
 
 def create_experiment_folder_structure(experiment_name):
     """
@@ -2448,11 +2616,14 @@ def create_well_recipe_from_concentrations(conc_a, conc_b, plan_a, plan_b, well_
 
 def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name,
                                   surf_a_min=None, surf_a_max=None, surf_b_min=None, surf_b_max=None, 
-                                  existing_stock_solutions=None, number_concentrations=9):
-    """
+                                  existing_stock_solutions=None, number_concentrations=9, num_substocks=None):
+    """  
     Create complete experiment plan with simplified, clear data structure.
     Returns: experiment_plan dict with surfactants, stock_solutions_needed, and well_recipes_df
     """
+    if num_substocks is None:
+        num_substocks = NUM_SUBSTOCKS
+        
     lash_e.logger.info("Step 2: Creating complete experiment plan...")
     
     # Step 1: Calculate concentration grids (with optional custom bounds)
@@ -2491,8 +2662,8 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         tracker_b = None
     else:
         lash_e.logger.info("  Calculating optimal dilution strategies...")
-        plan_a, tracker_a = calculate_smart_dilution_plan(lash_e, surfactant_a_name, achievable_concs_a)
-        plan_b, tracker_b = calculate_smart_dilution_plan(lash_e, surfactant_b_name, achievable_concs_b)
+        plan_a, tracker_a = calculate_smart_dilution_plan(lash_e, surfactant_a_name, achievable_concs_a, num_substocks)
+        plan_b, tracker_b = calculate_smart_dilution_plan(lash_e, surfactant_b_name, achievable_concs_b, num_substocks)
     
     # Step 4: Create stock solutions list with dilution recipes
     stock_solutions_needed = []
@@ -2625,15 +2796,21 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     os.makedirs(experiment_output_folder, exist_ok=True)
     
     # Save well recipes to CSV - directly in experiment folder  
-    recipes_csv_path = os.path.join(experiment_output_folder, "experiment_plan_well_recipes.csv")
-    well_recipes_df.to_csv(recipes_csv_path, index=False)
-    lash_e.logger.info(f"  Saved experiment plan: {recipes_csv_path}")
+    try:
+        recipes_csv_path = os.path.join(experiment_output_folder, "experiment_plan_well_recipes.csv")
+        well_recipes_df.to_csv(recipes_csv_path, index=False)
+        lash_e.logger.info(f"  Saved experiment plan: {recipes_csv_path}")
+    except Exception as e:
+        lash_e.logger.error(f"  WARNING: Failed to save experiment plan CSV: {e}")
     
     # Save stock solutions to CSV - directly in experiment folder
-    stocks_csv_path = os.path.join(experiment_output_folder, "experiment_plan_stock_solutions.csv")
-    stocks_df = pd.DataFrame(stock_solutions_needed)
-    stocks_df.to_csv(stocks_csv_path, index=False)
-    lash_e.logger.info(f"  Saved stock solutions plan: {stocks_csv_path}")
+    try:
+        stocks_csv_path = os.path.join(experiment_output_folder, "experiment_plan_stock_solutions.csv")
+        stocks_df = pd.DataFrame(stock_solutions_needed)
+        stocks_df.to_csv(stocks_csv_path, index=False)
+        lash_e.logger.info(f"  Saved stock solutions plan: {stocks_csv_path}")
+    except Exception as e:
+        lash_e.logger.error(f"  WARNING: Failed to save stock solutions CSV: {e}")
     
     # Calculate total control wells (start controls + CMC controls if enabled)
     total_controls = len(start_controls)
@@ -2649,7 +2826,7 @@ def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, s
     """Initialize experiment environment: create folders, set name, log header."""
     # Create experiment name with timestamp
     experiment_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}_{EXPERIMENT_TAG}"
+    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}"
     lash_e.current_experiment_name = experiment_name  # Store for access by other functions
     
     # Create organized experiment folder structure
@@ -2671,33 +2848,18 @@ def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, s
     
     return experiment_output_folder, experiment_name
 
-def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_enabled=True):
+def execute_dispensing(lash_e, well_recipes_df):
     """
-    Execute dispensing and measurement phases for arbitrary well recipe data.
+    Execute dispensing phase for well recipes.
     
     Args:
         lash_e: Lash_E coordinator instance
         well_recipes_df: DataFrame with well recipes containing volume columns
-        measurements_enabled: If True, perform measurements; if False, dispensing only
         
     Returns:
-        DataFrame: Updated well_recipes_df with measurement data added (if measurements_enabled)
+        DataFrame: Updated well_recipes_df after dispensing
     """
-    lash_e.logger.info("Executing dispensing and measurements...")
-    
-    # Initialize wellplate tracking for measurements
-    wellplate_data = {
-        'current_plate': 1,
-        'wells_used': 0,
-        'last_measured_well': -1,
-        'measurements': []
-    }
-    
-    # Initialize measurement columns in the DataFrame
-    well_recipes_df['turbidity_600'] = None
-    well_recipes_df['fluorescence_334_373'] = None 
-    well_recipes_df['fluorescence_334_384'] = None
-    well_recipes_df['ratio'] = None
+    lash_e.logger.info("Executing dispensing...")
     
     # Process in batches to match measurement intervals
     total_wells = len(well_recipes_df)
@@ -2772,17 +2934,83 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
                 lash_e.nr_robot.remove_pipet()
                 return_surfactant_vials_home(lash_e, sorted_surf_b_vials, 'B')
         
-        # MEASUREMENT PHASE: Turbidity first
+    
+    return well_recipes_df
+
+def measure_and_process_turbidity(lash_e, well_recipes_df, shake_and_wait=True):
+    """
+    Measure turbidity and integrate data into DataFrame.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        well_recipes_df: DataFrame with dispensed well recipes
+        shake_and_wait: If True, run shake protocol before measurements
+        
+    Returns:
+        DataFrame: Updated well_recipes_df with turbidity data
+    """
+    lash_e.logger.info(f"Measuring and processing turbidity (shake_and_wait={shake_and_wait})...")
+    
+    # Initialize wellplate tracking for measurements
+    wellplate_data = {
+        'current_plate': 1,
+        'wells_used': 0,
+        'last_measured_well': -1,
+        'measurements': []
+    }
+    
+    # Initialize turbidity column in the DataFrame
+    if 'turbidity_600' not in well_recipes_df.columns:
+        well_recipes_df['turbidity_600'] = None
+    
+    # Process in batches to match measurement intervals
+    total_wells = len(well_recipes_df)
+    lash_e.logger.info(f"Total wells to measure turbidity: {total_wells}")
+    
+    for batch_start in range(0, total_wells, MEASUREMENT_INTERVAL):
+        batch_end = min(batch_start + MEASUREMENT_INTERVAL, total_wells)
+        batch_df = well_recipes_df.iloc[batch_start:batch_end]
+        
+        lash_e.logger.info(f"\\nMeasuring turbidity batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {batch_start}-{batch_end-1}")
+        
         wells_in_batch = batch_df['wellplate_index'].tolist()
         
+        # Measure turbidity
         lash_e.logger.info("  Measuring turbidity...")
-        turbidity_entry, turbidity_data = measure_wellplate_turbidity(lash_e, wells_in_batch, wellplate_data, batch_df)
+        turbidity_data = measure_turbidity(lash_e, wells_in_batch, batch_df, shake_and_wait=shake_and_wait, return_wellplate=False)
         
-        # DEBUG: Show what turbidity data we got
-        lash_e.logger.debug(f"Turbidity measured for {len(wells_in_batch)} wells")
-        
-        # Add turbidity data to DataFrame by well position mapping
+        # Save and integrate turbidity data
         if turbidity_data is not None:
+            # Save raw turbidity data to CSV immediately (always save, even in simulation)
+            turbidity_filename = None  # Initialize to avoid undefined variable
+            try:
+                from datetime import datetime
+                import os
+                experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+                turbidity_filename = f"turbidity_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
+                turbidity_path = os.path.join("output", experiment_name, "measurement_backups", turbidity_filename)
+                
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(turbidity_path), exist_ok=True)
+                
+                # Save actual DataFrame to CSV
+                turbidity_data.to_csv(turbidity_path, index=True)
+                mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
+                lash_e.logger.info(f"    {mode_label} Saved raw turbidity data: {turbidity_filename}")
+            except Exception as e:
+                lash_e.logger.error(f"    WARNING: Failed to save turbidity CSV: {e}")
+                # Continue workflow even if CSV save fails
+            
+            # Store turbidity measurement data
+            turbidity_entry = {
+                'plate_number': wellplate_data['current_plate'],
+                'wells_measured': wells_in_batch,
+                'measurement_type': 'turbidity_batch',
+                'data_file': turbidity_filename if turbidity_filename else None,
+                'timestamp': datetime.now().isoformat()
+            }
+            wellplate_data['measurements'].append(turbidity_entry)
             if not lash_e.simulate:
                 # Hardware mode - turbidity_data is a DataFrame with well_position column
                 if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0 and 'well_position' in turbidity_data.columns:
@@ -2811,37 +3039,127 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
                 else:
                     lash_e.logger.warning("  Turbidity data missing or has unexpected format")
             else:
-                # Simulation mode - realistic concentration-based values
-                for i, well_idx in enumerate(wells_in_batch):
-                    # Get concentrations for this well
-                    well_row = well_recipes_df[well_recipes_df['wellplate_index'] == well_idx]
-                    if len(well_row) > 0 and well_row.iloc[0]['well_type'] == 'experiment':
-                        surf_a_conc = well_row.iloc[0]['surf_A_conc_mm']
-                        surf_b_conc = well_row.iloc[0]['surf_B_conc_mm']
-                        sim_data = simulate_surfactant_measurements(surf_a_conc, surf_b_conc)
-                        turbidity_value = sim_data['turbidity_600']
-                    else:
-                        # Control wells get baseline values
-                        turbidity_value = 0.2 + 0.1 * np.random.random()  # Small variation for controls
-                    
-                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
+                # Simulation mode - use the already-generated turbidity data directly
+                # (no need to recalculate - measure_turbidity already did the simulation)
+                if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0:
+                    # Data is already in correct format with wellplate_index from measure_turbidity
+                    for _, row in turbidity_data.iterrows():
+                        well_idx = int(row['wellplate_index'])  # Ensure integer
+                        turbidity_value = row['turbidity_600']
+                        
+                        # Map to main DataFrame
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
+                else:
+                    lash_e.logger.warning("  Simulated turbidity data missing or has unexpected format")
         
-        # Add DMSO with proper safe positioning (highest priority position)
-        if CREATE_WELLPLATE:
-            lash_e.logger.info("  Positioning pyrene_DMSO at highest priority safe position")
-            lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'main_8mL_rack', 47)
-            dispense_component_to_wellplate(lash_e, batch_df, 'pyrene_DMSO', 'DMSO', 'pyrene_volume_ul')
-            lash_e.nr_robot.remove_pipet()
-            lash_e.nr_robot.return_vial_home('pyrene_DMSO')
+    return well_recipes_df
+
+def dispense_dmso(lash_e, well_recipes_df):
+    """
+    Dispense DMSO to all wells in DataFrame.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        well_recipes_df: DataFrame with well recipes
         
+    Returns:
+        DataFrame: Updated well_recipes_df (no new columns, just logged)
+    """
+    lash_e.logger.info("Dispensing DMSO to all wells...")
+    
+    batch_df = well_recipes_df.copy()
+    batch_df['pyrene_volume_ul'] = PYRENE_VOLUME_UL  # Standard pyrene volume
+    
+    # Position pyrene DMSO vial and dispense
+    lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'main_8mL_rack', 47)
+    dispense_component_to_wellplate(lash_e, batch_df, 'pyrene_DMSO', 'DMSO', 'pyrene_volume_ul')
+    lash_e.nr_robot.remove_pipet()
+    lash_e.nr_robot.return_vial_home('pyrene_DMSO')
+    lash_e.logger.info(f"  DMSO added to {len(well_recipes_df)} wells")
+
+    
+    return well_recipes_df
+
+def measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=True):
+    """
+    Measure fluorescence and integrate data into DataFrame.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        well_recipes_df: DataFrame with well recipes (should already have turbidity)
+        shake_and_wait: If True, run shake protocol before measurements
+        
+    Returns:
+        DataFrame: Updated well_recipes_df with fluorescence data
+    """
+    lash_e.logger.info(f"Measuring and processing fluorescence (shake_and_wait={shake_and_wait})...")
+    
+    # Initialize wellplate tracking for measurements
+    wellplate_data = {
+        'current_plate': 1,
+        'wells_used': 0,
+        'last_measured_well': -1,
+        'measurements': []
+    }
+    
+    # Initialize fluorescence columns in the DataFrame
+    if 'fluorescence_334_373' not in well_recipes_df.columns:
+        well_recipes_df['fluorescence_334_373'] = None
+    if 'fluorescence_334_384' not in well_recipes_df.columns:
+        well_recipes_df['fluorescence_334_384'] = None
+    if 'ratio' not in well_recipes_df.columns:
+        well_recipes_df['ratio'] = None
+    
+    # Process in batches to match measurement intervals
+    total_wells = len(well_recipes_df)
+    lash_e.logger.info(f"Total wells to measure fluorescence: {total_wells}")
+    
+    for batch_start in range(0, total_wells, MEASUREMENT_INTERVAL):
+        batch_end = min(batch_start + MEASUREMENT_INTERVAL, total_wells)
+        batch_df = well_recipes_df.iloc[batch_start:batch_end]
+        
+        lash_e.logger.info(f"\nMeasuring fluorescence batch {batch_start//MEASUREMENT_INTERVAL + 1}: wells {batch_start}-{batch_end-1}")
+        
+        wells_in_batch = batch_df['wellplate_index'].tolist()
+        
+        # Measure fluorescence
         lash_e.logger.info("  Measuring fluorescence...")
-        fluorescence_entry, fluorescence_data = measure_wellplate_fluorescence(lash_e, wells_in_batch, wellplate_data, batch_df)
+        fluorescence_data = measure_fluorescence(lash_e, wells_in_batch, batch_df, shake_and_wait=shake_and_wait, return_wellplate=True)
         
-        # DEBUG: Show what fluorescence data we got
-        lash_e.logger.debug(f"Fluorescence measured for {len(wells_in_batch)} wells")
-        
-        # Add fluorescence data to DataFrame by well position mapping (only if measurements enabled)
-        if measurements_enabled and fluorescence_data is not None:
+        # Save and integrate fluorescence data
+        if fluorescence_data is not None:
+            # Save raw fluorescence data to CSV immediately (always save, even in simulation)
+            fluorescence_filename = None  # Initialize to avoid undefined variable
+            try:
+                from datetime import datetime
+                import os
+                experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+                fluorescence_filename = f"fluorescence_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
+                fluorescence_path = os.path.join("output", experiment_name, "measurement_backups", fluorescence_filename)
+                
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(fluorescence_path), exist_ok=True)
+                
+                # Save actual DataFrame to CSV
+                fluorescence_data.to_csv(fluorescence_path, index=True)
+                mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
+                lash_e.logger.info(f"    {mode_label} Saved raw fluorescence data: {fluorescence_filename}")
+            except Exception as e:
+                lash_e.logger.error(f"    WARNING: Failed to save fluorescence CSV: {e}")
+                # Continue workflow even if CSV save fails
+            
+            # Store fluorescence measurement data
+            fluorescence_entry = {
+                'plate_number': wellplate_data['current_plate'],
+                'wells_measured': wells_in_batch,
+                'measurement_type': 'fluorescence_batch',
+                'data_file': fluorescence_filename if fluorescence_filename else None,
+                'timestamp': datetime.now().isoformat()
+            }
+            wellplate_data['measurements'].append(fluorescence_entry)
+            
+            # Map fluorescence data to DataFrame by well position mapping
             if not lash_e.simulate:
                 # Hardware mode - fluorescence_data is a DataFrame with well_position column
                 if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0 and 'well_position' in fluorescence_data.columns:
@@ -2853,8 +3171,8 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
                         return f"{chr(65 + row)}{col + 1}"
                     
                     # Check for fluorescence columns
-                    has_373 = '334_373' in fluorescence_data.columns
-                    has_384 = '334_384' in fluorescence_data.columns
+                    has_373 = 'fluorescence_334_373' in fluorescence_data.columns
+                    has_384 = 'fluorescence_334_384' in fluorescence_data.columns
                     lash_e.logger.info(f"  Fluorescence columns available: 334_373={has_373}, 334_384={has_384}")
                     
                     if has_373 and has_384:
@@ -2864,8 +3182,8 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
                             matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
                             
                             if len(matching_rows) > 0:
-                                val_373 = matching_rows.iloc[0]['334_373']
-                                val_384 = matching_rows.iloc[0]['334_384']
+                                val_373 = matching_rows.iloc[0]['fluorescence_334_373']
+                                val_384 = matching_rows.iloc[0]['fluorescence_334_384']
                                 ratio = val_373 / val_384 if val_384 != 0 else None
                                 
                                 well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
@@ -2880,35 +3198,30 @@ def execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_en
                 else:
                     lash_e.logger.warning("  Fluorescence data missing or has unexpected format")
             else:
-                # Simulation mode - realistic concentration-based values  
-                for i, well_idx in enumerate(wells_in_batch):
-                    # Get concentrations for this well
-                    well_row = well_recipes_df[well_recipes_df['wellplate_index'] == well_idx]
-                    if len(well_row) > 0 and well_row.iloc[0]['well_type'] == 'experiment':
-                        surf_a_conc = well_row.iloc[0]['surf_A_conc_mm']
-                        surf_b_conc = well_row.iloc[0]['surf_B_conc_mm']
-                        sim_data = simulate_surfactant_measurements(surf_a_conc, surf_b_conc)
-                        val_373 = sim_data['fluorescence_334_373']
-                        val_384 = sim_data['fluorescence_334_384'] 
-                        ratio = sim_data['ratio']
-                    else:
-                        # Control wells get baseline values
-                        val_373 = 75.0 + 10.0 * np.random.random()
-                        val_384 = 95.0 + 10.0 * np.random.random() 
-                        ratio = val_373 / val_384
-                    
-                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
-                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
-                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
-
+                # Simulation mode - use the already-generated fluorescence data directly
+                # (no need to recalculate - measure_fluorescence already did the simulation)
+                if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0:
+                    # Data is already in correct format with wellplate_index from measure_fluorescence
+                    for _, row in fluorescence_data.iterrows():
+                        well_idx = int(row['wellplate_index'])  # Ensure integer
+                        val_373 = row['fluorescence_334_373']
+                        val_384 = row['fluorescence_334_384']
+                        ratio = row['ratio']
+                        
+                        # Map to main DataFrame
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
+                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
+                else:
+                    lash_e.logger.warning("  Simulated fluorescence data missing or has unexpected format")
+    
     return well_recipes_df
 
 def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
     """
-    Generate realistic simulation data for turbidity and ratio based on surfactant concentrations.
+    Generate realistic simulation data with sharp, independent transitions.
     
-    Creates 2D patterns that transition between baseline and elevated states.
-    Now adaptive to actual concentration ranges used in the experiment.
+    Creates sharp CMC-like transitions that are different for turbidity vs ratio.
     
     Args:
         surf_a_conc: Surfactant A concentration in mM
@@ -2925,96 +3238,83 @@ def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
     log_a = np.log10(surf_a_conc)
     log_b = np.log10(surf_b_conc)
     
-    # ADAPTIVE SCALING: Calculate log ranges from global configuration
-    # Use existing MIN_CONC and estimate typical max concentration
+    # Adaptive scaling based on typical ranges
     log_min = np.log10(MIN_CONC)  # Use global minimum
     log_max_estimate = np.log10(25.0)  # Typical max concentration (25 mM)
     log_range = log_max_estimate - log_min
-    log_center = (log_min + log_max_estimate) / 2.0
     
-    # RATIO SIMULATION: Multiple overlapping patterns for smooth variation
-    # Adaptive scaling based on actual concentration ranges    
-    # Pattern 1: Diagonal gradient (adaptive scaling)
-    diagonal_sum = log_a + log_b  # Sum of log concentrations
-    diagonal_min = 2 * log_min  # Minimum possible sum
-    diagonal_max = 2 * log_max_estimate  # Maximum possible sum
-    diagonal_factor = (diagonal_sum - diagonal_min) / (diagonal_max - diagonal_min)
-    diagonal_factor = max(0, min(1, diagonal_factor))  # Ensure 0-1
+    # Normalize concentrations to 0-1 range
+    norm_a = (log_a - log_min) / log_range
+    norm_b = (log_b - log_min) / log_range
+    norm_a = max(0, min(1, norm_a))
+    norm_b = max(0, min(1, norm_b))
     
-    # Pattern 2: Individual concentration effects (adaptive)
-    surf_a_factor = (log_a - log_min) / log_range  # Normalize to 0-1
-    surf_b_factor = (log_b - log_min) / log_range  # Normalize to 0-1
-    surf_a_factor = max(0, min(1, surf_a_factor))
-    surf_b_factor = max(0, min(1, surf_b_factor))
-    conc_effect = 0.5 * (surf_a_factor + surf_b_factor)  # Average effect
+    # ===== RATIO SIMULATION: Sharp diagonal transition =====
+    # Sharp transition along diagonal (additive CMC effect)
+    diagonal_sum = norm_a + norm_b
+    ratio_threshold = 0.6  # Transition occurs when sum > 0.6
+    ratio_sharpness = 15   # Very sharp transition
+    ratio_transition = np.tanh(ratio_sharpness * (diagonal_sum - ratio_threshold))
+    ratio_factor = 0.5 + 0.5 * ratio_transition  # Maps (-1,1) to (0,1)
     
-    # Pattern 3: Spatial wave pattern for variation (adaptive scaling)
-    normalized_log_a = (log_a - log_center) / log_range * 6.0  # Scale to ±3 range
-    normalized_log_b = (log_b - log_center) / log_range * 6.0  # Scale to ±3 range
-    wave_pattern = 0.5 + 0.4 * np.sin(normalized_log_a + 3.14) * np.cos(normalized_log_b + 1.57)
-    wave_pattern = max(0, min(1, wave_pattern))  # Ensure 0-1 range
+    # Add minor asymmetry (A vs B different effects)
+    asymmetry = 0.1 * (norm_a - norm_b)  # Small directional bias
+    ratio_factor += 0.05 * asymmetry
+    ratio_factor = max(0, min(1, ratio_factor))
     
-    # Combine patterns with more emphasis on variation
     ratio_baseline = 0.75   # Low ratio state
-    ratio_elevated = 0.9    # High ratio state 
-    combined_ratio_factor = 0.3 * diagonal_factor + 0.4 * conc_effect + 0.3 * wave_pattern
-    combined_ratio_factor = max(0, min(1, combined_ratio_factor))  # Ensure 0-1 range
-    simulated_ratio = ratio_baseline + (ratio_elevated - ratio_baseline) * combined_ratio_factor
+    ratio_elevated = 0.92   # High ratio state 
+    simulated_ratio = ratio_baseline + (ratio_elevated - ratio_baseline) * ratio_factor
     
-    # TURBIDITY SIMULATION: Multiple overlapping patterns for smooth variation
-    # Adaptive scaling based on actual concentration ranges
-    # Pattern 1: Radial distance from center (adaptive)
-    center_a_log = log_center + 0.2 * log_range  # Slightly off-center for asymmetry
-    center_b_log = log_center - 0.1 * log_range  # Different offset for variety
-    radius_distance = np.sqrt((log_a - center_a_log)**2 + (log_b - center_b_log)**2)
-    max_radius = np.sqrt((log_range)**2 + (log_range)**2)  # Max possible distance
-    radial_factor = radius_distance / max_radius  # Normalize to 0-1
-    radial_factor = min(1, radial_factor)  # Cap at 1
+    # ===== TURBIDITY SIMULATION: Sharp L-shaped boundary =====
+    # Different pattern - turbidity increases when EITHER conc is high
+    # Creates L-shaped boundary instead of diagonal
+    turb_threshold_a = 0.4  # A threshold
+    turb_threshold_b = 0.5  # B threshold (different from A)
+    turb_sharpness = 12     # Sharp transitions
     
-    # Pattern 2: Linear combination of concentrations (adaptive scaling)
-    linear_a = (log_a - log_min) / log_range  # Normalize to 0-1
-    linear_b = (log_b - log_min) / log_range  # Normalize to 0-1
-    linear_effect = 0.6 * linear_a + 0.4 * linear_b  # Weighted combination
-    linear_effect = max(0, min(1, linear_effect))
+    # Independent thresholds - turbidity high if EITHER exceeds threshold
+    transition_a = np.tanh(turb_sharpness * (norm_a - turb_threshold_a))
+    transition_b = np.tanh(turb_sharpness * (norm_b - turb_threshold_b))
     
-    # Pattern 3: Cross-interaction pattern (adaptive scaling)
-    norm_a = (log_a - log_min) / log_range  # Normalize to 0-1
-    norm_b = (log_b - log_min) / log_range  # Normalize to 0-1
-    interaction_val = norm_a * norm_b  # Product gives interaction strength
-    interaction_pattern = np.tanh(4.0 * interaction_val)  # Smooth S-curve from 0 to 1
+    # Combine with OR logic (max of transitions)
+    combined_transition = np.maximum(transition_a, transition_b)
+    turb_factor = 0.5 + 0.5 * combined_transition  # Maps (-1,1) to (0,1)
     
-    # Combine patterns for rich variation  
-    turbidity_baseline = 0.04  # Low turbidity state
-    turbidity_elevated = 1.0   # High turbidity state
-    combined_turb_factor = 0.3 * radial_factor + 0.4 * linear_effect + 0.3 * interaction_pattern
-    combined_turb_factor = max(0, min(1, combined_turb_factor))  # Ensure 0-1 range
-    simulated_turbidity = turbidity_baseline + (turbidity_elevated - turbidity_baseline) * combined_turb_factor
+    # Add interaction term for corner region
+    if norm_a > turb_threshold_a and norm_b > turb_threshold_b:
+        interaction_boost = 0.3 * (norm_a - turb_threshold_a) * (norm_b - turb_threshold_b)
+        turb_factor += interaction_boost
     
-    # FLUORESCENCE: Derive from ratio (realistic relationship)
-    # F384 stays relatively constant, F373 varies with ratio
-    f384_base = 95.0 + 10.0 * np.sin(log_a + log_b)  # Slight spatial variation
+    turb_factor = max(0, min(1, turb_factor))
+    
+    turbidity_baseline = 0.03  # Low turbidity state
+    turbidity_elevated = 0.8   # High turbidity state (reduced range for realism)
+    simulated_turbidity = turbidity_baseline + (turbidity_elevated - turbidity_baseline) * turb_factor
+    
+    # ===== FLUORESCENCE: Derive from ratio =====
+    # F384 stays relatively constant with minor spatial variation
+    f384_base = 95.0 + 5.0 * np.sin(2.0 * (norm_a + norm_b))  # Gentle variation
     f373_base = simulated_ratio * f384_base  # F373/F384 = ratio
     
-    # Add realistic experimental noise if requested
+    # Add realistic experimental noise
     if add_noise:
-        noise_scale = 0.01  # 1% coefficient of variation (reduced from 5%)
+        noise_scale = 0.015  # 1.5% coefficient of variation
         ratio_noise = 1.0 + np.random.normal(0, noise_scale)
-        turbidity_noise = 1.0 + np.random.normal(0, noise_scale)
-        fluorescence_noise = 1.0 + np.random.normal(0, noise_scale * 0.5)  # Lower noise for fluorescence
+        turbidity_noise = 1.0 + np.random.normal(0, noise_scale * 1.5)  # Turbidity more noisy
+        fluorescence_noise = 1.0 + np.random.normal(0, noise_scale * 0.7)  # Fluorescence less noisy
         
         simulated_ratio *= ratio_noise
         simulated_turbidity *= turbidity_noise
         f373_base *= fluorescence_noise
         f384_base *= fluorescence_noise
         
-        # Recalculate ratio from potentially noisy fluorescence
+        # Recalculate ratio from noisy fluorescence
         simulated_ratio = f373_base / f384_base if f384_base > 0 else simulated_ratio
     
-    # Ensure physically reasonable bounds (updated for realistic ranges)
-    simulated_ratio = max(0.70, min(0.95, simulated_ratio))  # Constrain to 0.70-0.95 range
-    simulated_turbidity = max(0.02, min(1.2, simulated_turbidity))  # Allow 0.02-1.2 range
-    f373_base = max(10.0, min(300.0, f373_base))
-    f384_base = max(10.0, min(300.0, f384_base))
+    # Ensure physically reasonable bounds
+    simulated_ratio = max(0.70, min(0.95, simulated_ratio))
+    simulated_turbidity = max(0.02, min(1.0, simulated_turbidity))
     
     return {
         'turbidity_600': round(simulated_turbidity, 4),
@@ -3225,7 +3525,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
                                          surf_a_min=None, surf_a_max=None,
                                          surf_b_min=None, surf_b_max=None, 
                                          lash_e=None, existing_stock_solutions=None, 
-                                         number_concentrations=9, experiment_output_folder=None, 
+                                         number_concentrations=9, num_substocks=None, experiment_output_folder=None, 
                                          simulate=True, skip_measurements=False):
     """
     Execute the complete surfactant grid screening workflow using adaptive concentrations.
@@ -3236,6 +3536,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
         surf_a_min, surf_a_max: Custom concentration bounds for surfactant A (None = use defaults)
         surf_b_min, surf_b_max: Custom concentration bounds for surfactant B (None = use defaults)
         lash_e: Existing Lash_E instance (if None, creates new one)
+        number_concentrations: Number of concentration points in the grid (default 9)
+        num_substocks: Number of substock dilutions to create per surfactant (default uses NUM_SUBSTOCKS)
         simulate: Run in simulation mode
         skip_measurements: If True, perform dispensing only (no measurements)
         
@@ -3261,7 +3563,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     # STEP 2: Create complete experiment plan with simplified structure
     experiment_plan = create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name, experiment_name,
                                                      surf_a_min, surf_a_max, surf_b_min, surf_b_max, 
-                                                     existing_stock_solutions, number_concentrations)
+                                                     existing_stock_solutions, number_concentrations, num_substocks)
     
     # Extract the well recipes DataFrame
     well_recipes_df = experiment_plan['well_recipes_df']
@@ -3329,16 +3631,30 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
         }
     else:
         lash_e.logger.info("Step 5: Executing dispensing and measurements...")
-        well_recipes_df = execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_enabled=True)
+        well_recipes_df = execute_dispensing(lash_e, well_recipes_df)
+        well_recipes_df = dispense_dmso(lash_e, well_recipes_df)
+        well_recipes_df = measure_and_process_turbidity(lash_e, well_recipes_df, shake_and_wait=True)
+        well_recipes_df = measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=False)
         
     # STEP 6: Save results to experiment folder
     lash_e.logger.info("Step 6: Saving results...")
     output_folder = experiment_output_folder
     
     # Save the complete well recipes with measurements
-    final_results_path = os.path.join(output_folder, "complete_experiment_results.csv")
-    well_recipes_df.to_csv(final_results_path, index=False)
-    lash_e.logger.info(f"  Complete results saved to: {final_results_path}")
+    try:
+        final_results_path = os.path.join(output_folder, "complete_experiment_results.csv")
+        well_recipes_df.to_csv(final_results_path, index=False)
+        lash_e.logger.info(f"  Complete results saved to: {final_results_path}")
+    except Exception as e:
+        lash_e.logger.error(f"  WARNING: Failed to save complete results CSV: {e}")
+        # Try alternative backup location
+        try:
+            backup_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_results_path = os.path.join(output_folder, f"complete_experiment_results_backup_{backup_timestamp}.csv")
+            well_recipes_df.to_csv(backup_results_path, index=False)
+            lash_e.logger.info(f"  Backup results saved to: {backup_results_path}")
+        except Exception as e2:
+            lash_e.logger.error(f"  CRITICAL: Both main and backup CSV saves failed: {e2}")
     
     # Generate heatmap visualizations
     try:
@@ -3423,7 +3739,7 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     }
 
 def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB", 
-                              number_concentrations=ITERATIVE_CONCENTRATIONS, target_measurements=96, 
+                              number_concentrations=ITERATIVE_CONCENTRATIONS, num_substocks=None, target_measurements=96, 
                               gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION, lash_e=None, 
                               experiment_output_folder=None, simulate=True):
     """
@@ -3436,6 +3752,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         surfactant_a_name: Name of first surfactant (e.g., 'SDS')
         surfactant_b_name: Name of second surfactant (e.g., 'DTAB') 
         number_concentrations: Number of concentration steps (default ITERATIVE_CONCENTRATIONS for rapid screening)
+        num_substocks: Number of substock dilutions to create per surfactant (default uses NUM_SUBSTOCKS)
         target_measurements: Total measurements to reach (default 200)
         gradient_suggestions_per_iteration: Number of gradient suggestions per iteration (default GRADIENT_SUGGESTIONS_PER_ITERATION)
         simulate: Run in simulation mode
@@ -3464,6 +3781,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         lash_e=lash_e,
         existing_stock_solutions=None,  # Fresh start, no existing solutions
         number_concentrations=number_concentrations,  # Configurable parameter
+        num_substocks=num_substocks,  # Pass through num_substocks
         experiment_output_folder=experiment_output_folder,
         simulate=simulate
     )
@@ -3506,7 +3824,8 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         gradient_results = find_high_gradient_areas(
             results, lash_e, 
             n_suggestions=gradient_suggestions_requested,
-            starting_well_index=current_wellplate_wells  # Start from current position in wellplate
+            starting_well_index=current_wellplate_wells,  # Start from current position in wellplate
+            iteration_number=iteration  # Pass iteration for proper file naming
         )
         
         # Limit the actual measurements to what we can process
@@ -3561,7 +3880,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         
     return results
 
-def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, starting_well_index=None):
+def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, starting_well_index=None, iteration_number=None):
     """
     Find high-gradient areas from initial screening and perform targeted exploration.
     
@@ -3573,6 +3892,7 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SU
         lash_e: Lash_E coordinator instance (reused from initial screening)
         n_suggestions: Number of concentration pairs to explore (default GRADIENT_SUGGESTIONS_PER_ITERATION)
         starting_well_index: Starting well position (None = continue from last used well)
+        iteration_number: Current iteration number for sequential file naming (None = use default naming)
         
     Returns:
         DataFrame: New measurement data from targeted exploration
@@ -3596,7 +3916,8 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SU
         surfactant_a_name, 
         surfactant_b_name, 
         n_suggestions=n_suggestions,
-        output_dir=existing_results['output_folder']  # Pass output directory for visualizations
+        output_dir=existing_results['output_folder'],  # Pass output directory for visualizations
+        iteration_number=iteration_number  # Pass iteration for sequential file naming
     )
     
     logger.info(f"Generated {len(suggested_concentrations)} concentration suggestions")
@@ -3663,7 +3984,10 @@ def find_high_gradient_areas(existing_results, lash_e, n_suggestions=GRADIENT_SU
     
     # Execute dispensing and measurements using existing infrastructure
     logger.info("Executing targeted dispensing and measurements...")
-    measured_suggestions_df = execute_dispensing_and_measurements(lash_e, suggestions_df, measurements_enabled=True)
+    measured_suggestions_df = execute_dispensing(lash_e, suggestions_df)
+    measured_suggestions_df = dispense_dmso(lash_e, measured_suggestions_df)
+    measured_suggestions_df = measure_and_process_turbidity(lash_e, measured_suggestions_df, shake_and_wait=True)
+    measured_suggestions_df = measure_and_process_fluorescence(lash_e, measured_suggestions_df, shake_and_wait=False)
     
     logger.info(f"High-gradient exploration complete: {len(measured_suggestions_df)} wells measured")
     return measured_suggestions_df
@@ -3710,385 +4034,26 @@ def execute_kinetics_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB",
     well_recipes_df = dispensing_results['well_recipes_df']
     lash_e.logger.info(f"Dispensing complete: {len(well_recipes_df)} wells prepared")
     
-    # Get ALL dispensed wells for kinetics measurements (experiments + controls)
-    # For kinetics, we want to track how ALL wells behave over time, not just experiments
-    all_dispensed_wells = well_recipes_df.copy()
-    well_indices = all_dispensed_wells['wellplate_index'].tolist()
-    experiment_wells = all_dispensed_wells  # Use all wells for kinetics measurements
-    lash_e.logger.info(f"Kinetics will measure ALL {len(well_indices)} wells: experiments + controls")
-    
-    # PHASE 2: Execute measurement sequence based on KINETICS_SEQUENCE
+        # PHASE 2: Execute measurement sequence using existing function (eliminates hundreds of lines of duplication)
     lash_e.logger.info(f"Phase 2: Executing kinetics sequence '{KINETICS_SEQUENCE}'...")
-    
-    if KINETICS_SEQUENCE == 'prep_turbidity':
-        # Sequence 1: Prep → Turbidity only
-        lash_e.logger.info("  Sequence 1: Measuring turbidity only (no DMSO)...")
-        turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
-        
-        if turbidity_data is not None:
-            try:
-                # Use well position mapping (same logic as iterative workflow)
-                def well_index_to_position(well_idx):
-                    """Convert well index (0-95) to well position (A1-H12)"""
-                    row = well_idx // 12  # 12 columns per row  
-                    col = well_idx % 12
-                    return f"{chr(65 + row)}{col + 1}"
-                
-                turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
-                
-                for well_idx in well_indices:
-                    well_position = well_index_to_position(well_idx)
-                    matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
-                    
-                    if len(matching_rows) > 0:
-                        turbidity_value = matching_rows.iloc[0][turbidity_col]
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
-                
-                lash_e.logger.info(f"  Turbidity measured for {len(turbidity_data)} wells")
-            except Exception as e:
-                lash_e.logger.warning(f"  Could not integrate turbidity data: {e}")
-                lash_e.logger.warning(f"  Raw turbidity data saved, continuing...")
-        
-        lash_e.logger.info("  Sequence complete: Turbidity-only kinetics ready")
-        
-    elif KINETICS_SEQUENCE == 'prep_dmso_turbidity_ratio':
-        # Sequence 2: Prep → DMSO → Turbidity → Ratio
-        lash_e.logger.info("  Sequence 2: Adding DMSO, then measuring turbidity and ratio...")
-        
-        # Add DMSO first
-        lash_e.logger.info("    Step A: Adding DMSO...")
-        if not simulate:
-            # Prepare batch data for DMSO addition
-            batch_df = experiment_wells.copy()
-            batch_df['pyrene_volume_ul'] = 5.0  # Standard pyrene volume
-            
-            # Position pyrene DMSO vial and dispense
-            lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)
-            dispense_component_to_wellplate(lash_e, batch_df, 'pyrene_DMSO', 'DMSO', 'pyrene_volume_ul')
-            lash_e.nr_robot.remove_pipet()
-            lash_e.nr_robot.return_vial_home('pyrene_DMSO')
-            lash_e.logger.info(f"    DMSO added to {len(experiment_wells)} wells")
-        else:
-            lash_e.logger.info(f"    DMSO addition simulated for {len(experiment_wells)} wells")
-        
-        # Measure turbidity (with DMSO present)
-        lash_e.logger.info("    Step B: Measuring turbidity (with DMSO)...")
-        turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
-        
-        if turbidity_data is not None:
-            try:
-                # Use well position mapping (same logic as iterative workflow)
-                def well_index_to_position(well_idx):
-                    """Convert well index (0-95) to well position (A1-H12)"""
-                    row = well_idx // 12  # 12 columns per row
-                    col = well_idx % 12
-                    return f"{chr(65 + row)}{col + 1}"
-                
-                turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
-                
-                for well_idx in well_indices:
-                    well_position = well_index_to_position(well_idx)
-                    matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
-                    
-                    if len(matching_rows) > 0:
-                        turbidity_value = matching_rows.iloc[0][turbidity_col]
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
-            except Exception as e:
-                lash_e.logger.warning(f"    Could not integrate turbidity data: {e}")
-                lash_e.logger.warning(f"    Raw turbidity data saved, continuing...")
-        
-        # Measure fluorescence for ratio
-        lash_e.logger.info("    Step C: Measuring fluorescence for ratio...")
-        fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
-        
-        if fluorescence_data is not None:
-            try:
-                # Use well position mapping (same logic as iterative workflow)
-                def well_index_to_position(well_idx):
-                    """Convert well index (0-95) to well position (A1-H12)"""
-                    row = well_idx // 12  # 12 columns per row
-                    col = well_idx % 12
-                    return f"{chr(65 + row)}{col + 1}"
-                
-                for well_idx in well_indices:
-                    well_position = well_index_to_position(well_idx)
-                    matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
-                    
-                    if len(matching_rows) > 0:
-                        row = matching_rows.iloc[0]
-                        # Check which fluorescence columns exist
-                        if 'fluorescence_334_373' in row:
-                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = row['fluorescence_334_373']
-                        if 'fluorescence_334_384' in row:
-                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = row['fluorescence_334_384']
-                        if 'ratio' in row:
-                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = row['ratio']
-            except Exception as e:
-                lash_e.logger.warning(f"    Could not integrate fluorescence data: {e}")
-                lash_e.logger.warning(f"    Raw fluorescence data saved, continuing...")
-        
-        lash_e.logger.info("  Sequence complete: DMSO-first kinetics ready")
-        
-    elif KINETICS_SEQUENCE == 'prep_turbidity_dmso_ratio':
-        # Sequence 3: Prep → Turbidity → DMSO → Ratio
-        lash_e.logger.info("  Sequence 3: Measuring turbidity first, then adding DMSO and measuring ratio...")
-        
-        # Measure initial turbidity (without DMSO)
-        lash_e.logger.info("    Step A: Measuring initial turbidity (no DMSO)...")
-        turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
-        
-        if turbidity_data is not None:
-            try:
-                # Use well position mapping (same logic as iterative workflow)
-                def well_index_to_position(well_idx):
-                    """Convert well index (0-95) to well position (A1-H12)"""
-                    row = well_idx // 12  # 12 columns per row
-                    col = well_idx % 12
-                    return f"{chr(65 + row)}{col + 1}"
-                
-                turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
-                
-                for well_idx in well_indices:
-                    well_position = well_index_to_position(well_idx)
-                    matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
-                    
-                    if len(matching_rows) > 0:
-                        turbidity_value = matching_rows.iloc[0][turbidity_col]
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
-                
-                lash_e.logger.info(f"    Initial turbidity measured for {len(turbidity_data)} wells")
-            except Exception as e:
-                lash_e.logger.warning(f"    Could not integrate initial turbidity data: {e}")
-                lash_e.logger.warning(f"    Raw turbidity data saved, continuing...")
-        
-        # Add DMSO second
-        lash_e.logger.info("    Step B: Adding DMSO...")
-        if not simulate:
-            # Prepare batch data for DMSO addition
-            batch_df = experiment_wells.copy()
-            batch_df['pyrene_volume_ul'] = 5.0  # Standard pyrene volume
-            
-            # Position pyrene DMSO vial and dispense
-            lash_e.nr_robot.move_vial_to_location('pyrene_DMSO', 'clamp', 0)
-            dispense_component_to_wellplate(lash_e, batch_df, 'pyrene_DMSO', 'DMSO', 'pyrene_volume_ul')
-            lash_e.nr_robot.remove_pipet()
-            lash_e.nr_robot.return_vial_home('pyrene_DMSO')
-            lash_e.logger.info(f"    DMSO added to {len(experiment_wells)} wells")
-        else:
-            lash_e.logger.info(f"    DMSO addition simulated for {len(experiment_wells)} wells")
-        
-        # Measure fluorescence for ratio
-        lash_e.logger.info("    Step C: Measuring fluorescence for ratio...")
-        fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
-        
-        if fluorescence_data is not None:
-            try:
-                # Use well position mapping (same logic as iterative workflow)
-                def well_index_to_position(well_idx):
-                    """Convert well index (0-95) to well position (A1-H12)"""
-                    row = well_idx // 12  # 12 columns per row
-                    col = well_idx % 12
-                    return f"{chr(65 + row)}{col + 1}"
-                
-                for well_idx in well_indices:
-                    well_position = well_index_to_position(well_idx)
-                    matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
-                    
-                    if len(matching_rows) > 0:
-                        row = matching_rows.iloc[0]
-                        # Check which fluorescence columns exist
-                        if 'fluorescence_334_373' in row:
-                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = row['fluorescence_334_373']
-                        if 'fluorescence_334_384' in row:
-                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = row['fluorescence_334_384']
-                        if 'ratio' in row:
-                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = row['ratio']
-            except Exception as e:
-                lash_e.logger.warning(f"    Could not integrate fluorescence ratio data: {e}")
-                lash_e.logger.warning(f"    Raw fluorescence data saved, continuing...")
-        
-        lash_e.logger.info("  Sequence complete: Turbidity-first kinetics ready")
-        
-    else:
-        raise ValueError(f"Invalid KINETICS_SEQUENCE: '{KINETICS_SEQUENCE}'. Valid options: 'prep_turbidity', 'prep_dmso_turbidity_ratio', 'prep_turbidity_dmso_ratio'")
-    
-    # PHASE 2.5: Shake Protocol and Post-shake Measurement
-    lash_e.logger.info("Phase 2.5: Shake protocol followed by post-shake measurement...")
-    
-    # Execute shake protocol
-    lash_e.logger.info("  Executing shake protocol (5s at 80Hz, 80% amplitude)...")
-    
-    if not simulate:
-        lash_e.cytation.run_protocol(SHAKE_PROTOCOL, [0])  # 5 second shake protocol for kinetics
-        lash_e.logger.info("  Shake protocol complete")
-    else:
-        lash_e.logger.info("  Shake protocol simulated")
-    
-    # Start kinetics timer right before post-shake measurements
-    import time
-    from datetime import datetime
-    start_time = time.time()
-    
-    # Post-shake measurement based on sequence type
-    lash_e.logger.info("  Performing post-shake measurement...")
-    
-    if KINETICS_SEQUENCE == 'prep_turbidity':
-        # Post-shake turbidity measurement
-        post_shake_turbidity = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                                shake_and_wait=False, return_wellplate=False)
-        
-        if post_shake_turbidity is not None:
-            # Store as separate column for post-shake data
-            try:
-                # Use well position mapping (same logic as iterative workflow)
-                def well_index_to_position(well_idx):
-                    """Convert well index (0-95) to well position (A1-H12)"""
-                    row = well_idx // 12  # 12 columns per row
-                    col = well_idx % 12
-                    return f"{chr(65 + row)}{col + 1}"
-                
-                turbidity_col = 'turbidity_600' if 'turbidity_600' in post_shake_turbidity.columns else post_shake_turbidity.columns[-1]
-                
-                for well_idx in well_indices:
-                    well_position = well_index_to_position(well_idx)
-                    matching_rows = post_shake_turbidity[post_shake_turbidity['well_position'] == well_position]
-                    
-                    if len(matching_rows) > 0:
-                        turbidity_value = matching_rows.iloc[0][turbidity_col]
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'post_shake_turbidity_600'] = turbidity_value
-                
-                lash_e.logger.info(f"  Post-shake turbidity measured for {len(post_shake_turbidity)} wells")
-            except Exception as e:
-                lash_e.logger.warning(f"  Could not integrate post-shake turbidity data: {e}")
-                lash_e.logger.warning(f"  Raw post-shake turbidity data saved, continuing...")
-        
-    else:  # Both ratio sequences need turbidity + ratio post-shake
-        # Post-shake turbidity measurement
-        post_shake_turbidity = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                                shake_and_wait=False, return_wellplate=False)
-        
-        # Post-shake fluorescence measurement  
-        post_shake_fluorescence = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                                     shake_and_wait=False, return_wellplate=False)
-        
-        # Store post-shake data in separate columns
-        if post_shake_turbidity is not None:
-            try:
-                for _, row in post_shake_turbidity.iterrows():
-                    well_index = row['wellplate_index']
-                    mask = well_recipes_df['wellplate_index'] == well_index
-                    well_recipes_df.loc[mask, 'post_shake_turbidity_600'] = row['turbidity_600']
-            except Exception as e:
-                lash_e.logger.warning(f"  Could not integrate post-shake turbidity data: {e}")
-                lash_e.logger.warning(f"  Raw post-shake turbidity data saved, continuing...")
-        
-        if post_shake_fluorescence is not None:
-            try:
-                for _, row in post_shake_fluorescence.iterrows():
-                    well_index = row['wellplate_index']
-                    mask = well_recipes_df['wellplate_index'] == well_index
-                    well_recipes_df.loc[mask, 'post_shake_fluorescence_334_373'] = row['fluorescence_334_373']
-                    well_recipes_df.loc[mask, 'post_shake_fluorescence_334_384'] = row['fluorescence_334_384']
-                    well_recipes_df.loc[mask, 'post_shake_ratio'] = row['ratio']
-            except Exception as e:
-                lash_e.logger.warning(f"  Could not integrate post-shake fluorescence data: {e}")
-                lash_e.logger.warning(f"  Raw post-shake fluorescence data saved, continuing...")
-        
-        lash_e.logger.info(f"  Post-shake measurements complete (turbidity + ratio)")
-    
-    lash_e.logger.info("Phase 2.5 complete: Shake protocol and post-shake measurements done")
-        
-    # PHASE 3: Time-series kinetics measurements
-    lash_e.logger.info("Phase 3: Starting time-series kinetics measurements...")
-    
-    # Time-series configuration - elapsed time intervals up to 4 hours
-    measurement_intervals = [120, 300, 600, 900, 1800, 2700, 3600, 5400, 7200, 9000, 10800, 12600, 14400]  
-    # 2min, 5min, 10min, 15min, 30min, 45min, 1hr, 1.5hr, 2hr, 2.5hr, 3hr, 3.5hr, 4hr
-    time_series_data = []
-    
-    for i, wait_time in enumerate(measurement_intervals):
-        # Wait for the specified interval (elapsed time since post-shake measurement)
-        if i == 0:
-            lash_e.logger.info(f"  Waiting {wait_time}s for t={wait_time/60:.0f}min timepoint...")
-            if not simulate:
-                time.sleep(wait_time)
-            else:
-                lash_e.logger.info(f"  [SIMULATED] Skipped {wait_time}s wait")
-        else:
-            gap_time = wait_time - measurement_intervals[i-1] 
-            lash_e.logger.info(f"  Waiting {gap_time}s more for t={wait_time/60:.0f}min timepoint...")
-            if not simulate:
-                time.sleep(gap_time)
-            else:
-                lash_e.logger.info(f"  [SIMULATED] Skipped {gap_time}s wait")
-        
-        current_time = time.time() - start_time
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        lash_e.logger.info(f"  Timepoint {i+1}: t={wait_time/60:.0f}min ({timestamp})")
-        
-        if KINETICS_SEQUENCE == 'prep_turbidity':
-            # WAIT → TURBIDITY (no shake needed, already done in Phase 2.5)
-            turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                             shake_and_wait=False, return_wellplate=(i == len(measurement_intervals)-1))
-            
-            if turbidity_data is not None:
-                for _, row in turbidity_data.iterrows():
-                    time_series_data.append({
-                        'timepoint': i+1,
-                        'time_seconds': wait_time,
-                        'timestamp': timestamp,
-                        'wellplate_index': row['wellplate_index'],
-                        'turbidity_600': row['turbidity_600']
-                    })
-        
-        else:  # Both ratio sequences
-            # WAIT → TURBIDITY → RATIO (no shake needed, already done in Phase 2.5)
-            turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                             shake_and_wait=False, return_wellplate=False)
-            fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                                   shake_and_wait=False, return_wellplate=(i == len(measurement_intervals)-1))
-            
-            # Combine turbidity and fluorescence data for this timepoint
-            for _, turb_row in turbidity_data.iterrows() if turbidity_data is not None else []:
-                well_idx = turb_row['wellplate_index']
-                fluor_row = fluorescence_data[fluorescence_data['wellplate_index'] == well_idx] if fluorescence_data is not None else None
-                
-                time_series_data.append({
-                    'timepoint': i+1,
-                    'time_seconds': wait_time,
-                    'timestamp': timestamp,
-                    'wellplate_index': well_idx,
-                    'turbidity_600': turb_row['turbidity_600'],
-                    'fluorescence_334_373': fluor_row.iloc[0]['fluorescence_334_373'] if fluor_row is not None and len(fluor_row) > 0 else None,
-                    'fluorescence_334_384': fluor_row.iloc[0]['fluorescence_334_384'] if fluor_row is not None and len(fluor_row) > 0 else None,
-                    'ratio': fluor_row.iloc[0]['ratio'] if fluor_row is not None and len(fluor_row) > 0 else None
-                })
-    
-    # Save time-series data in sequence folder
-    if time_series_data:
-        import pandas as pd
-        time_series_df = pd.DataFrame(time_series_data)
-        time_series_path = os.path.join(sequence_output_folder, "time_series.csv")
-        time_series_df.to_csv(time_series_path, index=False)
-        lash_e.logger.info(f"Time-series data saved: {time_series_path}")
-        lash_e.logger.info(f"Collected {len(time_series_data)} time-series measurements")
-    
-    lash_e.logger.info("Time-series kinetics complete!")
-    
-    # Save results in sequence folder
-    kinetics_results_path = os.path.join(sequence_output_folder, "experiment_results.csv")
-    well_recipes_df.to_csv(kinetics_results_path, index=False)
-    lash_e.logger.info(f"Kinetics results saved: {kinetics_results_path}")
-    
-    lash_e.logger.info("Kinetics workflow complete - dispensed wells ready for kinetic measurements")
-    
+
+    sequence_results = execute_single_kinetics_sequence(
+        sequence=KINETICS_SEQUENCE,
+        dispensing_results=dispensing_results,
+        surfactant_a_name=surfactant_a_name,
+        surfactant_b_name=surfactant_b_name,
+        lash_e=lash_e,
+        experiment_output_folder=experiment_output_folder,
+        simulate=simulate
+    )
+
+    # Return consolidated results 
     return {
         'surfactant_a': surfactant_a_name,
         'surfactant_b': surfactant_b_name,
-        'well_recipes_df': well_recipes_df,
+        'well_recipes_df': sequence_results['well_recipes_df'],
         'dispensing_results': dispensing_results,
-        'output_folder': sequence_output_folder,
+        'output_folder': sequence_results['output_folder'],
         'kinetics_sequence': KINETICS_SEQUENCE,
         'kinetics_ready': True,
         'workflow_complete': True
@@ -4219,7 +4184,7 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
     
     # STEP 1: Dispense the same samples to fresh wellplate (no measurements)
     lash_e.logger.info("Step 1: Dispensing samples to fresh wellplate...")
-    dispensed_wells_df = execute_dispensing_and_measurements(lash_e, well_recipes_df, measurements_enabled=False)
+    dispensed_wells_df = execute_dispensing(lash_e, well_recipes_df)
     
     # Get ALL dispensed wells for kinetics measurements (experiments + controls)
     all_dispensed_wells = dispensed_wells_df.copy()
@@ -4235,11 +4200,18 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         lash_e.logger.info("  Sequence 1: Measuring turbidity only (no DMSO)...")
         turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
+        # Save + merge using helper function (replaces 15+ lines of repetitive code)
+        save_and_merge_measurement(
+            measurement_data=turbidity_data,
+            measurement_type="kinetics_single_prep_turbidity", 
+            target_df=dispensed_wells_df,
+            column_mapping={'turbidity_600': 'turbidity_600'},
+            output_folder=experiment_output_folder,
+            lash_e=lash_e,
+            well_indices=well_indices
+        )
+        
         if turbidity_data is not None:
-            for _, row in turbidity_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = dispensed_wells_df['wellplate_index'] == well_index
-                dispensed_wells_df.loc[mask, 'turbidity_600'] = row['turbidity_600']
             lash_e.logger.info(f"  Turbidity measured for {len(turbidity_data)} wells")
         
         lash_e.logger.info("  Sequence complete: Turbidity-only kinetics ready")
@@ -4268,23 +4240,31 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         lash_e.logger.info("    Step B: Measuring turbidity (with DMSO)...")
         turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
-        if turbidity_data is not None:
-            for _, row in turbidity_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = dispensed_wells_df['wellplate_index'] == well_index
-                dispensed_wells_df.loc[mask, 'turbidity_600'] = row['turbidity_600']
+        # Save + merge using helper function
+        save_and_merge_measurement(
+            measurement_data=turbidity_data,
+            measurement_type=f"kinetics_single_{sequence}_turbidity",
+            target_df=dispensed_wells_df,
+            column_mapping={'turbidity_600': 'turbidity_600'},
+            output_folder=experiment_output_folder,
+            lash_e=lash_e,
+            well_indices=well_indices
+        )
         
         # Measure fluorescence for ratio
         lash_e.logger.info("    Step C: Measuring fluorescence for ratio...")
         fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
-        if fluorescence_data is not None:
-            for _, row in fluorescence_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = dispensed_wells_df['wellplate_index'] == well_index
-                dispensed_wells_df.loc[mask, 'fluorescence_334_373'] = row['fluorescence_334_373']
-                dispensed_wells_df.loc[mask, 'fluorescence_334_384'] = row['fluorescence_334_384']
-                dispensed_wells_df.loc[mask, 'ratio'] = row['ratio']
+        # Save + merge using helper function
+        save_and_merge_measurement(
+            measurement_data=fluorescence_data,
+            measurement_type=f"kinetics_single_{sequence}_fluorescence",
+            target_df=dispensed_wells_df,
+            column_mapping={'fluorescence_334_373': 'fluorescence_334_373', 'fluorescence_334_384': 'fluorescence_334_384', 'ratio': 'ratio'},
+            output_folder=experiment_output_folder,
+            lash_e=lash_e,
+            well_indices=well_indices
+        )
         
         lash_e.logger.info("  Sequence complete: DMSO-first kinetics ready")
         
@@ -4296,11 +4276,18 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         lash_e.logger.info("    Step A: Measuring initial turbidity (no DMSO)...")
         turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
+        # Save + merge using helper function
+        save_and_merge_measurement(
+            measurement_data=turbidity_data,
+            measurement_type="kinetics_single_initial_turbidity",
+            target_df=dispensed_wells_df,
+            column_mapping={'turbidity_600': 'turbidity_600'},
+            output_folder=experiment_output_folder,
+            lash_e=lash_e,
+            well_indices=well_indices
+        )
+        
         if turbidity_data is not None:
-            for _, row in turbidity_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = dispensed_wells_df['wellplate_index'] == well_index
-                dispensed_wells_df.loc[mask, 'turbidity_600'] = row['turbidity_600']
             lash_e.logger.info(f"    Initial turbidity measured for {len(turbidity_data)} wells")
         
         # Add DMSO second
@@ -4323,13 +4310,16 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         lash_e.logger.info("    Step C: Measuring fluorescence for ratio...")
         fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, shake_and_wait=False)
         
-        if fluorescence_data is not None:
-            for _, row in fluorescence_data.iterrows():
-                well_index = row['wellplate_index']
-                mask = dispensed_wells_df['wellplate_index'] == well_index
-                dispensed_wells_df.loc[mask, 'fluorescence_334_373'] = row['fluorescence_334_373']
-                dispensed_wells_df.loc[mask, 'fluorescence_334_384'] = row['fluorescence_334_384']
-                dispensed_wells_df.loc[mask, 'ratio'] = row['ratio']
+        # Save + merge using helper function
+        save_and_merge_measurement(
+            measurement_data=fluorescence_data,
+            measurement_type="kinetics_single_final_fluorescence",
+            target_df=dispensed_wells_df,
+            column_mapping={'fluorescence_334_373': 'fluorescence_334_373', 'fluorescence_334_384': 'fluorescence_334_384', 'ratio': 'ratio'},
+            output_folder=experiment_output_folder,
+            lash_e=lash_e,
+            well_indices=well_indices
+        )
         
         lash_e.logger.info("  Sequence complete: Turbidity-first kinetics ready")
         
@@ -4361,12 +4351,18 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         post_shake_turbidity = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
                                                 shake_and_wait=False, return_wellplate=False)
         
+        # Save + merge using helper function  
+        save_and_merge_measurement(
+            measurement_data=post_shake_turbidity,
+            measurement_type=f"kinetics_single_post_shake_turbidity_{sequence}",
+            target_df=dispensed_wells_df,
+            column_mapping={'turbidity_600': 'post_shake_turbidity_600'},
+            output_folder=experiment_output_folder,
+            lash_e=lash_e,
+            well_indices=well_indices
+        )
+        
         if post_shake_turbidity is not None:
-            # Store as separate column for post-shake data
-            for _, row in post_shake_turbidity.iterrows():
-                well_index = row['wellplate_index']
-                mask = dispensed_wells_df['wellplate_index'] == well_index
-                dispensed_wells_df.loc[mask, 'post_shake_turbidity_600'] = row['turbidity_600']
             lash_e.logger.info(f"  Post-shake turbidity measured for {len(post_shake_turbidity)} wells")
         
     else:  # Both ratio sequences need turbidity + ratio post-shake
@@ -4379,23 +4375,34 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
                                                      shake_and_wait=False, return_wellplate=False)
         
         # Store post-shake data in separate columns
-        if post_shake_turbidity is not None:
-            for _, row in post_shake_turbidity.iterrows():
-                well_index = row['wellplate_index']
-                mask = dispensed_wells_df['wellplate_index'] == well_index
-                dispensed_wells_df.loc[mask, 'post_shake_turbidity_600'] = row['turbidity_600']
+        # Save + merge using helper functions
+        save_and_merge_measurement(
+            measurement_data=post_shake_turbidity,
+            measurement_type=f"kinetics_single_post_shake_turbidity_{sequence}",
+            target_df=dispensed_wells_df,
+            column_mapping={'turbidity_600': 'post_shake_turbidity_600'},
+            output_folder=experiment_output_folder,
+            lash_e=lash_e,
+            well_indices=well_indices
+        )
         
-        if post_shake_fluorescence is not None:
-            for _, row in post_shake_fluorescence.iterrows():
-                well_index = row['wellplate_index']
-                mask = dispensed_wells_df['wellplate_index'] == well_index
-                dispensed_wells_df.loc[mask, 'post_shake_fluorescence_334_373'] = row['fluorescence_334_373']
-                dispensed_wells_df.loc[mask, 'post_shake_fluorescence_334_384'] = row['fluorescence_334_384']
-                dispensed_wells_df.loc[mask, 'post_shake_ratio'] = row['ratio']
+        save_and_merge_measurement(
+            measurement_data=post_shake_fluorescence,
+            measurement_type=f"kinetics_single_post_shake_fluorescence_{sequence}",
+            target_df=dispensed_wells_df,
+            column_mapping={'fluorescence_334_373': 'post_shake_fluorescence_334_373', 'fluorescence_334_384': 'post_shake_fluorescence_334_384', 'ratio': 'post_shake_ratio'},
+            output_folder=experiment_output_folder,
+            lash_e=lash_e,
+            well_indices=well_indices
+        )
         
         lash_e.logger.info(f"  Post-shake measurements complete (turbidity + ratio)")
     
     lash_e.logger.info("Step 3 complete: Shake protocol and post-shake measurements done")
+    
+    # Send carrier out to minimize evaporation during wait times
+    lash_e.logger.info("Sending carrier out between measurements...")
+    pause_kinetics_measurements(lash_e)
         
     # STEP 4: Time-series kinetics measurements
     lash_e.logger.info("Step 4: Starting time-series kinetics measurements...")
@@ -4410,14 +4417,14 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         if i == 0:
             lash_e.logger.info(f"  Waiting {wait_time}s for t={wait_time/60:.0f}min timepoint...")
             if not simulate:
-                time.sleep(wait_time)
+                sleep_with_progress(lash_e, wait_time, wait_time/60)
             else:
                 lash_e.logger.info("  Simulated wait time")
         else:
             gap_time = wait_time - measurement_intervals[i-1] 
             lash_e.logger.info(f"  Waiting {gap_time}s more for t={wait_time/60:.0f}min timepoint...")
             if not simulate:
-                time.sleep(gap_time)
+                sleep_with_progress(lash_e, gap_time, wait_time/60)
             else:
                 lash_e.logger.info("  Simulated wait time")
         
@@ -4426,65 +4433,99 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         
         lash_e.logger.info(f"  Timepoint {i+1}: t={wait_time/60:.0f}min ({timestamp})")
         
+        # Retrieve carrier from storage for this measurement
+        resume_kinetics_measurements(lash_e)
+        
+        # Determine final measurement behavior
+        is_final_measurement = (i == len(measurement_intervals)-1)
+        
         if sequence == 'prep_turbidity':
             # WAIT → TURBIDITY (no shake needed, already done in Step 3)
             turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                             shake_and_wait=False, return_wellplate=(i == len(measurement_intervals)-1))
+                                             shake_and_wait=False, return_wellplate=is_final_measurement)
+            
+            # Save CSV using helper function
+            save_measurement_csv(turbidity_data, f"kinetics_single_timeseries_t{wait_time/60:.0f}min_turb", 
+                               experiment_output_folder, lash_e, well_indices)
             
             if turbidity_data is not None:
-                for _, turb_row in turbidity_data.iterrows():
-                    time_series_data.append({
-                        'timepoint': i+1,
-                        'time_seconds': wait_time,
-                        'timestamp': timestamp,
-                        'wellplate_index': turb_row['wellplate_index'],
-                        'turbidity_600': turb_row['turbidity_600'],
-                        'fluorescence_334_373': None,
-                        'fluorescence_334_384': None,
-                        'ratio': None
-                    })
+                try:
+                    for _, turb_row in turbidity_data.iterrows():
+                        time_series_data.append({
+                            'timepoint': i+1,
+                            'time_seconds': wait_time,
+                            'timestamp': timestamp,
+                            'wellplate_index': turb_row['wellplate_index'],
+                            'turbidity_600': turb_row['turbidity_600'],
+                            'fluorescence_334_373': None,
+                            'fluorescence_334_384': None,
+                            'ratio': None
+                        })
+                except Exception as e:
+                    lash_e.logger.error(f"    WARNING: Failed to merge turbidity time-series data: {e}")
+                    lash_e.logger.info(f"    Raw turbidity CSV saved, continuing time-series...")
         
         else:  # Both ratio sequences
             # WAIT → TURBIDITY → RATIO (no shake needed, already done in Step 3)
             turbidity_data = measure_turbidity(lash_e, well_indices, batch_recipes=experiment_wells, 
                                              shake_and_wait=False, return_wellplate=False)
             fluorescence_data = measure_fluorescence(lash_e, well_indices, batch_recipes=experiment_wells, 
-                                                   shake_and_wait=False, return_wellplate=(i == len(measurement_intervals)-1))
+                                                   shake_and_wait=False, return_wellplate=is_final_measurement)
+            
+            # Save CSVs using helper
+            save_measurement_csv(turbidity_data, f"kinetics_single_timeseries_t{wait_time/60:.0f}min_turb", 
+                               experiment_output_folder, lash_e, well_indices)
+            save_measurement_csv(fluorescence_data, f"kinetics_single_timeseries_t{wait_time/60:.0f}min_fluor", 
+                               experiment_output_folder, lash_e, well_indices)
             
             # Combine turbidity and fluorescence data for this timepoint
-            for _, turb_row in turbidity_data.iterrows() if turbidity_data is not None else []:
-                well_idx = turb_row['wellplate_index']
-                fluor_row = fluorescence_data[fluorescence_data['wellplate_index'] == well_idx] if fluorescence_data is not None else None
-                
-                time_series_data.append({
-                    'timepoint': i+1,
-                    'time_seconds': wait_time,
-                    'timestamp': timestamp,
-                    'wellplate_index': well_idx,
-                    'turbidity_600': turb_row['turbidity_600'],
-                    'fluorescence_334_373': fluor_row.iloc[0]['fluorescence_334_373'] if fluor_row is not None and len(fluor_row) > 0 else None,
-                    'fluorescence_334_384': fluor_row.iloc[0]['fluorescence_334_384'] if fluor_row is not None and len(fluor_row) > 0 else None,
-                    'ratio': fluor_row.iloc[0]['ratio'] if fluor_row is not None and len(fluor_row) > 0 else None
-                })
+            try:
+                for _, turb_row in turbidity_data.iterrows() if turbidity_data is not None else []:
+                    well_idx = turb_row['wellplate_index']
+                    fluor_row = fluorescence_data[fluorescence_data['wellplate_index'] == well_idx] if fluorescence_data is not None else None
+                    
+                    time_series_data.append({
+                        'timepoint': i+1,
+                        'time_seconds': wait_time,
+                        'timestamp': timestamp,
+                        'wellplate_index': well_idx,
+                        'turbidity_600': turb_row['turbidity_600'],
+                        'fluorescence_334_373': fluor_row.iloc[0]['fluorescence_334_373'] if fluor_row is not None and len(fluor_row) > 0 else None,
+                        'fluorescence_334_384': fluor_row.iloc[0]['fluorescence_334_384'] if fluor_row is not None and len(fluor_row) > 0 else None,
+                        'ratio': fluor_row.iloc[0]['ratio'] if fluor_row is not None and len(fluor_row) > 0 else None
+                    })
+            except Exception as e:
+                lash_e.logger.error(f"    WARNING: Failed to merge time-series data: {e}")
+                lash_e.logger.info(f"    Raw turbidity & fluorescence CSVs saved, continuing time-series...")
+        
+        # Send carrier back out after measurement (unless it's the final one)
+        if not is_final_measurement:
+            lash_e.logger.info(f"  Measurement complete - sending carrier out for next wait period...")
+            pause_kinetics_measurements(lash_e)
+        else:
+            lash_e.logger.info(f"  Final measurement complete - carrier stays in for workflow completion")
     
     # STEP 5: Save sequence-specific results
     lash_e.logger.info("Step 5: Saving sequence-specific results...")
     
     # Save time-series data in sequence folder
+    # Save time-series and results using helper functions 
     if time_series_data:
-        import pandas as pd
-        time_series_df = pd.DataFrame(time_series_data)
-        time_series_path = os.path.join(experiment_output_folder, "time_series.csv")
-        time_series_df.to_csv(time_series_path, index=False)
-        lash_e.logger.info(f"Time-series data saved: {time_series_path}")
-        lash_e.logger.info(f"Collected {len(time_series_data)} time-series measurements")
+        try:
+            import pandas as pd
+            time_series_df = pd.DataFrame(time_series_data)
+            time_series_path = os.path.join(experiment_output_folder, "time_series.csv")
+            time_series_df.to_csv(time_series_path, index=False)
+            lash_e.logger.info(f"Time-series data saved: {time_series_path}")
+            lash_e.logger.info(f"Collected {len(time_series_data)} time-series measurements")
+        except Exception as e:
+            lash_e.logger.error(f"WARNING: Failed to save time-series CSV: {e}")
+            lash_e.logger.info(f"Raw measurement CSVs preserved, continuing...")
     
     lash_e.logger.info("Time-series kinetics complete!")
     
-    # Save results in sequence folder
-    sequence_results_path = os.path.join(experiment_output_folder, "experiment_results.csv")
-    dispensed_wells_df.to_csv(sequence_results_path, index=False)
-    lash_e.logger.info(f"Kinetics results saved: {sequence_results_path}")
+    # Save results using helper function
+    save_measurement_csv(dispensed_wells_df, "experiment_results", experiment_output_folder, lash_e)
     
     lash_e.logger.info(f"Kinetics sequence '{sequence}' complete!")
     
@@ -4492,12 +4533,12 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
         'sequence': sequence,
         'well_recipes_df': dispensed_wells_df,
         'time_series_data': time_series_data if time_series_data else None,
-        'results_path': sequence_results_path,
+        'results_path': experiment_output_folder,
         'time_series_path': time_series_path if time_series_data else None,
         'sequence_complete': True
     }
 
-def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, output_dir=None):
+def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfactant_b_name, n_suggestions=GRADIENT_SUGGESTIONS_PER_ITERATION, output_dir=None, iteration_number=None):
     """
     Use Delaunay triangle refinement to suggest high-variation concentration pairs for exploration.
     
@@ -4520,16 +4561,22 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     print(f"Analyzing triangle boundaries in {surfactant_a_name}+{surfactant_b_name} data...")
     print(f"Input data: {len(experiment_data_df)} experimental wells")
     
-    # Import the Delaunay triangle recommender
+    # Import the selected recommender algorithm
     try:
         import sys
         import os
         recommender_path = os.path.join(os.path.dirname(__file__), '..', 'recommenders')
         if recommender_path not in sys.path:
             sys.path.append(recommender_path)
-        from recommenders.delaunay_triangle_recommender import DelaunayTriangleRecommender
+        
+        if RECOMMENDER_TYPE == 'delaunay':
+            from recommenders.delaunay_triangle_recommender import DelaunayTriangleRecommender
+        elif RECOMMENDER_TYPE == 'bayesian':
+            from recommenders.bayesian_transition_recommender import BayesianTransitionRecommender
+        else:
+            raise ValueError(f"Invalid RECOMMENDER_TYPE: {RECOMMENDER_TYPE}. Must be 'delaunay' or 'bayesian'")
     except ImportError as e:
-        raise ImportError(f"CRITICAL: DelaunayTriangleRecommender import failed: {e}. Adaptive algorithm cannot run without this!")
+        raise ImportError(f"CRITICAL: {RECOMMENDER_TYPE.title()} recommender import failed: {e}. Adaptive algorithm cannot run without this!")
     
     # Initialize the triangle recommender with configurable optimization target
     # Configure output columns based on optimization preference
@@ -4539,39 +4586,121 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         output_columns = ['ratio'] 
     elif OPTIMIZE_METRIC == 'both':
         output_columns = ['ratio', 'turbidity_600']
+        
+        # ADAPTIVE: Check if turbidity is essentially flat (≤0.05) - if so, ignore it
+        if 'turbidity_600' in experiment_data_df.columns:
+            turbidity_values = experiment_data_df['turbidity_600'].dropna()
+            if len(turbidity_values) > 0:
+                max_turbidity = turbidity_values.max()
+                print(f"DEBUG: Turbidity analysis - max value: {max_turbidity:.4f}")
+                
+                if max_turbidity <= 0.05:
+                    print(f"⚠️  Turbidity is flat (max={max_turbidity:.4f} ≤ 0.05) - switching to ratio-only optimization")
+                    print("   (This prevents baseline noise from being treated as significant variation)")
+                    output_columns = ['ratio']  # Switch to ratio-only
+                else:
+                    print(f"✅ Turbidity shows variation (max={max_turbidity:.4f} > 0.05) - using both metrics")
+            else:
+                print("⚠️  No turbidity data available - switching to ratio-only optimization") 
+                output_columns = ['ratio']
+        else:
+            print("⚠️  No turbidity_600 column found - switching to ratio-only optimization")
+            output_columns = ['ratio']
     else:
         raise ValueError(f"Invalid OPTIMIZE_METRIC: {OPTIMIZE_METRIC}. Must be 'turbidity', 'ratio', or 'both'")
     
-    recommender = DelaunayTriangleRecommender(
-        input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
-        output_columns=output_columns,                        # Configurable optimization target
-        log_transform_inputs=True,    # Work in log concentration space
-        normalization_method='log_zscore'  # Log + z-score normalization
-    )
+    # Apply log transformation to turbidity for consistency between algorithms
+    # Delaunay uses log+zscore, so we pre-log the data for Bayesian's zscore-only normalization
+    data_for_recommender = experiment_data_df.copy()  # Don't modify original
+    if 'turbidity_600' in data_for_recommender.columns and 'turbidity_600' in output_columns:
+        epsilon = 1e-6
+        original_turbidity = data_for_recommender['turbidity_600'].copy()
+        # Create separate log-transformed column for optimizer (preserve original for plotting)
+        data_for_recommender['turbidity_600_log'] = (data_for_recommender['turbidity_600'] + epsilon).apply(lambda x: np.log10(x))
+        
+        # Update output_columns to use log-transformed column for recommender
+        log_output_columns = []
+        for col in output_columns:
+            if col == 'turbidity_600':
+                log_output_columns.append('turbidity_600_log')  # Use log version for optimizer
+            else:
+                log_output_columns.append(col)  # Keep ratio as-is
+        
+        print(f"Applied log10 transform to turbidity_600 for algorithm consistency")
+        print(f"  Original range: [{original_turbidity.min():.4f}, {original_turbidity.max():.4f}]")
+        print(f"  Log-transformed: [{data_for_recommender['turbidity_600_log'].min():.3f}, {data_for_recommender['turbidity_600_log'].max():.3f}]")
+        print(f"  Optimizer will use columns: {log_output_columns}")
+    else:
+        log_output_columns = output_columns  # No change needed
     
-    # Get recommendations from triangle analysis
-    print(f"Running Delaunay triangle analysis for {n_suggestions} boundary suggestions...")
-    print(f"DEBUG: Optimization target: {OPTIMIZE_METRIC} -> output columns: {recommender.output_columns}")
+    # Initialize the selected recommender algorithm
+    if RECOMMENDER_TYPE == 'delaunay':
+        recommender = DelaunayTriangleRecommender(
+            input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
+            output_columns=log_output_columns,                    # Use log-transformed columns when applicable
+            log_transform_inputs=True,    # Work in log concentration space
+            normalization_method='log_zscore'  # Log + z-score normalization
+        )
+        algorithm_name = "Delaunay triangulation"
+    elif RECOMMENDER_TYPE == 'bayesian':
+        recommender = BayesianTransitionRecommender(
+            input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
+            output_columns=log_output_columns,                    # Use log-transformed columns when applicable
+            log_transform_inputs=True,    # Work in log concentration space
+            delta=0.03,      # Step size for directional gradients
+            K=24,            # Number of random directions
+            lam=0.05,        # Exploration weight (lower = focus on boundaries)
+            candidate_pool=50000  # Sobol candidate pool size
+        )
+        algorithm_name = "Bayesian optimization"
+    
+    # Get recommendations from selected algorithm
+    print(f"Running {algorithm_name} analysis for {n_suggestions} boundary suggestions...")
+    print(f"DEBUG: Algorithm: {RECOMMENDER_TYPE} ({algorithm_name})")
+    print(f"DEBUG: Optimization target: {OPTIMIZE_METRIC} -> output columns: {log_output_columns}")
     print(f"DEBUG: Input data shape: {experiment_data_df.shape}")
-    print(f"DEBUG: Available columns: {list(experiment_data_df.columns)}")
+    print(f"DEBUG: Available columns: {list(data_for_recommender.columns)}")
     
-    recommendations_df = recommender.get_recommendations(
-        experiment_data_df, 
-        n_points=n_suggestions,
-        min_spacing_factor=0.5,  # Minimum spacing between triangle centroids
-        tol_factor=0.1,         # Tolerance for duplicate detection
-        triangle_score_method='max',  # Use max distance for sensitivity
-        output_dir=output_dir,  # Save triangle visualizations to output folder
-        create_visualization=False  # Disable visualization to prevent popup windows
-    )
+    # Get recommendations with algorithm-specific parameters
+    if RECOMMENDER_TYPE == 'delaunay':
+        recommendations_df = recommender.get_recommendations(
+            data_for_recommender,   # Use log-transformed data
+            n_points=n_suggestions,
+            min_spacing_factor=0.5,  # Minimum spacing between triangle centroids
+            tol_factor=0.1,         # Tolerance for duplicate detection
+            triangle_score_method='max',  # Use max distance for sensitivity
+            output_dir=output_dir,  # Save triangle visualizations to output folder
+            create_visualization=False  # Disable visualization to prevent popup windows
+        )
+    elif RECOMMENDER_TYPE == 'bayesian':
+        recommendations_df = recommender.get_recommendations(
+            data_for_recommender,   # Use log-transformed data
+            n_points=n_suggestions,
+            iteration=None,         # No iteration tracking for now
+            boundary_func=None      # No ground truth boundary function
+        )
+        
+        # Add Bayesian-specific visualization
+        if output_dir is not None:
+            print(f"Creating Bayesian recommendation visualization...")
+            # Use iteration number for sequential file naming (like Delaunay triangulation)
+            if iteration_number is not None:
+                step_id = f"iter_{iteration_number:02d}"  # Format as iter_01, iter_02, etc.
+            else:
+                step_id = "iter_00"  # Fallback for initial/single runs
+            _create_bayesian_visualization(
+                experiment_data_df, recommendations_df,  # Use original data for visualization (not log-transformed)
+                surfactant_a_name, surfactant_b_name, output_dir, 
+                step_id=step_id
+            )
     
-    print(f"DEBUG: Triangle recommender returned {len(recommendations_df)} suggestions")
+    print(f"DEBUG: {algorithm_name} recommender returned {len(recommendations_df)} suggestions")
     if len(recommendations_df) > 0:
         print(f"DEBUG: First few suggestions:")
         print(recommendations_df[['surf_A_conc_mm', 'surf_B_conc_mm']].head())
     
     if len(recommendations_df) == 0:
-        raise RuntimeError(f"CRITICAL: Triangle analysis returned 0 recommendations! Algorithm is broken. Input data shape: {experiment_data_df.shape}, columns: {list(experiment_data_df.columns)}, output columns: {recommender.output_columns}")
+        raise RuntimeError(f"CRITICAL: {algorithm_name} returned 0 recommendations! Algorithm is broken. Input data shape: {experiment_data_df.shape}, columns: {list(experiment_data_df.columns)}, output columns: {recommender.output_columns}")
     
     # Extract concentration pairs from recommendations
     concentration_pairs = []
@@ -4580,16 +4709,91 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         conc_b = row['surf_B_conc_mm']
         concentration_pairs.append((conc_a, conc_b))
     
-    print(f"Triangle analysis complete: {len(concentration_pairs)} concentration pairs identified")
-    print(f"Triangle score range: {recommendations_df['triangle_score'].min():.4f} - {recommendations_df['triangle_score'].max():.4f}")
+    print(f"{algorithm_name} analysis complete: {len(concentration_pairs)} concentration pairs identified")
+    
+    # Algorithm-specific score display
+    if RECOMMENDER_TYPE == 'delaunay' and 'triangle_score' in recommendations_df.columns:
+        print(f"Triangle score range: {recommendations_df['triangle_score'].min():.4f} - {recommendations_df['triangle_score'].max():.4f}")
+    elif RECOMMENDER_TYPE == 'bayesian':
+        print(f"Bayesian acquisition-based selection completed")
     
     # Show sample of recommendations for verification
     print("Sample recommendations:")
     for i, (conc_a, conc_b) in enumerate(concentration_pairs[:5]):
-        score = recommendations_df.iloc[i]['triangle_score']
-        print(f"  {i+1}: {surfactant_a_name}={conc_a:.3e} mM, {surfactant_b_name}={conc_b:.3e} mM (score: {score:.4f})")
+        if RECOMMENDER_TYPE == 'delaunay' and 'triangle_score' in recommendations_df.columns:
+            score = recommendations_df.iloc[i]['triangle_score']
+            print(f"  {i+1}: {surfactant_a_name}={conc_a:.3e} mM, {surfactant_b_name}={conc_b:.3e} mM (triangle_score: {score:.4f})")
+        else:
+            print(f"  {i+1}: {surfactant_a_name}={conc_a:.3e} mM, {surfactant_b_name}={conc_b:.3e} mM")
     
     return concentration_pairs
+
+def _create_bayesian_visualization(experiment_data_df, recommendations_df, surfactant_a_name, surfactant_b_name, output_dir, step_id="step1"):
+    """Create simple Bayesian recommendation visualization - similar to Delaunay style."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import os
+    
+    # Create subfolder for Bayesian recommendations (like Delaunay does)
+    bayesian_viz_dir = os.path.join(output_dir, "bayesian_recommendations")
+    os.makedirs(bayesian_viz_dir, exist_ok=True)
+    
+    # Get experiment data
+    exp_data = experiment_data_df[experiment_data_df['well_type'] == 'experiment'].copy()
+    
+    # Convert to log space for plotting if needed
+    exp_x = np.log10(exp_data['surf_A_conc_mm'])
+    exp_y = np.log10(exp_data['surf_B_conc_mm'])
+    rec_x = np.log10(recommendations_df['surf_A_conc_mm']) 
+    rec_y = np.log10(recommendations_df['surf_B_conc_mm'])
+    
+    # Create figure
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+    fig.suptitle(f'Bayesian Recommendations: {surfactant_a_name} + {surfactant_b_name} ({step_id})', fontsize=14)
+    
+    # Plot 1: Existing data colored by ratio
+    ax1 = axes[0]
+    if 'ratio' in exp_data.columns:
+        scatter1 = ax1.scatter(exp_x, exp_y, c=exp_data['ratio'], s=60, 
+                              cmap='viridis', alpha=0.8, edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter1, ax=ax1, label='Ratio')
+        ax1.set_title('Existing Data (Ratio) + Recommendations')
+    else:
+        ax1.scatter(exp_x, exp_y, c='blue', s=60, alpha=0.8, edgecolors='black', linewidth=0.5)
+        ax1.set_title('Existing Data + Recommendations')
+    
+    # Add recommendations as red stars
+    ax1.scatter(rec_x, rec_y, c='red', s=120, marker='*', 
+               edgecolors='black', linewidth=1, label='New Recommendations', zorder=5)
+    ax1.set_xlabel(f'{surfactant_a_name} log(conc mM)')
+    ax1.set_ylabel(f'{surfactant_b_name} log(conc mM)')
+    ax1.legend()
+    
+    # Plot 2: Existing data colored by turbidity  
+    ax2 = axes[1]
+    if 'turbidity_600' in exp_data.columns:
+        scatter2 = ax2.scatter(exp_x, exp_y, c=exp_data['turbidity_600'], s=60,
+                              cmap='plasma', alpha=0.8, edgecolors='black', linewidth=0.5)
+        plt.colorbar(scatter2, ax=ax2, label='Turbidity 600nm')
+        ax2.set_title('Existing Data (Turbidity) + Recommendations')
+    else:
+        ax2.scatter(exp_x, exp_y, c='blue', s=60, alpha=0.8, edgecolors='black', linewidth=0.5) 
+        ax2.set_title('Existing Data + Recommendations')
+        
+    # Add recommendations as red stars
+    ax2.scatter(rec_x, rec_y, c='red', s=120, marker='*',
+               edgecolors='black', linewidth=1, label='New Recommendations', zorder=5)
+    ax2.set_xlabel(f'{surfactant_a_name} log(conc mM)')
+    ax2.set_ylabel(f'{surfactant_b_name} log(conc mM)')
+    ax2.legend()
+    
+    plt.tight_layout()
+    
+    # Save plot with unique filename in subfolder
+    plot_path = os.path.join(bayesian_viz_dir, f'bayesian_recommendations_{step_id}.png')
+    plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+    print(f"Bayesian visualization saved: {plot_path}")
+    plt.close()
 
 def execute_2_stage_workflow(lash_e, surfactant_a_name="SDS", surfactant_b_name="DTAB", 
                             experiment_output_folder=None, simulate=True):
@@ -4737,11 +4941,17 @@ if __name__ == "__main__":
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")
 
-    # Create unified experiment folder for all workflows
-    experiment_output_folder, experiment_name = setup_experiment_environment(
-        lash_e, SURFACTANT_A, SURFACTANT_B, SIMULATE
-    )
-    print(f"Unified experiment folder created: {experiment_output_folder}")
+    # Create experiment folder - different logic for double vs single workflows
+    if WORKFLOW_TYPE == 'double_iterative':
+        # For double iterative, we'll create separate folders for each pairing later
+        print("Double iterative workflow - individual experiment folders will be created for each pairing...")
+        base_experiment_name = None  # Will be set during pairing loop
+    else:
+        # For single workflows, create unified experiment folder
+        experiment_output_folder, experiment_name = setup_experiment_environment(
+            lash_e, SURFACTANT_A, SURFACTANT_B, SIMULATE
+        )
+        print(f"Unified experiment folder created: {experiment_output_folder}")
 
     if VALIDATE_LIQUIDS:
         validate_pipetting_system(lash_e, experiment_output_folder)
@@ -4790,6 +5000,7 @@ if __name__ == "__main__":
         results = execute_adaptive_surfactant_screening(
             surfactant_a_name=SURFACTANT_A, 
             surfactant_b_name=SURFACTANT_B,
+            num_substocks=NUM_SUBSTOCKS,  # Use configurable number of substocks
             lash_e=lash_e,
             experiment_output_folder=experiment_output_folder,
             simulate=SIMULATE
@@ -4816,7 +5027,7 @@ if __name__ == "__main__":
             print("Single-stage workflow failed!")
     
     elif WORKFLOW_TYPE == 'iterative':
-        # ITERATIVE WORKFLOW WITH GRADIENT EXPLORATION
+        # SINGLE ITERATIVE WORKFLOW WITH GRADIENT EXPLORATION
         print("Starting iterative gradient exploration workflow...")
         if not SIMULATE:
             slack_agent.send_slack_message("Starting iterative gradient exploration workflow...")
@@ -4825,6 +5036,7 @@ if __name__ == "__main__":
             surfactant_a_name=SURFACTANT_A, 
             surfactant_b_name=SURFACTANT_B,
             number_concentrations=ITERATIVE_CONCENTRATIONS,  # Start with rapid 5x5 screening
+            num_substocks=NUM_SUBSTOCKS,  # Use configurable number of substocks
             target_measurements=ITERATIVE_MEASUREMENT_TOTAL,   # Fill one wellplate with iterative exploration
             gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION,
             lash_e=lash_e,
@@ -4855,6 +5067,101 @@ if __name__ == "__main__":
             print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
         else:
             print("Iterative workflow failed!")
+    
+    elif WORKFLOW_TYPE == 'double_iterative':
+        # DOUBLE ITERATIVE WORKFLOW - Multiple pairings overnight
+        print("Starting double iterative workflow with pairing queue...")
+        
+        # Fix: Handle case where Lash_E config loaded PAIRING_QUEUE as string
+        if isinstance(PAIRING_QUEUE, str):
+            print(f"WARNING: PAIRING_QUEUE loaded as string by config. Converting to list...")
+            import ast
+            try:
+                pairing_queue = ast.literal_eval(PAIRING_QUEUE)
+                print(f"✅ Converted to list with {len(pairing_queue)} pairings")
+            except Exception as e:
+                print(f"❌ Failed to parse PAIRING_QUEUE: {e}")
+                raise RuntimeError("PAIRING_QUEUE config is corrupted")
+        else:
+            pairing_queue = PAIRING_QUEUE
+        
+        # Debug PAIRING_QUEUE structure
+        print(f"DEBUG: pairing_queue type: {type(pairing_queue)}")
+        print(f"DEBUG: pairing_queue length: {len(pairing_queue)}")
+        print(f"DEBUG: pairing_queue structure: {pairing_queue}")
+        
+        print(f"Pairings planned: {len(pairing_queue)}")
+        if not SIMULATE:
+            slack_agent.send_slack_message(f"Starting double iterative workflow with {len(pairing_queue)} pairings...")
+        
+        all_results = []
+        successful_pairings = []
+        
+        for i, pairing_config in enumerate(pairing_queue):
+            print(f"\n{'='*80}")
+            print(f"PAIRING {i+1}/{len(pairing_queue)}: {pairing_config['SURFACTANT_A']} + {pairing_config['SURFACTANT_B']}")
+            print(f"{'='*80}")
+            
+            # Create separate experiment folder for this pairing
+            pairing_experiment_folder, pairing_experiment_name = setup_experiment_environment(
+                lash_e, pairing_config['SURFACTANT_A'], pairing_config['SURFACTANT_B'], SIMULATE
+            )
+            print(f"Pairing experiment folder: {pairing_experiment_folder}")
+                                  
+            # Run iterative workflow with updated globals and pairing-specific folder
+            results = execute_iterative_workflow(
+                surfactant_a_name=pairing_config['SURFACTANT_A'], 
+                surfactant_b_name=pairing_config['SURFACTANT_B'],
+                number_concentrations=ITERATIVE_CONCENTRATIONS,
+                num_substocks=NUM_SUBSTOCKS,
+                target_measurements=ITERATIVE_MEASUREMENT_TOTAL,
+                gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION,
+                lash_e=lash_e,
+                experiment_output_folder=pairing_experiment_folder,  # Use pairing-specific folder
+                simulate=SIMULATE
+            )
+            
+            all_results.append(results)
+            
+            if results and results['workflow_complete']:
+                successful_pairings.append(results)
+                print(f"✅ Pairing {i+1} complete: {results['surfactant_a']} + {results['surfactant_b']} ({results['total_wells']} wells)")
+                print(f"   Folder: {pairing_experiment_folder}")
+                
+                # Run post-experiment analysis for this pairing
+                if results.get('output_folder'):
+                    experiment_results_csv = os.path.join(results['output_folder'], 'iterative_experiment_results.csv')
+                    run_post_experiment_analysis(
+                        experiment_results_csv=experiment_results_csv,
+                        output_dir=results['output_folder'],
+                        surfactant_a_name=pairing_config['SURFACTANT_A'],
+                        surfactant_b_name=pairing_config['SURFACTANT_B'],
+                        logger=lash_e.logger
+                    )
+            else:
+                print(f"❌ Pairing {i+1} failed: {pairing_config['SURFACTANT_A']} + {pairing_config['SURFACTANT_B']}")
+                
+            # Brief pause between pairings
+            if i < len(pairing_queue) - 1:
+                print(f"Pairing {i+1} complete. Preparing for next pairing...")
+        
+        # Summary of all pairings
+        total_wells = sum(r.get('total_wells', 0) for r in successful_pairings)
+        
+        print(f"\n{'='*80}")
+        print("DOUBLE ITERATIVE WORKFLOW COMPLETE!")
+        print(f"{'='*80}")
+        print(f"+ Successful pairings: {len(successful_pairings)}/{len(pairing_queue)}")
+        print(f"+ Total wells measured: {total_wells}")
+        print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+
+        print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
+        
+        # List successful pairings and their folders
+        if successful_pairings:
+            print("\n📁 Experiment folders created:")
+            for j, result in enumerate(successful_pairings):
+                print(f"   {j+1}. {result['surfactant_a']} + {result['surfactant_b']}: {result['output_folder']}")
     
     elif WORKFLOW_TYPE == 'kinetics':
         # KINETICS WORKFLOW - Single sequence (4x4 grid with modular measurement control)

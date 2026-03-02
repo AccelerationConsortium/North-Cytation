@@ -1,0 +1,460 @@
+2025-11-12 14:06:59,052 - INFO - Initializing North Robot...
+2025-11-12 14:06:59,052 - DEBUG - Loading robot configuration files...
+2025-11-12 14:06:59,071 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2025-11-12 14:06:59,073 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2025-11-12 14:06:59,074 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2025-11-12 14:06:59,074 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2025-11-12 14:06:59,085 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-11-12 14:06:59,088 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-11-12 14:06:59,088 - DEBUG - Loading robot state files...
+2025-11-12 14:06:59,092 - DEBUG - Loaded vial data from status/calibration_vials_overnight.csv
+2025-11-12 14:06:59,103 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2025-11-12 14:06:59,107 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2025-11-12 14:06:59,107 - DEBUG - Robot status loaded successfully
+2025-11-12 14:06:59,107 - DEBUG - Loading pumps from YAML configuration...
+2025-11-12 14:06:59,226 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-11-12 14:06:59,333 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-11-12 14:06:59,333 - DEBUG - Physical initialization of North Robot...
+2025-11-12 14:06:59,646 - INFO - Moving robot to home position
+2025-11-12 14:07:00,214 - INFO - Initializing North Track...
+2025-11-12 14:07:00,214 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2025-11-12 14:07:00,214 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2025-11-12 14:07:00,220 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2025-11-12 14:07:00,220 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2025-11-12 14:07:00,237 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2025-11-12 14:07:00,237 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2025-11-12 14:07:00,239 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-11-12 14:07:00,239 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-11-12 14:07:00,333 - DEBUG - Moving North Track to home position
+2025-11-12 14:07:00,336 - INFO -    vial_index           vial_name        location  location_index  vial_volume  capped cap_type  vial_type   home_location  home_location_index
+0           0     liquid_source_0   main_8mL_rack              43          8.0    True     open       8_mL   main_8mL_rack                   43
+1           1  measurement_vial_0   main_8mL_rack              44          0.0    True     open       8_mL   main_8mL_rack                   44
+2           2             waste_0  50mL_vial_rack               0          0.0    True     open      50_mL  50mL_vial_rack                    0
+3           3         reservoir_0       reservoir               0         50.0   False    False  reservoir       reservoir                    0
+2025-11-12 14:07:00,352 - INFO - Visualizing vial racks...
+2025-11-12 14:07:00,536 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2025-11-12 14:07:00,677 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2025-11-12 14:07:05,137 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-12 14:07:05,138 - DEBUG - Grabbing vial 1 with index 1
+2025-11-12 14:07:07,200 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-12 14:07:10,908 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-11-12 14:07:42,614 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:07:42,622 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=8.00mL, measurement(measurement_vial_0)=0.00mL, min_threshold=2.5mL
+2025-11-12 14:07:42,622 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:07:42,623 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:07:42,624 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=8.00mL, measurement(measurement_vial_0)=0.00mL, min_threshold=2.5mL
+2025-11-12 14:07:42,624 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:07:42,625 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:07:42,627 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=8.00mL, measurement(measurement_vial_0)=0.00mL, min_threshold=2.5mL
+2025-11-12 14:07:42,628 - DEBUG - Selected small_tip for volume 0.073 mL
+2025-11-12 14:07:42,628 - INFO - Getting small_tip (pipet number 8) from rack: small_tip_rack_1
+2025-11-12 14:07:47,711 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:07:47,711 - INFO - Additional volume from calibration, amount: 0.003 mL
+2025-11-12 14:07:47,711 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:07:51,372 - DEBUG - Aspirating 0.053 mL then waiting 0.5 s
+2025-11-12 14:07:52,568 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-11-12 14:07:52,885 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:07:53,980 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-12 14:07:58,020 - DEBUG - Dispensing 0.073 mL then waiting 0.5 s
+2025-11-12 14:08:01,274 - DEBUG - Blowing out 0.050 mL
+2025-11-12 14:08:07,588 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:08:07,588 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.95mL, measurement(measurement_vial_0)=0.05mL, min_threshold=2.5mL
+2025-11-12 14:08:07,588 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:08:07,588 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:08:07,588 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.95mL, measurement(measurement_vial_0)=0.05mL, min_threshold=2.5mL
+2025-11-12 14:08:07,601 - DEBUG - Selected small_tip for volume 0.073 mL
+2025-11-12 14:08:07,602 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:08:07,602 - INFO - Additional volume from calibration, amount: 0.003 mL
+2025-11-12 14:08:07,605 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:08:11,639 - DEBUG - Aspirating 0.053 mL then waiting 0.5 s
+2025-11-12 14:08:12,855 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-11-12 14:08:13,171 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:08:16,982 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-12 14:08:20,996 - DEBUG - Dispensing 0.073 mL then waiting 0.5 s
+2025-11-12 14:08:24,224 - DEBUG - Blowing out 0.050 mL
+2025-11-12 14:08:29,396 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:08:29,396 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.90mL, measurement(measurement_vial_0)=0.10mL, min_threshold=2.5mL
+2025-11-12 14:08:29,396 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:08:29,396 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:08:29,396 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.90mL, measurement(measurement_vial_0)=0.10mL, min_threshold=2.5mL
+2025-11-12 14:08:29,402 - DEBUG - Selected small_tip for volume 0.073 mL
+2025-11-12 14:08:29,403 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:08:29,403 - INFO - Additional volume from calibration, amount: 0.003 mL
+2025-11-12 14:08:29,405 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:08:33,440 - DEBUG - Aspirating 0.053 mL then waiting 0.5 s
+2025-11-12 14:08:34,640 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-11-12 14:08:34,966 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:08:37,183 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-12 14:08:41,202 - DEBUG - Dispensing 0.073 mL then waiting 0.5 s
+2025-11-12 14:08:44,497 - DEBUG - Blowing out 0.050 mL
+2025-11-12 14:08:49,582 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:08:49,583 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.85mL, measurement(measurement_vial_0)=0.15mL, min_threshold=2.5mL
+2025-11-12 14:08:49,583 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:08:49,583 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:08:49,583 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.85mL, measurement(measurement_vial_0)=0.15mL, min_threshold=2.5mL
+2025-11-12 14:08:49,583 - DEBUG - Selected small_tip for volume 0.073 mL
+2025-11-12 14:08:49,583 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:08:49,583 - INFO - Additional volume from calibration, amount: 0.003 mL
+2025-11-12 14:08:49,589 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:08:53,609 - DEBUG - Aspirating 0.053 mL then waiting 0.5 s
+2025-11-12 14:08:54,809 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-11-12 14:08:55,110 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:08:58,583 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-12 14:09:02,581 - DEBUG - Dispensing 0.073 mL then waiting 0.5 s
+2025-11-12 14:09:05,832 - DEBUG - Blowing out 0.050 mL
+2025-11-12 14:09:10,791 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:09:10,792 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.80mL, measurement(measurement_vial_0)=0.20mL, min_threshold=2.5mL
+2025-11-12 14:09:10,792 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:09:10,793 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:09:10,793 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.80mL, measurement(measurement_vial_0)=0.20mL, min_threshold=2.5mL
+2025-11-12 14:09:10,795 - DEBUG - Selected small_tip for volume 0.073 mL
+2025-11-12 14:09:10,796 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:09:10,796 - INFO - Additional volume from calibration, amount: 0.003 mL
+2025-11-12 14:09:10,798 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:09:14,819 - DEBUG - Aspirating 0.053 mL then waiting 0.5 s
+2025-11-12 14:09:16,009 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-11-12 14:09:16,339 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:09:20,785 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-12 14:09:24,784 - DEBUG - Dispensing 0.073 mL then waiting 0.5 s
+2025-11-12 14:09:27,976 - DEBUG - Blowing out 0.050 mL
+2025-11-12 14:09:33,000 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:09:33,001 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.75mL, measurement(measurement_vial_0)=0.25mL, min_threshold=2.5mL
+2025-11-12 14:09:33,002 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:09:33,002 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:09:33,004 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.75mL, measurement(measurement_vial_0)=0.25mL, min_threshold=2.5mL
+2025-11-12 14:09:33,004 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:09:33,004 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:09:33,006 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.75mL, measurement(measurement_vial_0)=0.25mL, min_threshold=2.5mL
+2025-11-12 14:09:33,008 - DEBUG - Selected small_tip for volume 0.095 mL
+2025-11-12 14:09:33,009 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:09:33,009 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-12 14:09:33,011 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-12 14:09:37,037 - DEBUG - Aspirating 0.055 mL then waiting 0.2 s
+2025-11-12 14:09:38,355 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-11-12 14:09:38,997 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:09:40,779 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:09:44,751 - DEBUG - Dispensing 0.095 mL then waiting 1.0 s
+2025-11-12 14:09:46,147 - DEBUG - Blowing out 0.100 mL
+2025-11-12 14:09:49,788 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:09:49,788 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.70mL, measurement(measurement_vial_0)=0.30mL, min_threshold=2.5mL
+2025-11-12 14:09:49,788 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:09:49,788 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:09:49,788 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.70mL, measurement(measurement_vial_0)=0.30mL, min_threshold=2.5mL
+2025-11-12 14:09:49,792 - DEBUG - Selected small_tip for volume 0.095 mL
+2025-11-12 14:09:49,793 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:09:49,793 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-12 14:09:49,794 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-12 14:09:53,842 - DEBUG - Aspirating 0.055 mL then waiting 0.2 s
+2025-11-12 14:09:55,175 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-11-12 14:09:55,824 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:09:58,176 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:10:02,181 - DEBUG - Dispensing 0.095 mL then waiting 1.0 s
+2025-11-12 14:10:03,594 - DEBUG - Blowing out 0.100 mL
+2025-11-12 14:10:08,198 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:10:08,199 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.65mL, measurement(measurement_vial_0)=0.35mL, min_threshold=2.5mL
+2025-11-12 14:10:08,199 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:10:08,199 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:10:08,201 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.65mL, measurement(measurement_vial_0)=0.35mL, min_threshold=2.5mL
+2025-11-12 14:10:08,203 - DEBUG - Selected small_tip for volume 0.095 mL
+2025-11-12 14:10:08,204 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:10:08,204 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-12 14:10:08,205 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-12 14:10:12,232 - DEBUG - Aspirating 0.055 mL then waiting 0.2 s
+2025-11-12 14:10:13,549 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-11-12 14:10:14,202 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:10:16,380 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:10:20,367 - DEBUG - Dispensing 0.095 mL then waiting 1.0 s
+2025-11-12 14:10:21,772 - DEBUG - Blowing out 0.100 mL
+2025-11-12 14:10:25,184 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:10:25,185 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.60mL, measurement(measurement_vial_0)=0.40mL, min_threshold=2.5mL
+2025-11-12 14:10:25,185 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:10:25,185 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:10:25,185 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.60mL, measurement(measurement_vial_0)=0.40mL, min_threshold=2.5mL
+2025-11-12 14:10:25,189 - DEBUG - Selected small_tip for volume 0.095 mL
+2025-11-12 14:10:25,190 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:10:25,190 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-12 14:10:25,193 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-12 14:10:29,224 - DEBUG - Aspirating 0.055 mL then waiting 0.2 s
+2025-11-12 14:10:30,553 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-11-12 14:10:31,210 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:10:33,568 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:10:37,528 - DEBUG - Dispensing 0.095 mL then waiting 1.0 s
+2025-11-12 14:10:38,946 - DEBUG - Blowing out 0.100 mL
+2025-11-12 14:10:45,193 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:10:45,194 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.55mL, measurement(measurement_vial_0)=0.45mL, min_threshold=2.5mL
+2025-11-12 14:10:45,194 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:10:45,194 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:10:45,194 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.55mL, measurement(measurement_vial_0)=0.45mL, min_threshold=2.5mL
+2025-11-12 14:10:45,194 - DEBUG - Selected small_tip for volume 0.095 mL
+2025-11-12 14:10:45,194 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:10:45,194 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-12 14:10:45,201 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-12 14:10:49,238 - DEBUG - Aspirating 0.055 mL then waiting 0.2 s
+2025-11-12 14:10:50,542 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-11-12 14:10:51,179 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:10:53,188 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:10:57,203 - DEBUG - Dispensing 0.095 mL then waiting 1.0 s
+2025-11-12 14:10:58,572 - DEBUG - Blowing out 0.100 mL
+2025-11-12 14:11:01,595 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:01,598 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.50mL, measurement(measurement_vial_0)=0.50mL, min_threshold=2.5mL
+2025-11-12 14:11:01,598 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:11:01,598 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:01,600 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.50mL, measurement(measurement_vial_0)=0.50mL, min_threshold=2.5mL
+2025-11-12 14:11:01,600 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:11:01,600 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:01,602 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.50mL, measurement(measurement_vial_0)=0.50mL, min_threshold=2.5mL
+2025-11-12 14:11:01,604 - DEBUG - Selected small_tip for volume 0.086 mL
+2025-11-12 14:11:01,605 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:11:01,605 - INFO - Additional volume from calibration, amount: 0.006 mL
+2025-11-12 14:11:01,608 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-12 14:11:05,664 - DEBUG - Aspirating 0.056 mL then waiting 0.3 s
+2025-11-12 14:11:06,711 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-11-12 14:11:07,044 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:11:07,984 - DEBUG - Adjusting pump 0 speed to 12
+2025-11-12 14:11:11,998 - DEBUG - Dispensing 0.086 mL then waiting 0.8 s
+2025-11-12 14:11:13,420 - DEBUG - Blowing out 0.070 mL
+2025-11-12 14:11:19,391 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:19,391 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.45mL, measurement(measurement_vial_0)=0.55mL, min_threshold=2.5mL
+2025-11-12 14:11:19,393 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:11:19,393 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:19,394 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.45mL, measurement(measurement_vial_0)=0.55mL, min_threshold=2.5mL
+2025-11-12 14:11:19,395 - DEBUG - Selected small_tip for volume 0.086 mL
+2025-11-12 14:11:19,395 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:11:19,395 - INFO - Additional volume from calibration, amount: 0.006 mL
+2025-11-12 14:11:19,399 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-12 14:11:23,419 - DEBUG - Aspirating 0.056 mL then waiting 0.3 s
+2025-11-12 14:11:24,472 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-11-12 14:11:24,820 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:11:27,592 - DEBUG - Adjusting pump 0 speed to 12
+2025-11-12 14:11:31,624 - DEBUG - Dispensing 0.086 mL then waiting 0.8 s
+2025-11-12 14:11:33,025 - DEBUG - Blowing out 0.070 mL
+2025-11-12 14:11:37,193 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:37,195 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.40mL, measurement(measurement_vial_0)=0.60mL, min_threshold=2.5mL
+2025-11-12 14:11:37,195 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:11:37,195 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:37,195 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.40mL, measurement(measurement_vial_0)=0.60mL, min_threshold=2.5mL
+2025-11-12 14:11:37,199 - DEBUG - Selected small_tip for volume 0.086 mL
+2025-11-12 14:11:37,199 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:11:37,200 - INFO - Additional volume from calibration, amount: 0.006 mL
+2025-11-12 14:11:37,201 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-12 14:11:41,264 - DEBUG - Aspirating 0.056 mL then waiting 0.3 s
+2025-11-12 14:11:42,340 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-11-12 14:11:42,645 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:11:44,781 - DEBUG - Adjusting pump 0 speed to 12
+2025-11-12 14:11:48,772 - DEBUG - Dispensing 0.086 mL then waiting 0.8 s
+2025-11-12 14:11:50,166 - DEBUG - Blowing out 0.070 mL
+2025-11-12 14:11:54,787 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:54,788 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.35mL, measurement(measurement_vial_0)=0.65mL, min_threshold=2.5mL
+2025-11-12 14:11:54,790 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:11:54,790 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:11:54,790 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.35mL, measurement(measurement_vial_0)=0.65mL, min_threshold=2.5mL
+2025-11-12 14:11:54,793 - DEBUG - Selected small_tip for volume 0.086 mL
+2025-11-12 14:11:54,794 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:11:54,794 - INFO - Additional volume from calibration, amount: 0.006 mL
+2025-11-12 14:11:54,795 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-12 14:11:58,847 - DEBUG - Aspirating 0.056 mL then waiting 0.3 s
+2025-11-12 14:11:59,930 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-11-12 14:12:00,259 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:12:02,182 - DEBUG - Adjusting pump 0 speed to 12
+2025-11-12 14:12:06,175 - DEBUG - Dispensing 0.086 mL then waiting 0.8 s
+2025-11-12 14:12:07,575 - DEBUG - Blowing out 0.070 mL
+2025-11-12 14:12:12,979 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:12:12,979 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.30mL, measurement(measurement_vial_0)=0.70mL, min_threshold=2.5mL
+2025-11-12 14:12:12,979 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:12:12,979 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:12:12,979 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.30mL, measurement(measurement_vial_0)=0.70mL, min_threshold=2.5mL
+2025-11-12 14:12:12,979 - DEBUG - Selected small_tip for volume 0.086 mL
+2025-11-12 14:12:12,995 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:12:12,995 - INFO - Additional volume from calibration, amount: 0.006 mL
+2025-11-12 14:12:12,997 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-12 14:12:17,034 - DEBUG - Aspirating 0.056 mL then waiting 0.3 s
+2025-11-12 14:12:18,137 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-11-12 14:12:18,517 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:12:21,384 - DEBUG - Adjusting pump 0 speed to 12
+2025-11-12 14:12:25,423 - DEBUG - Dispensing 0.086 mL then waiting 0.8 s
+2025-11-12 14:12:26,834 - DEBUG - Blowing out 0.070 mL
+2025-11-12 14:12:30,186 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:12:30,193 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.25mL, measurement(measurement_vial_0)=0.75mL, min_threshold=2.5mL
+2025-11-12 14:12:30,194 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:12:30,194 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:12:30,195 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.25mL, measurement(measurement_vial_0)=0.75mL, min_threshold=2.5mL
+2025-11-12 14:12:30,196 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:12:30,196 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:12:30,197 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.25mL, measurement(measurement_vial_0)=0.75mL, min_threshold=2.5mL
+2025-11-12 14:12:30,198 - DEBUG - Selected small_tip for volume 0.108 mL
+2025-11-12 14:12:30,198 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:12:30,198 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-12 14:12:30,203 - DEBUG - Adjusting pump 0 speed to 30
+2025-11-12 14:12:34,239 - DEBUG - Aspirating 0.058 mL then waiting 0.1 s
+2025-11-12 14:12:40,558 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-12 14:12:45,594 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:12:45,783 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:12:49,759 - DEBUG - Dispensing 0.108 mL then waiting 0.4 s
+2025-11-12 14:12:50,612 - DEBUG - Blowing out 0.150 mL
+2025-11-12 14:12:55,185 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:12:55,186 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.20mL, measurement(measurement_vial_0)=0.80mL, min_threshold=2.5mL
+2025-11-12 14:12:55,186 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:12:55,187 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:12:55,188 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.20mL, measurement(measurement_vial_0)=0.80mL, min_threshold=2.5mL
+2025-11-12 14:12:55,189 - DEBUG - Selected small_tip for volume 0.108 mL
+2025-11-12 14:12:55,189 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:12:55,189 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-12 14:12:55,192 - DEBUG - Adjusting pump 0 speed to 30
+2025-11-12 14:12:59,212 - DEBUG - Aspirating 0.058 mL then waiting 0.1 s
+2025-11-12 14:13:05,588 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-12 14:13:10,592 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:13:10,792 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:13:14,790 - DEBUG - Dispensing 0.108 mL then waiting 0.4 s
+2025-11-12 14:13:15,643 - DEBUG - Blowing out 0.150 mL
+2025-11-12 14:13:19,591 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:13:19,595 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.15mL, measurement(measurement_vial_0)=0.85mL, min_threshold=2.5mL
+2025-11-12 14:13:19,596 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:13:19,596 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:13:19,598 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.15mL, measurement(measurement_vial_0)=0.85mL, min_threshold=2.5mL
+2025-11-12 14:13:19,599 - DEBUG - Selected small_tip for volume 0.108 mL
+2025-11-12 14:13:19,600 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:13:19,600 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-12 14:13:19,602 - DEBUG - Adjusting pump 0 speed to 30
+2025-11-12 14:13:23,660 - DEBUG - Aspirating 0.058 mL then waiting 0.1 s
+2025-11-12 14:13:30,042 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-12 14:13:35,089 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:13:35,170 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:13:39,183 - DEBUG - Dispensing 0.108 mL then waiting 0.4 s
+2025-11-12 14:13:40,055 - DEBUG - Blowing out 0.150 mL
+2025-11-12 14:13:43,184 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:13:43,185 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.10mL, measurement(measurement_vial_0)=0.90mL, min_threshold=2.5mL
+2025-11-12 14:13:43,186 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:13:43,186 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:13:43,187 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.10mL, measurement(measurement_vial_0)=0.90mL, min_threshold=2.5mL
+2025-11-12 14:13:43,188 - DEBUG - Selected small_tip for volume 0.108 mL
+2025-11-12 14:13:43,189 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:13:43,189 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-12 14:13:43,191 - DEBUG - Adjusting pump 0 speed to 30
+2025-11-12 14:13:47,226 - DEBUG - Aspirating 0.058 mL then waiting 0.1 s
+2025-11-12 14:13:53,547 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-12 14:13:58,604 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:13:58,783 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:14:02,772 - DEBUG - Dispensing 0.108 mL then waiting 0.4 s
+2025-11-12 14:14:03,649 - DEBUG - Blowing out 0.150 mL
+2025-11-12 14:14:08,573 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:14:08,573 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.05mL, measurement(measurement_vial_0)=0.95mL, min_threshold=2.5mL
+2025-11-12 14:14:08,586 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:14:08,587 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:14:08,589 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.05mL, measurement(measurement_vial_0)=0.95mL, min_threshold=2.5mL
+2025-11-12 14:14:08,591 - DEBUG - Selected small_tip for volume 0.108 mL
+2025-11-12 14:14:08,592 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:14:08,593 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-12 14:14:08,594 - DEBUG - Adjusting pump 0 speed to 30
+2025-11-12 14:14:12,640 - DEBUG - Aspirating 0.058 mL then waiting 0.1 s
+2025-11-12 14:14:19,043 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-12 14:14:24,045 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:14:24,182 - DEBUG - Adjusting pump 0 speed to 5
+2025-11-12 14:14:28,192 - DEBUG - Dispensing 0.108 mL then waiting 0.4 s
+2025-11-12 14:14:29,002 - DEBUG - Blowing out 0.150 mL
+2025-11-12 14:14:33,400 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:14:33,402 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.00mL, measurement(measurement_vial_0)=1.00mL, min_threshold=2.5mL
+2025-11-12 14:14:33,403 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:14:33,403 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:14:33,405 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.00mL, measurement(measurement_vial_0)=1.00mL, min_threshold=2.5mL
+2025-11-12 14:14:33,405 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:14:33,405 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:14:33,409 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.00mL, measurement(measurement_vial_0)=1.00mL, min_threshold=2.5mL
+2025-11-12 14:14:33,411 - DEBUG - Selected small_tip for volume 0.061 mL
+2025-11-12 14:14:33,411 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:14:33,412 - INFO - Additional volume from calibration, amount: 0.001 mL
+2025-11-12 14:14:33,412 - DEBUG - Adjusting pump 0 speed to 6
+2025-11-12 14:14:37,493 - DEBUG - Aspirating 0.051 mL then waiting 0.2 s
+2025-11-12 14:14:38,397 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-12 14:14:38,636 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:14:40,186 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-12 14:14:44,187 - DEBUG - Dispensing 0.061 mL then waiting 0.6 s
+2025-11-12 14:14:45,188 - DEBUG - Blowing out 0.020 mL
+2025-11-12 14:14:47,997 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:14:47,998 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.95mL, measurement(measurement_vial_0)=1.05mL, min_threshold=2.5mL
+2025-11-12 14:14:47,998 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:14:47,998 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:14:47,999 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.95mL, measurement(measurement_vial_0)=1.05mL, min_threshold=2.5mL
+2025-11-12 14:14:48,001 - DEBUG - Selected small_tip for volume 0.061 mL
+2025-11-12 14:14:48,002 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:14:48,002 - INFO - Additional volume from calibration, amount: 0.001 mL
+2025-11-12 14:14:48,004 - DEBUG - Adjusting pump 0 speed to 6
+2025-11-12 14:14:52,076 - DEBUG - Aspirating 0.051 mL then waiting 0.2 s
+2025-11-12 14:14:52,949 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-12 14:14:53,260 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:14:54,977 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-12 14:14:59,013 - DEBUG - Dispensing 0.061 mL then waiting 0.6 s
+2025-11-12 14:15:00,045 - DEBUG - Blowing out 0.020 mL
+2025-11-12 14:15:04,584 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:15:04,585 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.90mL, measurement(measurement_vial_0)=1.10mL, min_threshold=2.5mL
+2025-11-12 14:15:04,586 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:15:04,586 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:15:04,587 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.90mL, measurement(measurement_vial_0)=1.10mL, min_threshold=2.5mL
+2025-11-12 14:15:04,590 - DEBUG - Selected small_tip for volume 0.061 mL
+2025-11-12 14:15:04,591 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:15:04,592 - INFO - Additional volume from calibration, amount: 0.001 mL
+2025-11-12 14:15:04,593 - DEBUG - Adjusting pump 0 speed to 6
+2025-11-12 14:15:08,599 - DEBUG - Aspirating 0.051 mL then waiting 0.2 s
+2025-11-12 14:15:09,439 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-12 14:15:09,758 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:15:10,995 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-12 14:15:14,974 - DEBUG - Dispensing 0.061 mL then waiting 0.6 s
+2025-11-12 14:15:16,038 - DEBUG - Blowing out 0.020 mL
+2025-11-12 14:15:19,986 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:15:19,986 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.85mL, measurement(measurement_vial_0)=1.15mL, min_threshold=2.5mL
+2025-11-12 14:15:19,986 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:15:19,986 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:15:19,986 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.85mL, measurement(measurement_vial_0)=1.15mL, min_threshold=2.5mL
+2025-11-12 14:15:19,992 - DEBUG - Selected small_tip for volume 0.061 mL
+2025-11-12 14:15:19,993 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:15:19,993 - INFO - Additional volume from calibration, amount: 0.001 mL
+2025-11-12 14:15:19,995 - DEBUG - Adjusting pump 0 speed to 6
+2025-11-12 14:15:24,041 - DEBUG - Aspirating 0.051 mL then waiting 0.2 s
+2025-11-12 14:15:24,959 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-12 14:15:25,256 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:15:27,982 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-12 14:15:31,996 - DEBUG - Dispensing 0.061 mL then waiting 0.6 s
+2025-11-12 14:15:33,022 - DEBUG - Blowing out 0.020 mL
+2025-11-12 14:15:35,782 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:15:35,782 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.80mL, measurement(measurement_vial_0)=1.20mL, min_threshold=2.5mL
+2025-11-12 14:15:35,782 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:15:35,782 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:15:35,782 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.80mL, measurement(measurement_vial_0)=1.20mL, min_threshold=2.5mL
+2025-11-12 14:15:35,782 - DEBUG - Selected small_tip for volume 0.061 mL
+2025-11-12 14:15:35,782 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:15:35,782 - INFO - Additional volume from calibration, amount: 0.001 mL
+2025-11-12 14:15:35,798 - DEBUG - Adjusting pump 0 speed to 6
+2025-11-12 14:15:39,834 - DEBUG - Aspirating 0.051 mL then waiting 0.2 s
+2025-11-12 14:15:40,708 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-12 14:15:41,010 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:15:42,385 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-12 14:15:46,408 - DEBUG - Dispensing 0.061 mL then waiting 0.6 s
+2025-11-12 14:15:47,387 - DEBUG - Blowing out 0.020 mL
+2025-11-12 14:16:01,898 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:16:01,899 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.75mL, measurement(measurement_vial_0)=1.25mL, min_threshold=2.5mL
+2025-11-12 14:16:01,899 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:16:01,899 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:16:01,901 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.75mL, measurement(measurement_vial_0)=1.25mL, min_threshold=2.5mL
+2025-11-12 14:16:01,901 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:16:01,901 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:16:01,902 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.75mL, measurement(measurement_vial_0)=1.25mL, min_threshold=2.5mL
+2025-11-12 14:16:01,904 - DEBUG - Selected small_tip for volume 0.107 mL
+2025-11-12 14:16:01,905 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:16:01,905 - INFO - Additional volume from calibration, amount: 0.012 mL
+2025-11-12 14:16:01,907 - DEBUG - Adjusting pump 0 speed to 27
+2025-11-12 14:16:05,944 - DEBUG - Aspirating 0.062 mL then waiting 0.4336130381438928 s
+2025-11-12 14:16:10,942 - DEBUG - Aspirating 0.046 mL then waiting 0 s
+2025-11-12 14:16:14,270 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-11-12 14:16:14,370 - DEBUG - Adjusting pump 0 speed to 9
+2025-11-12 14:16:18,356 - DEBUG - Dispensing 0.107 mL then waiting 2.6525840808894534 s
+2025-11-12 14:16:18,356 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-11-12 14:16:21,582 - DEBUG - Blowing out 0.042 mL
+2025-11-12 14:16:24,591 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:16:24,591 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.70mL, measurement(measurement_vial_0)=1.30mL, min_threshold=2.5mL
+2025-11-12 14:16:24,591 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-12 14:16:24,591 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-12 14:16:24,591 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=6.70mL, measurement(measurement_vial_0)=1.30mL, min_threshold=2.5mL
+2025-11-12 14:16:24,597 - DEBUG - Selected small_tip for volume 0.107 mL
+2025-11-12 14:16:24,598 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-11-12 14:16:24,598 - INFO - Additional volume from calibration, amount: 0.012 mL
+2025-11-12 14:16:24,599 - DEBUG - Adjusting pump 0 speed to 27
+2025-11-12 14:16:28,667 - DEBUG - Aspirating 0.062 mL then waiting 0.4336130381438928 s

@@ -17,7 +17,7 @@ def cap_decap(vial, repeats):
     lash_e.nr_robot.move_home()
 
 vial_name = 'water' #Should match whatever input status file we use
-repeats = 10
+repeats = 25
 cap_decap(vial_name, repeats)
 
 '''
