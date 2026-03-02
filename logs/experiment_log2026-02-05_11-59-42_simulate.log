@@ -1,0 +1,92 @@
+2026-02-05 11:59:42,712 - INFO - Initializing North Robot...
+2026-02-05 11:59:42,712 - DEBUG - Loading robot configuration files...
+2026-02-05 11:59:42,721 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-02-05 11:59:42,724 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-02-05 11:59:42,727 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-02-05 11:59:42,727 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-02-05 11:59:42,727 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-05 11:59:42,740 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-05 11:59:42,740 - DEBUG - Loading robot state files...
+2026-02-05 11:59:42,745 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
+2026-02-05 11:59:42,747 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-02-05 11:59:42,749 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-02-05 11:59:42,749 - DEBUG - Robot status loaded successfully
+2026-02-05 11:59:42,749 - INFO - Physical initialization of North Robot...
+2026-02-05 11:59:42,749 - DEBUG - Loading pumps from YAML configuration...
+2026-02-05 11:59:42,753 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-02-05 11:59:42,753 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-02-05 11:59:42,753 - INFO - Moving robot to home position
+2026-02-05 11:59:42,756 - DEBUG - Initializing centrifuge controller...
+2026-02-05 11:59:42,764 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='1743625385776'>
+2026-02-05 11:59:42,764 - INFO - Initializing North Track...
+2026-02-05 11:59:42,764 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-02-05 11:59:42,764 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-02-05 11:59:42,764 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-02-05 11:59:42,764 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-02-05 11:59:42,774 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-02-05 11:59:42,774 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-02-05 11:59:42,777 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-05 11:59:42,780 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-05 11:59:42,781 - DEBUG - Moving North Track to home position
+2026-02-05 11:59:42,781 - INFO - Step 2: Creating complete experiment plan...
+2026-02-05 11:59:42,781 - INFO -   Calculating adaptive concentration grids...
+2026-02-05 11:59:42,782 - INFO - Adaptive grid for SDS: 1.0e-04 to 22.5 mM (9 steps)
+2026-02-05 11:59:42,782 - INFO -   Concentrations: ['1.000e-04', '4.667e-04', '2.178e-03', '1.016e-02', '4.743e-02', '2.214e-01', '1.033e+00', '4.821e+00', '2.250e+01']
+2026-02-05 11:59:42,782 - INFO - Adaptive grid for TTAB: 1.0e-04 to 22.5 mM (9 steps)
+2026-02-05 11:59:42,782 - INFO -   Concentrations: ['1.000e-04', '4.667e-04', '2.178e-03', '1.016e-02', '4.743e-02', '2.214e-01', '1.033e+00', '4.821e+00', '2.250e+01']
+2026-02-05 11:59:42,782 - INFO - 
+Adaptive concentration grid summary:
+2026-02-05 11:59:42,782 - INFO -   SDS: 9 concentrations from 1.000e-04 to 2.250e+01 mM
+2026-02-05 11:59:42,782 - INFO -   TTAB: 9 concentrations from 1.000e-04 to 2.250e+01 mM
+2026-02-05 11:59:42,784 - INFO -   Total combinations: 9 x 9 = 81 wells (x 1 replicates = 81 total wells)
+2026-02-05 11:59:42,784 - INFO -   SDS: 9/9 concentrations achievable
+2026-02-05 11:59:42,784 - INFO -   TTAB: 9/9 concentrations achievable
+2026-02-05 11:59:42,784 - INFO -   Calculating optimal dilution strategies...
+2026-02-05 11:59:42,784 - INFO - 
+=== Analyzing dilution strategy for SDS ===
+2026-02-05 11:59:42,784 - INFO - Target concentrations: ['1.00e-04', '4.67e-04', '2.18e-03', '1.02e-02', '4.74e-02', '2.21e-01', '1.03e+00', '4.82e+00', '2.25e+01'] mM
+2026-02-05 11:59:42,785 - INFO -   1.03e+00 mM: Use SDS_dilution_5 (68.9 uL)
+2026-02-05 11:59:42,785 - INFO -   4.82e+00 mM: Use SDS_stock (19.3 uL)
+2026-02-05 11:59:42,785 - INFO -   2.25e+01 mM: Use SDS_stock (90.0 uL)
+2026-02-05 11:59:42,785 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-02-05 11:59:42,785 - INFO - Target concentrations: ['1.00e-04', '4.67e-04', '2.18e-03', '1.02e-02', '4.74e-02', '2.21e-01', '1.03e+00', '4.82e+00', '2.25e+01'] mM
+2026-02-05 11:59:42,786 - INFO -   1.03e+00 mM: Use TTAB_dilution_5 (68.9 uL)
+2026-02-05 11:59:42,787 - INFO -   4.82e+00 mM: Use TTAB_stock (19.3 uL)
+2026-02-05 11:59:42,787 - INFO -   2.25e+01 mM: Use TTAB_stock (90.0 uL)
+2026-02-05 11:59:42,787 - INFO - 
+=== SUBSTOCK DILUTION RECIPES ===
+2026-02-05 11:59:42,787 - INFO - For each substock showing: source + volume -> target_concentration
+2026-02-05 11:59:42,787 - INFO - (Using minimum 200uL pipetting volumes for accuracy)
+2026-02-05 11:59:42,787 - INFO - 
+SDS substocks:
+2026-02-05 11:59:42,787 - INFO -   SDS_dilution_5: 360uL SDS_stock + 5640uL water -> 3.00e+00 mM
+2026-02-05 11:59:42,787 - INFO -     (Dilution factor: 16.7x from 5.00e+01 mM stock)
+2026-02-05 11:59:42,787 - INFO -   SDS_dilution_4: 600uL SDS_dilution_5 + 5400uL water -> 3.00e-01 mM
+2026-02-05 11:59:42,789 - INFO -     (Dilution factor: 10.0x from 3.00e+00 mM dilution)
+2026-02-05 11:59:42,789 - INFO -   SDS_dilution_3: 1000uL SDS_dilution_4 + 5000uL water -> 5.00e-02 mM
+2026-02-05 11:59:42,789 - INFO -     (Dilution factor: 6.0x from 3.00e-01 mM dilution)
+2026-02-05 11:59:42,789 - INFO -   SDS_dilution_2: 400uL SDS_dilution_4 + 5600uL water -> 2.00e-02 mM
+2026-02-05 11:59:42,789 - INFO -     (Dilution factor: 15.0x from 3.00e-01 mM dilution)
+2026-02-05 11:59:42,789 - INFO -   SDS_dilution_1: 360uL SDS_dilution_3 + 5640uL water -> 3.00e-03 mM
+2026-02-05 11:59:42,789 - INFO -     (Dilution factor: 16.7x from 5.00e-02 mM dilution)
+2026-02-05 11:59:42,789 - INFO -   SDS_dilution_0: 1000uL SDS_dilution_1 + 5000uL water -> 5.00e-04 mM
+2026-02-05 11:59:42,789 - INFO -     (Dilution factor: 6.0x from 3.00e-03 mM dilution)
+2026-02-05 11:59:42,789 - INFO - 
+TTAB substocks:
+2026-02-05 11:59:42,789 - INFO -   TTAB_dilution_5: 360uL TTAB_stock + 5640uL water -> 3.00e+00 mM
+2026-02-05 11:59:42,791 - INFO -     (Dilution factor: 16.7x from 5.00e+01 mM stock)
+2026-02-05 11:59:42,791 - INFO -   TTAB_dilution_4: 600uL TTAB_dilution_5 + 5400uL water -> 3.00e-01 mM
+2026-02-05 11:59:42,791 - INFO -     (Dilution factor: 10.0x from 3.00e+00 mM dilution)
+2026-02-05 11:59:42,791 - INFO -   TTAB_dilution_3: 1000uL TTAB_dilution_4 + 5000uL water -> 5.00e-02 mM
+2026-02-05 11:59:42,792 - INFO -     (Dilution factor: 6.0x from 3.00e-01 mM dilution)
+2026-02-05 11:59:42,792 - INFO -   TTAB_dilution_2: 400uL TTAB_dilution_4 + 5600uL water -> 2.00e-02 mM
+2026-02-05 11:59:42,792 - INFO -     (Dilution factor: 15.0x from 3.00e-01 mM dilution)
+2026-02-05 11:59:42,792 - INFO -   TTAB_dilution_1: 360uL TTAB_dilution_3 + 5640uL water -> 3.00e-03 mM
+2026-02-05 11:59:42,792 - INFO -     (Dilution factor: 16.7x from 5.00e-02 mM dilution)
+2026-02-05 11:59:42,792 - INFO -   TTAB_dilution_0: 1000uL TTAB_dilution_1 + 5000uL water -> 5.00e-04 mM
+2026-02-05 11:59:42,792 - INFO -     (Dilution factor: 6.0x from 3.00e-03 mM dilution)
+2026-02-05 11:59:42,794 - INFO -   Creating complete well recipes...
+2026-02-05 11:59:42,820 - INFO -   Saved experiment plan: output\test_planning_SDS_TTAB_20260205_115942\experiment_plan_well_recipes.csv
+2026-02-05 11:59:42,860 - INFO -   Saved stock solutions plan: output\test_planning_SDS_TTAB_20260205_115942\experiment_plan_stock_solutions.csv
+2026-02-05 11:59:42,860 - INFO - + Planning complete: 87 total wells (9 x 9 grid + 6 controls)
