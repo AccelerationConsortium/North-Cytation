@@ -1,0 +1,2209 @@
+2026-01-19 12:58:44,453 - INFO - Initializing North Robot...
+2026-01-19 12:58:44,453 - DEBUG - Loading robot configuration files...
+2026-01-19 12:58:44,477 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-01-19 12:58:44,477 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-01-19 12:58:44,483 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-01-19 12:58:44,486 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-01-19 12:58:44,495 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-01-19 12:58:44,495 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-01-19 12:58:44,495 - DEBUG - Loading robot state files...
+2026-01-19 12:58:44,495 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
+2026-01-19 12:58:44,495 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-01-19 12:58:44,495 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-01-19 12:58:44,495 - DEBUG - Robot status loaded successfully
+2026-01-19 12:58:44,495 - INFO - Physical initialization of North Robot...
+2026-01-19 12:58:44,510 - DEBUG - Loading pumps from YAML configuration...
+2026-01-19 12:58:44,511 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-01-19 12:58:44,511 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-01-19 12:58:44,511 - INFO - Moving robot to home position
+2026-01-19 12:58:44,513 - DEBUG - Initializing centrifuge controller...
+2026-01-19 12:58:44,519 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='1967857552928'>
+2026-01-19 12:58:44,544 - INFO - Initializing North Track...
+2026-01-19 12:58:44,544 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-01-19 12:58:44,544 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-01-19 12:58:44,544 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-01-19 12:58:44,544 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-01-19 12:58:44,551 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-01-19 12:58:44,551 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-01-19 12:58:44,553 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-01-19 12:58:44,555 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-01-19 12:58:44,557 - DEBUG - Moving North Track to home position
+2026-01-19 12:58:44,557 - INFO - ================================================================================
+2026-01-19 12:58:44,557 - INFO - ADAPTIVE SURFACTANT GRID SCREENING WORKFLOW
+2026-01-19 12:58:44,557 - INFO - ================================================================================
+2026-01-19 12:58:44,559 - INFO - Surfactants: SDS + DTAB
+2026-01-19 12:58:44,559 - INFO - Mode: SIMULATION
+2026-01-19 12:58:44,559 - INFO - 
+2026-01-19 12:58:44,559 - INFO -   Validating robot and track status...
+2026-01-19 12:58:44,562 - INFO -     vial_index        vial_name       location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index
+0            0        SDS_stock  main_8mL_rack               0         8.00    True     open      8_mL  main_8mL_rack                    0
+1            1       DTAB_stock  main_8mL_rack               1         8.00    True     open      8_mL  main_8mL_rack                    1
+2            2      pyrene_DMSO  main_8mL_rack               2         5.28    True     open      8_mL  main_8mL_rack                    2
+3            3            water  main_8mL_rack               3         8.00    True     open      8_mL  main_8mL_rack                    3
+4            6   SDS_dilution_0  main_8mL_rack               6         0.00    True     open      8_mL  main_8mL_rack                    6
+5            7   SDS_dilution_1  main_8mL_rack               7         0.00    True     open      8_mL  main_8mL_rack                    7
+6            8   SDS_dilution_2  main_8mL_rack               8         0.00    True     open      8_mL  main_8mL_rack                    8
+7            9   SDS_dilution_3  main_8mL_rack               9         0.00    True     open      8_mL  main_8mL_rack                    9
+8           10   SDS_dilution_4  main_8mL_rack              10         0.00    True     open      8_mL  main_8mL_rack                   10
+9           11   SDS_dilution_5  main_8mL_rack              11         0.00    True     open      8_mL  main_8mL_rack                   11
+10          12  DTAB_dilution_0  main_8mL_rack              12         0.00    True     open      8_mL  main_8mL_rack                   12
+11          13  DTAB_dilution_1  main_8mL_rack              13         0.00    True     open      8_mL  main_8mL_rack                   13
+12          14  DTAB_dilution_2  main_8mL_rack              14         0.00    True     open      8_mL  main_8mL_rack                   14
+13          15  DTAB_dilution_3  main_8mL_rack              15         0.00    True     open      8_mL  main_8mL_rack                   15
+14          16  DTAB_dilution_4  main_8mL_rack              16         0.00    True     open      8_mL  main_8mL_rack                   16
+15          17  DTAB_dilution_5  main_8mL_rack              17         0.00    True     open      8_mL  main_8mL_rack                   17
+2026-01-19 12:58:44,579 - INFO - Visualizing vial racks...
+2026-01-19 12:58:44,617 - DEBUG - Matplotlib backend: tkagg
+2026-01-19 12:58:44,748 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2026-01-19 12:58:44,838 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2026-01-19 12:58:46,108 - DEBUG - Vial visualization displayed successfully
+2026-01-19 12:58:46,112 - INFO - --Wellplate status-- 
+ Wellplate type: 96 WELL PLATE 
+ Number in source: 1 
+ Number in waste: 0 
+ Active wellplate position: None
+2026-01-19 12:58:46,114 - INFO - Visualizing wellplate status...
+2026-01-19 12:58:46,114 - DEBUG - Matplotlib backend: tkagg
+2026-01-19 12:58:47,327 - DEBUG - Wellplate visualization displayed successfully
+2026-01-19 12:58:47,327 - INFO -   Validating pipetting capability using embedded validation...
+2026-01-19 12:58:47,332 - INFO -     Validating water pipetting (10-900 µL)...
+2026-01-19 12:58:47,332 - INFO -       Testing small water volumes (10-100 µL) with conditioning...
+2026-01-19 12:58:47,332 - INFO -     Conditioning tip with water: 5 cycles of 20.0µL
+2026-01-19 12:58:47,342 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,343 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,343 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,343 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,343 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,343 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,343 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,343 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,345 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:47,345 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_1
+2026-01-19 12:58:47,351 - INFO - Pipetting from vial water, amount: 0.020 mL
+2026-01-19 12:58:47,353 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:47,356 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,357 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,357 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:47,357 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:47,365 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,366 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,366 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,366 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,366 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,366 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,366 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,366 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,367 - INFO - Pipetting into vial water, amount: 0.020 mL
+2026-01-19 12:58:47,369 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:47,369 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:47,374 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,374 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,374 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,374 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,374 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,374 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,374 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,374 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,375 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:47,376 - INFO - Pipetting from vial water, amount: 0.020 mL
+2026-01-19 12:58:47,376 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:47,379 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,385 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,385 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:47,385 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:47,390 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,390 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,390 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,390 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,390 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,390 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,390 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,390 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,392 - INFO - Pipetting into vial water, amount: 0.020 mL
+2026-01-19 12:58:47,392 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:47,395 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:47,395 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,395 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,395 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,395 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,395 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,395 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,395 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,395 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,395 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:47,395 - INFO - Pipetting from vial water, amount: 0.020 mL
+2026-01-19 12:58:47,395 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:47,395 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,395 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,395 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:47,395 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:47,407 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,407 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,410 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,410 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,410 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,410 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,410 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,410 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,411 - INFO - Pipetting into vial water, amount: 0.020 mL
+2026-01-19 12:58:47,414 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:47,414 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:47,420 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,420 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,420 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,420 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,420 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,420 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,420 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,420 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,420 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:47,420 - INFO - Pipetting from vial water, amount: 0.020 mL
+2026-01-19 12:58:47,420 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:47,424 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,424 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,424 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:47,424 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:47,428 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,428 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,428 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,428 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,428 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,428 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,428 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,428 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,433 - INFO - Pipetting into vial water, amount: 0.020 mL
+2026-01-19 12:58:47,433 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:47,433 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:47,440 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,440 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,440 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,440 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,440 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,440 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,440 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,440 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,441 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:47,442 - INFO - Pipetting from vial water, amount: 0.020 mL
+2026-01-19 12:58:47,442 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:47,445 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,446 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,446 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:47,446 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:47,452 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,452 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:47,452 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:47,452 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:47,452 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:47,452 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:47,452 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:47,452 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:47,454 - INFO - Pipetting into vial water, amount: 0.020 mL
+2026-01-19 12:58:47,456 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:47,456 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:47,456 - INFO -     Tip conditioning complete for water
+2026-01-19 12:58:47,459 - INFO - Moving vial water to clamp: 0
+2026-01-19 12:58:47,459 - DEBUG - Grabbing vial 3 with index 3
+2026-01-19 12:58:47,462 - DEBUG - Dropping off vial 3 at location clamp with index 0
+2026-01-19 12:58:47,472 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:47,472 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:47,472 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:47,472 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:47,472 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:47,472 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:47,472 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:47,472 - DEBUG - Using calibrated overaspirate_vol=0.005171225812662201 for water at 0.010mL
+2026-01-19 12:58:47,472 - INFO - Dispensing 0.010 mL from water to water
+2026-01-19 12:58:47,478 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:47,480 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:47,480 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:47,480 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:47,480 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:47,480 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:47,480 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:47,480 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:47,480 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:47,480 - DEBUG - Applied object param aspirate_speed=10
+2026-01-19 12:58:47,480 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-01-19 12:58:47,480 - DEBUG - Applied object param blowout_vol=0.0
+2026-01-19 12:58:47,480 - DEBUG - Applied object param dispense_speed=11
+2026-01-19 12:58:47,480 - DEBUG - Applied object param dispense_wait_time=3.153314065
+2026-01-19 12:58:47,480 - DEBUG - Applied object param overaspirate_vol=0.005171225812662201
+2026-01-19 12:58:47,480 - DEBUG - Applied object param post_asp_air_vol=0.033
+2026-01-19 12:58:47,480 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:47,480 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:47,480 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:47,482 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:47,482 - INFO - Pipetting from vial water, amount: 0.010 mL
+2026-01-19 12:58:47,482 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:47,482 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,482 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,482 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:47,482 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:47,486 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:47,486 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:47,486 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:47,486 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:47,486 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:47,486 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:47,486 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:47,486 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:47,486 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:47,486 - DEBUG - Applied object param aspirate_speed=10
+2026-01-19 12:58:47,486 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-01-19 12:58:47,486 - DEBUG - Applied object param blowout_vol=0.0
+2026-01-19 12:58:47,486 - DEBUG - Applied object param dispense_speed=11
+2026-01-19 12:58:47,491 - DEBUG - Applied object param dispense_wait_time=3.153314065
+2026-01-19 12:58:47,491 - DEBUG - Applied object param overaspirate_vol=0.005171225812662201
+2026-01-19 12:58:47,491 - DEBUG - Applied object param post_asp_air_vol=0.033
+2026-01-19 12:58:47,491 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:47,491 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:47,491 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:47,491 - INFO - Pipetting into vial water, amount: 0.010 mL
+2026-01-19 12:58:47,491 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:47,493 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:47,501 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:47,501 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:47,501 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:47,501 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:47,501 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:47,501 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:47,501 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:47,501 - DEBUG - Using calibrated overaspirate_vol=0.004618739939928106 for water at 0.050mL
+2026-01-19 12:58:47,501 - INFO - Dispensing 0.050 mL from water to water
+2026-01-19 12:58:47,508 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:47,508 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:47,509 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:47,509 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:47,509 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:47,509 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:47,509 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:47,509 - DEBUG - Using calibrated overaspirate_vol=0.004741365000000003 for water at 0.050mL
+2026-01-19 12:58:47,509 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:47,509 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:47,509 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:47,509 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:47,509 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:47,509 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:47,509 - DEBUG - Applied object param overaspirate_vol=0.004618739939928106
+2026-01-19 12:58:47,509 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:47,509 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:47,509 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:47,509 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:47,510 - DEBUG - Selected small_tip for volume 0.065 mL
+2026-01-19 12:58:47,510 - INFO - Pipetting from vial water, amount: 0.050 mL
+2026-01-19 12:58:47,510 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:47,514 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,514 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:47,514 - DEBUG - Aspirating 0.055 mL then waiting 0.0 s
+2026-01-19 12:58:47,514 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:47,516 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:47,516 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:47,516 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:47,516 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:47,516 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:47,516 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:47,516 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:47,516 - DEBUG - Using calibrated overaspirate_vol=0.004741365000000003 for water at 0.050mL
+2026-01-19 12:58:47,516 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:47,516 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:47,516 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:47,516 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:47,516 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:47,516 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:47,516 - DEBUG - Applied object param overaspirate_vol=0.004618739939928106
+2026-01-19 12:58:47,516 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:47,516 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:47,516 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:47,516 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:47,516 - INFO - Pipetting into vial water, amount: 0.050 mL
+2026-01-19 12:58:47,516 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:47,523 - DEBUG - Dispensing 0.065 mL then waiting 3.5437186 s
+2026-01-19 12:58:47,523 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:47,529 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:47,529 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:47,529 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:47,529 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:47,529 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:47,536 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:47,536 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:47,536 - DEBUG - Using calibrated overaspirate_vol=0.003491718613705048 for water at 0.100mL
+2026-01-19 12:58:47,536 - INFO - Dispensing 0.100 mL from water to water
+2026-01-19 12:58:47,541 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:47,541 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:47,541 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:47,541 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:47,541 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:47,541 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:47,541 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:47,541 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:47,541 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:47,541 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:47,541 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:47,541 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:47,541 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:47,541 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:47,541 - DEBUG - Applied object param overaspirate_vol=0.003491718613705048
+2026-01-19 12:58:47,541 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:47,541 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:47,541 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:47,541 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:47,541 - DEBUG - Selected small_tip for volume 0.114 mL
+2026-01-19 12:58:47,541 - INFO - Pipetting from vial water, amount: 0.100 mL
+2026-01-19 12:58:47,541 - INFO - Additional volume from calibration, amount: 0.003 mL
+2026-01-19 12:58:47,545 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:47,545 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:47,545 - DEBUG - Aspirating 0.103 mL then waiting 0.0 s
+2026-01-19 12:58:47,545 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:47,552 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:47,552 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:47,552 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:47,552 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:47,552 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:47,552 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:47,552 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:47,552 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:47,552 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:47,552 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:47,552 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:47,552 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:47,552 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:47,552 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:47,552 - DEBUG - Applied object param overaspirate_vol=0.003491718613705048
+2026-01-19 12:58:47,552 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:47,552 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:47,552 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:47,552 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:47,553 - INFO - Pipetting into vial water, amount: 0.100 mL
+2026-01-19 12:58:47,555 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:47,556 - DEBUG - Dispensing 0.114 mL then waiting 3.5437186 s
+2026-01-19 12:58:47,556 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:49,261 - INFO - Removing pipet
+2026-01-19 12:58:49,266 - INFO - Returning vial water to home location: main_8mL_rack index 3
+2026-01-19 12:58:49,268 - INFO - Moving vial water to main_8mL_rack: 3
+2026-01-19 12:58:49,268 - DEBUG - Grabbing vial 3 with index 3
+2026-01-19 12:58:49,269 - DEBUG - Dropping off vial 3 at location main_8mL_rack with index 3
+2026-01-19 12:58:49,271 - INFO -         Small water: R²=0.000, Accuracy=-100.0%
+2026-01-19 12:58:49,271 - INFO -       Testing large water volumes (200-900 µL) with conditioning...
+2026-01-19 12:58:49,271 - INFO -     Conditioning tip with water: 5 cycles of 100.0µL
+2026-01-19 12:58:49,278 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,279 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,279 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,279 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,279 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,279 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,279 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,279 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,281 - DEBUG - Selected small_tip for volume 0.114 mL
+2026-01-19 12:58:49,281 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_1
+2026-01-19 12:58:49,283 - INFO - Pipetting from vial water, amount: 0.100 mL
+2026-01-19 12:58:49,283 - INFO - Additional volume from calibration, amount: 0.003 mL
+2026-01-19 12:58:49,285 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:49,285 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:49,285 - DEBUG - Aspirating 0.103 mL then waiting 0.0 s
+2026-01-19 12:58:49,285 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:49,290 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,290 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,290 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,290 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,290 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,290 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,290 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,290 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,290 - INFO - Pipetting into vial water, amount: 0.100 mL
+2026-01-19 12:58:49,293 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:49,293 - DEBUG - Dispensing 0.114 mL then waiting 3.5437186 s
+2026-01-19 12:58:49,293 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:49,299 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,299 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,299 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,299 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,299 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,299 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,299 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,299 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,299 - DEBUG - Selected small_tip for volume 0.114 mL
+2026-01-19 12:58:49,299 - INFO - Pipetting from vial water, amount: 0.100 mL
+2026-01-19 12:58:49,299 - INFO - Additional volume from calibration, amount: 0.003 mL
+2026-01-19 12:58:49,302 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:49,302 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:49,303 - DEBUG - Aspirating 0.103 mL then waiting 0.0 s
+2026-01-19 12:58:49,303 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:49,308 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,308 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,308 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,308 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,308 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,308 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,308 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,308 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,308 - INFO - Pipetting into vial water, amount: 0.100 mL
+2026-01-19 12:58:49,310 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:49,310 - DEBUG - Dispensing 0.114 mL then waiting 3.5437186 s
+2026-01-19 12:58:49,310 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:49,317 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,317 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,317 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,317 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,317 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,317 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,317 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,317 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,317 - DEBUG - Selected small_tip for volume 0.114 mL
+2026-01-19 12:58:49,317 - INFO - Pipetting from vial water, amount: 0.100 mL
+2026-01-19 12:58:49,317 - INFO - Additional volume from calibration, amount: 0.003 mL
+2026-01-19 12:58:49,322 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:49,322 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:49,322 - DEBUG - Aspirating 0.103 mL then waiting 0.0 s
+2026-01-19 12:58:49,322 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:49,326 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,326 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,326 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,326 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,326 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,326 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,326 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,326 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,326 - INFO - Pipetting into vial water, amount: 0.100 mL
+2026-01-19 12:58:49,329 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:49,330 - DEBUG - Dispensing 0.114 mL then waiting 3.5437186 s
+2026-01-19 12:58:49,330 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:49,336 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,336 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,336 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,336 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,336 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,336 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,336 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,336 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,336 - DEBUG - Selected small_tip for volume 0.114 mL
+2026-01-19 12:58:49,336 - INFO - Pipetting from vial water, amount: 0.100 mL
+2026-01-19 12:58:49,336 - INFO - Additional volume from calibration, amount: 0.003 mL
+2026-01-19 12:58:49,341 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:49,341 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:49,342 - DEBUG - Aspirating 0.103 mL then waiting 0.0 s
+2026-01-19 12:58:49,342 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:49,350 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,350 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,350 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,350 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,350 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,350 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,350 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,350 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,352 - INFO - Pipetting into vial water, amount: 0.100 mL
+2026-01-19 12:58:49,352 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:49,353 - DEBUG - Dispensing 0.114 mL then waiting 3.5437186 s
+2026-01-19 12:58:49,353 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:49,355 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,355 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,355 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,355 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,355 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,355 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,355 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,355 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,355 - DEBUG - Selected small_tip for volume 0.114 mL
+2026-01-19 12:58:49,355 - INFO - Pipetting from vial water, amount: 0.100 mL
+2026-01-19 12:58:49,355 - INFO - Additional volume from calibration, amount: 0.003 mL
+2026-01-19 12:58:49,364 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:49,364 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:49,364 - DEBUG - Aspirating 0.103 mL then waiting 0.0 s
+2026-01-19 12:58:49,364 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:49,368 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:49,368 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:49,368 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:49,368 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:49,368 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:49,368 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:49,368 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:49,368 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:49,368 - INFO - Pipetting into vial water, amount: 0.100 mL
+2026-01-19 12:58:49,371 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:49,371 - DEBUG - Dispensing 0.114 mL then waiting 3.5437186 s
+2026-01-19 12:58:49,372 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:49,372 - INFO -     Tip conditioning complete for water
+2026-01-19 12:58:49,376 - INFO - Moving vial water to clamp: 0
+2026-01-19 12:58:49,376 - DEBUG - Grabbing vial 3 with index 3
+2026-01-19 12:58:49,378 - DEBUG - Dropping off vial 3 at location clamp with index 0
+2026-01-19 12:58:49,385 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:49,385 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:49,385 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:49,385 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:49,385 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:49,385 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:49,385 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:49,386 - DEBUG - Using calibrated overaspirate_vol=0.011157907500000015 for water at 0.200mL
+2026-01-19 12:58:49,386 - INFO - Dispensing 0.200 mL from water to water
+2026-01-19 12:58:49,393 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:49,393 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:49,393 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:49,393 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:49,393 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:49,393 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:49,393 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:49,393 - DEBUG - Using calibrated overaspirate_vol=0.010501216000000006 for water at 0.200mL
+2026-01-19 12:58:49,393 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:49,393 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:49,393 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:49,393 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:49,393 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:49,393 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:49,393 - DEBUG - Applied object param overaspirate_vol=0.011157907500000015
+2026-01-19 12:58:49,393 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:49,393 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:49,393 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:49,393 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:49,394 - DEBUG - Selected large_tip for volume 0.222 mL
+2026-01-19 12:58:49,394 - INFO - Switching from small_tip to large_tip
+2026-01-19 12:58:49,394 - INFO - Removing pipet
+2026-01-19 12:58:49,395 - INFO - Getting large_tip (pipet number 0) from rack: large_tip_rack_1
+2026-01-19 12:58:49,397 - INFO - Pipetting from vial water, amount: 0.200 mL
+2026-01-19 12:58:49,397 - INFO - Additional volume from calibration, amount: 0.011 mL
+2026-01-19 12:58:49,399 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:49,399 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:49,399 - DEBUG - Aspirating 0.211 mL then waiting 0.0 s
+2026-01-19 12:58:49,399 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:49,401 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:49,401 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:49,401 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:49,401 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:49,401 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:49,401 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:49,401 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:49,401 - DEBUG - Using calibrated overaspirate_vol=0.010501216000000006 for water at 0.200mL
+2026-01-19 12:58:49,401 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:49,401 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:49,401 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:49,401 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:49,401 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:49,401 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:49,401 - DEBUG - Applied object param overaspirate_vol=0.011157907500000015
+2026-01-19 12:58:49,401 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:49,401 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:49,401 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:49,401 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:49,401 - INFO - Pipetting into vial water, amount: 0.200 mL
+2026-01-19 12:58:49,401 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:49,407 - DEBUG - Dispensing 0.222 mL then waiting 3.5437186 s
+2026-01-19 12:58:49,407 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:49,414 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:49,415 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:49,415 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:49,415 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:49,415 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:49,415 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:49,415 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:49,415 - DEBUG - Using calibrated overaspirate_vol=0.011987982000000006 for water at 0.500mL
+2026-01-19 12:58:49,415 - INFO - Dispensing 0.500 mL from water to water
+2026-01-19 12:58:49,422 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:49,422 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:49,422 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:49,422 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:49,422 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:49,422 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:49,422 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:49,422 - DEBUG - Using calibrated overaspirate_vol=0.013301364999999999 for water at 0.500mL
+2026-01-19 12:58:49,422 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:49,422 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:49,422 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:49,422 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:49,422 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:49,422 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:49,422 - DEBUG - Applied object param overaspirate_vol=0.011987982000000006
+2026-01-19 12:58:49,422 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:49,422 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:49,422 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:49,422 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:49,423 - DEBUG - Selected large_tip for volume 0.523 mL
+2026-01-19 12:58:49,423 - INFO - Pipetting from vial water, amount: 0.500 mL
+2026-01-19 12:58:49,423 - INFO - Additional volume from calibration, amount: 0.012 mL
+2026-01-19 12:58:49,425 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:49,425 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:49,425 - DEBUG - Aspirating 0.512 mL then waiting 0.0 s
+2026-01-19 12:58:49,425 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:49,429 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:49,429 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:49,429 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:49,429 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:49,429 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:49,429 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:49,429 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:49,429 - DEBUG - Using calibrated overaspirate_vol=0.013301364999999999 for water at 0.500mL
+2026-01-19 12:58:49,429 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:49,429 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:49,429 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:49,429 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:49,429 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:49,429 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:49,430 - DEBUG - Applied object param overaspirate_vol=0.011987982000000006
+2026-01-19 12:58:49,430 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:49,430 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:49,430 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:49,430 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:49,432 - INFO - Pipetting into vial water, amount: 0.500 mL
+2026-01-19 12:58:49,432 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:49,433 - DEBUG - Dispensing 0.523 mL then waiting 3.5437186 s
+2026-01-19 12:58:49,433 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:49,442 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:49,442 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:49,442 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:49,442 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:49,442 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:49,442 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:49,442 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:49,442 - DEBUG - Using calibrated overaspirate_vol=0.012818056499999996 for water at 0.900mL
+2026-01-19 12:58:49,442 - INFO - Dispensing 0.900 mL from water to water
+2026-01-19 12:58:49,449 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:49,449 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:49,449 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:49,449 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:49,449 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:49,449 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:49,449 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:49,450 - DEBUG - Using calibrated overaspirate_vol=0.012161364999999981 for water at 0.900mL
+2026-01-19 12:58:49,450 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:49,450 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:49,450 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:49,450 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:49,450 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:49,450 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:49,450 - DEBUG - Applied object param overaspirate_vol=0.012818056499999996
+2026-01-19 12:58:49,450 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:49,450 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:49,450 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:49,450 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:49,451 - DEBUG - Selected large_tip for volume 0.923 mL
+2026-01-19 12:58:49,452 - INFO - Pipetting from vial water, amount: 0.900 mL
+2026-01-19 12:58:49,452 - INFO - Additional volume from calibration, amount: 0.013 mL
+2026-01-19 12:58:49,455 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:49,455 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:49,455 - DEBUG - Aspirating 0.913 mL then waiting 0.0 s
+2026-01-19 12:58:49,455 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:49,460 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:49,460 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:49,460 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:49,460 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:49,460 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:49,460 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:49,460 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:49,460 - DEBUG - Using calibrated overaspirate_vol=0.012161364999999981 for water at 0.900mL
+2026-01-19 12:58:49,460 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:49,460 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:49,460 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:49,460 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:49,460 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:49,460 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:49,460 - DEBUG - Applied object param overaspirate_vol=0.012818056499999996
+2026-01-19 12:58:49,460 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:49,460 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:49,460 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:49,460 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:49,462 - INFO - Pipetting into vial water, amount: 0.900 mL
+2026-01-19 12:58:49,465 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:49,465 - DEBUG - Dispensing 0.923 mL then waiting 3.5437186 s
+2026-01-19 12:58:49,465 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:50,474 - INFO - Removing pipet
+2026-01-19 12:58:50,476 - INFO - Returning vial water to home location: main_8mL_rack index 3
+2026-01-19 12:58:50,477 - INFO - Moving vial water to main_8mL_rack: 3
+2026-01-19 12:58:50,477 - DEBUG - Grabbing vial 3 with index 3
+2026-01-19 12:58:50,478 - DEBUG - Dropping off vial 3 at location main_8mL_rack with index 3
+2026-01-19 12:58:50,479 - INFO -         Large water: R²=0.000, Accuracy=-100.0%
+2026-01-19 12:58:50,480 - INFO -     Validating DMSO pipetting (5 µL) with conditioning...
+2026-01-19 12:58:50,480 - INFO -     Conditioning tip with pyrene_DMSO: 5 cycles of 5.0µL
+2026-01-19 12:58:50,487 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,488 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,488 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,488 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,488 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,488 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,488 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,488 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,488 - DEBUG - Selected small_tip for volume 0.015 mL
+2026-01-19 12:58:50,488 - INFO - Getting small_tip (pipet number 2) from rack: small_tip_rack_1
+2026-01-19 12:58:50,490 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,490 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-01-19 12:58:50,492 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:50,492 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:50,492 - DEBUG - Aspirating 0.006 mL then waiting 1.477601104 s
+2026-01-19 12:58:50,492 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2026-01-19 12:58:50,498 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,498 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,498 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,498 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,498 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,498 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,498 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,498 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,500 - INFO - Pipetting into vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,501 - DEBUG - Adjusting pump 0 speed to 12
+2026-01-19 12:58:50,501 - DEBUG - Dispensing 0.015 mL then waiting 4.251204752 s
+2026-01-19 12:58:50,501 - DEBUG - Blowing out 0.094 mL
+2026-01-19 12:58:50,505 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,505 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,505 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,505 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,505 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,505 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,505 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,505 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,505 - DEBUG - Selected small_tip for volume 0.015 mL
+2026-01-19 12:58:50,508 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,508 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-01-19 12:58:50,509 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:50,511 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:50,511 - DEBUG - Aspirating 0.006 mL then waiting 1.477601104 s
+2026-01-19 12:58:50,511 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2026-01-19 12:58:50,516 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,516 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,516 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,516 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,516 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,516 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,516 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,516 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,518 - INFO - Pipetting into vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,518 - DEBUG - Adjusting pump 0 speed to 12
+2026-01-19 12:58:50,519 - DEBUG - Dispensing 0.015 mL then waiting 4.251204752 s
+2026-01-19 12:58:50,519 - DEBUG - Blowing out 0.094 mL
+2026-01-19 12:58:50,528 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,528 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,528 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,528 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,528 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,528 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,528 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,528 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,531 - DEBUG - Selected small_tip for volume 0.015 mL
+2026-01-19 12:58:50,533 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,533 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-01-19 12:58:50,536 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:50,536 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:50,536 - DEBUG - Aspirating 0.006 mL then waiting 1.477601104 s
+2026-01-19 12:58:50,536 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2026-01-19 12:58:50,541 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,541 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,541 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,541 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,541 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,541 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,541 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,541 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,544 - INFO - Pipetting into vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,546 - DEBUG - Adjusting pump 0 speed to 12
+2026-01-19 12:58:50,546 - DEBUG - Dispensing 0.015 mL then waiting 4.251204752 s
+2026-01-19 12:58:50,546 - DEBUG - Blowing out 0.094 mL
+2026-01-19 12:58:50,551 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,551 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,551 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,551 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,551 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,551 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,551 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,551 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,553 - DEBUG - Selected small_tip for volume 0.015 mL
+2026-01-19 12:58:50,553 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,553 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-01-19 12:58:50,556 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:50,556 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:50,556 - DEBUG - Aspirating 0.006 mL then waiting 1.477601104 s
+2026-01-19 12:58:50,556 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2026-01-19 12:58:50,560 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,560 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,560 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,560 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,560 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,560 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,561 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,561 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,562 - INFO - Pipetting into vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,562 - DEBUG - Adjusting pump 0 speed to 12
+2026-01-19 12:58:50,562 - DEBUG - Dispensing 0.015 mL then waiting 4.251204752 s
+2026-01-19 12:58:50,562 - DEBUG - Blowing out 0.094 mL
+2026-01-19 12:58:50,567 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,567 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,567 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,567 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,567 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,567 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,567 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,567 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,569 - DEBUG - Selected small_tip for volume 0.015 mL
+2026-01-19 12:58:50,569 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,569 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-01-19 12:58:50,572 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:50,573 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:50,573 - DEBUG - Aspirating 0.006 mL then waiting 1.477601104 s
+2026-01-19 12:58:50,573 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2026-01-19 12:58:50,577 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,577 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,577 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,577 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,577 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,577 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,577 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,577 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,577 - INFO - Pipetting into vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,581 - DEBUG - Adjusting pump 0 speed to 12
+2026-01-19 12:58:50,582 - DEBUG - Dispensing 0.015 mL then waiting 4.251204752 s
+2026-01-19 12:58:50,582 - DEBUG - Blowing out 0.094 mL
+2026-01-19 12:58:50,583 - INFO -     Tip conditioning complete for pyrene_DMSO
+2026-01-19 12:58:50,588 - INFO - Moving vial pyrene_DMSO to clamp: 0
+2026-01-19 12:58:50,588 - DEBUG - Grabbing vial 2 with index 2
+2026-01-19 12:58:50,588 - DEBUG - Dropping off vial 2 at location clamp with index 0
+2026-01-19 12:58:50,596 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,596 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,596 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,596 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,596 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,596 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,597 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,597 - DEBUG - Using calibrated overaspirate_vol=0.0006310543387243205 for DMSO at 0.005mL
+2026-01-19 12:58:50,597 - INFO - Dispensing 0.005 mL from pyrene_DMSO to pyrene_DMSO
+2026-01-19 12:58:50,603 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,603 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,603 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,603 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,603 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,603 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,603 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,603 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,603 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:50,603 - DEBUG - Applied object param aspirate_speed=11
+2026-01-19 12:58:50,603 - DEBUG - Applied object param aspirate_wait_time=1.477601104
+2026-01-19 12:58:50,603 - DEBUG - Applied object param blowout_vol=0.094299824
+2026-01-19 12:58:50,603 - DEBUG - Applied object param dispense_speed=12
+2026-01-19 12:58:50,603 - DEBUG - Applied object param dispense_wait_time=4.251204752
+2026-01-19 12:58:50,603 - DEBUG - Applied object param overaspirate_vol=0.0006310543387243205
+2026-01-19 12:58:50,603 - DEBUG - Applied object param post_asp_air_vol=0.009584619
+2026-01-19 12:58:50,604 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:50,604 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:50,604 - DEBUG - Applied object param retract_speed=13
+2026-01-19 12:58:50,604 - DEBUG - Selected small_tip for volume 0.015 mL
+2026-01-19 12:58:50,605 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,605 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-01-19 12:58:50,607 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:50,607 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:50,607 - DEBUG - Aspirating 0.006 mL then waiting 1.477601104 s
+2026-01-19 12:58:50,607 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2026-01-19 12:58:50,611 - DEBUG - Using calibrated aspirate_speed=11 for DMSO at 0.005mL
+2026-01-19 12:58:50,611 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-01-19 12:58:50,611 - DEBUG - Using calibrated aspirate_wait_time=1.477601104 for DMSO at 0.005mL
+2026-01-19 12:58:50,611 - DEBUG - Using calibrated dispense_wait_time=4.251204752 for DMSO at 0.005mL
+2026-01-19 12:58:50,611 - DEBUG - Using calibrated retract_speed=13 for DMSO at 0.005mL
+2026-01-19 12:58:50,611 - DEBUG - Using calibrated blowout_vol=0.094299824 for DMSO at 0.005mL
+2026-01-19 12:58:50,611 - DEBUG - Using calibrated post_asp_air_vol=0.009584619 for DMSO at 0.005mL
+2026-01-19 12:58:50,611 - DEBUG - Using calibrated overaspirate_vol=0.0005998343640000001 for DMSO at 0.005mL
+2026-01-19 12:58:50,611 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:50,611 - DEBUG - Applied object param aspirate_speed=11
+2026-01-19 12:58:50,611 - DEBUG - Applied object param aspirate_wait_time=1.477601104
+2026-01-19 12:58:50,612 - DEBUG - Applied object param blowout_vol=0.094299824
+2026-01-19 12:58:50,612 - DEBUG - Applied object param dispense_speed=12
+2026-01-19 12:58:50,612 - DEBUG - Applied object param dispense_wait_time=4.251204752
+2026-01-19 12:58:50,612 - DEBUG - Applied object param overaspirate_vol=0.0006310543387243205
+2026-01-19 12:58:50,612 - DEBUG - Applied object param post_asp_air_vol=0.009584619
+2026-01-19 12:58:50,612 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:50,612 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:50,612 - DEBUG - Applied object param retract_speed=13
+2026-01-19 12:58:50,613 - INFO - Pipetting into vial pyrene_DMSO, amount: 0.005 mL
+2026-01-19 12:58:50,613 - DEBUG - Adjusting pump 0 speed to 12
+2026-01-19 12:58:50,614 - DEBUG - Dispensing 0.015 mL then waiting 4.251204752 s
+2026-01-19 12:58:50,614 - DEBUG - Blowing out 0.094 mL
+2026-01-19 12:58:51,669 - INFO - Removing pipet
+2026-01-19 12:58:51,669 - INFO - Returning vial pyrene_DMSO to home location: main_8mL_rack index 2
+2026-01-19 12:58:51,671 - INFO - Moving vial pyrene_DMSO to main_8mL_rack: 2
+2026-01-19 12:58:51,671 - DEBUG - Grabbing vial 2 with index 2
+2026-01-19 12:58:51,671 - DEBUG - Dropping off vial 2 at location main_8mL_rack with index 2
+2026-01-19 12:58:51,673 - INFO -       DMSO validation: R²=1.000, Accuracy=-100.0%
+2026-01-19 12:58:51,673 - INFO -     Validating SDS_stock pipetting - Small volumes (10-100 µL) with conditioning...
+2026-01-19 12:58:51,673 - INFO -     Conditioning tip with SDS_stock: 5 cycles of 10.0µL
+2026-01-19 12:58:51,680 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,680 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,680 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,681 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,681 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,681 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,681 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,681 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,682 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:51,683 - INFO - Getting small_tip (pipet number 3) from rack: small_tip_rack_1
+2026-01-19 12:58:51,684 - INFO - Pipetting from vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,686 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:51,687 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,687 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,687 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:51,687 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:51,692 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,692 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,692 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,692 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,692 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,692 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,692 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,692 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,692 - INFO - Pipetting into vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,692 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:51,695 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:51,700 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,700 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,700 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,700 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,700 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,700 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,700 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,700 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,702 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:51,702 - INFO - Pipetting from vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,702 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:51,706 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,706 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,707 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:51,707 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:51,710 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,710 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,710 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,710 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,710 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,710 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,710 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,710 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,711 - INFO - Pipetting into vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,711 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:51,715 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:51,720 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,720 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,720 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,720 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,720 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,720 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,720 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,720 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,720 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:51,720 - INFO - Pipetting from vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,720 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:51,727 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,727 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,727 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:51,727 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:51,732 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,732 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,732 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,732 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,732 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,732 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,732 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,732 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,735 - INFO - Pipetting into vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,736 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:51,736 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:51,740 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,740 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,740 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,740 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,740 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,740 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,740 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,740 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,740 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:51,743 - INFO - Pipetting from vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,743 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:51,746 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,746 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,746 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:51,746 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:51,751 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,751 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,751 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,751 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,751 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,751 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,751 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,751 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,752 - INFO - Pipetting into vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,753 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:51,754 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:51,756 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,756 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,756 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,756 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,756 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,756 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,756 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,756 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,756 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:51,756 - INFO - Pipetting from vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,756 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:51,763 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,763 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,763 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:51,763 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:51,768 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,768 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,768 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,768 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,768 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,768 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,768 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,768 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,769 - INFO - Pipetting into vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,770 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:51,771 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:51,771 - INFO -     Tip conditioning complete for SDS_stock
+2026-01-19 12:58:51,775 - INFO - Moving vial SDS_stock to clamp: 0
+2026-01-19 12:58:51,775 - DEBUG - Grabbing vial 0 with index 0
+2026-01-19 12:58:51,777 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2026-01-19 12:58:51,785 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,785 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,785 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,785 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,785 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,785 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,785 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,785 - DEBUG - Using calibrated overaspirate_vol=0.005171225812662201 for water at 0.010mL
+2026-01-19 12:58:51,785 - INFO - Dispensing 0.010 mL from SDS_stock to SDS_stock
+2026-01-19 12:58:51,790 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,790 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,790 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,790 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,790 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,790 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,790 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,790 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,790 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:51,790 - DEBUG - Applied object param aspirate_speed=10
+2026-01-19 12:58:51,790 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-01-19 12:58:51,790 - DEBUG - Applied object param blowout_vol=0.0
+2026-01-19 12:58:51,790 - DEBUG - Applied object param dispense_speed=11
+2026-01-19 12:58:51,790 - DEBUG - Applied object param dispense_wait_time=3.153314065
+2026-01-19 12:58:51,790 - DEBUG - Applied object param overaspirate_vol=0.005171225812662201
+2026-01-19 12:58:51,790 - DEBUG - Applied object param post_asp_air_vol=0.033
+2026-01-19 12:58:51,790 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:51,790 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:51,790 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:51,790 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:51,790 - INFO - Pipetting from vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,790 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:51,793 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,793 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,793 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:51,793 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:51,797 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,797 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:51,797 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:51,797 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:51,797 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:51,797 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:51,797 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:51,797 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:51,798 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:51,798 - DEBUG - Applied object param aspirate_speed=10
+2026-01-19 12:58:51,798 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-01-19 12:58:51,798 - DEBUG - Applied object param blowout_vol=0.0
+2026-01-19 12:58:51,798 - DEBUG - Applied object param dispense_speed=11
+2026-01-19 12:58:51,798 - DEBUG - Applied object param dispense_wait_time=3.153314065
+2026-01-19 12:58:51,798 - DEBUG - Applied object param overaspirate_vol=0.005171225812662201
+2026-01-19 12:58:51,798 - DEBUG - Applied object param post_asp_air_vol=0.033
+2026-01-19 12:58:51,798 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:51,798 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:51,798 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:51,799 - INFO - Pipetting into vial SDS_stock, amount: 0.010 mL
+2026-01-19 12:58:51,800 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:51,800 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:51,805 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:51,805 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:51,805 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:51,805 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:51,805 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:51,805 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:51,805 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:51,805 - DEBUG - Using calibrated overaspirate_vol=0.004618739939928106 for water at 0.050mL
+2026-01-19 12:58:51,805 - INFO - Dispensing 0.050 mL from SDS_stock to SDS_stock
+2026-01-19 12:58:51,813 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:51,813 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:51,813 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:51,813 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:51,813 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:51,813 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:51,813 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:51,813 - DEBUG - Using calibrated overaspirate_vol=0.004741365000000003 for water at 0.050mL
+2026-01-19 12:58:51,813 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:51,813 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:51,813 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:51,813 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:51,813 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:51,813 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:51,813 - DEBUG - Applied object param overaspirate_vol=0.004618739939928106
+2026-01-19 12:58:51,813 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:51,813 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:51,813 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:51,813 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:51,814 - DEBUG - Selected small_tip for volume 0.065 mL
+2026-01-19 12:58:51,814 - INFO - Pipetting from vial SDS_stock, amount: 0.050 mL
+2026-01-19 12:58:51,815 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:51,816 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,816 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:51,816 - DEBUG - Aspirating 0.055 mL then waiting 0.0 s
+2026-01-19 12:58:51,816 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:51,818 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:51,818 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:51,818 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:51,818 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:51,818 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:51,818 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:51,818 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:51,818 - DEBUG - Using calibrated overaspirate_vol=0.004741365000000003 for water at 0.050mL
+2026-01-19 12:58:51,818 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:51,818 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:51,818 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:51,818 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:51,818 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:51,818 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:51,818 - DEBUG - Applied object param overaspirate_vol=0.004618739939928106
+2026-01-19 12:58:51,818 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:51,818 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:51,818 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:51,818 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:51,818 - INFO - Pipetting into vial SDS_stock, amount: 0.050 mL
+2026-01-19 12:58:51,823 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:51,824 - DEBUG - Dispensing 0.065 mL then waiting 3.5437186 s
+2026-01-19 12:58:51,824 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:51,832 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:51,832 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:51,832 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:51,832 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:51,832 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:51,832 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:51,832 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:51,832 - DEBUG - Using calibrated overaspirate_vol=0.003491718613705048 for water at 0.100mL
+2026-01-19 12:58:51,832 - INFO - Dispensing 0.100 mL from SDS_stock to SDS_stock
+2026-01-19 12:58:51,838 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:51,839 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:51,839 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:51,839 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:51,839 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:51,839 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:51,839 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:51,839 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:51,839 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:51,839 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:51,839 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:51,839 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:51,839 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:51,839 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:51,839 - DEBUG - Applied object param overaspirate_vol=0.003491718613705048
+2026-01-19 12:58:51,839 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:51,839 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:51,839 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:51,839 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:51,839 - DEBUG - Selected small_tip for volume 0.114 mL
+2026-01-19 12:58:51,839 - INFO - Pipetting from vial SDS_stock, amount: 0.100 mL
+2026-01-19 12:58:51,839 - INFO - Additional volume from calibration, amount: 0.003 mL
+2026-01-19 12:58:51,843 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:51,843 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:51,843 - DEBUG - Aspirating 0.103 mL then waiting 0.0 s
+2026-01-19 12:58:51,843 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:51,848 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:51,848 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:51,848 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:51,848 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:51,848 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:51,848 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:51,848 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:51,848 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:51,848 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:51,848 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:51,848 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:51,848 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:51,848 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:51,848 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:51,848 - DEBUG - Applied object param overaspirate_vol=0.003491718613705048
+2026-01-19 12:58:51,848 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:51,848 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:51,848 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:51,848 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:51,849 - INFO - Pipetting into vial SDS_stock, amount: 0.100 mL
+2026-01-19 12:58:51,851 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:51,851 - DEBUG - Dispensing 0.114 mL then waiting 3.5437186 s
+2026-01-19 12:58:51,851 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:52,835 - INFO - Removing pipet
+2026-01-19 12:58:52,837 - INFO - Returning vial SDS_stock to home location: main_8mL_rack index 0
+2026-01-19 12:58:52,839 - INFO - Moving vial SDS_stock to main_8mL_rack: 0
+2026-01-19 12:58:52,839 - DEBUG - Grabbing vial 0 with index 0
+2026-01-19 12:58:52,840 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2026-01-19 12:58:52,840 - INFO -         Small SDS_stock: R²=0.000, Accuracy=-100.0%
+2026-01-19 12:58:52,842 - INFO -     Validating SDS_stock pipetting - Large volumes (200-900 µL) with conditioning...
+2026-01-19 12:58:52,842 - INFO -     Conditioning tip with SDS_stock: 5 cycles of 20.0µL
+2026-01-19 12:58:52,847 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,849 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,849 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,849 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,849 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,849 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,849 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,849 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,851 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:52,851 - INFO - Getting small_tip (pipet number 4) from rack: small_tip_rack_1
+2026-01-19 12:58:52,853 - INFO - Pipetting from vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,853 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:52,855 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,855 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,855 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:52,855 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:52,857 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,857 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,857 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,857 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,857 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,857 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,857 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,857 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,857 - INFO - Pipetting into vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,862 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:52,862 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:52,867 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,867 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,867 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,867 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,867 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,867 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,867 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,867 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,868 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:52,868 - INFO - Pipetting from vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,868 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:52,871 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,871 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,871 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:52,871 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:52,875 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,875 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,875 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,875 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,875 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,875 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,875 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,875 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,876 - INFO - Pipetting into vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,876 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:52,876 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:52,876 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,876 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,876 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,876 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,876 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,876 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,876 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,876 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,882 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:52,885 - INFO - Pipetting from vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,885 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:52,886 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,887 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,887 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:52,887 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:52,891 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,891 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,891 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,891 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,891 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,891 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,891 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,891 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,891 - INFO - Pipetting into vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,894 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:52,894 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:52,898 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,898 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,898 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,898 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,898 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,898 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,898 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,898 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,899 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:52,901 - INFO - Pipetting from vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,901 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:52,901 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,901 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,901 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:52,901 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:52,901 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,901 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,901 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,901 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,901 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,901 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,901 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,901 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,901 - INFO - Pipetting into vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,910 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:52,910 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:52,913 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,913 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,913 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,913 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,913 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,913 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,913 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,913 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,914 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:52,915 - INFO - Pipetting from vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,915 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:52,918 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,918 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,918 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:52,918 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:52,919 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,919 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:52,919 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:52,919 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:52,919 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:52,919 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:52,919 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:52,919 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:52,919 - INFO - Pipetting into vial SDS_stock, amount: 0.020 mL
+2026-01-19 12:58:52,924 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:52,925 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:52,925 - INFO -     Tip conditioning complete for SDS_stock
+2026-01-19 12:58:52,929 - INFO - Moving vial SDS_stock to clamp: 0
+2026-01-19 12:58:52,929 - DEBUG - Grabbing vial 0 with index 0
+2026-01-19 12:58:52,930 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2026-01-19 12:58:52,938 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:52,938 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:52,938 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:52,938 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:52,938 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:52,938 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:52,938 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:52,938 - DEBUG - Using calibrated overaspirate_vol=0.011157907500000015 for water at 0.200mL
+2026-01-19 12:58:52,938 - INFO - Dispensing 0.200 mL from SDS_stock to SDS_stock
+2026-01-19 12:58:52,943 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:52,944 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:52,944 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:52,944 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:52,944 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:52,944 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:52,944 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:52,944 - DEBUG - Using calibrated overaspirate_vol=0.010501216000000006 for water at 0.200mL
+2026-01-19 12:58:52,944 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:52,944 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:52,944 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:52,944 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:52,944 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:52,944 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:52,944 - DEBUG - Applied object param overaspirate_vol=0.011157907500000015
+2026-01-19 12:58:52,944 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:52,944 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:52,944 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:52,944 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:52,945 - DEBUG - Selected large_tip for volume 0.222 mL
+2026-01-19 12:58:52,945 - INFO - Switching from small_tip to large_tip
+2026-01-19 12:58:52,945 - INFO - Removing pipet
+2026-01-19 12:58:52,945 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-01-19 12:58:52,947 - INFO - Pipetting from vial SDS_stock, amount: 0.200 mL
+2026-01-19 12:58:52,947 - INFO - Additional volume from calibration, amount: 0.011 mL
+2026-01-19 12:58:52,948 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,949 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:52,949 - DEBUG - Aspirating 0.211 mL then waiting 0.0 s
+2026-01-19 12:58:52,949 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:52,953 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:52,954 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:52,954 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:52,954 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:52,954 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:52,954 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:52,954 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:52,954 - DEBUG - Using calibrated overaspirate_vol=0.010501216000000006 for water at 0.200mL
+2026-01-19 12:58:52,954 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:52,954 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:52,954 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:52,954 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:52,954 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:52,954 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:52,954 - DEBUG - Applied object param overaspirate_vol=0.011157907500000015
+2026-01-19 12:58:52,954 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:52,954 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:52,954 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:52,954 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:52,955 - INFO - Pipetting into vial SDS_stock, amount: 0.200 mL
+2026-01-19 12:58:52,957 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:52,957 - DEBUG - Dispensing 0.222 mL then waiting 3.5437186 s
+2026-01-19 12:58:52,957 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:52,962 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:52,962 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:52,962 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:52,962 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:52,962 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:52,962 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:52,962 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:52,962 - DEBUG - Using calibrated overaspirate_vol=0.011987982000000006 for water at 0.500mL
+2026-01-19 12:58:52,962 - INFO - Dispensing 0.500 mL from SDS_stock to SDS_stock
+2026-01-19 12:58:52,970 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:52,970 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:52,970 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:52,970 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:52,970 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:52,970 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:52,970 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:52,970 - DEBUG - Using calibrated overaspirate_vol=0.013301364999999999 for water at 0.500mL
+2026-01-19 12:58:52,970 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:52,970 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:52,970 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:52,970 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:52,970 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:52,970 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:52,970 - DEBUG - Applied object param overaspirate_vol=0.011987982000000006
+2026-01-19 12:58:52,970 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:52,970 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:52,970 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:52,970 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:52,971 - DEBUG - Selected large_tip for volume 0.523 mL
+2026-01-19 12:58:52,971 - INFO - Pipetting from vial SDS_stock, amount: 0.500 mL
+2026-01-19 12:58:52,971 - INFO - Additional volume from calibration, amount: 0.012 mL
+2026-01-19 12:58:52,973 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,973 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:52,973 - DEBUG - Aspirating 0.512 mL then waiting 0.0 s
+2026-01-19 12:58:52,973 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:52,977 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:52,977 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:52,977 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:52,977 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:52,977 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:52,977 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:52,977 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:52,977 - DEBUG - Using calibrated overaspirate_vol=0.013301364999999999 for water at 0.500mL
+2026-01-19 12:58:52,977 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:52,977 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:52,977 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:52,977 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:52,977 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:52,977 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:52,977 - DEBUG - Applied object param overaspirate_vol=0.011987982000000006
+2026-01-19 12:58:52,977 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:52,977 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:52,977 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:52,977 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:52,979 - INFO - Pipetting into vial SDS_stock, amount: 0.500 mL
+2026-01-19 12:58:52,980 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:52,980 - DEBUG - Dispensing 0.523 mL then waiting 3.5437186 s
+2026-01-19 12:58:52,980 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:52,989 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:52,989 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:52,989 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:52,989 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:52,989 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:52,989 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:52,989 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:52,989 - DEBUG - Using calibrated overaspirate_vol=0.012818056499999996 for water at 0.900mL
+2026-01-19 12:58:52,989 - INFO - Dispensing 0.900 mL from SDS_stock to SDS_stock
+2026-01-19 12:58:52,994 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:52,994 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:52,994 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:52,994 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:52,994 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:52,994 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:52,994 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:52,994 - DEBUG - Using calibrated overaspirate_vol=0.012161364999999981 for water at 0.900mL
+2026-01-19 12:58:52,994 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:52,994 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:52,994 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:52,994 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:52,994 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:52,994 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:52,994 - DEBUG - Applied object param overaspirate_vol=0.012818056499999996
+2026-01-19 12:58:52,994 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:52,994 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:52,994 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:52,994 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:52,995 - DEBUG - Selected large_tip for volume 0.923 mL
+2026-01-19 12:58:52,996 - INFO - Pipetting from vial SDS_stock, amount: 0.900 mL
+2026-01-19 12:58:52,996 - INFO - Additional volume from calibration, amount: 0.013 mL
+2026-01-19 12:58:52,997 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:52,997 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:52,997 - DEBUG - Aspirating 0.913 mL then waiting 0.0 s
+2026-01-19 12:58:52,997 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:53,002 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:53,002 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:53,002 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:53,002 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:53,002 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:53,002 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:53,002 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:53,002 - DEBUG - Using calibrated overaspirate_vol=0.012161364999999981 for water at 0.900mL
+2026-01-19 12:58:53,002 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:53,002 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:53,002 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:53,002 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:53,002 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:53,002 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:53,002 - DEBUG - Applied object param overaspirate_vol=0.012818056499999996
+2026-01-19 12:58:53,002 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:53,002 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:53,003 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:53,003 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:53,003 - INFO - Pipetting into vial SDS_stock, amount: 0.900 mL
+2026-01-19 12:58:53,004 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:53,005 - DEBUG - Dispensing 0.923 mL then waiting 3.5437186 s
+2026-01-19 12:58:53,005 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:54,067 - INFO - Removing pipet
+2026-01-19 12:58:54,070 - INFO - Returning vial SDS_stock to home location: main_8mL_rack index 0
+2026-01-19 12:58:54,070 - INFO - Moving vial SDS_stock to main_8mL_rack: 0
+2026-01-19 12:58:54,070 - DEBUG - Grabbing vial 0 with index 0
+2026-01-19 12:58:54,070 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2026-01-19 12:58:54,070 - INFO -         Large SDS_stock: R²=0.000, Accuracy=-100.0%
+2026-01-19 12:58:54,074 - INFO -     Validating DTAB_stock pipetting - Small volumes (10-100 µL) with conditioning...
+2026-01-19 12:58:54,074 - INFO -     Conditioning tip with DTAB_stock: 5 cycles of 10.0µL
+2026-01-19 12:58:54,080 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,080 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,080 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,080 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,080 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,080 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,080 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,080 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,082 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:54,082 - INFO - Getting small_tip (pipet number 5) from rack: small_tip_rack_1
+2026-01-19 12:58:54,084 - INFO - Pipetting from vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,084 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:54,086 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,087 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,087 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:54,087 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:54,090 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,090 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,090 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,090 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,090 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,090 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,090 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,090 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,090 - INFO - Pipetting into vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,094 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:54,094 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:54,097 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,098 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,098 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,098 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,098 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,098 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,098 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,098 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,099 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:54,099 - INFO - Pipetting from vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,100 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:54,102 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,102 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,102 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:54,102 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:54,102 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,102 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,102 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,102 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,102 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,102 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,102 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,102 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,102 - INFO - Pipetting into vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,109 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:54,109 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:54,112 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,112 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,113 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,113 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,113 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,113 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,113 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,113 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,114 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:54,115 - INFO - Pipetting from vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,115 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:54,118 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,118 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,118 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:54,118 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:54,121 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,121 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,121 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,121 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,121 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,121 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,121 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,121 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,121 - INFO - Pipetting into vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,121 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:54,125 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:54,128 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,128 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,128 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,128 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,128 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,128 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,128 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,128 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,129 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:54,130 - INFO - Pipetting from vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,130 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:54,132 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,132 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,132 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:54,132 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:54,135 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,135 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,135 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,135 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,135 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,135 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,135 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,135 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,135 - INFO - Pipetting into vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,139 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:54,140 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:54,143 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,144 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,144 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,144 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,144 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,144 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,144 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,144 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,145 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:54,145 - INFO - Pipetting from vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,145 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:54,145 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,145 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,145 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:54,145 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:54,150 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,150 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,150 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,150 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,150 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,150 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,150 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,150 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,152 - INFO - Pipetting into vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,153 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:54,154 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:54,154 - INFO -     Tip conditioning complete for DTAB_stock
+2026-01-19 12:58:54,158 - INFO - Moving vial DTAB_stock to clamp: 0
+2026-01-19 12:58:54,158 - DEBUG - Grabbing vial 1 with index 1
+2026-01-19 12:58:54,159 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2026-01-19 12:58:54,164 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,164 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,164 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,164 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,164 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,164 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,164 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,164 - DEBUG - Using calibrated overaspirate_vol=0.005171225812662201 for water at 0.010mL
+2026-01-19 12:58:54,164 - INFO - Dispensing 0.010 mL from DTAB_stock to DTAB_stock
+2026-01-19 12:58:54,172 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,172 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,172 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,172 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,173 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,173 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,173 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,173 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,173 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:54,173 - DEBUG - Applied object param aspirate_speed=10
+2026-01-19 12:58:54,173 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-01-19 12:58:54,173 - DEBUG - Applied object param blowout_vol=0.0
+2026-01-19 12:58:54,173 - DEBUG - Applied object param dispense_speed=11
+2026-01-19 12:58:54,173 - DEBUG - Applied object param dispense_wait_time=3.153314065
+2026-01-19 12:58:54,173 - DEBUG - Applied object param overaspirate_vol=0.005171225812662201
+2026-01-19 12:58:54,173 - DEBUG - Applied object param post_asp_air_vol=0.033
+2026-01-19 12:58:54,173 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:54,173 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:54,173 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:54,173 - DEBUG - Selected small_tip for volume 0.048 mL
+2026-01-19 12:58:54,174 - INFO - Pipetting from vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,174 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:54,176 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,176 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,176 - DEBUG - Aspirating 0.015 mL then waiting 0.2 s
+2026-01-19 12:58:54,176 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:54,180 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,180 - DEBUG - Using calibrated dispense_speed=11 for water at 0.010mL
+2026-01-19 12:58:54,180 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-01-19 12:58:54,180 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.010mL
+2026-01-19 12:58:54,180 - DEBUG - Using calibrated retract_speed=10 for water at 0.010mL
+2026-01-19 12:58:54,180 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-01-19 12:58:54,180 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.010mL
+2026-01-19 12:58:54,180 - DEBUG - Using calibrated overaspirate_vol=0.005359999999999999 for water at 0.010mL
+2026-01-19 12:58:54,180 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:54,180 - DEBUG - Applied object param aspirate_speed=10
+2026-01-19 12:58:54,180 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-01-19 12:58:54,180 - DEBUG - Applied object param blowout_vol=0.0
+2026-01-19 12:58:54,180 - DEBUG - Applied object param dispense_speed=11
+2026-01-19 12:58:54,180 - DEBUG - Applied object param dispense_wait_time=3.153314065
+2026-01-19 12:58:54,180 - DEBUG - Applied object param overaspirate_vol=0.005171225812662201
+2026-01-19 12:58:54,180 - DEBUG - Applied object param post_asp_air_vol=0.033
+2026-01-19 12:58:54,180 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:54,180 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:54,180 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:54,181 - INFO - Pipetting into vial DTAB_stock, amount: 0.010 mL
+2026-01-19 12:58:54,182 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:54,182 - DEBUG - Dispensing 0.048 mL then waiting 3.153314065 s
+2026-01-19 12:58:54,187 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:54,187 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:54,187 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:54,187 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:54,187 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:54,187 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:54,187 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:54,187 - DEBUG - Using calibrated overaspirate_vol=0.004618739939928106 for water at 0.050mL
+2026-01-19 12:58:54,187 - INFO - Dispensing 0.050 mL from DTAB_stock to DTAB_stock
+2026-01-19 12:58:54,194 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:54,194 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:54,194 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:54,194 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:54,194 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:54,194 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:54,194 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:54,194 - DEBUG - Using calibrated overaspirate_vol=0.004741365000000003 for water at 0.050mL
+2026-01-19 12:58:54,194 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:54,194 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:54,194 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:54,194 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:54,194 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:54,194 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:54,194 - DEBUG - Applied object param overaspirate_vol=0.004618739939928106
+2026-01-19 12:58:54,194 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:54,194 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:54,194 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:54,194 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:54,195 - DEBUG - Selected small_tip for volume 0.065 mL
+2026-01-19 12:58:54,196 - INFO - Pipetting from vial DTAB_stock, amount: 0.050 mL
+2026-01-19 12:58:54,196 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-19 12:58:54,198 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,198 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:54,198 - DEBUG - Aspirating 0.055 mL then waiting 0.0 s
+2026-01-19 12:58:54,198 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:54,204 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.050mL
+2026-01-19 12:58:54,204 - DEBUG - Using calibrated dispense_speed=14 for water at 0.050mL
+2026-01-19 12:58:54,204 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.050mL
+2026-01-19 12:58:54,204 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.050mL
+2026-01-19 12:58:54,204 - DEBUG - Using calibrated retract_speed=10 for water at 0.050mL
+2026-01-19 12:58:54,204 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.050mL
+2026-01-19 12:58:54,204 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.050mL
+2026-01-19 12:58:54,204 - DEBUG - Using calibrated overaspirate_vol=0.004741365000000003 for water at 0.050mL
+2026-01-19 12:58:54,204 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:54,204 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:54,206 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:54,206 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:54,206 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:54,206 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:54,206 - DEBUG - Applied object param overaspirate_vol=0.004618739939928106
+2026-01-19 12:58:54,206 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:54,206 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:54,206 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:54,206 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:54,208 - INFO - Pipetting into vial DTAB_stock, amount: 0.050 mL
+2026-01-19 12:58:54,211 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:54,214 - DEBUG - Dispensing 0.065 mL then waiting 3.5437186 s
+2026-01-19 12:58:54,214 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:54,229 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:54,229 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:54,229 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:54,229 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:54,229 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:54,229 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:54,229 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:54,229 - DEBUG - Using calibrated overaspirate_vol=0.003491718613705048 for water at 0.100mL
+2026-01-19 12:58:54,229 - INFO - Dispensing 0.100 mL from DTAB_stock to DTAB_stock
+2026-01-19 12:58:54,235 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:54,235 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:54,235 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:54,235 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:54,235 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:54,235 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:54,235 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:54,235 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:54,235 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:54,235 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:54,235 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:54,235 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:54,235 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:54,235 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:54,236 - DEBUG - Applied object param overaspirate_vol=0.003491718613705048
+2026-01-19 12:58:54,236 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:54,236 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:54,236 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:54,236 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:54,237 - DEBUG - Selected small_tip for volume 0.114 mL
+2026-01-19 12:58:54,238 - INFO - Pipetting from vial DTAB_stock, amount: 0.100 mL
+2026-01-19 12:58:54,238 - INFO - Additional volume from calibration, amount: 0.003 mL
+2026-01-19 12:58:54,239 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:54,239 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:54,239 - DEBUG - Aspirating 0.103 mL then waiting 0.0 s
+2026-01-19 12:58:54,239 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:54,241 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.100mL
+2026-01-19 12:58:54,241 - DEBUG - Using calibrated dispense_speed=14 for water at 0.100mL
+2026-01-19 12:58:54,241 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.100mL
+2026-01-19 12:58:54,241 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.100mL
+2026-01-19 12:58:54,241 - DEBUG - Using calibrated retract_speed=10 for water at 0.100mL
+2026-01-19 12:58:54,241 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.100mL
+2026-01-19 12:58:54,241 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.100mL
+2026-01-19 12:58:54,241 - DEBUG - Using calibrated overaspirate_vol=0.003481365000000007 for water at 0.100mL
+2026-01-19 12:58:54,241 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:54,241 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:54,241 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:54,241 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:54,241 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:54,241 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:54,241 - DEBUG - Applied object param overaspirate_vol=0.003491718613705048
+2026-01-19 12:58:54,241 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:54,241 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:54,241 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:54,241 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:54,241 - INFO - Pipetting into vial DTAB_stock, amount: 0.100 mL
+2026-01-19 12:58:54,247 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:54,247 - DEBUG - Dispensing 0.114 mL then waiting 3.5437186 s
+2026-01-19 12:58:54,247 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:55,203 - INFO - Removing pipet
+2026-01-19 12:58:55,203 - INFO - Returning vial DTAB_stock to home location: main_8mL_rack index 1
+2026-01-19 12:58:55,203 - INFO - Moving vial DTAB_stock to main_8mL_rack: 1
+2026-01-19 12:58:55,203 - DEBUG - Grabbing vial 1 with index 1
+2026-01-19 12:58:55,203 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2026-01-19 12:58:55,203 - INFO -         Small DTAB_stock: R²=0.000, Accuracy=-100.0%
+2026-01-19 12:58:55,203 - INFO -     Validating DTAB_stock pipetting - Large volumes (200-900 µL) with conditioning...
+2026-01-19 12:58:55,209 - INFO -     Conditioning tip with DTAB_stock: 5 cycles of 20.0µL
+2026-01-19 12:58:55,216 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,216 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,216 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,216 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,216 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,216 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,216 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,216 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,219 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:55,219 - INFO - Getting small_tip (pipet number 6) from rack: small_tip_rack_1
+2026-01-19 12:58:55,220 - INFO - Pipetting from vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,220 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:55,221 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,222 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,222 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:55,222 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:55,225 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,225 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,225 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,225 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,225 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,225 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,225 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,225 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,225 - INFO - Pipetting into vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,229 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:55,229 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:55,233 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,233 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,233 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,234 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,234 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,234 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,234 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,234 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,236 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:55,236 - INFO - Pipetting from vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,236 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:55,236 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,236 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,236 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:55,236 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:55,236 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,236 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,236 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,236 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,236 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,236 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,236 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,236 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,236 - INFO - Pipetting into vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,246 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:55,247 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:55,250 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,250 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,250 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,250 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,250 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,250 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,250 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,250 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,252 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:55,253 - INFO - Pipetting from vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,253 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:55,253 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,253 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,253 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:55,253 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:55,253 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,253 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,253 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,253 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,253 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,253 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,253 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,253 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,253 - INFO - Pipetting into vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,261 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:55,262 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:55,266 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,266 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,266 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,266 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,266 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,266 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,266 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,266 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,268 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:55,269 - INFO - Pipetting from vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,269 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:55,271 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,271 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,271 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:55,271 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:55,275 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,275 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,275 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,275 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,275 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,275 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,275 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,275 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,275 - INFO - Pipetting into vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,278 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:55,279 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:55,284 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,284 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,284 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,284 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,284 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,284 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,284 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,284 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,286 - DEBUG - Selected small_tip for volume 0.059 mL
+2026-01-19 12:58:55,286 - INFO - Pipetting from vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,286 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-01-19 12:58:55,289 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,289 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,289 - DEBUG - Aspirating 0.026 mL then waiting 0.2 s
+2026-01-19 12:58:55,289 - DEBUG - Aspirating 0.033 mL then waiting 0 s
+2026-01-19 12:58:55,291 - DEBUG - Using calibrated aspirate_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,291 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-01-19 12:58:55,291 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.020mL
+2026-01-19 12:58:55,291 - DEBUG - Using calibrated dispense_wait_time=3.153314065 for water at 0.020mL
+2026-01-19 12:58:55,291 - DEBUG - Using calibrated retract_speed=10 for water at 0.020mL
+2026-01-19 12:58:55,291 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-01-19 12:58:55,291 - DEBUG - Using calibrated post_asp_air_vol=0.033 for water at 0.020mL
+2026-01-19 12:58:55,291 - DEBUG - Using calibrated overaspirate_vol=0.005532499999999999 for water at 0.020mL
+2026-01-19 12:58:55,291 - INFO - Pipetting into vial DTAB_stock, amount: 0.020 mL
+2026-01-19 12:58:55,291 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-19 12:58:55,297 - DEBUG - Dispensing 0.059 mL then waiting 3.153314065 s
+2026-01-19 12:58:55,297 - INFO -     Tip conditioning complete for DTAB_stock
+2026-01-19 12:58:55,301 - INFO - Moving vial DTAB_stock to clamp: 0
+2026-01-19 12:58:55,302 - DEBUG - Grabbing vial 1 with index 1
+2026-01-19 12:58:55,303 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated overaspirate_vol=0.011157907500000015 for water at 0.200mL
+2026-01-19 12:58:55,310 - INFO - Dispensing 0.200 mL from DTAB_stock to DTAB_stock
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Using calibrated overaspirate_vol=0.010501216000000006 for water at 0.200mL
+2026-01-19 12:58:55,310 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:55,310 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:55,310 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:55,310 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:55,310 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:55,310 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:55,310 - DEBUG - Applied object param overaspirate_vol=0.011157907500000015
+2026-01-19 12:58:55,310 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:55,310 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:55,310 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:55,310 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:55,318 - DEBUG - Selected large_tip for volume 0.222 mL
+2026-01-19 12:58:55,318 - INFO - Switching from small_tip to large_tip
+2026-01-19 12:58:55,318 - INFO - Removing pipet
+2026-01-19 12:58:55,319 - INFO - Getting large_tip (pipet number 2) from rack: large_tip_rack_1
+2026-01-19 12:58:55,320 - INFO - Pipetting from vial DTAB_stock, amount: 0.200 mL
+2026-01-19 12:58:55,321 - INFO - Additional volume from calibration, amount: 0.011 mL
+2026-01-19 12:58:55,321 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,321 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:55,321 - DEBUG - Aspirating 0.211 mL then waiting 0.0 s
+2026-01-19 12:58:55,321 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:55,326 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.200mL
+2026-01-19 12:58:55,326 - DEBUG - Using calibrated dispense_speed=14 for water at 0.200mL
+2026-01-19 12:58:55,326 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.200mL
+2026-01-19 12:58:55,326 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.200mL
+2026-01-19 12:58:55,326 - DEBUG - Using calibrated retract_speed=10 for water at 0.200mL
+2026-01-19 12:58:55,326 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.200mL
+2026-01-19 12:58:55,326 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.200mL
+2026-01-19 12:58:55,326 - DEBUG - Using calibrated overaspirate_vol=0.010501216000000006 for water at 0.200mL
+2026-01-19 12:58:55,326 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:55,326 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:55,326 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:55,326 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:55,326 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:55,326 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:55,326 - DEBUG - Applied object param overaspirate_vol=0.011157907500000015
+2026-01-19 12:58:55,326 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:55,326 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:55,326 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:55,326 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:55,326 - INFO - Pipetting into vial DTAB_stock, amount: 0.200 mL
+2026-01-19 12:58:55,328 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:55,328 - DEBUG - Dispensing 0.222 mL then waiting 3.5437186 s
+2026-01-19 12:58:55,328 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:55,334 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:55,334 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:55,334 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:55,334 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:55,336 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:55,336 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:55,336 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:55,336 - DEBUG - Using calibrated overaspirate_vol=0.011987982000000006 for water at 0.500mL
+2026-01-19 12:58:55,336 - INFO - Dispensing 0.500 mL from DTAB_stock to DTAB_stock
+2026-01-19 12:58:55,340 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:55,342 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:55,342 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:55,342 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:55,342 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:55,342 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:55,342 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:55,342 - DEBUG - Using calibrated overaspirate_vol=0.013301364999999999 for water at 0.500mL
+2026-01-19 12:58:55,342 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:55,342 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:55,342 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:55,342 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:55,342 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:55,342 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:55,342 - DEBUG - Applied object param overaspirate_vol=0.011987982000000006
+2026-01-19 12:58:55,342 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:55,342 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:55,342 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:55,342 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:55,343 - DEBUG - Selected large_tip for volume 0.523 mL
+2026-01-19 12:58:55,343 - INFO - Pipetting from vial DTAB_stock, amount: 0.500 mL
+2026-01-19 12:58:55,343 - INFO - Additional volume from calibration, amount: 0.012 mL
+2026-01-19 12:58:55,344 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,344 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:55,344 - DEBUG - Aspirating 0.512 mL then waiting 0.0 s
+2026-01-19 12:58:55,344 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:55,348 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.500mL
+2026-01-19 12:58:55,348 - DEBUG - Using calibrated dispense_speed=14 for water at 0.500mL
+2026-01-19 12:58:55,348 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.500mL
+2026-01-19 12:58:55,348 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.500mL
+2026-01-19 12:58:55,348 - DEBUG - Using calibrated retract_speed=10 for water at 0.500mL
+2026-01-19 12:58:55,348 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.500mL
+2026-01-19 12:58:55,348 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.500mL
+2026-01-19 12:58:55,348 - DEBUG - Using calibrated overaspirate_vol=0.013301364999999999 for water at 0.500mL
+2026-01-19 12:58:55,348 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:55,348 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:55,348 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:55,348 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:55,348 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:55,348 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:55,348 - DEBUG - Applied object param overaspirate_vol=0.011987982000000006
+2026-01-19 12:58:55,348 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:55,348 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:55,348 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:55,348 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:55,349 - INFO - Pipetting into vial DTAB_stock, amount: 0.500 mL
+2026-01-19 12:58:55,350 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:55,351 - DEBUG - Dispensing 0.523 mL then waiting 3.5437186 s
+2026-01-19 12:58:55,351 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:55,356 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:55,356 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:55,359 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:55,359 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:55,359 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:55,359 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:55,359 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:55,359 - DEBUG - Using calibrated overaspirate_vol=0.012818056499999996 for water at 0.900mL
+2026-01-19 12:58:55,359 - INFO - Dispensing 0.900 mL from DTAB_stock to DTAB_stock
+2026-01-19 12:58:55,365 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:55,365 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:55,365 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:55,365 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:55,365 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:55,365 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:55,365 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:55,365 - DEBUG - Using calibrated overaspirate_vol=0.012161364999999981 for water at 0.900mL
+2026-01-19 12:58:55,365 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:55,365 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:55,365 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:55,365 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:55,365 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:55,365 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:55,365 - DEBUG - Applied object param overaspirate_vol=0.012818056499999996
+2026-01-19 12:58:55,365 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:55,365 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:55,365 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:55,365 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:55,366 - DEBUG - Selected large_tip for volume 0.923 mL
+2026-01-19 12:58:55,367 - INFO - Pipetting from vial DTAB_stock, amount: 0.900 mL
+2026-01-19 12:58:55,367 - INFO - Additional volume from calibration, amount: 0.013 mL
+2026-01-19 12:58:55,368 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-19 12:58:55,368 - DEBUG - Adjusting pump 0 speed to 8
+2026-01-19 12:58:55,368 - DEBUG - Aspirating 0.913 mL then waiting 0.0 s
+2026-01-19 12:58:55,368 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-01-19 12:58:55,373 - DEBUG - Using calibrated aspirate_speed=8 for water at 0.900mL
+2026-01-19 12:58:55,373 - DEBUG - Using calibrated dispense_speed=14 for water at 0.900mL
+2026-01-19 12:58:55,373 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.900mL
+2026-01-19 12:58:55,373 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for water at 0.900mL
+2026-01-19 12:58:55,373 - DEBUG - Using calibrated retract_speed=10 for water at 0.900mL
+2026-01-19 12:58:55,373 - DEBUG - Using calibrated blowout_vol=0.016158898 for water at 0.900mL
+2026-01-19 12:58:55,373 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for water at 0.900mL
+2026-01-19 12:58:55,373 - DEBUG - Using calibrated overaspirate_vol=0.012161364999999981 for water at 0.900mL
+2026-01-19 12:58:55,373 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-19 12:58:55,373 - DEBUG - Applied object param aspirate_speed=8
+2026-01-19 12:58:55,373 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-19 12:58:55,373 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-01-19 12:58:55,373 - DEBUG - Applied object param dispense_speed=14
+2026-01-19 12:58:55,373 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-01-19 12:58:55,373 - DEBUG - Applied object param overaspirate_vol=0.012818056499999996
+2026-01-19 12:58:55,373 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-01-19 12:58:55,373 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-19 12:58:55,373 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-19 12:58:55,373 - DEBUG - Applied object param retract_speed=10
+2026-01-19 12:58:55,374 - INFO - Pipetting into vial DTAB_stock, amount: 0.900 mL
+2026-01-19 12:58:55,375 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-19 12:58:55,376 - DEBUG - Dispensing 0.923 mL then waiting 3.5437186 s
+2026-01-19 12:58:55,376 - DEBUG - Blowing out 0.016 mL
+2026-01-19 12:58:56,349 - INFO - Removing pipet
+2026-01-19 12:58:56,350 - INFO - Returning vial DTAB_stock to home location: main_8mL_rack index 1
+2026-01-19 12:58:56,352 - INFO - Moving vial DTAB_stock to main_8mL_rack: 1
+2026-01-19 12:58:56,352 - DEBUG - Grabbing vial 1 with index 1
+2026-01-19 12:58:56,352 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2026-01-19 12:58:56,354 - INFO -         Large DTAB_stock: R²=0.000, Accuracy=-100.0%
+2026-01-19 12:58:56,405 - INFO -       Average R²: 0.143
+2026-01-19 12:58:56,405 - INFO -       Average accuracy: -100.0%
+2026-01-19 12:58:56,405 - INFO -       Results saved to validation folders in output/
+2026-01-19 12:58:56,405 - INFO - 
+2026-01-19 12:58:56,405 - INFO - ============================================================
+2026-01-19 12:58:56,405 - INFO - ============================================================
+2026-01-19 12:58:56,405 - INFO - 
+2026-01-19 12:58:56,405 - INFO -   Robot ready for operations
+2026-01-19 12:58:56,405 - INFO -   Getting fresh wellplate...
+2026-01-19 12:58:56,405 - INFO - Getting new wellplate from source stack
+2026-01-19 12:58:56,405 - DEBUG - Calculating well plate stack height for num: 1, wp_type: 96 WELL PLATE, stack: source_stack, operation: grab
+2026-01-19 12:58:56,405 - DEBUG - Getting 1st wellplate from source at 85500
+2026-01-19 12:58:56,405 - INFO - Grabbing wellplate from location: source_stack
+2026-01-19 12:58:56,413 - DEBUG - Opening gripper
+2026-01-19 12:58:56,413 - DEBUG - Closing gripper
+2026-01-19 12:58:56,413 - INFO - Releasing wellplate at location: pipetting_area
+2026-01-19 12:58:56,413 - DEBUG - Opening gripper
+2026-01-19 12:58:56,414 - DEBUG - Moving North Track to home position
+2026-01-19 12:58:56,414 - INFO - + Lash_E initialization complete
+2026-01-19 12:58:56,414 - INFO - 
+2026-01-19 12:58:56,414 - INFO - Step 2: Calculating adaptive concentration grids...

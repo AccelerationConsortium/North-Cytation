@@ -1,0 +1,2171 @@
+2025-10-30 14:20:35,286 - INFO - Initializing North Robot...
+2025-10-30 14:20:35,286 - DEBUG - Loading robot configuration files...
+2025-10-30 14:20:35,293 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2025-10-30 14:20:35,300 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2025-10-30 14:20:35,303 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2025-10-30 14:20:35,310 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2025-10-30 14:20:35,321 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-10-30 14:20:35,325 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-10-30 14:20:35,329 - DEBUG - Loading robot state files...
+2025-10-30 14:20:35,329 - DEBUG - Loaded vial data from status/calibration_vials_short.csv
+2025-10-30 14:20:35,334 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2025-10-30 14:20:35,340 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2025-10-30 14:20:35,340 - DEBUG - Robot status loaded successfully
+2025-10-30 14:20:35,340 - DEBUG - Loading pumps from YAML configuration...
+2025-10-30 14:20:35,342 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-10-30 14:20:35,342 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-10-30 14:20:35,342 - DEBUG - Physical initialization of North Robot...
+2025-10-30 14:20:35,342 - WARNING - The robot reports having a tip, removing the tip
+2025-10-30 14:20:35,342 - INFO - Removing pipet
+2025-10-30 14:20:35,342 - INFO - Moving robot to home position
+2025-10-30 14:20:35,342 - INFO - Initializing North Track...
+2025-10-30 14:20:35,342 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2025-10-30 14:20:35,342 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2025-10-30 14:20:35,350 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2025-10-30 14:20:35,350 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2025-10-30 14:20:35,360 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2025-10-30 14:20:35,360 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2025-10-30 14:20:35,360 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-10-30 14:20:35,368 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-10-30 14:20:35,368 - DEBUG - Moving North Track to home position
+2025-10-30 14:20:35,372 - INFO -     vial_index           vial_name         location  location_index  vial_volume  capped cap_type vial_type    home_location  home_location_index
+0            0  measurement_vial_0            clamp               0     0.057371    True     open      8_mL    main_8mL_rack                    0
+1            1  measurement_vial_1    main_8mL_rack               1     0.000000    True     open      8_mL    main_8mL_rack                    1
+2            2  measurement_vial_2    main_8mL_rack               2     0.000000    True     open      8_mL    main_8mL_rack                    2
+3            3  measurement_vial_3    main_8mL_rack               3     0.000000    True     open      8_mL    main_8mL_rack                    3
+4            4  measurement_vial_4    main_8mL_rack               4     0.000000    True     open      8_mL    main_8mL_rack                    4
+5            5  measurement_vial_5    main_8mL_rack               5     0.000000    True     open      8_mL    main_8mL_rack                    5
+6            6  measurement_vial_6    main_8mL_rack               6     0.000000    True     open      8_mL    main_8mL_rack                    6
+7            7  measurement_vial_7    main_8mL_rack               7     0.000000    True     open      8_mL    main_8mL_rack                    7
+8            8  measurement_vial_8    main_8mL_rack               8     0.000000    True     open      8_mL    main_8mL_rack                    8
+9            9  measurement_vial_9    main_8mL_rack               9     0.000000    True     open      8_mL    main_8mL_rack                    9
+10          10       liquid_source   50mL_vial_rack               0     3.413538    True     open     50_mL   50mL_vial_rack                    0
+11          11     liquid_source_0  large_vial_rack               2     7.616636    True     open     20_mL  large_vial_rack                    2
+2025-10-30 14:20:35,391 - INFO - Visualizing vial racks...
+2025-10-30 14:20:35,594 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2025-10-30 14:20:35,719 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2025-10-30 14:20:36,560 - INFO - Vial measurement_vial_0 already at clamp index 0, no move needed
+2025-10-30 14:20:36,560 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:36,597 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:36,600 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:36,818 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:36,818 - INFO - Getting small_tip (pipet number 3) from rack: small_tip_rack_1
+2025-10-30 14:20:36,821 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:36,824 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:36,826 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:36,826 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:36,827 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:36,829 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:36,829 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:36,829 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:36,831 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:36,832 - INFO - Removing pipet
+2025-10-30 14:20:37,047 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:37,047 - INFO - Getting small_tip (pipet number 4) from rack: small_tip_rack_1
+2025-10-30 14:20:37,050 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:37,053 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:37,053 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:37,053 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:37,053 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:37,056 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:37,056 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:37,056 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:37,056 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:37,056 - INFO - Removing pipet
+2025-10-30 14:20:37,267 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:37,274 - INFO - Getting small_tip (pipet number 5) from rack: small_tip_rack_1
+2025-10-30 14:20:37,277 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:37,277 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:37,280 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:37,280 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:37,280 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:37,283 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:37,285 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:37,285 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:37,285 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:37,285 - INFO - Removing pipet
+2025-10-30 14:20:37,319 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:37,323 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:37,530 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:37,530 - INFO - Getting small_tip (pipet number 6) from rack: small_tip_rack_1
+2025-10-30 14:20:37,530 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:37,530 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:37,530 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:37,530 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:37,530 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:37,536 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:37,536 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:37,536 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:37,536 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:37,536 - INFO - Removing pipet
+2025-10-30 14:20:37,756 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:37,756 - INFO - Getting small_tip (pipet number 7) from rack: small_tip_rack_1
+2025-10-30 14:20:37,756 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:37,759 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:37,759 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:37,759 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:37,763 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:37,763 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:37,763 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:37,763 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:37,763 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:37,763 - INFO - Removing pipet
+2025-10-30 14:20:37,980 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:37,980 - INFO - Getting small_tip (pipet number 8) from rack: small_tip_rack_1
+2025-10-30 14:20:37,985 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:37,987 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:37,987 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:37,987 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:37,990 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:37,990 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:37,990 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:37,990 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:37,990 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:37,993 - INFO - Removing pipet
+2025-10-30 14:20:38,023 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:38,027 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:38,229 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:38,229 - INFO - Getting small_tip (pipet number 9) from rack: small_tip_rack_1
+2025-10-30 14:20:38,234 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:38,237 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:38,237 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:38,237 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:38,239 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:38,240 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:38,241 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:38,241 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:38,241 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:38,241 - INFO - Removing pipet
+2025-10-30 14:20:38,457 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:38,457 - INFO - Getting small_tip (pipet number 10) from rack: small_tip_rack_1
+2025-10-30 14:20:38,460 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:38,462 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:38,462 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:38,462 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:38,464 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:38,464 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:38,464 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:38,464 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:38,464 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:38,464 - INFO - Removing pipet
+2025-10-30 14:20:38,690 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:38,690 - INFO - Getting small_tip (pipet number 11) from rack: small_tip_rack_1
+2025-10-30 14:20:38,690 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:38,693 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:38,693 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:38,693 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:38,696 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:38,697 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:38,697 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:38,697 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:38,697 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:38,697 - INFO - Removing pipet
+2025-10-30 14:20:38,731 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:38,735 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:38,950 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:38,950 - INFO - Getting small_tip (pipet number 12) from rack: small_tip_rack_1
+2025-10-30 14:20:38,950 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:38,955 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:38,955 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:38,955 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:38,957 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:38,958 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:38,959 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:38,959 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:38,959 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:38,959 - INFO - Removing pipet
+2025-10-30 14:20:39,173 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:39,173 - INFO - Getting small_tip (pipet number 13) from rack: small_tip_rack_1
+2025-10-30 14:20:39,173 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:39,180 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:39,180 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:39,181 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:39,183 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:39,184 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:39,184 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:39,184 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:39,184 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:39,184 - INFO - Removing pipet
+2025-10-30 14:20:39,419 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:39,419 - INFO - Getting small_tip (pipet number 14) from rack: small_tip_rack_1
+2025-10-30 14:20:39,419 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:39,424 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:39,426 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:39,426 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:39,428 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:39,430 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:39,432 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:39,432 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:39,432 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:39,432 - INFO - Removing pipet
+2025-10-30 14:20:39,473 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:39,476 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:39,676 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:20:39,676 - INFO - Getting small_tip (pipet number 15) from rack: small_tip_rack_1
+2025-10-30 14:20:39,680 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:20:39,680 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:20:39,680 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:20:39,680 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:20:39,680 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:20:39,680 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:20:39,687 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:20:39,687 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:20:39,687 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:39,688 - INFO - Removing pipet
+2025-10-30 14:20:39,900 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:20:39,900 - INFO - Getting small_tip (pipet number 16) from rack: small_tip_rack_1
+2025-10-30 14:20:39,900 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:20:39,908 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:20:39,908 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:20:39,908 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:20:39,910 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:20:39,912 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:20:39,912 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:20:39,912 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:20:39,912 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:39,912 - INFO - Removing pipet
+2025-10-30 14:20:40,130 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:20:40,130 - INFO - Getting small_tip (pipet number 17) from rack: small_tip_rack_1
+2025-10-30 14:20:40,130 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:20:40,130 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:20:40,130 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:20:40,130 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:20:40,135 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:20:40,135 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:20:40,135 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:20:40,138 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:20:40,138 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:40,138 - INFO - Removing pipet
+2025-10-30 14:20:40,153 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:40,155 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:40,370 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:20:40,373 - INFO - Getting small_tip (pipet number 18) from rack: small_tip_rack_1
+2025-10-30 14:20:40,373 - INFO - Pipetting from vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:20:40,376 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:40,376 - DEBUG - Aspirating 0.029 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:40,376 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:40,379 - INFO - Pipetting into vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:20:40,380 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:40,380 - DEBUG - Dispensing 0.099 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:40,380 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:40,380 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:40,380 - INFO - Removing pipet
+2025-10-30 14:20:40,389 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:40,393 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:40,600 - DEBUG - Selected small_tip for volume 0.014 mL
+2025-10-30 14:20:40,600 - INFO - Getting small_tip (pipet number 19) from rack: small_tip_rack_1
+2025-10-30 14:20:40,601 - INFO - Pipetting from vial liquid_source_0, amount: 0.014 mL
+2025-10-30 14:20:40,604 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:40,604 - DEBUG - Aspirating 0.014 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:40,604 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:40,608 - INFO - Pipetting into vial measurement_vial_0, amount: 0.014 mL
+2025-10-30 14:20:40,610 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:40,612 - DEBUG - Dispensing 0.084 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:40,612 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:40,612 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:40,612 - INFO - Removing pipet
+2025-10-30 14:20:40,694 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:40,694 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:40,899 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:20:40,899 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_1
+2025-10-30 14:20:40,899 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:20:40,907 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:40,907 - DEBUG - Aspirating 0.056 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:40,907 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:40,909 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:20:40,909 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:40,910 - DEBUG - Dispensing 0.092 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:40,910 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:40,910 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:40,910 - INFO - Removing pipet
+2025-10-30 14:20:41,130 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:20:41,130 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_1
+2025-10-30 14:20:41,130 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:20:41,137 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:41,137 - DEBUG - Aspirating 0.056 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:41,137 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:41,137 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:20:41,140 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:41,141 - DEBUG - Dispensing 0.092 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:41,141 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:41,141 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:41,141 - INFO - Removing pipet
+2025-10-30 14:20:41,362 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:20:41,369 - INFO - Getting small_tip (pipet number 22) from rack: small_tip_rack_1
+2025-10-30 14:20:41,371 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:20:41,371 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:41,371 - DEBUG - Aspirating 0.056 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:41,371 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:41,371 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:20:41,371 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:41,371 - DEBUG - Dispensing 0.092 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:41,371 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:41,371 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:41,371 - INFO - Removing pipet
+2025-10-30 14:20:41,419 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:41,421 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:41,629 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:20:41,629 - INFO - Getting small_tip (pipet number 23) from rack: small_tip_rack_1
+2025-10-30 14:20:41,629 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:20:41,637 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:41,637 - DEBUG - Aspirating 0.053 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:41,637 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:41,638 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:20:41,640 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:41,640 - DEBUG - Dispensing 0.123 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:41,641 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:41,641 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:41,641 - INFO - Removing pipet
+2025-10-30 14:20:41,852 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:20:41,855 - INFO - Getting small_tip (pipet number 24) from rack: small_tip_rack_1
+2025-10-30 14:20:41,857 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:20:41,858 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:41,859 - DEBUG - Aspirating 0.053 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:41,859 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:41,862 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:20:41,862 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:41,865 - DEBUG - Dispensing 0.123 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:41,865 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:41,865 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:41,865 - INFO - Removing pipet
+2025-10-30 14:20:42,086 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:20:42,086 - INFO - Getting small_tip (pipet number 25) from rack: small_tip_rack_1
+2025-10-30 14:20:42,090 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:20:42,090 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:42,090 - DEBUG - Aspirating 0.053 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:42,094 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:42,094 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:20:42,098 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:42,100 - DEBUG - Dispensing 0.123 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:42,100 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:42,100 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:42,100 - INFO - Removing pipet
+2025-10-30 14:20:42,119 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:42,119 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:42,326 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:20:42,326 - INFO - Getting small_tip (pipet number 26) from rack: small_tip_rack_1
+2025-10-30 14:20:42,329 - INFO - Pipetting from vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:20:42,332 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:42,332 - DEBUG - Aspirating 0.029 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:42,332 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:42,334 - INFO - Pipetting into vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:20:42,334 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:42,336 - DEBUG - Dispensing 0.099 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:42,336 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:42,336 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:42,336 - INFO - Removing pipet
+2025-10-30 14:20:42,547 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:20:42,550 - INFO - Getting small_tip (pipet number 27) from rack: small_tip_rack_1
+2025-10-30 14:20:42,550 - INFO - Pipetting from vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:20:42,550 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:42,550 - DEBUG - Aspirating 0.029 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:42,550 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:42,550 - INFO - Pipetting into vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:20:42,550 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:42,557 - DEBUG - Dispensing 0.099 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:42,557 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:42,557 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:42,557 - INFO - Removing pipet
+2025-10-30 14:20:42,782 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:20:42,782 - INFO - Getting small_tip (pipet number 28) from rack: small_tip_rack_1
+2025-10-30 14:20:42,782 - INFO - Pipetting from vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:20:42,782 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:42,788 - DEBUG - Aspirating 0.029 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:42,788 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:42,789 - INFO - Pipetting into vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:20:42,791 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:42,792 - DEBUG - Dispensing 0.099 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:42,792 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:42,792 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:42,793 - INFO - Removing pipet
+2025-10-30 14:20:42,801 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:42,805 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:43,010 - DEBUG - Selected small_tip for volume 0.014 mL
+2025-10-30 14:20:43,010 - INFO - Getting small_tip (pipet number 29) from rack: small_tip_rack_1
+2025-10-30 14:20:43,013 - INFO - Pipetting from vial liquid_source_0, amount: 0.014 mL
+2025-10-30 14:20:43,013 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:43,013 - DEBUG - Aspirating 0.014 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:43,013 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:43,017 - INFO - Pipetting into vial measurement_vial_0, amount: 0.014 mL
+2025-10-30 14:20:43,020 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:43,020 - DEBUG - Dispensing 0.084 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:43,020 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:43,020 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:43,020 - INFO - Removing pipet
+2025-10-30 14:20:43,228 - DEBUG - Selected small_tip for volume 0.014 mL
+2025-10-30 14:20:43,228 - INFO - Getting small_tip (pipet number 30) from rack: small_tip_rack_1
+2025-10-30 14:20:43,231 - INFO - Pipetting from vial liquid_source_0, amount: 0.014 mL
+2025-10-30 14:20:43,231 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:43,234 - DEBUG - Aspirating 0.014 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:43,234 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:43,234 - INFO - Pipetting into vial measurement_vial_0, amount: 0.014 mL
+2025-10-30 14:20:43,234 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:43,234 - DEBUG - Dispensing 0.084 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:43,234 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:43,234 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:43,234 - INFO - Removing pipet
+2025-10-30 14:20:43,451 - DEBUG - Selected small_tip for volume 0.014 mL
+2025-10-30 14:20:43,451 - INFO - Getting small_tip (pipet number 31) from rack: small_tip_rack_1
+2025-10-30 14:20:43,451 - INFO - Pipetting from vial liquid_source_0, amount: 0.014 mL
+2025-10-30 14:20:43,458 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:43,458 - DEBUG - Aspirating 0.014 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:43,458 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:43,460 - INFO - Pipetting into vial measurement_vial_0, amount: 0.014 mL
+2025-10-30 14:20:43,460 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:43,460 - DEBUG - Dispensing 0.084 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:43,460 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:43,460 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:43,460 - INFO - Removing pipet
+2025-10-30 14:20:46,806 - INFO - Reusing Lash_E controller for experiment index 0
+2025-10-30 14:20:46,809 - INFO - Vial measurement_vial_0 already at clamp index 0, no move needed
+2025-10-30 14:20:46,811 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:46,830 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:46,831 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:47,035 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:47,035 - INFO - Getting small_tip (pipet number 32) from rack: small_tip_rack_1
+2025-10-30 14:20:47,039 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:47,042 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:47,042 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:47,042 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:47,045 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:47,046 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:47,047 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:47,047 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:47,047 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:47,047 - INFO - Removing pipet
+2025-10-30 14:20:47,269 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:47,269 - INFO - Getting small_tip (pipet number 33) from rack: small_tip_rack_1
+2025-10-30 14:20:47,279 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:47,286 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:47,286 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:47,286 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:47,289 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:47,293 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:47,293 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:47,293 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:47,293 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:47,296 - INFO - Removing pipet
+2025-10-30 14:20:47,524 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:47,524 - INFO - Getting small_tip (pipet number 34) from rack: small_tip_rack_1
+2025-10-30 14:20:47,524 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:47,530 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:47,530 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:47,530 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:47,530 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:47,530 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:47,535 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:47,535 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:47,535 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:47,535 - INFO - Removing pipet
+2025-10-30 14:20:47,568 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:47,571 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:47,789 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:47,789 - INFO - Getting small_tip (pipet number 35) from rack: small_tip_rack_1
+2025-10-30 14:20:47,789 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:47,794 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:47,794 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:47,795 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:47,796 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:47,798 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:47,798 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:47,798 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:47,798 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:47,800 - INFO - Removing pipet
+2025-10-30 14:20:48,013 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:48,013 - INFO - Getting small_tip (pipet number 36) from rack: small_tip_rack_1
+2025-10-30 14:20:48,016 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:48,016 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:48,016 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:48,016 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:48,020 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:48,020 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:48,020 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:48,022 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:48,022 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:48,022 - INFO - Removing pipet
+2025-10-30 14:20:48,231 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:48,231 - INFO - Getting small_tip (pipet number 37) from rack: small_tip_rack_1
+2025-10-30 14:20:48,234 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:48,234 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:48,234 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:48,234 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:48,237 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:48,237 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:48,239 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:48,239 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:48,239 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:48,239 - INFO - Removing pipet
+2025-10-30 14:20:48,275 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:48,278 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:48,497 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:48,497 - INFO - Getting small_tip (pipet number 38) from rack: small_tip_rack_1
+2025-10-30 14:20:48,497 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:48,501 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:48,502 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:48,502 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:48,502 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:48,502 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:48,502 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:48,502 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:48,502 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:48,502 - INFO - Removing pipet
+2025-10-30 14:20:48,724 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:48,724 - INFO - Getting small_tip (pipet number 39) from rack: small_tip_rack_1
+2025-10-30 14:20:48,730 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:48,734 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:48,735 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:48,735 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:48,736 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:48,736 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:48,739 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:48,739 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:48,739 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:48,739 - INFO - Removing pipet
+2025-10-30 14:20:48,962 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:48,964 - INFO - Getting small_tip (pipet number 40) from rack: small_tip_rack_1
+2025-10-30 14:20:48,966 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:48,969 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:48,969 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:48,969 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:48,971 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:48,973 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:48,975 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:48,975 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:48,975 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:48,975 - INFO - Removing pipet
+2025-10-30 14:20:49,023 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:49,025 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:49,240 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:49,240 - INFO - Getting small_tip (pipet number 41) from rack: small_tip_rack_1
+2025-10-30 14:20:49,240 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:49,245 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:49,245 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:49,245 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:49,246 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:49,248 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:49,249 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:49,249 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:49,249 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:49,249 - INFO - Removing pipet
+2025-10-30 14:20:49,459 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:49,459 - INFO - Getting small_tip (pipet number 42) from rack: small_tip_rack_1
+2025-10-30 14:20:49,463 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:49,463 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:49,463 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:49,463 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:49,463 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:49,469 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:49,470 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:49,470 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:49,470 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:49,470 - INFO - Removing pipet
+2025-10-30 14:20:49,685 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:49,685 - INFO - Getting small_tip (pipet number 43) from rack: small_tip_rack_1
+2025-10-30 14:20:49,685 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:49,685 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:49,685 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:49,685 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:49,689 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:49,689 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:49,692 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:49,692 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:49,692 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:49,692 - INFO - Removing pipet
+2025-10-30 14:20:49,733 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:49,739 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:49,949 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:20:49,949 - INFO - Getting small_tip (pipet number 44) from rack: small_tip_rack_1
+2025-10-30 14:20:49,951 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:20:49,955 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:20:49,955 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:20:49,955 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:20:49,957 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:20:49,958 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:20:49,958 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:20:49,958 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:20:49,958 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:49,958 - INFO - Removing pipet
+2025-10-30 14:20:50,174 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:20:50,174 - INFO - Getting small_tip (pipet number 45) from rack: small_tip_rack_1
+2025-10-30 14:20:50,174 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:20:50,181 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:20:50,181 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:20:50,181 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:20:50,182 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:20:50,184 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:20:50,185 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:20:50,185 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:20:50,185 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:50,185 - INFO - Removing pipet
+2025-10-30 14:20:50,391 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:20:50,391 - INFO - Getting small_tip (pipet number 46) from rack: small_tip_rack_1
+2025-10-30 14:20:50,394 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:20:50,399 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:20:50,400 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:20:50,400 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:20:50,400 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:20:50,400 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:20:50,404 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:20:50,404 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:20:50,404 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:50,404 - INFO - Removing pipet
+2025-10-30 14:20:50,424 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:50,424 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:50,631 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:20:50,631 - INFO - Getting small_tip (pipet number 47) from rack: small_tip_rack_1
+2025-10-30 14:20:50,631 - INFO - Pipetting from vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:20:50,631 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:50,631 - DEBUG - Aspirating 0.029 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:50,631 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:50,631 - INFO - Pipetting into vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:20:50,631 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:50,640 - DEBUG - Dispensing 0.114 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:50,640 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:50,640 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:50,640 - INFO - Removing pipet
+2025-10-30 14:20:50,646 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:50,646 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:50,861 - DEBUG - Selected small_tip for volume 0.014 mL
+2025-10-30 14:20:50,861 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_2
+2025-10-30 14:20:50,861 - INFO - Pipetting from vial liquid_source_0, amount: 0.014 mL
+2025-10-30 14:20:50,861 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:50,861 - DEBUG - Aspirating 0.014 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:50,861 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:50,861 - INFO - Pipetting into vial measurement_vial_0, amount: 0.014 mL
+2025-10-30 14:20:50,869 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:50,870 - DEBUG - Dispensing 0.099 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:50,870 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:50,870 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:50,870 - INFO - Removing pipet
+2025-10-30 14:20:50,951 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:50,955 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:51,156 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:20:51,156 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_2
+2025-10-30 14:20:51,159 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:20:51,162 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:51,162 - DEBUG - Aspirating 0.056 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:51,162 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:51,164 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:20:51,165 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:51,166 - DEBUG - Dispensing 0.093 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:51,166 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:51,166 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:51,166 - INFO - Removing pipet
+2025-10-30 14:20:51,386 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:20:51,390 - INFO - Getting small_tip (pipet number 2) from rack: small_tip_rack_2
+2025-10-30 14:20:51,390 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:20:51,394 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:51,394 - DEBUG - Aspirating 0.056 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:51,394 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:51,396 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:20:51,397 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:51,401 - DEBUG - Dispensing 0.093 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:51,401 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:51,401 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:51,401 - INFO - Removing pipet
+2025-10-30 14:20:51,614 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:20:51,614 - INFO - Getting small_tip (pipet number 3) from rack: small_tip_rack_2
+2025-10-30 14:20:51,614 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:20:51,620 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:51,620 - DEBUG - Aspirating 0.056 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:51,620 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:51,620 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:20:51,620 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:51,625 - DEBUG - Dispensing 0.093 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:51,625 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:51,625 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:51,627 - INFO - Removing pipet
+2025-10-30 14:20:51,666 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:51,669 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:51,883 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:20:51,883 - INFO - Getting small_tip (pipet number 4) from rack: small_tip_rack_2
+2025-10-30 14:20:51,883 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:20:51,890 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:51,890 - DEBUG - Aspirating 0.053 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:51,890 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:51,892 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:20:51,893 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:51,894 - DEBUG - Dispensing 0.123 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:51,894 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:51,894 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:51,894 - INFO - Removing pipet
+2025-10-30 14:20:52,114 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:20:52,114 - INFO - Getting small_tip (pipet number 5) from rack: small_tip_rack_2
+2025-10-30 14:20:52,114 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:20:52,120 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:52,120 - DEBUG - Aspirating 0.053 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:52,120 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:52,121 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:20:52,123 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:52,125 - DEBUG - Dispensing 0.123 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:52,125 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:52,125 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:52,125 - INFO - Removing pipet
+2025-10-30 14:20:52,336 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:20:52,339 - INFO - Getting small_tip (pipet number 6) from rack: small_tip_rack_2
+2025-10-30 14:20:52,339 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:20:52,343 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:20:52,343 - DEBUG - Aspirating 0.053 mL then waiting 12.393135940656066 s
+2025-10-30 14:20:52,343 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:20:52,345 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:20:52,347 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:20:52,350 - DEBUG - Dispensing 0.123 mL then waiting 19.006759207695723 s
+2025-10-30 14:20:52,350 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:20:52,350 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:52,351 - INFO - Removing pipet
+2025-10-30 14:20:52,390 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:52,390 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:52,590 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:52,590 - INFO - Getting small_tip (pipet number 7) from rack: small_tip_rack_2
+2025-10-30 14:20:52,590 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:52,596 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:52,597 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:52,597 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:52,597 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:52,599 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:52,600 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:52,600 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:52,600 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:52,600 - INFO - Removing pipet
+2025-10-30 14:20:52,813 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:52,813 - INFO - Getting small_tip (pipet number 8) from rack: small_tip_rack_2
+2025-10-30 14:20:52,813 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:52,821 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:52,821 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:52,821 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:52,824 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:52,825 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:52,825 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:52,825 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:52,825 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:52,825 - INFO - Removing pipet
+2025-10-30 14:20:53,036 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:53,036 - INFO - Getting small_tip (pipet number 9) from rack: small_tip_rack_2
+2025-10-30 14:20:53,040 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:20:53,040 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:20:53,040 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:20:53,040 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:20:53,040 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:20:53,040 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:20:53,048 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:20:53,048 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:20:53,048 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:53,048 - INFO - Removing pipet
+2025-10-30 14:20:53,086 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:53,091 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:53,291 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:53,291 - INFO - Getting small_tip (pipet number 10) from rack: small_tip_rack_2
+2025-10-30 14:20:53,291 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:53,291 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:53,291 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:53,291 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:53,299 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:53,299 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:53,302 - DEBUG - Dispensing 0.138 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:53,302 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:53,302 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:53,302 - INFO - Removing pipet
+2025-10-30 14:20:53,514 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:53,514 - INFO - Getting small_tip (pipet number 11) from rack: small_tip_rack_2
+2025-10-30 14:20:53,514 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:53,514 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:53,514 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:53,514 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:53,519 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:53,519 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:53,521 - DEBUG - Dispensing 0.138 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:53,521 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:53,521 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:53,521 - INFO - Removing pipet
+2025-10-30 14:20:53,730 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:20:53,730 - INFO - Getting small_tip (pipet number 12) from rack: small_tip_rack_2
+2025-10-30 14:20:53,730 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:20:53,730 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:53,730 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:53,730 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:53,730 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:20:53,739 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:53,741 - DEBUG - Dispensing 0.138 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:53,741 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:53,741 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:53,741 - INFO - Removing pipet
+2025-10-30 14:20:53,767 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:53,769 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:53,981 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:20:53,981 - INFO - Getting small_tip (pipet number 13) from rack: small_tip_rack_2
+2025-10-30 14:20:53,981 - INFO - Pipetting from vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:20:53,987 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:53,987 - DEBUG - Aspirating 0.029 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:53,987 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:53,990 - INFO - Pipetting into vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:20:53,993 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:53,993 - DEBUG - Dispensing 0.114 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:53,993 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:53,993 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:53,993 - INFO - Removing pipet
+2025-10-30 14:20:54,206 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:20:54,209 - INFO - Getting small_tip (pipet number 14) from rack: small_tip_rack_2
+2025-10-30 14:20:54,209 - INFO - Pipetting from vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:20:54,209 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:54,209 - DEBUG - Aspirating 0.029 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:54,209 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:54,209 - INFO - Pipetting into vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:20:54,209 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:54,209 - DEBUG - Dispensing 0.114 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:54,218 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:54,218 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:54,218 - INFO - Removing pipet
+2025-10-30 14:20:54,434 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:20:54,434 - INFO - Getting small_tip (pipet number 15) from rack: small_tip_rack_2
+2025-10-30 14:20:54,434 - INFO - Pipetting from vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:20:54,439 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:54,439 - DEBUG - Aspirating 0.029 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:54,439 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:54,441 - INFO - Pipetting into vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:20:54,442 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:54,444 - DEBUG - Dispensing 0.114 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:54,444 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:54,444 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:54,444 - INFO - Removing pipet
+2025-10-30 14:20:54,449 - DEBUG - Selected small_tip for volume 0.025 mL
+2025-10-30 14:20:54,463 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:54,463 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:54,679 - DEBUG - Selected small_tip for volume 0.026 mL
+2025-10-30 14:20:54,679 - INFO - Getting small_tip (pipet number 16) from rack: small_tip_rack_2
+2025-10-30 14:20:54,679 - INFO - Pipetting from vial liquid_source_0, amount: 0.026 mL
+2025-10-30 14:20:54,679 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:54,679 - DEBUG - Aspirating 0.026 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:54,679 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:54,679 - INFO - Pipetting into vial measurement_vial_0, amount: 0.026 mL
+2025-10-30 14:20:54,679 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:54,688 - DEBUG - Dispensing 0.111 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:54,688 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:20:54,688 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:54,688 - INFO - Removing pipet
+2025-10-30 14:20:54,900 - DEBUG - Selected small_tip for volume 0.026 mL
+2025-10-30 14:20:54,900 - INFO - Getting small_tip (pipet number 17) from rack: small_tip_rack_2
+2025-10-30 14:20:54,900 - INFO - Pipetting from vial liquid_source_0, amount: 0.026 mL
+2025-10-30 14:20:54,903 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:54,903 - DEBUG - Aspirating 0.026 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:54,903 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:54,905 - INFO - Pipetting into vial measurement_vial_0, amount: 0.026 mL
+2025-10-30 14:20:54,905 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:54,907 - DEBUG - Dispensing 0.111 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:54,907 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:20:54,907 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:54,907 - INFO - Removing pipet
+2025-10-30 14:20:55,119 - DEBUG - Selected small_tip for volume 0.026 mL
+2025-10-30 14:20:55,119 - INFO - Getting small_tip (pipet number 18) from rack: small_tip_rack_2
+2025-10-30 14:20:55,119 - INFO - Pipetting from vial liquid_source_0, amount: 0.026 mL
+2025-10-30 14:20:55,119 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:55,119 - DEBUG - Aspirating 0.026 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:55,119 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:55,119 - INFO - Pipetting into vial measurement_vial_0, amount: 0.026 mL
+2025-10-30 14:20:55,119 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:55,129 - DEBUG - Dispensing 0.111 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:55,129 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:20:55,129 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:55,129 - INFO - Removing pipet
+2025-10-30 14:20:55,146 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:55,149 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:55,355 - DEBUG - Selected small_tip for volume 0.014 mL
+2025-10-30 14:20:55,355 - INFO - Getting small_tip (pipet number 19) from rack: small_tip_rack_2
+2025-10-30 14:20:55,359 - INFO - Pipetting from vial liquid_source_0, amount: 0.014 mL
+2025-10-30 14:20:55,359 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:55,359 - DEBUG - Aspirating 0.014 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:55,359 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:55,359 - INFO - Pipetting into vial measurement_vial_0, amount: 0.014 mL
+2025-10-30 14:20:55,359 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:55,366 - DEBUG - Dispensing 0.099 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:55,366 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:55,366 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:55,367 - INFO - Removing pipet
+2025-10-30 14:20:55,592 - DEBUG - Selected small_tip for volume 0.014 mL
+2025-10-30 14:20:55,592 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_2
+2025-10-30 14:20:55,594 - INFO - Pipetting from vial liquid_source_0, amount: 0.014 mL
+2025-10-30 14:20:55,597 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:55,597 - DEBUG - Aspirating 0.014 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:55,597 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:55,599 - INFO - Pipetting into vial measurement_vial_0, amount: 0.014 mL
+2025-10-30 14:20:55,600 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:55,603 - DEBUG - Dispensing 0.099 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:55,603 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:55,603 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:55,603 - INFO - Removing pipet
+2025-10-30 14:20:55,811 - DEBUG - Selected small_tip for volume 0.014 mL
+2025-10-30 14:20:55,811 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_2
+2025-10-30 14:20:55,811 - INFO - Pipetting from vial liquid_source_0, amount: 0.014 mL
+2025-10-30 14:20:55,811 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:20:55,811 - DEBUG - Aspirating 0.014 mL then waiting 4.259606637060642 s
+2025-10-30 14:20:55,811 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:20:55,819 - INFO - Pipetting into vial measurement_vial_0, amount: 0.014 mL
+2025-10-30 14:20:55,819 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:20:55,822 - DEBUG - Dispensing 0.099 mL then waiting 27.09417167119682 s
+2025-10-30 14:20:55,822 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:20:55,822 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:55,822 - INFO - Removing pipet
+2025-10-30 14:20:59,174 - INFO - Reusing Lash_E controller for experiment index 0
+2025-10-30 14:20:59,177 - INFO - Vial measurement_vial_0 already at clamp index 0, no move needed
+2025-10-30 14:20:59,183 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:20:59,206 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:59,208 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:20:59,420 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:59,420 - INFO - Getting small_tip (pipet number 22) from rack: small_tip_rack_2
+2025-10-30 14:20:59,424 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:59,428 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:59,429 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:59,429 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:59,430 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:59,432 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:59,434 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:59,434 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:59,434 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:59,434 - INFO - Removing pipet
+2025-10-30 14:20:59,645 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:59,645 - INFO - Getting small_tip (pipet number 23) from rack: small_tip_rack_2
+2025-10-30 14:20:59,647 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:59,649 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:59,649 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:59,649 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:59,649 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:59,649 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:59,655 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:59,655 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:59,655 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:59,655 - INFO - Removing pipet
+2025-10-30 14:20:59,880 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:20:59,880 - INFO - Getting small_tip (pipet number 24) from rack: small_tip_rack_2
+2025-10-30 14:20:59,880 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:20:59,886 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:20:59,886 - DEBUG - Aspirating 0.057 mL then waiting 22.48070776462555 s
+2025-10-30 14:20:59,886 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:20:59,889 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:20:59,889 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:20:59,889 - DEBUG - Dispensing 0.094 mL then waiting 5.529413223266602 s
+2025-10-30 14:20:59,889 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:20:59,889 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:20:59,889 - INFO - Removing pipet
+2025-10-30 14:20:59,925 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:20:59,929 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:00,144 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:00,144 - INFO - Getting small_tip (pipet number 25) from rack: small_tip_rack_2
+2025-10-30 14:21:00,149 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:00,151 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:21:00,152 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:21:00,152 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:21:00,153 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:00,155 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:00,156 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:21:00,156 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:21:00,156 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:00,156 - INFO - Removing pipet
+2025-10-30 14:21:00,370 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:00,370 - INFO - Getting small_tip (pipet number 26) from rack: small_tip_rack_2
+2025-10-30 14:21:00,370 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:00,376 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:21:00,376 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:21:00,376 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:21:00,380 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:00,380 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:00,383 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:21:00,383 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:21:00,383 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:00,383 - INFO - Removing pipet
+2025-10-30 14:21:00,603 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:00,603 - INFO - Getting small_tip (pipet number 27) from rack: small_tip_rack_2
+2025-10-30 14:21:00,608 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:00,611 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:21:00,611 - DEBUG - Aspirating 0.054 mL then waiting 12.393135940656066 s
+2025-10-30 14:21:00,611 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:21:00,614 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:00,615 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:00,615 - DEBUG - Dispensing 0.124 mL then waiting 19.006759207695723 s
+2025-10-30 14:21:00,615 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:21:00,615 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:00,615 - INFO - Removing pipet
+2025-10-30 14:21:00,651 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:00,651 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:00,863 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:21:00,863 - INFO - Getting small_tip (pipet number 28) from rack: small_tip_rack_2
+2025-10-30 14:21:00,868 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:21:00,870 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:00,871 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:21:00,872 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:21:00,873 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:21:00,875 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:21:00,875 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:21:00,875 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:21:00,875 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:00,875 - INFO - Removing pipet
+2025-10-30 14:21:01,089 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:21:01,089 - INFO - Getting small_tip (pipet number 29) from rack: small_tip_rack_2
+2025-10-30 14:21:01,095 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:21:01,095 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:01,095 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:21:01,095 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:21:01,095 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:21:01,100 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:21:01,100 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:21:01,100 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:21:01,100 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:01,102 - INFO - Removing pipet
+2025-10-30 14:21:01,319 - DEBUG - Selected small_tip for volume 0.050 mL
+2025-10-30 14:21:01,319 - INFO - Getting small_tip (pipet number 30) from rack: small_tip_rack_2
+2025-10-30 14:21:01,319 - INFO - Pipetting from vial liquid_source_0, amount: 0.05 mL
+2025-10-30 14:21:01,326 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:01,327 - DEBUG - Aspirating 0.050 mL then waiting 28.394931005313993 s
+2025-10-30 14:21:01,327 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:21:01,329 - INFO - Pipetting into vial measurement_vial_0, amount: 0.05 mL
+2025-10-30 14:21:01,333 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:21:01,334 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:21:01,334 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:21:01,334 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:01,334 - INFO - Removing pipet
+2025-10-30 14:21:01,369 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:01,369 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:01,584 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:01,584 - INFO - Getting small_tip (pipet number 31) from rack: small_tip_rack_2
+2025-10-30 14:21:01,589 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:01,593 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:01,593 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:21:01,593 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:21:01,596 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:01,597 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:01,600 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:21:01,600 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:21:01,600 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:01,600 - INFO - Removing pipet
+2025-10-30 14:21:01,806 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:01,813 - INFO - Getting small_tip (pipet number 32) from rack: small_tip_rack_2
+2025-10-30 14:21:01,816 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:01,819 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:01,820 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:21:01,820 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:21:01,824 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:01,824 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:01,827 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:21:01,827 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:21:01,827 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:01,827 - INFO - Removing pipet
+2025-10-30 14:21:02,044 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:02,044 - INFO - Getting small_tip (pipet number 33) from rack: small_tip_rack_2
+2025-10-30 14:21:02,049 - INFO - Pipetting from vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:02,052 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:02,052 - DEBUG - Aspirating 0.054 mL then waiting 4.259606637060642 s
+2025-10-30 14:21:02,054 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:21:02,060 - INFO - Pipetting into vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:02,060 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:02,063 - DEBUG - Dispensing 0.139 mL then waiting 27.09417167119682 s
+2025-10-30 14:21:02,063 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:21:02,063 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:02,063 - INFO - Removing pipet
+2025-10-30 14:21:02,099 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:02,103 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:02,309 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:02,309 - INFO - Getting small_tip (pipet number 34) from rack: small_tip_rack_2
+2025-10-30 14:21:02,314 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:02,316 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:21:02,317 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:21:02,317 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:21:02,319 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:02,322 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:21:02,322 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:21:02,322 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:02,324 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:02,324 - INFO - Removing pipet
+2025-10-30 14:21:02,535 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:02,535 - INFO - Getting small_tip (pipet number 35) from rack: small_tip_rack_2
+2025-10-30 14:21:02,539 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:02,543 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:21:02,543 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:21:02,543 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:21:02,546 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:02,546 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:21:02,549 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:21:02,549 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:02,549 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:02,549 - INFO - Removing pipet
+2025-10-30 14:21:02,752 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:02,752 - INFO - Getting small_tip (pipet number 36) from rack: small_tip_rack_2
+2025-10-30 14:21:02,752 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:02,759 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:21:02,759 - DEBUG - Aspirating 0.051 mL then waiting 8.865606626495719 s
+2025-10-30 14:21:02,759 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:21:02,759 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:02,759 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:21:02,763 - DEBUG - Dispensing 0.061 mL then waiting 25.507228514179587 s
+2025-10-30 14:21:02,763 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:02,763 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:02,763 - INFO - Removing pipet
+2025-10-30 14:21:02,785 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:02,788 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:02,989 - DEBUG - Selected small_tip for volume 0.032 mL
+2025-10-30 14:21:02,989 - INFO - Getting small_tip (pipet number 37) from rack: small_tip_rack_2
+2025-10-30 14:21:02,989 - INFO - Pipetting from vial liquid_source_0, amount: 0.032 mL
+2025-10-30 14:21:02,989 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:21:02,989 - DEBUG - Aspirating 0.032 mL then waiting 22.48070776462555 s
+2025-10-30 14:21:02,989 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:21:02,989 - INFO - Pipetting into vial measurement_vial_0, amount: 0.032 mL
+2025-10-30 14:21:02,989 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:21:02,999 - DEBUG - Dispensing 0.069 mL then waiting 5.529413223266602 s
+2025-10-30 14:21:02,999 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:21:02,999 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:02,999 - INFO - Removing pipet
+2025-10-30 14:21:03,006 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:03,007 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:03,220 - DEBUG - Selected small_tip for volume 0.017 mL
+2025-10-30 14:21:03,220 - INFO - Getting small_tip (pipet number 38) from rack: small_tip_rack_2
+2025-10-30 14:21:03,220 - INFO - Pipetting from vial liquid_source_0, amount: 0.017 mL
+2025-10-30 14:21:03,228 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:21:03,228 - DEBUG - Aspirating 0.017 mL then waiting 22.48070776462555 s
+2025-10-30 14:21:03,228 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:21:03,230 - INFO - Pipetting into vial measurement_vial_0, amount: 0.017 mL
+2025-10-30 14:21:03,232 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:21:03,232 - DEBUG - Dispensing 0.054 mL then waiting 5.529413223266602 s
+2025-10-30 14:21:03,232 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:21:03,232 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:03,232 - INFO - Removing pipet
+2025-10-30 14:21:03,328 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:03,329 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:03,541 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-10-30 14:21:03,541 - INFO - Getting small_tip (pipet number 39) from rack: small_tip_rack_2
+2025-10-30 14:21:03,541 - INFO - Pipetting from vial liquid_source_0, amount: 0.06 mL
+2025-10-30 14:21:03,541 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:21:03,541 - DEBUG - Aspirating 0.060 mL then waiting 22.48070776462555 s
+2025-10-30 14:21:03,541 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:21:03,549 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-10-30 14:21:03,549 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:21:03,552 - DEBUG - Dispensing 0.097 mL then waiting 5.529413223266602 s
+2025-10-30 14:21:03,552 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:21:03,552 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:03,552 - INFO - Removing pipet
+2025-10-30 14:21:03,774 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-10-30 14:21:03,774 - INFO - Getting small_tip (pipet number 40) from rack: small_tip_rack_2
+2025-10-30 14:21:03,779 - INFO - Pipetting from vial liquid_source_0, amount: 0.06 mL
+2025-10-30 14:21:03,782 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:21:03,782 - DEBUG - Aspirating 0.060 mL then waiting 22.48070776462555 s
+2025-10-30 14:21:03,783 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:21:03,785 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-10-30 14:21:03,785 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:21:03,785 - DEBUG - Dispensing 0.097 mL then waiting 5.529413223266602 s
+2025-10-30 14:21:03,785 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:21:03,785 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:03,789 - INFO - Removing pipet
+2025-10-30 14:21:03,994 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-10-30 14:21:03,994 - INFO - Getting small_tip (pipet number 41) from rack: small_tip_rack_2
+2025-10-30 14:21:03,994 - INFO - Pipetting from vial liquid_source_0, amount: 0.06 mL
+2025-10-30 14:21:03,999 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:21:03,999 - DEBUG - Aspirating 0.060 mL then waiting 22.48070776462555 s
+2025-10-30 14:21:03,999 - DEBUG - Aspirating 0.036 mL then waiting 0 s
+2025-10-30 14:21:03,999 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-10-30 14:21:03,999 - DEBUG - Adjusting pump 0 speed to 14
+2025-10-30 14:21:04,004 - DEBUG - Dispensing 0.097 mL then waiting 5.529413223266602 s
+2025-10-30 14:21:04,004 - DEBUG - Blowing out 0.153 mL
+2025-10-30 14:21:04,004 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:04,004 - INFO - Removing pipet
+2025-10-30 14:21:04,049 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:04,054 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:04,262 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-10-30 14:21:04,262 - INFO - Getting small_tip (pipet number 42) from rack: small_tip_rack_2
+2025-10-30 14:21:04,262 - INFO - Pipetting from vial liquid_source_0, amount: 0.055 mL
+2025-10-30 14:21:04,266 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:21:04,266 - DEBUG - Aspirating 0.055 mL then waiting 12.393135940656066 s
+2025-10-30 14:21:04,266 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:21:04,266 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-10-30 14:21:04,270 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:04,270 - DEBUG - Dispensing 0.125 mL then waiting 19.006759207695723 s
+2025-10-30 14:21:04,270 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:21:04,270 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:04,271 - INFO - Removing pipet
+2025-10-30 14:21:04,493 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-10-30 14:21:04,493 - INFO - Getting small_tip (pipet number 43) from rack: small_tip_rack_2
+2025-10-30 14:21:04,495 - INFO - Pipetting from vial liquid_source_0, amount: 0.055 mL
+2025-10-30 14:21:04,505 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:21:04,505 - DEBUG - Aspirating 0.055 mL then waiting 12.393135940656066 s
+2025-10-30 14:21:04,505 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:21:04,508 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-10-30 14:21:04,510 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:04,511 - DEBUG - Dispensing 0.125 mL then waiting 19.006759207695723 s
+2025-10-30 14:21:04,511 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:21:04,511 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:04,511 - INFO - Removing pipet
+2025-10-30 14:21:04,721 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-10-30 14:21:04,721 - INFO - Getting small_tip (pipet number 44) from rack: small_tip_rack_2
+2025-10-30 14:21:04,721 - INFO - Pipetting from vial liquid_source_0, amount: 0.055 mL
+2025-10-30 14:21:04,721 - DEBUG - Adjusting pump 0 speed to 35
+2025-10-30 14:21:04,728 - DEBUG - Aspirating 0.055 mL then waiting 12.393135940656066 s
+2025-10-30 14:21:04,728 - DEBUG - Aspirating 0.070 mL then waiting 0 s
+2025-10-30 14:21:04,729 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-10-30 14:21:04,729 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:04,732 - DEBUG - Dispensing 0.125 mL then waiting 19.006759207695723 s
+2025-10-30 14:21:04,732 - DEBUG - Blowing out 0.018 mL
+2025-10-30 14:21:04,732 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:04,732 - INFO - Removing pipet
+2025-10-30 14:21:04,783 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:04,785 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:04,993 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:04,993 - INFO - Getting small_tip (pipet number 45) from rack: small_tip_rack_2
+2025-10-30 14:21:04,993 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:05,001 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:05,001 - DEBUG - Aspirating 0.051 mL then waiting 28.394931005313993 s
+2025-10-30 14:21:05,001 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:21:05,004 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:05,005 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:21:05,005 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:21:05,005 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:21:05,005 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:05,005 - INFO - Removing pipet
+2025-10-30 14:21:05,220 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:05,220 - INFO - Getting small_tip (pipet number 46) from rack: small_tip_rack_2
+2025-10-30 14:21:05,220 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:05,220 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:05,220 - DEBUG - Aspirating 0.051 mL then waiting 28.394931005313993 s
+2025-10-30 14:21:05,220 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:21:05,220 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:05,231 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:21:05,231 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:21:05,231 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:21:05,231 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:05,231 - INFO - Removing pipet
+2025-10-30 14:21:05,459 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:05,459 - INFO - Getting small_tip (pipet number 47) from rack: small_tip_rack_2
+2025-10-30 14:21:05,459 - INFO - Pipetting from vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:05,463 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:05,465 - DEBUG - Aspirating 0.051 mL then waiting 28.394931005313993 s
+2025-10-30 14:21:05,465 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-10-30 14:21:05,468 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:05,469 - DEBUG - Adjusting pump 0 speed to 20
+2025-10-30 14:21:05,469 - DEBUG - Dispensing 0.072 mL then waiting 12.44194284081459 s
+2025-10-30 14:21:05,469 - DEBUG - Blowing out 0.056 mL
+2025-10-30 14:21:05,469 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:05,469 - INFO - Removing pipet
+2025-10-30 14:21:05,517 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:05,522 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:05,723 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:21:05,723 - ERROR - All small_tip racks are empty! Please refill tips then hit enter on the terminal!
+2025-10-30 14:21:05,723 - WARNING - SIMULATION MODE: Would pause for error: All small_tip racks are empty! Please refill tips then hit enter on the terminal!
+2025-10-30 14:21:05,723 - INFO - Resetting all pipet rack counters to 0 after refill
+2025-10-30 14:21:05,723 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_1
+2025-10-30 14:21:05,723 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:21:05,730 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:05,730 - DEBUG - Aspirating 0.056 mL then waiting 4.259606637060642 s
+2025-10-30 14:21:05,730 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:21:05,730 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:21:05,730 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:05,734 - DEBUG - Dispensing 0.140 mL then waiting 27.09417167119682 s
+2025-10-30 14:21:05,734 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:21:05,734 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:05,734 - INFO - Removing pipet
+2025-10-30 14:21:05,956 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:21:05,956 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_1
+2025-10-30 14:21:05,960 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:21:05,965 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:05,965 - DEBUG - Aspirating 0.056 mL then waiting 4.259606637060642 s
+2025-10-30 14:21:05,965 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:21:05,968 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:21:05,969 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:05,969 - DEBUG - Dispensing 0.140 mL then waiting 27.09417167119682 s
+2025-10-30 14:21:05,969 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:21:05,969 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:05,969 - INFO - Removing pipet
+2025-10-30 14:21:06,176 - DEBUG - Selected small_tip for volume 0.056 mL
+2025-10-30 14:21:06,176 - INFO - Getting small_tip (pipet number 2) from rack: small_tip_rack_1
+2025-10-30 14:21:06,176 - INFO - Pipetting from vial liquid_source_0, amount: 0.056 mL
+2025-10-30 14:21:06,182 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:06,182 - DEBUG - Aspirating 0.056 mL then waiting 4.259606637060642 s
+2025-10-30 14:21:06,182 - DEBUG - Aspirating 0.085 mL then waiting 0 s
+2025-10-30 14:21:06,183 - INFO - Pipetting into vial measurement_vial_0, amount: 0.056 mL
+2025-10-30 14:21:06,184 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:06,184 - DEBUG - Dispensing 0.140 mL then waiting 27.09417167119682 s
+2025-10-30 14:21:06,184 - DEBUG - Blowing out 0.116 mL
+2025-10-30 14:21:06,184 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:06,184 - INFO - Removing pipet
+2025-10-30 14:21:06,234 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:06,236 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:06,451 - DEBUG - Selected small_tip for volume 0.052 mL
+2025-10-30 14:21:06,451 - INFO - Getting small_tip (pipet number 3) from rack: small_tip_rack_1
+2025-10-30 14:21:06,451 - INFO - Pipetting from vial liquid_source_0, amount: 0.052 mL
+2025-10-30 14:21:06,459 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:21:06,460 - DEBUG - Aspirating 0.052 mL then waiting 8.865606626495719 s
+2025-10-30 14:21:06,460 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:21:06,462 - INFO - Pipetting into vial measurement_vial_0, amount: 0.052 mL
+2025-10-30 14:21:06,463 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:21:06,464 - DEBUG - Dispensing 0.062 mL then waiting 25.507228514179587 s
+2025-10-30 14:21:06,464 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:06,464 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:06,464 - INFO - Removing pipet
+2025-10-30 14:21:06,675 - DEBUG - Selected small_tip for volume 0.052 mL
+2025-10-30 14:21:06,675 - INFO - Getting small_tip (pipet number 4) from rack: small_tip_rack_1
+2025-10-30 14:21:06,679 - INFO - Pipetting from vial liquid_source_0, amount: 0.052 mL
+2025-10-30 14:21:06,682 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:21:06,682 - DEBUG - Aspirating 0.052 mL then waiting 8.865606626495719 s
+2025-10-30 14:21:06,682 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:21:06,683 - INFO - Pipetting into vial measurement_vial_0, amount: 0.052 mL
+2025-10-30 14:21:06,685 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:21:06,687 - DEBUG - Dispensing 0.062 mL then waiting 25.507228514179587 s
+2025-10-30 14:21:06,687 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:06,687 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:06,687 - INFO - Removing pipet
+2025-10-30 14:21:06,901 - DEBUG - Selected small_tip for volume 0.052 mL
+2025-10-30 14:21:06,901 - INFO - Getting small_tip (pipet number 5) from rack: small_tip_rack_1
+2025-10-30 14:21:06,901 - INFO - Pipetting from vial liquid_source_0, amount: 0.052 mL
+2025-10-30 14:21:06,901 - DEBUG - Adjusting pump 0 speed to 17
+2025-10-30 14:21:06,901 - DEBUG - Aspirating 0.052 mL then waiting 8.865606626495719 s
+2025-10-30 14:21:06,901 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-10-30 14:21:06,909 - INFO - Pipetting into vial measurement_vial_0, amount: 0.052 mL
+2025-10-30 14:21:06,909 - DEBUG - Adjusting pump 0 speed to 18
+2025-10-30 14:21:06,912 - DEBUG - Dispensing 0.062 mL then waiting 25.507228514179587 s
+2025-10-30 14:21:06,912 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:06,912 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:06,912 - INFO - Removing pipet
+2025-10-30 14:21:06,962 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:06,964 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:07,171 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:21:07,171 - INFO - Getting small_tip (pipet number 6) from rack: small_tip_rack_1
+2025-10-30 14:21:07,176 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:21:07,179 - DEBUG - Adjusting pump 0 speed to 23
+2025-10-30 14:21:07,179 - DEBUG - Aspirating 0.057 mL then waiting 18.480767849832773 s
+2025-10-30 14:21:07,179 - DEBUG - Aspirating 0.097 mL then waiting 0 s
+2025-10-30 14:21:07,181 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:21:07,182 - DEBUG - Adjusting pump 0 speed to 34
+2025-10-30 14:21:07,182 - DEBUG - Dispensing 0.154 mL then waiting 9.92737378925085 s
+2025-10-30 14:21:07,182 - DEBUG - Blowing out 0.042 mL
+2025-10-30 14:21:07,182 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:07,182 - INFO - Removing pipet
+2025-10-30 14:21:07,399 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:21:07,399 - INFO - Getting small_tip (pipet number 7) from rack: small_tip_rack_1
+2025-10-30 14:21:07,401 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:21:07,403 - DEBUG - Adjusting pump 0 speed to 23
+2025-10-30 14:21:07,404 - DEBUG - Aspirating 0.057 mL then waiting 18.480767849832773 s
+2025-10-30 14:21:07,404 - DEBUG - Aspirating 0.097 mL then waiting 0 s
+2025-10-30 14:21:07,406 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:21:07,408 - DEBUG - Adjusting pump 0 speed to 34
+2025-10-30 14:21:07,408 - DEBUG - Dispensing 0.154 mL then waiting 9.92737378925085 s
+2025-10-30 14:21:07,409 - DEBUG - Blowing out 0.042 mL
+2025-10-30 14:21:07,409 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:07,410 - INFO - Removing pipet
+2025-10-30 14:21:07,627 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:21:07,627 - INFO - Getting small_tip (pipet number 8) from rack: small_tip_rack_1
+2025-10-30 14:21:07,630 - INFO - Pipetting from vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:21:07,633 - DEBUG - Adjusting pump 0 speed to 23
+2025-10-30 14:21:07,634 - DEBUG - Aspirating 0.057 mL then waiting 18.480767849832773 s
+2025-10-30 14:21:07,634 - DEBUG - Aspirating 0.097 mL then waiting 0 s
+2025-10-30 14:21:07,636 - INFO - Pipetting into vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:21:07,636 - DEBUG - Adjusting pump 0 speed to 34
+2025-10-30 14:21:07,639 - DEBUG - Dispensing 0.154 mL then waiting 9.92737378925085 s
+2025-10-30 14:21:07,639 - DEBUG - Blowing out 0.042 mL
+2025-10-30 14:21:07,639 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:07,639 - INFO - Removing pipet
+2025-10-30 14:21:07,687 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:07,689 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:07,903 - DEBUG - Selected small_tip for volume 0.058 mL
+2025-10-30 14:21:07,903 - INFO - Getting small_tip (pipet number 9) from rack: small_tip_rack_1
+2025-10-30 14:21:07,903 - INFO - Pipetting from vial liquid_source_0, amount: 0.058 mL
+2025-10-30 14:21:07,910 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:07,912 - DEBUG - Aspirating 0.058 mL then waiting 0.7320817932486534 s
+2025-10-30 14:21:07,912 - DEBUG - Aspirating 0.045 mL then waiting 0 s
+2025-10-30 14:21:07,912 - INFO - Pipetting into vial measurement_vial_0, amount: 0.058 mL
+2025-10-30 14:21:07,912 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:07,912 - DEBUG - Dispensing 0.103 mL then waiting 18.36072424426675 s
+2025-10-30 14:21:07,912 - DEBUG - Blowing out 0.080 mL
+2025-10-30 14:21:07,912 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:07,912 - INFO - Removing pipet
+2025-10-30 14:21:08,125 - DEBUG - Selected small_tip for volume 0.058 mL
+2025-10-30 14:21:08,125 - INFO - Getting small_tip (pipet number 10) from rack: small_tip_rack_1
+2025-10-30 14:21:08,129 - INFO - Pipetting from vial liquid_source_0, amount: 0.058 mL
+2025-10-30 14:21:08,132 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:08,132 - DEBUG - Aspirating 0.058 mL then waiting 0.7320817932486534 s
+2025-10-30 14:21:08,132 - DEBUG - Aspirating 0.045 mL then waiting 0 s
+2025-10-30 14:21:08,135 - INFO - Pipetting into vial measurement_vial_0, amount: 0.058 mL
+2025-10-30 14:21:08,136 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:08,136 - DEBUG - Dispensing 0.103 mL then waiting 18.36072424426675 s
+2025-10-30 14:21:08,136 - DEBUG - Blowing out 0.080 mL
+2025-10-30 14:21:08,136 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:08,139 - INFO - Removing pipet
+2025-10-30 14:21:08,348 - DEBUG - Selected small_tip for volume 0.058 mL
+2025-10-30 14:21:08,348 - INFO - Getting small_tip (pipet number 11) from rack: small_tip_rack_1
+2025-10-30 14:21:08,349 - INFO - Pipetting from vial liquid_source_0, amount: 0.058 mL
+2025-10-30 14:21:08,353 - DEBUG - Adjusting pump 0 speed to 31
+2025-10-30 14:21:08,353 - DEBUG - Aspirating 0.058 mL then waiting 0.7320817932486534 s
+2025-10-30 14:21:08,353 - DEBUG - Aspirating 0.045 mL then waiting 0 s
+2025-10-30 14:21:08,356 - INFO - Pipetting into vial measurement_vial_0, amount: 0.058 mL
+2025-10-30 14:21:08,356 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:08,356 - DEBUG - Dispensing 0.103 mL then waiting 18.36072424426675 s
+2025-10-30 14:21:08,356 - DEBUG - Blowing out 0.080 mL
+2025-10-30 14:21:08,356 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:08,360 - INFO - Removing pipet
+2025-10-30 14:21:08,399 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:08,411 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-10-30 14:21:08,615 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:21:08,621 - INFO - Getting small_tip (pipet number 12) from rack: small_tip_rack_1
+2025-10-30 14:21:08,623 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:21:08,627 - DEBUG - Adjusting pump 0 speed to 12
+2025-10-30 14:21:08,627 - DEBUG - Aspirating 0.053 mL then waiting 24.394993605092168 s
+2025-10-30 14:21:08,627 - DEBUG - Aspirating 0.061 mL then waiting 0 s
+2025-10-30 14:21:08,631 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:21:08,631 - DEBUG - Adjusting pump 0 speed to 27
+2025-10-30 14:21:08,634 - DEBUG - Dispensing 0.114 mL then waiting 2.07382139749825 s
+2025-10-30 14:21:08,634 - DEBUG - Blowing out 0.141 mL
+2025-10-30 14:21:08,634 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:08,634 - INFO - Removing pipet
+2025-10-30 14:21:08,845 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:21:08,845 - INFO - Getting small_tip (pipet number 13) from rack: small_tip_rack_1
+2025-10-30 14:21:08,847 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:21:08,850 - DEBUG - Adjusting pump 0 speed to 12
+2025-10-30 14:21:08,850 - DEBUG - Aspirating 0.053 mL then waiting 24.394993605092168 s
+2025-10-30 14:21:08,850 - DEBUG - Aspirating 0.061 mL then waiting 0 s
+2025-10-30 14:21:08,853 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:21:08,853 - DEBUG - Adjusting pump 0 speed to 27
+2025-10-30 14:21:08,856 - DEBUG - Dispensing 0.114 mL then waiting 2.07382139749825 s
+2025-10-30 14:21:08,856 - DEBUG - Blowing out 0.141 mL
+2025-10-30 14:21:08,856 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:08,856 - INFO - Removing pipet
+2025-10-30 14:21:09,065 - DEBUG - Selected small_tip for volume 0.053 mL
+2025-10-30 14:21:09,065 - INFO - Getting small_tip (pipet number 14) from rack: small_tip_rack_1
+2025-10-30 14:21:09,069 - INFO - Pipetting from vial liquid_source_0, amount: 0.053 mL
+2025-10-30 14:21:09,073 - DEBUG - Adjusting pump 0 speed to 12
+2025-10-30 14:21:09,073 - DEBUG - Aspirating 0.053 mL then waiting 24.394993605092168 s
+2025-10-30 14:21:09,073 - DEBUG - Aspirating 0.061 mL then waiting 0 s
+2025-10-30 14:21:09,073 - INFO - Pipetting into vial measurement_vial_0, amount: 0.053 mL
+2025-10-30 14:21:09,076 - DEBUG - Adjusting pump 0 speed to 27
+2025-10-30 14:21:09,080 - DEBUG - Dispensing 0.114 mL then waiting 2.07382139749825 s
+2025-10-30 14:21:09,080 - DEBUG - Blowing out 0.141 mL
+2025-10-30 14:21:09,080 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:09,080 - INFO - Removing pipet
+2025-10-30 14:21:09,139 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:09,139 - INFO - Removing pipet
+2025-10-30 14:21:09,145 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 0
+2025-10-30 14:21:09,147 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 0
+2025-10-30 14:21:09,147 - DEBUG - Grabbing vial 0 with index 0
+2025-10-30 14:21:09,153 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-10-30 14:21:09,153 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-10-30 14:21:09,153 - DEBUG - Grabbing vial 11 with index 11
+2025-10-30 14:21:09,156 - ERROR - No vial_positions_in_Locator defined for location: large_vial_rack
+2025-10-30 14:21:09,157 - WARNING - SIMULATION MODE: Would pause for error: No vial_positions_in_Locator defined for location: large_vial_rack
+2025-10-30 14:21:09,157 - WARNING - Can't move vial, vial is uncapped.
+2025-10-30 14:21:09,157 - ERROR - Can't move vial, vial is uncapped.
+2025-10-30 14:21:09,157 - WARNING - SIMULATION MODE: Would pause for error: Can't move vial, vial is uncapped.
+2025-10-30 14:21:09,157 - DEBUG - Dropping off vial 11 at location clamp with index 0
+2025-10-30 14:21:09,161 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:09,379 - DEBUG - Selected small_tip for volume 0.052 mL
+2025-10-30 14:21:09,379 - INFO - Getting small_tip (pipet number 15) from rack: small_tip_rack_1
+2025-10-30 14:21:09,382 - INFO - Pipetting from vial measurement_vial_0, amount: 0.052 mL
+2025-10-30 14:21:09,384 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:09,385 - DEBUG - Aspirating 0.052 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:09,385 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:09,387 - INFO - Pipetting into vial liquid_source_0, amount: 0.052 mL
+2025-10-30 14:21:09,388 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:09,389 - DEBUG - Dispensing 0.057 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:09,389 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:09,389 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:09,389 - INFO - Removing pipet
+2025-10-30 14:21:09,611 - DEBUG - Selected small_tip for volume 0.052 mL
+2025-10-30 14:21:09,611 - INFO - Getting small_tip (pipet number 16) from rack: small_tip_rack_1
+2025-10-30 14:21:09,615 - INFO - Pipetting from vial measurement_vial_0, amount: 0.052 mL
+2025-10-30 14:21:09,617 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:09,617 - DEBUG - Aspirating 0.052 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:09,617 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:09,617 - INFO - Pipetting into vial liquid_source_0, amount: 0.052 mL
+2025-10-30 14:21:09,619 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:09,620 - DEBUG - Dispensing 0.057 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:09,620 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:09,620 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:09,620 - INFO - Removing pipet
+2025-10-30 14:21:09,832 - DEBUG - Selected small_tip for volume 0.052 mL
+2025-10-30 14:21:09,832 - INFO - Getting small_tip (pipet number 17) from rack: small_tip_rack_1
+2025-10-30 14:21:09,837 - INFO - Pipetting from vial measurement_vial_0, amount: 0.052 mL
+2025-10-30 14:21:09,837 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:09,839 - DEBUG - Aspirating 0.052 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:09,839 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:09,839 - INFO - Pipetting into vial liquid_source_0, amount: 0.052 mL
+2025-10-30 14:21:09,841 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:09,843 - DEBUG - Dispensing 0.057 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:09,843 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:09,843 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:09,845 - INFO - Removing pipet
+2025-10-30 14:21:09,899 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:09,901 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:10,105 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:21:10,105 - INFO - Getting small_tip (pipet number 18) from rack: small_tip_rack_1
+2025-10-30 14:21:10,109 - INFO - Pipetting from vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:21:10,109 - DEBUG - Adjusting pump 0 speed to 30
+2025-10-30 14:21:10,109 - DEBUG - Aspirating 0.057 mL then waiting 23.992158360779285 s
+2025-10-30 14:21:10,109 - DEBUG - Aspirating 0.088 mL then waiting 0 s
+2025-10-30 14:21:10,109 - INFO - Pipetting into vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:21:10,116 - DEBUG - Adjusting pump 0 speed to 30
+2025-10-30 14:21:10,116 - DEBUG - Dispensing 0.145 mL then waiting 22.591543151065707 s
+2025-10-30 14:21:10,116 - DEBUG - Blowing out 0.069 mL
+2025-10-30 14:21:10,116 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:10,117 - INFO - Removing pipet
+2025-10-30 14:21:10,332 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:21:10,332 - INFO - Getting small_tip (pipet number 19) from rack: small_tip_rack_1
+2025-10-30 14:21:10,332 - INFO - Pipetting from vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:21:10,339 - DEBUG - Adjusting pump 0 speed to 30
+2025-10-30 14:21:10,339 - DEBUG - Aspirating 0.057 mL then waiting 23.992158360779285 s
+2025-10-30 14:21:10,339 - DEBUG - Aspirating 0.088 mL then waiting 0 s
+2025-10-30 14:21:10,342 - INFO - Pipetting into vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:21:10,343 - DEBUG - Adjusting pump 0 speed to 30
+2025-10-30 14:21:10,346 - DEBUG - Dispensing 0.145 mL then waiting 22.591543151065707 s
+2025-10-30 14:21:10,346 - DEBUG - Blowing out 0.069 mL
+2025-10-30 14:21:10,346 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:10,346 - INFO - Removing pipet
+2025-10-30 14:21:10,550 - DEBUG - Selected small_tip for volume 0.057 mL
+2025-10-30 14:21:10,550 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_1
+2025-10-30 14:21:10,550 - INFO - Pipetting from vial measurement_vial_0, amount: 0.057 mL
+2025-10-30 14:21:10,557 - DEBUG - Adjusting pump 0 speed to 30
+2025-10-30 14:21:10,557 - DEBUG - Aspirating 0.057 mL then waiting 23.992158360779285 s
+2025-10-30 14:21:10,559 - DEBUG - Aspirating 0.088 mL then waiting 0 s
+2025-10-30 14:21:10,561 - INFO - Pipetting into vial liquid_source_0, amount: 0.057 mL
+2025-10-30 14:21:10,561 - DEBUG - Adjusting pump 0 speed to 30
+2025-10-30 14:21:10,565 - DEBUG - Dispensing 0.145 mL then waiting 22.591543151065707 s
+2025-10-30 14:21:10,565 - DEBUG - Blowing out 0.069 mL
+2025-10-30 14:21:10,565 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:10,565 - INFO - Removing pipet
+2025-10-30 14:21:10,623 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:10,624 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:10,832 - DEBUG - Selected small_tip for volume 0.059 mL
+2025-10-30 14:21:10,832 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_1
+2025-10-30 14:21:10,832 - INFO - Pipetting from vial measurement_vial_0, amount: 0.059 mL
+2025-10-30 14:21:10,839 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:10,839 - DEBUG - Aspirating 0.059 mL then waiting 10.220576841384172 s
+2025-10-30 14:21:10,839 - DEBUG - Aspirating 0.039 mL then waiting 0 s
+2025-10-30 14:21:10,839 - INFO - Pipetting into vial liquid_source_0, amount: 0.059 mL
+2025-10-30 14:21:10,843 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:21:10,843 - DEBUG - Dispensing 0.098 mL then waiting 1.0385697428137064 s
+2025-10-30 14:21:10,843 - DEBUG - Blowing out 0.006 mL
+2025-10-30 14:21:10,843 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:10,843 - INFO - Removing pipet
+2025-10-30 14:21:11,062 - DEBUG - Selected small_tip for volume 0.059 mL
+2025-10-30 14:21:11,062 - INFO - Getting small_tip (pipet number 22) from rack: small_tip_rack_1
+2025-10-30 14:21:11,062 - INFO - Pipetting from vial measurement_vial_0, amount: 0.059 mL
+2025-10-30 14:21:11,067 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:11,067 - DEBUG - Aspirating 0.059 mL then waiting 10.220576841384172 s
+2025-10-30 14:21:11,067 - DEBUG - Aspirating 0.039 mL then waiting 0 s
+2025-10-30 14:21:11,070 - INFO - Pipetting into vial liquid_source_0, amount: 0.059 mL
+2025-10-30 14:21:11,071 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:21:11,071 - DEBUG - Dispensing 0.098 mL then waiting 1.0385697428137064 s
+2025-10-30 14:21:11,071 - DEBUG - Blowing out 0.006 mL
+2025-10-30 14:21:11,071 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:11,071 - INFO - Removing pipet
+2025-10-30 14:21:11,282 - DEBUG - Selected small_tip for volume 0.059 mL
+2025-10-30 14:21:11,282 - INFO - Getting small_tip (pipet number 23) from rack: small_tip_rack_1
+2025-10-30 14:21:11,282 - INFO - Pipetting from vial measurement_vial_0, amount: 0.059 mL
+2025-10-30 14:21:11,290 - DEBUG - Adjusting pump 0 speed to 25
+2025-10-30 14:21:11,290 - DEBUG - Aspirating 0.059 mL then waiting 10.220576841384172 s
+2025-10-30 14:21:11,290 - DEBUG - Aspirating 0.039 mL then waiting 0 s
+2025-10-30 14:21:11,294 - INFO - Pipetting into vial liquid_source_0, amount: 0.059 mL
+2025-10-30 14:21:11,294 - DEBUG - Adjusting pump 0 speed to 15
+2025-10-30 14:21:11,294 - DEBUG - Dispensing 0.098 mL then waiting 1.0385697428137064 s
+2025-10-30 14:21:11,294 - DEBUG - Blowing out 0.006 mL
+2025-10-30 14:21:11,294 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:11,294 - INFO - Removing pipet
+2025-10-30 14:21:11,355 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:11,355 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:11,564 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:11,564 - INFO - Getting small_tip (pipet number 24) from rack: small_tip_rack_1
+2025-10-30 14:21:11,564 - INFO - Pipetting from vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:11,569 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:11,569 - DEBUG - Aspirating 0.054 mL then waiting 15.133602982386947 s
+2025-10-30 14:21:11,569 - DEBUG - Aspirating 0.055 mL then waiting 0 s
+2025-10-30 14:21:11,572 - INFO - Pipetting into vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:11,573 - DEBUG - Adjusting pump 0 speed to 23
+2025-10-30 14:21:11,573 - DEBUG - Dispensing 0.108 mL then waiting 15.675207730382681 s
+2025-10-30 14:21:11,573 - DEBUG - Blowing out 0.166 mL
+2025-10-30 14:21:11,573 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:11,573 - INFO - Removing pipet
+2025-10-30 14:21:11,785 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:11,785 - INFO - Getting small_tip (pipet number 25) from rack: small_tip_rack_1
+2025-10-30 14:21:11,789 - INFO - Pipetting from vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:11,789 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:11,789 - DEBUG - Aspirating 0.054 mL then waiting 15.133602982386947 s
+2025-10-30 14:21:11,789 - DEBUG - Aspirating 0.055 mL then waiting 0 s
+2025-10-30 14:21:11,793 - INFO - Pipetting into vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:11,793 - DEBUG - Adjusting pump 0 speed to 23
+2025-10-30 14:21:11,796 - DEBUG - Dispensing 0.108 mL then waiting 15.675207730382681 s
+2025-10-30 14:21:11,796 - DEBUG - Blowing out 0.166 mL
+2025-10-30 14:21:11,796 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:11,796 - INFO - Removing pipet
+2025-10-30 14:21:12,009 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:12,009 - INFO - Getting small_tip (pipet number 26) from rack: small_tip_rack_1
+2025-10-30 14:21:12,009 - INFO - Pipetting from vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:12,016 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:12,017 - DEBUG - Aspirating 0.054 mL then waiting 15.133602982386947 s
+2025-10-30 14:21:12,017 - DEBUG - Aspirating 0.055 mL then waiting 0 s
+2025-10-30 14:21:12,020 - INFO - Pipetting into vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:12,020 - DEBUG - Adjusting pump 0 speed to 23
+2025-10-30 14:21:12,020 - DEBUG - Dispensing 0.108 mL then waiting 15.675207730382681 s
+2025-10-30 14:21:12,020 - DEBUG - Blowing out 0.166 mL
+2025-10-30 14:21:12,020 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:12,020 - INFO - Removing pipet
+2025-10-30 14:21:12,088 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:12,089 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:12,305 - DEBUG - Selected small_tip for volume 0.059 mL
+2025-10-30 14:21:12,305 - INFO - Getting small_tip (pipet number 27) from rack: small_tip_rack_1
+2025-10-30 14:21:12,309 - INFO - Pipetting from vial measurement_vial_0, amount: 0.059 mL
+2025-10-30 14:21:12,314 - DEBUG - Adjusting pump 0 speed to 21
+2025-10-30 14:21:12,314 - DEBUG - Aspirating 0.059 mL then waiting 27.99209486693144 s
+2025-10-30 14:21:12,315 - DEBUG - Aspirating 0.029 mL then waiting 0 s
+2025-10-30 14:21:12,317 - INFO - Pipetting into vial liquid_source_0, amount: 0.059 mL
+2025-10-30 14:21:12,320 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-30 14:21:12,320 - DEBUG - Dispensing 0.089 mL then waiting 21.957307923585176 s
+2025-10-30 14:21:12,320 - DEBUG - Blowing out 0.130 mL
+2025-10-30 14:21:12,320 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:12,320 - INFO - Removing pipet
+2025-10-30 14:21:12,535 - DEBUG - Selected small_tip for volume 0.059 mL
+2025-10-30 14:21:12,535 - INFO - Getting small_tip (pipet number 28) from rack: small_tip_rack_1
+2025-10-30 14:21:12,539 - INFO - Pipetting from vial measurement_vial_0, amount: 0.059 mL
+2025-10-30 14:21:12,542 - DEBUG - Adjusting pump 0 speed to 21
+2025-10-30 14:21:12,544 - DEBUG - Aspirating 0.059 mL then waiting 27.99209486693144 s
+2025-10-30 14:21:12,544 - DEBUG - Aspirating 0.029 mL then waiting 0 s
+2025-10-30 14:21:12,547 - INFO - Pipetting into vial liquid_source_0, amount: 0.059 mL
+2025-10-30 14:21:12,549 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-30 14:21:12,551 - DEBUG - Dispensing 0.089 mL then waiting 21.957307923585176 s
+2025-10-30 14:21:12,551 - DEBUG - Blowing out 0.130 mL
+2025-10-30 14:21:12,551 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:12,551 - INFO - Removing pipet
+2025-10-30 14:21:12,761 - DEBUG - Selected small_tip for volume 0.059 mL
+2025-10-30 14:21:12,761 - INFO - Getting small_tip (pipet number 29) from rack: small_tip_rack_1
+2025-10-30 14:21:12,761 - INFO - Pipetting from vial measurement_vial_0, amount: 0.059 mL
+2025-10-30 14:21:12,769 - DEBUG - Adjusting pump 0 speed to 21
+2025-10-30 14:21:12,769 - DEBUG - Aspirating 0.059 mL then waiting 27.99209486693144 s
+2025-10-30 14:21:12,769 - DEBUG - Aspirating 0.029 mL then waiting 0 s
+2025-10-30 14:21:12,771 - INFO - Pipetting into vial liquid_source_0, amount: 0.059 mL
+2025-10-30 14:21:12,773 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-30 14:21:12,773 - DEBUG - Dispensing 0.089 mL then waiting 21.957307923585176 s
+2025-10-30 14:21:12,773 - DEBUG - Blowing out 0.130 mL
+2025-10-30 14:21:12,773 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:12,773 - INFO - Removing pipet
+2025-10-30 14:21:12,839 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:12,839 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:13,049 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:13,049 - INFO - Getting small_tip (pipet number 30) from rack: small_tip_rack_1
+2025-10-30 14:21:13,049 - INFO - Pipetting from vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:13,056 - DEBUG - Adjusting pump 0 speed to 28
+2025-10-30 14:21:13,056 - DEBUG - Aspirating 0.054 mL then waiting 6.654637428000569 s
+2025-10-30 14:21:13,056 - DEBUG - Aspirating 0.064 mL then waiting 0 s
+2025-10-30 14:21:13,060 - INFO - Pipetting into vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:13,061 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:13,061 - DEBUG - Dispensing 0.119 mL then waiting 6.358196781948209 s
+2025-10-30 14:21:13,061 - DEBUG - Blowing out 0.093 mL
+2025-10-30 14:21:13,061 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:13,061 - INFO - Removing pipet
+2025-10-30 14:21:13,279 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:13,279 - INFO - Getting small_tip (pipet number 31) from rack: small_tip_rack_1
+2025-10-30 14:21:13,279 - INFO - Pipetting from vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:13,279 - DEBUG - Adjusting pump 0 speed to 28
+2025-10-30 14:21:13,279 - DEBUG - Aspirating 0.054 mL then waiting 6.654637428000569 s
+2025-10-30 14:21:13,279 - DEBUG - Aspirating 0.064 mL then waiting 0 s
+2025-10-30 14:21:13,279 - INFO - Pipetting into vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:13,279 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:13,287 - DEBUG - Dispensing 0.119 mL then waiting 6.358196781948209 s
+2025-10-30 14:21:13,287 - DEBUG - Blowing out 0.093 mL
+2025-10-30 14:21:13,287 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:13,287 - INFO - Removing pipet
+2025-10-30 14:21:13,499 - DEBUG - Selected small_tip for volume 0.054 mL
+2025-10-30 14:21:13,499 - INFO - Getting small_tip (pipet number 32) from rack: small_tip_rack_1
+2025-10-30 14:21:13,499 - INFO - Pipetting from vial measurement_vial_0, amount: 0.054 mL
+2025-10-30 14:21:13,504 - DEBUG - Adjusting pump 0 speed to 28
+2025-10-30 14:21:13,504 - DEBUG - Aspirating 0.054 mL then waiting 6.654637428000569 s
+2025-10-30 14:21:13,504 - DEBUG - Aspirating 0.064 mL then waiting 0 s
+2025-10-30 14:21:13,504 - INFO - Pipetting into vial liquid_source_0, amount: 0.054 mL
+2025-10-30 14:21:13,509 - DEBUG - Adjusting pump 0 speed to 26
+2025-10-30 14:21:13,509 - DEBUG - Dispensing 0.119 mL then waiting 6.358196781948209 s
+2025-10-30 14:21:13,509 - DEBUG - Blowing out 0.093 mL
+2025-10-30 14:21:13,509 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:13,511 - INFO - Removing pipet
+2025-10-30 14:21:13,579 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:13,582 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:13,791 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:13,791 - INFO - Getting small_tip (pipet number 33) from rack: small_tip_rack_1
+2025-10-30 14:21:13,791 - INFO - Pipetting from vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:13,798 - DEBUG - Adjusting pump 0 speed to 33
+2025-10-30 14:21:13,798 - DEBUG - Aspirating 0.051 mL then waiting 19.133543958887458 s
+2025-10-30 14:21:13,798 - DEBUG - Aspirating 0.013 mL then waiting 0 s
+2025-10-30 14:21:13,799 - INFO - Pipetting into vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:13,799 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:13,803 - DEBUG - Dispensing 0.063 mL then waiting 29.807055657729506 s
+2025-10-30 14:21:13,803 - DEBUG - Blowing out 0.030 mL
+2025-10-30 14:21:13,803 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:13,803 - INFO - Removing pipet
+2025-10-30 14:21:14,013 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:14,013 - INFO - Getting small_tip (pipet number 34) from rack: small_tip_rack_1
+2025-10-30 14:21:14,013 - INFO - Pipetting from vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:14,019 - DEBUG - Adjusting pump 0 speed to 33
+2025-10-30 14:21:14,019 - DEBUG - Aspirating 0.051 mL then waiting 19.133543958887458 s
+2025-10-30 14:21:14,019 - DEBUG - Aspirating 0.013 mL then waiting 0 s
+2025-10-30 14:21:14,019 - INFO - Pipetting into vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:14,019 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:14,024 - DEBUG - Dispensing 0.063 mL then waiting 29.807055657729506 s
+2025-10-30 14:21:14,024 - DEBUG - Blowing out 0.030 mL
+2025-10-30 14:21:14,024 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:14,024 - INFO - Removing pipet
+2025-10-30 14:21:14,245 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-10-30 14:21:14,245 - INFO - Getting small_tip (pipet number 35) from rack: small_tip_rack_1
+2025-10-30 14:21:14,249 - INFO - Pipetting from vial measurement_vial_0, amount: 0.051 mL
+2025-10-30 14:21:14,253 - DEBUG - Adjusting pump 0 speed to 33
+2025-10-30 14:21:14,253 - DEBUG - Aspirating 0.051 mL then waiting 19.133543958887458 s
+2025-10-30 14:21:14,254 - DEBUG - Aspirating 0.013 mL then waiting 0 s
+2025-10-30 14:21:14,254 - INFO - Pipetting into vial liquid_source_0, amount: 0.051 mL
+2025-10-30 14:21:14,256 - DEBUG - Adjusting pump 0 speed to 19
+2025-10-30 14:21:14,256 - DEBUG - Dispensing 0.063 mL then waiting 29.807055657729506 s
+2025-10-30 14:21:14,256 - DEBUG - Blowing out 0.030 mL
+2025-10-30 14:21:14,256 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:14,259 - INFO - Removing pipet
+2025-10-30 14:21:14,279 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:14,280 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:14,486 - DEBUG - Selected small_tip for volume 0.027 mL
+2025-10-30 14:21:14,486 - INFO - Getting small_tip (pipet number 36) from rack: small_tip_rack_1
+2025-10-30 14:21:14,486 - INFO - Pipetting from vial measurement_vial_0, amount: 0.027 mL
+2025-10-30 14:21:14,489 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:14,489 - DEBUG - Aspirating 0.027 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:14,489 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:14,491 - INFO - Pipetting into vial liquid_source_0, amount: 0.027 mL
+2025-10-30 14:21:14,494 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:14,494 - DEBUG - Dispensing 0.032 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:14,494 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:14,494 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:14,496 - INFO - Removing pipet
+2025-10-30 14:21:14,709 - DEBUG - Selected small_tip for volume 0.027 mL
+2025-10-30 14:21:14,709 - INFO - Getting small_tip (pipet number 37) from rack: small_tip_rack_1
+2025-10-30 14:21:14,709 - INFO - Pipetting from vial measurement_vial_0, amount: 0.027 mL
+2025-10-30 14:21:14,715 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:14,715 - DEBUG - Aspirating 0.027 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:14,715 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:14,719 - INFO - Pipetting into vial liquid_source_0, amount: 0.027 mL
+2025-10-30 14:21:14,721 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:14,723 - DEBUG - Dispensing 0.032 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:14,723 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:14,723 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:14,724 - INFO - Removing pipet
+2025-10-30 14:21:14,932 - DEBUG - Selected small_tip for volume 0.027 mL
+2025-10-30 14:21:14,932 - INFO - Getting small_tip (pipet number 38) from rack: small_tip_rack_1
+2025-10-30 14:21:14,932 - INFO - Pipetting from vial measurement_vial_0, amount: 0.027 mL
+2025-10-30 14:21:14,932 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:14,932 - DEBUG - Aspirating 0.027 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:14,932 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:14,939 - INFO - Pipetting into vial liquid_source_0, amount: 0.027 mL
+2025-10-30 14:21:14,939 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:14,942 - DEBUG - Dispensing 0.032 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:14,942 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:14,942 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:14,942 - INFO - Removing pipet
+2025-10-30 14:21:14,950 - DEBUG - Selected small_tip for volume 0.025 mL
+2025-10-30 14:21:14,965 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:14,967 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:15,179 - DEBUG - Selected small_tip for volume 0.027 mL
+2025-10-30 14:21:15,179 - INFO - Getting small_tip (pipet number 39) from rack: small_tip_rack_1
+2025-10-30 14:21:15,179 - INFO - Pipetting from vial measurement_vial_0, amount: 0.027 mL
+2025-10-30 14:21:15,184 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:15,184 - DEBUG - Aspirating 0.027 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:15,184 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:15,186 - INFO - Pipetting into vial liquid_source_0, amount: 0.027 mL
+2025-10-30 14:21:15,186 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:15,187 - DEBUG - Dispensing 0.032 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:15,187 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:21:15,188 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:15,188 - INFO - Removing pipet
+2025-10-30 14:21:15,403 - DEBUG - Selected small_tip for volume 0.027 mL
+2025-10-30 14:21:15,403 - INFO - Getting small_tip (pipet number 40) from rack: small_tip_rack_1
+2025-10-30 14:21:15,403 - INFO - Pipetting from vial measurement_vial_0, amount: 0.027 mL
+2025-10-30 14:21:15,408 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:15,409 - DEBUG - Aspirating 0.027 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:15,409 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:15,410 - INFO - Pipetting into vial liquid_source_0, amount: 0.027 mL
+2025-10-30 14:21:15,410 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:15,410 - DEBUG - Dispensing 0.032 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:15,410 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:21:15,410 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:15,413 - INFO - Removing pipet
+2025-10-30 14:21:15,639 - DEBUG - Selected small_tip for volume 0.027 mL
+2025-10-30 14:21:15,639 - INFO - Getting small_tip (pipet number 41) from rack: small_tip_rack_1
+2025-10-30 14:21:15,639 - INFO - Pipetting from vial measurement_vial_0, amount: 0.027 mL
+2025-10-30 14:21:15,639 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:15,639 - DEBUG - Aspirating 0.027 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:15,639 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:15,639 - INFO - Pipetting into vial liquid_source_0, amount: 0.027 mL
+2025-10-30 14:21:15,639 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:15,647 - DEBUG - Dispensing 0.032 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:15,647 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:21:15,647 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:15,647 - INFO - Removing pipet
+2025-10-30 14:21:15,680 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:15,680 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:15,890 - DEBUG - Selected small_tip for volume 0.033 mL
+2025-10-30 14:21:15,890 - INFO - Getting small_tip (pipet number 42) from rack: small_tip_rack_1
+2025-10-30 14:21:15,890 - INFO - Pipetting from vial measurement_vial_0, amount: 0.033 mL
+2025-10-30 14:21:15,897 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:15,897 - DEBUG - Aspirating 0.033 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:15,897 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:15,899 - INFO - Pipetting into vial liquid_source_0, amount: 0.033 mL
+2025-10-30 14:21:15,901 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:15,903 - DEBUG - Dispensing 0.039 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:15,903 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:15,903 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:15,903 - INFO - Removing pipet
+2025-10-30 14:21:16,119 - DEBUG - Selected small_tip for volume 0.033 mL
+2025-10-30 14:21:16,119 - INFO - Getting small_tip (pipet number 43) from rack: small_tip_rack_1
+2025-10-30 14:21:16,119 - INFO - Pipetting from vial measurement_vial_0, amount: 0.033 mL
+2025-10-30 14:21:16,119 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:16,119 - DEBUG - Aspirating 0.033 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:16,119 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:16,119 - INFO - Pipetting into vial liquid_source_0, amount: 0.033 mL
+2025-10-30 14:21:16,119 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:16,129 - DEBUG - Dispensing 0.039 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:16,129 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:16,129 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:16,129 - INFO - Removing pipet
+2025-10-30 14:21:16,340 - DEBUG - Selected small_tip for volume 0.033 mL
+2025-10-30 14:21:16,340 - INFO - Getting small_tip (pipet number 44) from rack: small_tip_rack_1
+2025-10-30 14:21:16,340 - INFO - Pipetting from vial measurement_vial_0, amount: 0.033 mL
+2025-10-30 14:21:16,347 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:16,347 - DEBUG - Aspirating 0.033 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:16,347 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:16,349 - INFO - Pipetting into vial liquid_source_0, amount: 0.033 mL
+2025-10-30 14:21:16,350 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:16,354 - DEBUG - Dispensing 0.039 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:16,354 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:16,354 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:16,354 - INFO - Removing pipet
+2025-10-30 14:21:16,385 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:16,389 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:16,605 - DEBUG - Selected small_tip for volume 0.031 mL
+2025-10-30 14:21:16,605 - INFO - Getting small_tip (pipet number 45) from rack: small_tip_rack_1
+2025-10-30 14:21:16,605 - INFO - Pipetting from vial measurement_vial_0, amount: 0.031 mL
+2025-10-30 14:21:16,611 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:16,611 - DEBUG - Aspirating 0.031 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:16,611 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:16,613 - INFO - Pipetting into vial liquid_source_0, amount: 0.031 mL
+2025-10-30 14:21:16,613 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:16,613 - DEBUG - Dispensing 0.036 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:16,613 - DEBUG - Blowing out 0.097 mL
+2025-10-30 14:21:16,613 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:16,613 - INFO - Removing pipet
+2025-10-30 14:21:16,835 - DEBUG - Selected small_tip for volume 0.031 mL
+2025-10-30 14:21:16,835 - INFO - Getting small_tip (pipet number 46) from rack: small_tip_rack_1
+2025-10-30 14:21:16,835 - INFO - Pipetting from vial measurement_vial_0, amount: 0.031 mL
+2025-10-30 14:21:16,839 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:16,839 - DEBUG - Aspirating 0.031 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:16,839 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:16,841 - INFO - Pipetting into vial liquid_source_0, amount: 0.031 mL
+2025-10-30 14:21:16,844 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:16,845 - DEBUG - Dispensing 0.036 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:16,845 - DEBUG - Blowing out 0.097 mL
+2025-10-30 14:21:16,845 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:16,846 - INFO - Removing pipet
+2025-10-30 14:21:17,063 - DEBUG - Selected small_tip for volume 0.031 mL
+2025-10-30 14:21:17,063 - INFO - Getting small_tip (pipet number 47) from rack: small_tip_rack_1
+2025-10-30 14:21:17,063 - INFO - Pipetting from vial measurement_vial_0, amount: 0.031 mL
+2025-10-30 14:21:17,070 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:17,071 - DEBUG - Aspirating 0.031 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:17,071 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:17,073 - INFO - Pipetting into vial liquid_source_0, amount: 0.031 mL
+2025-10-30 14:21:17,073 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:17,073 - DEBUG - Dispensing 0.036 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:17,073 - DEBUG - Blowing out 0.097 mL
+2025-10-30 14:21:17,073 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:17,073 - INFO - Removing pipet
+2025-10-30 14:21:17,110 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:17,110 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:17,319 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:21:17,319 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_2
+2025-10-30 14:21:17,319 - INFO - Pipetting from vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:21:17,319 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:17,319 - DEBUG - Aspirating 0.029 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:17,319 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:17,319 - INFO - Pipetting into vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:21:17,319 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:17,329 - DEBUG - Dispensing 0.034 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:17,329 - DEBUG - Blowing out 0.142 mL
+2025-10-30 14:21:17,329 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:17,329 - INFO - Removing pipet
+2025-10-30 14:21:17,545 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:21:17,545 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_2
+2025-10-30 14:21:17,549 - INFO - Pipetting from vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:21:17,549 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:17,549 - DEBUG - Aspirating 0.029 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:17,549 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:17,549 - INFO - Pipetting into vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:21:17,549 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:17,556 - DEBUG - Dispensing 0.034 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:17,556 - DEBUG - Blowing out 0.142 mL
+2025-10-30 14:21:17,556 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:17,556 - INFO - Removing pipet
+2025-10-30 14:21:17,776 - DEBUG - Selected small_tip for volume 0.029 mL
+2025-10-30 14:21:17,776 - INFO - Getting small_tip (pipet number 2) from rack: small_tip_rack_2
+2025-10-30 14:21:17,776 - INFO - Pipetting from vial measurement_vial_0, amount: 0.029 mL
+2025-10-30 14:21:17,779 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:17,779 - DEBUG - Aspirating 0.029 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:17,779 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:17,779 - INFO - Pipetting into vial liquid_source_0, amount: 0.029 mL
+2025-10-30 14:21:17,784 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:17,784 - DEBUG - Dispensing 0.034 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:17,785 - DEBUG - Blowing out 0.142 mL
+2025-10-30 14:21:17,785 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:17,785 - INFO - Removing pipet
+2025-10-30 14:21:17,820 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:17,822 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:18,036 - DEBUG - Selected small_tip for volume 0.028 mL
+2025-10-30 14:21:18,039 - INFO - Getting small_tip (pipet number 3) from rack: small_tip_rack_2
+2025-10-30 14:21:18,039 - INFO - Pipetting from vial measurement_vial_0, amount: 0.028 mL
+2025-10-30 14:21:18,039 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:18,039 - DEBUG - Aspirating 0.028 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:18,039 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:18,039 - INFO - Pipetting into vial liquid_source_0, amount: 0.028 mL
+2025-10-30 14:21:18,039 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:18,039 - DEBUG - Dispensing 0.033 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:18,046 - DEBUG - Blowing out 0.074 mL
+2025-10-30 14:21:18,046 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:18,046 - INFO - Removing pipet
+2025-10-30 14:21:18,253 - DEBUG - Selected small_tip for volume 0.028 mL
+2025-10-30 14:21:18,253 - INFO - Getting small_tip (pipet number 4) from rack: small_tip_rack_2
+2025-10-30 14:21:18,253 - INFO - Pipetting from vial measurement_vial_0, amount: 0.028 mL
+2025-10-30 14:21:18,259 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:18,259 - DEBUG - Aspirating 0.028 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:18,259 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:18,259 - INFO - Pipetting into vial liquid_source_0, amount: 0.028 mL
+2025-10-30 14:21:18,259 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:18,265 - DEBUG - Dispensing 0.033 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:18,265 - DEBUG - Blowing out 0.074 mL
+2025-10-30 14:21:18,265 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:18,265 - INFO - Removing pipet
+2025-10-30 14:21:18,477 - DEBUG - Selected small_tip for volume 0.028 mL
+2025-10-30 14:21:18,477 - INFO - Getting small_tip (pipet number 5) from rack: small_tip_rack_2
+2025-10-30 14:21:18,477 - INFO - Pipetting from vial measurement_vial_0, amount: 0.028 mL
+2025-10-30 14:21:18,480 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:18,480 - DEBUG - Aspirating 0.028 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:18,480 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:18,484 - INFO - Pipetting into vial liquid_source_0, amount: 0.028 mL
+2025-10-30 14:21:18,484 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:18,487 - DEBUG - Dispensing 0.033 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:18,489 - DEBUG - Blowing out 0.074 mL
+2025-10-30 14:21:18,489 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:18,489 - INFO - Removing pipet
+2025-10-30 14:21:18,507 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:18,510 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:18,724 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:18,724 - INFO - Getting small_tip (pipet number 6) from rack: small_tip_rack_2
+2025-10-30 14:21:18,728 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:18,731 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:18,731 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:18,731 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:18,733 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:18,733 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:18,738 - DEBUG - Dispensing 0.017 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:18,738 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:18,738 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:18,739 - INFO - Removing pipet
+2025-10-30 14:21:18,956 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:18,959 - INFO - Getting small_tip (pipet number 7) from rack: small_tip_rack_2
+2025-10-30 14:21:18,959 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:18,959 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:18,959 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:18,959 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:18,965 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:18,965 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:18,969 - DEBUG - Dispensing 0.017 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:18,969 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:18,969 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:18,970 - INFO - Removing pipet
+2025-10-30 14:21:19,191 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:19,191 - INFO - Getting small_tip (pipet number 8) from rack: small_tip_rack_2
+2025-10-30 14:21:19,191 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:19,191 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:19,191 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:19,191 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:19,191 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:19,191 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:19,199 - DEBUG - Dispensing 0.017 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:19,199 - DEBUG - Blowing out 0.104 mL
+2025-10-30 14:21:19,199 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:19,199 - INFO - Removing pipet
+2025-10-30 14:21:19,206 - DEBUG - Selected small_tip for volume 0.010 mL
+2025-10-30 14:21:19,219 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:19,221 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:19,439 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:19,439 - INFO - Getting small_tip (pipet number 9) from rack: small_tip_rack_2
+2025-10-30 14:21:19,439 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:19,444 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:19,444 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:19,444 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:19,446 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:19,447 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:19,448 - DEBUG - Dispensing 0.017 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:19,448 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:21:19,448 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:19,448 - INFO - Removing pipet
+2025-10-30 14:21:19,669 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:19,669 - INFO - Getting small_tip (pipet number 10) from rack: small_tip_rack_2
+2025-10-30 14:21:19,669 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:19,675 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:19,675 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:19,675 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:19,677 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:19,677 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:19,679 - DEBUG - Dispensing 0.017 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:19,679 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:21:19,679 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:19,679 - INFO - Removing pipet
+2025-10-30 14:21:19,889 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:19,889 - INFO - Getting small_tip (pipet number 11) from rack: small_tip_rack_2
+2025-10-30 14:21:19,893 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:19,896 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:19,896 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:19,897 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:19,899 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:19,900 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:19,900 - DEBUG - Dispensing 0.017 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:19,900 - DEBUG - Blowing out 0.034 mL
+2025-10-30 14:21:19,900 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:19,900 - INFO - Removing pipet
+2025-10-30 14:21:19,935 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:19,939 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:20,153 - DEBUG - Selected small_tip for volume 0.017 mL
+2025-10-30 14:21:20,153 - INFO - Getting small_tip (pipet number 12) from rack: small_tip_rack_2
+2025-10-30 14:21:20,153 - INFO - Pipetting from vial measurement_vial_0, amount: 0.017 mL
+2025-10-30 14:21:20,159 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:20,159 - DEBUG - Aspirating 0.017 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:20,159 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:20,159 - INFO - Pipetting into vial liquid_source_0, amount: 0.017 mL
+2025-10-30 14:21:20,159 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:20,162 - DEBUG - Dispensing 0.023 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:20,162 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:20,162 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:20,162 - INFO - Removing pipet
+2025-10-30 14:21:20,374 - DEBUG - Selected small_tip for volume 0.017 mL
+2025-10-30 14:21:20,374 - INFO - Getting small_tip (pipet number 13) from rack: small_tip_rack_2
+2025-10-30 14:21:20,374 - INFO - Pipetting from vial measurement_vial_0, amount: 0.017 mL
+2025-10-30 14:21:20,374 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:20,378 - DEBUG - Aspirating 0.017 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:20,379 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:20,379 - INFO - Pipetting into vial liquid_source_0, amount: 0.017 mL
+2025-10-30 14:21:20,379 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:20,383 - DEBUG - Dispensing 0.023 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:20,383 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:20,383 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:20,383 - INFO - Removing pipet
+2025-10-30 14:21:20,608 - DEBUG - Selected small_tip for volume 0.017 mL
+2025-10-30 14:21:20,608 - INFO - Getting small_tip (pipet number 14) from rack: small_tip_rack_2
+2025-10-30 14:21:20,609 - INFO - Pipetting from vial measurement_vial_0, amount: 0.017 mL
+2025-10-30 14:21:20,609 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:20,609 - DEBUG - Aspirating 0.017 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:20,609 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:20,609 - INFO - Pipetting into vial liquid_source_0, amount: 0.017 mL
+2025-10-30 14:21:20,609 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:20,617 - DEBUG - Dispensing 0.023 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:20,617 - DEBUG - Blowing out 0.179 mL
+2025-10-30 14:21:20,617 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:20,617 - INFO - Removing pipet
+2025-10-30 14:21:20,652 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:20,657 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:20,866 - DEBUG - Selected small_tip for volume 0.015 mL
+2025-10-30 14:21:20,866 - INFO - Getting small_tip (pipet number 15) from rack: small_tip_rack_2
+2025-10-30 14:21:20,866 - INFO - Pipetting from vial measurement_vial_0, amount: 0.015 mL
+2025-10-30 14:21:20,871 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:20,872 - DEBUG - Aspirating 0.015 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:20,872 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:20,872 - INFO - Pipetting into vial liquid_source_0, amount: 0.015 mL
+2025-10-30 14:21:20,872 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:20,872 - DEBUG - Dispensing 0.020 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:20,872 - DEBUG - Blowing out 0.097 mL
+2025-10-30 14:21:20,877 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:20,877 - INFO - Removing pipet
+2025-10-30 14:21:21,091 - DEBUG - Selected small_tip for volume 0.015 mL
+2025-10-30 14:21:21,091 - INFO - Getting small_tip (pipet number 16) from rack: small_tip_rack_2
+2025-10-30 14:21:21,096 - INFO - Pipetting from vial measurement_vial_0, amount: 0.015 mL
+2025-10-30 14:21:21,096 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:21,096 - DEBUG - Aspirating 0.015 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:21,096 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:21,099 - INFO - Pipetting into vial liquid_source_0, amount: 0.015 mL
+2025-10-30 14:21:21,099 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:21,101 - DEBUG - Dispensing 0.020 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:21,101 - DEBUG - Blowing out 0.097 mL
+2025-10-30 14:21:21,101 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:21,101 - INFO - Removing pipet
+2025-10-30 14:21:21,326 - DEBUG - Selected small_tip for volume 0.015 mL
+2025-10-30 14:21:21,326 - INFO - Getting small_tip (pipet number 17) from rack: small_tip_rack_2
+2025-10-30 14:21:21,326 - INFO - Pipetting from vial measurement_vial_0, amount: 0.015 mL
+2025-10-30 14:21:21,331 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:21,331 - DEBUG - Aspirating 0.015 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:21,331 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:21,333 - INFO - Pipetting into vial liquid_source_0, amount: 0.015 mL
+2025-10-30 14:21:21,333 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:21,336 - DEBUG - Dispensing 0.020 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:21,336 - DEBUG - Blowing out 0.097 mL
+2025-10-30 14:21:21,336 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:21,336 - INFO - Removing pipet
+2025-10-30 14:21:21,377 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:21,379 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:21,584 - DEBUG - Selected small_tip for volume 0.013 mL
+2025-10-30 14:21:21,584 - INFO - Getting small_tip (pipet number 18) from rack: small_tip_rack_2
+2025-10-30 14:21:21,584 - INFO - Pipetting from vial measurement_vial_0, amount: 0.013 mL
+2025-10-30 14:21:21,584 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:21,584 - DEBUG - Aspirating 0.013 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:21,584 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:21,589 - INFO - Pipetting into vial liquid_source_0, amount: 0.013 mL
+2025-10-30 14:21:21,589 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:21,591 - DEBUG - Dispensing 0.019 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:21,591 - DEBUG - Blowing out 0.142 mL
+2025-10-30 14:21:21,591 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:21,591 - INFO - Removing pipet
+2025-10-30 14:21:21,802 - DEBUG - Selected small_tip for volume 0.013 mL
+2025-10-30 14:21:21,802 - INFO - Getting small_tip (pipet number 19) from rack: small_tip_rack_2
+2025-10-30 14:21:21,802 - INFO - Pipetting from vial measurement_vial_0, amount: 0.013 mL
+2025-10-30 14:21:21,802 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:21,802 - DEBUG - Aspirating 0.013 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:21,809 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:21,809 - INFO - Pipetting into vial liquid_source_0, amount: 0.013 mL
+2025-10-30 14:21:21,809 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:21,813 - DEBUG - Dispensing 0.019 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:21,813 - DEBUG - Blowing out 0.142 mL
+2025-10-30 14:21:21,813 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:21,813 - INFO - Removing pipet
+2025-10-30 14:21:22,025 - DEBUG - Selected small_tip for volume 0.013 mL
+2025-10-30 14:21:22,025 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_2
+2025-10-30 14:21:22,029 - INFO - Pipetting from vial measurement_vial_0, amount: 0.013 mL
+2025-10-30 14:21:22,032 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:22,032 - DEBUG - Aspirating 0.013 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:22,032 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:22,033 - INFO - Pipetting into vial liquid_source_0, amount: 0.013 mL
+2025-10-30 14:21:22,035 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:22,035 - DEBUG - Dispensing 0.019 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:22,037 - DEBUG - Blowing out 0.142 mL
+2025-10-30 14:21:22,037 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:22,037 - INFO - Removing pipet
+2025-10-30 14:21:22,066 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-10-30 14:21:22,069 - INFO - [vial-mgmt] Using current source vial: measurement_vial_0
+2025-10-30 14:21:22,287 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:22,287 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_2
+2025-10-30 14:21:22,289 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:22,291 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:22,293 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:22,293 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:22,296 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:22,296 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:22,296 - DEBUG - Dispensing 0.018 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:22,299 - DEBUG - Blowing out 0.074 mL
+2025-10-30 14:21:22,299 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:22,299 - INFO - Removing pipet
+2025-10-30 14:21:22,519 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:22,519 - INFO - Getting small_tip (pipet number 22) from rack: small_tip_rack_2
+2025-10-30 14:21:22,519 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:22,519 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:22,519 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:22,519 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:22,519 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:22,519 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:22,528 - DEBUG - Dispensing 0.018 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:22,528 - DEBUG - Blowing out 0.074 mL
+2025-10-30 14:21:22,529 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:22,529 - INFO - Removing pipet
+2025-10-30 14:21:22,740 - DEBUG - Selected small_tip for volume 0.012 mL
+2025-10-30 14:21:22,740 - INFO - Getting small_tip (pipet number 23) from rack: small_tip_rack_2
+2025-10-30 14:21:22,740 - INFO - Pipetting from vial measurement_vial_0, amount: 0.012 mL
+2025-10-30 14:21:22,749 - DEBUG - Adjusting pump 0 speed to 11
+2025-10-30 14:21:22,749 - DEBUG - Aspirating 0.012 mL then waiting 3.127111690118909 s
+2025-10-30 14:21:22,749 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-10-30 14:21:22,753 - INFO - Pipetting into vial liquid_source_0, amount: 0.012 mL
+2025-10-30 14:21:22,757 - DEBUG - Adjusting pump 0 speed to 22
+2025-10-30 14:21:22,758 - DEBUG - Dispensing 0.018 mL then waiting 9.12240631878376 s
+2025-10-30 14:21:22,759 - DEBUG - Blowing out 0.074 mL
+2025-10-30 14:21:22,759 - DEBUG - Adjusting pump 0 speed to 5
+2025-10-30 14:21:22,759 - INFO - Removing pipet
