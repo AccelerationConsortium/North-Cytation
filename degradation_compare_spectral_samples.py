@@ -370,7 +370,7 @@ def main():
     """
     Main function
     """
-    folder_path = "/Users/serenaqiu/Downloads/p(IDT-TIT)_1000xHCl_2MeTHF_3Replicates"
+    folder_path = "/Users/serenaqiu/Desktop/Human vs Robot Data/Degradation_Automated_Data/p(IDT-TIT)-0.05mgml-500xHCl All"
     
     print(f"Analyzing spectral data from: {folder_path}\n")
     
