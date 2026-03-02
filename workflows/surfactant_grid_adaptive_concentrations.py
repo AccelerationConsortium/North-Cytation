@@ -148,10 +148,10 @@ SURFACTANT_B = "TTAB"
 EXPERIMENT_TAG = "new_min_conc_plus_1d_cmc_assay"
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
+SIMULATE = False # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
-VALIDATION_ONLY = False  # Set to True to run only pipetting validation and skip experiment (great for testing)
+VALIDATION_ONLY = True  # Set to True to run only pipetting validation and skip experiment (great for testing)
 
 # WORKFLOW TYPE - Choose one of: 'single', '2_stage', 'iterative', 'double_iterative', 'kinetics'
 WORKFLOW_TYPE = 'double_iterative'  # Current active workflow
