@@ -1,0 +1,1465 @@
+2026-01-23 13:47:08,388 - INFO - Initializing North Robot...
+2026-01-23 13:47:08,388 - DEBUG - Loading robot configuration files...
+2026-01-23 13:47:08,397 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-01-23 13:47:08,397 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-01-23 13:47:08,403 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-01-23 13:47:08,406 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-01-23 13:47:08,407 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-01-23 13:47:08,414 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-01-23 13:47:08,414 - DEBUG - Loading robot state files...
+2026-01-23 13:47:08,417 - DEBUG - Loaded vial data from status/calibration_vials_short.csv
+2026-01-23 13:47:08,418 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-01-23 13:47:08,418 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-01-23 13:47:08,418 - DEBUG - Robot status loaded successfully
+2026-01-23 13:47:08,418 - INFO - Physical initialization of North Robot...
+2026-01-23 13:47:11,926 - DEBUG - Loading pumps from YAML configuration...
+2026-01-23 13:47:12,022 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-01-23 13:47:12,135 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-01-23 13:47:12,135 - INFO - Moving robot to home position
+2026-01-23 13:47:12,547 - DEBUG - Initializing centrifuge controller...
+2026-01-23 13:47:12,547 - INFO - Initializing North Track...
+2026-01-23 13:47:12,548 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-01-23 13:47:12,548 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-01-23 13:47:12,548 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-01-23 13:47:12,548 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-01-23 13:47:12,548 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-01-23 13:47:12,548 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-01-23 13:47:12,548 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-01-23 13:47:12,548 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-01-23 13:47:12,637 - DEBUG - Moving North Track to home position
+2026-01-23 13:47:12,639 - INFO -    vial_index           vial_name         location  location_index  vial_volume  capped cap_type vial_type    home_location  home_location_index
+0           0  measurement_vial_0    main_8mL_rack              44        4.160    True     open      8_mL    main_8mL_rack                   44
+1           1     liquid_source_0    main_8mL_rack              43        4.740    True     open      8_mL    main_8mL_rack                   43
+2           2  measurement_vial_2    main_8mL_rack               2        0.000    True     open      8_mL    main_8mL_rack                    2
+3           3  measurement_vial_3    main_8mL_rack               3        0.000    True     open      8_mL    main_8mL_rack                    3
+4           4  measurement_vial_4    main_8mL_rack               4        0.000    True     open      8_mL    main_8mL_rack                    4
+5           5     liquid_source_2  large_vial_rack               2        2.785   False     open     20_mL  large_vial_rack                    2
+6           6     liquid_source_1  large_vial_rack               0        8.000   False     open     20_mL  large_vial_rack                    0
+2026-01-23 13:47:12,658 - INFO - Visualizing vial racks...
+2026-01-23 13:47:12,658 - DEBUG - Matplotlib backend: Agg
+2026-01-23 13:47:12,672 - INFO - Switched matplotlib backend to TkAgg
+2026-01-23 13:47:12,799 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2026-01-23 13:47:12,933 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2026-01-23 13:47:19,871 - DEBUG - Vial visualization displayed successfully
+2026-01-23 13:47:23,871 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2026-01-23 13:47:23,871 - DEBUG - Grabbing vial 0 with index 0
+2026-01-23 13:47:25,814 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2026-01-23 13:47:29,464 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-23 13:47:29,464 - DEBUG - Applied object param aspirate_speed=15
+2026-01-23 13:47:29,464 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-23 13:47:29,464 - DEBUG - Applied object param blowout_vol=0.5
+2026-01-23 13:47:29,464 - DEBUG - Applied object param dispense_speed=5
+2026-01-23 13:47:29,464 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-01-23 13:47:29,464 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-01-23 13:47:29,464 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-01-23 13:47:29,464 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-23 13:47:29,464 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-23 13:47:29,464 - DEBUG - Applied object param retract_speed=10
+2026-01-23 13:47:29,464 - DEBUG - Selected small_tip for volume 0.180 mL
+2026-01-23 13:47:29,464 - INFO - Getting small_tip (pipet number 28) from rack: small_tip_rack_1
+2026-01-23 13:47:34,558 - INFO - Pipetting from vial liquid_source_0, amount: 0.180 mL
+2026-01-23 13:47:34,560 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-01-23 13:47:34,560 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:47:36,972 - DEBUG - Adjusting pump 0 speed to 15
+2026-01-23 13:47:38,295 - DEBUG - Aspirating 0.180 mL then waiting 0.0 s
+2026-01-23 13:47:40,322 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-23 13:47:40,322 - DEBUG - Applied object param aspirate_speed=15
+2026-01-23 13:47:40,322 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-23 13:47:40,322 - DEBUG - Applied object param blowout_vol=0.5
+2026-01-23 13:47:40,322 - DEBUG - Applied object param dispense_speed=5
+2026-01-23 13:47:40,322 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-01-23 13:47:40,322 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-01-23 13:47:40,322 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-01-23 13:47:40,322 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-23 13:47:40,322 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-23 13:47:40,322 - DEBUG - Applied object param retract_speed=10
+2026-01-23 13:47:40,322 - INFO - Pipetting into vial liquid_source_0, amount: 0.180 mL
+2026-01-23 13:47:40,322 - DEBUG - Adjusting pump 0 speed to 5
+2026-01-23 13:47:40,430 - DEBUG - Dispensing 0.180 mL then waiting 0.0 s
+2026-01-23 13:47:40,974 - DEBUG - Blowing out 0.500 mL
+2026-01-23 13:47:44,092 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-23 13:47:44,092 - DEBUG - Applied object param aspirate_speed=15
+2026-01-23 13:47:44,092 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-23 13:47:44,092 - DEBUG - Applied object param blowout_vol=0.5
+2026-01-23 13:47:44,092 - DEBUG - Applied object param dispense_speed=5
+2026-01-23 13:47:44,092 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-01-23 13:47:44,092 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-01-23 13:47:44,092 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-01-23 13:47:44,092 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-23 13:47:44,092 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-23 13:47:44,093 - DEBUG - Applied object param retract_speed=10
+2026-01-23 13:47:44,094 - DEBUG - Selected small_tip for volume 0.180 mL
+2026-01-23 13:47:44,094 - INFO - Pipetting from vial liquid_source_0, amount: 0.180 mL
+2026-01-23 13:47:44,095 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-01-23 13:47:44,113 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:47:44,230 - DEBUG - Adjusting pump 0 speed to 15
+2026-01-23 13:47:44,370 - DEBUG - Aspirating 0.180 mL then waiting 0.0 s
+2026-01-23 13:47:46,454 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-23 13:47:46,454 - DEBUG - Applied object param aspirate_speed=15
+2026-01-23 13:47:46,454 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-23 13:47:46,454 - DEBUG - Applied object param blowout_vol=0.5
+2026-01-23 13:47:46,454 - DEBUG - Applied object param dispense_speed=5
+2026-01-23 13:47:46,454 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-01-23 13:47:46,454 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-01-23 13:47:46,454 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-01-23 13:47:46,454 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-23 13:47:46,454 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-23 13:47:46,454 - DEBUG - Applied object param retract_speed=10
+2026-01-23 13:47:46,454 - INFO - Pipetting into vial liquid_source_0, amount: 0.180 mL
+2026-01-23 13:47:46,454 - DEBUG - Adjusting pump 0 speed to 5
+2026-01-23 13:47:46,573 - DEBUG - Dispensing 0.180 mL then waiting 0.0 s
+2026-01-23 13:47:47,168 - DEBUG - Blowing out 0.500 mL
+2026-01-23 13:47:50,260 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-23 13:47:50,260 - DEBUG - Applied object param aspirate_speed=15
+2026-01-23 13:47:50,260 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-23 13:47:50,260 - DEBUG - Applied object param blowout_vol=0.5
+2026-01-23 13:47:50,260 - DEBUG - Applied object param dispense_speed=5
+2026-01-23 13:47:50,260 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-01-23 13:47:50,260 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-01-23 13:47:50,260 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-01-23 13:47:50,260 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-23 13:47:50,260 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-23 13:47:50,260 - DEBUG - Applied object param retract_speed=10
+2026-01-23 13:47:50,260 - DEBUG - Selected small_tip for volume 0.180 mL
+2026-01-23 13:47:50,260 - INFO - Pipetting from vial liquid_source_0, amount: 0.180 mL
+2026-01-23 13:47:50,260 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-01-23 13:47:50,282 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:47:50,402 - DEBUG - Adjusting pump 0 speed to 15
+2026-01-23 13:47:50,538 - DEBUG - Aspirating 0.180 mL then waiting 0.0 s
+2026-01-23 13:47:52,612 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-23 13:47:52,612 - DEBUG - Applied object param aspirate_speed=15
+2026-01-23 13:47:52,612 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-23 13:47:52,612 - DEBUG - Applied object param blowout_vol=0.5
+2026-01-23 13:47:52,612 - DEBUG - Applied object param dispense_speed=5
+2026-01-23 13:47:52,612 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-01-23 13:47:52,612 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-01-23 13:47:52,612 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-01-23 13:47:52,612 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-23 13:47:52,612 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-23 13:47:52,612 - DEBUG - Applied object param retract_speed=10
+2026-01-23 13:47:52,614 - INFO - Pipetting into vial liquid_source_0, amount: 0.180 mL
+2026-01-23 13:47:52,614 - DEBUG - Adjusting pump 0 speed to 5
+2026-01-23 13:47:52,733 - DEBUG - Dispensing 0.180 mL then waiting 0.0 s
+2026-01-23 13:47:53,293 - DEBUG - Blowing out 0.500 mL
+2026-01-23 13:47:56,323 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-23 13:47:56,323 - DEBUG - Applied object param aspirate_speed=15
+2026-01-23 13:47:56,323 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-23 13:47:56,323 - DEBUG - Applied object param blowout_vol=0.5
+2026-01-23 13:47:56,323 - DEBUG - Applied object param dispense_speed=5
+2026-01-23 13:47:56,323 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-01-23 13:47:56,323 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-01-23 13:47:56,323 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-01-23 13:47:56,323 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-23 13:47:56,323 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-23 13:47:56,323 - DEBUG - Applied object param retract_speed=10
+2026-01-23 13:47:56,323 - DEBUG - Selected small_tip for volume 0.180 mL
+2026-01-23 13:47:56,323 - INFO - Pipetting from vial liquid_source_0, amount: 0.180 mL
+2026-01-23 13:47:56,323 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-01-23 13:47:56,346 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:47:56,464 - DEBUG - Adjusting pump 0 speed to 15
+2026-01-23 13:47:56,604 - DEBUG - Aspirating 0.180 mL then waiting 0.0 s
+2026-01-23 13:47:58,684 - DEBUG - Applied object param asp_disp_cycles=0
+2026-01-23 13:47:58,684 - DEBUG - Applied object param aspirate_speed=15
+2026-01-23 13:47:58,684 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-01-23 13:47:58,684 - DEBUG - Applied object param blowout_vol=0.5
+2026-01-23 13:47:58,684 - DEBUG - Applied object param dispense_speed=5
+2026-01-23 13:47:58,684 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-01-23 13:47:58,684 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-01-23 13:47:58,684 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-01-23 13:47:58,684 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-01-23 13:47:58,684 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-01-23 13:47:58,684 - DEBUG - Applied object param retract_speed=10
+2026-01-23 13:47:58,684 - INFO - Pipetting into vial liquid_source_0, amount: 0.180 mL
+2026-01-23 13:47:58,684 - DEBUG - Adjusting pump 0 speed to 5
+2026-01-23 13:47:58,794 - DEBUG - Dispensing 0.180 mL then waiting 0.0 s
+2026-01-23 13:47:59,387 - DEBUG - Blowing out 0.500 mL
+2026-01-23 13:48:02,541 - INFO - Moving robot to home position
+2026-01-23 13:48:04,717 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:48:04,717 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:48:04,717 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:48:04,718 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:48:04,718 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:48:04,718 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:48:04,718 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:48:04,718 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:48:04,718 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:48:04,718 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:48:04,719 - DEBUG - Selected small_tip for volume 0.072 mL
+2026-01-23 13:48:04,720 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2026-01-23 13:48:04,720 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-23 13:48:04,722 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:48:06,890 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:48:07,620 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:48:08,066 - DEBUG - Aspirating 0.055 mL then waiting 0.0 s
+2026-01-23 13:48:09,534 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:48:09,822 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:48:09,822 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2026-01-23 13:48:12,432 - INFO - Initial mass reading: 12.531900 g
+2026-01-23 13:48:12,432 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:48:16,421 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:48:17,432 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:48:17,631 - DEBUG - Mass: 12.5354g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:48:18,031 - DEBUG - Mass: 12.5365g at 0.407s (baseline_pre) steady=False
+2026-01-23 13:48:18,417 - DEBUG - Mass: 12.5365g at 0.812s (baseline_pre) steady=False
+2026-01-23 13:48:18,831 - DEBUG - Mass: 12.5357g at 1.202s (baseline_pre) steady=False
+2026-01-23 13:48:19,232 - DEBUG - Mass: 12.5363g at 1.611s (baseline_pre) steady=True
+2026-01-23 13:48:19,448 - DEBUG - Dispensing 0.194 mL then waiting 1.5 s
+2026-01-23 13:48:19,619 - DEBUG - Mass: 12.5363g at 2.016s (dispensing) steady=True
+2026-01-23 13:48:20,031 - DEBUG - Mass: 12.5523g at 2.404s (dispensing) steady=False
+2026-01-23 13:48:20,424 - DEBUG - Mass: 12.5863g at 2.814s (dispensing) steady=False
+2026-01-23 13:48:20,831 - DEBUG - Mass: 12.5899g at 3.203s (dispensing) steady=False
+2026-01-23 13:48:21,231 - DEBUG - Mass: 12.5878g at 3.609s (dispensing) steady=False
+2026-01-23 13:48:21,620 - DEBUG - Mass: 12.5860g at 4.000s (dispensing) steady=False
+2026-01-23 13:48:22,025 - DEBUG - Mass: 12.5852g at 4.405s (dispensing) steady=False
+2026-01-23 13:48:22,416 - DEBUG - Mass: 12.5859g at 4.811s (dispensing) steady=False
+2026-01-23 13:48:22,636 - INFO - Dispensing took 3.188s, collecting post-dispense baseline
+2026-01-23 13:48:22,821 - DEBUG - Mass: 12.5852g at 5.204s (baseline_post) steady=False
+2026-01-23 13:48:23,231 - DEBUG - Mass: 12.5849g at 5.610s (baseline_post) steady=False
+2026-01-23 13:48:23,621 - DEBUG - Mass: 12.5857g at 6.015s (baseline_post) steady=False
+2026-01-23 13:48:24,026 - DEBUG - Mass: 12.5852g at 6.406s (baseline_post) steady=False
+2026-01-23 13:48:24,431 - DEBUG - Mass: 12.5852g at 6.812s (baseline_post) steady=False
+2026-01-23 13:48:24,650 - INFO - Stopped continuous mass monitoring. Collected 18 data points
+2026-01-23 13:48:24,655 - INFO - Pre-baseline: 1 stable readings, avg=12.536300g
+2026-01-23 13:48:24,655 - INFO - Post-baseline: No stable readings, using time-based avg=12.585240g
+2026-01-23 13:48:24,655 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:48:24,655 - INFO - Pre: STABLE, Post: TIME-BASED, Mass difference: 0.048940g
+2026-01-23 13:48:24,657 - INFO - Reading summary: 5 pre-readings (1 stable), 5 post-readings (0 stable)
+2026-01-23 13:48:24,657 - INFO - Baseline variability: pre_std=0.000502g, post_std=0.000288g
+2026-01-23 13:48:24,658 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-01-23 13:48:24,660 - INFO - Saved 18 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_134824.csv
+2026-01-23 13:48:25,181 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_134824.png
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:48:25,181 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:48:25,197 - DEBUG - Selected small_tip for volume 0.072 mL
+2026-01-23 13:48:25,197 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2026-01-23 13:48:25,197 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-23 13:48:25,200 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:48:29,106 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:48:29,839 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:48:30,292 - DEBUG - Aspirating 0.055 mL then waiting 0.0 s
+2026-01-23 13:48:31,743 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:48:32,088 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:48:32,088 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2026-01-23 13:48:35,032 - INFO - Initial mass reading: 12.583000 g
+2026-01-23 13:48:35,033 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:48:39,037 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:48:40,042 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:48:40,225 - DEBUG - Mass: 12.5858g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:48:40,631 - DEBUG - Mass: 12.5855g at 0.391s (baseline_pre) steady=False
+2026-01-23 13:48:41,031 - DEBUG - Mass: 12.5868g at 0.797s (baseline_pre) steady=False
+2026-01-23 13:48:41,421 - DEBUG - Mass: 12.5860g at 1.204s (baseline_pre) steady=False
+2026-01-23 13:48:41,822 - DEBUG - Mass: 12.5863g at 1.593s (baseline_pre) steady=False
+2026-01-23 13:48:42,072 - DEBUG - Dispensing 0.194 mL then waiting 1.5 s
+2026-01-23 13:48:42,233 - DEBUG - Mass: 12.5861g at 2.001s (baseline_pre) steady=True
+2026-01-23 13:48:42,622 - DEBUG - Mass: 12.5861g at 2.391s (dispensing) steady=True
+2026-01-23 13:48:43,027 - DEBUG - Mass: 12.6273g at 2.796s (dispensing) steady=False
+2026-01-23 13:48:43,425 - DEBUG - Mass: 12.6385g at 3.203s (dispensing) steady=False
+2026-01-23 13:48:43,828 - DEBUG - Mass: 12.6386g at 3.593s (dispensing) steady=False
+2026-01-23 13:48:44,231 - DEBUG - Mass: 12.6357g at 4.001s (dispensing) steady=False
+2026-01-23 13:48:44,631 - DEBUG - Mass: 12.6347g at 4.406s (dispensing) steady=False
+2026-01-23 13:48:45,031 - DEBUG - Mass: 12.6345g at 4.798s (dispensing) steady=False
+2026-01-23 13:48:45,402 - INFO - Dispensing took 3.329s, collecting post-dispense baseline
+2026-01-23 13:48:45,431 - DEBUG - Mass: 12.6343g at 5.203s (dispensing) steady=False
+2026-01-23 13:48:45,832 - DEBUG - Mass: 12.6348g at 5.593s (baseline_post) steady=False
+2026-01-23 13:48:46,230 - DEBUG - Mass: 12.6347g at 6.001s (baseline_post) steady=True
+2026-01-23 13:48:46,621 - DEBUG - Mass: 12.6347g at 6.406s (baseline_post) steady=True
+2026-01-23 13:48:47,033 - DEBUG - Mass: 12.6347g at 6.796s (baseline_post) steady=True
+2026-01-23 13:48:47,432 - DEBUG - Mass: 12.6347g at 7.204s (baseline_post) steady=True
+2026-01-23 13:48:47,634 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-01-23 13:48:47,634 - INFO - Pre-baseline: 1 stable readings, avg=12.586100g
+2026-01-23 13:48:47,634 - INFO - Post-baseline: 4 stable readings, avg=12.634700g
+2026-01-23 13:48:47,634 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:48:47,634 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.048600g
+2026-01-23 13:48:47,641 - INFO - Reading summary: 6 pre-readings (1 stable), 5 post-readings (4 stable)
+2026-01-23 13:48:47,641 - INFO - Baseline variability: pre_std=0.000445g, post_std=0.000045g
+2026-01-23 13:48:47,642 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-01-23 13:48:47,644 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_134847.csv
+2026-01-23 13:48:48,152 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_134847.png
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:48:48,165 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:48:48,165 - DEBUG - Selected small_tip for volume 0.072 mL
+2026-01-23 13:48:48,165 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2026-01-23 13:48:48,165 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-23 13:48:48,165 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:48:52,076 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:48:52,792 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:48:53,278 - DEBUG - Aspirating 0.055 mL then waiting 0.0 s
+2026-01-23 13:48:54,729 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:48:55,041 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:48:55,041 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2026-01-23 13:48:58,026 - INFO - Initial mass reading: 12.632500 g
+2026-01-23 13:48:58,026 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:49:02,010 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:49:03,025 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:49:03,231 - DEBUG - Mass: 12.6346g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:49:03,618 - DEBUG - Mass: 12.6355g at 0.408s (baseline_pre) steady=False
+2026-01-23 13:49:04,031 - DEBUG - Mass: 12.6348g at 0.828s (baseline_pre) steady=False
+2026-01-23 13:49:04,424 - DEBUG - Mass: 12.6341g at 1.220s (baseline_pre) steady=False
+2026-01-23 13:49:04,822 - DEBUG - Mass: 12.6348g at 1.610s (baseline_pre) steady=False
+2026-01-23 13:49:05,041 - DEBUG - Dispensing 0.194 mL then waiting 1.5 s
+2026-01-23 13:49:05,231 - DEBUG - Mass: 12.6345g at 2.016s (dispensing) steady=False
+2026-01-23 13:49:05,630 - DEBUG - Mass: 12.6513g at 2.407s (dispensing) steady=False
+2026-01-23 13:49:06,025 - DEBUG - Mass: 12.6845g at 2.813s (dispensing) steady=False
+2026-01-23 13:49:06,430 - DEBUG - Mass: 12.6881g at 3.219s (dispensing) steady=False
+2026-01-23 13:49:06,824 - DEBUG - Mass: 12.6867g at 3.611s (dispensing) steady=False
+2026-01-23 13:49:07,231 - DEBUG - Mass: 12.6843g at 4.020s (dispensing) steady=False
+2026-01-23 13:49:07,631 - DEBUG - Mass: 12.6835g at 4.408s (dispensing) steady=False
+2026-01-23 13:49:08,031 - DEBUG - Mass: 12.6841g at 4.813s (dispensing) steady=False
+2026-01-23 13:49:08,152 - INFO - Dispensing took 3.111s, collecting post-dispense baseline
+2026-01-23 13:49:08,432 - DEBUG - Mass: 12.6840g at 5.207s (baseline_post) steady=True
+2026-01-23 13:49:08,832 - DEBUG - Mass: 12.6840g at 5.609s (baseline_post) steady=True
+2026-01-23 13:49:09,233 - DEBUG - Mass: 12.6840g at 6.019s (baseline_post) steady=True
+2026-01-23 13:49:09,625 - DEBUG - Mass: 12.6840g at 6.424s (baseline_post) steady=True
+2026-01-23 13:49:10,033 - DEBUG - Mass: 12.6840g at 6.828s (baseline_post) steady=True
+2026-01-23 13:49:10,245 - INFO - Stopped continuous mass monitoring. Collected 18 data points
+2026-01-23 13:49:10,249 - INFO - Pre-baseline: No stable readings, using time-based avg=12.634760g
+2026-01-23 13:49:10,250 - INFO - Post-baseline: 5 stable readings, avg=12.684000g
+2026-01-23 13:49:10,250 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:49:10,250 - INFO - Pre: TIME-BASED, Post: STABLE, Mass difference: 0.049240g
+2026-01-23 13:49:10,252 - INFO - Reading summary: 5 pre-readings (0 stable), 5 post-readings (5 stable)
+2026-01-23 13:49:10,252 - INFO - Baseline variability: pre_std=0.000503g, post_std=0.000000g
+2026-01-23 13:49:10,252 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-01-23 13:49:10,255 - INFO - Saved 18 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_134910.csv
+2026-01-23 13:49:10,775 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_134910.png
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:49:10,775 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:49:10,775 - DEBUG - Selected small_tip for volume 0.072 mL
+2026-01-23 13:49:10,786 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2026-01-23 13:49:10,786 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-23 13:49:10,788 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:49:14,683 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:49:15,355 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:49:15,820 - DEBUG - Aspirating 0.055 mL then waiting 0.0 s
+2026-01-23 13:49:17,275 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:49:17,590 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:49:17,592 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2026-01-23 13:49:19,233 - INFO - Initial mass reading: 12.681700 g
+2026-01-23 13:49:19,233 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:49:23,229 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:49:24,245 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:49:24,425 - DEBUG - Mass: 12.6844g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:49:24,832 - DEBUG - Mass: 12.6837g at 0.391s (baseline_pre) steady=False
+2026-01-23 13:49:25,228 - DEBUG - Mass: 12.6839g at 0.797s (baseline_pre) steady=False
+2026-01-23 13:49:25,619 - DEBUG - Mass: 12.6841g at 1.188s (baseline_pre) steady=True
+2026-01-23 13:49:26,025 - DEBUG - Mass: 12.6841g at 1.595s (baseline_pre) steady=True
+2026-01-23 13:49:26,261 - DEBUG - Dispensing 0.194 mL then waiting 1.5 s
+2026-01-23 13:49:26,432 - DEBUG - Mass: 12.6841g at 2.001s (baseline_pre) steady=True
+2026-01-23 13:49:26,823 - DEBUG - Mass: 12.6873g at 2.392s (dispensing) steady=False
+2026-01-23 13:49:27,231 - DEBUG - Mass: 12.7266g at 2.798s (dispensing) steady=False
+2026-01-23 13:49:27,631 - DEBUG - Mass: 12.7376g at 3.203s (dispensing) steady=False
+2026-01-23 13:49:28,031 - DEBUG - Mass: 12.7382g at 3.594s (dispensing) steady=False
+2026-01-23 13:49:28,421 - DEBUG - Mass: 12.7342g at 4.001s (dispensing) steady=False
+2026-01-23 13:49:28,831 - DEBUG - Mass: 12.7333g at 4.392s (dispensing) steady=False
+2026-01-23 13:49:29,231 - DEBUG - Mass: 12.7331g at 4.798s (dispensing) steady=False
+2026-01-23 13:49:29,609 - INFO - Dispensing took 3.348s, collecting post-dispense baseline
+2026-01-23 13:49:29,631 - DEBUG - Mass: 12.7334g at 5.203s (dispensing) steady=False
+2026-01-23 13:49:30,031 - DEBUG - Mass: 12.7332g at 5.594s (baseline_post) steady=False
+2026-01-23 13:49:30,417 - DEBUG - Mass: 12.7334g at 6.001s (baseline_post) steady=False
+2026-01-23 13:49:30,823 - DEBUG - Mass: 12.7333g at 6.392s (baseline_post) steady=False
+2026-01-23 13:49:31,233 - DEBUG - Mass: 12.7333g at 6.798s (baseline_post) steady=True
+2026-01-23 13:49:31,625 - DEBUG - Mass: 12.7333g at 7.205s (baseline_post) steady=True
+2026-01-23 13:49:31,838 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-01-23 13:49:31,838 - INFO - Pre-baseline: 3 stable readings, avg=12.684100g
+2026-01-23 13:49:31,838 - INFO - Post-baseline: 2 stable readings, avg=12.733300g
+2026-01-23 13:49:31,838 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:49:31,838 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.049200g
+2026-01-23 13:49:31,844 - INFO - Reading summary: 6 pre-readings (3 stable), 5 post-readings (2 stable)
+2026-01-23 13:49:31,845 - INFO - Baseline variability: pre_std=0.000235g, post_std=0.000071g
+2026-01-23 13:49:31,845 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-01-23 13:49:31,847 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_134931.csv
+2026-01-23 13:49:32,354 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_134931.png
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:49:32,354 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:49:32,354 - DEBUG - Selected small_tip for volume 0.072 mL
+2026-01-23 13:49:32,370 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2026-01-23 13:49:32,370 - INFO - Additional volume from calibration, amount: 0.005 mL
+2026-01-23 13:49:32,372 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:49:36,274 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:49:36,952 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:49:37,400 - DEBUG - Aspirating 0.055 mL then waiting 0.0 s
+2026-01-23 13:49:38,866 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:49:39,150 - DEBUG - Applied dict param overaspirate_vol=0.0050840000000003036
+2026-01-23 13:49:39,150 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2026-01-23 13:49:40,232 - INFO - Initial mass reading: 12.731200 g
+2026-01-23 13:49:40,232 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:49:44,214 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:49:45,228 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:49:45,418 - DEBUG - Mass: 12.7326g at 0.001s (baseline_pre) steady=False
+2026-01-23 13:49:45,831 - DEBUG - Mass: 12.7337g at 0.406s (baseline_pre) steady=False
+2026-01-23 13:49:46,231 - DEBUG - Mass: 12.7337g at 0.812s (baseline_pre) steady=False
+2026-01-23 13:49:46,628 - DEBUG - Mass: 12.7327g at 1.219s (baseline_pre) steady=False
+2026-01-23 13:49:47,025 - DEBUG - Mass: 12.7333g at 1.611s (baseline_pre) steady=False
+2026-01-23 13:49:47,244 - DEBUG - Dispensing 0.194 mL then waiting 1.5 s
+2026-01-23 13:49:47,433 - DEBUG - Mass: 12.7331g at 2.016s (dispensing) steady=True
+2026-01-23 13:49:47,832 - DEBUG - Mass: 12.7331g at 2.407s (dispensing) steady=True
+2026-01-23 13:49:48,231 - DEBUG - Mass: 12.7724g at 2.812s (dispensing) steady=False
+2026-01-23 13:49:48,622 - DEBUG - Mass: 12.7867g at 3.220s (dispensing) steady=False
+2026-01-23 13:49:49,026 - DEBUG - Mass: 12.7869g at 3.610s (dispensing) steady=False
+2026-01-23 13:49:49,418 - DEBUG - Mass: 12.7834g at 4.018s (dispensing) steady=False
+2026-01-23 13:49:49,831 - DEBUG - Mass: 12.7820g at 4.406s (dispensing) steady=False
+2026-01-23 13:49:50,230 - DEBUG - Mass: 12.7828g at 4.816s (dispensing) steady=False
+2026-01-23 13:49:50,602 - INFO - Dispensing took 3.358s, collecting post-dispense baseline
+2026-01-23 13:49:50,621 - DEBUG - Mass: 12.7825g at 5.205s (dispensing) steady=False
+2026-01-23 13:49:51,030 - DEBUG - Mass: 12.7824g at 5.611s (baseline_post) steady=True
+2026-01-23 13:49:51,424 - DEBUG - Mass: 12.7824g at 6.031s (baseline_post) steady=True
+2026-01-23 13:49:51,833 - DEBUG - Mass: 12.7824g at 6.408s (baseline_post) steady=True
+2026-01-23 13:49:52,228 - DEBUG - Mass: 12.7824g at 6.813s (baseline_post) steady=True
+2026-01-23 13:49:52,631 - DEBUG - Mass: 12.7824g at 7.236s (baseline_post) steady=True
+2026-01-23 13:49:52,839 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-01-23 13:49:52,839 - INFO - Pre-baseline: No stable readings, using time-based avg=12.733200g
+2026-01-23 13:49:52,839 - INFO - Post-baseline: 5 stable readings, avg=12.782400g
+2026-01-23 13:49:52,839 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:49:52,839 - INFO - Pre: TIME-BASED, Post: STABLE, Mass difference: 0.049200g
+2026-01-23 13:49:52,839 - INFO - Reading summary: 5 pre-readings (0 stable), 5 post-readings (5 stable)
+2026-01-23 13:49:52,839 - INFO - Baseline variability: pre_std=0.000529g, post_std=0.000000g
+2026-01-23 13:49:52,839 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-01-23 13:49:52,839 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_134952.csv
+2026-01-23 13:49:53,379 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_134952.png
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:49:53,383 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:49:53,383 - DEBUG - Selected small_tip for volume 0.051 mL
+2026-01-23 13:49:53,386 - INFO - Pipetting from vial liquid_source_0, amount: 0.030 mL
+2026-01-23 13:49:53,386 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:49:53,386 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:49:57,299 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:49:57,995 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:49:58,462 - DEBUG - Aspirating 0.034 mL then waiting 0.0 s
+2026-01-23 13:49:59,870 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:50:00,179 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:50:00,179 - INFO - Pipetting into vial measurement_vial_0, amount: 0.030 mL
+2026-01-23 13:50:02,618 - INFO - Initial mass reading: 12.780900 g
+2026-01-23 13:50:02,633 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:50:06,620 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:50:07,621 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:50:07,831 - DEBUG - Mass: 12.7826g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:50:08,231 - DEBUG - Mass: 12.7819g at 0.422s (baseline_pre) steady=False
+2026-01-23 13:50:08,620 - DEBUG - Mass: 12.7825g at 0.826s (baseline_pre) steady=False
+2026-01-23 13:50:09,030 - DEBUG - Mass: 12.7831g at 1.219s (baseline_pre) steady=False
+2026-01-23 13:50:09,433 - DEBUG - Mass: 12.7828g at 1.624s (baseline_pre) steady=True
+2026-01-23 13:50:09,634 - DEBUG - Dispensing 0.173 mL then waiting 1.5 s
+2026-01-23 13:50:09,832 - DEBUG - Mass: 12.7828g at 2.014s (dispensing) steady=True
+2026-01-23 13:50:10,231 - DEBUG - Mass: 12.8005g at 2.420s (dispensing) steady=False
+2026-01-23 13:50:10,619 - DEBUG - Mass: 12.8166g at 2.811s (dispensing) steady=False
+2026-01-23 13:50:11,032 - DEBUG - Mass: 12.8172g at 3.216s (dispensing) steady=False
+2026-01-23 13:50:11,430 - DEBUG - Mass: 12.8137g at 3.622s (dispensing) steady=False
+2026-01-23 13:50:11,831 - DEBUG - Mass: 12.8128g at 4.014s (dispensing) steady=False
+2026-01-23 13:50:12,231 - DEBUG - Mass: 12.8127g at 4.422s (dispensing) steady=False
+2026-01-23 13:50:12,604 - INFO - Dispensing took 2.969s, collecting post-dispense baseline
+2026-01-23 13:50:12,628 - DEBUG - Mass: 12.8124g at 4.812s (dispensing) steady=False
+2026-01-23 13:50:13,031 - DEBUG - Mass: 12.8127g at 5.216s (baseline_post) steady=False
+2026-01-23 13:50:13,432 - DEBUG - Mass: 12.8126g at 5.620s (baseline_post) steady=True
+2026-01-23 13:50:13,833 - DEBUG - Mass: 12.8126g at 6.013s (baseline_post) steady=True
+2026-01-23 13:50:14,232 - DEBUG - Mass: 12.8126g at 6.421s (baseline_post) steady=True
+2026-01-23 13:50:14,632 - DEBUG - Mass: 12.8126g at 6.825s (baseline_post) steady=True
+2026-01-23 13:50:14,839 - INFO - Stopped continuous mass monitoring. Collected 18 data points
+2026-01-23 13:50:14,843 - INFO - Pre-baseline: 1 stable readings, avg=12.782800g
+2026-01-23 13:50:14,843 - INFO - Post-baseline: 4 stable readings, avg=12.812600g
+2026-01-23 13:50:14,843 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:50:14,844 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.029800g
+2026-01-23 13:50:14,845 - INFO - Reading summary: 5 pre-readings (1 stable), 5 post-readings (4 stable)
+2026-01-23 13:50:14,845 - INFO - Baseline variability: pre_std=0.000444g, post_std=0.000045g
+2026-01-23 13:50:14,846 - INFO - Target: 0.030 mL = ~0.030000 g for water
+2026-01-23 13:50:14,849 - INFO - Saved 18 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135014.csv
+2026-01-23 13:50:15,528 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135014.png
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:50:15,528 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:50:15,528 - DEBUG - Selected small_tip for volume 0.051 mL
+2026-01-23 13:50:15,528 - INFO - Pipetting from vial liquid_source_0, amount: 0.030 mL
+2026-01-23 13:50:15,528 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:50:15,537 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:50:19,459 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:50:20,153 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:50:20,605 - DEBUG - Aspirating 0.034 mL then waiting 0.0 s
+2026-01-23 13:50:22,008 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:50:22,308 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:50:22,310 - INFO - Pipetting into vial measurement_vial_0, amount: 0.030 mL
+2026-01-23 13:50:23,832 - INFO - Initial mass reading: 12.810900 g
+2026-01-23 13:50:23,833 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:50:27,821 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:50:28,831 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:50:29,031 - DEBUG - Mass: 12.8125g at 0.001s (baseline_pre) steady=False
+2026-01-23 13:50:29,424 - DEBUG - Mass: 12.8123g at 0.417s (baseline_pre) steady=False
+2026-01-23 13:50:29,831 - DEBUG - Mass: 12.8124g at 0.817s (baseline_pre) steady=False
+2026-01-23 13:50:30,231 - DEBUG - Mass: 12.8125g at 1.213s (baseline_pre) steady=False
+2026-01-23 13:50:30,628 - DEBUG - Mass: 12.8121g at 1.606s (baseline_pre) steady=False
+2026-01-23 13:50:30,846 - DEBUG - Dispensing 0.173 mL then waiting 1.5 s
+2026-01-23 13:50:31,023 - DEBUG - Mass: 12.8125g at 2.015s (dispensing) steady=True
+2026-01-23 13:50:31,431 - DEBUG - Mass: 12.8125g at 2.406s (dispensing) steady=True
+2026-01-23 13:50:31,821 - DEBUG - Mass: 12.8431g at 2.814s (dispensing) steady=False
+2026-01-23 13:50:32,231 - DEBUG - Mass: 12.8472g at 3.209s (dispensing) steady=False
+2026-01-23 13:50:32,632 - DEBUG - Mass: 12.8451g at 3.601s (dispensing) steady=False
+2026-01-23 13:50:33,022 - DEBUG - Mass: 12.8424g at 4.013s (dispensing) steady=False
+2026-01-23 13:50:33,431 - DEBUG - Mass: 12.8416g at 4.411s (dispensing) steady=False
+2026-01-23 13:50:33,824 - DEBUG - Mass: 12.8417g at 4.805s (dispensing) steady=False
+2026-01-23 13:50:34,218 - INFO - Dispensing took 3.372s, collecting post-dispense baseline
+2026-01-23 13:50:34,231 - DEBUG - Mass: 12.8424g at 5.214s (dispensing) steady=False
+2026-01-23 13:50:34,633 - DEBUG - Mass: 12.8421g at 5.602s (baseline_post) steady=True
+2026-01-23 13:50:35,030 - DEBUG - Mass: 12.8421g at 6.012s (baseline_post) steady=True
+2026-01-23 13:50:35,433 - DEBUG - Mass: 12.8421g at 6.407s (baseline_post) steady=True
+2026-01-23 13:50:35,832 - DEBUG - Mass: 12.8421g at 6.803s (baseline_post) steady=True
+2026-01-23 13:50:36,233 - DEBUG - Mass: 12.8421g at 7.212s (baseline_post) steady=True
+2026-01-23 13:50:36,449 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-01-23 13:50:36,453 - INFO - Pre-baseline: No stable readings, using time-based avg=12.812360g
+2026-01-23 13:50:36,453 - INFO - Post-baseline: 5 stable readings, avg=12.842100g
+2026-01-23 13:50:36,454 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:50:36,454 - INFO - Pre: TIME-BASED, Post: STABLE, Mass difference: 0.029740g
+2026-01-23 13:50:36,455 - INFO - Reading summary: 5 pre-readings (0 stable), 5 post-readings (5 stable)
+2026-01-23 13:50:36,455 - INFO - Baseline variability: pre_std=0.000167g, post_std=0.000000g
+2026-01-23 13:50:36,456 - INFO - Target: 0.030 mL = ~0.030000 g for water
+2026-01-23 13:50:36,458 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135036.csv
+2026-01-23 13:50:37,010 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135036.png
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:50:37,010 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:50:37,010 - DEBUG - Selected small_tip for volume 0.051 mL
+2026-01-23 13:50:37,010 - INFO - Pipetting from vial liquid_source_0, amount: 0.030 mL
+2026-01-23 13:50:37,010 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:50:37,010 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:50:40,915 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:50:41,621 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:50:42,085 - DEBUG - Aspirating 0.034 mL then waiting 0.0 s
+2026-01-23 13:50:43,491 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:50:43,780 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:50:43,782 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:50:43,782 - INFO - Pipetting into vial measurement_vial_0, amount: 0.030 mL
+2026-01-23 13:50:45,832 - INFO - Initial mass reading: 12.841100 g
+2026-01-23 13:50:45,832 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:50:49,829 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:50:50,842 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:50:51,029 - DEBUG - Mass: 12.8423g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:50:51,432 - DEBUG - Mass: 12.8425g at 0.405s (baseline_pre) steady=True
+2026-01-23 13:50:51,827 - DEBUG - Mass: 12.8425g at 0.801s (baseline_pre) steady=True
+2026-01-23 13:50:52,233 - DEBUG - Mass: 12.8425g at 1.196s (baseline_pre) steady=True
+2026-01-23 13:50:52,633 - DEBUG - Mass: 12.8425g at 1.604s (baseline_pre) steady=True
+2026-01-23 13:50:52,858 - DEBUG - Dispensing 0.173 mL then waiting 1.5 s
+2026-01-23 13:50:53,029 - DEBUG - Mass: 12.8425g at 1.995s (baseline_pre) steady=True
+2026-01-23 13:50:53,432 - DEBUG - Mass: 12.8459g at 2.396s (dispensing) steady=False
+2026-01-23 13:50:53,831 - DEBUG - Mass: 12.8735g at 2.792s (dispensing) steady=False
+2026-01-23 13:50:54,231 - DEBUG - Mass: 12.8770g at 3.198s (dispensing) steady=False
+2026-01-23 13:50:54,621 - DEBUG - Mass: 12.8750g at 3.591s (dispensing) steady=False
+2026-01-23 13:50:55,029 - DEBUG - Mass: 12.8726g at 3.996s (dispensing) steady=False
+2026-01-23 13:50:55,431 - DEBUG - Mass: 12.8714g at 4.407s (dispensing) steady=False
+2026-01-23 13:50:55,831 - DEBUG - Mass: 12.8723g at 4.793s (dispensing) steady=False
+2026-01-23 13:50:56,212 - INFO - Dispensing took 3.354s, collecting post-dispense baseline
+2026-01-23 13:50:56,232 - DEBUG - Mass: 12.8724g at 5.199s (dispensing) steady=False
+2026-01-23 13:50:56,620 - DEBUG - Mass: 12.8719g at 5.604s (baseline_post) steady=False
+2026-01-23 13:50:57,031 - DEBUG - Mass: 12.8717g at 5.998s (baseline_post) steady=False
+2026-01-23 13:50:57,430 - DEBUG - Mass: 12.8715g at 6.402s (baseline_post) steady=False
+2026-01-23 13:50:57,822 - DEBUG - Mass: 12.8716g at 6.792s (baseline_post) steady=False
+2026-01-23 13:50:58,227 - DEBUG - Mass: 12.8721g at 7.202s (baseline_post) steady=False
+2026-01-23 13:50:58,437 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-01-23 13:50:58,442 - INFO - Pre-baseline: 5 stable readings, avg=12.842500g
+2026-01-23 13:50:58,442 - INFO - Post-baseline: No stable readings, using time-based avg=12.871760g
+2026-01-23 13:50:58,443 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:50:58,443 - INFO - Pre: STABLE, Post: TIME-BASED, Mass difference: 0.029260g
+2026-01-23 13:50:58,445 - INFO - Reading summary: 6 pre-readings (5 stable), 5 post-readings (0 stable)
+2026-01-23 13:50:58,445 - INFO - Baseline variability: pre_std=0.000082g, post_std=0.000241g
+2026-01-23 13:50:58,445 - INFO - Target: 0.030 mL = ~0.030000 g for water
+2026-01-23 13:50:58,447 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135058.csv
+2026-01-23 13:50:58,981 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135058.png
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:50:58,983 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:50:58,984 - DEBUG - Selected small_tip for volume 0.051 mL
+2026-01-23 13:50:58,986 - INFO - Pipetting from vial liquid_source_0, amount: 0.030 mL
+2026-01-23 13:50:58,986 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:50:58,987 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:51:02,875 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:51:03,558 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:51:04,026 - DEBUG - Aspirating 0.034 mL then waiting 0.0 s
+2026-01-23 13:51:05,430 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:51:05,749 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:51:05,751 - INFO - Pipetting into vial measurement_vial_0, amount: 0.030 mL
+2026-01-23 13:51:07,033 - INFO - Initial mass reading: 12.870700 g
+2026-01-23 13:51:07,033 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:51:11,013 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:51:12,024 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:51:12,231 - DEBUG - Mass: 12.8713g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:51:12,633 - DEBUG - Mass: 12.8719g at 0.408s (baseline_pre) steady=True
+2026-01-23 13:51:13,032 - DEBUG - Mass: 12.8719g at 0.814s (baseline_pre) steady=True
+2026-01-23 13:51:13,433 - DEBUG - Mass: 12.8719g at 1.222s (baseline_pre) steady=True
+2026-01-23 13:51:13,826 - DEBUG - Mass: 12.8719g at 1.611s (baseline_pre) steady=True
+2026-01-23 13:51:14,025 - DEBUG - Dispensing 0.173 mL then waiting 1.5 s
+2026-01-23 13:51:14,229 - DEBUG - Mass: 12.8719g at 2.020s (dispensing) steady=True
+2026-01-23 13:51:14,632 - DEBUG - Mass: 12.8900g at 2.410s (dispensing) steady=False
+2026-01-23 13:51:15,031 - DEBUG - Mass: 12.9065g at 2.815s (dispensing) steady=False
+2026-01-23 13:51:15,419 - DEBUG - Mass: 12.9068g at 3.214s (dispensing) steady=False
+2026-01-23 13:51:15,824 - DEBUG - Mass: 12.9032g at 3.609s (dispensing) steady=False
+2026-01-23 13:51:16,232 - DEBUG - Mass: 12.9012g at 4.019s (dispensing) steady=False
+2026-01-23 13:51:16,631 - DEBUG - Mass: 12.9019g at 4.411s (dispensing) steady=False
+2026-01-23 13:51:17,000 - INFO - Dispensing took 2.975s, collecting post-dispense baseline
+2026-01-23 13:51:17,023 - DEBUG - Mass: 12.9016g at 4.816s (dispensing) steady=False
+2026-01-23 13:51:17,417 - DEBUG - Mass: 12.9013g at 5.217s (baseline_post) steady=False
+2026-01-23 13:51:17,833 - DEBUG - Mass: 12.9017g at 5.617s (baseline_post) steady=True
+2026-01-23 13:51:18,233 - DEBUG - Mass: 12.9017g at 6.017s (baseline_post) steady=True
+2026-01-23 13:51:18,633 - DEBUG - Mass: 12.9017g at 6.414s (baseline_post) steady=True
+2026-01-23 13:51:19,033 - DEBUG - Mass: 12.9017g at 6.818s (baseline_post) steady=True
+2026-01-23 13:51:19,244 - INFO - Stopped continuous mass monitoring. Collected 18 data points
+2026-01-23 13:51:19,244 - INFO - Pre-baseline: 4 stable readings, avg=12.871900g
+2026-01-23 13:51:19,244 - INFO - Post-baseline: 4 stable readings, avg=12.901700g
+2026-01-23 13:51:19,244 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:51:19,244 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.029800g
+2026-01-23 13:51:19,251 - INFO - Reading summary: 5 pre-readings (4 stable), 5 post-readings (4 stable)
+2026-01-23 13:51:19,251 - INFO - Baseline variability: pre_std=0.000268g, post_std=0.000179g
+2026-01-23 13:51:19,251 - INFO - Target: 0.030 mL = ~0.030000 g for water
+2026-01-23 13:51:19,253 - INFO - Saved 18 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135119.csv
+2026-01-23 13:51:19,778 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135119.png
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:51:19,790 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:51:19,790 - DEBUG - Selected small_tip for volume 0.051 mL
+2026-01-23 13:51:19,790 - INFO - Pipetting from vial liquid_source_0, amount: 0.030 mL
+2026-01-23 13:51:19,790 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:51:19,795 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:51:23,691 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:51:24,365 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:51:24,821 - DEBUG - Aspirating 0.034 mL then waiting 0.0 s
+2026-01-23 13:51:26,199 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:51:26,510 - DEBUG - Applied dict param overaspirate_vol=0.0039024347826069994
+2026-01-23 13:51:26,510 - INFO - Pipetting into vial measurement_vial_0, amount: 0.030 mL
+2026-01-23 13:51:26,633 - INFO - Initial mass reading: 12.901100 g
+2026-01-23 13:51:26,633 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:51:30,621 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:51:31,634 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:51:31,825 - DEBUG - Mass: 12.9020g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:51:32,232 - DEBUG - Mass: 12.9016g at 0.421s (baseline_pre) steady=False
+2026-01-23 13:51:32,628 - DEBUG - Mass: 12.9016g at 0.804s (baseline_pre) steady=False
+2026-01-23 13:51:33,032 - DEBUG - Mass: 12.9023g at 1.205s (baseline_pre) steady=False
+2026-01-23 13:51:33,433 - DEBUG - Mass: 12.9019g at 1.599s (baseline_pre) steady=True
+2026-01-23 13:51:33,650 - DEBUG - Dispensing 0.173 mL then waiting 1.5 s
+2026-01-23 13:51:33,821 - DEBUG - Mass: 12.9019g at 2.000s (baseline_pre) steady=True
+2026-01-23 13:51:34,230 - DEBUG - Mass: 12.9053g at 2.407s (dispensing) steady=False
+2026-01-23 13:51:34,631 - DEBUG - Mass: 12.9327g at 2.804s (dispensing) steady=False
+2026-01-23 13:51:35,028 - DEBUG - Mass: 12.9363g at 3.204s (dispensing) steady=False
+2026-01-23 13:51:35,432 - DEBUG - Mass: 12.9347g at 3.600s (dispensing) steady=False
+2026-01-23 13:51:35,832 - DEBUG - Mass: 12.9321g at 4.001s (dispensing) steady=False
+2026-01-23 13:51:36,232 - DEBUG - Mass: 12.9315g at 4.407s (dispensing) steady=False
+2026-01-23 13:51:36,624 - DEBUG - Mass: 12.9316g at 4.802s (dispensing) steady=False
+2026-01-23 13:51:36,762 - INFO - Dispensing took 3.113s, collecting post-dispense baseline
+2026-01-23 13:51:37,028 - DEBUG - Mass: 12.9316g at 5.203s (baseline_post) steady=False
+2026-01-23 13:51:37,423 - DEBUG - Mass: 12.9318g at 5.611s (baseline_post) steady=False
+2026-01-23 13:51:37,831 - DEBUG - Mass: 12.9316g at 6.007s (baseline_post) steady=False
+2026-01-23 13:51:38,228 - DEBUG - Mass: 12.9316g at 6.407s (baseline_post) steady=True
+2026-01-23 13:51:38,633 - DEBUG - Mass: 12.9316g at 6.803s (baseline_post) steady=True
+2026-01-23 13:51:38,843 - INFO - Stopped continuous mass monitoring. Collected 18 data points
+2026-01-23 13:51:38,847 - INFO - Pre-baseline: 2 stable readings, avg=12.901900g
+2026-01-23 13:51:38,847 - INFO - Post-baseline: 2 stable readings, avg=12.931600g
+2026-01-23 13:51:38,847 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:51:38,847 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.029700g
+2026-01-23 13:51:38,850 - INFO - Reading summary: 6 pre-readings (2 stable), 5 post-readings (2 stable)
+2026-01-23 13:51:38,850 - INFO - Baseline variability: pre_std=0.000264g, post_std=0.000089g
+2026-01-23 13:51:38,850 - INFO - Target: 0.030 mL = ~0.030000 g for water
+2026-01-23 13:51:38,853 - INFO - Saved 18 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135138.csv
+2026-01-23 13:51:39,399 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135138.png
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:51:39,404 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:51:39,405 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:51:39,406 - DEBUG - Selected small_tip for volume 0.124 mL
+2026-01-23 13:51:39,407 - INFO - Pipetting from vial liquid_source_0, amount: 0.100 mL
+2026-01-23 13:51:39,407 - INFO - Additional volume from calibration, amount: 0.007 mL
+2026-01-23 13:51:39,408 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:51:43,316 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:51:43,978 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:51:44,429 - DEBUG - Aspirating 0.107 mL then waiting 0.0 s
+2026-01-23 13:51:46,166 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:51:46,450 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:51:46,450 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:51:46,450 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:51:46,450 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:51:46,450 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:51:46,450 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:51:46,450 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:51:46,450 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:51:46,451 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:51:46,451 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:51:46,452 - INFO - Pipetting into vial measurement_vial_0, amount: 0.100 mL
+2026-01-23 13:51:48,821 - INFO - Initial mass reading: 12.930400 g
+2026-01-23 13:51:48,821 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:51:52,818 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:51:53,826 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:51:54,030 - DEBUG - Mass: 12.9305g at 0.000s (baseline_pre) steady=True
+2026-01-23 13:51:54,431 - DEBUG - Mass: 12.9305g at 0.408s (baseline_pre) steady=True
+2026-01-23 13:51:54,833 - DEBUG - Mass: 12.9305g at 0.813s (baseline_pre) steady=True
+2026-01-23 13:51:55,232 - DEBUG - Mass: 12.9315g at 1.212s (baseline_pre) steady=False
+2026-01-23 13:51:55,631 - DEBUG - Mass: 12.9318g at 1.608s (baseline_pre) steady=False
+2026-01-23 13:51:55,826 - DEBUG - Dispensing 0.246 mL then waiting 1.5 s
+2026-01-23 13:51:56,032 - DEBUG - Mass: 12.9321g at 2.015s (dispensing) steady=False
+2026-01-23 13:51:56,431 - DEBUG - Mass: 12.9492g at 2.418s (dispensing) steady=False
+2026-01-23 13:51:56,831 - DEBUG - Mass: 13.0010g at 2.809s (dispensing) steady=False
+2026-01-23 13:51:57,231 - DEBUG - Mass: 13.0309g at 3.216s (dispensing) steady=False
+2026-01-23 13:51:57,621 - DEBUG - Mass: 13.0341g at 3.619s (dispensing) steady=False
+2026-01-23 13:51:58,017 - DEBUG - Mass: 13.0313g at 4.015s (dispensing) steady=False
+2026-01-23 13:51:58,431 - DEBUG - Mass: 13.0297g at 4.414s (dispensing) steady=False
+2026-01-23 13:51:58,831 - DEBUG - Mass: 13.0293g at 4.813s (dispensing) steady=False
+2026-01-23 13:51:59,233 - DEBUG - Mass: 13.0291g at 5.219s (dispensing) steady=True
+2026-01-23 13:51:59,341 - INFO - Dispensing took 3.515s, collecting post-dispense baseline
+2026-01-23 13:51:59,633 - DEBUG - Mass: 13.0291g at 5.622s (baseline_post) steady=True
+2026-01-23 13:52:00,026 - DEBUG - Mass: 13.0291g at 6.010s (baseline_post) steady=True
+2026-01-23 13:52:00,433 - DEBUG - Mass: 13.0291g at 6.408s (baseline_post) steady=True
+2026-01-23 13:52:00,831 - DEBUG - Mass: 13.0293g at 6.823s (baseline_post) steady=False
+2026-01-23 13:52:01,223 - DEBUG - Mass: 13.0278g at 7.206s (baseline_post) steady=False
+2026-01-23 13:52:01,447 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-01-23 13:52:01,447 - INFO - Pre-baseline: 3 stable readings, avg=12.930500g
+2026-01-23 13:52:01,447 - INFO - Post-baseline: 3 stable readings, avg=13.029100g
+2026-01-23 13:52:01,447 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:52:01,447 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.098600g
+2026-01-23 13:52:01,454 - INFO - Reading summary: 5 pre-readings (3 stable), 5 post-readings (3 stable)
+2026-01-23 13:52:01,454 - INFO - Baseline variability: pre_std=0.000639g, post_std=0.000610g
+2026-01-23 13:52:01,454 - INFO - Target: 0.100 mL = ~0.100000 g for water
+2026-01-23 13:52:01,456 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135201.csv
+2026-01-23 13:52:01,971 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135201.png
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:52:01,977 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:52:01,979 - DEBUG - Selected small_tip for volume 0.124 mL
+2026-01-23 13:52:01,979 - INFO - Pipetting from vial liquid_source_0, amount: 0.100 mL
+2026-01-23 13:52:01,979 - INFO - Additional volume from calibration, amount: 0.007 mL
+2026-01-23 13:52:01,981 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:52:05,917 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:52:06,634 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:52:07,109 - DEBUG - Aspirating 0.107 mL then waiting 0.0 s
+2026-01-23 13:52:08,823 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:52:09,120 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:52:09,120 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:52:09,120 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:52:09,120 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:52:09,120 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:52:09,120 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:52:09,120 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:52:09,121 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:52:09,121 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:52:09,121 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:52:09,122 - INFO - Pipetting into vial measurement_vial_0, amount: 0.100 mL
+2026-01-23 13:52:12,034 - INFO - Initial mass reading: 13.029100 g
+2026-01-23 13:52:12,034 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:52:16,029 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:52:17,040 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:52:17,227 - DEBUG - Mass: 13.0291g at 0.001s (baseline_pre) steady=True
+2026-01-23 13:52:17,633 - DEBUG - Mass: 13.0291g at 0.410s (baseline_pre) steady=True
+2026-01-23 13:52:18,032 - DEBUG - Mass: 13.0291g at 0.797s (baseline_pre) steady=True
+2026-01-23 13:52:18,430 - DEBUG - Mass: 13.0291g at 1.203s (baseline_pre) steady=True
+2026-01-23 13:52:18,833 - DEBUG - Mass: 13.0291g at 1.605s (baseline_pre) steady=True
+2026-01-23 13:52:19,055 - DEBUG - Dispensing 0.246 mL then waiting 1.5 s
+2026-01-23 13:52:19,227 - DEBUG - Mass: 13.0291g at 2.000s (baseline_pre) steady=True
+2026-01-23 13:52:19,630 - DEBUG - Mass: 13.0328g at 2.407s (dispensing) steady=False
+2026-01-23 13:52:20,031 - DEBUG - Mass: 13.0733g at 2.803s (dispensing) steady=False
+2026-01-23 13:52:20,431 - DEBUG - Mass: 13.1207g at 3.205s (dispensing) steady=False
+2026-01-23 13:52:20,828 - DEBUG - Mass: 13.1320g at 3.604s (dispensing) steady=False
+2026-01-23 13:52:21,231 - DEBUG - Mass: 13.1331g at 4.000s (dispensing) steady=False
+2026-01-23 13:52:21,632 - DEBUG - Mass: 13.1289g at 4.395s (dispensing) steady=False
+2026-01-23 13:52:22,025 - DEBUG - Mass: 13.1277g at 4.802s (dispensing) steady=False
+2026-01-23 13:52:22,432 - DEBUG - Mass: 13.1276g at 5.204s (dispensing) steady=False
+2026-01-23 13:52:22,821 - INFO - Dispensing took 3.766s, collecting post-dispense baseline
+2026-01-23 13:52:22,832 - DEBUG - Mass: 13.1280g at 5.595s (dispensing) steady=False
+2026-01-23 13:52:23,227 - DEBUG - Mass: 13.1274g at 6.003s (baseline_post) steady=False
+2026-01-23 13:52:23,626 - DEBUG - Mass: 13.1280g at 6.395s (baseline_post) steady=False
+2026-01-23 13:52:24,025 - DEBUG - Mass: 13.1278g at 6.794s (baseline_post) steady=True
+2026-01-23 13:52:24,424 - DEBUG - Mass: 13.1278g at 7.209s (baseline_post) steady=True
+2026-01-23 13:52:24,826 - DEBUG - Mass: 13.1278g at 7.608s (baseline_post) steady=True
+2026-01-23 13:52:25,045 - INFO - Stopped continuous mass monitoring. Collected 20 data points
+2026-01-23 13:52:25,048 - INFO - Pre-baseline: 6 stable readings, avg=13.029100g
+2026-01-23 13:52:25,048 - INFO - Post-baseline: 3 stable readings, avg=13.127800g
+2026-01-23 13:52:25,048 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:52:25,048 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.098700g
+2026-01-23 13:52:25,052 - INFO - Reading summary: 6 pre-readings (6 stable), 5 post-readings (3 stable)
+2026-01-23 13:52:25,053 - INFO - Baseline variability: pre_std=0.000000g, post_std=0.000219g
+2026-01-23 13:52:25,053 - INFO - Target: 0.100 mL = ~0.100000 g for water
+2026-01-23 13:52:25,055 - INFO - Saved 20 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135225.csv
+2026-01-23 13:52:25,574 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135225.png
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:52:25,574 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:52:25,574 - DEBUG - Selected small_tip for volume 0.124 mL
+2026-01-23 13:52:25,583 - INFO - Pipetting from vial liquid_source_0, amount: 0.100 mL
+2026-01-23 13:52:25,583 - INFO - Additional volume from calibration, amount: 0.007 mL
+2026-01-23 13:52:25,586 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:52:29,482 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:52:30,209 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:52:30,678 - DEBUG - Aspirating 0.107 mL then waiting 0.0 s
+2026-01-23 13:52:32,439 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:52:32,729 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:52:32,732 - INFO - Pipetting into vial measurement_vial_0, amount: 0.100 mL
+2026-01-23 13:52:35,033 - INFO - Initial mass reading: 13.128200 g
+2026-01-23 13:52:35,033 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:52:39,022 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:52:40,032 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:52:40,227 - DEBUG - Mass: 13.1282g at 0.000s (baseline_pre) steady=True
+2026-01-23 13:52:40,631 - DEBUG - Mass: 13.1281g at 0.404s (baseline_pre) steady=True
+2026-01-23 13:52:41,033 - DEBUG - Mass: 13.1281g at 0.804s (baseline_pre) steady=True
+2026-01-23 13:52:41,433 - DEBUG - Mass: 13.1281g at 1.203s (baseline_pre) steady=True
+2026-01-23 13:52:41,832 - DEBUG - Mass: 13.1281g at 1.618s (baseline_pre) steady=True
+2026-01-23 13:52:42,033 - DEBUG - Dispensing 0.246 mL then waiting 1.5 s
+2026-01-23 13:52:42,225 - DEBUG - Mass: 13.1281g at 2.018s (dispensing) steady=True
+2026-01-23 13:52:42,624 - DEBUG - Mass: 13.1458g at 2.417s (dispensing) steady=False
+2026-01-23 13:52:43,027 - DEBUG - Mass: 13.1935g at 2.817s (dispensing) steady=False
+2026-01-23 13:52:43,423 - DEBUG - Mass: 13.2286g at 3.216s (dispensing) steady=False
+2026-01-23 13:52:43,825 - DEBUG - Mass: 13.2321g at 3.615s (dispensing) steady=False
+2026-01-23 13:52:44,221 - DEBUG - Mass: 13.2292g at 4.014s (dispensing) steady=False
+2026-01-23 13:52:44,632 - DEBUG - Mass: 13.2278g at 4.414s (dispensing) steady=False
+2026-01-23 13:52:45,022 - DEBUG - Mass: 13.2270g at 4.813s (dispensing) steady=False
+2026-01-23 13:52:45,420 - DEBUG - Mass: 13.2274g at 5.213s (dispensing) steady=False
+2026-01-23 13:52:45,532 - INFO - Dispensing took 3.499s, collecting post-dispense baseline
+2026-01-23 13:52:45,825 - DEBUG - Mass: 13.2266g at 5.612s (baseline_post) steady=False
+2026-01-23 13:52:46,226 - DEBUG - Mass: 13.2272g at 6.002s (baseline_post) steady=False
+2026-01-23 13:52:46,631 - DEBUG - Mass: 13.2272g at 6.401s (baseline_post) steady=False
+2026-01-23 13:52:47,031 - DEBUG - Mass: 13.2272g at 6.801s (baseline_post) steady=False
+2026-01-23 13:52:47,422 - DEBUG - Mass: 13.2268g at 7.214s (baseline_post) steady=False
+2026-01-23 13:52:47,644 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-01-23 13:52:47,644 - INFO - Pre-baseline: 5 stable readings, avg=13.128120g
+2026-01-23 13:52:47,644 - INFO - Post-baseline: No stable readings, using time-based avg=13.227000g
+2026-01-23 13:52:47,644 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:52:47,644 - INFO - Pre: STABLE, Post: TIME-BASED, Mass difference: 0.098880g
+2026-01-23 13:52:47,650 - INFO - Reading summary: 5 pre-readings (5 stable), 5 post-readings (0 stable)
+2026-01-23 13:52:47,652 - INFO - Baseline variability: pre_std=0.000045g, post_std=0.000283g
+2026-01-23 13:52:47,652 - INFO - Target: 0.100 mL = ~0.100000 g for water
+2026-01-23 13:52:47,654 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135247.csv
+2026-01-23 13:52:48,167 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135247.png
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:52:48,167 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:52:48,167 - DEBUG - Selected small_tip for volume 0.124 mL
+2026-01-23 13:52:48,167 - INFO - Pipetting from vial liquid_source_0, amount: 0.100 mL
+2026-01-23 13:52:48,167 - INFO - Additional volume from calibration, amount: 0.007 mL
+2026-01-23 13:52:48,180 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:52:52,089 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:52:52,750 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:52:53,213 - DEBUG - Aspirating 0.107 mL then waiting 0.0 s
+2026-01-23 13:52:54,964 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:52:55,246 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:52:55,246 - INFO - Pipetting into vial measurement_vial_0, amount: 0.100 mL
+2026-01-23 13:52:56,834 - INFO - Initial mass reading: 13.227500 g
+2026-01-23 13:52:56,834 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:53:00,819 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:53:01,830 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:53:02,026 - DEBUG - Mass: 13.2275g at 0.000s (baseline_pre) steady=True
+2026-01-23 13:53:02,427 - DEBUG - Mass: 13.2275g at 0.421s (baseline_pre) steady=True
+2026-01-23 13:53:02,831 - DEBUG - Mass: 13.2275g at 0.820s (baseline_pre) steady=True
+2026-01-23 13:53:03,233 - DEBUG - Mass: 13.2275g at 1.219s (baseline_pre) steady=True
+2026-01-23 13:53:03,634 - DEBUG - Mass: 13.2275g at 1.617s (baseline_pre) steady=True
+2026-01-23 13:53:03,845 - DEBUG - Dispensing 0.246 mL then waiting 1.5 s
+2026-01-23 13:53:04,024 - DEBUG - Mass: 13.2275g at 2.016s (dispensing) steady=True
+2026-01-23 13:53:04,425 - DEBUG - Mass: 13.2275g at 2.415s (dispensing) steady=True
+2026-01-23 13:53:04,827 - DEBUG - Mass: 13.2689g at 2.817s (dispensing) steady=False
+2026-01-23 13:53:05,225 - DEBUG - Mass: 13.3171g at 3.217s (dispensing) steady=False
+2026-01-23 13:53:05,632 - DEBUG - Mass: 13.3316g at 3.617s (dispensing) steady=False
+2026-01-23 13:53:06,024 - DEBUG - Mass: 13.3329g at 4.017s (dispensing) steady=False
+2026-01-23 13:53:06,423 - DEBUG - Mass: 13.3277g at 4.417s (dispensing) steady=False
+2026-01-23 13:53:06,831 - DEBUG - Mass: 13.3280g at 4.815s (dispensing) steady=False
+2026-01-23 13:53:07,218 - DEBUG - Mass: 13.3270g at 5.213s (dispensing) steady=False
+2026-01-23 13:53:07,597 - INFO - Dispensing took 3.752s, collecting post-dispense baseline
+2026-01-23 13:53:07,629 - DEBUG - Mass: 13.3275g at 5.610s (dispensing) steady=False
+2026-01-23 13:53:08,032 - DEBUG - Mass: 13.3278g at 6.007s (baseline_post) steady=False
+2026-01-23 13:53:08,432 - DEBUG - Mass: 13.3270g at 6.410s (baseline_post) steady=False
+2026-01-23 13:53:08,831 - DEBUG - Mass: 13.3276g at 6.810s (baseline_post) steady=False
+2026-01-23 13:53:09,232 - DEBUG - Mass: 13.3276g at 7.210s (baseline_post) steady=False
+2026-01-23 13:53:09,630 - DEBUG - Mass: 13.3271g at 7.609s (baseline_post) steady=False
+2026-01-23 13:53:09,836 - INFO - Stopped continuous mass monitoring. Collected 20 data points
+2026-01-23 13:53:09,839 - INFO - Pre-baseline: 5 stable readings, avg=13.227500g
+2026-01-23 13:53:09,839 - INFO - Post-baseline: No stable readings, using time-based avg=13.327420g
+2026-01-23 13:53:09,839 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:53:09,839 - INFO - Pre: STABLE, Post: TIME-BASED, Mass difference: 0.099920g
+2026-01-23 13:53:09,839 - INFO - Reading summary: 5 pre-readings (5 stable), 5 post-readings (0 stable)
+2026-01-23 13:53:09,839 - INFO - Baseline variability: pre_std=0.000000g, post_std=0.000349g
+2026-01-23 13:53:09,839 - INFO - Target: 0.100 mL = ~0.100000 g for water
+2026-01-23 13:53:09,844 - INFO - Saved 20 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135309.csv
+2026-01-23 13:53:10,431 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135309.png
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:53:10,431 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:53:10,431 - DEBUG - Selected small_tip for volume 0.124 mL
+2026-01-23 13:53:10,431 - INFO - Pipetting from vial liquid_source_0, amount: 0.100 mL
+2026-01-23 13:53:10,431 - INFO - Additional volume from calibration, amount: 0.007 mL
+2026-01-23 13:53:10,446 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:53:14,370 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:53:15,098 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:53:15,573 - DEBUG - Aspirating 0.107 mL then waiting 0.0 s
+2026-01-23 13:53:17,349 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:53:17,648 - DEBUG - Applied dict param overaspirate_vol=0.0071516309963126105
+2026-01-23 13:53:17,648 - INFO - Pipetting into vial measurement_vial_0, amount: 0.100 mL
+2026-01-23 13:53:18,020 - INFO - Initial mass reading: 13.329300 g
+2026-01-23 13:53:18,020 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:53:22,014 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:53:23,027 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:53:23,232 - DEBUG - Mass: 13.3266g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:53:23,625 - DEBUG - Mass: 13.3259g at 0.421s (baseline_pre) steady=False
+2026-01-23 13:53:24,025 - DEBUG - Mass: 13.3263g at 0.819s (baseline_pre) steady=True
+2026-01-23 13:53:24,421 - DEBUG - Mass: 13.3263g at 1.219s (baseline_pre) steady=True
+2026-01-23 13:53:24,829 - DEBUG - Mass: 13.3263g at 1.618s (baseline_pre) steady=True
+2026-01-23 13:53:25,029 - DEBUG - Dispensing 0.246 mL then waiting 1.5 s
+2026-01-23 13:53:25,225 - DEBUG - Mass: 13.3263g at 2.018s (dispensing) steady=True
+2026-01-23 13:53:25,633 - DEBUG - Mass: 13.3437g at 2.418s (dispensing) steady=False
+2026-01-23 13:53:26,019 - DEBUG - Mass: 13.3968g at 2.816s (dispensing) steady=False
+2026-01-23 13:53:26,432 - DEBUG - Mass: 13.4295g at 3.214s (dispensing) steady=False
+2026-01-23 13:53:26,832 - DEBUG - Mass: 13.4322g at 3.613s (dispensing) steady=False
+2026-01-23 13:53:27,232 - DEBUG - Mass: 13.4302g at 4.013s (dispensing) steady=False
+2026-01-23 13:53:27,632 - DEBUG - Mass: 13.4275g at 4.412s (dispensing) steady=False
+2026-01-23 13:53:28,032 - DEBUG - Mass: 13.4278g at 4.810s (dispensing) steady=False
+2026-01-23 13:53:28,428 - DEBUG - Mass: 13.4283g at 5.210s (dispensing) steady=False
+2026-01-23 13:53:28,572 - INFO - Dispensing took 3.543s, collecting post-dispense baseline
+2026-01-23 13:53:28,818 - DEBUG - Mass: 13.4271g at 5.608s (baseline_post) steady=False
+2026-01-23 13:53:29,232 - DEBUG - Mass: 13.4278g at 6.013s (baseline_post) steady=False
+2026-01-23 13:53:29,632 - DEBUG - Mass: 13.4275g at 6.412s (baseline_post) steady=False
+2026-01-23 13:53:30,030 - DEBUG - Mass: 13.4277g at 6.811s (baseline_post) steady=False
+2026-01-23 13:53:30,432 - DEBUG - Mass: 13.4280g at 7.211s (baseline_post) steady=False
+2026-01-23 13:53:30,637 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-01-23 13:53:30,637 - INFO - Pre-baseline: 3 stable readings, avg=13.326300g
+2026-01-23 13:53:30,637 - INFO - Post-baseline: No stable readings, using time-based avg=13.427620g
+2026-01-23 13:53:30,637 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:53:30,643 - INFO - Pre: STABLE, Post: TIME-BASED, Mass difference: 0.101320g
+2026-01-23 13:53:30,644 - INFO - Reading summary: 5 pre-readings (3 stable), 5 post-readings (0 stable)
+2026-01-23 13:53:30,645 - INFO - Baseline variability: pre_std=0.000249g, post_std=0.000342g
+2026-01-23 13:53:30,645 - INFO - Target: 0.100 mL = ~0.100000 g for water
+2026-01-23 13:53:30,648 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135330.csv
+2026-01-23 13:53:31,164 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135330.png
+2026-01-23 13:53:31,165 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:53:31,165 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:53:31,169 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:53:31,169 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:53:31,169 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:53:31,169 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:53:31,169 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:53:31,169 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:53:31,169 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:53:31,169 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:53:31,169 - DEBUG - Selected small_tip for volume 0.171 mL
+2026-01-23 13:53:31,169 - INFO - Pipetting from vial liquid_source_0, amount: 0.150 mL
+2026-01-23 13:53:31,169 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:53:31,172 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:53:35,066 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:53:35,752 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:53:36,228 - DEBUG - Aspirating 0.154 mL then waiting 0.0 s
+2026-01-23 13:53:38,250 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:53:38,565 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:53:38,565 - INFO - Pipetting into vial measurement_vial_0, amount: 0.150 mL
+2026-01-23 13:53:41,033 - INFO - Initial mass reading: 13.428600 g
+2026-01-23 13:53:41,033 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:53:45,027 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:53:46,038 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:53:46,222 - DEBUG - Mass: 13.4274g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:53:46,632 - DEBUG - Mass: 13.4277g at 0.405s (baseline_pre) steady=False
+2026-01-23 13:53:47,022 - DEBUG - Mass: 13.4272g at 0.805s (baseline_pre) steady=False
+2026-01-23 13:53:47,421 - DEBUG - Mass: 13.4273g at 1.204s (baseline_pre) steady=False
+2026-01-23 13:53:47,834 - DEBUG - Mass: 13.4275g at 1.604s (baseline_pre) steady=True
+2026-01-23 13:53:48,042 - DEBUG - Dispensing 0.293 mL then waiting 1.5 s
+2026-01-23 13:53:48,234 - DEBUG - Mass: 13.4275g at 2.004s (dispensing) steady=True
+2026-01-23 13:53:48,632 - DEBUG - Mass: 13.4442g at 2.403s (dispensing) steady=False
+2026-01-23 13:53:49,032 - DEBUG - Mass: 13.4929g at 2.803s (dispensing) steady=False
+2026-01-23 13:53:49,432 - DEBUG - Mass: 13.5430g at 3.202s (dispensing) steady=False
+2026-01-23 13:53:49,833 - DEBUG - Mass: 13.5753g at 3.602s (dispensing) steady=False
+2026-01-23 13:53:50,232 - DEBUG - Mass: 13.5783g at 4.001s (dispensing) steady=False
+2026-01-23 13:53:50,632 - DEBUG - Mass: 13.5745g at 4.399s (dispensing) steady=False
+2026-01-23 13:53:51,031 - DEBUG - Mass: 13.5739g at 4.799s (dispensing) steady=False
+2026-01-23 13:53:51,432 - DEBUG - Mass: 13.5737g at 5.195s (dispensing) steady=False
+2026-01-23 13:53:51,832 - DEBUG - Mass: 13.5738g at 5.610s (dispensing) steady=False
+2026-01-23 13:53:51,887 - INFO - Dispensing took 3.846s, collecting post-dispense baseline
+2026-01-23 13:53:52,231 - DEBUG - Mass: 13.5747g at 6.014s (baseline_post) steady=False
+2026-01-23 13:53:52,625 - DEBUG - Mass: 13.5743g at 6.395s (baseline_post) steady=False
+2026-01-23 13:53:53,029 - DEBUG - Mass: 13.5732g at 6.795s (baseline_post) steady=False
+2026-01-23 13:53:53,424 - DEBUG - Mass: 13.5740g at 7.195s (baseline_post) steady=False
+2026-01-23 13:53:53,833 - DEBUG - Mass: 13.5732g at 7.610s (baseline_post) steady=False
+2026-01-23 13:53:54,046 - INFO - Stopped continuous mass monitoring. Collected 20 data points
+2026-01-23 13:53:54,047 - INFO - Pre-baseline: 1 stable readings, avg=13.427500g
+2026-01-23 13:53:54,047 - INFO - Post-baseline: No stable readings, using time-based avg=13.573880g
+2026-01-23 13:53:54,047 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:53:54,052 - INFO - Pre: STABLE, Post: TIME-BASED, Mass difference: 0.146380g
+2026-01-23 13:53:54,053 - INFO - Reading summary: 5 pre-readings (1 stable), 5 post-readings (0 stable)
+2026-01-23 13:53:54,053 - INFO - Baseline variability: pre_std=0.000192g, post_std=0.000669g
+2026-01-23 13:53:54,053 - INFO - Target: 0.150 mL = ~0.150000 g for water
+2026-01-23 13:53:54,056 - INFO - Saved 20 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135354.csv
+2026-01-23 13:53:54,579 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135354.png
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:53:54,579 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:53:54,594 - DEBUG - Selected small_tip for volume 0.171 mL
+2026-01-23 13:53:54,594 - INFO - Pipetting from vial liquid_source_0, amount: 0.150 mL
+2026-01-23 13:53:54,594 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:53:54,598 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:53:58,492 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:53:59,211 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:53:59,708 - DEBUG - Aspirating 0.154 mL then waiting 0.0 s
+2026-01-23 13:54:01,698 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:54:02,001 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:54:02,001 - INFO - Pipetting into vial measurement_vial_0, amount: 0.150 mL
+2026-01-23 13:54:05,634 - INFO - Initial mass reading: 13.575100 g
+2026-01-23 13:54:05,634 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:54:09,624 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:54:10,632 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:54:10,832 - DEBUG - Mass: 13.5733g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:54:11,233 - DEBUG - Mass: 13.5726g at 0.405s (baseline_pre) steady=False
+2026-01-23 13:54:11,628 - DEBUG - Mass: 13.5725g at 0.804s (baseline_pre) steady=False
+2026-01-23 13:54:12,023 - DEBUG - Mass: 13.5731g at 1.216s (baseline_pre) steady=False
+2026-01-23 13:54:12,424 - DEBUG - Mass: 13.5728g at 1.616s (baseline_pre) steady=False
+2026-01-23 13:54:12,646 - DEBUG - Dispensing 0.293 mL then waiting 1.5 s
+2026-01-23 13:54:12,822 - DEBUG - Mass: 13.5729g at 2.015s (dispensing) steady=False
+2026-01-23 13:54:13,225 - DEBUG - Mass: 13.5892g at 2.415s (dispensing) steady=False
+2026-01-23 13:54:13,621 - DEBUG - Mass: 13.6366g at 2.814s (dispensing) steady=False
+2026-01-23 13:54:14,023 - DEBUG - Mass: 13.6938g at 3.212s (dispensing) steady=False
+2026-01-23 13:54:14,420 - DEBUG - Mass: 13.7236g at 3.611s (dispensing) steady=False
+2026-01-23 13:54:14,832 - DEBUG - Mass: 13.7247g at 4.010s (dispensing) steady=False
+2026-01-23 13:54:15,232 - DEBUG - Mass: 13.7230g at 4.409s (dispensing) steady=False
+2026-01-23 13:54:15,631 - DEBUG - Mass: 13.7203g at 4.808s (dispensing) steady=False
+2026-01-23 13:54:16,032 - DEBUG - Mass: 13.7206g at 5.208s (dispensing) steady=False
+2026-01-23 13:54:16,431 - DEBUG - Mass: 13.7208g at 5.608s (dispensing) steady=False
+2026-01-23 13:54:16,558 - INFO - Dispensing took 3.913s, collecting post-dispense baseline
+2026-01-23 13:54:16,820 - DEBUG - Mass: 13.7204g at 6.007s (baseline_post) steady=False
+2026-01-23 13:54:17,221 - DEBUG - Mass: 13.7206g at 6.412s (baseline_post) steady=False
+2026-01-23 13:54:17,622 - DEBUG - Mass: 13.7207g at 6.812s (baseline_post) steady=False
+2026-01-23 13:54:18,026 - DEBUG - Mass: 13.7203g at 7.212s (baseline_post) steady=False
+2026-01-23 13:54:18,432 - DEBUG - Mass: 13.7207g at 7.611s (baseline_post) steady=False
+2026-01-23 13:54:18,640 - INFO - Stopped continuous mass monitoring. Collected 20 data points
+2026-01-23 13:54:18,641 - INFO - Pre-baseline: No stable readings, using time-based avg=13.572860g
+2026-01-23 13:54:18,641 - INFO - Post-baseline: No stable readings, using time-based avg=13.720540g
+2026-01-23 13:54:18,641 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:54:18,641 - INFO - Pre: TIME-BASED, Post: TIME-BASED, Mass difference: 0.147680g
+2026-01-23 13:54:18,646 - INFO - Reading summary: 5 pre-readings (0 stable), 5 post-readings (0 stable)
+2026-01-23 13:54:18,647 - INFO - Baseline variability: pre_std=0.000336g, post_std=0.000182g
+2026-01-23 13:54:18,647 - INFO - Target: 0.150 mL = ~0.150000 g for water
+2026-01-23 13:54:18,650 - INFO - Saved 20 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135418.csv
+2026-01-23 13:54:19,161 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135418.png
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:54:19,161 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:54:19,161 - DEBUG - Selected small_tip for volume 0.171 mL
+2026-01-23 13:54:19,161 - INFO - Pipetting from vial liquid_source_0, amount: 0.150 mL
+2026-01-23 13:54:19,161 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:54:19,173 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:54:23,085 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:54:23,753 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:54:24,240 - DEBUG - Aspirating 0.154 mL then waiting 0.0 s
+2026-01-23 13:54:26,265 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:54:26,563 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:54:26,565 - INFO - Pipetting into vial measurement_vial_0, amount: 0.150 mL
+2026-01-23 13:54:27,834 - INFO - Initial mass reading: 13.722100 g
+2026-01-23 13:54:27,834 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:54:31,832 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:54:32,839 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:54:33,032 - DEBUG - Mass: 13.7202g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:54:33,424 - DEBUG - Mass: 13.7197g at 0.405s (baseline_pre) steady=False
+2026-01-23 13:54:33,831 - DEBUG - Mass: 13.7205g at 0.802s (baseline_pre) steady=False
+2026-01-23 13:54:34,229 - DEBUG - Mass: 13.7199g at 1.200s (baseline_pre) steady=False
+2026-01-23 13:54:34,629 - DEBUG - Mass: 13.7197g at 1.599s (baseline_pre) steady=False
+2026-01-23 13:54:34,852 - DEBUG - Dispensing 0.293 mL then waiting 1.5 s
+2026-01-23 13:54:35,028 - DEBUG - Mass: 13.7197g at 1.998s (baseline_pre) steady=False
+2026-01-23 13:54:35,427 - DEBUG - Mass: 13.7225g at 2.397s (dispensing) steady=False
+2026-01-23 13:54:35,832 - DEBUG - Mass: 13.7639g at 2.796s (dispensing) steady=False
+2026-01-23 13:54:36,226 - DEBUG - Mass: 13.8163g at 3.196s (dispensing) steady=False
+2026-01-23 13:54:36,632 - DEBUG - Mass: 13.8635g at 3.596s (dispensing) steady=False
+2026-01-23 13:54:37,024 - DEBUG - Mass: 13.8728g at 4.009s (dispensing) steady=False
+2026-01-23 13:54:37,423 - DEBUG - Mass: 13.8728g at 4.409s (dispensing) steady=False
+2026-01-23 13:54:37,832 - DEBUG - Mass: 13.8691g at 4.809s (dispensing) steady=False
+2026-01-23 13:54:38,232 - DEBUG - Mass: 13.8688g at 5.209s (dispensing) steady=False
+2026-01-23 13:54:38,632 - DEBUG - Mass: 13.8678g at 5.597s (dispensing) steady=False
+2026-01-23 13:54:39,010 - INFO - Dispensing took 4.158s, collecting post-dispense baseline
+2026-01-23 13:54:39,033 - DEBUG - Mass: 13.8683g at 5.996s (dispensing) steady=True
+2026-01-23 13:54:39,434 - DEBUG - Mass: 13.8683g at 6.400s (baseline_post) steady=True
+2026-01-23 13:54:39,831 - DEBUG - Mass: 13.8683g at 6.799s (baseline_post) steady=True
+2026-01-23 13:54:40,229 - DEBUG - Mass: 13.8683g at 7.196s (baseline_post) steady=True
+2026-01-23 13:54:40,631 - DEBUG - Mass: 13.8683g at 7.611s (baseline_post) steady=True
+2026-01-23 13:54:41,029 - DEBUG - Mass: 13.8683g at 8.010s (baseline_post) steady=True
+2026-01-23 13:54:41,248 - INFO - Stopped continuous mass monitoring. Collected 21 data points
+2026-01-23 13:54:41,248 - INFO - Pre-baseline: No stable readings, using time-based avg=13.719950g
+2026-01-23 13:54:41,248 - INFO - Post-baseline: 5 stable readings, avg=13.868300g
+2026-01-23 13:54:41,248 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:54:41,248 - INFO - Pre: TIME-BASED, Post: STABLE, Mass difference: 0.148350g
+2026-01-23 13:54:41,256 - INFO - Reading summary: 6 pre-readings (0 stable), 5 post-readings (5 stable)
+2026-01-23 13:54:41,256 - INFO - Baseline variability: pre_std=0.000333g, post_std=0.000000g
+2026-01-23 13:54:41,256 - INFO - Target: 0.150 mL = ~0.150000 g for water
+2026-01-23 13:54:41,258 - INFO - Saved 21 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135441.csv
+2026-01-23 13:54:41,788 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135441.png
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:54:41,788 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:54:41,801 - DEBUG - Selected small_tip for volume 0.171 mL
+2026-01-23 13:54:41,801 - INFO - Pipetting from vial liquid_source_0, amount: 0.150 mL
+2026-01-23 13:54:41,801 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:54:41,804 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:54:45,702 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:54:46,435 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:54:46,917 - DEBUG - Aspirating 0.154 mL then waiting 0.0 s
+2026-01-23 13:54:48,986 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:54:49,291 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:54:49,293 - INFO - Pipetting into vial measurement_vial_0, amount: 0.150 mL
+2026-01-23 13:54:50,219 - INFO - Initial mass reading: 13.869800 g
+2026-01-23 13:54:50,219 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:54:54,194 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:54:55,204 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:54:55,432 - DEBUG - Mass: 13.8668g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:54:55,834 - DEBUG - Mass: 13.8671g at 0.435s (baseline_pre) steady=True
+2026-01-23 13:54:56,234 - DEBUG - Mass: 13.8671g at 0.833s (baseline_pre) steady=True
+2026-01-23 13:54:56,632 - DEBUG - Mass: 13.8671g at 1.233s (baseline_pre) steady=True
+2026-01-23 13:54:57,031 - DEBUG - Mass: 13.8671g at 1.633s (baseline_pre) steady=True
+2026-01-23 13:54:57,220 - DEBUG - Dispensing 0.293 mL then waiting 1.5 s
+2026-01-23 13:54:57,434 - DEBUG - Mass: 13.8671g at 2.033s (dispensing) steady=True
+2026-01-23 13:54:57,830 - DEBUG - Mass: 13.8845g at 2.432s (dispensing) steady=False
+2026-01-23 13:54:58,226 - DEBUG - Mass: 13.9345g at 2.829s (dispensing) steady=False
+2026-01-23 13:54:58,633 - DEBUG - Mass: 13.9925g at 3.245s (dispensing) steady=False
+2026-01-23 13:54:59,033 - DEBUG - Mass: 14.0187g at 3.645s (dispensing) steady=False
+2026-01-23 13:54:59,424 - DEBUG - Mass: 14.0211g at 4.045s (dispensing) steady=False
+2026-01-23 13:54:59,827 - DEBUG - Mass: 14.0180g at 4.444s (dispensing) steady=False
+2026-01-23 13:55:00,226 - DEBUG - Mass: 14.0167g at 4.842s (dispensing) steady=False
+2026-01-23 13:55:00,632 - DEBUG - Mass: 14.0164g at 5.241s (dispensing) steady=False
+2026-01-23 13:55:01,019 - DEBUG - Mass: 14.0165g at 5.640s (dispensing) steady=False
+2026-01-23 13:55:01,083 - INFO - Dispensing took 3.863s, collecting post-dispense baseline
+2026-01-23 13:55:01,424 - DEBUG - Mass: 14.0165g at 6.041s (baseline_post) steady=False
+2026-01-23 13:55:01,832 - DEBUG - Mass: 14.0167g at 6.444s (baseline_post) steady=False
+2026-01-23 13:55:02,226 - DEBUG - Mass: 14.0161g at 6.844s (baseline_post) steady=False
+2026-01-23 13:55:02,632 - DEBUG - Mass: 14.0166g at 7.242s (baseline_post) steady=False
+2026-01-23 13:55:03,021 - DEBUG - Mass: 14.0163g at 7.642s (baseline_post) steady=True
+2026-01-23 13:55:03,245 - INFO - Stopped continuous mass monitoring. Collected 20 data points
+2026-01-23 13:55:03,245 - INFO - Pre-baseline: 4 stable readings, avg=13.867100g
+2026-01-23 13:55:03,245 - INFO - Post-baseline: 1 stable readings, avg=14.016300g
+2026-01-23 13:55:03,245 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:55:03,245 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.149200g
+2026-01-23 13:55:03,251 - INFO - Reading summary: 5 pre-readings (4 stable), 5 post-readings (1 stable)
+2026-01-23 13:55:03,252 - INFO - Baseline variability: pre_std=0.000134g, post_std=0.000241g
+2026-01-23 13:55:03,252 - INFO - Target: 0.150 mL = ~0.150000 g for water
+2026-01-23 13:55:03,255 - INFO - Saved 20 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135503.csv
+2026-01-23 13:55:03,786 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135503.png
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:55:03,794 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:55:03,794 - DEBUG - Selected small_tip for volume 0.171 mL
+2026-01-23 13:55:03,794 - INFO - Pipetting from vial liquid_source_0, amount: 0.150 mL
+2026-01-23 13:55:03,794 - INFO - Additional volume from calibration, amount: 0.004 mL
+2026-01-23 13:55:03,798 - DEBUG - Adjusting pump 0 speed to 10
+2026-01-23 13:55:07,699 - DEBUG - Aspirating 0.122 mL then waiting 0 s
+2026-01-23 13:55:08,430 - DEBUG - Adjusting pump 0 speed to 11
+2026-01-23 13:55:08,936 - DEBUG - Aspirating 0.154 mL then waiting 0.0 s
+2026-01-23 13:55:10,999 - DEBUG - Aspirating 0.017 mL then waiting 0 s
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param aspirate_speed=11
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param dispense_speed=14
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param aspirate_wait_time=0.0
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param dispense_wait_time=1.5
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param pre_asp_air_vol=0.122
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param retract_speed=5.0
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param blowout_vol=0.0
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param post_asp_air_vol=0.017
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-01-23 13:55:11,287 - DEBUG - Applied dict param overaspirate_vol=0.0038499999999984076
+2026-01-23 13:55:11,287 - INFO - Pipetting into vial measurement_vial_0, amount: 0.150 mL
+2026-01-23 13:55:12,634 - INFO - Initial mass reading: 14.017900 g
+2026-01-23 13:55:12,634 - DEBUG - Adjusting pump 0 speed to 14
+2026-01-23 13:55:16,621 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-01-23 13:55:17,632 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-01-23 13:55:17,831 - DEBUG - Mass: 14.0153g at 0.000s (baseline_pre) steady=False
+2026-01-23 13:55:18,233 - DEBUG - Mass: 14.0156g at 0.405s (baseline_pre) steady=False
+2026-01-23 13:55:18,634 - DEBUG - Mass: 14.0156g at 0.803s (baseline_pre) steady=True
+2026-01-23 13:55:19,034 - DEBUG - Mass: 14.0156g at 1.219s (baseline_pre) steady=True
+2026-01-23 13:55:19,425 - DEBUG - Mass: 14.0156g at 1.618s (baseline_pre) steady=True
+2026-01-23 13:55:19,633 - DEBUG - Dispensing 0.293 mL then waiting 1.5 s
+2026-01-23 13:55:19,824 - DEBUG - Mass: 14.0156g at 2.017s (dispensing) steady=True
+2026-01-23 13:55:20,222 - DEBUG - Mass: 14.0339g at 2.416s (dispensing) steady=False
+2026-01-23 13:55:20,622 - DEBUG - Mass: 14.0823g at 2.815s (dispensing) steady=False
+2026-01-23 13:55:21,031 - DEBUG - Mass: 14.1357g at 3.215s (dispensing) steady=False
+2026-01-23 13:55:21,424 - DEBUG - Mass: 14.1684g at 3.614s (dispensing) steady=False
+2026-01-23 13:55:21,833 - DEBUG - Mass: 14.1703g at 4.014s (dispensing) steady=False
+2026-01-23 13:55:22,218 - DEBUG - Mass: 14.1670g at 4.411s (dispensing) steady=False
+2026-01-23 13:55:22,629 - DEBUG - Mass: 14.1658g at 4.811s (dispensing) steady=False
+2026-01-23 13:55:23,033 - DEBUG - Mass: 14.1653g at 5.210s (dispensing) steady=False
+2026-01-23 13:55:23,432 - DEBUG - Mass: 14.1658g at 5.610s (dispensing) steady=False
+2026-01-23 13:55:23,480 - INFO - Dispensing took 3.848s, collecting post-dispense baseline
+2026-01-23 13:55:23,822 - DEBUG - Mass: 14.1657g at 6.014s (baseline_post) steady=False
+2026-01-23 13:55:24,226 - DEBUG - Mass: 14.1655g at 6.413s (baseline_post) steady=False
+2026-01-23 13:55:24,632 - DEBUG - Mass: 14.1655g at 6.812s (baseline_post) steady=True
+2026-01-23 13:55:25,019 - DEBUG - Mass: 14.1655g at 7.212s (baseline_post) steady=True
+2026-01-23 13:55:25,434 - DEBUG - Mass: 14.1655g at 7.612s (baseline_post) steady=True
+2026-01-23 13:55:25,642 - INFO - Stopped continuous mass monitoring. Collected 20 data points
+2026-01-23 13:55:25,642 - INFO - Pre-baseline: 3 stable readings, avg=14.015600g
+2026-01-23 13:55:25,642 - INFO - Post-baseline: 3 stable readings, avg=14.165500g
+2026-01-23 13:55:25,642 - INFO - INDEPENDENT BASELINE calculation:
+2026-01-23 13:55:25,642 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.149900g
+2026-01-23 13:55:25,648 - INFO - Reading summary: 5 pre-readings (3 stable), 5 post-readings (3 stable)
+2026-01-23 13:55:25,649 - INFO - Baseline variability: pre_std=0.000134g, post_std=0.000089g
+2026-01-23 13:55:25,649 - INFO - Target: 0.150 mL = ~0.150000 g for water
+2026-01-23 13:55:25,652 - INFO - Saved 20 mass measurements to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_data_measurement_vial_0_20260123_135525.csv
+2026-01-23 13:55:26,178 - INFO - Saved mass vs time plot to output\mass_measurements\experiment_log2026-01-23_13-47-07\mass_plot_measurement_vial_0_20260123_135525.png
+2026-01-23 13:55:26,828 - INFO - Removing pipet
+2026-01-23 13:55:30,135 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 44
+2026-01-23 13:55:30,135 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 44
+2026-01-23 13:55:30,135 - DEBUG - Grabbing vial 0 with index 0
+2026-01-23 13:55:32,498 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 44
+2026-01-23 13:55:36,156 - INFO - Moving robot to home position

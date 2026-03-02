@@ -1,0 +1,98 @@
+2026-02-24 10:41:51,696 - INFO - Workflow config loaded: Degradation_serena
+2026-02-24 10:41:51,696 - INFO - Config keys updated: 11 (YES, EXPERIMENT_REPEATS, INPUT_VIAL_STATUS_FILE, CYTATION_PROTOCOL_FILE, SCHEDULE_FILE, SIMULATE, VALIDATE_LIQUIDS, PREP_SOLUTIONS, REPLICATES, ACID_LIBRARY, CURRENT_WELL_COUNT)
+2026-02-24 10:41:51,696 - INFO - SIMULATE mode: False
+2026-02-24 10:41:51,696 - INFO - Launching status review GUI...
+2026-02-24 10:41:51,896 - INFO - Detected workflow name: Degradation_serena
+2026-02-24 10:41:52,130 - INFO - Config editor loaded for workflow: Degradation_serena
+2026-02-24 10:43:21,575 - INFO - User selected: Run Workflow
+2026-02-24 10:43:21,592 - INFO - Status review completed - proceeding with hardware initialization
+2026-02-24 10:43:21,601 - DEBUG - Reloading config after status check to get updated values
+2026-02-24 10:43:21,647 - INFO - Config Manager: Updated 11 workflow constants from Degradation_serena.yaml
+2026-02-24 10:43:21,647 - INFO - SIMULATE flag updated: False -> True
+2026-02-24 10:43:21,651 - DEBUG - No components needed simulate flag update
+2026-02-24 10:43:21,658 - INFO - Initializing North Robot...
+2026-02-24 10:43:21,658 - DEBUG - Loading robot configuration files...
+2026-02-24 10:43:21,670 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-02-24 10:43:21,671 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-02-24 10:43:21,675 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-02-24 10:43:21,680 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-02-24 10:43:21,685 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-24 10:43:21,688 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-24 10:43:21,688 - DEBUG - Loading robot state files...
+2026-02-24 10:43:21,700 - DEBUG - Loaded vial data from ../utoronto_demo/status/degradation_vial_status.csv
+2026-02-24 10:43:21,700 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-02-24 10:43:21,700 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-02-24 10:43:21,700 - DEBUG - Robot status loaded successfully
+2026-02-24 10:43:21,700 - INFO - Physical initialization of North Robot...
+2026-02-24 10:43:21,708 - DEBUG - Loading pumps from YAML configuration...
+2026-02-24 10:43:21,711 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-02-24 10:43:21,711 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-02-24 10:43:21,711 - INFO - Moving robot to home position
+2026-02-24 10:43:21,716 - DEBUG - Initializing centrifuge controller...
+2026-02-24 10:43:21,722 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='2625362298528'>
+2026-02-24 10:43:21,723 - INFO - Initializing North Track...
+2026-02-24 10:43:21,723 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-02-24 10:43:21,725 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-02-24 10:43:21,739 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-02-24 10:43:21,739 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-02-24 10:43:21,748 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-02-24 10:43:21,749 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-02-24 10:43:21,751 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-24 10:43:21,751 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-24 10:43:21,751 - DEBUG - Moving North Track to home position
+2026-02-24 10:43:21,751 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-02-24 10:43:21,751 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-02-24 10:43:21,763 - INFO - Stock concentration: 1.0 mg/mL
+2026-02-24 10:43:21,763 - INFO - Calculated volumes for each sample:
+2026-02-24 10:43:21,769 - INFO -   vial_name  concentration(mg/mL)  stock_volume  solvent_volume
+1  sample_1                  0.05           0.1             1.9
+2  sample_2                  0.05           0.1             1.9
+2026-02-24 10:43:21,779 - INFO - Using acid: 6M_HCl
+2026-02-24 10:43:21,789 - INFO - Calculated volumes for each sample:
+2026-02-24 10:43:21,789 - INFO -   vial_name  acid_molar_excess  acid_volume
+1  sample_1               1000     0.012315
+2  sample_2               1000     0.012315
+2026-02-24 10:43:21,800 - INFO - Stock concentration: 1.0 mg/mL
+2026-02-24 10:43:21,800 - INFO - 
+Adding 1.900 mL solvent to sample_1
+2026-02-24 10:43:21,801 - INFO - Setting home location of 2MeTHF to 4 for safe pipetting
+2026-02-24 10:43:21,802 - DEBUG - Applied object param asp_disp_cycles=3
+2026-02-24 10:43:21,802 - DEBUG - Applied object param aspirate_speed=13
+2026-02-24 10:43:21,802 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-02-24 10:43:21,802 - DEBUG - Applied object param blowout_vol=0.0
+2026-02-24 10:43:21,802 - DEBUG - Applied object param dispense_speed=13
+2026-02-24 10:43:21,802 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-02-24 10:43:21,802 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-02-24 10:43:21,802 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-02-24 10:43:21,802 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-02-24 10:43:21,802 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-02-24 10:43:21,802 - DEBUG - Applied object param retract_speed=10
+2026-02-24 10:43:21,804 - INFO - Dispensing 1.900 mL from 2MeTHF to sample_1
+2026-02-24 10:43:21,805 - INFO - Total tip volume (2.250 mL) exceeds capacity, splitting into 3 transfers of 0.633 mL each
+2026-02-24 10:43:21,805 - DEBUG - Applied object param asp_disp_cycles=3
+2026-02-24 10:43:21,806 - DEBUG - Applied object param aspirate_speed=13
+2026-02-24 10:43:21,806 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-02-24 10:43:21,806 - DEBUG - Applied object param blowout_vol=0.0
+2026-02-24 10:43:21,806 - DEBUG - Applied object param dispense_speed=13
+2026-02-24 10:43:21,806 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-02-24 10:43:21,806 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-02-24 10:43:21,806 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-02-24 10:43:21,806 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-02-24 10:43:21,806 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-02-24 10:43:21,806 - DEBUG - Applied object param retract_speed=10
+2026-02-24 10:43:21,807 - DEBUG - Applied object param asp_disp_cycles=3
+2026-02-24 10:43:21,807 - DEBUG - Applied object param aspirate_speed=13
+2026-02-24 10:43:21,807 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-02-24 10:43:21,807 - DEBUG - Applied object param blowout_vol=0.0
+2026-02-24 10:43:21,807 - DEBUG - Applied object param dispense_speed=13
+2026-02-24 10:43:21,807 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-02-24 10:43:21,807 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-02-24 10:43:21,807 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-02-24 10:43:21,807 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-02-24 10:43:21,807 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-02-24 10:43:21,807 - DEBUG - Applied object param retract_speed=10
+2026-02-24 10:43:21,808 - DEBUG - Vial move required for pipetting
+2026-02-24 10:43:21,808 - INFO - Moving vial 6 to safe pipetting location
+2026-02-24 10:43:21,811 - INFO - Moving vial 2MeTHF to clamp: 0
+2026-02-24 10:43:21,812 - DEBUG - Grabbing vial 6 with index 6
+2026-02-24 10:43:21,813 - DEBUG - Dropping off vial 6 at location clamp with index 0
