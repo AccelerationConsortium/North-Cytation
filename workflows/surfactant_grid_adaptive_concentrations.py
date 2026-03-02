@@ -3171,8 +3171,8 @@ def measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=Tru
                         return f"{chr(65 + row)}{col + 1}"
                     
                     # Check for fluorescence columns
-                    has_373 = '334_373' in fluorescence_data.columns
-                    has_384 = '334_384' in fluorescence_data.columns
+                    has_373 = 'fluorescence_334_373' in fluorescence_data.columns
+                    has_384 = 'fluorescence_334_384' in fluorescence_data.columns
                     lash_e.logger.info(f"  Fluorescence columns available: 334_373={has_373}, 334_384={has_384}")
                     
                     if has_373 and has_384:
@@ -3182,8 +3182,8 @@ def measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=Tru
                             matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
                             
                             if len(matching_rows) > 0:
-                                val_373 = matching_rows.iloc[0]['334_373']
-                                val_384 = matching_rows.iloc[0]['334_384']
+                                val_373 = matching_rows.iloc[0]['fluorescence_334_373']
+                                val_384 = matching_rows.iloc[0]['fluorescence_334_384']
                                 ratio = val_373 / val_384 if val_384 != 0 else None
                                 
                                 well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373

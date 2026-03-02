@@ -10,7 +10,7 @@ import pandas as pd
 from pathlib import Path
 from degradation_spectral_analyzer_program import process_degradation_spectral_data
 
-EXPERIMENT_REPEATS = 2  # Define at module level
+EXPERIMENT_REPEATS = 3  # Define at module level
 
  # a. Initial State of your Vials, so the robot can know where to pipet:
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/degradation_vial_status.csv"
@@ -31,17 +31,17 @@ PREP_SOLUTIONS = True
 
 EXPERIMENT_NAME = "degradation_experiment"  # Used for naming output folder
 
-ACID_MOLAR_EXCESS = 500
+ACID_MOLAR_EXCESS = 1000
 WATER_VOLUME = 0.010
 
     # e. Number of replicate measurements per timepoint
 REPLICATES = 1  # Number of wells to use for each measurement (default: 3)
 
 #  -------------------------------------------------------------- Define my workflow here! ---------------------------------------------------
-# Acid library: maps acid name to {'molar_mass': g/mol, 'molarity': mol/L}
+# Acid library: maps acid name to {'molar_mass': g/mol, 'molarity': mol/L, 'density': g/mL}
 ACID_LIBRARY = {
-    '6M_HCl': {'molar_mass': 36.46, 'molarity': 6.0},
-    'TFA': {'molar_mass': 114.02, 'molarity': 6.0},
+    '6M_HCl': {'molar_mass': 36.46, 'molarity': 6.0, 'density': 1.1},
+    'TFA': {'molar_mass': 114.02, 'molarity': 6.0, 'density': 1.49},
 }
 
 # Global well tracking
@@ -76,7 +76,8 @@ def validate_key_liquids(lash_e, output_dir):
         validation_tests = [
             {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3, 'params': None},
             {'vial': '2MeTHF', 'liquid': '2MeTHF', 'volumes': [0.600], 'reps': 3, 'params': large_tip_2MeTHF_params},
-            {'vial': '6M_HCl', 'liquid': '6M_HCl', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
+            # {'vial': '6M_HCl', 'liquid': '6M_HCl', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
+            {'vial': 'TFA', 'liquid': 'TFA', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
             {'vial': 'polymer_stock', 'liquid': '2MeTHF', 'volumes': [0.100, 0.150], 'reps': 3, 'params': small_tip_2MeTHF_params},
         ]
         
@@ -288,7 +289,7 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
  
     for _ in range(solvent_repeats):
         current_waste, waste_temp_home = check_and_switch_waste_vial(lash_e, waste_state, waste_temp_home)
-        for wells in chunk(used_wells, 4):
+        for wells in chunk(used_wells):
             total = well_volume * len(wells)            # total to aspirate for this chunk (<= 0.8 mL if well_volume=0.2)
             dispense_volume = [well_volume] * len(wells)  # one volume per well
 
@@ -443,6 +444,8 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
     # Get acid properties from library
     acid_molarity = ACID_LIBRARY[acid_type]['molarity']
     acid_molar_mass = ACID_LIBRARY[acid_type]['molar_mass']
+    print(f"DEBUG: ACID_LIBRARY[{acid_type}] = {ACID_LIBRARY[acid_type]}")  # Debug line
+    density = ACID_LIBRARY[acid_type]['density']
     lash_e.logger.info(f"Using acid: {acid_type}")
   
     # Calculates the volume of acid to be added
@@ -450,7 +453,7 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
     if acid_type == '6M_HCl':
         samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * acid_molar_excess) / acid_molarity) * 1000 # in mL
     if acid_type != '6M_HCl':
-        samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * acid_molar_excess) * acid_molar_mass) * 1000 # in mL
+        samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * acid_molar_excess) * acid_molar_mass)/ density # in mL
     lash_e.logger.info("Calculated volumes for each sample:")
     lash_e.logger.info("%s", samples[[sample_col, 'acid_molar_excess', 'acid_volume']])
 
@@ -489,17 +492,11 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
         output_dir.mkdir(parents=True, exist_ok=True)
         lash_e.logger.info("Output directory created at: %s", output_dir)
         
-        # Run validation if enabled
-        if VALIDATE_LIQUIDS:
-            validate_key_liquids(lash_e, output_dir)
-        
         slack_agent.send_slack_message("Degradation workflow started!")
 
         lash_e.nr_robot.home_robot_components()
     else:
         output_dir = None
-        if VALIDATE_LIQUIDS:
-            validate_key_liquids(lash_e, output_dir)  # Also validate in simulation
 
     # -------------------------------------------------------------- Workflow starts from here! ---------------------------------------------------
      # 2. Add acid and water to the polymer samples to initiate degradation and take scheduled UV-VIS measurements.
@@ -631,7 +628,18 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
 # f. Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_t8=True, workflow_globals=globals(), workflow_name='Degradation_serena')
 
+# Run validation once before processing all samples
+if VALIDATE_LIQUIDS:
+    if not SIMULATE:
+        import slack_agent
+        output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / EXPERIMENT_NAME
+        output_dir.mkdir(parents=True, exist_ok=True)
+        validate_key_liquids(lash_e, output_dir)
+    else:
+        validate_key_liquids(lash_e, None)
+    lash_e.logger.info("Liquid validation completed before sample processing")
+
 for i in range(1, EXPERIMENT_REPEATS+1): 
-    degradation_workflow(lash_e, i, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=ACID_MOLAR_EXCESS, water_volume=WATER_VOLUME)
+    degradation_workflow(lash_e, i, acid_type='TFA', solvent='2MeTHF', acid_molar_excess=ACID_MOLAR_EXCESS, water_volume=WATER_VOLUME)
 
 print(lash_e.nr_robot.VIAL_DF)

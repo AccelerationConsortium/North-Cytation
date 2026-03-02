@@ -574,13 +574,13 @@ class North_Track(North_Base):
         self.logger.info(f"Releasing wellplate at location: {location_name}")
         
         # COLLISION PREVENTION: Check if destination location is already occupied
-        self.get_track_status()  # Refresh current wellplate position
-        if self.ACTIVE_WELLPLATE_POSITION == location_name:
-            self.pause_after_error(
-                f"COLLISION PREVENTION: Cannot release wellplate at '{location_name}' - "
-                f"location already occupied. Current wellplate position: {self.ACTIVE_WELLPLATE_POSITION}",
-                send_slack=True
-            )
+        # self.get_track_status()  # Refresh current wellplate position
+        # if self.ACTIVE_WELLPLATE_POSITION == location_name:
+        #     self.pause_after_error(
+        #         f"COLLISION PREVENTION: Cannot release wellplate at '{location_name}' - "
+        #         f"location already occupied. Current wellplate position: {self.ACTIVE_WELLPLATE_POSITION}",
+        #         send_slack=True
+        #     )
         
         # Get location position from YAML
         location_pos = self.get_position(location_name)
@@ -3489,7 +3489,7 @@ class North_Robot(North_Base):
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self, revs=4, move_speed=None):
+    def uncap_clamp_vial(self, revs=3.0, move_speed=None):
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -3516,7 +3516,7 @@ class North_Robot(North_Base):
         self.save_robot_status()
 
     #Recap the vial in the clamp
-    def recap_clamp_vial(self, revs=2.0, torque_thresh = 600, move_speed=None):
+    def recap_clamp_vial(self, revs=2.20, torque_thresh = 600, move_speed=None):
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)

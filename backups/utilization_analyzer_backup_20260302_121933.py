@@ -180,12 +180,14 @@ class LabUtilizationAnalyzer:
         business_hours = self.calculate_business_hours(start_date, end_date)
         utilization_business = (total_runtime_hours / business_hours) * 100 if business_hours > 0 else 0
         
-        # Weekly total metrics
-        df['week'] = df['date'].dt.to_period('W')
-        weekly_usage = df.groupby('week')['duration_hours'].sum()
-        avg_weekly_runtime = weekly_usage.mean()
-        peak_weekly_runtime = weekly_usage.max()
-        current_weekly_runtime = weekly_usage.iloc[-1] if len(weekly_usage) > 0 else 0
+        # Weekly averaging metrics
+        daily_usage = df.groupby(df['date'].dt.date)['duration_hours'].sum()
+        if len(daily_usage) >= 7:
+            weekly_avg_runtime = daily_usage.rolling(window=7, min_periods=1).mean().iloc[-1]
+            peak_weekly_avg = daily_usage.rolling(window=7, min_periods=1).mean().max()
+        else:
+            weekly_avg_runtime = daily_usage.mean()
+            peak_weekly_avg = daily_usage.max()
         
         # Simulation vs real experiments
         sim_sessions = df[df['is_simulate'] == True]
@@ -200,9 +202,8 @@ class LabUtilizationAnalyzer:
             'total_period_days': total_period_days,
             'utilization_24h': utilization_24h,
             'utilization_business': utilization_business,
-            'avg_weekly_runtime': avg_weekly_runtime,
-            'peak_weekly_runtime': peak_weekly_runtime,
-            'current_weekly_runtime': current_weekly_runtime,
+            'weekly_avg_runtime': weekly_avg_runtime,
+            'peak_weekly_avg': peak_weekly_avg,
             'simulation_sessions': len(sim_sessions),
             'real_sessions': len(real_sessions),
             'simulation_hours': sim_sessions['duration_hours'].sum() if len(sim_sessions) > 0 else 0,
@@ -235,39 +236,38 @@ class LabUtilizationAnalyzer:
         df['log_end_time'] = pd.to_datetime(df['log_end_time'])
         df['date'] = pd.to_datetime(df['date']).dt.date
         
-        # Create figure with subplots - weekly hours and summary
+        # Create figure with subplots - just weekly average and summary
         fig, axes = plt.subplots(1, 2, figsize=(16, 6))
         fig.suptitle('Laboratory System Utilization Analysis', fontsize=16, fontweight='bold')
         
-        # 1. Weekly hours utilization
+        # 1. Weekly rolling average utilization
         ax1 = axes[0]
+        daily_usage = df.groupby('date')['duration_hours'].sum().reset_index()
+        daily_usage['date'] = pd.to_datetime(daily_usage['date'])
         
-        # Group by week and sum hours
-        df['week'] = df['log_start_time'].dt.to_period('W')
-        weekly_usage = df.groupby('week')['duration_hours'].sum().reset_index()
-        weekly_usage['week_start'] = weekly_usage['week'].dt.start_time
+        # Create complete date range to handle missing days
+        date_range = pd.date_range(start=daily_usage['date'].min(), 
+                                 end=daily_usage['date'].max(), freq='D')
+        complete_df = pd.DataFrame({'date': date_range})
+        daily_usage = complete_df.merge(daily_usage, on='date', how='left')
+        daily_usage['duration_hours'] = daily_usage['duration_hours'].fillna(0)
         
-        # Calculate 3-week rolling average
-        weekly_usage['rolling_avg_3wk'] = weekly_usage['duration_hours'].rolling(window=3, center=True).mean()
+        # Calculate 7-day rolling average
+        daily_usage['weekly_avg'] = daily_usage['duration_hours'].rolling(window=7, min_periods=1).mean()
         
-        # Plot raw weekly data
-        ax1.plot(weekly_usage['week_start'], weekly_usage['duration_hours'], 
-                 'o-', color='lightgreen', linewidth=1.5, markersize=4, alpha=0.7, label='Weekly Usage')
+        # Plot weekly rolling average
+        ax1.plot(daily_usage['date'], daily_usage['weekly_avg'], 'o-', 
+                color='green', linewidth=2, markersize=3, alpha=0.8)
         
-        # Plot 3-week rolling average
-        ax1.plot(weekly_usage['week_start'], weekly_usage['rolling_avg_3wk'], 
-                 'o-', color='darkgreen', linewidth=3, markersize=6, label='3-Week Rolling Average')
-        
-        ax1.set_xlabel('Week Starting')
-        ax1.set_ylabel('Total Runtime (hours)')
-        ax1.set_title('Weekly System Utilization (Raw Data + 3-Week Rolling Average)')
-        ax1.legend(loc='upper right')
-        ax1.grid(True, alpha=0.3, axis='y')
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Weekly Average Runtime (hours)')
+        ax1.set_title('Weekly Rolling Average System Utilization (7-day window)')
+        ax1.grid(True, alpha=0.3)
         ax1.tick_params(axis='x', rotation=45)
         
         # Format x-axis dates for weekly view
         ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-        ax1.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=1))  # Show weekly intervals starting Monday
+        ax1.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))  # Show more frequent dates for weekly data
         
         # 2. Summary statistics
         ax2 = axes[1]
@@ -285,10 +285,9 @@ Total Runtime: {results['total_runtime_hours']:.1f} hours
 Total Sessions: {results['total_sessions']}
 Avg Session: {results['avg_session_hours']:.2f} hours
 
-WEEKLY STATISTICS
-Current Week: {results['current_weekly_runtime']:.1f} hours
-Average Week: {results['avg_weekly_runtime']:.1f} hours
-Peak Week: {results['peak_weekly_runtime']:.1f} hours
+WEEKLY TRENDS
+Current Weekly Avg: {results['weekly_avg_runtime']:.1f} hours/day
+Peak Weekly Avg: {results['peak_weekly_avg']:.1f} hours/day
 
 UTILIZATION RATES
 24/7 Utilization: {results['utilization_24h']:.1f}%
@@ -350,11 +349,11 @@ Business Hours Utilization: {results['utilization_business']:.1f}%
   (Business Hours = 8am-6pm, Monday-Friday)
 
 ==================================================
-WEEKLY UTILIZATION STATISTICS
+WEEKLY UTILIZATION TRENDS
 ==================================================
-Current Week Runtime: {results['current_weekly_runtime']:.2f} hours
-Average Weekly Runtime: {results['avg_weekly_runtime']:.2f} hours
-Peak Weekly Runtime: {results['peak_weekly_runtime']:.2f} hours
+Current Weekly Average: {results['weekly_avg_runtime']:.2f} hours per day
+Peak Weekly Average: {results['peak_weekly_avg']:.2f} hours per day
+  (7-day rolling average)
 
 ==================================================
 EXPERIMENT TYPE BREAKDOWN
