@@ -1,0 +1,77 @@
+2025-10-08 17:12:29,205 - INFO - Initializing North Robot...
+2025-10-08 17:12:29,205 - DEBUG - Loading robot configuration files...
+2025-10-08 17:12:29,208 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2025-10-08 17:12:29,209 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2025-10-08 17:12:29,210 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2025-10-08 17:12:29,211 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2025-10-08 17:12:29,211 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-10-08 17:12:29,212 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-10-08 17:12:29,212 - DEBUG - Loading robot state files...
+2025-10-08 17:12:29,213 - DEBUG - Loaded vial data from ../utoronto_demo/status/degradation_vial_status.csv
+2025-10-08 17:12:29,214 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2025-10-08 17:12:29,214 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2025-10-08 17:12:29,214 - DEBUG - Robot status loaded successfully
+2025-10-08 17:12:29,214 - DEBUG - Physical initialization of North Robot...
+2025-10-08 17:12:29,215 - INFO - Moving robot to home position
+2025-10-08 17:12:29,215 - DEBUG - Loading pumps from YAML configuration...
+2025-10-08 17:12:29,215 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-10-08 17:12:29,215 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-10-08 17:12:29,220 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='5136312576'>
+2025-10-08 17:12:29,220 - INFO - Initializing North Track...
+2025-10-08 17:12:29,221 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2025-10-08 17:12:29,221 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2025-10-08 17:12:29,221 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2025-10-08 17:12:29,221 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2025-10-08 17:12:29,223 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2025-10-08 17:12:29,223 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2025-10-08 17:12:29,223 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-10-08 17:12:29,224 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-10-08 17:12:29,225 - INFO -    vial_index      vial_name  ... home_location_index  concentration
+0           0  polymer_stock  ...                   0           10.0
+1           1         2MeTHF  ...                  25            0.0
+2           2          water  ...                  26            0.0
+3           3         6M_HCl  ...                   1            0.0
+4           4       sample_1  ...                   2            0.5
+5           5       sample_2  ...                   3            1.0
+6           8        acetone  ...                  27            0.0
+7           9          waste  ...                  28            0.0
+
+[8 rows x 11 columns]
+2025-10-08 17:12:29,232 - INFO - Visualizing vial racks...
+2025-10-08 17:12:29,344 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2025-10-08 17:12:29,379 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2025-10-08 17:12:33,157 - INFO - Dispensing 0.150 mL from polymer_stock to sample_1
+2025-10-08 17:12:33,159 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:33,159 - INFO - Moving vial 0 to safe pipetting location
+2025-10-08 17:12:33,159 - INFO - Moving vial polymer_stock to clamp: 0
+2025-10-08 17:12:33,159 - DEBUG - Grabbing vial 0 with index 0
+2025-10-08 17:12:33,160 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-10-08 17:12:33,160 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:33,161 - DEBUG - Selected small_tip for volume 0.150 mL
+2025-10-08 17:12:33,161 - INFO - Getting small_tip (pipet number 10) from rack: small_tip_rack_1
+2025-10-08 17:12:33,162 - INFO - Pipetting from vial polymer_stock, amount: 0.15 mL
+2025-10-08 17:12:33,162 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-08 17:12:33,162 - DEBUG - Aspirating 0.150 mL then waiting 1.0 s
+2025-10-08 17:12:33,165 - DEBUG - Vial move required for pipetting
+2025-10-08 17:12:33,165 - INFO - Moving vial 4 to safe pipetting location
+2025-10-08 17:12:33,165 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-10-08 17:12:33,165 - INFO - Returning vial polymer_stock to home location
+2025-10-08 17:12:33,165 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:33,166 - INFO - Moving vial polymer_stock to main_8mL_rack: 0
+2025-10-08 17:12:33,166 - DEBUG - Grabbing vial 0 with index 0
+2025-10-08 17:12:33,167 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-10-08 17:12:33,167 - INFO - Moving vial sample_1 to clamp: 0
+2025-10-08 17:12:33,167 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:33,168 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2025-10-08 17:12:33,168 - DEBUG - Removing cap from clamped vial
+2025-10-08 17:12:33,168 - INFO - Pipetting into vial sample_1, amount: 0.15 mL
+2025-10-08 17:12:33,168 - DEBUG - Adjusting pump 0 speed to 13
+2025-10-08 17:12:33,169 - DEBUG - Dispensing 0.150 mL then waiting 1.0 s
+2025-10-08 17:12:33,169 - DEBUG - Blowing out 0.050 mL
+2025-10-08 17:12:33,169 - INFO - Removing pipet
+2025-10-08 17:12:33,169 - DEBUG - Recapping clamped vial
+2025-10-08 17:12:33,170 - INFO - Returning vial sample_1 to home location
+2025-10-08 17:12:33,170 - INFO - Moving vial sample_1 to main_8mL_rack: 2
+2025-10-08 17:12:33,170 - DEBUG - Grabbing vial 4 with index 4
+2025-10-08 17:12:33,170 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 2
+2025-10-08 17:12:33,171 - INFO - Removing pipet
