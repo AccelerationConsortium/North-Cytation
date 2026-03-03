@@ -2249,6 +2249,15 @@ def measure_turbidity_protocol_only(lash_e, well_indices, batch_recipes=None):
         if turbidity_data is not None:
             lash_e.logger.debug(f"TURBIDITY PROCESSED: shape = {turbidity_data.shape}, columns = {list(turbidity_data.columns)}")
             
+            # Post-process for kinetics workflow compatibility
+            # Convert well positions to well indices if needed
+            if 'well_position' in turbidity_data.columns and 'wellplate_index' not in turbidity_data.columns:
+                # Convert A1, A2, etc. to wellplate indices (0-based)
+                turbidity_data['wellplate_index'] = [
+                    (ord(pos[0]) - ord('A')) * 12 + (int(pos[1:]) - 1) 
+                    for pos in turbidity_data['well_position']
+                ]
+            
         lash_e.logger.info(f"Successfully measured turbidity for {len(well_indices)} wells")
         return turbidity_data
     else:
@@ -2323,6 +2332,10 @@ def measure_fluorescence_protocol_only(lash_e, well_indices, batch_recipes=None)
                 fluorescence_data.rename(columns={'334_373': 'fluorescence_334_373'}, inplace=True)
             if '334_384' in fluorescence_data.columns:
                 fluorescence_data.rename(columns={'334_384': 'fluorescence_334_384'}, inplace=True)
+                
+            # Calculate ratio (I334_373 / I334_384) - same as simulation
+            if 'fluorescence_334_373' in fluorescence_data.columns and 'fluorescence_334_384' in fluorescence_data.columns:
+                fluorescence_data['ratio'] = fluorescence_data['fluorescence_334_373'] / fluorescence_data['fluorescence_334_384']
         
         lash_e.logger.info(f"Successfully measured fluorescence for {len(well_indices)} wells")
         return fluorescence_data
@@ -3011,46 +3024,24 @@ def measure_and_process_turbidity(lash_e, well_recipes_df, shake_and_wait=True):
                 'timestamp': datetime.now().isoformat()
             }
             wellplate_data['measurements'].append(turbidity_entry)
-            if not lash_e.simulate:
-                # Hardware mode - turbidity_data is a DataFrame with well_position column
-                if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0 and 'well_position' in turbidity_data.columns:
-                    # Convert well indices to well positions for lookup
-                    def well_index_to_position(well_idx):
-                        """Convert well index (0-95) to well position (A1-H12)"""
-                        row = well_idx // 12  # 12 columns per row
-                        col = well_idx % 12
-                        return f"{chr(65 + row)}{col + 1}"
+            # Unified processing - both hardware and simulation now use wellplate_index format
+            if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0 and 'wellplate_index' in turbidity_data.columns:
+                # Get turbidity column (should be 'turbidity_600' after processing)
+                turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
+                lash_e.logger.info(f"  Using turbidity column: {turbidity_col}")
+                
+                # Map each well by wellplate_index (unified for hardware and simulation)
+                for _, row in turbidity_data.iterrows():
+                    well_idx = int(row['wellplate_index'])  # Ensure integer
+                    turbidity_value = row[turbidity_col]
                     
-                    # Get turbidity column (should be 'turbidity_600' after renaming)
-                    turbidity_col = 'turbidity_600' if 'turbidity_600' in turbidity_data.columns else turbidity_data.columns[-1]
-                    lash_e.logger.info(f"  Using turbidity column: {turbidity_col}")
-                    
-                    # Map each well by position
-                    for well_idx in wells_in_batch:
-                        well_position = well_index_to_position(well_idx)
-                        matching_rows = turbidity_data[turbidity_data['well_position'] == well_position]
-                        
-                        if len(matching_rows) > 0:
-                            turbidity_value = matching_rows.iloc[0][turbidity_col]
-                            well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
-                            lash_e.logger.info(f"  Mapped {well_position} (idx {well_idx}) -> turbidity {turbidity_value}")
-                        else:
-                            lash_e.logger.warning(f"  No turbidity data found for well {well_position} (idx {well_idx})")
-                else:
-                    lash_e.logger.warning("  Turbidity data missing or has unexpected format")
+                    # Map to main DataFrame
+                    well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
+                    mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
+                    lash_e.logger.info(f"  {mode_label} Mapped idx {well_idx} -> turbidity {turbidity_value}")
             else:
-                # Simulation mode - use the already-generated turbidity data directly
-                # (no need to recalculate - measure_turbidity already did the simulation)
-                if hasattr(turbidity_data, 'values') and len(turbidity_data) > 0:
-                    # Data is already in correct format with wellplate_index from measure_turbidity
-                    for _, row in turbidity_data.iterrows():
-                        well_idx = int(row['wellplate_index'])  # Ensure integer
-                        turbidity_value = row['turbidity_600']
-                        
-                        # Map to main DataFrame
-                        well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'turbidity_600'] = turbidity_value
-                else:
-                    lash_e.logger.warning("  Simulated turbidity data missing or has unexpected format")
+                available_cols = list(turbidity_data.columns) if hasattr(turbidity_data, 'columns') else "unknown"
+                lash_e.logger.warning(f"  Turbidity data missing wellplate_index column. Available columns: {available_cols}")
         
     return well_recipes_df
 
@@ -3159,61 +3150,34 @@ def measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=Tru
             }
             wellplate_data['measurements'].append(fluorescence_entry)
             
-            # Map fluorescence data to DataFrame by well position mapping
-            if not lash_e.simulate:
-                # Hardware mode - fluorescence_data is a DataFrame with well_position column
-                if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0 and 'well_position' in fluorescence_data.columns:
-                    # Convert well indices to well positions for lookup
-                    def well_index_to_position(well_idx):
-                        """Convert well index (0-95) to well position (A1-H12)"""
-                        row = well_idx // 12  # 12 columns per row
-                        col = well_idx % 12
-                        return f"{chr(65 + row)}{col + 1}"
-                    
-                    # Check for fluorescence columns
-                    has_373 = 'fluorescence_334_373' in fluorescence_data.columns
-                    has_384 = 'fluorescence_334_384' in fluorescence_data.columns
-                    lash_e.logger.info(f"  Fluorescence columns available: 334_373={has_373}, 334_384={has_384}")
-                    
-                    if has_373 and has_384:
-                        # Map each well by position
-                        for well_idx in wells_in_batch:
-                            well_position = well_index_to_position(well_idx)
-                            matching_rows = fluorescence_data[fluorescence_data['well_position'] == well_position]
-                            
-                            if len(matching_rows) > 0:
-                                val_373 = matching_rows.iloc[0]['fluorescence_334_373']
-                                val_384 = matching_rows.iloc[0]['fluorescence_334_384']
-                                ratio = val_373 / val_384 if val_384 != 0 else None
-                                
-                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
-                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
-                                well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
-                                
-                                lash_e.logger.info(f"  Mapped {well_position} (idx {well_idx}) -> F373={val_373}, F384={val_384}, ratio={ratio:.3f}")
-                            else:
-                                lash_e.logger.warning(f"  No fluorescence data found for well {well_position} (idx {well_idx})")
-                    else:
-                        lash_e.logger.warning(f"  Missing expected fluorescence columns. Available: {list(fluorescence_data.columns)}")
-                else:
-                    lash_e.logger.warning("  Fluorescence data missing or has unexpected format")
-            else:
-                # Simulation mode - use the already-generated fluorescence data directly
-                # (no need to recalculate - measure_fluorescence already did the simulation)
-                if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0:
-                    # Data is already in correct format with wellplate_index from measure_fluorescence
+            # Unified processing - both hardware and simulation now use wellplate_index format
+            if hasattr(fluorescence_data, 'values') and len(fluorescence_data) > 0 and 'wellplate_index' in fluorescence_data.columns:
+                # Check for fluorescence columns
+                has_373 = 'fluorescence_334_373' in fluorescence_data.columns
+                has_384 = 'fluorescence_334_384' in fluorescence_data.columns
+                has_ratio = 'ratio' in fluorescence_data.columns
+                lash_e.logger.info(f"  Fluorescence columns available: 334_373={has_373}, 334_384={has_384}, ratio={has_ratio}")
+                
+                if has_373 and has_384:
+                    # Map each well by wellplate_index (unified for hardware and simulation)
                     for _, row in fluorescence_data.iterrows():
                         well_idx = int(row['wellplate_index'])  # Ensure integer
                         val_373 = row['fluorescence_334_373']
                         val_384 = row['fluorescence_334_384']
-                        ratio = row['ratio']
+                        ratio = row['ratio'] if has_ratio else (val_373 / val_384 if val_384 != 0 else None)
                         
                         # Map to main DataFrame
                         well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_373'] = val_373
                         well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'fluorescence_334_384'] = val_384
                         well_recipes_df.loc[well_recipes_df['wellplate_index'] == well_idx, 'ratio'] = ratio
+                        
+                        mode_label = "[SIMULATED]" if lash_e.simulate else "[HARDWARE]"
+                        lash_e.logger.info(f"  {mode_label} Mapped idx {well_idx} -> F373={val_373}, F384={val_384}, ratio={ratio:.3f}")
                 else:
-                    lash_e.logger.warning("  Simulated fluorescence data missing or has unexpected format")
+                    lash_e.logger.warning(f"  Missing expected fluorescence columns. Available: {list(fluorescence_data.columns)}")
+            else:
+                available_cols = list(fluorescence_data.columns) if hasattr(fluorescence_data, 'columns') else "unknown"
+                lash_e.logger.warning(f"  Fluorescence data missing wellplate_index column. Available columns: {available_cols}")
     
     return well_recipes_df
 

@@ -892,9 +892,12 @@ class CombinedRackWidget(QScrollArea):
         self.large_vial_grid = large_vial_layout
         self.large_vial_placeholders = {}
         
+        # Clockwise position mapping to match physical robot layout: [3,0][2,1]
+        clockwise_positions = [[3, 0], [2, 1]]
+        
         for row in range(2):
             for col in range(2):
-                pos = row * 2 + col
+                pos = clockwise_positions[row][col]
                 placeholder = ClickableLabel(f"LV-{pos}")
                 placeholder.setAlignment(Qt.AlignCenter)
                 placeholder.setStyleSheet("""
@@ -1067,33 +1070,45 @@ class CombinedRackWidget(QScrollArea):
     def _restore_placeholder(self, location: str, location_index: int):
         """Restore empty placeholder after vial removal."""
         if location == 'large_vial_rack' and location_index < 4:
-            row = location_index // 2
-            col = location_index % 2
-            placeholder = ClickableLabel(f"LV-{location_index}")
-            placeholder.setAlignment(Qt.AlignCenter)
-            placeholder.setStyleSheet("""
-                ClickableLabel {
-                    border: 1px dashed #ccc;
-                    border-radius: 8px;
-                    color: #999;
-                    background-color: #f9f9f9;
-                    min-height: 100px;
-                    min-width: 80px;
-                }
-                ClickableLabel:hover {
-                    background-color: #e8f4fd;
-                    border-color: #0078d4;
-                }
-            """)
-            placeholder.location = location
-            placeholder.location_index = location_index
-            placeholder.clicked.connect(self._on_empty_slot_clicked)
-            # Ensure consistent sizing in grid
-            placeholder.setFixedSize(150, 100)  # Match new wider size
-            placeholder.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            # Use same clockwise mapping as _setup_sections: [3,0][2,1]
+            clockwise_positions = [[3, 0], [2, 1]]
             
-            self.large_vial_grid.addWidget(placeholder, row, col, Qt.AlignCenter)
-            self.large_vial_placeholders[(location, location_index)] = (placeholder, row, col)
+            # Find the correct row, col for this location_index
+            row, col = None, None
+            for r in range(2):
+                for c in range(2):
+                    if clockwise_positions[r][c] == location_index:
+                        row, col = r, c
+                        break
+                if row is not None:
+                    break
+            
+            if row is not None and col is not None:
+                placeholder = ClickableLabel(f"LV-{location_index}")
+                placeholder.setAlignment(Qt.AlignCenter)
+                placeholder.setStyleSheet("""
+                    ClickableLabel {
+                        border: 1px dashed #ccc;
+                        border-radius: 8px;
+                        color: #999;
+                        background-color: #f9f9f9;
+                        min-height: 100px;
+                        min-width: 80px;
+                    }
+                    ClickableLabel:hover {
+                        background-color: #e8f4fd;
+                        border-color: #0078d4;
+                    }
+                """)
+                placeholder.location = location
+                placeholder.location_index = location_index
+                placeholder.clicked.connect(self._on_empty_slot_clicked)
+                # Ensure consistent sizing in grid
+                placeholder.setFixedSize(150, 100)  # Match new wider size
+                placeholder.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+                
+                self.large_vial_grid.addWidget(placeholder, row, col, Qt.AlignCenter)
+                self.large_vial_placeholders[(location, location_index)] = (placeholder, row, col)
             
         elif location == 'photoreactor_array' and location_index == 0:
             placeholder = ClickableLabel("PR-0")
@@ -1185,8 +1200,19 @@ class CombinedRackWidget(QScrollArea):
             
             # Create and add vial widget
             if location == 'large_vial_rack':
-                row = location_index // 2
-                col = location_index % 2
+                # Use same clockwise mapping as _setup_sections: [3,0][2,1]
+                clockwise_positions = [[3, 0], [2, 1]]
+                
+                # Find the correct row, col for this location_index
+                row, col = None, None
+                for r in range(2):
+                    for c in range(2):
+                        if clockwise_positions[r][c] == location_index:
+                            row, col = r, c
+                            break
+                    if row is not None:
+                        break
+                
                 grid_layout = self.large_vial_grid
             elif location == 'photoreactor_array':
                 row, col = 0, 0
@@ -1197,13 +1223,14 @@ class CombinedRackWidget(QScrollArea):
             else:
                 return  # Unknown location
             
-            vial_widget = VialWidget(updated_data)
-            vial_widget.vial_clicked.connect(self._on_vial_clicked)
-            
-            grid_layout.addWidget(vial_widget, row, col)
-            self.vials[key] = vial_widget
-            
-            self.vial_edited.emit(updated_data)
+            if row is not None and col is not None:
+                vial_widget = VialWidget(updated_data)
+                vial_widget.vial_clicked.connect(self._on_vial_clicked)
+                
+                grid_layout.addWidget(vial_widget, row, col)
+                self.vials[key] = vial_widget
+                
+                self.vial_edited.emit(updated_data)
     
     def _get_next_vial_index(self) -> int:
         """Get the next available vial index globally across all racks."""
