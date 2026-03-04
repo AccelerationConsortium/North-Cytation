@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 import slack_agent
 import pipetting_data.embedded_calibration_validation as pipette_validator
+from degradation_spectral_analyzer_program import process_degradation_spectral_data
 
 
 #config params
@@ -196,11 +197,18 @@ def peroxide_workflow(lash_e, assay_reagent='Assay_reagent_1', cof_vial='COF_1',
     if not SIMULATE and cof_output_dir is not None:
         print(f"Starting post-experiment spectral data analysis for {cof_vial}...")
         try:
-            spectral_results = process_workflow_spectral_data(cof_output_dir, lash_e.logger, wavelength1=595, wavelength2=450)
+            # Manual timepoints for peroxide assay (matching the schedule)
+            peroxide_timepoints = [0, 5, 10, 15, 20, 25, 45]  # minutes
+            spectral_results = process_degradation_spectral_data(
+                cof_output_dir, 
+                logger=lash_e.logger, 
+                sample_name=cof_vial,
+                manual_timepoints=peroxide_timepoints
+            )
             if spectral_results:
                 print(f"Spectral analysis completed successfully for {cof_vial}!")
                 print(f"Results saved in: {cof_output_dir / 'processed_data'}")
-                print("Analysis includes 595nm, 450nm, and 450/595 ratio plots")
+                print("Analysis includes 595nm, 450nm, and 595/450 ratio plots (peroxide formation)")
             else:
                 print(f"Spectral analysis failed or no data found for {cof_vial}")
         except Exception as e:

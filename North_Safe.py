@@ -2041,15 +2041,25 @@ class North_Robot(North_Base):
         
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
 
-        # Ensure vial is accessible for pipetting
-        if not self._ensure_vial_accessible_for_pipetting(source_vial_name, use_safe_location):
-            return
+        # Check if source vial has a closed cap that will require uncapping
+        source_vial_needs_uncapping = not self.is_vial_pipetable(source_vial_num)
 
-        #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
         required_tip_type = self.select_pipet_tip(total_tip_vol, specified_tip)
-
-        #Get a tip if we need one
-        self.get_tip_if_needed(required_tip_type)
+        if source_vial_needs_uncapping:
+            # Get pipet tip FIRST to avoid cap-rack interference when uncapping
+            
+            self.get_tip_if_needed(required_tip_type)
+            
+            # Then ensure accessibility (will uncap and hold cap in gripper)
+            if not self._ensure_vial_accessible_for_pipetting(source_vial_name, use_safe_location):
+                return
+        else:
+            # Normal sequence: accessibility first, then pipet tip (for uncapped or open caps)
+            if not self._ensure_vial_accessible_for_pipetting(source_vial_name, use_safe_location):
+                return
+                
+            #Get a tip if we need one
+            self.get_tip_if_needed(required_tip_type)
         
         #Check for an issue with the pipet and the specified amount, pause and send slack message if so
         self.check_if_aspiration_volume_unacceptable(total_tip_vol) 
@@ -2390,6 +2400,17 @@ class North_Robot(North_Base):
         
         dest_vial_clamped = self.get_vial_info(dest_vial_num,'location')=='clamp' #Is the destination vial clamped?
         dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
+
+        # Check if dispensing would exceed vial capacity
+        dest_vial_location = self.get_vial_info(dest_vial_num, 'location')
+        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
+        
+        if max_vial_volume is not None:
+            post_dispense_volume = dest_vial_volume + amount_mL
+            if post_dispense_volume > max_vial_volume:
+                self.pause_after_error(f"Cannot dispense {amount_mL:.3f} mL into vial {self.get_vial_info(dest_vial_num, 'vial_name')}: "
+                                     f"would exceed capacity ({post_dispense_volume:.3f} mL > {max_vial_volume:.3f} mL max)")
+                return
 
         #If the destination vial is at the clamp and you want weight measurement using TRADITIONAL method
         if measure_weight and not continuous_mass_monitoring and dest_vial_clamped:

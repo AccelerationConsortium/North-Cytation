@@ -3,14 +3,13 @@ experiment:
   liquid: DMSO
   description: "Testing calibration across 4 volumes"
   volume_targets_ml:
-  - 0.050
-  - 0.025
   - 0.010
   - 0.005
-  max_total_measurements: 200
-  max_measurements_first_volume: 150
-  num_screening_trials: 6
-  replicates_for_accurate_measurements: 4
+  - 0.002
+  max_total_measurements: 1000
+  max_measurements_first_volume: 800
+  num_screening_trials: 10
+  replicates_for_accurate_measurements: 9
   simulate: false
   random_seed: 7
   hardware_protocol: calibration_protocol_northrobot
@@ -28,7 +27,7 @@ calibration_parameters:
 hardware_parameters:
   aspirate_speed:
     bounds:
-    - 10
+    - 2
     - 20
     default: 10
     type: integer
@@ -37,7 +36,7 @@ hardware_parameters:
     round_to_nearest: 1
   dispense_speed:
     bounds:
-    - 5
+    - 2
     - 20
     default: 10
     type: integer
@@ -61,6 +60,16 @@ hardware_parameters:
     type: float
     time_affecting: false
     description: Pre-aspiration air volume (mL)
+    volume_dependent: true
+    round_to_nearest: 0.001
+  blowout_vol:
+    bounds:
+    - 0.0
+    - 0.3
+    default: 0.0
+    type: float
+    time_affecting: false
+    description: Blowout volume (mL)
     volume_dependent: true
     round_to_nearest: 0.001
 output:
@@ -124,7 +133,7 @@ optimization:
     enabled: false
     config_path: null
   stopping_criteria:
-    min_good_trials: 6
+    min_good_trials: 10
   use_range_based_variability: false
 screening:
   use_llm_suggestions: false
