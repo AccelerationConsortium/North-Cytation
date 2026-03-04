@@ -1,0 +1,1740 @@
+2026-03-02 11:46:20,425 - INFO - Workflow config loaded: Degradation_serena
+2026-03-02 11:46:20,425 - INFO - Config keys updated: 13 (EXPERIMENT_REPEATS, INPUT_VIAL_STATUS_FILE, CYTATION_PROTOCOL_FILE, SCHEDULE_FILE, SIMULATE, VALIDATE_LIQUIDS, PREP_SOLUTIONS, EXPERIMENT_NAME, ACID_MOLAR_EXCESS, WATER_VOLUME, REPLICATES, ACID_LIBRARY, CURRENT_WELL_COUNT)
+2026-03-02 11:46:20,425 - INFO - SIMULATE mode: True
+2026-03-02 11:46:20,425 - INFO - Launching status review GUI...
+2026-03-02 11:46:20,811 - INFO - Detected workflow name: Degradation_serena
+2026-03-02 11:46:21,283 - INFO - Config editor loaded for workflow: Degradation_serena
+2026-03-02 11:46:28,594 - INFO - User selected: Run Workflow
+2026-03-02 11:46:28,605 - INFO - Status review completed - proceeding with hardware initialization
+2026-03-02 11:46:28,616 - DEBUG - Reloading config after status check to get updated values
+2026-03-02 11:46:28,633 - INFO - Config Manager: Updated 13 workflow constants from Degradation_serena.yaml
+2026-03-02 11:46:28,638 - INFO - Initializing North Robot...
+2026-03-02 11:46:28,638 - DEBUG - Loading robot configuration files...
+2026-03-02 11:46:28,653 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-03-02 11:46:28,656 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-03-02 11:46:28,665 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-03-02 11:46:28,671 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-03-02 11:46:28,679 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-03-02 11:46:28,679 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-03-02 11:46:28,679 - DEBUG - Loading robot state files...
+2026-03-02 11:46:28,721 - DEBUG - Loaded vial data from ../utoronto_demo/status/degradation_vial_status.csv
+2026-03-02 11:46:28,722 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-03-02 11:46:28,731 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-03-02 11:46:28,731 - DEBUG - Robot status loaded successfully
+2026-03-02 11:46:28,731 - INFO - Physical initialization of North Robot...
+2026-03-02 11:46:28,731 - DEBUG - Loading pumps from YAML configuration...
+2026-03-02 11:46:28,731 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-03-02 11:46:28,731 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-03-02 11:46:28,731 - INFO - Moving robot to home position
+2026-03-02 11:46:28,731 - DEBUG - Initializing centrifuge controller...
+2026-03-02 11:46:28,739 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='2765801691824'>
+2026-03-02 11:46:28,739 - INFO - Initializing North Track...
+2026-03-02 11:46:28,739 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-03-02 11:46:28,739 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-03-02 11:46:28,739 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-03-02 11:46:28,739 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-03-02 11:46:28,755 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-03-02 11:46:28,755 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-03-02 11:46:28,755 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-03-02 11:46:28,764 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-03-02 11:46:28,766 - DEBUG - Moving North Track to home position
+2026-03-02 11:46:28,766 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-02 11:46:28,766 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-02 11:46:28,777 - INFO - Running compact liquid validation...
+2026-03-02 11:46:28,782 - INFO - Moving vial water to clamp: 0
+2026-03-02 11:46:28,782 - DEBUG - Grabbing vial 5 with index 5
+2026-03-02 11:46:28,783 - DEBUG - Dropping off vial 5 at location clamp with index 0
+2026-03-02 11:46:28,788 - INFO -     Conditioning tip with water: 3 cycles of 10.0uL (fast dummy params)
+2026-03-02 11:46:28,789 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,789 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,789 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:28,789 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:28,789 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:28,789 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:28,789 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:28,789 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,789 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,789 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:28,789 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:28,791 - DEBUG - Selected small_tip for volume 0.010 mL
+2026-03-02 11:46:28,791 - INFO - Getting small_tip (pipet number 35) from rack: small_tip_rack_1
+2026-03-02 11:46:28,793 - INFO - Pipetting from vial water, amount: 0.010 mL
+2026-03-02 11:46:28,793 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:28,793 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:28,793 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:28,793 - DEBUG - Aspirating 0.010 mL then waiting 0.0 s
+2026-03-02 11:46:28,793 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,793 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,793 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:28,793 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:28,793 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:28,793 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:28,793 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:28,793 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,793 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,793 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:28,793 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:28,793 - INFO - Pipetting into vial water, amount: 0.010 mL
+2026-03-02 11:46:28,793 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:28,793 - DEBUG - Dispensing 0.010 mL then waiting 0.0 s
+2026-03-02 11:46:28,793 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:28,805 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,805 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:28,805 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:28,805 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:28,805 - DEBUG - Selected small_tip for volume 0.010 mL
+2026-03-02 11:46:28,805 - INFO - Pipetting from vial water, amount: 0.010 mL
+2026-03-02 11:46:28,805 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:28,805 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:28,805 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:28,805 - DEBUG - Aspirating 0.010 mL then waiting 0.0 s
+2026-03-02 11:46:28,805 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,805 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:28,805 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:28,805 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:28,805 - INFO - Pipetting into vial water, amount: 0.010 mL
+2026-03-02 11:46:28,805 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:28,805 - DEBUG - Dispensing 0.010 mL then waiting 0.0 s
+2026-03-02 11:46:28,805 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:28,805 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,805 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:28,805 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:28,805 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:28,805 - DEBUG - Selected small_tip for volume 0.010 mL
+2026-03-02 11:46:28,805 - INFO - Pipetting from vial water, amount: 0.010 mL
+2026-03-02 11:46:28,805 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:28,805 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:28,805 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:28,805 - DEBUG - Aspirating 0.010 mL then waiting 0.0 s
+2026-03-02 11:46:28,805 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,805 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:28,805 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:28,805 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:28,805 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:28,820 - INFO - Pipetting into vial water, amount: 0.010 mL
+2026-03-02 11:46:28,822 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:28,823 - DEBUG - Dispensing 0.010 mL then waiting 0.0 s
+2026-03-02 11:46:28,823 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:28,823 - INFO -     Tip conditioning complete for water
+2026-03-02 11:46:28,824 - INFO - Vial water already at clamp index 0, no move needed
+2026-03-02 11:46:28,831 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:28,831 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:28,831 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:28,831 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:28,831 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:28,831 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,832 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,832 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:28,832 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:28,832 - INFO - Dispensing 0.010 mL from water to water
+2026-03-02 11:46:28,838 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:28,838 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:28,838 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:28,838 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:28,838 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:28,838 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,838 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,838 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:28,839 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:28,839 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,839 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,839 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-03-02 11:46:28,839 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:28,839 - DEBUG - Applied object param dispense_speed=6
+2026-03-02 11:46:28,839 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-02 11:46:28,839 - DEBUG - Applied object param overaspirate_vol=0.0020501050000000004
+2026-03-02 11:46:28,839 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,839 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,839 - DEBUG - Applied object param pre_asp_air_vol=0.27
+2026-03-02 11:46:28,839 - DEBUG - Applied object param retract_speed=5
+2026-03-02 11:46:28,841 - DEBUG - Selected small_tip for volume 0.012 mL
+2026-03-02 11:46:28,842 - INFO - Pipetting from vial water, amount: 0.010 mL
+2026-03-02 11:46:28,842 - INFO - Additional volume from calibration, amount: 0.002 mL
+2026-03-02 11:46:28,843 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:28,843 - DEBUG - Aspirating 0.270 mL then waiting 0 s
+2026-03-02 11:46:28,843 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:28,843 - DEBUG - Aspirating 0.012 mL then waiting 0.2 s
+2026-03-02 11:46:28,847 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:28,848 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,848 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,848 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-03-02 11:46:28,848 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:28,848 - DEBUG - Applied object param dispense_speed=6
+2026-03-02 11:46:28,848 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-02 11:46:28,848 - DEBUG - Applied object param overaspirate_vol=0.0020501050000000004
+2026-03-02 11:46:28,848 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,848 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,848 - DEBUG - Applied object param pre_asp_air_vol=0.27
+2026-03-02 11:46:28,848 - DEBUG - Applied object param retract_speed=5
+2026-03-02 11:46:28,849 - INFO - Pipetting into vial water, amount: 0.010 mL
+2026-03-02 11:46:28,850 - DEBUG - Adjusting pump 0 speed to 6
+2026-03-02 11:46:28,850 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:28,867 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:28,899 - DEBUG - Dispensing 0.282 mL then waiting 1.5 s
+2026-03-02 11:46:28,907 - INFO - Dispensing took 0.008s, collecting post-dispense baseline
+2026-03-02 11:46:28,937 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:28,944 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:28,944 - INFO - Dispensing 0.010 mL from water to water
+2026-03-02 11:46:28,950 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:28,951 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,951 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,951 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-03-02 11:46:28,951 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:28,951 - DEBUG - Applied object param dispense_speed=6
+2026-03-02 11:46:28,951 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-02 11:46:28,951 - DEBUG - Applied object param overaspirate_vol=0.0020501050000000004
+2026-03-02 11:46:28,951 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,951 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,951 - DEBUG - Applied object param pre_asp_air_vol=0.27
+2026-03-02 11:46:28,951 - DEBUG - Applied object param retract_speed=5
+2026-03-02 11:46:28,952 - DEBUG - Selected small_tip for volume 0.012 mL
+2026-03-02 11:46:28,952 - INFO - Pipetting from vial water, amount: 0.010 mL
+2026-03-02 11:46:28,952 - INFO - Additional volume from calibration, amount: 0.002 mL
+2026-03-02 11:46:28,952 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:28,952 - DEBUG - Aspirating 0.270 mL then waiting 0 s
+2026-03-02 11:46:28,952 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:28,952 - DEBUG - Aspirating 0.012 mL then waiting 0.2 s
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:28,956 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:28,956 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:28,956 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-03-02 11:46:28,956 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:28,956 - DEBUG - Applied object param dispense_speed=6
+2026-03-02 11:46:28,956 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-02 11:46:28,956 - DEBUG - Applied object param overaspirate_vol=0.0020501050000000004
+2026-03-02 11:46:28,956 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:28,956 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:28,956 - DEBUG - Applied object param pre_asp_air_vol=0.27
+2026-03-02 11:46:28,956 - DEBUG - Applied object param retract_speed=5
+2026-03-02 11:46:28,956 - INFO - Pipetting into vial water, amount: 0.010 mL
+2026-03-02 11:46:28,956 - DEBUG - Adjusting pump 0 speed to 6
+2026-03-02 11:46:28,956 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:28,970 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:28,995 - DEBUG - Dispensing 0.282 mL then waiting 1.5 s
+2026-03-02 11:46:28,995 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:29,006 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:29,014 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:29,014 - INFO - Dispensing 0.010 mL from water to water
+2026-03-02 11:46:29,018 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:29,019 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:29,019 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:29,019 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-03-02 11:46:29,019 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:29,019 - DEBUG - Applied object param dispense_speed=6
+2026-03-02 11:46:29,019 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-02 11:46:29,019 - DEBUG - Applied object param overaspirate_vol=0.0020501050000000004
+2026-03-02 11:46:29,019 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:29,019 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:29,019 - DEBUG - Applied object param pre_asp_air_vol=0.27
+2026-03-02 11:46:29,019 - DEBUG - Applied object param retract_speed=5
+2026-03-02 11:46:29,020 - DEBUG - Selected small_tip for volume 0.012 mL
+2026-03-02 11:46:29,022 - INFO - Pipetting from vial water, amount: 0.010 mL
+2026-03-02 11:46:29,022 - INFO - Additional volume from calibration, amount: 0.002 mL
+2026-03-02 11:46:29,022 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:29,022 - DEBUG - Aspirating 0.270 mL then waiting 0 s
+2026-03-02 11:46:29,022 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:29,022 - DEBUG - Aspirating 0.012 mL then waiting 0.2 s
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated aspirate_speed=15 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated dispense_speed=6 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated aspirate_wait_time=0.2 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated dispense_wait_time=1.5 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated retract_speed=5 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated overaspirate_vol=0.0020501050000000004 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Using calibrated pre_asp_air_vol=0.27 for water at 0.010mL
+2026-03-02 11:46:29,022 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:29,022 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:29,022 - DEBUG - Applied object param aspirate_wait_time=0.2
+2026-03-02 11:46:29,022 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:29,022 - DEBUG - Applied object param dispense_speed=6
+2026-03-02 11:46:29,022 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-02 11:46:29,022 - DEBUG - Applied object param overaspirate_vol=0.0020501050000000004
+2026-03-02 11:46:29,022 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:29,022 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:29,022 - DEBUG - Applied object param pre_asp_air_vol=0.27
+2026-03-02 11:46:29,022 - DEBUG - Applied object param retract_speed=5
+2026-03-02 11:46:29,022 - INFO - Pipetting into vial water, amount: 0.010 mL
+2026-03-02 11:46:29,022 - DEBUG - Adjusting pump 0 speed to 6
+2026-03-02 11:46:29,032 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:29,040 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:29,072 - DEBUG - Dispensing 0.282 mL then waiting 1.5 s
+2026-03-02 11:46:29,090 - INFO - Dispensing took 0.018s, collecting post-dispense baseline
+2026-03-02 11:46:29,122 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:30,575 - INFO - Removing pipet
+2026-03-02 11:46:30,584 - INFO - Returning vial water to home location: main_8mL_rack index 8
+2026-03-02 11:46:30,586 - INFO - Moving vial water to main_8mL_rack: 8
+2026-03-02 11:46:30,586 - DEBUG - Grabbing vial 5 with index 5
+2026-03-02 11:46:30,587 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 8
+2026-03-02 11:46:30,589 - INFO -   water (default params): R^2=1.000, Accuracy=-100.0%
+2026-03-02 11:46:30,593 - INFO - Moving vial 2MeTHF to clamp: 0
+2026-03-02 11:46:30,594 - DEBUG - Grabbing vial 6 with index 6
+2026-03-02 11:46:30,595 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-02 11:46:30,595 - INFO -     Conditioning tip with 2MeTHF: 3 cycles of 600.0uL (fast dummy params)
+2026-03-02 11:46:30,595 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:30,595 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:30,595 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,595 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:30,595 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:30,595 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,595 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,595 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:30,595 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,595 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:30,595 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,598 - DEBUG - Vial move required for pipetting
+2026-03-02 11:46:30,598 - INFO - Moving vial 2MeTHF to safe pipetting location
+2026-03-02 11:46:30,598 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-02 11:46:30,598 - DEBUG - Removing cap from clamped vial
+2026-03-02 11:46:30,602 - DEBUG - Selected large_tip for volume 0.600 mL
+2026-03-02 11:46:30,602 - INFO - Getting large_tip (pipet number 23) from rack: large_tip_rack_1
+2026-03-02 11:46:30,604 - INFO - Pipetting from vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,605 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:30,606 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:30,606 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:30,606 - DEBUG - Aspirating 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,606 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:30,606 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:30,606 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,606 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:30,606 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:30,606 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,607 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,607 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:30,607 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,607 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:30,607 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,608 - INFO - Pipetting into vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,609 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:30,610 - DEBUG - Dispensing 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,610 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:30,611 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:30,611 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:30,611 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,611 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:30,611 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:30,611 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,611 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,611 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:30,611 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,611 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:30,611 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,612 - DEBUG - Selected large_tip for volume 0.600 mL
+2026-03-02 11:46:30,613 - INFO - Pipetting from vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,614 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:30,615 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:30,615 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:30,615 - DEBUG - Aspirating 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,616 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:30,616 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:30,616 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:30,616 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,616 - INFO - Pipetting into vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,616 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:30,616 - DEBUG - Dispensing 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,616 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:30,616 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:30,616 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:30,616 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:30,616 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:30,616 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,616 - DEBUG - Selected large_tip for volume 0.600 mL
+2026-03-02 11:46:30,616 - INFO - Pipetting from vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,616 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:30,623 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:30,623 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:30,623 - DEBUG - Aspirating 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,623 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:30,623 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:30,623 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,623 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:30,623 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:30,623 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,623 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,623 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:30,624 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,624 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:30,624 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,625 - INFO - Pipetting into vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,626 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:30,627 - DEBUG - Dispensing 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,627 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:30,627 - INFO -     Tip conditioning complete for 2MeTHF
+2026-03-02 11:46:30,629 - INFO - Vial 2MeTHF already at clamp index 0, no move needed
+2026-03-02 11:46:30,630 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,630 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,630 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,630 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,630 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,630 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,630 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,630 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,630 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,630 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,630 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,630 - INFO - Dispensing 0.600 mL from 2MeTHF to 2MeTHF
+2026-03-02 11:46:30,632 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,632 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,632 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,632 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,632 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,632 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,632 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,632 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,632 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,632 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,632 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,633 - DEBUG - Selected large_tip for volume 0.650 mL
+2026-03-02 11:46:30,634 - INFO - Pipetting from vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,634 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:30,635 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:30,635 - DEBUG - Aspirating 0.300 mL then waiting 0 s
+2026-03-02 11:46:30,635 - DEBUG - Adjusting pump 0 speed to 13
+2026-03-02 11:46:30,635 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,635 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,635 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,636 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,636 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,636 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,636 - DEBUG - Aspirating 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,636 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:30,637 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,637 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,637 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,637 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,637 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,637 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,637 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,637 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,637 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,637 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,637 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,638 - INFO - Pipetting into vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,638 - DEBUG - Adjusting pump 0 speed to 13
+2026-03-02 11:46:30,639 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:30,657 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:30,690 - DEBUG - Dispensing 0.950 mL then waiting 0.0 s
+2026-03-02 11:46:30,706 - INFO - Dispensing took 0.016s, collecting post-dispense baseline
+2026-03-02 11:46:30,722 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:30,726 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,726 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,726 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,726 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,726 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,726 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,726 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,726 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,726 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,726 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,726 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,726 - INFO - Dispensing 0.600 mL from 2MeTHF to 2MeTHF
+2026-03-02 11:46:30,728 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,728 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,728 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,728 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,728 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,728 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,728 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,728 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,728 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,728 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,728 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,728 - DEBUG - Selected large_tip for volume 0.650 mL
+2026-03-02 11:46:30,729 - INFO - Pipetting from vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,730 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:30,731 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:30,731 - DEBUG - Aspirating 0.300 mL then waiting 0 s
+2026-03-02 11:46:30,731 - DEBUG - Adjusting pump 0 speed to 13
+2026-03-02 11:46:30,731 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,731 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,731 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,731 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,732 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,732 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,732 - DEBUG - Aspirating 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,732 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:30,733 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,733 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,733 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,733 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,733 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,733 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,733 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,733 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,733 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,733 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,733 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,734 - INFO - Pipetting into vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,734 - DEBUG - Adjusting pump 0 speed to 13
+2026-03-02 11:46:30,735 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:30,756 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:30,789 - DEBUG - Dispensing 0.950 mL then waiting 0.0 s
+2026-03-02 11:46:30,806 - INFO - Dispensing took 0.017s, collecting post-dispense baseline
+2026-03-02 11:46:30,822 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:30,825 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,825 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,825 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,825 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,825 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,825 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,825 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,825 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,825 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,825 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,825 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,825 - INFO - Dispensing 0.600 mL from 2MeTHF to 2MeTHF
+2026-03-02 11:46:30,827 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,827 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,827 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,827 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,827 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,827 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,827 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,827 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,827 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,827 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,827 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,827 - DEBUG - Selected large_tip for volume 0.650 mL
+2026-03-02 11:46:30,829 - INFO - Pipetting from vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,830 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:30,830 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:30,830 - DEBUG - Aspirating 0.300 mL then waiting 0 s
+2026-03-02 11:46:30,830 - DEBUG - Adjusting pump 0 speed to 13
+2026-03-02 11:46:30,830 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,830 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,830 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,830 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,830 - DEBUG - Aspirating 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,830 - DEBUG - Dispensing 0.600 mL then waiting 0 s
+2026-03-02 11:46:30,832 - DEBUG - Aspirating 0.600 mL then waiting 0.0 s
+2026-03-02 11:46:30,832 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:30,832 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:30,832 - DEBUG - Applied object param aspirate_speed=13
+2026-03-02 11:46:30,832 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:30,832 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:30,832 - DEBUG - Applied object param dispense_speed=13
+2026-03-02 11:46:30,832 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:30,832 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:30,832 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:30,832 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:30,833 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-02 11:46:30,833 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:30,833 - INFO - Pipetting into vial 2MeTHF, amount: 0.600 mL
+2026-03-02 11:46:30,834 - DEBUG - Adjusting pump 0 speed to 13
+2026-03-02 11:46:30,834 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:30,856 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:30,890 - DEBUG - Dispensing 0.950 mL then waiting 0.0 s
+2026-03-02 11:46:30,906 - INFO - Dispensing took 0.016s, collecting post-dispense baseline
+2026-03-02 11:46:30,923 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,119 - INFO - Removing pipet
+2026-03-02 11:46:31,119 - INFO - Returning vial 2MeTHF to home location: main_8mL_rack index 18
+2026-03-02 11:46:31,119 - DEBUG - Recapping clamped vial
+2026-03-02 11:46:31,119 - INFO - Moving vial 2MeTHF to main_8mL_rack: 18
+2026-03-02 11:46:31,119 - DEBUG - Grabbing vial 6 with index 6
+2026-03-02 11:46:31,132 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 18
+2026-03-02 11:46:31,134 - INFO -   2MeTHF (custom params): R^2=1.000, Accuracy=-100.0%
+2026-03-02 11:46:31,137 - INFO - Moving vial TFA to clamp: 0
+2026-03-02 11:46:31,137 - DEBUG - Grabbing vial 4 with index 4
+2026-03-02 11:46:31,139 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2026-03-02 11:46:31,140 - INFO -     Conditioning tip with TFA: 3 cycles of 25.0uL (fast dummy params)
+2026-03-02 11:46:31,140 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,140 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:31,141 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:31,141 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:31,141 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:31,141 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,141 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:31,141 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,142 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,142 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:31,142 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,143 - DEBUG - Vial move required for pipetting
+2026-03-02 11:46:31,144 - INFO - Moving vial TFA to safe pipetting location
+2026-03-02 11:46:31,145 - INFO - Vial 4 already at clamp index 0, no move needed
+2026-03-02 11:46:31,145 - DEBUG - Removing cap from clamped vial
+2026-03-02 11:46:31,146 - DEBUG - Selected small_tip for volume 0.025 mL
+2026-03-02 11:46:31,146 - INFO - Getting small_tip (pipet number 36) from rack: small_tip_rack_1
+2026-03-02 11:46:31,148 - INFO - Pipetting from vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,148 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:31,150 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,150 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:31,151 - DEBUG - Aspirating 0.025 mL then waiting 0.0 s
+2026-03-02 11:46:31,151 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,151 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:31,151 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:31,151 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:31,151 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:31,151 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,151 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:31,151 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,151 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,151 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:31,151 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,152 - INFO - Pipetting into vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,153 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:31,153 - DEBUG - Dispensing 0.025 mL then waiting 0.0 s
+2026-03-02 11:46:31,153 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:31,154 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,154 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:31,154 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:31,154 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:31,154 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:31,154 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,154 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:31,154 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,154 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,154 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:31,154 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,155 - DEBUG - Selected small_tip for volume 0.025 mL
+2026-03-02 11:46:31,157 - INFO - Pipetting from vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,157 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:31,158 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,158 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:31,158 - DEBUG - Aspirating 0.025 mL then waiting 0.0 s
+2026-03-02 11:46:31,158 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,158 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:31,158 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:31,158 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:31,158 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:31,158 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,158 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:31,158 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,158 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,158 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:31,158 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,158 - INFO - Pipetting into vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,158 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:31,163 - DEBUG - Dispensing 0.025 mL then waiting 0.0 s
+2026-03-02 11:46:31,163 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:31,163 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,164 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:31,164 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:31,164 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:31,164 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:31,164 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,164 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:31,164 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,164 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,164 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:31,164 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,165 - DEBUG - Selected small_tip for volume 0.025 mL
+2026-03-02 11:46:31,166 - INFO - Pipetting from vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,166 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:31,167 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,167 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:31,167 - DEBUG - Aspirating 0.025 mL then waiting 0.0 s
+2026-03-02 11:46:31,167 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,168 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:31,168 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:31,168 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:31,168 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:31,168 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,168 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:31,168 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,168 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,168 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:31,168 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,168 - INFO - Pipetting into vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,168 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:31,168 - DEBUG - Dispensing 0.025 mL then waiting 0.0 s
+2026-03-02 11:46:31,168 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:31,168 - INFO -     Tip conditioning complete for TFA
+2026-03-02 11:46:31,172 - INFO - Vial TFA already at clamp index 0, no move needed
+2026-03-02 11:46:31,178 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,178 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,178 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,178 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,178 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,178 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,178 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,178 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,178 - INFO - Dispensing 0.025 mL from TFA to TFA
+2026-03-02 11:46:31,182 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,182 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,183 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,183 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,183 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,183 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,183 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,183 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,183 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,183 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,183 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,183 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,183 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,183 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,183 - DEBUG - Applied object param overaspirate_vol=-0.00022414588339273115
+2026-03-02 11:46:31,183 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,183 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,183 - DEBUG - Applied object param pre_asp_air_vol=0.12
+2026-03-02 11:46:31,183 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,184 - DEBUG - Selected small_tip for volume 0.025 mL
+2026-03-02 11:46:31,185 - INFO - Pipetting from vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,185 - INFO - Additional volume from calibration, amount: -0.000 mL
+2026-03-02 11:46:31,185 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,185 - DEBUG - Aspirating 0.120 mL then waiting 0 s
+2026-03-02 11:46:31,185 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,185 - DEBUG - Aspirating 0.025 mL then waiting 2.2 s
+2026-03-02 11:46:31,189 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,189 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,189 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,189 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,189 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,189 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,189 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,189 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,189 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,189 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,189 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,189 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,189 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,189 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,189 - DEBUG - Applied object param overaspirate_vol=-0.00022414588339273115
+2026-03-02 11:46:31,191 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,191 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,191 - DEBUG - Applied object param pre_asp_air_vol=0.12
+2026-03-02 11:46:31,191 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,192 - INFO - Pipetting into vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,192 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,193 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,208 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,239 - DEBUG - Dispensing 0.145 mL then waiting 0.0 s
+2026-03-02 11:46:31,239 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:31,257 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,262 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,262 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,263 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,263 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,263 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,263 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,263 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,263 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,263 - INFO - Dispensing 0.025 mL from TFA to TFA
+2026-03-02 11:46:31,267 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,267 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,267 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,267 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,267 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,267 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,267 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,267 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,267 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,267 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,267 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,267 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,267 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,267 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,267 - DEBUG - Applied object param overaspirate_vol=-0.00022414588339273115
+2026-03-02 11:46:31,267 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,268 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,268 - DEBUG - Applied object param pre_asp_air_vol=0.12
+2026-03-02 11:46:31,268 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,268 - DEBUG - Selected small_tip for volume 0.025 mL
+2026-03-02 11:46:31,269 - INFO - Pipetting from vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,269 - INFO - Additional volume from calibration, amount: -0.000 mL
+2026-03-02 11:46:31,270 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,270 - DEBUG - Aspirating 0.120 mL then waiting 0 s
+2026-03-02 11:46:31,270 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,270 - DEBUG - Aspirating 0.025 mL then waiting 2.2 s
+2026-03-02 11:46:31,273 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,273 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,274 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,274 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,274 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,274 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,274 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,274 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,274 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,274 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,274 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,274 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,274 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,274 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,274 - DEBUG - Applied object param overaspirate_vol=-0.00022414588339273115
+2026-03-02 11:46:31,274 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,274 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,274 - DEBUG - Applied object param pre_asp_air_vol=0.12
+2026-03-02 11:46:31,274 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,275 - INFO - Pipetting into vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,275 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,277 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,289 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,307 - DEBUG - Dispensing 0.145 mL then waiting 0.0 s
+2026-03-02 11:46:31,323 - INFO - Dispensing took 0.016s, collecting post-dispense baseline
+2026-03-02 11:46:31,341 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,345 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,345 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,345 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,345 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,345 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,345 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,345 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,347 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,347 - INFO - Dispensing 0.025 mL from TFA to TFA
+2026-03-02 11:46:31,350 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,350 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,350 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,350 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,350 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,350 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,350 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,350 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,350 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,350 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,350 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,350 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,350 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,350 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,350 - DEBUG - Applied object param overaspirate_vol=-0.00022414588339273115
+2026-03-02 11:46:31,350 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,350 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,351 - DEBUG - Applied object param pre_asp_air_vol=0.12
+2026-03-02 11:46:31,351 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,351 - DEBUG - Selected small_tip for volume 0.025 mL
+2026-03-02 11:46:31,352 - INFO - Pipetting from vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,352 - INFO - Additional volume from calibration, amount: -0.000 mL
+2026-03-02 11:46:31,353 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,353 - DEBUG - Aspirating 0.120 mL then waiting 0 s
+2026-03-02 11:46:31,353 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,353 - DEBUG - Aspirating 0.025 mL then waiting 2.2 s
+2026-03-02 11:46:31,356 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.025mL
+2026-03-02 11:46:31,356 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.025mL
+2026-03-02 11:46:31,356 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.025mL
+2026-03-02 11:46:31,356 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,356 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,356 - DEBUG - Using calibrated overaspirate_vol=-0.00022414588339273115 for TFA at 0.025mL
+2026-03-02 11:46:31,357 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.025mL
+2026-03-02 11:46:31,357 - DEBUG - Using calibrated pre_asp_air_vol=0.12 for TFA at 0.025mL
+2026-03-02 11:46:31,357 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,357 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,357 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,357 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,357 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,357 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,357 - DEBUG - Applied object param overaspirate_vol=-0.00022414588339273115
+2026-03-02 11:46:31,357 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,357 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,357 - DEBUG - Applied object param pre_asp_air_vol=0.12
+2026-03-02 11:46:31,357 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,358 - INFO - Pipetting into vial TFA, amount: 0.025 mL
+2026-03-02 11:46:31,358 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,360 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,375 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,406 - DEBUG - Dispensing 0.145 mL then waiting 0.0 s
+2026-03-02 11:46:31,423 - INFO - Dispensing took 0.017s, collecting post-dispense baseline
+2026-03-02 11:46:31,440 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,446 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,446 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,446 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,446 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,446 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,446 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,446 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,446 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,446 - INFO - Dispensing 0.015 mL from TFA to TFA
+2026-03-02 11:46:31,450 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,450 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,450 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,450 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,450 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,450 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,450 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,450 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,450 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,450 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,450 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,450 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,450 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,451 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,451 - DEBUG - Applied object param overaspirate_vol=-5.572541221284868e-05
+2026-03-02 11:46:31,451 - DEBUG - Applied object param post_asp_air_vol=0.025
+2026-03-02 11:46:31,451 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,451 - DEBUG - Applied object param pre_asp_air_vol=0.21
+2026-03-02 11:46:31,451 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,451 - DEBUG - Selected small_tip for volume 0.040 mL
+2026-03-02 11:46:31,452 - INFO - Pipetting from vial TFA, amount: 0.015 mL
+2026-03-02 11:46:31,452 - INFO - Additional volume from calibration, amount: -0.000 mL
+2026-03-02 11:46:31,453 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,453 - DEBUG - Aspirating 0.210 mL then waiting 0 s
+2026-03-02 11:46:31,453 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,453 - DEBUG - Aspirating 0.015 mL then waiting 2.2 s
+2026-03-02 11:46:31,453 - DEBUG - Aspirating 0.025 mL then waiting 0 s
+2026-03-02 11:46:31,456 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,456 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,456 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,456 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,456 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,457 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,457 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,457 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,457 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,457 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,457 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,457 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,457 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,457 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,457 - DEBUG - Applied object param overaspirate_vol=-5.572541221284868e-05
+2026-03-02 11:46:31,457 - DEBUG - Applied object param post_asp_air_vol=0.025
+2026-03-02 11:46:31,457 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,457 - DEBUG - Applied object param pre_asp_air_vol=0.21
+2026-03-02 11:46:31,457 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,459 - INFO - Pipetting into vial TFA, amount: 0.015 mL
+2026-03-02 11:46:31,460 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,461 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,474 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,507 - DEBUG - Dispensing 0.250 mL then waiting 0.0 s
+2026-03-02 11:46:31,524 - INFO - Dispensing took 0.017s, collecting post-dispense baseline
+2026-03-02 11:46:31,540 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,545 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,545 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,545 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,545 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,545 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,545 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,545 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,545 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,545 - INFO - Dispensing 0.015 mL from TFA to TFA
+2026-03-02 11:46:31,549 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,549 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,549 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,549 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,549 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,549 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,549 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,549 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,549 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,549 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,549 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,549 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,549 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,549 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,549 - DEBUG - Applied object param overaspirate_vol=-5.572541221284868e-05
+2026-03-02 11:46:31,549 - DEBUG - Applied object param post_asp_air_vol=0.025
+2026-03-02 11:46:31,549 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,549 - DEBUG - Applied object param pre_asp_air_vol=0.21
+2026-03-02 11:46:31,550 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,550 - DEBUG - Selected small_tip for volume 0.040 mL
+2026-03-02 11:46:31,551 - INFO - Pipetting from vial TFA, amount: 0.015 mL
+2026-03-02 11:46:31,551 - INFO - Additional volume from calibration, amount: -0.000 mL
+2026-03-02 11:46:31,552 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,552 - DEBUG - Aspirating 0.210 mL then waiting 0 s
+2026-03-02 11:46:31,552 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,552 - DEBUG - Aspirating 0.015 mL then waiting 2.2 s
+2026-03-02 11:46:31,552 - DEBUG - Aspirating 0.025 mL then waiting 0 s
+2026-03-02 11:46:31,552 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,552 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,552 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,552 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,552 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,552 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,552 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,552 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,552 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,552 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,556 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,556 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,556 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,556 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,556 - DEBUG - Applied object param overaspirate_vol=-5.572541221284868e-05
+2026-03-02 11:46:31,556 - DEBUG - Applied object param post_asp_air_vol=0.025
+2026-03-02 11:46:31,556 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,556 - DEBUG - Applied object param pre_asp_air_vol=0.21
+2026-03-02 11:46:31,556 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,557 - INFO - Pipetting into vial TFA, amount: 0.015 mL
+2026-03-02 11:46:31,557 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,559 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,574 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,590 - DEBUG - Dispensing 0.250 mL then waiting 0.0 s
+2026-03-02 11:46:31,590 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:31,606 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,611 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,611 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,611 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,611 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,611 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,611 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,611 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,611 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,612 - INFO - Dispensing 0.015 mL from TFA to TFA
+2026-03-02 11:46:31,613 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,613 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,613 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,613 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,613 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,613 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,613 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,613 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,613 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,613 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,613 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,613 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,613 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,613 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,613 - DEBUG - Applied object param overaspirate_vol=-5.572541221284868e-05
+2026-03-02 11:46:31,613 - DEBUG - Applied object param post_asp_air_vol=0.025
+2026-03-02 11:46:31,613 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,613 - DEBUG - Applied object param pre_asp_air_vol=0.21
+2026-03-02 11:46:31,613 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,613 - DEBUG - Selected small_tip for volume 0.040 mL
+2026-03-02 11:46:31,613 - INFO - Pipetting from vial TFA, amount: 0.015 mL
+2026-03-02 11:46:31,613 - INFO - Additional volume from calibration, amount: -0.000 mL
+2026-03-02 11:46:31,613 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,613 - DEBUG - Aspirating 0.210 mL then waiting 0 s
+2026-03-02 11:46:31,613 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,613 - DEBUG - Aspirating 0.015 mL then waiting 2.2 s
+2026-03-02 11:46:31,613 - DEBUG - Aspirating 0.025 mL then waiting 0 s
+2026-03-02 11:46:31,623 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.015mL
+2026-03-02 11:46:31,623 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.015mL
+2026-03-02 11:46:31,623 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.015mL
+2026-03-02 11:46:31,623 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,623 - DEBUG - Using calibrated post_asp_air_vol=0.025 for TFA at 0.015mL
+2026-03-02 11:46:31,623 - DEBUG - Using calibrated overaspirate_vol=-5.572541221284868e-05 for TFA at 0.015mL
+2026-03-02 11:46:31,623 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.015mL
+2026-03-02 11:46:31,623 - DEBUG - Using calibrated pre_asp_air_vol=0.21 for TFA at 0.015mL
+2026-03-02 11:46:31,623 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,623 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,624 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,624 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,624 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,624 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,624 - DEBUG - Applied object param overaspirate_vol=-5.572541221284868e-05
+2026-03-02 11:46:31,624 - DEBUG - Applied object param post_asp_air_vol=0.025
+2026-03-02 11:46:31,624 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,624 - DEBUG - Applied object param pre_asp_air_vol=0.21
+2026-03-02 11:46:31,624 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,624 - INFO - Pipetting into vial TFA, amount: 0.015 mL
+2026-03-02 11:46:31,625 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,627 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,641 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,656 - DEBUG - Dispensing 0.250 mL then waiting 0.0 s
+2026-03-02 11:46:31,656 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:31,673 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,679 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,679 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,679 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,680 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,680 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,680 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,680 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,680 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,680 - INFO - Dispensing 0.005 mL from TFA to TFA
+2026-03-02 11:46:31,683 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,683 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,683 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,684 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,684 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,684 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,684 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,684 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,684 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,684 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,684 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,684 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,684 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,684 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,684 - DEBUG - Applied object param overaspirate_vol=0.0009230425055927001
+2026-03-02 11:46:31,684 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,684 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,684 - DEBUG - Applied object param pre_asp_air_vol=0.098
+2026-03-02 11:46:31,684 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,685 - DEBUG - Selected small_tip for volume 0.006 mL
+2026-03-02 11:46:31,686 - INFO - Pipetting from vial TFA, amount: 0.005 mL
+2026-03-02 11:46:31,686 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-03-02 11:46:31,686 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,686 - DEBUG - Aspirating 0.098 mL then waiting 0 s
+2026-03-02 11:46:31,686 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,686 - DEBUG - Aspirating 0.006 mL then waiting 2.2 s
+2026-03-02 11:46:31,692 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,692 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,692 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,692 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,692 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,692 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,692 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,692 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,692 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,692 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,692 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,692 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,692 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,692 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,692 - DEBUG - Applied object param overaspirate_vol=0.0009230425055927001
+2026-03-02 11:46:31,693 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,693 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,693 - DEBUG - Applied object param pre_asp_air_vol=0.098
+2026-03-02 11:46:31,693 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,693 - INFO - Pipetting into vial TFA, amount: 0.005 mL
+2026-03-02 11:46:31,694 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,695 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,707 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,723 - DEBUG - Dispensing 0.104 mL then waiting 0.0 s
+2026-03-02 11:46:31,723 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:31,740 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,745 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,745 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,745 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,745 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,745 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,745 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,745 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,745 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,745 - INFO - Dispensing 0.005 mL from TFA to TFA
+2026-03-02 11:46:31,746 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,746 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,746 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,746 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,746 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,746 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,746 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,746 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,746 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,746 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,746 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,746 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,746 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,746 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,746 - DEBUG - Applied object param overaspirate_vol=0.0009230425055927001
+2026-03-02 11:46:31,746 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,746 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,746 - DEBUG - Applied object param pre_asp_air_vol=0.098
+2026-03-02 11:46:31,746 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,746 - DEBUG - Selected small_tip for volume 0.006 mL
+2026-03-02 11:46:31,746 - INFO - Pipetting from vial TFA, amount: 0.005 mL
+2026-03-02 11:46:31,746 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-03-02 11:46:31,746 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,746 - DEBUG - Aspirating 0.098 mL then waiting 0 s
+2026-03-02 11:46:31,746 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,746 - DEBUG - Aspirating 0.006 mL then waiting 2.2 s
+2026-03-02 11:46:31,756 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,756 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,756 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,756 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,756 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,756 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,756 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,756 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,756 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,756 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,756 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,756 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,756 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,756 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,756 - DEBUG - Applied object param overaspirate_vol=0.0009230425055927001
+2026-03-02 11:46:31,756 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,756 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,756 - DEBUG - Applied object param pre_asp_air_vol=0.098
+2026-03-02 11:46:31,756 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,757 - INFO - Pipetting into vial TFA, amount: 0.005 mL
+2026-03-02 11:46:31,759 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,759 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,774 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,790 - DEBUG - Dispensing 0.104 mL then waiting 0.0 s
+2026-03-02 11:46:31,790 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:31,806 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:31,812 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,812 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,812 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,812 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,812 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,812 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,812 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,812 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,812 - INFO - Dispensing 0.005 mL from TFA to TFA
+2026-03-02 11:46:31,813 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,813 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,813 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,813 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,813 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,813 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,813 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,813 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,813 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,813 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,813 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,813 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,813 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,813 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,813 - DEBUG - Applied object param overaspirate_vol=0.0009230425055927001
+2026-03-02 11:46:31,813 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,813 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,813 - DEBUG - Applied object param pre_asp_air_vol=0.098
+2026-03-02 11:46:31,813 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,813 - DEBUG - Selected small_tip for volume 0.006 mL
+2026-03-02 11:46:31,813 - INFO - Pipetting from vial TFA, amount: 0.005 mL
+2026-03-02 11:46:31,813 - INFO - Additional volume from calibration, amount: 0.001 mL
+2026-03-02 11:46:31,813 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,813 - DEBUG - Aspirating 0.098 mL then waiting 0 s
+2026-03-02 11:46:31,813 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:31,813 - DEBUG - Aspirating 0.006 mL then waiting 2.2 s
+2026-03-02 11:46:31,823 - DEBUG - Using calibrated aspirate_speed=10 for TFA at 0.005mL
+2026-03-02 11:46:31,823 - DEBUG - Using calibrated dispense_speed=11 for TFA at 0.005mL
+2026-03-02 11:46:31,823 - DEBUG - Using calibrated aspirate_wait_time=2.2 for TFA at 0.005mL
+2026-03-02 11:46:31,823 - DEBUG - Using calibrated dispense_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,823 - DEBUG - Using calibrated post_asp_air_vol=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,823 - DEBUG - Using calibrated overaspirate_vol=0.0009230425055927001 for TFA at 0.005mL
+2026-03-02 11:46:31,823 - DEBUG - Using calibrated post_retract_wait_time=0.0 for TFA at 0.005mL
+2026-03-02 11:46:31,823 - DEBUG - Using calibrated pre_asp_air_vol=0.098 for TFA at 0.005mL
+2026-03-02 11:46:31,823 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:31,823 - DEBUG - Applied object param aspirate_speed=10
+2026-03-02 11:46:31,823 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-02 11:46:31,823 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:31,823 - DEBUG - Applied object param dispense_speed=11
+2026-03-02 11:46:31,823 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:31,823 - DEBUG - Applied object param overaspirate_vol=0.0009230425055927001
+2026-03-02 11:46:31,823 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:31,823 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:31,823 - DEBUG - Applied object param pre_asp_air_vol=0.098
+2026-03-02 11:46:31,823 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:31,824 - INFO - Pipetting into vial TFA, amount: 0.005 mL
+2026-03-02 11:46:31,825 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-02 11:46:31,826 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:31,841 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:31,856 - DEBUG - Dispensing 0.104 mL then waiting 0.0 s
+2026-03-02 11:46:31,856 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:31,874 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:32,056 - INFO - Removing pipet
+2026-03-02 11:46:32,056 - INFO - Returning vial TFA to home location: main_8mL_rack index 7
+2026-03-02 11:46:32,056 - DEBUG - Recapping clamped vial
+2026-03-02 11:46:32,067 - INFO - Moving vial TFA to main_8mL_rack: 7
+2026-03-02 11:46:32,067 - DEBUG - Grabbing vial 4 with index 4
+2026-03-02 11:46:32,067 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 7
+2026-03-02 11:46:32,070 - INFO -   TFA (default params): R^2=0.000, Accuracy=-100.0%
+2026-03-02 11:46:32,073 - INFO - Moving vial polymer_stock to clamp: 0
+2026-03-02 11:46:32,074 - DEBUG - Grabbing vial 0 with index 0
+2026-03-02 11:46:32,075 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2026-03-02 11:46:32,076 - INFO -     Conditioning tip with polymer_stock: 3 cycles of 150.0uL (fast dummy params)
+2026-03-02 11:46:32,076 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:32,076 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,076 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,076 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:32,076 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:32,076 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,076 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,076 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:32,076 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,077 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:32,077 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,078 - DEBUG - Vial move required for pipetting
+2026-03-02 11:46:32,078 - INFO - Moving vial polymer_stock to safe pipetting location
+2026-03-02 11:46:32,080 - INFO - Vial 0 already at clamp index 0, no move needed
+2026-03-02 11:46:32,080 - DEBUG - Removing cap from clamped vial
+2026-03-02 11:46:32,081 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-03-02 11:46:32,081 - INFO - Getting small_tip (pipet number 37) from rack: small_tip_rack_1
+2026-03-02 11:46:32,083 - INFO - Pipetting from vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,084 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,085 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,085 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,085 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,085 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:32,086 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,086 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,086 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:32,086 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:32,086 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,086 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,086 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:32,086 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,086 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:32,086 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,087 - INFO - Pipetting into vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,088 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:32,088 - DEBUG - Dispensing 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,088 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:32,088 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:32,088 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,088 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,088 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:32,088 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:32,088 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,088 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,088 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:32,088 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,090 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:32,090 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,090 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-03-02 11:46:32,092 - INFO - Pipetting from vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,093 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,094 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,094 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,094 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,094 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:32,094 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,095 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,095 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:32,095 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:32,095 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,095 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,095 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:32,095 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,095 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:32,095 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,096 - INFO - Pipetting into vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,097 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:32,097 - DEBUG - Dispensing 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,097 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:32,098 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,098 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:32,098 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:32,098 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,098 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-03-02 11:46:32,098 - INFO - Pipetting from vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,098 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,098 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,098 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,098 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,098 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,098 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-02 11:46:32,098 - DEBUG - Applied object param dispense_speed=5
+2026-03-02 11:46:32,098 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-02 11:46:32,098 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,098 - INFO - Pipetting into vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,098 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-02 11:46:32,098 - DEBUG - Dispensing 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,098 - DEBUG - Blowing out 0.500 mL
+2026-03-02 11:46:32,098 - INFO -     Tip conditioning complete for polymer_stock
+2026-03-02 11:46:32,108 - INFO - Vial polymer_stock already at clamp index 0, no move needed
+2026-03-02 11:46:32,109 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,109 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,109 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,109 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,109 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,109 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,109 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,109 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,109 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,109 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,109 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,109 - INFO - Dispensing 0.100 mL from polymer_stock to polymer_stock
+2026-03-02 11:46:32,112 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,112 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,112 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,112 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,112 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,112 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,112 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,112 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,112 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,112 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,112 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,112 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-03-02 11:46:32,113 - INFO - Pipetting from vial polymer_stock, amount: 0.100 mL
+2026-03-02 11:46:32,114 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,115 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,115 - DEBUG - Aspirating 0.500 mL then waiting 0 s
+2026-03-02 11:46:32,115 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,115 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,115 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,115 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,115 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,115 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,115 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,115 - DEBUG - Aspirating 0.100 mL then waiting 0.0 s
+2026-03-02 11:46:32,115 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:32,116 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,116 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,116 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,116 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,116 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,116 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,116 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,116 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,116 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,116 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,117 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,117 - INFO - Pipetting into vial polymer_stock, amount: 0.100 mL
+2026-03-02 11:46:32,118 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,119 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:32,126 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:32,158 - DEBUG - Dispensing 0.650 mL then waiting 0.0 s
+2026-03-02 11:46:32,174 - INFO - Dispensing took 0.017s, collecting post-dispense baseline
+2026-03-02 11:46:32,190 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:32,193 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,193 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,193 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,193 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,193 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,193 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,193 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,193 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,193 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,193 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,193 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,193 - INFO - Dispensing 0.100 mL from polymer_stock to polymer_stock
+2026-03-02 11:46:32,194 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,194 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,194 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,194 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,194 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,194 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,194 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,194 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,194 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,196 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,196 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,196 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-03-02 11:46:32,197 - INFO - Pipetting from vial polymer_stock, amount: 0.100 mL
+2026-03-02 11:46:32,197 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,197 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,197 - DEBUG - Aspirating 0.500 mL then waiting 0 s
+2026-03-02 11:46:32,197 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,197 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,197 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,197 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,197 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,197 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,197 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,197 - DEBUG - Aspirating 0.100 mL then waiting 0.0 s
+2026-03-02 11:46:32,197 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:32,197 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,197 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,197 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,197 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,197 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,197 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,197 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,197 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,197 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,197 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,197 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,197 - INFO - Pipetting into vial polymer_stock, amount: 0.100 mL
+2026-03-02 11:46:32,197 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,197 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:32,208 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:32,224 - DEBUG - Dispensing 0.650 mL then waiting 0.0 s
+2026-03-02 11:46:32,224 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:32,257 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:32,259 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,259 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,259 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,259 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,259 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,259 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,259 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,259 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,259 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,259 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,259 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,259 - INFO - Dispensing 0.100 mL from polymer_stock to polymer_stock
+2026-03-02 11:46:32,261 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,261 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,261 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,261 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,261 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,261 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,261 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,261 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,261 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,261 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,261 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,261 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-03-02 11:46:32,263 - INFO - Pipetting from vial polymer_stock, amount: 0.100 mL
+2026-03-02 11:46:32,264 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,265 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,265 - DEBUG - Aspirating 0.500 mL then waiting 0 s
+2026-03-02 11:46:32,265 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,265 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,265 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,265 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,265 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,265 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,265 - DEBUG - Dispensing 0.100 mL then waiting 0 s
+2026-03-02 11:46:32,265 - DEBUG - Aspirating 0.100 mL then waiting 0.0 s
+2026-03-02 11:46:32,265 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:32,266 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,266 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,266 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,266 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,266 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,266 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,266 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,266 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,266 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,266 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,266 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,267 - INFO - Pipetting into vial polymer_stock, amount: 0.100 mL
+2026-03-02 11:46:32,267 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,269 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:32,275 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:32,307 - DEBUG - Dispensing 0.650 mL then waiting 0.0 s
+2026-03-02 11:46:32,323 - INFO - Dispensing took 0.017s, collecting post-dispense baseline
+2026-03-02 11:46:32,356 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:32,359 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,359 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,359 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,359 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,359 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,359 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,359 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,359 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,359 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,359 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,359 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,359 - INFO - Dispensing 0.150 mL from polymer_stock to polymer_stock
+2026-03-02 11:46:32,360 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,360 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,360 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,360 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,360 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,360 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,360 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,360 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,360 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,360 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,362 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,362 - DEBUG - Selected small_tip for volume 0.200 mL
+2026-03-02 11:46:32,363 - INFO - Pipetting from vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,363 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,364 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,364 - DEBUG - Aspirating 0.500 mL then waiting 0 s
+2026-03-02 11:46:32,364 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,364 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,364 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,364 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,364 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,364 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,364 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,365 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,365 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:32,365 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,365 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,365 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,365 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,365 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,365 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,365 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,365 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,365 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,365 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,366 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,366 - INFO - Pipetting into vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,368 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,368 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:32,390 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:32,407 - DEBUG - Dispensing 0.700 mL then waiting 0.0 s
+2026-03-02 11:46:32,423 - INFO - Dispensing took 0.017s, collecting post-dispense baseline
+2026-03-02 11:46:32,440 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:32,443 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,443 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,443 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,443 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,443 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,443 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,443 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,443 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,443 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,443 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,443 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,443 - INFO - Dispensing 0.150 mL from polymer_stock to polymer_stock
+2026-03-02 11:46:32,445 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,445 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,445 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,445 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,445 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,445 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,445 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,445 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,445 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,445 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,445 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,445 - DEBUG - Selected small_tip for volume 0.200 mL
+2026-03-02 11:46:32,446 - INFO - Pipetting from vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,447 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,448 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,448 - DEBUG - Aspirating 0.500 mL then waiting 0 s
+2026-03-02 11:46:32,448 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,448 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,448 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,448 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,448 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,448 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,448 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,448 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,448 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:32,449 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,449 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,449 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,449 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,449 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,449 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,449 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,449 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,449 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,449 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,450 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,450 - INFO - Pipetting into vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,452 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,452 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:32,459 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:32,490 - DEBUG - Dispensing 0.700 mL then waiting 0.0 s
+2026-03-02 11:46:32,490 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:32,507 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:32,509 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,509 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,509 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,509 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,509 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,509 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,509 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,509 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,509 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,509 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,509 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,509 - INFO - Dispensing 0.150 mL from polymer_stock to polymer_stock
+2026-03-02 11:46:32,511 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,511 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,511 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,511 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,511 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,511 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,511 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,511 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,512 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,512 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,512 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,512 - DEBUG - Selected small_tip for volume 0.200 mL
+2026-03-02 11:46:32,513 - INFO - Pipetting from vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,513 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-02 11:46:32,515 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-02 11:46:32,515 - DEBUG - Aspirating 0.500 mL then waiting 0 s
+2026-03-02 11:46:32,515 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,515 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,515 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,515 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,515 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,515 - DEBUG - Aspirating 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,515 - DEBUG - Dispensing 0.150 mL then waiting 0 s
+2026-03-02 11:46:32,515 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-03-02 11:46:32,515 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-02 11:46:32,515 - DEBUG - Applied object param asp_disp_cycles=3
+2026-03-02 11:46:32,515 - DEBUG - Applied object param aspirate_speed=15
+2026-03-02 11:46:32,515 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-02 11:46:32,515 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-02 11:46:32,515 - DEBUG - Applied object param dispense_speed=15
+2026-03-02 11:46:32,515 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-02 11:46:32,515 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-02 11:46:32,515 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-02 11:46:32,515 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-02 11:46:32,515 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-02 11:46:32,515 - DEBUG - Applied object param retract_speed=10
+2026-03-02 11:46:32,515 - INFO - Pipetting into vial polymer_stock, amount: 0.150 mL
+2026-03-02 11:46:32,515 - DEBUG - Adjusting pump 0 speed to 15
+2026-03-02 11:46:32,515 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-03-02 11:46:32,525 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-03-02 11:46:32,557 - DEBUG - Dispensing 0.700 mL then waiting 0.0 s
+2026-03-02 11:46:32,557 - INFO - Dispensing took 0.000s, collecting post-dispense baseline
+2026-03-02 11:46:32,575 - INFO - Stopped continuous mass monitoring. Collected 0 data points
+2026-03-02 11:46:32,813 - INFO - Removing pipet
+2026-03-02 11:46:32,818 - INFO - Returning vial polymer_stock to home location: main_8mL_rack index 0
+2026-03-02 11:46:32,818 - DEBUG - Recapping clamped vial
+2026-03-02 11:46:32,818 - INFO - Moving vial polymer_stock to main_8mL_rack: 0
+2026-03-02 11:46:32,818 - DEBUG - Grabbing vial 0 with index 0
+2026-03-02 11:46:32,821 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2026-03-02 11:46:32,824 - INFO -   polymer_stock (custom params): R^2=0.000, Accuracy=-100.0%
+2026-03-02 11:46:32,824 - INFO - Liquid validation completed before sample processing
+2026-03-02 11:46:32,827 - INFO - Stock concentration: 1.0 mg/mL
+2026-03-02 11:46:32,831 - INFO - Calculated volumes for each sample:
+2026-03-02 11:46:32,832 - INFO -    vial_name  concentration(mg/mL)  stock_volume  solvent_volume
+1   sample_1                  0.05           0.1             1.9
+2   sample_2                  0.05           0.1             1.9
+12  sample_3                  0.05           0.1             1.9

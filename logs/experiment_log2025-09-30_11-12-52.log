@@ -1,0 +1,1529 @@
+2025-09-30 11:12:52,815 - INFO - Initializing North Robot...
+2025-09-30 11:12:52,815 - DEBUG - Loading robot configuration files...
+2025-09-30 11:12:52,824 - DEBUG - Loaded vial positions configuration from ../utoronto_demo/robot_state/vial_positions.yaml
+2025-09-30 11:12:52,826 - DEBUG - Loaded pipet tips configuration from ../utoronto_demo/robot_state/pipet_tips.yaml
+2025-09-30 11:12:52,830 - DEBUG - Loaded pipet racks configuration from ../utoronto_demo/robot_state/pipet_racks.yaml
+2025-09-30 11:12:52,832 - DEBUG - Loaded pump configuration from ../utoronto_demo/robot_state/syringe_pumps.yaml
+2025-09-30 11:12:52,835 - DEBUG - Loaded robot hardware configuration from ../utoronto_demo/robot_state/robot_hardware.yaml
+2025-09-30 11:12:52,839 - DEBUG - Loaded wellplate properties configuration from ../utoronto_demo/robot_state/wellplates.yaml
+2025-09-30 11:12:52,839 - DEBUG - Loading robot state files...
+2025-09-30 11:12:52,841 - DEBUG - Loaded vial data from ../utoronto_demo/status/calibration_vials_short.csv
+2025-09-30 11:12:52,843 - DEBUG - Loaded robot status from ../utoronto_demo/robot_state/robot_status.yaml
+2025-09-30 11:12:52,845 - DEBUG - Loaded wellplate positions from ../utoronto_demo/robot_state/wellplates.yaml
+2025-09-30 11:12:52,845 - DEBUG - Physical initialization of North Robot...
+2025-09-30 11:12:53,160 - INFO - Moving robot to home position
+2025-09-30 11:12:53,493 - DEBUG - Loading pumps from YAML configuration...
+2025-09-30 11:12:53,608 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-09-30 11:12:53,726 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-09-30 11:12:53,941 - INFO - Initializing North Track...
+2025-09-30 11:12:53,941 - DEBUG - Loading track status from file: ../utoronto_demo/robot_state/track_status.yaml
+2025-09-30 11:12:53,941 - DEBUG - Getting track status from file: ../utoronto_demo/robot_state/track_status.yaml
+2025-09-30 11:12:53,943 - DEBUG - Loaded track status from ../utoronto_demo/robot_state/track_status.yaml
+2025-09-30 11:12:53,943 - DEBUG - Loading track positions from: ../utoronto_demo/robot_state/track_positions.yaml
+2025-09-30 11:12:53,950 - DEBUG - Loaded track positions configuration from ../utoronto_demo/robot_state/track_positions.yaml
+2025-09-30 11:12:53,950 - DEBUG - Loading robot hardware configuration from: ../utoronto_demo/robot_state/robot_hardware.yaml
+2025-09-30 11:12:53,955 - DEBUG - Loaded robot hardware configuration from ../utoronto_demo/robot_state/robot_hardware.yaml
+2025-09-30 11:12:53,959 - DEBUG - Loaded wellplate properties configuration from ../utoronto_demo/robot_state/wellplates.yaml
+2025-09-30 11:12:53,963 - INFO -    vial_index           vial_name         location  location_index  vial_volume  capped cap_type vial_type    home_location  home_location_index
+0           0  measurement_vial_0    main_8mL_rack               0          0.0    True     open      8_mL    main_8mL_rack                    0
+1           1  measurement_vial_1    main_8mL_rack               1          0.0    True     open      8_mL    main_8mL_rack                    1
+2           2  measurement_vial_2    main_8mL_rack               2          0.0    True     open      8_mL    main_8mL_rack                    2
+3           3       liquid_source  large_vial_rack               2         20.0    True     open     20_mL  large_vial_rack                    2
+2025-09-30 11:12:53,975 - INFO - Visualizing vial racks...
+2025-09-30 11:12:54,118 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2025-09-30 11:12:54,224 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2025-09-30 11:12:57,276 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-09-30 11:12:57,276 - DEBUG - Grabbing vial 0 with index 0
+2025-09-30 11:12:59,991 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-09-30 11:13:02,755 - INFO - Liquid: 
+2025-09-30 11:13:02,966 - INFO - Loading existing data from C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\0922_8params\20250918_162405_glycerol_qEI\experiment_summary.csv
+2025-09-30 11:13:03,240 - INFO - Loading existing data from C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\0922_8params\20250919_111418_glycerol_qLogEI\experiment_summary.csv
+2025-09-30 11:13:03,490 - INFO - Loading existing data from C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\0922_8params\20250919_132556_glycerol_qNEHVI\experiment_summary.csv
+2025-09-30 11:13:31,795 - INFO - LLM Optimization Results:
+2025-09-30 11:13:31,795 - INFO - Strategy Summary: The experiments highlight that lower aspirate and dispense speeds (higher numeric values) generally reduce deviation and variability, but increase time. Conversely, using the lowest numeric values for these parameters can significantly reduce time albeit at the cost of higher deviation and variability. The most promising results appear when balancing these parameters to explore the Pareto front, where neither time nor accuracy is overly compromised. This analysis suggests that systematic exploration of unexplored parameter combinations, particularly at the extremes, could yield valuable insights into optimal liquid handling strategies.
+2025-09-30 11:13:31,795 - INFO - LLM Recommendation 1:
+2025-09-30 11:13:31,795 - INFO -   Confidence Level: medium
+2025-09-30 11:13:31,795 - INFO -   Reasoning: This speed-focused approach aims to reduce cycle time by using the fastest speeds available (aspirate_speed and dispense_speed set to 5, which translates to faster operation). While this could slightly increase deviation and variability, it is designed to explore the trade-off between time efficiency and accuracy, similar to the experiment with trial_index 0, which shows moderate deviation but lower time.
+2025-09-30 11:13:31,795 - INFO -   Expected Improvement: Reduced operational time by 20-30% compared to average times observed.
+2025-09-30 11:13:31,802 - INFO - LLM Recommendation 2:
+2025-09-30 11:13:31,802 - INFO -   Confidence Level: high
+2025-09-30 11:13:31,802 - INFO -   Reasoning: This accuracy-focused approach is based on data points like trial_index 16 and 23, where deviation and variability are minimized. By using higher speeds for aspirate and dispense (25), and allowing longer wait times, we aim to minimize deviation and variability even if it increases the cycle time.
+2025-09-30 11:13:31,802 - INFO -   Expected Improvement: Reduction in deviation and variability by 15-25% based on observed high accuracy results.
+2025-09-30 11:13:31,803 - INFO - LLM Recommendation 3:
+2025-09-30 11:13:31,803 - INFO -   Confidence Level: medium
+2025-09-30 11:13:31,803 - INFO -   Reasoning: This Pareto front exploration approach uses a middle-ground speed and wait time, inspired by trials with moderate balance like trial_index 7 and 12, to explore the trade-off between deviation and time. The aim is to maintain a balance between time efficiency and accuracy.
+2025-09-30 11:13:31,803 - INFO -   Expected Improvement: Balanced performance with moderate improvements in both time and deviation by 10-15%.
+2025-09-30 11:13:31,805 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:13:31,806 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_1
+2025-09-30 11:13:37,047 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:13:37,047 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:13:40,168 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:13:40,728 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:13:46,758 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:13:47,030 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:13:47,286 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:13:50,645 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:13:56,049 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:13:56,049 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:13:59,282 - INFO - Removing pipet
+2025-09-30 11:14:02,705 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:14:02,705 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_1
+2025-09-30 11:14:05,713 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:14:05,713 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:14:08,832 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:14:09,373 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:14:15,314 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:14:15,645 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:14:18,464 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:14:21,852 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:14:27,242 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:14:27,242 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:14:32,473 - INFO - Removing pipet
+2025-09-30 11:14:35,871 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:14:35,871 - INFO - Getting small_tip (pipet number 2) from rack: small_tip_rack_1
+2025-09-30 11:14:38,855 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:14:38,855 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:14:41,942 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:14:42,518 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:14:48,484 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:14:48,796 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:14:50,883 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:14:54,242 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:14:59,665 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:14:59,665 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:15:05,487 - INFO - Removing pipet
+2025-09-30 11:15:08,975 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 11:15:08,975 - INFO - Getting small_tip (pipet number 3) from rack: small_tip_rack_1
+2025-09-30 11:15:11,929 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 11:15:11,932 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:15:15,004 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 11:15:18,282 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 11:15:52,737 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:15:54,213 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 11:15:55,888 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:15:59,216 - DEBUG - Dispensing 0.125 mL then waiting 15.0 s
+2025-09-30 11:16:20,649 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:16:20,649 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:16:26,487 - INFO - Removing pipet
+2025-09-30 11:16:29,854 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 11:16:29,854 - INFO - Getting small_tip (pipet number 4) from rack: small_tip_rack_1
+2025-09-30 11:16:32,789 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 11:16:32,805 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:16:35,876 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 11:16:39,155 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 11:17:13,625 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:17:15,168 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 11:17:17,074 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:17:20,455 - DEBUG - Dispensing 0.125 mL then waiting 15.0 s
+2025-09-30 11:17:41,889 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:17:41,889 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:17:46,288 - INFO - Removing pipet
+2025-09-30 11:17:49,726 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 11:17:49,726 - INFO - Getting small_tip (pipet number 5) from rack: small_tip_rack_1
+2025-09-30 11:17:52,621 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 11:17:52,621 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:17:55,612 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 11:17:58,880 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 11:18:33,424 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:18:34,948 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 11:18:36,076 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:18:39,440 - DEBUG - Dispensing 0.125 mL then waiting 15.0 s
+2025-09-30 11:19:00,825 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:19:00,825 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:19:03,674 - INFO - Removing pipet
+2025-09-30 11:19:07,118 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:19:07,118 - INFO - Getting small_tip (pipet number 6) from rack: small_tip_rack_1
+2025-09-30 11:19:10,093 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:19:10,109 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:19:13,142 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:19:14,134 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:19:37,886 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:19:39,405 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:19:40,680 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:19:44,172 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:20:03,798 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:20:03,798 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:20:12,083 - INFO - Removing pipet
+2025-09-30 11:20:15,445 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:20:15,445 - INFO - Getting small_tip (pipet number 7) from rack: small_tip_rack_1
+2025-09-30 11:20:18,350 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:20:18,350 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:20:21,313 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:20:22,353 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:20:46,106 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:20:47,626 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:20:49,683 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:20:53,160 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:21:12,738 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:21:12,738 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:21:17,489 - INFO - Removing pipet
+2025-09-30 11:21:20,896 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:21:20,896 - INFO - Getting small_tip (pipet number 8) from rack: small_tip_rack_1
+2025-09-30 11:21:23,791 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:21:23,807 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:21:26,783 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:21:27,757 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:21:51,527 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:21:52,967 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:21:55,686 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:21:59,141 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:22:18,751 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:22:18,751 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:22:24,078 - INFO - Removing pipet
+2025-09-30 11:22:50,646 - INFO - LLM Optimization Results:
+2025-09-30 11:22:50,646 - INFO - Strategy Summary: Key insights: Lower aspirate and dispense speeds correlate with good accuracy but increased time (e.g., experiments 17, 23). Conversely, higher speeds reduce time but increase deviation, evident in experiment 69. The exploration strategy involves testing diverse parameter sets to optimize for different priorities, balancing speed and accuracy trade-offs.
+2025-09-30 11:22:50,646 - INFO - LLM Recommendation 1:
+2025-09-30 11:22:50,646 - INFO -   Confidence Level: medium
+2025-09-30 11:22:50,646 - INFO -   Reasoning: The goal is to achieve faster cycles with reduced overall time, even at the cost of some accuracy. Experiment 69 shows a low total time of 32.38 seconds with higher deviation but minimal wait times and higher speeds, indicating faster processing. This configuration aims to balance speed with acceptable performance.
+2025-09-30 11:22:50,647 - INFO -   Expected Improvement: Reduced time to approximately 35 seconds while maintaining deviation under 70.
+2025-09-30 11:22:50,649 - INFO - LLM Recommendation 2:
+2025-09-30 11:22:50,649 - INFO -   Confidence Level: high
+2025-09-30 11:22:50,649 - INFO -   Reasoning: Focused on minimizing deviation and variability, this configuration is informed by experiments like 17 and 23, which show low deviation and variability with moderate speeds and longer wait times. This approach accepts increased time for enhanced accuracy.
+2025-09-30 11:22:50,649 - INFO -   Expected Improvement: Deviation under 5 and variability under 2, with time around 70 seconds.
+2025-09-30 11:22:50,649 - INFO - LLM Recommendation 3:
+2025-09-30 11:22:50,650 - INFO -   Confidence Level: medium
+2025-09-30 11:22:50,650 - INFO -   Reasoning: Exploring the Pareto front, experiments like 20 and 98 provide insights into balancing deviation and time. This configuration aims to explore the trade-off region where both accuracy and time can be optimized concurrently, informed by moderate speeds and wait times.
+2025-09-30 11:22:50,650 - INFO -   Expected Improvement: Achieve deviation around 20 with a time under 60 seconds.
+2025-09-30 11:22:50,653 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:22:50,653 - INFO - Getting small_tip (pipet number 9) from rack: small_tip_rack_1
+2025-09-30 11:22:53,532 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:22:53,547 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:22:56,516 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:22:59,202 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 11:23:10,480 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:23:12,060 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:23:13,272 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:23:16,606 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 11:23:29,451 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:23:29,451 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:23:33,868 - INFO - Removing pipet
+2025-09-30 11:23:37,288 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:23:37,288 - INFO - Getting small_tip (pipet number 10) from rack: small_tip_rack_1
+2025-09-30 11:23:40,159 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:23:40,161 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:23:43,110 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:23:45,862 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 11:23:57,170 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:23:58,763 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:24:01,489 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:24:04,848 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 11:24:17,772 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:24:17,772 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:24:22,283 - INFO - Removing pipet
+2025-09-30 11:24:25,674 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:24:25,674 - INFO - Getting small_tip (pipet number 11) from rack: small_tip_rack_1
+2025-09-30 11:24:28,569 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:24:28,569 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:24:31,480 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:24:34,215 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 11:24:45,476 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:24:47,085 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:24:52,082 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:24:55,425 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 11:25:08,313 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:25:08,313 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:25:11,670 - INFO - Removing pipet
+2025-09-30 11:25:15,033 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:25:15,034 - INFO - Getting small_tip (pipet number 12) from rack: small_tip_rack_1
+2025-09-30 11:25:17,857 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:25:17,857 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:25:20,698 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 11:25:23,155 - DEBUG - Aspirating 0.060 mL then waiting 25.0 s
+2025-09-30 11:25:51,968 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:25:53,088 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:25:55,278 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:25:58,718 - DEBUG - Dispensing 0.130 mL then waiting 25.0 s
+2025-09-30 11:26:30,437 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:26:30,437 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:26:35,283 - INFO - Removing pipet
+2025-09-30 11:26:38,646 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:26:38,646 - INFO - Getting small_tip (pipet number 13) from rack: small_tip_rack_1
+2025-09-30 11:26:41,479 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:26:41,479 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:26:44,336 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 11:26:46,751 - DEBUG - Aspirating 0.060 mL then waiting 25.0 s
+2025-09-30 11:27:15,543 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:27:16,675 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:27:18,887 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:27:22,405 - DEBUG - Dispensing 0.130 mL then waiting 25.0 s
+2025-09-30 11:27:54,099 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:27:54,100 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:27:57,883 - INFO - Removing pipet
+2025-09-30 11:28:01,275 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:28:01,275 - INFO - Getting small_tip (pipet number 14) from rack: small_tip_rack_1
+2025-09-30 11:28:04,057 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:28:04,057 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:28:06,872 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 11:28:09,288 - DEBUG - Aspirating 0.060 mL then waiting 25.0 s
+2025-09-30 11:28:38,143 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:28:39,247 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:28:42,878 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:28:46,365 - DEBUG - Dispensing 0.130 mL then waiting 25.0 s
+2025-09-30 11:29:18,003 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:29:18,003 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:29:21,890 - INFO - Removing pipet
+2025-09-30 11:29:25,313 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:29:25,314 - INFO - Getting small_tip (pipet number 15) from rack: small_tip_rack_1
+2025-09-30 11:29:28,096 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:29:28,112 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 11:29:30,927 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:29:31,743 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 11:29:43,212 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:29:43,532 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:29:43,690 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:29:47,131 - DEBUG - Dispensing 0.105 mL then waiting 10.0 s
+2025-09-30 11:30:00,983 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:30:00,983 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:30:06,676 - INFO - Removing pipet
+2025-09-30 11:30:10,132 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:30:10,132 - INFO - Getting small_tip (pipet number 16) from rack: small_tip_rack_1
+2025-09-30 11:30:13,155 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:30:13,155 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 11:30:16,290 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:30:17,106 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 11:30:28,590 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:30:28,911 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:30:29,086 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:30:32,542 - DEBUG - Dispensing 0.105 mL then waiting 10.0 s
+2025-09-30 11:30:46,461 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:30:46,461 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:30:51,688 - INFO - Removing pipet
+2025-09-30 11:30:55,111 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:30:55,111 - INFO - Getting small_tip (pipet number 17) from rack: small_tip_rack_1
+2025-09-30 11:30:58,074 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:30:58,076 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 11:31:01,157 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:31:01,957 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 11:31:13,474 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:31:13,793 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:31:15,089 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:31:18,560 - DEBUG - Dispensing 0.105 mL then waiting 10.0 s
+2025-09-30 11:31:32,476 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:31:32,476 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:31:39,690 - INFO - Removing pipet
+2025-09-30 11:31:59,594 - INFO - LLM Optimization Results:
+2025-09-30 11:31:59,594 - INFO - Strategy Summary: The analysis highlights that balancing aspirate and dispense speeds, along with adjusting wait times, can significantly influence deviation, variability, and time outcomes. The speed-focused strategy aims to reduce cycle times by optimizing for faster aspirate and dispense speeds with minimal wait times, while the accuracy-focused strategy leverages the observed minimal deviation configurations. The Pareto front exploration attempts to achieve a balanced trade-off between accuracy and efficiency, expanding into less explored parameter combinations.
+2025-09-30 11:31:59,594 - INFO - LLM Recommendation 1:
+2025-09-30 11:31:59,594 - INFO -   Confidence Level: medium
+2025-09-30 11:31:59,594 - INFO -   Reasoning: The experiment with trial_index 99 demonstrated a good balance of low deviation and time efficiency, suggesting that high speeds (low values) with minimal wait times can achieve faster cycles with acceptable accuracy. This setup aims to explore the speed-focused trade-off by decreasing time further while maintaining similar deviation levels.
+2025-09-30 11:31:59,596 - INFO -   Expected Improvement: Reduction in total cycle time while maintaining deviation within 50% of current best results.
+2025-09-30 11:31:59,597 - INFO - LLM Recommendation 2:
+2025-09-30 11:31:59,597 - INFO -   Confidence Level: high
+2025-09-30 11:31:59,598 - INFO -   Reasoning: Experiment 16 with trial_index 23 achieved minimal deviation and variability, suggesting this combination is effective for accuracy. By maintaining high aspirate speed (lower value) and low dispense speed (higher value), we hypothesize improved accuracy, accepting longer cycle times.
+2025-09-30 11:31:59,598 - INFO -   Expected Improvement: Reduction in deviation to below 2% with variability maintained below 2%.
+2025-09-30 11:31:59,599 - INFO - LLM Recommendation 3:
+2025-09-30 11:31:59,599 - INFO -   Confidence Level: low
+2025-09-30 11:31:59,599 - INFO -   Reasoning: Experiment 6 with trial_index 98 indicated that higher dispense speeds with moderate aspirate speeds can yield decent time and variability performance. This approach aims at exploring the Pareto front by balancing between deviation, variability, and time.
+2025-09-30 11:31:59,599 - INFO -   Expected Improvement: Achieve a balanced reduction in time and deviation while variability remains below 12%.
+2025-09-30 11:31:59,602 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:31:59,602 - INFO - Getting small_tip (pipet number 18) from rack: small_tip_rack_1
+2025-09-30 11:32:02,611 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:32:02,631 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:32:05,666 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:32:08,402 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 11:32:19,678 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:32:21,278 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:32:24,285 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:32:27,612 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 11:32:40,536 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:32:40,536 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:32:45,479 - INFO - Removing pipet
+2025-09-30 11:32:48,870 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:32:48,870 - INFO - Getting small_tip (pipet number 19) from rack: small_tip_rack_1
+2025-09-30 11:32:51,833 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:32:51,835 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:32:54,868 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:32:57,587 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 11:33:08,896 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:33:10,495 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:33:12,468 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:33:15,822 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 11:33:28,746 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:33:28,746 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:33:32,681 - INFO - Removing pipet
+2025-09-30 11:33:36,056 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:33:36,056 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_1
+2025-09-30 11:33:38,983 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:33:38,983 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:33:41,974 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:33:44,725 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 11:33:56,018 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:33:57,618 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:33:59,281 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:34:02,624 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 11:34:15,540 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:34:15,540 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:34:19,883 - INFO - Removing pipet
+2025-09-30 11:34:23,340 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:34:23,340 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_1
+2025-09-30 11:34:26,282 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:34:26,297 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:34:29,320 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 11:34:32,055 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:35:08,349 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:35:09,346 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:35:11,292 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:35:14,747 - DEBUG - Dispensing 0.115 mL then waiting 10.0 s
+2025-09-30 11:35:25,320 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:35:25,320 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:35:31,878 - INFO - Removing pipet
+2025-09-30 11:35:35,275 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:35:35,275 - INFO - Getting small_tip (pipet number 22) from rack: small_tip_rack_1
+2025-09-30 11:35:38,196 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:35:38,196 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:35:41,171 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 11:35:43,906 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:36:20,216 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:36:21,261 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:36:22,880 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:36:26,358 - DEBUG - Dispensing 0.115 mL then waiting 10.0 s
+2025-09-30 11:36:36,931 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:36:36,931 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:36:41,090 - INFO - Removing pipet
+2025-09-30 11:36:44,489 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:36:44,489 - INFO - Getting small_tip (pipet number 23) from rack: small_tip_rack_1
+2025-09-30 11:36:47,392 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:36:47,392 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:36:50,367 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 11:36:53,102 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:37:29,443 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:37:30,483 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:37:32,482 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:37:35,969 - DEBUG - Dispensing 0.115 mL then waiting 10.0 s
+2025-09-30 11:37:46,542 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:37:46,542 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:37:52,685 - INFO - Removing pipet
+2025-09-30 11:37:56,109 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:37:56,109 - INFO - Getting small_tip (pipet number 24) from rack: small_tip_rack_1
+2025-09-30 11:37:58,987 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:37:58,987 - DEBUG - Adjusting pump 0 speed to 10
+2025-09-30 11:38:01,914 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:38:02,553 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:38:24,002 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:38:24,323 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:38:27,282 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:38:30,785 - DEBUG - Dispensing 0.120 mL then waiting 5.0 s
+2025-09-30 11:38:41,950 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:38:41,950 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:38:46,684 - INFO - Removing pipet
+2025-09-30 11:38:50,091 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:38:50,091 - INFO - Getting small_tip (pipet number 25) from rack: small_tip_rack_1
+2025-09-30 11:38:52,971 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:38:52,971 - DEBUG - Adjusting pump 0 speed to 10
+2025-09-30 11:38:55,897 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:38:56,569 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:39:18,003 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:39:18,323 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:39:18,482 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:39:21,954 - DEBUG - Dispensing 0.120 mL then waiting 5.0 s
+2025-09-30 11:39:33,119 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:39:33,119 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:39:38,685 - INFO - Removing pipet
+2025-09-30 11:39:42,110 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:39:42,110 - INFO - Getting small_tip (pipet number 26) from rack: small_tip_rack_1
+2025-09-30 11:39:44,961 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:39:44,962 - DEBUG - Adjusting pump 0 speed to 10
+2025-09-30 11:39:47,898 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:39:48,570 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:40:10,004 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:40:10,324 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:40:12,692 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:40:16,194 - DEBUG - Dispensing 0.120 mL then waiting 5.0 s
+2025-09-30 11:40:27,375 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:40:27,375 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:40:33,086 - INFO - Removing pipet
+2025-09-30 11:41:01,169 - INFO - LLM Optimization Results:
+2025-09-30 11:41:01,170 - INFO - Strategy Summary: Best-performing trials indicate that lower aspirate and dispense speeds correlate with reduced deviations and variability, albeit at the cost of time. Conversely, speeding up these processes reduces time but increases deviation. Our recommendations leverage these insights to explore different optimization strategies with varied emphasis on speed, accuracy, and balanced trade-offs.
+2025-09-30 11:41:01,170 - INFO - LLM Recommendation 1:
+2025-09-30 11:41:01,170 - INFO -   Confidence Level: medium
+2025-09-30 11:41:01,170 - INFO -   Reasoning: This configuration targets the SPEED-FOCUSED strategy. The experiment with trial index 96 showed relatively low time (32.38 seconds) with these speeds, though deviation was high (69.52). Reducing the wait times further could enhance speed, even if accuracy is slightly compromised.
+2025-09-30 11:41:01,170 - INFO -   Expected Improvement: Reduction in time to approximately 30 seconds, with acceptable deviation increase.
+2025-09-30 11:41:01,172 - INFO - LLM Recommendation 2:
+2025-09-30 11:41:01,172 - INFO -   Confidence Level: high
+2025-09-30 11:41:01,172 - INFO -   Reasoning: This configuration optimizes the ACCURACY-FOCUSED strategy. The experiment with trial index 9 achieved the lowest deviation (8.095) and variability (4.662), though with a moderate time cost (62.27 seconds). These parameters can ensure minimal deviation and variability.
+2025-09-30 11:41:01,173 - INFO -   Expected Improvement: Deviation below 10 with variability under 5, maintaining time under 70 seconds.
+2025-09-30 11:41:01,175 - INFO - LLM Recommendation 3:
+2025-09-30 11:41:01,175 - INFO -   Confidence Level: medium
+2025-09-30 11:41:01,175 - INFO -   Reasoning: This configuration explores the PARETO FRONT strategy. Trial index 98 had low deviation (9.153) and a reasonable time (66.79 seconds) with increased wait times. Balancing these parameters should improve both accuracy and time efficiency.
+2025-09-30 11:41:01,175 - INFO -   Expected Improvement: Deviation around 10-12, time reduced to around 65 seconds.
+2025-09-30 11:41:01,179 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:41:01,179 - INFO - Getting small_tip (pipet number 27) from rack: small_tip_rack_1
+2025-09-30 11:41:03,988 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:41:03,988 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:41:06,851 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:41:07,443 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:41:13,234 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:41:13,553 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:41:13,681 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:41:17,057 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:41:22,463 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:41:22,463 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:41:28,093 - INFO - Removing pipet
+2025-09-30 11:41:31,484 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:41:31,484 - INFO - Getting small_tip (pipet number 28) from rack: small_tip_rack_1
+2025-09-30 11:41:34,251 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:41:34,251 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:41:37,146 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:41:37,722 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:41:43,513 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:41:43,833 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:41:44,088 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:41:47,416 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:41:52,822 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:41:52,822 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:41:57,493 - INFO - Removing pipet
+2025-09-30 11:42:00,852 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:42:00,852 - INFO - Getting small_tip (pipet number 29) from rack: small_tip_rack_1
+2025-09-30 11:42:03,603 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:42:03,603 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:42:06,418 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:42:06,994 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:42:12,784 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:42:13,120 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:42:13,279 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:42:16,623 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:42:22,029 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:42:22,029 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:42:26,285 - INFO - Removing pipet
+2025-09-30 11:42:29,692 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:42:29,692 - INFO - Getting small_tip (pipet number 30) from rack: small_tip_rack_1
+2025-09-30 11:42:32,490 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:42:32,512 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:42:35,305 - DEBUG - Aspirating 0.037 mL then waiting 0 s
+2025-09-30 11:42:37,913 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:43:14,350 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 11:43:15,070 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:43:18,093 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:43:21,548 - DEBUG - Dispensing 0.106 mL then waiting 10.0 s
+2025-09-30 11:43:21,548 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-09-30 11:43:32,121 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:43:32,121 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:43:36,487 - INFO - Removing pipet
+2025-09-30 11:43:39,903 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:43:39,903 - INFO - Getting small_tip (pipet number 31) from rack: small_tip_rack_1
+2025-09-30 11:43:42,700 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:43:42,701 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:43:45,493 - DEBUG - Aspirating 0.037 mL then waiting 0 s
+2025-09-30 11:43:48,100 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:44:24,553 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 11:44:25,279 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:44:27,080 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:44:30,567 - DEBUG - Dispensing 0.106 mL then waiting 10.0 s
+2025-09-30 11:44:30,568 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-09-30 11:44:41,172 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:44:41,172 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:44:47,283 - INFO - Removing pipet
+2025-09-30 11:44:50,663 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:44:50,663 - INFO - Getting small_tip (pipet number 32) from rack: small_tip_rack_1
+2025-09-30 11:44:53,600 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:44:53,600 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:44:56,656 - DEBUG - Aspirating 0.037 mL then waiting 0 s
+2025-09-30 11:44:59,263 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:45:35,700 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 11:45:36,436 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:45:38,074 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:45:41,554 - DEBUG - Dispensing 0.106 mL then waiting 10.0 s
+2025-09-30 11:45:41,554 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2025-09-30 11:45:52,111 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:45:52,111 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:45:55,486 - INFO - Removing pipet
+2025-09-30 11:45:58,909 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:45:58,909 - INFO - Getting small_tip (pipet number 33) from rack: small_tip_rack_1
+2025-09-30 11:46:01,836 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:46:01,852 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:46:04,891 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:46:05,947 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:46:29,812 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:46:31,252 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:46:31,479 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:46:34,914 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:46:54,525 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:46:54,525 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:46:59,691 - INFO - Removing pipet
+2025-09-30 11:47:03,050 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:47:03,050 - INFO - Getting small_tip (pipet number 34) from rack: small_tip_rack_1
+2025-09-30 11:47:06,009 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:47:06,009 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:47:09,016 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:47:10,104 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:47:33,953 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:47:35,393 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:47:37,888 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:47:41,391 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:48:01,033 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:48:01,033 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:48:05,287 - INFO - Removing pipet
+2025-09-30 11:48:08,694 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:48:08,694 - INFO - Getting small_tip (pipet number 35) from rack: small_tip_rack_1
+2025-09-30 11:48:11,668 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:48:11,675 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:48:14,643 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:48:15,700 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:48:39,581 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:48:41,024 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:48:44,492 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:48:47,947 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:49:07,557 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:49:07,557 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:49:12,883 - INFO - Removing pipet
+2025-09-30 11:49:32,371 - INFO - LLM Optimization Results:
+2025-09-30 11:49:32,371 - INFO - Strategy Summary: The analysis identified that lower aspirate and dispense speeds (higher numerical values) tend to reduce deviation, but increase time. Fast operation settings (experiments 96 and 105) minimize time but increase deviation. Experiment 28 indicates that higher wait times with moderate speeds can achieve low deviation and variability, optimizing for accuracy. Experiment 98 suggests a balanced approach along the Pareto front, trading off a bit of both time and deviation for overall balanced performance.
+2025-09-30 11:49:32,371 - INFO - LLM Recommendation 1:
+2025-09-30 11:49:32,372 - INFO -   Confidence Level: medium
+2025-09-30 11:49:32,372 - INFO -   Reasoning: Experiments 96 and 105 showed low deviation and time with these settings, demonstrating potential for improved cycle speed with some accuracy trade-off.
+2025-09-30 11:49:32,372 - INFO -   Expected Improvement: Reduction in time by approximately 30%, with a slight increase in deviation.
+2025-09-30 11:49:32,373 - INFO - LLM Recommendation 2:
+2025-09-30 11:49:32,373 - INFO -   Confidence Level: high
+2025-09-30 11:49:32,373 - INFO -   Reasoning: Experiment 28 achieved very low deviation and variability with these parameters, indicating excellent accuracy.
+2025-09-30 11:49:32,374 - INFO -   Expected Improvement: Decrease in deviation by 20%, with a time increase of about 10%.
+2025-09-30 11:49:32,376 - INFO - LLM Recommendation 3:
+2025-09-30 11:49:32,377 - INFO -   Confidence Level: medium
+2025-09-30 11:49:32,377 - INFO -   Reasoning: Experiment 98 showed balanced performance across all metrics, suggesting a Pareto optimal point balancing time and deviation.
+2025-09-30 11:49:32,377 - INFO -   Expected Improvement: Balanced improvement across deviation and time by approximately 15% each.
+2025-09-30 11:49:32,380 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:49:32,380 - INFO - Getting small_tip (pipet number 36) from rack: small_tip_rack_1
+2025-09-30 11:49:35,309 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:49:35,309 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:49:38,284 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:49:38,892 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:49:44,954 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:49:45,289 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:49:46,886 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:49:50,228 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:49:55,639 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:49:55,639 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:50:01,893 - INFO - Removing pipet
+2025-09-30 11:50:05,332 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:50:05,332 - INFO - Getting small_tip (pipet number 37) from rack: small_tip_rack_1
+2025-09-30 11:50:08,243 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:50:08,243 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:50:11,202 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:50:11,777 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:50:17,856 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:50:18,176 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:50:18,287 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:50:21,679 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:50:27,085 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:50:27,085 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:50:32,492 - INFO - Removing pipet
+2025-09-30 11:50:35,915 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:50:35,915 - INFO - Getting small_tip (pipet number 38) from rack: small_tip_rack_1
+2025-09-30 11:50:38,810 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:50:38,810 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:50:41,769 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:50:42,377 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 11:50:48,455 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:50:48,775 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:50:48,886 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 11:50:52,262 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 11:50:57,668 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:50:57,668 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:51:01,274 - INFO - Removing pipet
+2025-09-30 11:51:04,675 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:51:04,675 - INFO - Getting small_tip (pipet number 39) from rack: small_tip_rack_1
+2025-09-30 11:51:07,553 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:51:07,553 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:51:10,496 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 11:51:13,247 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:51:49,797 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 11:51:50,516 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:51:52,084 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:51:55,539 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:52:06,112 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:52:06,112 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:52:11,086 - INFO - Removing pipet
+2025-09-30 11:52:14,509 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:52:14,509 - INFO - Getting small_tip (pipet number 40) from rack: small_tip_rack_1
+2025-09-30 11:52:17,325 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:52:17,340 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:52:20,300 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 11:52:23,083 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:52:59,648 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 11:53:00,432 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:53:01,886 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:53:05,358 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:53:15,916 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:53:15,916 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:53:19,482 - INFO - Removing pipet
+2025-09-30 11:53:22,873 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 11:53:22,873 - INFO - Getting small_tip (pipet number 41) from rack: small_tip_rack_1
+2025-09-30 11:53:25,705 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 11:53:25,720 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 11:53:28,648 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 11:53:31,415 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 11:54:07,997 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 11:54:08,717 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 11:54:11,084 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 11:54:14,571 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:54:25,144 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:54:25,144 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:54:30,486 - INFO - Removing pipet
+2025-09-30 11:54:33,894 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:54:33,894 - INFO - Getting small_tip (pipet number 42) from rack: small_tip_rack_1
+2025-09-30 11:54:36,724 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:54:36,724 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:54:39,603 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:54:40,691 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:55:04,604 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:55:06,044 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:55:06,274 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:55:09,754 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:55:29,365 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:55:29,365 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:55:35,091 - INFO - Removing pipet
+2025-09-30 11:55:38,530 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:55:38,530 - INFO - Getting small_tip (pipet number 43) from rack: small_tip_rack_1
+2025-09-30 11:55:41,351 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:55:41,353 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:55:44,257 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:55:45,344 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:56:09,257 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:56:10,697 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:56:14,296 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:56:17,718 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:56:37,285 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:56:37,285 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:56:43,488 - INFO - Removing pipet
+2025-09-30 11:56:46,903 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 11:56:46,903 - INFO - Getting small_tip (pipet number 44) from rack: small_tip_rack_1
+2025-09-30 11:56:49,700 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 11:56:49,701 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 11:56:52,557 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:56:53,613 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 11:57:17,558 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 11:57:18,997 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 11:57:21,684 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 11:57:25,187 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 11:57:44,781 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:57:44,781 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:57:50,092 - INFO - Removing pipet
+2025-09-30 11:58:04,809 - INFO - LLM Optimization Results:
+2025-09-30 11:58:04,810 - INFO - Strategy Summary: Data analysis revealed that reducing deviation often required higher aspirate and dispense wait times, as seen in experiments like trial_index 23. However, faster cycles could be achieved by optimizing retract speed and air volumes, as indicated by trial_index 31. To explore the Pareto front, a middle ground is chosen, considering both deviation and time simultaneously.
+2025-09-30 11:58:04,810 - INFO - LLM Recommendation 1:
+2025-09-30 11:58:04,810 - INFO -   Confidence Level: medium
+2025-09-30 11:58:04,810 - INFO -   Reasoning: The experiment with trial_index 31 showed a low deviation of 4.426418 and moderate time. By slightly modifying the aspirate and dispense speeds to focus on speed with low wait times, we aim to achieve faster cycles with acceptable accuracy.
+2025-09-30 11:58:04,810 - INFO -   Expected Improvement: Reduction in time by approximately 5-10% with a slight increase in deviation.
+2025-09-30 11:58:04,812 - INFO - LLM Recommendation 2:
+2025-09-30 11:58:04,812 - INFO -   Confidence Level: high
+2025-09-30 11:58:04,812 - INFO -   Reasoning: Experiments with low deviation, such as trial_index 23 (deviation of 1.058201), used high wait times and slow retract speeds. This setup should improve accuracy by minimizing variability.
+2025-09-30 11:58:04,813 - INFO -   Expected Improvement: Reduction in deviation by approximately 10-20% at the cost of increased cycle time.
+2025-09-30 11:58:04,814 - INFO - LLM Recommendation 3:
+2025-09-30 11:58:04,814 - INFO -   Confidence Level: medium
+2025-09-30 11:58:04,814 - INFO -   Reasoning: Aiming for a balance between time and deviation, based on trials like 101 which had balanced performance with moderate deviation and time. Exploring unexplored parameter regions that might fall along the Pareto front.
+2025-09-30 11:58:04,814 - INFO -   Expected Improvement: Balanced improvement with a moderate decrease in both deviation and time by 5-10%.
+2025-09-30 11:58:04,816 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:58:04,816 - INFO - Getting small_tip (pipet number 45) from rack: small_tip_rack_1
+2025-09-30 11:58:07,574 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:58:07,574 - DEBUG - Adjusting pump 0 speed to 28
+2025-09-30 11:58:10,374 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:58:12,548 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 11:58:22,611 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:58:23,896 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:58:26,497 - DEBUG - Adjusting pump 0 speed to 35
+2025-09-30 11:58:29,968 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 11:59:02,166 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 11:59:02,166 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 11:59:05,893 - INFO - Removing pipet
+2025-09-30 11:59:09,304 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 11:59:09,304 - INFO - Getting small_tip (pipet number 46) from rack: small_tip_rack_1
+2025-09-30 11:59:12,023 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 11:59:12,023 - DEBUG - Adjusting pump 0 speed to 28
+2025-09-30 11:59:14,835 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 11:59:17,026 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 11:59:27,087 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 11:59:28,351 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 11:59:29,886 - DEBUG - Adjusting pump 0 speed to 35
+2025-09-30 11:59:33,341 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 12:00:05,540 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:00:05,540 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:00:09,091 - INFO - Removing pipet
+2025-09-30 12:00:12,453 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 12:00:12,453 - INFO - Getting small_tip (pipet number 47) from rack: small_tip_rack_1
+2025-09-30 12:00:15,185 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 12:00:15,185 - DEBUG - Adjusting pump 0 speed to 28
+2025-09-30 12:00:17,936 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:00:20,191 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 12:00:30,268 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:00:31,548 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 12:00:34,091 - DEBUG - Adjusting pump 0 speed to 35
+2025-09-30 12:00:37,578 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 12:01:09,729 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:01:09,729 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:01:13,296 - INFO - Removing pipet
+2025-09-30 12:01:16,763 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:01:16,763 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_2
+2025-09-30 12:01:19,774 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:01:19,790 - DEBUG - Adjusting pump 0 speed to 18
+2025-09-30 12:01:22,253 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:01:24,221 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 12:01:59,266 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:02:00,307 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:02:02,497 - DEBUG - Adjusting pump 0 speed to 6
+2025-09-30 12:02:06,000 - DEBUG - Dispensing 0.115 mL then waiting 15.0 s
+2025-09-30 12:02:21,483 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:02:21,483 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:02:25,498 - INFO - Removing pipet
+2025-09-30 12:02:28,889 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:02:28,889 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_2
+2025-09-30 12:02:31,870 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:02:31,870 - DEBUG - Adjusting pump 0 speed to 18
+2025-09-30 12:02:34,375 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:02:36,327 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 12:03:11,405 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:03:12,448 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:03:13,692 - DEBUG - Adjusting pump 0 speed to 6
+2025-09-30 12:03:17,163 - DEBUG - Dispensing 0.115 mL then waiting 15.0 s
+2025-09-30 12:03:32,631 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:03:32,631 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:03:38,293 - INFO - Removing pipet
+2025-09-30 12:03:41,708 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:03:41,708 - INFO - Getting small_tip (pipet number 2) from rack: small_tip_rack_2
+2025-09-30 12:03:44,659 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:03:44,659 - DEBUG - Adjusting pump 0 speed to 18
+2025-09-30 12:03:47,154 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:03:49,090 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 12:04:24,167 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:04:25,207 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:04:27,095 - DEBUG - Adjusting pump 0 speed to 6
+2025-09-30 12:04:30,598 - DEBUG - Dispensing 0.115 mL then waiting 15.0 s
+2025-09-30 12:04:46,081 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:04:46,081 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:04:51,487 - INFO - Removing pipet
+2025-09-30 12:04:54,939 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:04:54,939 - INFO - Getting small_tip (pipet number 3) from rack: small_tip_rack_2
+2025-09-30 12:04:57,899 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:04:57,901 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 12:05:00,396 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:05:01,244 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 12:05:12,985 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:05:13,545 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:05:15,496 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:05:18,951 - DEBUG - Dispensing 0.125 mL then waiting 20.0 s
+2025-09-30 12:05:43,520 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:05:43,520 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:05:48,686 - INFO - Removing pipet
+2025-09-30 12:05:52,087 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:05:52,087 - INFO - Getting small_tip (pipet number 4) from rack: small_tip_rack_2
+2025-09-30 12:05:55,026 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:05:55,026 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 12:05:57,532 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:05:58,363 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 12:06:10,088 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:06:10,648 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:06:12,695 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:06:16,166 - DEBUG - Dispensing 0.125 mL then waiting 20.0 s
+2025-09-30 12:06:40,735 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:06:40,735 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:06:44,894 - INFO - Removing pipet
+2025-09-30 12:06:48,349 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:06:48,349 - INFO - Getting small_tip (pipet number 5) from rack: small_tip_rack_2
+2025-09-30 12:06:51,308 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:06:51,308 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 12:06:53,818 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:06:54,667 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 12:07:06,391 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:07:06,951 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:07:10,694 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:07:14,181 - DEBUG - Dispensing 0.125 mL then waiting 20.0 s
+2025-09-30 12:07:38,798 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:07:38,798 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:07:43,501 - INFO - Removing pipet
+2025-09-30 12:09:18,169 - INFO - LLM Optimization Results:
+2025-09-30 12:09:18,169 - INFO - Strategy Summary: Three diverse approaches were recommended: a speed-focused strategy for rapid cycles, an accuracy-focused strategy for minimal deviation, and a Pareto front exploration for balanced trade-offs. Key insights include the effectiveness of minimizing wait times for speed gains and using slower speeds for accuracy. The Pareto front strategy revealed that moderate parameter settings could offer balanced improvements across all metrics.
+2025-09-30 12:09:18,171 - INFO - LLM Recommendation 1:
+2025-09-30 12:09:18,172 - INFO -   Confidence Level: medium
+2025-09-30 12:09:18,173 - INFO -   Reasoning: This approach focuses on speed by minimizing wait times and using faster speeds. The strategy accepts some accuracy trade-offs. Reference: Trial 96, with low wait times, achieved a relatively low time of 32.38 seconds but a high deviation of 69.52.
+2025-09-30 12:09:18,174 - INFO -   Expected Improvement: Reduced cycle time by 10-15% compared to other settings with similar deviation.
+2025-09-30 12:09:18,177 - INFO - LLM Recommendation 2:
+2025-09-30 12:09:18,178 - INFO -   Confidence Level: high
+2025-09-30 12:09:18,178 - INFO -   Reasoning: This approach optimizes for accuracy by using slower aspirate and dispense speeds with longer wait times. Reference: Trial 2 from the SOBOL strategy achieved low deviation (20.85) and variability (4.77), with trade-offs in time (67.38).
+2025-09-30 12:09:18,179 - INFO -   Expected Improvement: Deviation and variability decreased by about 30-40% compared to faster settings.
+2025-09-30 12:09:18,182 - INFO - LLM Recommendation 3:
+2025-09-30 12:09:18,183 - INFO -   Confidence Level: medium
+2025-09-30 12:09:18,183 - INFO -   Reasoning: This setting aims to explore the Pareto front by balancing deviation and time, with moderate settings across parameters. Reference: Trial 97 showed a balanced deviation (32.91) and time (79.37) with moderate speeds.
+2025-09-30 12:09:18,183 - INFO -   Expected Improvement: Balanced improvement across all metrics with deviation and time both optimized by about 15-20%.
+2025-09-30 12:09:18,186 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:09:18,186 - INFO - Getting small_tip (pipet number 6) from rack: small_tip_rack_2
+2025-09-30 12:09:21,072 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:09:21,072 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 12:09:23,599 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:09:24,382 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:09:30,669 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:09:30,989 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:09:32,700 - DEBUG - Adjusting pump 0 speed to 10
+2025-09-30 12:09:36,123 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:09:41,690 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:09:41,690 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:09:45,289 - INFO - Removing pipet
+2025-09-30 12:09:48,710 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:09:48,710 - INFO - Getting small_tip (pipet number 7) from rack: small_tip_rack_2
+2025-09-30 12:09:51,607 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:09:51,607 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 12:09:54,102 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:09:54,870 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:10:01,188 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:10:01,508 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:10:04,099 - DEBUG - Adjusting pump 0 speed to 10
+2025-09-30 12:10:07,586 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:10:13,152 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:10:13,152 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:10:18,287 - INFO - Removing pipet
+2025-09-30 12:10:21,701 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:10:21,701 - INFO - Getting small_tip (pipet number 8) from rack: small_tip_rack_2
+2025-09-30 12:10:24,589 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:10:24,589 - DEBUG - Adjusting pump 0 speed to 15
+2025-09-30 12:10:27,116 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:10:27,884 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:10:34,186 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:10:34,506 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:10:36,697 - DEBUG - Adjusting pump 0 speed to 10
+2025-09-30 12:10:40,152 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:10:45,719 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:10:45,719 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:10:50,501 - INFO - Removing pipet
+2025-09-30 12:10:53,909 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-09-30 12:10:53,909 - INFO - Getting small_tip (pipet number 9) from rack: small_tip_rack_2
+2025-09-30 12:10:56,787 - INFO - Pipetting from vial liquid_source, amount: 0.051 mL
+2025-09-30 12:10:56,803 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:10:59,346 - DEBUG - Aspirating 0.028 mL then waiting 0 s
+2025-09-30 12:11:01,490 - DEBUG - Aspirating 0.051 mL then waiting 30.0 s
+2025-09-30 12:11:36,168 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-09-30 12:11:37,691 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-09-30 12:11:41,302 - DEBUG - Adjusting pump 0 speed to 17
+2025-09-30 12:11:44,757 - DEBUG - Dispensing 0.100 mL then waiting 12.44 s
+2025-09-30 12:12:00,400 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:12:00,400 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:12:03,696 - INFO - Removing pipet
+2025-09-30 12:12:07,119 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-09-30 12:12:07,119 - INFO - Getting small_tip (pipet number 10) from rack: small_tip_rack_2
+2025-09-30 12:12:09,918 - INFO - Pipetting from vial liquid_source, amount: 0.051 mL
+2025-09-30 12:12:09,918 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:12:12,445 - DEBUG - Aspirating 0.028 mL then waiting 0 s
+2025-09-30 12:12:14,588 - DEBUG - Aspirating 0.051 mL then waiting 30.0 s
+2025-09-30 12:12:49,203 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-09-30 12:12:50,738 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-09-30 12:12:53,697 - DEBUG - Adjusting pump 0 speed to 17
+2025-09-30 12:12:57,152 - DEBUG - Dispensing 0.100 mL then waiting 12.44 s
+2025-09-30 12:13:12,794 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:13:12,794 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:13:16,490 - INFO - Removing pipet
+2025-09-30 12:13:19,906 - DEBUG - Selected small_tip for volume 0.051 mL
+2025-09-30 12:13:19,906 - INFO - Getting small_tip (pipet number 11) from rack: small_tip_rack_2
+2025-09-30 12:13:22,701 - INFO - Pipetting from vial liquid_source, amount: 0.051 mL
+2025-09-30 12:13:22,701 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:13:25,208 - DEBUG - Aspirating 0.028 mL then waiting 0 s
+2025-09-30 12:13:27,400 - DEBUG - Aspirating 0.051 mL then waiting 30.0 s
+2025-09-30 12:14:02,030 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2025-09-30 12:14:03,549 - INFO - Pipetting into vial measurement_vial_0, amount: 0.051 mL
+2025-09-30 12:14:05,501 - DEBUG - Adjusting pump 0 speed to 17
+2025-09-30 12:14:08,956 - DEBUG - Dispensing 0.100 mL then waiting 12.44 s
+2025-09-30 12:14:24,583 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:14:24,583 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:14:29,702 - INFO - Removing pipet
+2025-09-30 12:14:33,096 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:14:33,096 - INFO - Getting small_tip (pipet number 12) from rack: small_tip_rack_2
+2025-09-30 12:14:35,894 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:14:35,894 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:14:38,419 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 12:14:40,882 - DEBUG - Aspirating 0.055 mL then waiting 25.0 s
+2025-09-30 12:15:08,810 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:15:09,930 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:15:12,297 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:15:15,752 - DEBUG - Dispensing 0.125 mL then waiting 15.0 s
+2025-09-30 12:15:37,153 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:15:37,153 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:15:43,104 - INFO - Removing pipet
+2025-09-30 12:15:46,501 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:15:46,501 - INFO - Getting small_tip (pipet number 13) from rack: small_tip_rack_2
+2025-09-30 12:15:49,198 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:15:49,198 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:15:51,661 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 12:15:54,109 - DEBUG - Aspirating 0.055 mL then waiting 25.0 s
+2025-09-30 12:16:22,053 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:16:23,172 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:16:25,492 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:16:28,979 - DEBUG - Dispensing 0.125 mL then waiting 15.0 s
+2025-09-30 12:16:50,380 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:16:50,380 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:16:55,899 - INFO - Removing pipet
+2025-09-30 12:16:59,330 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:16:59,330 - INFO - Getting small_tip (pipet number 14) from rack: small_tip_rack_2
+2025-09-30 12:17:02,055 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:17:02,063 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:17:04,536 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 12:17:07,031 - DEBUG - Aspirating 0.055 mL then waiting 25.0 s
+2025-09-30 12:17:34,975 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:17:36,095 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:17:38,302 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:17:41,757 - DEBUG - Dispensing 0.125 mL then waiting 15.0 s
+2025-09-30 12:18:03,159 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:18:03,159 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:18:08,901 - INFO - Removing pipet
+2025-09-30 12:18:53,692 - INFO - LLM Optimization Results:
+2025-09-30 12:18:53,692 - INFO - Strategy Summary: Key insights from the data indicate that low aspirate and dispense speeds (high numerical values) often result in faster cycle times but at the cost of higher deviation. High aspirate and dispense speeds (low numerical values) contribute to lower deviation but increase cycle time. The recommendations aim to explore these trade-offs by targeting speed, accuracy, and a balance along the Pareto front. The expected improvements are based on observed patterns in the experimental data, focusing on reducing deviation while managing cycle time.
+2025-09-30 12:18:53,693 - INFO - LLM Recommendation 1:
+2025-09-30 12:18:53,693 - INFO -   Confidence Level: medium
+2025-09-30 12:18:53,693 - INFO -   Reasoning: Experiments with low aspirate and dispense speeds (high numerical values) like trial 108 had minimal time (30.76 s) with acceptable deviation (71.00). This setting focuses on speed by reducing wait times and leveraging faster retract speed.
+2025-09-30 12:18:53,694 - INFO -   Expected Improvement: Reduction in overall cycle time by 5-10 seconds with a slight increase in deviation.
+2025-09-30 12:18:53,694 - INFO - LLM Recommendation 2:
+2025-09-30 12:18:53,695 - INFO -   Confidence Level: high
+2025-09-30 12:18:53,695 - INFO -   Reasoning: Trial 109 showed low deviation (9.68) and reasonable time (69.73 s) with these parameter values. It prioritizes accuracy with minimal deviation and variability by using the maximum aspirate_wait_time and a lower dispense speed.
+2025-09-30 12:18:53,695 - INFO -   Expected Improvement: Reduction in deviation by 5-10 units with a possible increase in cycle time by 5-15 seconds.
+2025-09-30 12:18:53,696 - INFO - LLM Recommendation 3:
+2025-09-30 12:18:53,696 - INFO -   Confidence Level: medium
+2025-09-30 12:18:53,698 - INFO -   Reasoning: Trial 110 showed a moderate deviation (9.26) with a variability of 7.67 and a time of 66.54 s. This configuration explores the Pareto front by balancing speed and accuracy using a higher dispense speed and moderate wait times.
+2025-09-30 12:18:53,698 - INFO -   Expected Improvement: Balanced improvement in both deviation and time, aiming for a 10-20% reduction in variability.
+2025-09-30 12:18:53,700 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:18:53,700 - INFO - Getting small_tip (pipet number 15) from rack: small_tip_rack_2
+2025-09-30 12:18:56,380 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:18:56,382 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:18:58,870 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:18:59,479 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:19:05,317 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:19:05,637 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:19:05,893 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:19:09,236 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:19:14,642 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:19:14,642 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:19:19,905 - INFO - Removing pipet
+2025-09-30 12:19:23,312 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:19:23,312 - INFO - Getting small_tip (pipet number 16) from rack: small_tip_rack_2
+2025-09-30 12:19:26,273 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:19:26,291 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:19:28,670 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:19:29,278 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:19:35,132 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:19:35,452 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:19:35,692 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:19:39,067 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:19:44,473 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:19:44,473 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:19:50,103 - INFO - Removing pipet
+2025-09-30 12:19:53,533 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:19:53,533 - INFO - Getting small_tip (pipet number 17) from rack: small_tip_rack_2
+2025-09-30 12:19:56,438 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:19:56,453 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:19:58,837 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:19:59,445 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:20:05,283 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:20:05,603 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:20:05,890 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:20:09,234 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:20:14,634 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:20:14,634 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:20:21,102 - INFO - Removing pipet
+2025-09-30 12:20:24,509 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:20:24,509 - INFO - Getting small_tip (pipet number 18) from rack: small_tip_rack_2
+2025-09-30 12:20:27,436 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:20:27,436 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:20:29,884 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:20:32,651 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:21:09,519 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:21:10,239 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:21:12,702 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:21:16,158 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:21:26,730 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:21:26,730 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:21:32,105 - INFO - Removing pipet
+2025-09-30 12:21:35,512 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:21:35,512 - INFO - Getting small_tip (pipet number 19) from rack: small_tip_rack_2
+2025-09-30 12:21:38,410 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:21:38,427 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:21:40,854 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:21:43,621 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:22:20,507 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:22:21,226 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:22:23,898 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:22:27,337 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:22:37,909 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:22:37,909 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:22:44,099 - INFO - Removing pipet
+2025-09-30 12:22:47,474 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:22:47,474 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_2
+2025-09-30 12:22:50,342 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:22:50,343 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:22:52,769 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:22:55,536 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:23:32,453 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:23:33,173 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:23:35,700 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:23:39,203 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:23:49,776 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:23:49,776 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:23:53,503 - INFO - Removing pipet
+2025-09-30 12:23:56,878 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 12:23:56,878 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_2
+2025-09-30 12:23:59,699 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 12:23:59,700 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:24:02,140 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:24:03,228 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 12:24:27,253 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:24:28,693 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 12:24:31,092 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:24:34,579 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:24:54,173 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:24:54,173 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:24:58,892 - INFO - Removing pipet
+2025-09-30 12:25:02,307 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 12:25:02,307 - INFO - Getting small_tip (pipet number 22) from rack: small_tip_rack_2
+2025-09-30 12:25:05,162 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 12:25:05,162 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:25:07,594 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:25:08,681 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 12:25:32,722 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:25:34,162 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 12:25:35,905 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:25:39,360 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:25:58,970 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:25:58,970 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:26:03,897 - INFO - Removing pipet
+2025-09-30 12:26:07,320 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-09-30 12:26:07,320 - INFO - Getting small_tip (pipet number 23) from rack: small_tip_rack_2
+2025-09-30 12:26:10,151 - INFO - Pipetting from vial liquid_source, amount: 0.07 mL
+2025-09-30 12:26:10,167 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:26:12,646 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:26:13,718 - DEBUG - Aspirating 0.070 mL then waiting 20.0 s
+2025-09-30 12:26:37,759 - DEBUG - Aspirating 0.030 mL then waiting 0 s
+2025-09-30 12:26:39,199 - INFO - Pipetting into vial measurement_vial_0, amount: 0.07 mL
+2025-09-30 12:26:40,894 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:26:44,349 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:27:03,959 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:27:03,959 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:27:08,694 - INFO - Removing pipet
+2025-09-30 12:27:27,105 - INFO - LLM Optimization Results:
+2025-09-30 12:27:27,106 - INFO - Strategy Summary: Analysis of the experimental data highlights various trade-offs between speed, deviation, and variability. Speed-focused configurations aim to reduce cycle times significantly at the expense of increased deviation, while accuracy-focused setups prioritize low deviation and variability with increased operation time. The Pareto front and unexplored regions recommendations test the extremes of parameter spaces, especially in regions with less historical data. Patterns suggest that lower aspirate and dispense speeds (higher numerical values) correspond with improved accuracy, while increased speed correlates with reduced time but higher deviation.
+2025-09-30 12:27:27,106 - INFO - LLM Recommendation 1:
+2025-09-30 12:27:27,106 - INFO -   Confidence Level: medium
+2025-09-30 12:27:27,106 - INFO -   Reasoning: This configuration aims to optimize for speed, leveraging observations from trials like 111 (aspirate_speed = 28, dispense_speed = 35) which showed moderate deviation with minimal time. Expect faster cycles with some deviation trade-offs.
+2025-09-30 12:27:27,106 - INFO -   Expected Improvement: Reduction in time by approximately 20% based on speed-focused trials
+2025-09-30 12:27:27,107 - INFO - LLM Recommendation 2:
+2025-09-30 12:27:27,107 - INFO -   Confidence Level: high
+2025-09-30 12:27:27,108 - INFO -   Reasoning: This setup draws from trial 109, which exhibited low deviation and variability with slightly extended times. This configuration is aimed at minimizing deviation with acceptable time increases.
+2025-09-30 12:27:27,108 - INFO -   Expected Improvement: Deviation and variability reduction by approximately 15% based on previous high-accuracy trials
+2025-09-30 12:27:27,108 - INFO - LLM Recommendation 3:
+2025-09-30 12:27:27,108 - INFO -   Confidence Level: low
+2025-09-30 12:27:27,109 - INFO -   Reasoning: Drawing from trials like 96, which had minimal time but higher deviation, this setup explores the unexplored region of very low speeds and wait times. It’s an aggressive test of speed with expected high deviation.
+2025-09-30 12:27:27,110 - INFO -   Expected Improvement: Time reduction by approximately 30%, with a trade-off of increased deviation, exploring extreme speed scenarios
+2025-09-30 12:27:27,112 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 12:27:27,112 - INFO - Getting small_tip (pipet number 24) from rack: small_tip_rack_2
+2025-09-30 12:27:29,920 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 12:27:29,920 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:27:32,351 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:27:35,134 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 12:27:46,475 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:27:48,080 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 12:27:50,697 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:27:54,104 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 12:28:07,013 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:28:07,013 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:28:10,499 - INFO - Removing pipet
+2025-09-30 12:28:13,915 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 12:28:13,915 - INFO - Getting small_tip (pipet number 25) from rack: small_tip_rack_2
+2025-09-30 12:28:16,658 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 12:28:16,658 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:28:19,073 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:28:21,840 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 12:28:33,197 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:28:34,801 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 12:28:37,100 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:28:40,459 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 12:28:53,367 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:28:53,367 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:28:57,702 - INFO - Removing pipet
+2025-09-30 12:29:01,109 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 12:29:01,109 - INFO - Getting small_tip (pipet number 26) from rack: small_tip_rack_2
+2025-09-30 12:29:03,876 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 12:29:03,876 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:29:06,323 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:29:09,107 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 12:29:20,415 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:29:22,021 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 12:29:23,902 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:29:27,246 - DEBUG - Dispensing 0.090 mL then waiting 5.0 s
+2025-09-30 12:29:40,154 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:29:40,154 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:29:45,896 - INFO - Removing pipet
+2025-09-30 12:29:49,364 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:29:49,364 - INFO - Getting small_tip (pipet number 27) from rack: small_tip_rack_2
+2025-09-30 12:29:52,150 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:29:52,150 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:29:54,613 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:29:57,410 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:30:34,442 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:30:35,161 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:30:36,297 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:30:39,784 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:30:50,357 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:30:50,357 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:30:56,899 - INFO - Removing pipet
+2025-09-30 12:31:00,338 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:31:00,338 - INFO - Getting small_tip (pipet number 28) from rack: small_tip_rack_2
+2025-09-30 12:31:03,057 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:31:03,057 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:31:05,505 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:31:08,272 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:31:45,253 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:31:45,978 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:31:47,908 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:31:51,379 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:32:01,952 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:32:01,952 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:32:05,903 - INFO - Removing pipet
+2025-09-30 12:32:09,310 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:32:09,310 - INFO - Getting small_tip (pipet number 29) from rack: small_tip_rack_2
+2025-09-30 12:32:12,045 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:32:12,045 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:32:14,444 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:32:17,211 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:32:54,224 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:32:54,944 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:32:58,303 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:33:01,774 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:33:12,347 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:33:12,347 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:33:16,698 - INFO - Removing pipet
+2025-09-30 12:33:20,105 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:33:20,105 - INFO - Getting small_tip (pipet number 30) from rack: small_tip_rack_2
+2025-09-30 12:33:22,776 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:33:22,776 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:33:25,175 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:33:25,783 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:33:31,957 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:33:32,277 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:33:32,491 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:33:35,844 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:33:41,250 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:33:41,250 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:33:46,497 - INFO - Removing pipet
+2025-09-30 12:33:49,888 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:33:49,888 - INFO - Getting small_tip (pipet number 31) from rack: small_tip_rack_2
+2025-09-30 12:33:52,511 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:33:52,511 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:33:54,894 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:33:55,502 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:34:01,676 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:34:01,996 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:34:04,699 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:34:08,026 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:34:13,433 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:34:13,433 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:34:17,496 - INFO - Removing pipet
+2025-09-30 12:34:20,871 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:34:20,871 - INFO - Getting small_tip (pipet number 32) from rack: small_tip_rack_2
+2025-09-30 12:34:23,738 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:34:23,739 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:34:26,069 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:34:26,677 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:34:32,867 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:34:33,187 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:34:33,298 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:34:36,642 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:34:42,042 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:34:42,042 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:34:47,295 - INFO - Removing pipet
+2025-09-30 12:35:11,008 - INFO - LLM Optimization Results:
+2025-09-30 12:35:11,008 - INFO - Strategy Summary: Analysis of the experimental data reveals three strategic directions: a balanced approach that explores the Pareto front, a speed-focused approach with minimum wait times and rapid cycles, and an accuracy-focused strategy with high aspirate and dispense speeds to minimize deviation and variability. Each recommendation is designed to systematically explore different trade-off regions, informed by observed patterns in existing trials.
+2025-09-30 12:35:11,008 - INFO - LLM Recommendation 1:
+2025-09-30 12:35:11,010 - INFO -   Confidence Level: medium
+2025-09-30 12:35:11,010 - INFO -   Reasoning: Balance between speed and accuracy is observed in experiments like trial 101 with deviation of 42.38 and time of 45.91. This combination should explore the middle ground of the Pareto front, potentially achieving a good balance of all metrics.
+2025-09-30 12:35:11,010 - INFO -   Expected Improvement: Moderate improvement in deviation and variability while keeping the time within a reasonable range.
+2025-09-30 12:35:11,011 - INFO - LLM Recommendation 2:
+2025-09-30 12:35:11,011 - INFO -   Confidence Level: high
+2025-09-30 12:35:11,012 - INFO -   Reasoning: Combination of low aspirate and dispense speeds with minimal wait times (similar to trial 96) shows potential for minimizing time to around 32.38 while maintaining accuracy in deviation (69.52). This configuration could be further optimized for speed-focused strategies.
+2025-09-30 12:35:11,012 - INFO -   Expected Improvement: Significant reduction in total cycle time with acceptable deviation and variability trade-offs.
+2025-09-30 12:35:11,012 - INFO - LLM Recommendation 3:
+2025-09-30 12:35:11,012 - INFO -   Confidence Level: medium
+2025-09-30 12:35:11,013 - INFO -   Reasoning: High aspirate and dispense speeds with maximum wait times aim to explore unexplored regions (akin to trial 20 and 29) that have shown low deviation (18.36) but longer times (62.31). This setup is accuracy-focused and could yield low deviation metrics.
+2025-09-30 12:35:11,013 - INFO -   Expected Improvement: Improvement in deviation and variability at the expense of increased cycle time.
+2025-09-30 12:35:11,015 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:35:11,015 - INFO - Getting small_tip (pipet number 33) from rack: small_tip_rack_2
+2025-09-30 12:35:13,850 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:35:13,852 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:35:16,167 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:35:17,574 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 12:35:31,026 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:35:31,826 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:35:33,298 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:35:36,657 - DEBUG - Dispensing 0.095 mL then waiting 10.0 s
+2025-09-30 12:35:50,173 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:35:50,173 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:35:54,700 - INFO - Removing pipet
+2025-09-30 12:35:58,106 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:35:58,106 - INFO - Getting small_tip (pipet number 34) from rack: small_tip_rack_2
+2025-09-30 12:36:00,984 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:36:00,992 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:36:03,353 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:36:04,777 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 12:36:18,260 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:36:19,066 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:36:22,707 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:36:26,082 - DEBUG - Dispensing 0.095 mL then waiting 10.0 s
+2025-09-30 12:36:39,614 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:36:39,614 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:36:43,309 - INFO - Removing pipet
+2025-09-30 12:36:46,716 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:36:46,716 - INFO - Getting small_tip (pipet number 35) from rack: small_tip_rack_2
+2025-09-30 12:36:49,531 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:36:49,531 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:36:51,867 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:36:53,306 - DEBUG - Aspirating 0.065 mL then waiting 10.0 s
+2025-09-30 12:37:06,806 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:37:07,606 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:37:11,109 - DEBUG - Adjusting pump 0 speed to 20
+2025-09-30 12:37:14,436 - DEBUG - Dispensing 0.095 mL then waiting 10.0 s
+2025-09-30 12:37:27,984 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:37:27,984 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:37:32,095 - INFO - Removing pipet
+2025-09-30 12:37:35,470 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:37:35,470 - INFO - Getting small_tip (pipet number 36) from rack: small_tip_rack_2
+2025-09-30 12:37:38,285 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:37:38,285 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:37:40,636 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:37:41,260 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:37:47,114 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:37:47,434 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:37:47,706 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:37:51,049 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:37:56,455 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:37:56,455 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:38:01,910 - INFO - Removing pipet
+2025-09-30 12:38:05,332 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:38:05,332 - INFO - Getting small_tip (pipet number 37) from rack: small_tip_rack_2
+2025-09-30 12:38:08,130 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:38:08,132 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:38:10,499 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:38:11,123 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:38:17,009 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:38:17,335 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:38:17,505 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:38:20,848 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:38:26,248 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:38:26,248 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:38:29,902 - INFO - Removing pipet
+2025-09-30 12:38:33,260 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:38:33,260 - INFO - Getting small_tip (pipet number 38) from rack: small_tip_rack_2
+2025-09-30 12:38:35,996 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:38:35,996 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:38:38,377 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:38:39,003 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:38:44,889 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:38:45,209 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:38:48,296 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:38:51,671 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:38:57,071 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:38:57,071 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:39:01,300 - INFO - Removing pipet
+2025-09-30 12:39:04,709 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:39:04,709 - INFO - Getting small_tip (pipet number 39) from rack: small_tip_rack_2
+2025-09-30 12:39:07,442 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:39:07,458 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:39:09,826 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:39:11,729 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 12:39:50,534 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:39:52,117 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:39:54,100 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:39:57,476 - DEBUG - Dispensing 0.075 mL then waiting 30.0 s
+2025-09-30 12:40:34,089 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:40:34,089 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:40:39,088 - INFO - Removing pipet
+2025-09-30 12:40:42,487 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:40:42,487 - INFO - Getting small_tip (pipet number 40) from rack: small_tip_rack_2
+2025-09-30 12:40:45,222 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:40:45,222 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:40:47,605 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:40:49,524 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 12:41:28,361 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:41:29,960 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:41:32,296 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:41:35,687 - DEBUG - Dispensing 0.075 mL then waiting 30.0 s
+2025-09-30 12:42:12,332 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:42:12,332 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:42:16,107 - INFO - Removing pipet
+2025-09-30 12:42:19,466 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:42:19,466 - INFO - Getting small_tip (pipet number 41) from rack: small_tip_rack_2
+2025-09-30 12:42:22,185 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 12:42:22,185 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:42:24,552 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:42:26,472 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 12:43:05,324 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:43:06,924 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 12:43:07,099 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 12:43:10,459 - DEBUG - Dispensing 0.075 mL then waiting 30.0 s
+2025-09-30 12:43:47,072 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:43:47,072 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:43:50,703 - INFO - Removing pipet
+2025-09-30 12:44:36,550 - INFO - LLM Optimization Results:
+2025-09-30 12:44:36,550 - INFO - Strategy Summary: The experimental data suggests that lowering aspirate and dispense speeds can significantly reduce processing time but may increase variability. High wait times and slow retract speeds improve accuracy and precision, aligning with configurations that showed minimal deviation and variability. The exploration of extreme parameter values (maximum aspirate and dispense speeds and wait times) highlights the potential for precision enhancements at the cost of time. These strategies explore the trade-offs across speed, accuracy, and variability, aiming to identify optimal configurations for specific operational needs.
+2025-09-30 12:44:36,551 - INFO - LLM Recommendation 1:
+2025-09-30 12:44:36,551 - INFO -   Confidence Level: medium
+2025-09-30 12:44:36,551 - INFO -   Reasoning: Experiment #96 and #105 with the lowest aspirate and dispense speeds (5) showed significantly reduced time (32.384557 and 29.499338 respectively) while maintaining a reasonable deviation (69.523810 and 64.179894). However, variability was high, indicating a trade-off. This configuration could explore further reducing time with acceptable accuracy loss.
+2025-09-30 12:44:36,553 - INFO -   Expected Improvement: Approximately 30% reduction in time with a slight increase in deviation and variability.
+2025-09-30 12:44:36,554 - INFO - LLM Recommendation 2:
+2025-09-30 12:44:36,554 - INFO -   Confidence Level: high
+2025-09-30 12:44:36,554 - INFO -   Reasoning: Experiment #109 with high aspirate and dispense wait times and slow retract speed resulted in low deviation (9.682540) and variability (6.530241) at the cost of increased time (69.734426). This setup prioritizes accuracy and stability, which is essential for precision tasks.
+2025-09-30 12:44:36,554 - INFO -   Expected Improvement: 10-20% reduction in deviation and variability compared to typical configurations.
+2025-09-30 12:44:36,555 - INFO - LLM Recommendation 3:
+2025-09-30 12:44:36,556 - INFO -   Confidence Level: low
+2025-09-30 12:44:36,556 - INFO -   Reasoning: Experiment #125 showed the lowest deviation (2.962963) with an extremely high time (96.467322). This configuration suggests exploring the extreme end of accuracy at the cost of process time, potentially useful for high-stakes precision applications.
+2025-09-30 12:44:36,556 - INFO -   Expected Improvement: 50% improvement in deviation, with a drastic increase in operational time.
+2025-09-30 12:44:36,559 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:44:36,559 - INFO - Getting small_tip (pipet number 42) from rack: small_tip_rack_2
+2025-09-30 12:44:39,249 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:44:39,249 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:44:41,632 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:44:42,272 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:44:48,462 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:44:48,798 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:44:48,910 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:44:52,285 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:44:57,675 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:44:57,675 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:45:05,097 - INFO - Removing pipet
+2025-09-30 12:45:08,504 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:45:08,504 - INFO - Getting small_tip (pipet number 43) from rack: small_tip_rack_2
+2025-09-30 12:45:11,143 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:45:11,143 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:45:13,479 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:45:14,086 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:45:20,293 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:45:20,616 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:45:23,300 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:45:26,659 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:45:32,059 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:45:32,059 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:45:35,504 - INFO - Removing pipet
+2025-09-30 12:45:38,911 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:45:38,911 - INFO - Getting small_tip (pipet number 44) from rack: small_tip_rack_2
+2025-09-30 12:45:41,552 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:45:41,554 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:45:43,886 - DEBUG - Aspirating 0.020 mL then waiting 0 s
+2025-09-30 12:45:44,526 - DEBUG - Aspirating 0.065 mL then waiting 5.0 s
+2025-09-30 12:45:50,700 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 12:45:51,020 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:45:51,307 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 12:45:54,667 - DEBUG - Dispensing 0.095 mL then waiting 5.0 s
+2025-09-30 12:46:00,072 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:46:00,072 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:46:06,711 - INFO - Removing pipet
+2025-09-30 12:46:10,150 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:46:10,150 - INFO - Getting small_tip (pipet number 45) from rack: small_tip_rack_2
+2025-09-30 12:46:12,789 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:46:12,789 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:46:15,125 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:46:17,908 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:46:55,145 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:46:55,865 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:46:59,304 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:47:02,775 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:47:13,347 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:47:13,347 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:47:17,299 - INFO - Removing pipet
+2025-09-30 12:47:20,730 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:47:20,730 - INFO - Getting small_tip (pipet number 46) from rack: small_tip_rack_2
+2025-09-30 12:47:23,303 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:47:23,303 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:47:25,632 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:47:28,415 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:48:05,652 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:48:06,372 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:48:07,699 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:48:11,186 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:48:21,759 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:48:21,759 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:48:26,910 - INFO - Removing pipet
+2025-09-30 12:48:30,269 - DEBUG - Selected small_tip for volume 0.065 mL
+2025-09-30 12:48:30,269 - INFO - Getting small_tip (pipet number 47) from rack: small_tip_rack_2
+2025-09-30 12:48:32,802 - INFO - Pipetting from vial liquid_source, amount: 0.065 mL
+2025-09-30 12:48:32,804 - DEBUG - Adjusting pump 0 speed to 25
+2025-09-30 12:48:35,099 - DEBUG - Aspirating 0.040 mL then waiting 0 s
+2025-09-30 12:48:37,962 - DEBUG - Aspirating 0.065 mL then waiting 30.0 s
+2025-09-30 12:49:15,197 - DEBUG - Aspirating 0.005 mL then waiting 0 s
+2025-09-30 12:49:15,938 - INFO - Pipetting into vial measurement_vial_0, amount: 0.065 mL
+2025-09-30 12:49:17,502 - DEBUG - Adjusting pump 0 speed to 9
+2025-09-30 12:49:20,942 - DEBUG - Dispensing 0.110 mL then waiting 10.0 s
+2025-09-30 12:49:31,515 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 12:49:31,515 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 12:49:38,505 - INFO - Removing pipet
+2025-09-30 12:49:41,945 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 12:49:41,945 - ERROR - All small_tip racks are empty! Please refill tips then hit enter on the terminal!
+2025-09-30 14:02:26,008 - INFO - Resetting all pipet rack counters to 0 after refill
+2025-09-30 14:02:26,009 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_1
+2025-09-30 14:02:29,060 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 14:02:29,068 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 14:02:32,149 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 14:02:34,101 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 14:03:13,050 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 14:03:14,649 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 14:03:16,314 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 14:03:19,720 - DEBUG - Dispensing 0.075 mL then waiting 30.0 s
+2025-09-30 14:03:56,333 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 14:03:56,334 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 14:04:00,330 - INFO - Removing pipet
+2025-09-30 14:04:03,723 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 14:04:03,723 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_1
+2025-09-30 14:04:06,730 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 14:04:06,730 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 14:04:09,817 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 14:04:11,704 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 14:04:50,669 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 14:04:52,268 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 14:04:54,324 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 14:04:57,684 - DEBUG - Dispensing 0.075 mL then waiting 30.0 s
+2025-09-30 14:05:34,299 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 14:05:34,300 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 14:05:37,519 - INFO - Removing pipet
+2025-09-30 14:05:40,974 - DEBUG - Selected small_tip for volume 0.055 mL
+2025-09-30 14:05:40,974 - INFO - Getting small_tip (pipet number 2) from rack: small_tip_rack_1
+2025-09-30 14:05:44,001 - INFO - Pipetting from vial liquid_source, amount: 0.055 mL
+2025-09-30 14:05:44,003 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 14:05:47,100 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 14:05:48,987 - DEBUG - Aspirating 0.055 mL then waiting 30.0 s
+2025-09-30 14:06:27,967 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-09-30 14:06:29,530 - INFO - Pipetting into vial measurement_vial_0, amount: 0.055 mL
+2025-09-30 14:06:30,527 - DEBUG - Adjusting pump 0 speed to 30
+2025-09-30 14:06:33,902 - DEBUG - Dispensing 0.075 mL then waiting 30.0 s
+2025-09-30 14:07:10,522 - DEBUG - Blowing out 0.050 mL at speed 13
+2025-09-30 14:07:10,522 - DEBUG - Adjusting pump 0 speed to 13
+2025-09-30 14:07:14,322 - INFO - Removing pipet
+2025-09-30 14:07:17,648 - INFO - Removing pipet
+2025-09-30 14:07:18,947 - INFO - Returning vial measurement_vial_0 to home location
+2025-09-30 14:07:18,947 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 0
+2025-09-30 14:07:18,947 - DEBUG - Grabbing vial 0 with index 0
+2025-09-30 14:07:21,305 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-09-30 14:07:24,020 - INFO - Moving robot to home position
+2025-09-30 14:07:27,498 - INFO -     deviation  variability         time  aspirate_speed  dispense_speed  aspirate_wait_time  dispense_wait_time  ...  post_asp_air_vol  overaspirate_vol  volume  trial_index  strategy    liquid               time_reported
+0   69.523810    20.283544    32.384557               5               5                 5.0                5.00  ...          0.010000          0.015000    0.05           96       LLM  glycerol  2025-09-30T11:15:08.958579
+1   32.910053     6.230783    79.373695              25              25                30.0               15.00  ...          0.020000          0.005000    0.05           97       LLM  glycerol  2025-09-30T11:19:07.113969
+2    9.153439    12.149674    66.793728              20              30                20.0               10.00  ...          0.030000          0.020000    0.05           98       LLM  glycerol  2025-09-30T11:22:27.523966
+3   49.047619     2.426443    48.123859              30              30                 5.0                5.00  ...          0.010000          0.010000    0.05           99       LLM  glycerol  2025-09-30T11:25:15.031745
+4   37.671958     8.719286    83.421219              20              25                25.0               25.00  ...          0.020000          0.010000    0.05          100       LLM  glycerol  2025-09-30T11:29:25.297626
+5   42.380952    19.732417    45.912525              15              20                10.0               10.00  ...          0.010000          0.015000    0.05          101       LLM  glycerol  2025-09-30T11:31:43.058608
+6   51.164021     5.971620    47.908917              30              30                 5.0                5.00  ...          0.010000          0.010000    0.05          102       LLM  glycerol  2025-09-30T11:34:23.328413
+7    5.925926     5.344041    70.917662              25               9                30.0               10.00  ...          0.010000          0.015000    0.05          103       LLM  glycerol  2025-09-30T11:37:56.092119
+8   54.444444     5.682755    53.468680              10              25                20.0                5.00  ...          0.020000          0.020000    0.05          104       LLM  glycerol  2025-09-30T11:40:36.515331
+9   64.179894    34.744320    29.499338               5               5                 5.0                5.00  ...          0.010000          0.015000    0.05          105       LLM  glycerol  2025-09-30T11:42:29.675146
+10   5.714286     5.869544    69.733796              25               9                30.0               10.00  ...          0.004506          0.014532    0.05          106       LLM  glycerol  2025-09-30T11:45:58.893202
+11  16.613757     4.310987    65.799294              20              30                20.0               10.00  ...          0.030000          0.020000    0.05          107       LLM  glycerol  2025-09-30T11:49:16.306899
+12  71.005291    25.608634    30.761636               5               5                 5.0                5.00  ...          0.010000          0.015000    0.05          108       LLM  glycerol  2025-09-30T11:51:04.671724
+13   9.682540     6.530241    69.734426              25               9                30.0               10.00  ...          0.005000          0.015000    0.05          109       LLM  glycerol  2025-09-30T11:54:33.877731
+14   9.259259     7.668026    66.541874              20              30                20.0               10.00  ...          0.030000          0.020000    0.05          110       LLM  glycerol  2025-09-30T11:57:53.521205
+15  50.105820     1.565729    63.973436              28              35                 5.0                5.00  ...          0.010000          0.010000    0.05          111       LLM  glycerol  2025-09-30T12:01:16.761644
+16  17.195767    28.720176    72.710409              18               6                30.0               15.00  ...          0.020000          0.005000    0.05          112       LLM  glycerol  2025-09-30T12:04:54.935626
+17  48.148148     1.282633    57.331145              15              20                10.0               20.00  ...          0.030000          0.015000    0.05          113       LLM  glycerol  2025-09-30T12:07:46.937990
+18  76.243386    34.685291    31.902397              15              10                 5.0                5.00  ...          0.010000          0.015000    0.05          114       LLM  glycerol  2025-09-30T12:10:53.892591
+19  16.560847     2.467353    73.062786              25              17                30.0               12.44  ...          0.021100          0.001400    0.05          115       LLM  glycerol  2025-09-30T12:14:33.096906
+20  40.899471     8.150264    73.070431              20              25                25.0               15.00  ...          0.020000          0.005000    0.05          116       LLM  glycerol  2025-09-30T12:18:12.308199
+21  72.328042    27.981274    30.270234               5               5                 5.0                5.00  ...          0.010000          0.015000    0.05          117       LLM  glycerol  2025-09-30T12:20:24.509719
+22   8.624339     7.711387    70.784157              25               9                30.0               10.00  ...          0.005000          0.015000    0.05          118       LLM  glycerol  2025-09-30T12:23:56.862191
+23  28.095238    21.426075    65.069072              20              30                20.0               10.00  ...          0.030000          0.020000    0.05          119       LLM  glycerol  2025-09-30T12:27:12.069406
+24  47.142857     3.710461    47.413353              30              30                 5.0                5.00  ...          0.010000          0.010000    0.05          120       LLM  glycerol  2025-09-30T12:29:49.362744
+25   7.619048     6.751031    70.241499              25               9                30.0               10.00  ...          0.005000          0.015000    0.05          121       LLM  glycerol  2025-09-30T12:33:20.089245
+26  60.529101    50.084203    30.177789               5               5                 5.0                5.00  ...          0.010000          0.015000    0.05          122       LLM  glycerol  2025-09-30T12:34:50.638401
+27  59.153439     5.589495    48.146469              20              20                10.0               10.00  ...          0.010000          0.015000    0.05          123       LLM  glycerol  2025-09-30T12:37:35.454027
+28  43.227513    27.655702    29.740669               5               5                 5.0                5.00  ...          0.010000          0.015000    0.05          124       LLM  glycerol  2025-09-30T12:39:04.691780
+29   2.962963     3.404030    96.467322              30              30                30.0               30.00  ...          0.010000          0.005000    0.05          125       LLM  glycerol  2025-09-30T12:43:54.131770
+30  71.534392    24.880694    31.197349               5               5                 5.0                5.00  ...          0.010000          0.015000    0.05          126       LLM  glycerol  2025-09-30T12:46:10.150605
+31   7.354497     6.941342    70.592644              25               9                30.0               10.00  ...          0.005000          0.015000    0.05          127       LLM  glycerol  2025-09-30T12:49:41.941886
+32   5.079365     3.523182  1551.896148              30              30                30.0               30.00  ...          0.010000          0.005000    0.05          128       LLM  glycerol  2025-09-30T14:07:17.632333
+
+[33 rows x 16 columns]

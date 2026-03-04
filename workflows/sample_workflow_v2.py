@@ -6,7 +6,6 @@ Edit the parameters at the bottom to change the workflow.
 import sys
 sys.path.append("../utoronto_demo") #Add the parent folder to the system path
 import time #For pauses
-from pipetting_data.pipetting_parameters import PipettingParameters
 from master_usdl_coordinator import Lash_E # This is the main class that coordinates the robot, photoreactor, and cytation
 
 def sample_workflow(aspiration_volume: float, replicates: int = 3, simulate = True):
@@ -46,14 +45,8 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3, simulate = Tr
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_t8=True,initialize_p2=True,simulate=simulate) # Initialize the Lash_E class with the input vial status file
 
-    # 2. Check the status of the input vials 
-    lash_e.nr_robot.check_input_file() #outputs the values in sample_input_vials.csv and user must confirm by typing Enter if everything looks ok to proceed
-    lash_e.nr_track.check_input_file()
-
     lash_e.temp_controller.set_temp(40) # Set the temperature of the heater to 40 degrees Celsius
 
-    if not simulate:
-        time.sleep(15)
     lash_e.grab_new_wellplate() #Grab a wellplate from the source tray
 
     # 3. Prepare Source Vial A by adding solid and liquid (Note that in theory priming for the reservoir dispense is needed, but this is not done here)
@@ -104,6 +97,8 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3, simulate = Tr
     # 12. Measure the wellplate
     MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Quick_Measurement.prt" #Cytation protocol to run
     data = lash_e.measure_wellplate(MEASUREMENT_PROTOCOL_FILE, well_indices) #Move the wellplate to the cytation, run Quick_Measurement.prt for wells specified in well_indices, and return the wellplate
+
+    print("Results", data)
 
     lash_e.discard_used_wellplate() #Discard wellplate to waste stack
 

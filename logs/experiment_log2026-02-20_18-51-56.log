@@ -1,0 +1,1440 @@
+2026-02-20 18:51:56,360 - INFO - Workflow config loaded: surfactant_grid_adaptive_concentrations
+2026-02-20 18:51:56,365 - INFO - Config keys updated: 36 (SURFACTANT_A, SURFACTANT_B, EXPERIMENT_TAG, SIMULATE, VALIDATE_LIQUIDS, CREATE_WELLPLATE, VALIDATION_ONLY, RUN_2_STAGE_WORKFLOW, RUN_SINGLE_STAGE, RUN_ITERATIVE_WORKFLOW, ADD_CMC_CONTROLS, CMC_CONTROL_POINTS, MIN_CONC, NUMBER_CONCENTRATIONS, ITERATIVE_CONCENTRATIONS, GRADIENT_SUGGESTIONS_PER_ITERATION, OPTIMIZE_METRIC, N_REPLICATES, WELL_VOLUME_UL, PYRENE_VOLUME_UL, ITERATIVE_MEASUREMENT_TOTAL, ADD_BUFFER, BUFFER_VOLUME_UL, BUFFER_OPTIONS, SELECTED_BUFFER, MAX_WELLS, FINAL_SUBSTOCK_VOLUME, MINIMUM_PIPETTE_VOLUME, MEASUREMENT_INTERVAL, MIN_WELL_PIPETTE_VOLUME_UL, MAX_SURFACTANT_VOLUME_UL, SHAKE_PROTOCOL, TURBIDITY_PROTOCOL_FILE, FLUORESCENCE_PROTOCOL_FILE, INPUT_VIAL_STATUS_FILE, SURFACTANT_LIBRARY)
+2026-02-20 18:51:56,365 - INFO - SIMULATE mode: False
+2026-02-20 18:51:56,366 - INFO - Launching status review GUI...
+2026-02-20 18:51:56,510 - INFO - Detected workflow name: surfactant_grid_adaptive_concentrations
+2026-02-20 18:51:56,779 - INFO - Config editor loaded for workflow: surfactant_grid_adaptive_concentrations
+2026-02-20 18:51:59,221 - INFO - Status review completed - proceeding with hardware initialization
+2026-02-20 18:51:59,238 - DEBUG - Reloading config after status check to get updated values
+2026-02-20 18:51:59,250 - INFO - Config Manager: Updated 36 workflow constants from surfactant_grid_adaptive_concentrations.yaml
+2026-02-20 18:51:59,868 - INFO - Initializing North Robot...
+2026-02-20 18:51:59,868 - DEBUG - Loading robot configuration files...
+2026-02-20 18:51:59,887 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-02-20 18:51:59,888 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-02-20 18:51:59,891 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-02-20 18:51:59,891 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-02-20 18:51:59,898 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-20 18:51:59,901 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-20 18:51:59,901 - DEBUG - Loading robot state files...
+2026-02-20 18:51:59,903 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
+2026-02-20 18:51:59,903 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-02-20 18:51:59,903 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-02-20 18:51:59,903 - DEBUG - Robot status loaded successfully
+2026-02-20 18:51:59,903 - INFO - Physical initialization of North Robot...
+2026-02-20 18:52:03,381 - DEBUG - Loading pumps from YAML configuration...
+2026-02-20 18:52:03,482 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-02-20 18:52:03,586 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-02-20 18:52:03,586 - INFO - Moving robot to home position
+2026-02-20 18:52:03,996 - DEBUG - Initializing centrifuge controller...
+2026-02-20 18:52:09,256 - DEBUG - Current reader status: 0
+2026-02-20 18:52:09,256 - INFO - Cytation5 is connected and ready
+2026-02-20 18:52:09,256 - INFO - Initializing North Track...
+2026-02-20 18:52:09,256 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-02-20 18:52:09,256 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-02-20 18:52:09,257 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-02-20 18:52:09,257 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-02-20 18:52:09,260 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-02-20 18:52:09,260 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-02-20 18:52:09,268 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-20 18:52:09,269 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-20 18:52:09,343 - DEBUG - Moving North Track to home position
+2026-02-20 18:52:09,343 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-02-20 18:52:09,344 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-02-20 18:52:09,347 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-02-20 18:52:09,348 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-02-20 18:52:09,350 - INFO - Experiment: surfactant_grid_SDS_TTAB_20260220_185209_new_bounds_control_assay_try3
+2026-02-20 18:52:09,350 - INFO - Output folder: output\surfactant_grid_SDS_TTAB_20260220_185209_new_bounds_control_assay_try3
+2026-02-20 18:52:09,350 - INFO - Organized subfolders: validation, measurement_backups, substocks, analysis, logs
+2026-02-20 18:52:09,350 - INFO - ================================================================================
+2026-02-20 18:52:09,351 - INFO - ADAPTIVE SURFACTANT GRID SCREENING WORKFLOW
+2026-02-20 18:52:09,351 - INFO - ================================================================================
+2026-02-20 18:52:09,351 - INFO - Surfactants: SDS + TTAB
+2026-02-20 18:52:09,351 - INFO - Mode: HARDWARE
+2026-02-20 18:52:09,351 - INFO - 
+2026-02-20 18:52:09,760 - INFO - Grabbing new wellplate
+2026-02-20 18:52:09,760 - INFO - Moving robot to home position
+2026-02-20 18:52:09,965 - INFO - Getting new wellplate from source stack
+2026-02-20 18:52:09,966 - DEBUG - Calculating well plate stack height for num: 1, wp_type: 96 WELL PLATE, stack: source_stack, operation: grab
+2026-02-20 18:52:09,966 - ERROR - Cannot get wellplate, NR pipetting area is occupied
+2026-02-20 18:52:31,126 - INFO - Using existing Lash_E instance for workflow stage...
+2026-02-20 18:52:31,126 - INFO -   Refilling water vials to reset volume tracking...
+2026-02-20 18:52:31,126 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-02-20 18:52:31,126 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-02-20 18:52:31,127 - INFO - Using existing experiment folder: output\surfactant_grid_SDS_TTAB_20260220_185209_new_bounds_control_assay_try3
+2026-02-20 18:52:31,127 - INFO - Step 2: Creating complete experiment plan...
+2026-02-20 18:52:31,127 - INFO -   Calculating adaptive concentration grids...
+2026-02-20 18:52:31,127 - INFO - Adaptive grid for SDS: 1.0e-02 to 22.5 mM (5 steps)
+2026-02-20 18:52:31,127 - INFO -   Concentrations: ['1.000e-02', '6.887e-02', '4.743e-01', '3.267e+00', '2.250e+01']
+2026-02-20 18:52:31,127 - INFO - Adaptive grid for TTAB: 1.0e-02 to 22.5 mM (5 steps)
+2026-02-20 18:52:31,127 - INFO -   Concentrations: ['1.000e-02', '6.887e-02', '4.743e-01', '3.267e+00', '2.250e+01']
+2026-02-20 18:52:31,127 - INFO - 
+Adaptive concentration grid summary:
+2026-02-20 18:52:31,129 - INFO -   SDS: 5 concentrations from 1.000e-02 to 2.250e+01 mM
+2026-02-20 18:52:31,129 - INFO -   TTAB: 5 concentrations from 1.000e-02 to 2.250e+01 mM
+2026-02-20 18:52:31,129 - INFO -   Total combinations: 5 x 5 = 25 wells (x 1 replicates = 25 total wells)
+2026-02-20 18:52:31,129 - INFO -   SDS: 5/5 concentrations achievable
+2026-02-20 18:52:31,129 - INFO -   TTAB: 5/5 concentrations achievable
+2026-02-20 18:52:31,129 - INFO -   Calculating optimal dilution strategies...
+2026-02-20 18:52:31,129 - INFO - 
+=== Analyzing dilution strategy for SDS ===
+2026-02-20 18:52:31,129 - INFO - Target concentrations: ['1.00e-02', '6.89e-02', '4.74e-01', '3.27e+00', '2.25e+01'] mM
+2026-02-20 18:52:31,129 - INFO - Systematic dilution series: ['10', '4', '1.5', '0.7', '0.3', '0.1'] mM
+2026-02-20 18:52:31,130 - INFO -   1.00e-02 mM: Use SDS_dilution_5 (20.0 uL)
+2026-02-20 18:52:31,131 - INFO -   6.89e-02 mM: Use SDS_dilution_4 (45.9 uL)
+2026-02-20 18:52:31,132 - INFO -   4.74e-01 mM: Use SDS_dilution_2 (63.2 uL)
+2026-02-20 18:52:31,133 - INFO -   3.27e+00 mM: Use SDS_dilution_0 (65.3 uL)
+2026-02-20 18:52:31,134 - INFO -   2.25e+01 mM: Use SDS_stock (90.0 uL)
+2026-02-20 18:52:31,134 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-02-20 18:52:31,134 - INFO - Target concentrations: ['1.00e-02', '6.89e-02', '4.74e-01', '3.27e+00', '2.25e+01'] mM
+2026-02-20 18:52:31,135 - INFO - Systematic dilution series: ['10', '4', '1.5', '0.7', '0.3', '0.1'] mM
+2026-02-20 18:52:31,135 - INFO -   1.00e-02 mM: Use TTAB_dilution_5 (20.0 uL)
+2026-02-20 18:52:31,136 - INFO -   6.89e-02 mM: Use TTAB_dilution_4 (45.9 uL)
+2026-02-20 18:52:31,138 - INFO -   4.74e-01 mM: Use TTAB_dilution_2 (63.2 uL)
+2026-02-20 18:52:31,139 - INFO -   3.27e+00 mM: Use TTAB_dilution_0 (65.3 uL)
+2026-02-20 18:52:31,141 - INFO -   2.25e+01 mM: Use TTAB_stock (90.0 uL)
+2026-02-20 18:52:31,141 - INFO - 
+=== SUBSTOCK DILUTION RECIPES ===
+2026-02-20 18:52:31,141 - INFO - For each substock showing: source + volume -> target_concentration
+2026-02-20 18:52:31,141 - INFO - (Using minimum 200uL pipetting volumes for accuracy)
+2026-02-20 18:52:31,141 - INFO - 
+SDS substocks:
+2026-02-20 18:52:31,141 - INFO -   SDS_dilution_0: 1500uL SDS_stock + 6000uL water -> 1.00e+01 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 5.0x from 5.00e+01 mM stock)
+2026-02-20 18:52:31,141 - INFO -   SDS_dilution_1: 600uL SDS_stock + 6900uL water -> 4.00e+00 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 12.5x from 5.00e+01 mM stock)
+2026-02-20 18:52:31,141 - INFO -   SDS_dilution_2: 225uL SDS_stock + 7275uL water -> 1.50e+00 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 33.3x from 5.00e+01 mM stock)
+2026-02-20 18:52:31,141 - INFO -   SDS_dilution_3: 525uL SDS_dilution_0 + 6975uL water -> 7.00e-01 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 14.3x from 1.00e+01 mM dilution)
+2026-02-20 18:52:31,141 - INFO -   SDS_dilution_4: 225uL SDS_dilution_0 + 7275uL water -> 3.00e-01 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 33.3x from 1.00e+01 mM dilution)
+2026-02-20 18:52:31,141 - INFO -   SDS_dilution_5: 500uL SDS_dilution_2 + 7000uL water -> 1.00e-01 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 15.0x from 1.50e+00 mM dilution)
+2026-02-20 18:52:31,141 - INFO - 
+TTAB substocks:
+2026-02-20 18:52:31,141 - INFO -   TTAB_dilution_0: 1500uL TTAB_stock + 6000uL water -> 1.00e+01 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 5.0x from 5.00e+01 mM stock)
+2026-02-20 18:52:31,141 - INFO -   TTAB_dilution_1: 600uL TTAB_stock + 6900uL water -> 4.00e+00 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 12.5x from 5.00e+01 mM stock)
+2026-02-20 18:52:31,141 - INFO -   TTAB_dilution_2: 225uL TTAB_stock + 7275uL water -> 1.50e+00 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 33.3x from 5.00e+01 mM stock)
+2026-02-20 18:52:31,141 - INFO -   TTAB_dilution_3: 525uL TTAB_dilution_0 + 6975uL water -> 7.00e-01 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 14.3x from 1.00e+01 mM dilution)
+2026-02-20 18:52:31,141 - INFO -   TTAB_dilution_4: 225uL TTAB_dilution_0 + 7275uL water -> 3.00e-01 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 33.3x from 1.00e+01 mM dilution)
+2026-02-20 18:52:31,141 - INFO -   TTAB_dilution_5: 500uL TTAB_dilution_2 + 7000uL water -> 1.00e-01 mM
+2026-02-20 18:52:31,141 - INFO -     (Dilution factor: 15.0x from 1.50e+00 mM dilution)
+2026-02-20 18:52:31,141 - INFO -   Creating CMC-specific vial selection plans...
+2026-02-20 18:52:31,153 - INFO -     CMC plan for SDS: 8 concentrations
+2026-02-20 18:52:31,162 - INFO -     CMC plan for TTAB: 8 concentrations
+2026-02-20 18:52:31,162 - INFO -   Creating complete well recipes...
+2026-02-20 18:52:31,162 - INFO -   Adding CMC control series (8 points each)...
+2026-02-20 18:52:31,162 - INFO -   Added 8 CMC controls for SDS, 8 for TTAB
+2026-02-20 18:52:31,168 - INFO -   Saved experiment plan: output\surfactant_grid_SDS_TTAB_20260220_185209_new_bounds_control_assay_try3\experiment_plan_well_recipes.csv
+2026-02-20 18:52:31,172 - INFO -   Saved stock solutions plan: output\surfactant_grid_SDS_TTAB_20260220_185209_new_bounds_control_assay_try3\experiment_plan_stock_solutions.csv
+2026-02-20 18:52:31,173 - INFO - + Planning complete: 44 total wells (5 x 5 grid + 19 controls)
+2026-02-20 18:52:31,173 - INFO - + Experiment plan created: 44 wells planned
+2026-02-20 18:52:31,173 - INFO - + Stock solutions needed: 12
+2026-02-20 18:52:31,173 - INFO - Step 4: Creating physical substocks from calculated recipes...
+2026-02-20 18:52:31,173 - INFO - Checking for existing substocks and creating 12 new ones as needed
+2026-02-20 18:52:31,175 - INFO - Found existing substock: SDS_stock (7.0 mL)
+2026-02-20 18:52:31,175 - INFO - Found existing substock: TTAB_stock (7.1 mL)
+2026-02-20 18:52:31,175 - INFO - Found existing substock: pyrene_DMSO (3.5 mL)
+2026-02-20 18:52:31,175 - INFO - Found existing substock: water (8.0 mL)
+2026-02-20 18:52:31,175 - INFO - Found existing substock: water_2 (8.0 mL)
+2026-02-20 18:52:31,175 - INFO - Found existing substock: MES (8.0 mL)
+2026-02-20 18:52:31,175 - INFO - Found existing substock: SDS_dilution_0 (5.3 mL)
+2026-02-20 18:52:31,176 - INFO - Found existing substock: SDS_dilution_1 (6.9 mL)
+2026-02-20 18:52:31,176 - INFO - Found existing substock: SDS_dilution_2 (6.7 mL)
+2026-02-20 18:52:31,176 - INFO - Found existing substock: SDS_dilution_3 (7.3 mL)
+2026-02-20 18:52:31,176 - INFO - Found existing substock: SDS_dilution_4 (7.2 mL)
+2026-02-20 18:52:31,176 - INFO - Found existing substock: SDS_dilution_5 (7.1 mL)
+2026-02-20 18:52:31,176 - INFO - Found existing substock: TTAB_dilution_0 (5.8 mL)
+2026-02-20 18:52:31,177 - INFO - Found existing substock: TTAB_dilution_1 (6.3 mL)
+2026-02-20 18:52:31,177 - INFO - Found existing substock: TTAB_dilution_2 (6.3 mL)
+2026-02-20 18:52:31,177 - INFO - Found existing substock: TTAB_dilution_3 (7.3 mL)
+2026-02-20 18:52:31,178 - INFO - Found existing substock: TTAB_dilution_4 (7.1 mL)
+2026-02-20 18:52:31,178 - INFO - Found existing substock: TTAB_dilution_5 (7.2 mL)
+2026-02-20 18:52:31,178 - INFO - Found existing substock: SDS_refill (4.8 mL)
+2026-02-20 18:52:31,178 - INFO - Found existing substock: TTAB_refill (4.9 mL)
+2026-02-20 18:52:31,178 - INFO - Skipping SDS_dilution_0: already exists with 5.3 mL
+2026-02-20 18:52:31,178 - INFO - Skipping TTAB_dilution_0: already exists with 5.8 mL
+2026-02-20 18:52:31,178 - INFO - Skipping SDS_dilution_1: already exists with 6.9 mL
+2026-02-20 18:52:31,178 - INFO - Skipping TTAB_dilution_1: already exists with 6.3 mL
+2026-02-20 18:52:31,179 - INFO - Skipping SDS_dilution_2: already exists with 6.7 mL
+2026-02-20 18:52:31,179 - INFO - Skipping TTAB_dilution_2: already exists with 6.3 mL
+2026-02-20 18:52:31,179 - INFO - Skipping SDS_dilution_3: already exists with 7.3 mL
+2026-02-20 18:52:31,179 - INFO - Skipping TTAB_dilution_3: already exists with 7.3 mL
+2026-02-20 18:52:31,179 - INFO - Skipping SDS_dilution_4: already exists with 7.2 mL
+2026-02-20 18:52:31,179 - INFO - Skipping TTAB_dilution_4: already exists with 7.1 mL
+2026-02-20 18:52:31,179 - INFO - Skipping SDS_dilution_5: already exists with 7.1 mL
+2026-02-20 18:52:31,179 - INFO - Skipping TTAB_dilution_5: already exists with 7.2 mL
+2026-02-20 18:52:31,179 - INFO - Substock summary: 0 newly created, 12 already existed, 12 total available
+2026-02-20 18:52:31,179 - INFO - + Substock creation complete: 0 newly created, 12 already existed, 0 failed
+2026-02-20 18:52:31,180 - INFO - Substocks already existed (OK):
+2026-02-20 18:52:31,180 - INFO -   SDS_dilution_0: already available
+2026-02-20 18:52:31,180 - INFO -   TTAB_dilution_0: already available
+2026-02-20 18:52:31,180 - INFO -   SDS_dilution_1: already available
+2026-02-20 18:52:31,180 - INFO -   TTAB_dilution_1: already available
+2026-02-20 18:52:31,181 - INFO -   SDS_dilution_2: already available
+2026-02-20 18:52:31,181 - INFO -   TTAB_dilution_2: already available
+2026-02-20 18:52:31,181 - INFO -   SDS_dilution_3: already available
+2026-02-20 18:52:31,181 - INFO -   TTAB_dilution_3: already available
+2026-02-20 18:52:31,181 - INFO -   SDS_dilution_4: already available
+2026-02-20 18:52:31,181 - INFO -   TTAB_dilution_4: already available
+2026-02-20 18:52:31,181 - INFO -   SDS_dilution_5: already available
+2026-02-20 18:52:31,181 - INFO -   TTAB_dilution_5: already available
+2026-02-20 18:52:31,181 - INFO - Step 5: Executing dispensing and measurements...
+2026-02-20 18:52:31,182 - INFO - Executing dispensing and measurements...
+2026-02-20 18:52:31,183 - INFO - Total wells to process: 44
+2026-02-20 18:52:31,183 - INFO - 
+Processing batch 1: wells 0-43
+2026-02-20 18:52:31,183 - INFO -   Positioning pyrene_DMSO at highest priority safe position
+2026-02-20 18:52:31,185 - INFO - Moving vial pyrene_DMSO to main_8mL_rack: 47
+2026-02-20 18:52:31,185 - DEBUG - Grabbing vial 2 with index 2
+2026-02-20 18:52:33,759 - DEBUG - Dropping off vial 2 at location main_8mL_rack with index 47
+2026-02-20 18:52:37,226 - INFO -   PYRENE DEBUG: Column dtype = int64
+2026-02-20 18:52:37,226 - INFO -   PYRENE DEBUG: Sample values = [5, 5, 5]
+2026-02-20 18:52:37,226 - INFO -   PYRENE DEBUG: Unique values = [5]
+2026-02-20 18:52:37,226 - INFO -   Pyrene: Dispensing from pyrene_DMSO to 44 wells (sorted by volume)
+2026-02-20 18:52:37,226 - INFO -     Well 0: 5.0uL from pyrene_DMSO
+2026-02-20 18:52:37,240 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:52:37,240 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:52:37,240 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:52:37,240 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:52:37,240 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:52:37,240 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:52:37,240 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:52:37,240 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:52:37,242 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:52:37,242 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_1
+2026-02-20 18:52:42,235 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:52:42,236 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:52:42,237 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:52:44,459 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:52:45,786 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:52:47,473 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:52:48,731 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:52:48,731 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:52:48,731 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:52:48,731 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:52:48,731 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:52:48,731 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:52:48,731 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:52:48,731 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:52:48,731 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:52:53,485 - INFO - Transferring 0.005 mL into well #0 of 96 WELL PLATE
+2026-02-20 18:52:53,486 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:52:53,774 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:52:55,849 - INFO -     Well 1: 5.0uL from pyrene_DMSO
+2026-02-20 18:52:55,854 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:52:55,854 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:52:55,854 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:52:55,854 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:52:55,854 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:52:55,855 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:52:55,855 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:52:55,855 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:52:55,856 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:52:55,857 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:52:55,857 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:52:55,859 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:52:59,637 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:53:00,960 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:53:02,671 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:53:03,986 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:53:03,986 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:53:03,986 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:53:03,986 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:03,986 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:53:03,986 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:53:03,986 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:53:03,986 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:03,986 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:53:08,731 - INFO - Transferring 0.005 mL into well #1 of 96 WELL PLATE
+2026-02-20 18:53:08,731 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:53:09,030 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:53:11,158 - INFO -     Well 24: 5.0uL from pyrene_DMSO
+2026-02-20 18:53:11,162 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:53:11,162 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:53:11,162 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:53:11,162 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:11,162 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:53:11,162 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:53:11,162 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:53:11,162 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:11,166 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:53:11,167 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:53:11,167 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:53:11,170 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:53:14,933 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:53:16,253 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:53:17,947 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:53:19,186 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:53:19,186 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:53:19,186 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:53:19,186 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:19,186 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:53:19,186 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:53:19,186 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:53:19,186 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:19,187 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:53:23,905 - INFO - Transferring 0.005 mL into well #24 of 96 WELL PLATE
+2026-02-20 18:53:23,905 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:53:24,200 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:53:26,303 - INFO -     Well 25: 5.0uL from pyrene_DMSO
+2026-02-20 18:53:26,303 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:53:26,303 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:53:26,303 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:53:26,303 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:26,303 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:53:26,303 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:53:26,303 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:53:26,303 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:26,303 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:53:26,303 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:53:26,303 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:53:26,312 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:53:30,060 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:53:31,375 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:53:33,085 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:53:34,329 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:53:34,329 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:53:34,329 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:53:34,329 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:34,329 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:53:34,329 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:53:34,329 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:53:34,329 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:34,329 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:53:38,999 - INFO - Transferring 0.005 mL into well #25 of 96 WELL PLATE
+2026-02-20 18:53:38,999 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:53:39,281 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:53:41,366 - INFO -     Well 26: 5.0uL from pyrene_DMSO
+2026-02-20 18:53:41,366 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:53:41,366 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:53:41,366 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:53:41,366 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:41,366 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:53:41,366 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:53:41,366 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:53:41,366 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:41,366 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:53:41,366 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:53:41,366 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:53:41,376 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:53:45,086 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:53:46,411 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:53:48,156 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:53:49,469 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:53:49,469 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:53:49,469 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:53:49,469 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:49,469 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:53:49,469 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:53:49,469 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:53:49,469 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:49,469 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:53:54,143 - INFO - Transferring 0.005 mL into well #26 of 96 WELL PLATE
+2026-02-20 18:53:54,143 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:53:54,420 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:53:56,509 - INFO -     Well 27: 5.0uL from pyrene_DMSO
+2026-02-20 18:53:56,512 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:53:56,512 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:53:56,512 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:53:56,512 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:56,512 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:53:56,512 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:53:56,513 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:53:56,513 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:53:56,514 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:53:56,515 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:53:56,515 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:53:56,517 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:54:00,212 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:54:01,559 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:54:03,276 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:54:04,556 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:54:04,556 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:54:04,556 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:54:04,556 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:04,556 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:54:04,556 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:54:04,556 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:54:04,556 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:04,556 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:54:09,196 - INFO - Transferring 0.005 mL into well #27 of 96 WELL PLATE
+2026-02-20 18:54:09,196 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:54:09,510 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:54:11,550 - INFO -     Well 28: 5.0uL from pyrene_DMSO
+2026-02-20 18:54:11,553 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:54:11,553 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:54:11,553 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:54:11,553 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:11,553 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:54:11,553 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:54:11,553 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:54:11,553 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:11,553 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:54:11,553 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:54:11,553 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:54:11,559 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:54:15,228 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:54:16,547 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:54:18,252 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:54:19,503 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:54:19,503 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:54:19,503 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:54:19,503 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:19,503 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:54:19,503 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:54:19,503 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:54:19,503 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:19,503 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:54:24,121 - INFO - Transferring 0.005 mL into well #28 of 96 WELL PLATE
+2026-02-20 18:54:24,121 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:54:24,386 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:54:26,439 - INFO -     Well 29: 5.0uL from pyrene_DMSO
+2026-02-20 18:54:26,439 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:54:26,439 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:54:26,439 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:54:26,439 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:26,439 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:54:26,439 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:54:26,439 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:54:26,439 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:26,439 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:54:26,439 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:54:26,439 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:54:26,439 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:54:30,076 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:54:31,393 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:54:33,058 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:54:34,338 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:54:34,338 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:54:34,338 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:54:34,338 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:34,338 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:54:34,338 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:54:34,338 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:54:34,338 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:34,338 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:54:38,967 - INFO - Transferring 0.005 mL into well #29 of 96 WELL PLATE
+2026-02-20 18:54:38,967 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:54:39,245 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:54:41,334 - INFO -     Well 30: 5.0uL from pyrene_DMSO
+2026-02-20 18:54:41,336 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:54:41,336 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:54:41,336 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:54:41,336 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:41,336 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:54:41,336 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:54:41,336 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:54:41,336 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:41,336 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:54:41,336 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:54:41,336 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:54:41,336 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:54:44,965 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:54:46,294 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:54:47,987 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:54:49,243 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:54:49,243 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:54:49,243 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:54:49,243 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:49,243 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:54:49,243 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:54:49,243 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:54:49,243 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:49,243 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:54:53,836 - INFO - Transferring 0.005 mL into well #30 of 96 WELL PLATE
+2026-02-20 18:54:53,836 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:54:54,176 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:54:56,259 - INFO -     Well 31: 5.0uL from pyrene_DMSO
+2026-02-20 18:54:56,264 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:54:56,264 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:54:56,264 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:54:56,264 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:56,264 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:54:56,264 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:54:56,264 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:54:56,264 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:54:56,266 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:54:56,266 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:54:56,266 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:54:56,266 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:54:59,853 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:55:01,179 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:55:02,922 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:55:04,212 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:55:04,212 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:55:04,212 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:55:04,212 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:04,212 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:55:04,212 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:55:04,212 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:55:04,212 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:04,212 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:55:08,762 - INFO - Transferring 0.005 mL into well #31 of 96 WELL PLATE
+2026-02-20 18:55:08,762 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:55:09,057 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:55:11,139 - INFO -     Well 32: 5.0uL from pyrene_DMSO
+2026-02-20 18:55:11,143 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:55:11,143 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:55:11,143 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:55:11,143 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:11,143 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:55:11,143 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:55:11,143 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:55:11,143 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:11,145 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:55:11,145 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:55:11,145 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:55:11,148 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:55:14,705 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:55:16,043 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:55:17,735 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:55:18,981 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:55:18,981 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:55:18,981 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:55:18,981 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:18,981 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:55:18,981 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:55:18,981 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:55:18,981 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:18,981 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:55:23,491 - INFO - Transferring 0.005 mL into well #32 of 96 WELL PLATE
+2026-02-20 18:55:23,491 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:55:23,812 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:55:25,879 - INFO -     Well 33: 5.0uL from pyrene_DMSO
+2026-02-20 18:55:25,885 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:55:25,885 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:55:25,885 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:55:25,885 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:25,885 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:55:25,885 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:55:25,885 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:55:25,886 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:25,888 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:55:25,889 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:55:25,889 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:55:25,890 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:55:29,415 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:55:30,746 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:55:32,476 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:55:33,771 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:55:33,771 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:55:33,771 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:55:33,771 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:33,771 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:55:33,771 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:55:33,771 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:55:33,771 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:33,771 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:55:38,244 - INFO - Transferring 0.005 mL into well #33 of 96 WELL PLATE
+2026-02-20 18:55:38,244 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:55:38,505 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:55:40,655 - INFO -     Well 34: 5.0uL from pyrene_DMSO
+2026-02-20 18:55:40,655 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:55:40,655 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:55:40,655 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:55:40,655 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:40,655 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:55:40,655 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:55:40,655 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:55:40,655 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:40,655 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:55:40,655 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:55:40,655 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:55:40,666 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:55:44,184 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:55:45,531 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:55:47,238 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:55:48,496 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:55:48,496 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:55:48,496 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:55:48,496 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:48,496 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:55:48,496 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:55:48,496 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:55:48,496 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:48,496 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:55:52,949 - INFO - Transferring 0.005 mL into well #34 of 96 WELL PLATE
+2026-02-20 18:55:52,950 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:55:53,232 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:55:55,256 - INFO -     Well 35: 5.0uL from pyrene_DMSO
+2026-02-20 18:55:55,257 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:55:55,257 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:55:55,257 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:55:55,257 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:55,257 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:55:55,257 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:55:55,257 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:55:55,257 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:55:55,257 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:55:55,257 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:55:55,257 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:55:55,266 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:55:58,742 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:56:00,086 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:56:01,811 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:56:03,083 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:56:03,083 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:56:03,083 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:56:03,083 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:03,083 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:56:03,083 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:56:03,083 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:56:03,083 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:03,083 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:56:07,501 - INFO - Transferring 0.005 mL into well #35 of 96 WELL PLATE
+2026-02-20 18:56:07,501 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:56:07,787 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:56:09,884 - INFO -     Well 36: 5.0uL from pyrene_DMSO
+2026-02-20 18:56:09,887 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:56:09,887 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:56:09,887 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:56:09,887 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:09,887 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:56:09,887 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:56:09,887 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:56:09,887 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:09,891 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:56:09,892 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:56:09,892 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:56:09,894 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:56:13,339 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:56:14,670 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:56:16,444 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:56:17,708 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:56:17,708 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:56:17,708 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:56:17,708 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:17,708 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:56:17,708 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:56:17,708 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:56:17,708 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:17,708 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:56:22,403 - INFO - Transferring 0.005 mL into well #36 of 96 WELL PLATE
+2026-02-20 18:56:22,403 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:56:22,741 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:56:24,869 - INFO -     Well 37: 5.0uL from pyrene_DMSO
+2026-02-20 18:56:24,869 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:56:24,869 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:56:24,869 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:56:24,869 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:24,869 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:56:24,869 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:56:24,869 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:56:24,869 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:24,869 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:56:24,869 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:56:24,869 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:56:24,878 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:56:28,593 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:56:29,934 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:56:31,679 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:56:32,925 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:56:32,925 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:56:32,925 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:56:32,925 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:32,925 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:56:32,925 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:56:32,925 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:56:32,925 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:32,926 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:56:37,599 - INFO - Transferring 0.005 mL into well #37 of 96 WELL PLATE
+2026-02-20 18:56:37,599 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:56:37,888 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:56:39,989 - INFO -     Well 38: 5.0uL from pyrene_DMSO
+2026-02-20 18:56:39,989 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:56:39,989 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:56:39,989 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:56:39,989 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:39,989 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:56:39,989 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:56:39,989 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:56:39,989 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:39,989 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:56:39,989 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:56:39,989 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:56:40,001 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:56:43,703 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:56:45,039 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:56:46,808 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:56:48,092 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:56:48,092 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:56:48,092 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:56:48,092 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:48,092 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:56:48,092 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:56:48,092 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:56:48,092 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:48,092 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:56:52,761 - INFO - Transferring 0.005 mL into well #38 of 96 WELL PLATE
+2026-02-20 18:56:52,761 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:56:53,027 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:56:55,156 - INFO -     Well 39: 5.0uL from pyrene_DMSO
+2026-02-20 18:56:55,156 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:56:55,156 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:56:55,156 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:56:55,156 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:55,156 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:56:55,156 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:56:55,156 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:56:55,156 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:56:55,156 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:56:55,156 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:56:55,156 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:56:55,167 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:56:58,841 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:57:00,186 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:57:01,892 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:57:03,169 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:57:03,169 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:57:03,169 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:57:03,169 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:03,169 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:57:03,169 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:57:03,169 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:57:03,169 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:03,169 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:57:07,796 - INFO - Transferring 0.005 mL into well #39 of 96 WELL PLATE
+2026-02-20 18:57:07,796 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:57:08,066 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:57:10,136 - INFO -     Well 40: 5.0uL from pyrene_DMSO
+2026-02-20 18:57:10,136 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:57:10,136 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:57:10,136 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:57:10,136 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:10,136 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:57:10,136 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:57:10,136 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:57:10,136 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:10,136 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:57:10,136 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:57:10,136 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:57:10,148 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:57:13,807 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:57:15,134 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:57:16,842 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:57:18,139 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:57:18,139 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:57:18,139 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:57:18,139 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:18,139 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:57:18,139 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:57:18,139 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:57:18,139 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:18,139 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:57:22,738 - INFO - Transferring 0.005 mL into well #40 of 96 WELL PLATE
+2026-02-20 18:57:22,738 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:57:23,025 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:57:25,090 - INFO -     Well 41: 5.0uL from pyrene_DMSO
+2026-02-20 18:57:25,090 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:57:25,090 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:57:25,090 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:57:25,090 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:25,090 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:57:25,090 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:57:25,090 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:57:25,090 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:25,090 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:57:25,090 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:57:25,090 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:57:25,102 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:57:28,737 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:57:30,065 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:57:31,718 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:57:33,033 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:57:33,033 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:57:33,033 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:57:33,033 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:33,033 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:57:33,033 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:57:33,033 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:57:33,033 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:33,033 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:57:37,605 - INFO - Transferring 0.005 mL into well #41 of 96 WELL PLATE
+2026-02-20 18:57:37,605 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:57:37,870 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:57:40,068 - INFO -     Well 42: 5.0uL from pyrene_DMSO
+2026-02-20 18:57:40,068 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:57:40,068 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:57:40,068 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:57:40,068 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:40,068 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:57:40,068 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:57:40,068 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:57:40,068 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:40,068 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:57:40,068 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:57:40,068 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:57:40,080 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:57:43,673 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:57:45,005 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:57:46,689 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:57:47,923 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:57:47,923 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:57:47,923 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:57:47,923 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:47,931 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:57:47,931 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:57:47,931 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:57:47,931 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:47,931 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:57:52,486 - INFO - Transferring 0.005 mL into well #42 of 96 WELL PLATE
+2026-02-20 18:57:52,486 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:57:52,827 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:57:54,974 - INFO -     Well 23: 5.0uL from pyrene_DMSO
+2026-02-20 18:57:54,974 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:57:54,974 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:57:54,974 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:57:54,974 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:54,974 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:57:54,974 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:57:54,974 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:57:54,974 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:57:54,974 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:57:54,974 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:57:54,974 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:57:54,986 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:57:58,559 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:57:59,910 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:58:01,581 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:58:02,883 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:58:02,883 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:58:02,883 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:58:02,883 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:02,883 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:58:02,883 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:58:02,883 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:58:02,883 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:02,883 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:58:07,317 - INFO - Transferring 0.005 mL into well #23 of 96 WELL PLATE
+2026-02-20 18:58:07,317 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:58:07,583 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:58:09,732 - INFO -     Well 22: 5.0uL from pyrene_DMSO
+2026-02-20 18:58:09,732 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:58:09,732 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:58:09,732 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:58:09,732 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:09,732 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:58:09,732 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:58:09,732 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:58:09,732 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:09,732 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:58:09,732 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:58:09,732 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:58:09,743 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:58:13,201 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:58:14,540 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:58:16,255 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:58:17,540 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:58:17,540 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:58:17,540 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:58:17,540 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:17,540 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:58:17,540 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:58:17,540 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:58:17,540 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:17,540 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:58:22,009 - INFO - Transferring 0.005 mL into well #22 of 96 WELL PLATE
+2026-02-20 18:58:22,009 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:58:22,287 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:58:24,332 - INFO -     Well 21: 5.0uL from pyrene_DMSO
+2026-02-20 18:58:24,332 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:58:24,332 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:58:24,332 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:58:24,332 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:24,332 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:58:24,332 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:58:24,332 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:58:24,332 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:24,332 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:58:24,332 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:58:24,332 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:58:24,344 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:58:27,822 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:58:29,150 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:58:30,891 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:58:32,166 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:58:32,166 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:58:32,166 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:58:32,166 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:32,166 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:58:32,166 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:58:32,166 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:58:32,166 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:32,166 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:58:36,659 - INFO - Transferring 0.005 mL into well #21 of 96 WELL PLATE
+2026-02-20 18:58:36,659 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:58:36,930 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:58:39,018 - INFO -     Well 10: 5.0uL from pyrene_DMSO
+2026-02-20 18:58:39,023 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:58:39,023 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:58:39,023 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:58:39,023 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:39,023 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:58:39,023 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:58:39,023 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:58:39,023 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:39,026 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:58:39,026 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:58:39,026 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:58:39,029 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:58:42,552 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:58:43,896 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:58:45,617 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:58:46,931 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:58:46,931 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:58:46,931 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:58:46,931 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:46,931 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:58:46,931 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:58:46,931 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:58:46,931 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:46,931 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:58:51,412 - INFO - Transferring 0.005 mL into well #10 of 96 WELL PLATE
+2026-02-20 18:58:51,413 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:58:51,687 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:58:53,803 - INFO -     Well 2: 5.0uL from pyrene_DMSO
+2026-02-20 18:58:53,803 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:58:53,803 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:58:53,803 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:58:53,803 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:53,803 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:58:53,803 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:58:53,803 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:58:53,803 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:58:53,803 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:58:53,803 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:58:53,803 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:58:53,814 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:58:57,339 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:58:58,665 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:59:00,348 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:59:01,619 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:59:01,619 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:59:01,619 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:59:01,619 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:01,619 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:59:01,619 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:59:01,619 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:59:01,619 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:01,619 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:59:06,347 - INFO - Transferring 0.005 mL into well #2 of 96 WELL PLATE
+2026-02-20 18:59:06,347 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:59:06,627 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:59:08,715 - INFO -     Well 3: 5.0uL from pyrene_DMSO
+2026-02-20 18:59:08,715 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:59:08,715 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:59:08,715 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:59:08,715 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:08,715 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:59:08,715 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:59:08,715 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:59:08,715 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:08,715 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:59:08,715 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:59:08,715 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:59:08,726 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:59:12,452 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:59:13,795 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:59:15,482 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:59:16,772 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:59:16,772 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:59:16,772 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:59:16,772 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:16,772 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:59:16,772 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:59:16,772 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:59:16,772 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:16,772 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:59:21,459 - INFO - Transferring 0.005 mL into well #3 of 96 WELL PLATE
+2026-02-20 18:59:21,459 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:59:21,737 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:59:23,809 - INFO -     Well 4: 5.0uL from pyrene_DMSO
+2026-02-20 18:59:23,814 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:59:23,814 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:59:23,814 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:59:23,814 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:23,814 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:59:23,814 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:59:23,814 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:59:23,814 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:23,817 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:59:23,817 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:59:23,817 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:59:23,820 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:59:27,529 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:59:28,844 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:59:30,595 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:59:31,862 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:59:31,862 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:59:31,862 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:59:31,862 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:31,862 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:59:31,862 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:59:31,862 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:59:31,862 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:31,862 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:59:36,500 - INFO - Transferring 0.005 mL into well #4 of 96 WELL PLATE
+2026-02-20 18:59:36,501 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:59:36,765 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:59:38,832 - INFO -     Well 5: 5.0uL from pyrene_DMSO
+2026-02-20 18:59:38,837 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:59:38,837 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:59:38,837 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:59:38,837 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:38,837 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:59:38,837 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:59:38,837 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:59:38,837 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:38,838 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:59:38,839 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:59:38,840 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:59:38,841 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:59:42,530 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:59:43,886 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 18:59:45,596 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 18:59:46,827 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:59:46,827 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:59:46,827 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:59:46,827 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:46,827 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:59:46,827 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:59:46,827 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:59:46,827 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:46,827 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 18:59:51,456 - INFO - Transferring 0.005 mL into well #5 of 96 WELL PLATE
+2026-02-20 18:59:51,457 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 18:59:51,733 - DEBUG - Blowing out 0.099 mL
+2026-02-20 18:59:53,879 - INFO -     Well 6: 5.0uL from pyrene_DMSO
+2026-02-20 18:59:53,879 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 18:59:53,879 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 18:59:53,879 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 18:59:53,879 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:53,879 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 18:59:53,879 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 18:59:53,879 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 18:59:53,879 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 18:59:53,879 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 18:59:53,879 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 18:59:53,879 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 18:59:53,889 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 18:59:57,526 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 18:59:58,877 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:00:00,628 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:00:01,928 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:00:01,928 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:00:01,928 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:00:01,928 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:01,928 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:00:01,928 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:00:01,928 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:00:01,928 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:01,928 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:00:06,534 - INFO - Transferring 0.005 mL into well #6 of 96 WELL PLATE
+2026-02-20 19:00:06,534 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:00:06,875 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:00:08,997 - INFO -     Well 7: 5.0uL from pyrene_DMSO
+2026-02-20 19:00:08,999 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:00:08,999 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:00:08,999 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:00:08,999 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:08,999 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:00:08,999 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:00:08,999 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:00:08,999 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:08,999 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:00:08,999 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:00:08,999 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:00:09,006 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:00:12,638 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:00:14,003 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:00:15,725 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:00:16,987 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:00:16,987 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:00:16,987 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:00:16,987 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:16,987 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:00:16,987 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:00:16,987 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:00:16,987 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:16,987 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:00:21,561 - INFO - Transferring 0.005 mL into well #7 of 96 WELL PLATE
+2026-02-20 19:00:21,561 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:00:21,896 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:00:24,057 - INFO -     Well 8: 5.0uL from pyrene_DMSO
+2026-02-20 19:00:24,057 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:00:24,057 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:00:24,057 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:00:24,057 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:24,057 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:00:24,057 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:00:24,057 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:00:24,057 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:24,057 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:00:24,057 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:00:24,057 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:00:24,068 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:00:27,673 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:00:28,998 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:00:30,698 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:00:31,932 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:00:31,932 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:00:31,932 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:00:31,932 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:31,932 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:00:31,932 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:00:31,932 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:00:31,932 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:31,932 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:00:36,475 - INFO - Transferring 0.005 mL into well #8 of 96 WELL PLATE
+2026-02-20 19:00:36,475 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:00:36,741 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:00:38,839 - INFO -     Well 9: 5.0uL from pyrene_DMSO
+2026-02-20 19:00:38,842 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:00:38,842 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:00:38,842 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:00:38,842 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:38,842 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:00:38,842 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:00:38,842 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:00:38,842 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:38,842 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:00:38,842 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:00:38,842 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:00:38,848 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:00:42,418 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:00:43,766 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:00:45,528 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:00:46,823 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:00:46,823 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:00:46,823 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:00:46,823 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:46,823 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:00:46,823 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:00:46,823 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:00:46,823 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:46,823 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:00:51,319 - INFO - Transferring 0.005 mL into well #9 of 96 WELL PLATE
+2026-02-20 19:00:51,319 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:00:51,602 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:00:53,715 - INFO -     Well 11: 5.0uL from pyrene_DMSO
+2026-02-20 19:00:53,715 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:00:53,715 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:00:53,715 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:00:53,715 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:53,715 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:00:53,715 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:00:53,715 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:00:53,715 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:00:53,715 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:00:53,715 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:00:53,715 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:00:53,727 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:00:57,262 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:00:58,612 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:01:00,328 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:01:01,574 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:01:01,574 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:01:01,574 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:01:01,574 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:01,574 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:01:01,574 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:01:01,574 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:01:01,574 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:01,574 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:01:06,024 - INFO - Transferring 0.005 mL into well #11 of 96 WELL PLATE
+2026-02-20 19:01:06,024 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:01:06,289 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:01:08,342 - INFO -     Well 20: 5.0uL from pyrene_DMSO
+2026-02-20 19:01:08,342 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:01:08,342 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:01:08,342 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:01:08,342 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:08,342 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:01:08,342 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:01:08,342 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:01:08,342 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:08,342 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:01:08,342 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:01:08,342 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:01:08,353 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:01:11,834 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:01:13,167 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:01:14,906 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:01:16,145 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:01:16,145 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:01:16,145 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:01:16,145 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:16,145 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:01:16,145 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:01:16,145 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:01:16,145 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:16,145 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:01:20,676 - INFO - Transferring 0.005 mL into well #20 of 96 WELL PLATE
+2026-02-20 19:01:20,678 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:01:21,018 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:01:23,119 - INFO -     Well 12: 5.0uL from pyrene_DMSO
+2026-02-20 19:01:23,119 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:01:23,119 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:01:23,119 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:01:23,119 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:23,119 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:01:23,119 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:01:23,119 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:01:23,119 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:23,119 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:01:23,119 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:01:23,119 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:01:23,130 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:01:26,672 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:01:28,010 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:01:29,736 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:01:31,008 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:01:31,008 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:01:31,008 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:01:31,008 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:31,008 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:01:31,008 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:01:31,008 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:01:31,008 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:31,008 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:01:35,725 - INFO - Transferring 0.005 mL into well #12 of 96 WELL PLATE
+2026-02-20 19:01:35,725 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:01:36,037 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:01:38,114 - INFO -     Well 13: 5.0uL from pyrene_DMSO
+2026-02-20 19:01:38,114 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:01:38,114 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:01:38,114 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:01:38,114 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:38,114 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:01:38,114 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:01:38,114 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:01:38,114 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:38,114 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:01:38,114 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:01:38,114 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:01:38,114 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:01:41,889 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:01:43,239 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:01:44,994 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:01:46,246 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:01:46,246 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:01:46,246 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:01:46,246 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:46,246 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:01:46,246 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:01:46,246 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:01:46,246 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:46,246 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:01:50,994 - INFO - Transferring 0.005 mL into well #13 of 96 WELL PLATE
+2026-02-20 19:01:50,994 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:01:51,262 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:01:53,326 - INFO -     Well 14: 5.0uL from pyrene_DMSO
+2026-02-20 19:01:53,332 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:01:53,332 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:01:53,332 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:01:53,332 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:53,332 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:01:53,332 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:01:53,332 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:01:53,332 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:01:53,332 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:01:53,332 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:01:53,332 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:01:53,332 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:01:57,078 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:01:58,431 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:02:00,208 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:02:01,502 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:02:01,502 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:02:01,502 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:02:01,502 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:01,502 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:02:01,502 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:02:01,502 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:02:01,502 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:01,502 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:02:06,182 - INFO - Transferring 0.005 mL into well #14 of 96 WELL PLATE
+2026-02-20 19:02:06,182 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:02:06,535 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:02:08,632 - INFO -     Well 15: 5.0uL from pyrene_DMSO
+2026-02-20 19:02:08,635 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:02:08,635 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:02:08,635 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:02:08,635 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:08,635 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:02:08,635 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:02:08,635 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:02:08,635 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:08,635 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:02:08,635 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:02:08,635 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:02:08,635 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:02:12,346 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:02:13,684 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:02:15,410 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:02:16,671 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:02:16,671 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:02:16,671 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:02:16,671 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:16,671 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:02:16,671 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:02:16,671 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:02:16,671 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:16,671 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:02:21,348 - INFO - Transferring 0.005 mL into well #15 of 96 WELL PLATE
+2026-02-20 19:02:21,348 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:02:21,627 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:02:23,722 - INFO -     Well 16: 5.0uL from pyrene_DMSO
+2026-02-20 19:02:23,728 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:02:23,728 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:02:23,728 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:02:23,728 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:23,728 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:02:23,728 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:02:23,728 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:02:23,728 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:23,728 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:02:23,728 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:02:23,728 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:02:23,728 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:02:27,425 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:02:28,765 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:02:30,504 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:02:31,796 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:02:31,796 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:02:31,796 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:02:31,796 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:31,796 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:02:31,796 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:02:31,796 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:02:31,796 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:31,796 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:02:36,435 - INFO - Transferring 0.005 mL into well #16 of 96 WELL PLATE
+2026-02-20 19:02:36,435 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:02:36,702 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:02:38,896 - INFO -     Well 17: 5.0uL from pyrene_DMSO
+2026-02-20 19:02:38,896 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:02:38,896 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:02:38,896 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:02:38,896 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:38,896 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:02:38,896 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:02:38,896 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:02:38,896 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:38,896 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:02:38,896 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:02:38,896 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:02:38,896 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:02:42,553 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:02:43,877 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:02:45,581 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:02:46,881 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:02:46,881 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:02:46,881 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:02:46,881 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:46,881 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:02:46,881 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:02:46,881 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:02:46,881 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:46,881 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:02:51,498 - INFO - Transferring 0.005 mL into well #17 of 96 WELL PLATE
+2026-02-20 19:02:51,498 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:02:51,825 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:02:53,935 - INFO -     Well 18: 5.0uL from pyrene_DMSO
+2026-02-20 19:02:53,935 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:02:53,935 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:02:53,935 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:02:53,935 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:53,935 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:02:53,935 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:02:53,935 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:02:53,935 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:02:53,935 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:02:53,935 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:02:53,935 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:02:53,935 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:02:57,550 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:02:58,896 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:03:00,678 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:03:01,954 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:03:01,954 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:03:01,954 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:03:01,954 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:01,954 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:03:01,954 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:03:01,954 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:03:01,954 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:01,954 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:03:06,521 - INFO - Transferring 0.005 mL into well #18 of 96 WELL PLATE
+2026-02-20 19:03:06,521 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:03:06,818 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:03:08,925 - INFO -     Well 19: 5.0uL from pyrene_DMSO
+2026-02-20 19:03:08,930 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:03:08,930 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:03:08,930 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:03:08,930 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:08,930 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:03:08,930 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:03:08,930 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:03:08,930 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:08,932 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:03:08,932 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:03:08,932 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:03:08,932 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:03:12,544 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:03:13,883 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:03:15,573 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:03:16,837 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:03:16,837 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:03:16,837 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:03:16,837 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:16,837 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:03:16,837 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:03:16,837 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:03:16,837 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:16,837 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:03:21,387 - INFO - Transferring 0.005 mL into well #19 of 96 WELL PLATE
+2026-02-20 19:03:21,387 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:03:21,659 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:03:23,708 - INFO -     Well 43: 5.0uL from pyrene_DMSO
+2026-02-20 19:03:23,710 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:03:23,710 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:03:23,710 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:03:23,710 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:23,710 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:03:23,710 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:03:23,710 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:03:23,710 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:23,713 - DEBUG - Selected small_tip for volume 0.026 mL
+2026-02-20 19:03:23,713 - INFO - Pipetting from vial pyrene_DMSO, amount: 0.005 mL
+2026-02-20 19:03:23,713 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-02-20 19:03:23,717 - DEBUG - Adjusting pump 0 speed to 10
+2026-02-20 19:03:27,280 - DEBUG - Adjusting pump 0 speed to 22
+2026-02-20 19:03:28,617 - DEBUG - Aspirating 0.005 mL then waiting 0.5 s
+2026-02-20 19:03:30,370 - DEBUG - Aspirating 0.021 mL then waiting 0 s
+2026-02-20 19:03:31,643 - DEBUG - Using calibrated aspirate_speed=22 for DMSO at 0.005mL
+2026-02-20 19:03:31,643 - DEBUG - Using calibrated dispense_speed=12 for DMSO at 0.005mL
+2026-02-20 19:03:31,643 - DEBUG - Using calibrated aspirate_wait_time=0.5 for DMSO at 0.005mL
+2026-02-20 19:03:31,643 - DEBUG - Using calibrated dispense_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:31,643 - DEBUG - Using calibrated blowout_vol=0.099 for DMSO at 0.005mL
+2026-02-20 19:03:31,643 - DEBUG - Using calibrated post_asp_air_vol=0.021 for DMSO at 0.005mL
+2026-02-20 19:03:31,643 - DEBUG - Using calibrated overaspirate_vol=0.00032545454545499 for DMSO at 0.005mL
+2026-02-20 19:03:31,643 - DEBUG - Using calibrated post_retract_wait_time=0.0 for DMSO at 0.005mL
+2026-02-20 19:03:31,643 - DEBUG - Adjusting pump 0 speed to 12
+2026-02-20 19:03:36,169 - INFO - Transferring 0.005 mL into well #43 of 96 WELL PLATE
+2026-02-20 19:03:36,169 - DEBUG - Dispensing 0.026 mL then waiting 0.0 s
+2026-02-20 19:03:36,434 - DEBUG - Blowing out 0.099 mL
+2026-02-20 19:03:38,513 - INFO -     Pyrene: Dispensing complete
+2026-02-20 19:03:38,516 - INFO - Removing pipet
+2026-02-20 19:03:42,076 - INFO - Returning vial pyrene_DMSO to home location: main_8mL_rack index 2
+2026-02-20 19:03:42,076 - INFO - Moving vial pyrene_DMSO to main_8mL_rack: 2
+2026-02-20 19:03:42,076 - DEBUG - Grabbing vial 2 with index 2
+2026-02-20 19:03:43,982 - DEBUG - Dropping off vial 2 at location main_8mL_rack with index 2
+2026-02-20 19:03:47,454 - INFO -   Measuring fluorescence...

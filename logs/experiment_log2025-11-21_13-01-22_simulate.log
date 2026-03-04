@@ -1,0 +1,934 @@
+2025-11-21 13:01:22,696 - INFO - Initializing North Robot...
+2025-11-21 13:01:22,696 - DEBUG - Loading robot configuration files...
+2025-11-21 13:01:22,704 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2025-11-21 13:01:22,705 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2025-11-21 13:01:22,710 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2025-11-21 13:01:22,712 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2025-11-21 13:01:22,724 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-11-21 13:01:22,728 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-11-21 13:01:22,728 - DEBUG - Loading robot state files...
+2025-11-21 13:01:22,729 - DEBUG - Loaded vial data from status/calibration_vials_overnight.csv
+2025-11-21 13:01:22,729 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2025-11-21 13:01:22,729 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2025-11-21 13:01:22,729 - DEBUG - Robot status loaded successfully
+2025-11-21 13:01:22,729 - DEBUG - Loading pumps from YAML configuration...
+2025-11-21 13:01:22,729 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-11-21 13:01:22,729 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-11-21 13:01:22,729 - DEBUG - Physical initialization of North Robot...
+2025-11-21 13:01:22,739 - WARNING - The robot reports having 0.010 mL liquid in its tip... Returning that liquid...
+2025-11-21 13:01:22,741 - INFO - Pipetting into vial liquid_source_0, amount: 1.000 mL
+2025-11-21 13:01:22,741 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-21 13:01:22,742 - DEBUG - Dispensing 1.000 mL then waiting 0.0 s
+2025-11-21 13:01:22,744 - WARNING - The robot reports having a tip, removing the tip
+2025-11-21 13:01:22,744 - INFO - Removing pipet
+2025-11-21 13:01:22,746 - INFO - Moving robot to home position
+2025-11-21 13:01:22,755 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='2545483004416'>
+2025-11-21 13:01:22,756 - INFO - Initializing North Track...
+2025-11-21 13:01:22,756 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2025-11-21 13:01:22,756 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2025-11-21 13:01:22,758 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2025-11-21 13:01:22,758 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2025-11-21 13:01:22,762 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2025-11-21 13:01:22,762 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2025-11-21 13:01:22,766 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-11-21 13:01:22,768 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-11-21 13:01:22,768 - DEBUG - Moving North Track to home position
+2025-11-21 13:01:22,772 - INFO -    vial_index           vial_name       location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index
+0           0     liquid_source_0  main_8mL_rack              43         6.79    True     open      8_mL  main_8mL_rack                   43
+1           1  measurement_vial_0          clamp               0         0.20    True     open      8_mL  main_8mL_rack                   44
+2025-11-21 13:01:22,788 - INFO - Visualizing vial racks...
+2025-11-21 13:01:22,976 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2025-11-21 13:01:23,075 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2025-11-21 13:01:24,276 - INFO - --Wellplate status-- 
+ Wellplate type: 96 WELL PLATE 
+ Number in source: 4 
+ Number in waste: 0 
+ Active wellplate position: None
+2025-11-21 13:01:24,285 - INFO - Visualizing wellplate status...
+2025-11-21 13:01:25,768 - INFO - Vial measurement_vial_0 already at clamp index 0, no move needed
+2025-11-21 13:01:25,818 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,818 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,818 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,818 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,818 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,818 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,818 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,819 - DEBUG - Applied dict param overaspirate_vol=0.0012494488433003425
+2025-11-21 13:01:25,821 - DEBUG - Selected small_tip for volume 0.061 mL
+2025-11-21 13:01:25,821 - INFO - Getting small_tip (pipet number 35) from rack: small_tip_rack_1
+2025-11-21 13:01:25,823 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:25,824 - INFO - Additional volume from calibration, amount: 0.001 mL
+2025-11-21 13:01:25,828 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:25,828 - DEBUG - Aspirating 0.051 mL then waiting 2.0 s
+2025-11-21 13:01:25,830 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:25,830 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,830 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,830 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,830 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,830 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,830 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,830 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,830 - DEBUG - Applied dict param overaspirate_vol=0.0012494488433003425
+2025-11-21 13:01:25,833 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:25,834 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:25,835 - DEBUG - Dispensing 0.061 mL then waiting 1.0 s
+2025-11-21 13:01:25,835 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:25,861 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,861 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,861 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,862 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,862 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,862 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,862 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,863 - DEBUG - Applied dict param overaspirate_vol=0.007430924742948264
+2025-11-21 13:01:25,864 - DEBUG - Selected small_tip for volume 0.067 mL
+2025-11-21 13:01:25,865 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:25,865 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-21 13:01:25,867 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:25,867 - DEBUG - Aspirating 0.057 mL then waiting 2.0 s
+2025-11-21 13:01:25,867 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:25,868 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,868 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,868 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,868 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,868 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,868 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,868 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,868 - DEBUG - Applied dict param overaspirate_vol=0.007430924742948264
+2025-11-21 13:01:25,870 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:25,871 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:25,872 - DEBUG - Dispensing 0.067 mL then waiting 1.0 s
+2025-11-21 13:01:25,872 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:25,878 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,878 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,878 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,878 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,878 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,878 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,878 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,879 - DEBUG - Applied dict param overaspirate_vol=0.007430924742948264
+2025-11-21 13:01:25,880 - DEBUG - Selected small_tip for volume 0.067 mL
+2025-11-21 13:01:25,881 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:25,882 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-21 13:01:25,883 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:25,884 - DEBUG - Aspirating 0.057 mL then waiting 2.0 s
+2025-11-21 13:01:25,884 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:25,884 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,884 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,884 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,884 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,884 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,884 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,884 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,884 - DEBUG - Applied dict param overaspirate_vol=0.007430924742948264
+2025-11-21 13:01:25,886 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:25,888 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:25,889 - DEBUG - Dispensing 0.067 mL then waiting 1.0 s
+2025-11-21 13:01:25,889 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:25,895 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,896 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,896 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,896 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,896 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,896 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,896 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,896 - DEBUG - Applied dict param overaspirate_vol=0.007430924742948264
+2025-11-21 13:01:25,897 - DEBUG - Selected small_tip for volume 0.067 mL
+2025-11-21 13:01:25,898 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:25,899 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-21 13:01:25,901 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:25,901 - DEBUG - Aspirating 0.057 mL then waiting 2.0 s
+2025-11-21 13:01:25,901 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:25,901 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,901 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,901 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,901 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,901 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,901 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,901 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,901 - DEBUG - Applied dict param overaspirate_vol=0.007430924742948264
+2025-11-21 13:01:25,901 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:25,905 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:25,905 - DEBUG - Dispensing 0.067 mL then waiting 1.0 s
+2025-11-21 13:01:25,906 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:25,924 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,924 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,926 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,926 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,926 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,926 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,926 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,926 - DEBUG - Applied dict param overaspirate_vol=0.003974377359263599
+2025-11-21 13:01:25,928 - DEBUG - Selected small_tip for volume 0.064 mL
+2025-11-21 13:01:25,928 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:25,931 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-21 13:01:25,933 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:25,933 - DEBUG - Aspirating 0.054 mL then waiting 2.0 s
+2025-11-21 13:01:25,933 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:25,933 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,933 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,933 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,933 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,934 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,934 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,934 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,934 - DEBUG - Applied dict param overaspirate_vol=0.003974377359263599
+2025-11-21 13:01:25,936 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:25,937 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:25,937 - DEBUG - Dispensing 0.064 mL then waiting 1.0 s
+2025-11-21 13:01:25,937 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:25,957 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,958 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,958 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,958 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,958 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,958 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,958 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,958 - DEBUG - Applied dict param overaspirate_vol=0.0023630990856327114
+2025-11-21 13:01:25,960 - DEBUG - Selected small_tip for volume 0.062 mL
+2025-11-21 13:01:25,960 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:25,960 - INFO - Additional volume from calibration, amount: 0.002 mL
+2025-11-21 13:01:25,964 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:25,964 - DEBUG - Aspirating 0.052 mL then waiting 2.0 s
+2025-11-21 13:01:25,964 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:25,964 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,964 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,964 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,964 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,964 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,964 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,964 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,964 - DEBUG - Applied dict param overaspirate_vol=0.0023630990856327114
+2025-11-21 13:01:25,964 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:25,967 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:25,968 - DEBUG - Dispensing 0.062 mL then waiting 1.0 s
+2025-11-21 13:01:25,969 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:25,987 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,987 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,987 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,987 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,987 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,987 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,987 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,987 - DEBUG - Applied dict param overaspirate_vol=0.002922776334453374
+2025-11-21 13:01:25,988 - DEBUG - Selected small_tip for volume 0.063 mL
+2025-11-21 13:01:25,989 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:25,989 - INFO - Additional volume from calibration, amount: 0.003 mL
+2025-11-21 13:01:25,993 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:25,993 - DEBUG - Aspirating 0.053 mL then waiting 2.0 s
+2025-11-21 13:01:25,993 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:25,993 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,993 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,993 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,993 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,993 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,993 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,993 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:25,993 - DEBUG - Applied dict param overaspirate_vol=0.002922776334453374
+2025-11-21 13:01:25,995 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:25,996 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:25,996 - DEBUG - Dispensing 0.063 mL then waiting 1.0 s
+2025-11-21 13:01:25,997 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:25,999 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:25,999 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:25,999 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:25,999 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:25,999 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:25,999 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:25,999 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:26,000 - DEBUG - Applied dict param overaspirate_vol=0.007430924742948264
+2025-11-21 13:01:26,001 - DEBUG - Selected small_tip for volume 0.067 mL
+2025-11-21 13:01:26,002 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:26,002 - INFO - Additional volume from calibration, amount: 0.007 mL
+2025-11-21 13:01:26,003 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:26,004 - DEBUG - Aspirating 0.057 mL then waiting 2.0 s
+2025-11-21 13:01:26,004 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:26,004 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:26,004 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:26,004 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:26,004 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:26,004 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:26,004 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:26,004 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:26,004 - DEBUG - Applied dict param overaspirate_vol=0.007430924742948264
+2025-11-21 13:01:26,005 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:26,007 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:26,007 - DEBUG - Dispensing 0.067 mL then waiting 1.0 s
+2025-11-21 13:01:26,007 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:26,009 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:26,009 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:26,009 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:26,009 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:26,009 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:26,009 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:26,009 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:26,009 - DEBUG - Applied dict param overaspirate_vol=0.01241163607032994
+2025-11-21 13:01:26,011 - DEBUG - Selected small_tip for volume 0.072 mL
+2025-11-21 13:01:26,013 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:26,013 - INFO - Additional volume from calibration, amount: 0.012 mL
+2025-11-21 13:01:26,015 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:26,015 - DEBUG - Aspirating 0.062 mL then waiting 2.0 s
+2025-11-21 13:01:26,015 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:26,015 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:26,015 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:26,015 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:26,015 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:26,015 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:26,015 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:26,015 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:26,015 - DEBUG - Applied dict param overaspirate_vol=0.01241163607032994
+2025-11-21 13:01:26,017 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:26,019 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:26,019 - DEBUG - Dispensing 0.072 mL then waiting 1.0 s
+2025-11-21 13:01:26,019 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:33,657 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:33,657 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:33,657 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:33,657 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:33,657 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:33,657 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:33,657 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:33,657 - DEBUG - Applied dict param overaspirate_vol=0.008348132797250857
+2025-11-21 13:01:33,659 - DEBUG - Selected small_tip for volume 0.068 mL
+2025-11-21 13:01:33,659 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:33,661 - INFO - Additional volume from calibration, amount: 0.008 mL
+2025-11-21 13:01:33,662 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:33,662 - DEBUG - Aspirating 0.058 mL then waiting 2.0 s
+2025-11-21 13:01:33,662 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:33,664 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:33,664 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:33,664 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:33,664 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:33,664 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:33,664 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:33,664 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:33,664 - DEBUG - Applied dict param overaspirate_vol=0.008348132797250857
+2025-11-21 13:01:33,665 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:33,666 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:33,667 - DEBUG - Dispensing 0.068 mL then waiting 1.0 s
+2025-11-21 13:01:33,667 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:33,669 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:33,669 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:33,669 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:33,669 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:33,669 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:33,669 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:33,669 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:33,669 - DEBUG - Applied dict param overaspirate_vol=0.008348132797250857
+2025-11-21 13:01:33,670 - DEBUG - Selected small_tip for volume 0.068 mL
+2025-11-21 13:01:33,673 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:33,673 - INFO - Additional volume from calibration, amount: 0.008 mL
+2025-11-21 13:01:33,675 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:33,675 - DEBUG - Aspirating 0.058 mL then waiting 2.0 s
+2025-11-21 13:01:33,675 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:33,676 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:33,676 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:33,676 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:33,676 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:33,676 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:33,676 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:33,676 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:33,676 - DEBUG - Applied dict param overaspirate_vol=0.008348132797250857
+2025-11-21 13:01:33,677 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:33,678 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:33,678 - DEBUG - Dispensing 0.068 mL then waiting 1.0 s
+2025-11-21 13:01:33,678 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:33,681 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:33,681 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:33,681 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:33,681 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:33,681 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:33,681 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:33,681 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:33,681 - DEBUG - Applied dict param overaspirate_vol=0.008348132797250857
+2025-11-21 13:01:33,682 - DEBUG - Selected small_tip for volume 0.068 mL
+2025-11-21 13:01:33,683 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:33,683 - INFO - Additional volume from calibration, amount: 0.008 mL
+2025-11-21 13:01:33,685 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:33,685 - DEBUG - Aspirating 0.058 mL then waiting 2.0 s
+2025-11-21 13:01:33,685 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:33,686 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:33,686 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:33,686 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:33,686 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:33,686 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:33,686 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:33,686 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:33,686 - DEBUG - Applied dict param overaspirate_vol=0.008348132797250857
+2025-11-21 13:01:33,688 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:33,689 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:33,690 - DEBUG - Dispensing 0.068 mL then waiting 1.0 s
+2025-11-21 13:01:33,690 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:40,654 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:40,654 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:40,654 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:40,654 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:40,654 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:40,654 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:40,654 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:40,654 - DEBUG - Applied dict param overaspirate_vol=0.009826673067520915
+2025-11-21 13:01:40,656 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:01:40,656 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:40,656 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:01:40,658 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:40,658 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:01:40,658 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:40,658 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:40,658 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:40,658 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:40,658 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:40,658 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:40,658 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:40,658 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:40,658 - DEBUG - Applied dict param overaspirate_vol=0.009826673067520915
+2025-11-21 13:01:40,660 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:40,661 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:40,662 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:01:40,662 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:40,663 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:40,663 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:40,663 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:40,663 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:40,663 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:40,663 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:40,663 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:40,663 - DEBUG - Applied dict param overaspirate_vol=0.009826673067520915
+2025-11-21 13:01:40,664 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:01:40,665 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:40,665 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:01:40,667 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:40,667 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:01:40,667 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:40,667 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:40,667 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:40,667 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:40,668 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:40,668 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:40,668 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:40,668 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:40,668 - DEBUG - Applied dict param overaspirate_vol=0.009826673067520915
+2025-11-21 13:01:40,669 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:40,670 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:40,671 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:01:40,671 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:40,672 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:40,672 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:40,672 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:40,672 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:40,672 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:40,672 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:40,672 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:40,672 - DEBUG - Applied dict param overaspirate_vol=0.009826673067520915
+2025-11-21 13:01:40,673 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:01:40,674 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:40,674 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:01:40,677 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:40,677 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:01:40,677 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:40,677 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:40,677 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:40,677 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:40,677 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:40,677 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:40,677 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:40,677 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:40,677 - DEBUG - Applied dict param overaspirate_vol=0.009826673067520915
+2025-11-21 13:01:40,678 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:40,679 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:40,680 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:01:40,680 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:47,516 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:47,516 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:47,516 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:47,516 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:47,516 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:47,516 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:47,516 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:47,516 - DEBUG - Applied dict param overaspirate_vol=0.011698545713044612
+2025-11-21 13:01:47,517 - DEBUG - Selected small_tip for volume 0.072 mL
+2025-11-21 13:01:47,518 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:47,519 - INFO - Additional volume from calibration, amount: 0.012 mL
+2025-11-21 13:01:47,520 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:47,520 - DEBUG - Aspirating 0.062 mL then waiting 2.0 s
+2025-11-21 13:01:47,522 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:47,522 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:47,522 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:47,522 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:47,522 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:47,522 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:47,522 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:47,522 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:47,522 - DEBUG - Applied dict param overaspirate_vol=0.011698545713044612
+2025-11-21 13:01:47,524 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:47,524 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:47,526 - DEBUG - Dispensing 0.072 mL then waiting 1.0 s
+2025-11-21 13:01:47,526 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:47,528 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:47,528 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:47,528 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:47,528 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:47,528 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:47,528 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:47,528 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:47,528 - DEBUG - Applied dict param overaspirate_vol=0.011698545713044612
+2025-11-21 13:01:47,529 - DEBUG - Selected small_tip for volume 0.072 mL
+2025-11-21 13:01:47,530 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:47,530 - INFO - Additional volume from calibration, amount: 0.012 mL
+2025-11-21 13:01:47,532 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:47,532 - DEBUG - Aspirating 0.062 mL then waiting 2.0 s
+2025-11-21 13:01:47,532 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:47,532 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:47,532 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:47,532 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:47,532 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:47,532 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:47,532 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:47,532 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:47,532 - DEBUG - Applied dict param overaspirate_vol=0.011698545713044612
+2025-11-21 13:01:47,534 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:47,535 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:47,535 - DEBUG - Dispensing 0.072 mL then waiting 1.0 s
+2025-11-21 13:01:47,535 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:47,536 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:47,536 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:47,536 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:47,536 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:47,538 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:47,538 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:47,538 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:47,538 - DEBUG - Applied dict param overaspirate_vol=0.011698545713044612
+2025-11-21 13:01:47,539 - DEBUG - Selected small_tip for volume 0.072 mL
+2025-11-21 13:01:47,539 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:47,540 - INFO - Additional volume from calibration, amount: 0.012 mL
+2025-11-21 13:01:47,541 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:47,541 - DEBUG - Aspirating 0.062 mL then waiting 2.0 s
+2025-11-21 13:01:47,541 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:47,541 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:47,541 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:47,541 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:47,541 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:47,542 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:47,542 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:47,542 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:47,542 - DEBUG - Applied dict param overaspirate_vol=0.011698545713044612
+2025-11-21 13:01:47,543 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:47,544 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:47,545 - DEBUG - Dispensing 0.072 mL then waiting 1.0 s
+2025-11-21 13:01:47,545 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:54,777 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:54,777 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:54,777 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:54,778 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:54,778 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:54,787 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:54,787 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:54,787 - DEBUG - Applied dict param overaspirate_vol=0.009832119616713255
+2025-11-21 13:01:54,790 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:01:54,791 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:54,791 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:01:54,792 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:54,792 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:01:54,792 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:54,792 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:54,792 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:54,792 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:54,792 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:54,792 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:54,792 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:54,792 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:54,792 - DEBUG - Applied dict param overaspirate_vol=0.009832119616713255
+2025-11-21 13:01:54,794 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:54,794 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:54,796 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:01:54,796 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:54,798 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:54,798 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:54,798 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:54,798 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:54,798 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:54,798 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:54,798 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:54,798 - DEBUG - Applied dict param overaspirate_vol=0.009832119616713255
+2025-11-21 13:01:54,799 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:01:54,800 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:54,801 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:01:54,802 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:54,802 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:01:54,802 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:54,803 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:54,803 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:54,803 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:54,803 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:54,803 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:54,803 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:54,803 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:54,803 - DEBUG - Applied dict param overaspirate_vol=0.009832119616713255
+2025-11-21 13:01:54,804 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:54,805 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:54,806 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:01:54,806 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:01:54,808 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:54,808 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:54,808 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:54,808 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:54,808 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:54,808 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:54,808 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:54,808 - DEBUG - Applied dict param overaspirate_vol=0.009832119616713255
+2025-11-21 13:01:54,809 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:01:54,810 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:01:54,810 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:01:54,812 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:01:54,812 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:01:54,813 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:01:54,813 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:01:54,813 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:01:54,813 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:01:54,813 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:01:54,813 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:01:54,813 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:01:54,813 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:01:54,813 - DEBUG - Applied dict param overaspirate_vol=0.009832119616713255
+2025-11-21 13:01:54,814 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:01:54,816 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:01:54,817 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:01:54,817 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,356 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,356 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,356 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,356 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,356 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,356 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,356 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,356 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,357 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:02:02,358 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:02:02,359 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:02:02,360 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,360 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:02:02,360 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,361 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,361 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,361 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,361 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,361 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,361 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,361 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,361 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,362 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:02:02,363 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,363 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:02:02,363 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,364 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,365 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,365 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,365 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,365 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,365 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,365 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,365 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,366 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:02:02,367 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:02:02,367 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:02:02,369 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,369 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:02:02,369 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,369 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,369 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,369 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,369 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,369 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,369 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,371 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,371 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,372 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:02:02,372 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,373 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:02:02,373 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,374 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,375 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,375 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,375 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,375 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,375 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,375 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,375 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,376 - DEBUG - Selected small_tip for volume 0.070 mL
+2025-11-21 13:02:02,376 - INFO - Pipetting from vial liquid_source_0, amount: 0.050 mL
+2025-11-21 13:02:02,377 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:02:02,378 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,378 - DEBUG - Aspirating 0.060 mL then waiting 2.0 s
+2025-11-21 13:02:02,379 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,379 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,379 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,379 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,379 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,379 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,379 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,379 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,379 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,381 - INFO - Pipetting into vial measurement_vial_0, amount: 0.050 mL
+2025-11-21 13:02:02,381 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,382 - DEBUG - Dispensing 0.070 mL then waiting 1.0 s
+2025-11-21 13:02:02,382 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,403 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,403 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,403 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,403 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,403 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,403 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,403 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,403 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,404 - DEBUG - Selected small_tip for volume 0.045 mL
+2025-11-21 13:02:02,406 - INFO - Pipetting from vial liquid_source_0, amount: 0.025 mL
+2025-11-21 13:02:02,406 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:02:02,407 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,408 - DEBUG - Aspirating 0.035 mL then waiting 2.0 s
+2025-11-21 13:02:02,408 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,408 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,408 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,408 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,408 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,408 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,408 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,408 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,408 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,409 - INFO - Pipetting into vial measurement_vial_0, amount: 0.025 mL
+2025-11-21 13:02:02,410 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,411 - DEBUG - Dispensing 0.045 mL then waiting 1.0 s
+2025-11-21 13:02:02,411 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,414 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,414 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,414 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,414 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,414 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,414 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,414 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,414 - DEBUG - Applied dict param overaspirate_vol=0.003930102209357709
+2025-11-21 13:02:02,415 - DEBUG - Selected small_tip for volume 0.039 mL
+2025-11-21 13:02:02,415 - INFO - Pipetting from vial liquid_source_0, amount: 0.025 mL
+2025-11-21 13:02:02,415 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-21 13:02:02,415 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,415 - DEBUG - Aspirating 0.029 mL then waiting 2.0 s
+2025-11-21 13:02:02,415 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,415 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,415 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,415 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,415 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,415 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,415 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,415 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,415 - DEBUG - Applied dict param overaspirate_vol=0.003930102209357709
+2025-11-21 13:02:02,415 - INFO - Pipetting into vial measurement_vial_0, amount: 0.025 mL
+2025-11-21 13:02:02,415 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,420 - DEBUG - Dispensing 0.039 mL then waiting 1.0 s
+2025-11-21 13:02:02,420 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,425 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,425 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,426 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,426 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,426 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,426 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,426 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,426 - DEBUG - Applied dict param overaspirate_vol=0.004950465697839951
+2025-11-21 13:02:02,428 - DEBUG - Selected small_tip for volume 0.040 mL
+2025-11-21 13:02:02,429 - INFO - Pipetting from vial liquid_source_0, amount: 0.025 mL
+2025-11-21 13:02:02,429 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-21 13:02:02,430 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,430 - DEBUG - Aspirating 0.030 mL then waiting 2.0 s
+2025-11-21 13:02:02,431 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,431 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,431 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,431 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,431 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,431 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,431 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,431 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,431 - DEBUG - Applied dict param overaspirate_vol=0.004950465697839951
+2025-11-21 13:02:02,432 - INFO - Pipetting into vial measurement_vial_0, amount: 0.025 mL
+2025-11-21 13:02:02,433 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,434 - DEBUG - Dispensing 0.040 mL then waiting 1.0 s
+2025-11-21 13:02:02,434 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,435 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,435 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,435 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,436 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,436 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,436 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,436 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,436 - DEBUG - Applied dict param overaspirate_vol=0.004950465697839951
+2025-11-21 13:02:02,437 - DEBUG - Selected small_tip for volume 0.040 mL
+2025-11-21 13:02:02,438 - INFO - Pipetting from vial liquid_source_0, amount: 0.025 mL
+2025-11-21 13:02:02,438 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-21 13:02:02,440 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,440 - DEBUG - Aspirating 0.030 mL then waiting 2.0 s
+2025-11-21 13:02:02,440 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,440 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,440 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,440 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,440 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,440 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,440 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,440 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,440 - DEBUG - Applied dict param overaspirate_vol=0.004950465697839951
+2025-11-21 13:02:02,441 - INFO - Pipetting into vial measurement_vial_0, amount: 0.025 mL
+2025-11-21 13:02:02,442 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,442 - DEBUG - Dispensing 0.040 mL then waiting 1.0 s
+2025-11-21 13:02:02,442 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,443 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,443 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,444 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,444 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,444 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,444 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,444 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,444 - DEBUG - Applied dict param overaspirate_vol=0.004950465697839951
+2025-11-21 13:02:02,445 - DEBUG - Selected small_tip for volume 0.040 mL
+2025-11-21 13:02:02,446 - INFO - Pipetting from vial liquid_source_0, amount: 0.025 mL
+2025-11-21 13:02:02,446 - INFO - Additional volume from calibration, amount: 0.005 mL
+2025-11-21 13:02:02,448 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,448 - DEBUG - Aspirating 0.030 mL then waiting 2.0 s
+2025-11-21 13:02:02,448 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,448 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,448 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,448 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,448 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,448 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,448 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,448 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,448 - DEBUG - Applied dict param overaspirate_vol=0.004950465697839951
+2025-11-21 13:02:02,449 - INFO - Pipetting into vial measurement_vial_0, amount: 0.025 mL
+2025-11-21 13:02:02,451 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,451 - DEBUG - Dispensing 0.040 mL then waiting 1.0 s
+2025-11-21 13:02:02,451 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,460 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,460 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,460 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,460 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,460 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,460 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,460 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,460 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,461 - DEBUG - Selected small_tip for volume 0.030 mL
+2025-11-21 13:02:02,462 - INFO - Pipetting from vial liquid_source_0, amount: 0.010 mL
+2025-11-21 13:02:02,462 - INFO - Additional volume from calibration, amount: 0.010 mL
+2025-11-21 13:02:02,463 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,463 - DEBUG - Aspirating 0.020 mL then waiting 2.0 s
+2025-11-21 13:02:02,463 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,463 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,463 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,463 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,463 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,465 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,465 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,465 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,465 - DEBUG - Applied dict param overaspirate_vol=0.010008501608539023
+2025-11-21 13:02:02,466 - INFO - Pipetting into vial measurement_vial_0, amount: 0.010 mL
+2025-11-21 13:02:02,466 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,466 - DEBUG - Dispensing 0.030 mL then waiting 1.0 s
+2025-11-21 13:02:02,466 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,468 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,468 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,468 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,468 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,468 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,468 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,468 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,468 - DEBUG - Applied dict param overaspirate_vol=0.0015812917436331293
+2025-11-21 13:02:02,470 - DEBUG - Selected small_tip for volume 0.022 mL
+2025-11-21 13:02:02,471 - INFO - Pipetting from vial liquid_source_0, amount: 0.010 mL
+2025-11-21 13:02:02,472 - INFO - Additional volume from calibration, amount: 0.002 mL
+2025-11-21 13:02:02,473 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,473 - DEBUG - Aspirating 0.012 mL then waiting 2.0 s
+2025-11-21 13:02:02,473 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,474 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,474 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,474 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,474 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,474 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,474 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,474 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,474 - DEBUG - Applied dict param overaspirate_vol=0.0015812917436331293
+2025-11-21 13:02:02,476 - INFO - Pipetting into vial measurement_vial_0, amount: 0.010 mL
+2025-11-21 13:02:02,477 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,477 - DEBUG - Dispensing 0.022 mL then waiting 1.0 s
+2025-11-21 13:02:02,477 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,482 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,482 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,482 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,482 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,482 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,482 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,482 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,483 - DEBUG - Applied dict param overaspirate_vol=0.0019356142392601308
+2025-11-21 13:02:02,483 - DEBUG - Selected small_tip for volume 0.022 mL
+2025-11-21 13:02:02,483 - INFO - Pipetting from vial liquid_source_0, amount: 0.010 mL
+2025-11-21 13:02:02,485 - INFO - Additional volume from calibration, amount: 0.002 mL
+2025-11-21 13:02:02,487 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,487 - DEBUG - Aspirating 0.012 mL then waiting 2.0 s
+2025-11-21 13:02:02,487 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,487 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,487 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,487 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,487 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,487 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,487 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,487 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,488 - DEBUG - Applied dict param overaspirate_vol=0.0019356142392601308
+2025-11-21 13:02:02,489 - INFO - Pipetting into vial measurement_vial_0, amount: 0.010 mL
+2025-11-21 13:02:02,489 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,490 - DEBUG - Dispensing 0.022 mL then waiting 1.0 s
+2025-11-21 13:02:02,490 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,491 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,491 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,491 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,491 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,491 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,491 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,491 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,491 - DEBUG - Applied dict param overaspirate_vol=0.0019356142392601308
+2025-11-21 13:02:02,492 - DEBUG - Selected small_tip for volume 0.022 mL
+2025-11-21 13:02:02,494 - INFO - Pipetting from vial liquid_source_0, amount: 0.010 mL
+2025-11-21 13:02:02,494 - INFO - Additional volume from calibration, amount: 0.002 mL
+2025-11-21 13:02:02,495 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,495 - DEBUG - Aspirating 0.012 mL then waiting 2.0 s
+2025-11-21 13:02:02,496 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,496 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,496 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,496 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,496 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,496 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,496 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,496 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,496 - DEBUG - Applied dict param overaspirate_vol=0.0019356142392601308
+2025-11-21 13:02:02,497 - INFO - Pipetting into vial measurement_vial_0, amount: 0.010 mL
+2025-11-21 13:02:02,498 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,498 - DEBUG - Dispensing 0.022 mL then waiting 1.0 s
+2025-11-21 13:02:02,498 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,499 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,499 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,499 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,499 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,500 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,500 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,500 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,500 - DEBUG - Applied dict param overaspirate_vol=0.0019356142392601308
+2025-11-21 13:02:02,501 - DEBUG - Selected small_tip for volume 0.022 mL
+2025-11-21 13:02:02,502 - INFO - Pipetting from vial liquid_source_0, amount: 0.010 mL
+2025-11-21 13:02:02,502 - INFO - Additional volume from calibration, amount: 0.002 mL
+2025-11-21 13:02:02,503 - DEBUG - Adjusting pump 0 speed to 20
+2025-11-21 13:02:02,503 - DEBUG - Aspirating 0.012 mL then waiting 2.0 s
+2025-11-21 13:02:02,504 - DEBUG - Aspirating 0.010 mL then waiting 0 s
+2025-11-21 13:02:02,504 - DEBUG - Applied dict param aspirate_speed=20
+2025-11-21 13:02:02,504 - DEBUG - Applied dict param dispense_speed=15
+2025-11-21 13:02:02,504 - DEBUG - Applied dict param aspirate_wait_time=2.0
+2025-11-21 13:02:02,504 - DEBUG - Applied dict param dispense_wait_time=1.0
+2025-11-21 13:02:02,504 - DEBUG - Applied dict param retract_speed=5.0
+2025-11-21 13:02:02,504 - DEBUG - Applied dict param blowout_vol=0.02
+2025-11-21 13:02:02,504 - DEBUG - Applied dict param post_asp_air_vol=0.01
+2025-11-21 13:02:02,504 - DEBUG - Applied dict param overaspirate_vol=0.0019356142392601308
+2025-11-21 13:02:02,505 - INFO - Pipetting into vial measurement_vial_0, amount: 0.010 mL
+2025-11-21 13:02:02,506 - DEBUG - Adjusting pump 0 speed to 15
+2025-11-21 13:02:02,506 - DEBUG - Dispensing 0.022 mL then waiting 1.0 s
+2025-11-21 13:02:02,506 - DEBUG - Blowing out 0.020 mL
+2025-11-21 13:02:02,513 - INFO - Moving robot to home position

@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 import numpy as np
 
-from config_manager import ExperimentConfig
+from .config_manager import ExperimentConfig
 from data_structures import PipettingParameters, TrialResult, RawMeasurement, AdaptiveMeasurementResult, QualityEvaluation, VolumeTolerances, HardwareParameters, CalibrationParameters
 
 logger = logging.getLogger(__name__)

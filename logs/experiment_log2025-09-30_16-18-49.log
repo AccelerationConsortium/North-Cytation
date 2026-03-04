@@ -1,0 +1,66 @@
+2025-09-30 16:18:49,759 - INFO - Initializing North Robot...
+2025-09-30 16:18:49,759 - DEBUG - Loading robot configuration files...
+2025-09-30 16:18:49,777 - DEBUG - Loaded vial positions configuration from ../utoronto_demo/robot_state/vial_positions.yaml
+2025-09-30 16:18:49,779 - DEBUG - Loaded pipet tips configuration from ../utoronto_demo/robot_state/pipet_tips.yaml
+2025-09-30 16:18:49,783 - DEBUG - Loaded pipet racks configuration from ../utoronto_demo/robot_state/pipet_racks.yaml
+2025-09-30 16:18:49,785 - DEBUG - Loaded pump configuration from ../utoronto_demo/robot_state/syringe_pumps.yaml
+2025-09-30 16:18:49,788 - DEBUG - Loaded robot hardware configuration from ../utoronto_demo/robot_state/robot_hardware.yaml
+2025-09-30 16:18:49,791 - DEBUG - Loaded wellplate properties configuration from ../utoronto_demo/robot_state/wellplates.yaml
+2025-09-30 16:18:49,792 - DEBUG - Loading robot state files...
+2025-09-30 16:18:49,794 - DEBUG - Loaded vial data from ../utoronto_demo/status/calibration_vials_short.csv
+2025-09-30 16:18:49,794 - DEBUG - Loaded robot status from ../utoronto_demo/robot_state/robot_status.yaml
+2025-09-30 16:18:49,794 - DEBUG - Loaded wellplate positions from ../utoronto_demo/robot_state/wellplates.yaml
+2025-09-30 16:18:49,794 - DEBUG - Physical initialization of North Robot...
+2025-09-30 16:18:50,126 - WARNING - The robot reports having a vial in the gripper... Returning that vial home...
+2025-09-30 16:18:50,126 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-09-30 16:18:51,954 - INFO - Moving robot to home position
+2025-09-30 16:18:55,531 - DEBUG - Loading pumps from YAML configuration...
+2025-09-30 16:18:55,629 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-09-30 16:18:55,747 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-09-30 16:18:55,950 - INFO - Initializing North Track...
+2025-09-30 16:18:55,951 - DEBUG - Loading track status from file: ../utoronto_demo/robot_state/track_status.yaml
+2025-09-30 16:18:55,951 - DEBUG - Getting track status from file: ../utoronto_demo/robot_state/track_status.yaml
+2025-09-30 16:18:55,955 - DEBUG - Loaded track status from ../utoronto_demo/robot_state/track_status.yaml
+2025-09-30 16:18:55,955 - DEBUG - Loading track positions from: ../utoronto_demo/robot_state/track_positions.yaml
+2025-09-30 16:18:55,983 - DEBUG - Loaded track positions configuration from ../utoronto_demo/robot_state/track_positions.yaml
+2025-09-30 16:18:55,983 - DEBUG - Loading robot hardware configuration from: ../utoronto_demo/robot_state/robot_hardware.yaml
+2025-09-30 16:18:55,983 - DEBUG - Loaded robot hardware configuration from ../utoronto_demo/robot_state/robot_hardware.yaml
+2025-09-30 16:18:56,000 - DEBUG - Loaded wellplate properties configuration from ../utoronto_demo/robot_state/wellplates.yaml
+2025-09-30 16:18:56,003 - INFO -    vial_index           vial_name         location  location_index  vial_volume  capped cap_type vial_type    home_location  home_location_index
+0           0  measurement_vial_0    main_8mL_rack               0     6.242795    True     open      8_mL    main_8mL_rack                    0
+1           1  measurement_vial_1    main_8mL_rack               1     0.000000    True     open      8_mL    main_8mL_rack                    1
+2           2  measurement_vial_2    main_8mL_rack               2     0.000000    True     open      8_mL    main_8mL_rack                    2
+3           3       liquid_source  large_vial_rack               2    13.637205    True     open     20_mL  large_vial_rack                    2
+2025-09-30 16:18:56,015 - INFO - Visualizing vial racks...
+2025-09-30 16:18:56,171 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2025-09-30 16:18:56,329 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2025-09-30 16:18:59,682 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-09-30 16:18:59,682 - DEBUG - Grabbing vial 0 with index 0
+2025-09-30 16:19:02,396 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-09-30 16:19:05,148 - INFO - Liquid: 
+2025-09-30 16:19:05,376 - INFO - Loading existing data from C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\0922_8params\20250918_162405_glycerol_qEI\experiment_summary.csv
+2025-09-30 16:19:05,629 - INFO - Loading existing data from C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\0922_8params\20250919_111418_glycerol_qLogEI\experiment_summary.csv
+2025-09-30 16:19:05,870 - INFO - Loading existing data from C:\Users\Imaging Controller\Desktop\Calibration_SDL_Output\autosave_calibration\0922_8params\20250919_132556_glycerol_qNEHVI\experiment_summary.csv
+2025-09-30 16:19:59,754 - INFO - LLM Optimization Results:
+2025-09-30 16:19:59,755 - INFO - Strategy Summary: Key insights: Lower aspirate and dispense speeds generally improve accuracy (e.g., Experiment 23 with deviation 1.058201). Medium speeds provide a compromise between time and accuracy (e.g., Experiment 17 with time 55.024793 and deviation 41.481481). Faster speeds can slightly sacrifice accuracy for time gains (e.g., Experiment 28 with deviation 8.359788). Unexplored regions such as extreme corners (e.g., both aspirate and dispense speeds at extremes) could provide novel insights.
+2025-09-30 16:19:59,755 - INFO - LLM Recommendation 1:
+2025-09-30 16:19:59,755 - INFO -   Confidence Level: medium
+2025-09-30 16:19:59,755 - INFO -   Reasoning: SPEED-FOCUSED strategy: Experiment 28 (trial index 10) demonstrated low deviation (8.359788) and variability (5.940371) with relatively low aspirate and dispense speeds, suggesting potential for faster cycle times with acceptable performance.
+2025-09-30 16:19:59,756 - INFO -   Expected Improvement: Reduced time by approximately 10-15% while maintaining deviation below 10.
+2025-09-30 16:19:59,757 - INFO - LLM Recommendation 2:
+2025-09-30 16:19:59,757 - INFO -   Confidence Level: high
+2025-09-30 16:19:59,757 - INFO -   Reasoning: ACCURACY-FOCUSED strategy: Experiment 23 (trial index 23) achieved the lowest deviation (1.058201) and variability (1.097612) with high aspirate and dispense speeds, indicating slower speeds improve accuracy despite longer times.
+2025-09-30 16:19:59,759 - INFO -   Expected Improvement: Improved accuracy by reducing deviation to below 2, with increased time by 20-25%.
+2025-09-30 16:19:59,759 - INFO - LLM Recommendation 3:
+2025-09-30 16:19:59,760 - INFO -   Confidence Level: medium
+2025-09-30 16:19:59,760 - INFO -   Reasoning: PARETO FRONT exploration: Experiment 17 (trial index 17) showed good balance with deviation (41.481481) and time (55.024793), indicating these parameters lie on a potential Pareto front balancing time and accuracy.
+2025-09-30 16:19:59,760 - INFO -   Expected Improvement: Balanced deviation below 40 with time reduced by 10% compared to the most accurate setup.
+2025-09-30 16:19:59,762 - DEBUG - Selected small_tip for volume 0.060 mL
+2025-09-30 16:19:59,762 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_1
+2025-09-30 16:20:04,999 - INFO - Pipetting from vial liquid_source, amount: 0.06 mL
+2025-09-30 16:20:05,007 - DEBUG - Adjusting pump 0 speed to 5
+2025-09-30 16:20:08,103 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 16:20:08,839 - DEBUG - Aspirating 0.060 mL then waiting 5.0 s
+2025-09-30 16:20:14,798 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-09-30 16:20:15,183 - INFO - Pipetting into vial measurement_vial_0, amount: 0.06 mL
+2025-09-30 16:20:17,269 - DEBUG - Adjusting pump 0 speed to 5

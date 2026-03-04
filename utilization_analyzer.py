@@ -180,6 +180,13 @@ class LabUtilizationAnalyzer:
         business_hours = self.calculate_business_hours(start_date, end_date)
         utilization_business = (total_runtime_hours / business_hours) * 100 if business_hours > 0 else 0
         
+        # Weekly total metrics
+        df['week'] = df['date'].dt.to_period('W')
+        weekly_usage = df.groupby('week')['duration_hours'].sum()
+        avg_weekly_runtime = weekly_usage.mean()
+        peak_weekly_runtime = weekly_usage.max()
+        current_weekly_runtime = weekly_usage.iloc[-1] if len(weekly_usage) > 0 else 0
+        
         # Simulation vs real experiments
         sim_sessions = df[df['is_simulate'] == True]
         real_sessions = df[df['is_simulate'] == False]
@@ -193,6 +200,9 @@ class LabUtilizationAnalyzer:
             'total_period_days': total_period_days,
             'utilization_24h': utilization_24h,
             'utilization_business': utilization_business,
+            'avg_weekly_runtime': avg_weekly_runtime,
+            'peak_weekly_runtime': peak_weekly_runtime,
+            'current_weekly_runtime': current_weekly_runtime,
             'simulation_sessions': len(sim_sessions),
             'real_sessions': len(real_sessions),
             'simulation_hours': sim_sessions['duration_hours'].sum() if len(sim_sessions) > 0 else 0,
@@ -225,54 +235,43 @@ class LabUtilizationAnalyzer:
         df['log_end_time'] = pd.to_datetime(df['log_end_time'])
         df['date'] = pd.to_datetime(df['date']).dt.date
         
-        # Create figure with subplots
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        # Create figure with subplots - weekly hours and summary
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
         fig.suptitle('Laboratory System Utilization Analysis', fontsize=16, fontweight='bold')
         
-        # 1. Timeline view of sessions
-        ax1 = axes[0, 0]
-        colors = ['skyblue' if sim else 'orange' for sim in df['is_simulate']]
-        bars = ax1.barh(range(len(df)), df['duration_hours'], color=colors, alpha=0.7)
-        ax1.set_xlabel('Duration (hours)')
-        ax1.set_ylabel('Session')
-        ax1.set_title('Session Durations Over Time')
-        ax1.grid(axis='x', alpha=0.3)
+        # 1. Weekly hours utilization
+        ax1 = axes[0]
         
-        # Add legend
-        import matplotlib.patches as mpatches
-        sim_patch = mpatches.Patch(color='skyblue', label='Simulation')
-        real_patch = mpatches.Patch(color='orange', label='Real Hardware')
-        ax1.legend(handles=[sim_patch, real_patch])
+        # Group by week and sum hours
+        df['week'] = df['log_start_time'].dt.to_period('W')
+        weekly_usage = df.groupby('week')['duration_hours'].sum().reset_index()
+        weekly_usage['week_start'] = weekly_usage['week'].dt.start_time
         
-        # 2. Daily utilization
-        ax2 = axes[0, 1]
-        daily_usage = df.groupby('date')['duration_hours'].sum().reset_index()
-        daily_usage['date'] = pd.to_datetime(daily_usage['date'])
-        ax2.plot(daily_usage['date'], daily_usage['duration_hours'], 'o-', color='green', linewidth=2, markersize=4)
-        ax2.set_xlabel('Date')
-        ax2.set_ylabel('Daily Runtime (hours)')
-        ax2.set_title('Daily System Utilization')
-        ax2.grid(True, alpha=0.3)
-        ax2.tick_params(axis='x', rotation=45)
+        # Calculate 3-week rolling average
+        weekly_usage['rolling_avg_3wk'] = weekly_usage['duration_hours'].rolling(window=3, center=True).mean()
         
-        # Format x-axis dates
-        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-        ax2.xaxis.set_major_locator(mdates.WeekdayLocator(interval=2))
+        # Plot raw weekly data
+        ax1.plot(weekly_usage['week_start'], weekly_usage['duration_hours'], 
+                 'o-', color='lightgreen', linewidth=1.5, markersize=4, alpha=0.7, label='Weekly Usage')
         
-        # 3. Simulation vs Real distribution
-        ax3 = axes[1, 0]
-        sim_real_data = [
-            self.analysis_results['simulation_hours'], 
-            self.analysis_results['real_hours']
-        ]
-        labels = ['Simulation', 'Real Hardware']
-        colors = ['skyblue', 'orange']
-        wedges, texts, autotexts = ax3.pie(sim_real_data, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
-        ax3.set_title('Runtime Distribution: Simulation vs Real')
+        # Plot 3-week rolling average
+        ax1.plot(weekly_usage['week_start'], weekly_usage['rolling_avg_3wk'], 
+                 'o-', color='darkgreen', linewidth=3, markersize=6, label='3-Week Rolling Average')
         
-        # 4. Summary statistics
-        ax4 = axes[1, 1]
-        ax4.axis('off')
+        ax1.set_xlabel('Week Starting')
+        ax1.set_ylabel('Total Runtime (hours)')
+        ax1.set_title('Weekly System Utilization (Raw Data + 3-Week Rolling Average)')
+        ax1.legend(loc='upper right')
+        ax1.grid(True, alpha=0.3, axis='y')
+        ax1.tick_params(axis='x', rotation=45)
+        
+        # Format x-axis dates for weekly view
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+        ax1.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=1))  # Show weekly intervals starting Monday
+        
+        # 2. Summary statistics
+        ax2 = axes[1]
+        ax2.axis('off')
         
         # Create summary text
         results = self.analysis_results
@@ -286,6 +285,11 @@ Total Runtime: {results['total_runtime_hours']:.1f} hours
 Total Sessions: {results['total_sessions']}
 Avg Session: {results['avg_session_hours']:.2f} hours
 
+WEEKLY STATISTICS
+Current Week: {results['current_weekly_runtime']:.1f} hours
+Average Week: {results['avg_weekly_runtime']:.1f} hours
+Peak Week: {results['peak_weekly_runtime']:.1f} hours
+
 UTILIZATION RATES
 24/7 Utilization: {results['utilization_24h']:.1f}%
 Business Hours: {results['utilization_business']:.1f}%
@@ -296,7 +300,7 @@ Simulation: {results['simulation_sessions']} sessions ({results['simulation_hour
 Real Hardware: {results['real_sessions']} sessions ({results['real_hours']:.1f}h)
         """
         
-        ax4.text(0.05, 0.95, summary_text, transform=ax4.transAxes, fontsize=10, 
+        ax2.text(0.05, 0.95, summary_text, transform=ax2.transAxes, fontsize=10, 
                 verticalalignment='top', fontfamily='monospace',
                 bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.8))
         
@@ -344,6 +348,13 @@ UTILIZATION METRICS
 24/7 System Utilization: {results['utilization_24h']:.1f}%
 Business Hours Utilization: {results['utilization_business']:.1f}%
   (Business Hours = 8am-6pm, Monday-Friday)
+
+==================================================
+WEEKLY UTILIZATION STATISTICS
+==================================================
+Current Week Runtime: {results['current_weekly_runtime']:.2f} hours
+Average Weekly Runtime: {results['avg_weekly_runtime']:.2f} hours
+Peak Weekly Runtime: {results['peak_weekly_runtime']:.2f} hours
 
 ==================================================
 EXPERIMENT TYPE BREAKDOWN

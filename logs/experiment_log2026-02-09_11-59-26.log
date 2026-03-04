@@ -1,0 +1,610 @@
+2026-02-09 11:59:26,474 - INFO - Initializing North Robot...
+2026-02-09 11:59:26,474 - DEBUG - Loading robot configuration files...
+2026-02-09 11:59:26,490 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-02-09 11:59:26,490 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-02-09 11:59:26,490 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-02-09 11:59:26,490 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-02-09 11:59:26,506 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-09 11:59:26,511 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-09 11:59:26,511 - DEBUG - Loading robot state files...
+2026-02-09 11:59:26,512 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_grid_vials_expanded.csv
+2026-02-09 11:59:26,512 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-02-09 11:59:26,512 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-02-09 11:59:26,512 - DEBUG - Robot status loaded successfully
+2026-02-09 11:59:26,512 - INFO - Physical initialization of North Robot...
+2026-02-09 11:59:30,020 - DEBUG - Loading pumps from YAML configuration...
+2026-02-09 11:59:30,123 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-02-09 11:59:30,221 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-02-09 11:59:30,221 - INFO - Moving robot to home position
+2026-02-09 11:59:30,623 - DEBUG - Initializing centrifuge controller...
+2026-02-09 11:59:35,926 - DEBUG - Current reader status: 0
+2026-02-09 11:59:35,926 - INFO - Cytation5 is connected and ready
+2026-02-09 11:59:35,926 - INFO - Initializing North Track...
+2026-02-09 11:59:35,926 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-02-09 11:59:35,941 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-02-09 11:59:35,943 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-02-09 11:59:35,943 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-02-09 11:59:35,947 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-02-09 11:59:35,947 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-02-09 11:59:35,947 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-02-09 11:59:35,947 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-02-09 11:59:36,032 - DEBUG - Moving North Track to home position
+2026-02-09 11:59:36,039 - INFO - Step 1: Initializing Lash_E coordinator...
+2026-02-09 11:59:36,042 - INFO -   Mode: Hardware
+2026-02-09 11:59:36,049 - INFO - Experiment: surfactant_grid_SDS_TTAB_20260209_115936
+2026-02-09 11:59:36,049 - INFO - Output folder: output\surfactant_grid_SDS_TTAB_20260209_115936
+2026-02-09 11:59:36,051 - INFO - Organized subfolders: validation, measurement_backups, substocks, analysis, logs
+2026-02-09 11:59:36,052 - INFO - ================================================================================
+2026-02-09 11:59:36,053 - INFO - ADAPTIVE SURFACTANT GRID SCREENING WORKFLOW
+2026-02-09 11:59:36,053 - INFO - ================================================================================
+2026-02-09 11:59:36,053 - INFO - Surfactants: SDS + TTAB
+2026-02-09 11:59:36,054 - INFO - Mode: HARDWARE
+2026-02-09 11:59:36,054 - INFO - 
+2026-02-09 11:59:36,054 - INFO -   Validating robot and track status...
+2026-02-09 11:59:36,061 - INFO -     vial_index        vial_name       location  location_index  vial_volume  capped cap_type vial_type  home_location  home_location_index
+0            0        SDS_stock  main_8mL_rack               0     3.872870    True     open      8_mL  main_8mL_rack                    0
+1            1       TTAB_stock  main_8mL_rack               1     5.256435    True     open      8_mL  main_8mL_rack                    1
+2            2      pyrene_DMSO  main_8mL_rack               2     3.565000    True     open      8_mL  main_8mL_rack                    2
+3            3            water  main_8mL_rack               3     2.694315    True     open      8_mL  main_8mL_rack                    3
+4            4          water_2  main_8mL_rack               4     3.151234    True     open      8_mL  main_8mL_rack                    4
+5            5            HEPES  main_8mL_rack               5     0.000000    True     open      8_mL  main_8mL_rack                    5
+6            6   SDS_dilution_0  main_8mL_rack               6     5.280000    True     open      8_mL  main_8mL_rack                    6
+7            7   SDS_dilution_1  main_8mL_rack               7     4.439979    True     open      8_mL  main_8mL_rack                    7
+8            8   SDS_dilution_2  main_8mL_rack               8     5.607971    True     open      8_mL  main_8mL_rack                    8
+9            9   SDS_dilution_3  main_8mL_rack               9     4.908186    True     open      8_mL  main_8mL_rack                    9
+10          10   SDS_dilution_4  main_8mL_rack              10     4.030790    True     open      8_mL  main_8mL_rack                   10
+11          11   SDS_dilution_5  main_8mL_rack              11     3.894654    True     open      8_mL  main_8mL_rack                   11
+12          12  TTAB_dilution_0  main_8mL_rack              12     5.640000    True     open      8_mL  main_8mL_rack                   12
+13          13  TTAB_dilution_1  main_8mL_rack              13     4.719990    True     open      8_mL  main_8mL_rack                   13
+14          14  TTAB_dilution_2  main_8mL_rack              14     5.803986    True     open      8_mL  main_8mL_rack                   14
+15          15  TTAB_dilution_3  main_8mL_rack              15     5.274093    True     open      8_mL  main_8mL_rack                   15
+16          16  TTAB_dilution_4  main_8mL_rack              16     4.315395    True     open      8_mL  main_8mL_rack                   16
+17          17  TTAB_dilution_5  main_8mL_rack              17     4.647327    True     open      8_mL  main_8mL_rack                   17
+2026-02-09 11:59:36,088 - INFO - Visualizing vial racks...
+2026-02-09 11:59:36,177 - DEBUG - Matplotlib backend: tkagg
+2026-02-09 11:59:36,347 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2026-02-09 11:59:36,501 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2026-02-09 11:59:38,383 - DEBUG - Vial visualization displayed successfully
+2026-02-09 11:59:39,411 - INFO - --Wellplate status-- 
+ Wellplate type: 96 WELL PLATE 
+ Number in source: 0 
+ Number in waste: 0 
+ Active wellplate position: pipetting_area
+2026-02-09 11:59:39,411 - INFO - Visualizing wellplate status...
+2026-02-09 11:59:39,411 - DEBUG - Matplotlib backend: tkagg
+2026-02-09 11:59:41,902 - DEBUG - Wellplate visualization displayed successfully
+2026-02-09 11:59:43,012 - INFO -   Homing robot to ensure clean starting position...
+2026-02-09 11:59:43,012 - INFO - Homing all robot components...
+2026-02-09 11:59:43,012 - DEBUG - Homing carousel...
+2026-02-09 11:59:50,687 - DEBUG - Homing robot axes...
+2026-02-09 12:00:02,924 - DEBUG - Homing pump 0...
+2026-02-09 12:00:04,676 - DEBUG - Homing pump 1...
+2026-02-09 12:00:06,312 - DEBUG - Homing track axes...
+2026-02-09 12:00:06,312 - DEBUG - Homing track axis z_axis (axis 6)...
+2026-02-09 12:00:09,864 - DEBUG - Homing track axis x_axis (axis 7)...
+2026-02-09 12:00:13,816 - INFO - All robot components homed successfully
+2026-02-09 12:00:13,816 - INFO -   Ensuring water vials are full before workflow...
+2026-02-09 12:00:13,816 - INFO -   Pipetting validation disabled (set VALIDATE_LIQUIDS=True or VALIDATION_ONLY=True to enable)
+2026-02-09 12:00:13,816 - INFO -   Robot ready for operations
+2026-02-09 12:00:13,816 - INFO -   Using existing wellplate (CREATE_WELLPLATE = False)
+2026-02-09 12:00:13,816 - INFO - + Lash_E initialization complete
+2026-02-09 12:00:13,828 - INFO - 
+2026-02-09 12:00:13,828 - INFO - Step 2: Creating complete experiment plan...
+2026-02-09 12:00:13,828 - INFO -   Calculating adaptive concentration grids...
+2026-02-09 12:00:13,830 - INFO - Adaptive grid for SDS: 1.0e-04 to 22.5 mM (9 steps)
+2026-02-09 12:00:13,830 - INFO -   Concentrations: ['1.000e-04', '4.667e-04', '2.178e-03', '1.016e-02', '4.743e-02', '2.214e-01', '1.033e+00', '4.821e+00', '2.250e+01']
+2026-02-09 12:00:13,830 - INFO - Adaptive grid for TTAB: 1.0e-04 to 22.5 mM (9 steps)
+2026-02-09 12:00:13,830 - INFO -   Concentrations: ['1.000e-04', '4.667e-04', '2.178e-03', '1.016e-02', '4.743e-02', '2.214e-01', '1.033e+00', '4.821e+00', '2.250e+01']
+2026-02-09 12:00:13,830 - INFO - 
+Adaptive concentration grid summary:
+2026-02-09 12:00:13,830 - INFO -   SDS: 9 concentrations from 1.000e-04 to 2.250e+01 mM
+2026-02-09 12:00:13,830 - INFO -   TTAB: 9 concentrations from 1.000e-04 to 2.250e+01 mM
+2026-02-09 12:00:13,830 - INFO -   Total combinations: 9 x 9 = 81 wells (x 1 replicates = 81 total wells)
+2026-02-09 12:00:13,830 - INFO -   SDS: 9/9 concentrations achievable
+2026-02-09 12:00:13,830 - INFO -   TTAB: 9/9 concentrations achievable
+2026-02-09 12:00:13,830 - INFO -   Calculating optimal dilution strategies...
+2026-02-09 12:00:13,830 - INFO - 
+=== Analyzing dilution strategy for SDS ===
+2026-02-09 12:00:13,830 - INFO - Target concentrations: ['1.00e-04', '4.67e-04', '2.18e-03', '1.02e-02', '4.74e-02', '2.21e-01', '1.03e+00', '4.82e+00', '2.25e+01'] mM
+2026-02-09 12:00:13,833 - INFO -   1.03e+00 mM: Use SDS_dilution_5 (68.9 uL)
+2026-02-09 12:00:13,833 - INFO -   4.82e+00 mM: Use SDS_stock (19.3 uL)
+2026-02-09 12:00:13,833 - INFO -   2.25e+01 mM: Use SDS_stock (90.0 uL)
+2026-02-09 12:00:13,833 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-02-09 12:00:13,833 - INFO - Target concentrations: ['1.00e-04', '4.67e-04', '2.18e-03', '1.02e-02', '4.74e-02', '2.21e-01', '1.03e+00', '4.82e+00', '2.25e+01'] mM
+2026-02-09 12:00:13,834 - INFO -   1.03e+00 mM: Use TTAB_dilution_5 (68.9 uL)
+2026-02-09 12:00:13,834 - INFO -   4.82e+00 mM: Use TTAB_stock (19.3 uL)
+2026-02-09 12:00:13,834 - INFO -   2.25e+01 mM: Use TTAB_stock (90.0 uL)
+2026-02-09 12:00:13,834 - INFO - 
+=== SUBSTOCK DILUTION RECIPES ===
+2026-02-09 12:00:13,834 - INFO - For each substock showing: source + volume -> target_concentration
+2026-02-09 12:00:13,834 - INFO - (Using minimum 200uL pipetting volumes for accuracy)
+2026-02-09 12:00:13,834 - INFO - 
+SDS substocks:
+2026-02-09 12:00:13,834 - INFO -   SDS_dilution_5: 360uL SDS_stock + 5640uL water -> 3.00e+00 mM
+2026-02-09 12:00:13,834 - INFO -     (Dilution factor: 16.7x from 5.00e+01 mM stock)
+2026-02-09 12:00:13,834 - INFO -   SDS_dilution_4: 600uL SDS_dilution_5 + 5400uL water -> 3.00e-01 mM
+2026-02-09 12:00:13,834 - INFO -     (Dilution factor: 10.0x from 3.00e+00 mM dilution)
+2026-02-09 12:00:13,834 - INFO -   SDS_dilution_3: 1000uL SDS_dilution_4 + 5000uL water -> 5.00e-02 mM
+2026-02-09 12:00:13,834 - INFO -     (Dilution factor: 6.0x from 3.00e-01 mM dilution)
+2026-02-09 12:00:13,834 - INFO -   SDS_dilution_2: 400uL SDS_dilution_4 + 5600uL water -> 2.00e-02 mM
+2026-02-09 12:00:13,836 - INFO -     (Dilution factor: 15.0x from 3.00e-01 mM dilution)
+2026-02-09 12:00:13,836 - INFO -   SDS_dilution_1: 360uL SDS_dilution_3 + 5640uL water -> 3.00e-03 mM
+2026-02-09 12:00:13,836 - INFO -     (Dilution factor: 16.7x from 5.00e-02 mM dilution)
+2026-02-09 12:00:13,836 - INFO -   SDS_dilution_0: 1000uL SDS_dilution_1 + 5000uL water -> 5.00e-04 mM
+2026-02-09 12:00:13,836 - INFO -     (Dilution factor: 6.0x from 3.00e-03 mM dilution)
+2026-02-09 12:00:13,836 - INFO - 
+TTAB substocks:
+2026-02-09 12:00:13,836 - INFO -   TTAB_dilution_5: 360uL TTAB_stock + 5640uL water -> 3.00e+00 mM
+2026-02-09 12:00:13,836 - INFO -     (Dilution factor: 16.7x from 5.00e+01 mM stock)
+2026-02-09 12:00:13,836 - INFO -   TTAB_dilution_4: 600uL TTAB_dilution_5 + 5400uL water -> 3.00e-01 mM
+2026-02-09 12:00:13,836 - INFO -     (Dilution factor: 10.0x from 3.00e+00 mM dilution)
+2026-02-09 12:00:13,837 - INFO -   TTAB_dilution_3: 1000uL TTAB_dilution_4 + 5000uL water -> 5.00e-02 mM
+2026-02-09 12:00:13,837 - INFO -     (Dilution factor: 6.0x from 3.00e-01 mM dilution)
+2026-02-09 12:00:13,837 - INFO -   TTAB_dilution_2: 400uL TTAB_dilution_4 + 5600uL water -> 2.00e-02 mM
+2026-02-09 12:00:13,837 - INFO -     (Dilution factor: 15.0x from 3.00e-01 mM dilution)
+2026-02-09 12:00:13,837 - INFO -   TTAB_dilution_1: 360uL TTAB_dilution_3 + 5640uL water -> 3.00e-03 mM
+2026-02-09 12:00:13,837 - INFO -     (Dilution factor: 16.7x from 5.00e-02 mM dilution)
+2026-02-09 12:00:13,837 - INFO -   TTAB_dilution_0: 1000uL TTAB_dilution_1 + 5000uL water -> 5.00e-04 mM
+2026-02-09 12:00:13,837 - INFO -     (Dilution factor: 6.0x from 3.00e-03 mM dilution)
+2026-02-09 12:00:13,837 - INFO -   Creating complete well recipes...
+2026-02-09 12:00:13,837 - INFO -   Saved experiment plan: output\surfactant_grid_SDS_TTAB_20260209_115936\experiment_plan_well_recipes.csv
+2026-02-09 12:00:13,837 - INFO -   Saved stock solutions plan: output\surfactant_grid_SDS_TTAB_20260209_115936\experiment_plan_stock_solutions.csv
+2026-02-09 12:00:13,845 - INFO - + Planning complete: 87 total wells (9 x 9 grid + 6 controls)
+2026-02-09 12:00:13,845 - INFO - + Experiment plan created: 87 wells planned
+2026-02-09 12:00:13,845 - INFO - + Stock solutions needed: 12
+2026-02-09 12:00:13,845 - INFO - Step 4: Creating physical substocks from calculated recipes...
+2026-02-09 12:00:13,845 - INFO - Checking for existing substocks and creating 12 new ones as needed
+2026-02-09 12:00:13,847 - INFO - Found existing substock: SDS_stock (3.9 mL)
+2026-02-09 12:00:13,847 - INFO - Found existing substock: TTAB_stock (5.3 mL)
+2026-02-09 12:00:13,847 - INFO - Found existing substock: pyrene_DMSO (3.6 mL)
+2026-02-09 12:00:13,848 - INFO - Found existing substock: water (2.7 mL)
+2026-02-09 12:00:13,848 - INFO - Found existing substock: water_2 (3.2 mL)
+2026-02-09 12:00:13,848 - INFO - Found existing substock: SDS_dilution_0 (5.3 mL)
+2026-02-09 12:00:13,848 - INFO - Found existing substock: SDS_dilution_1 (4.4 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: SDS_dilution_2 (5.6 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: SDS_dilution_3 (4.9 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: SDS_dilution_4 (4.0 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: SDS_dilution_5 (3.9 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: TTAB_dilution_0 (5.6 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: TTAB_dilution_1 (4.7 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: TTAB_dilution_2 (5.8 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: TTAB_dilution_3 (5.3 mL)
+2026-02-09 12:00:13,850 - INFO - Found existing substock: TTAB_dilution_4 (4.3 mL)
+2026-02-09 12:00:13,852 - INFO - Found existing substock: TTAB_dilution_5 (4.6 mL)
+2026-02-09 12:00:13,852 - INFO - Skipping SDS_dilution_5: already exists with 3.9 mL
+2026-02-09 12:00:13,852 - INFO - Skipping TTAB_dilution_5: already exists with 4.6 mL
+2026-02-09 12:00:13,852 - INFO - Skipping SDS_dilution_4: already exists with 4.0 mL
+2026-02-09 12:00:13,852 - INFO - Skipping TTAB_dilution_4: already exists with 4.3 mL
+2026-02-09 12:00:13,852 - INFO - Skipping SDS_dilution_3: already exists with 4.9 mL
+2026-02-09 12:00:13,852 - INFO - Skipping TTAB_dilution_3: already exists with 5.3 mL
+2026-02-09 12:00:13,852 - INFO - Skipping SDS_dilution_2: already exists with 5.6 mL
+2026-02-09 12:00:13,852 - INFO - Skipping TTAB_dilution_2: already exists with 5.8 mL
+2026-02-09 12:00:13,853 - INFO - Skipping SDS_dilution_1: already exists with 4.4 mL
+2026-02-09 12:00:13,853 - INFO - Skipping TTAB_dilution_1: already exists with 4.7 mL
+2026-02-09 12:00:13,853 - INFO - Skipping SDS_dilution_0: already exists with 5.3 mL
+2026-02-09 12:00:13,853 - INFO - Skipping TTAB_dilution_0: already exists with 5.6 mL
+2026-02-09 12:00:13,853 - INFO - Substock summary: 0 newly created, 12 already existed, 12 total available
+2026-02-09 12:00:13,853 - INFO - + Substock creation complete: 0 newly created, 12 already existed, 0 failed
+2026-02-09 12:00:13,853 - INFO - Substocks already existed (OK):
+2026-02-09 12:00:13,853 - INFO -   SDS_dilution_5: already available
+2026-02-09 12:00:13,853 - INFO -   TTAB_dilution_5: already available
+2026-02-09 12:00:13,854 - INFO -   SDS_dilution_4: already available
+2026-02-09 12:00:13,854 - INFO -   TTAB_dilution_4: already available
+2026-02-09 12:00:13,854 - INFO -   SDS_dilution_3: already available
+2026-02-09 12:00:13,854 - INFO -   TTAB_dilution_3: already available
+2026-02-09 12:00:13,854 - INFO -   SDS_dilution_2: already available
+2026-02-09 12:00:13,854 - INFO -   TTAB_dilution_2: already available
+2026-02-09 12:00:13,854 - INFO -   SDS_dilution_1: already available
+2026-02-09 12:00:13,854 - INFO -   TTAB_dilution_1: already available
+2026-02-09 12:00:13,854 - INFO -   SDS_dilution_0: already available
+2026-02-09 12:00:13,854 - INFO -   TTAB_dilution_0: already available
+2026-02-09 12:00:13,855 - INFO - Step 5: Executing dispensing and measurements...
+2026-02-09 12:00:13,856 - INFO - Total wells to process: 87
+2026-02-09 12:00:13,856 - INFO - 
+Processing batch 1: wells 0-86
+2026-02-09 12:00:13,857 - INFO -   Measuring turbidity...
+2026-02-09 12:00:13,858 - INFO -   Measuring turbidity for wells 0-86 (with buffer present)
+2026-02-09 12:00:13,858 - INFO - Measuring turbidity in wells [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86] using protocol C:\Protocols\CMC_Absorbance_96.prt...
+2026-02-09 12:00:13,858 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\CMC_Absorbance_96.prt
+2026-02-09 12:00:13,858 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-02-09 12:00:13,858 - INFO - Moving robot to home position
+2026-02-09 12:00:14,112 - INFO - Moving wellplate 0 to Cytation
+2026-02-09 12:00:14,112 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-02-09 12:00:15,215 - INFO - Grabbing wellplate from location: pipetting_area
+2026-02-09 12:00:15,215 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-09 12:00:18,710 - DEBUG - Opening gripper
+2026-02-09 12:00:21,550 - DEBUG - Closing gripper
+2026-02-09 12:00:28,020 - INFO - Releasing wellplate at location: cytation_tray
+2026-02-09 12:00:28,020 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-09 12:00:30,634 - DEBUG - Opening gripper
+2026-02-09 12:00:35,559 - DEBUG - Experiment created successfully.
+2026-02-09 12:00:35,560 - DEBUG - Experiment Protocol Type: Standard
+2026-02-09 12:00:35,561 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-02-09 12:00:35,568 - INFO - Running plate with wells: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10', 'A11', 'A12'] and protocol type: read
+2026-02-09 12:00:37,977 - INFO - Read started. Waiting for completion...
+2026-02-09 12:00:49,593 - INFO - Plate read completed successfully.
+2026-02-09 12:00:49,593 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:00:49,610 - DEBUG - Measurement types: ['600']
+2026-02-09 12:00:49,632 - INFO - Running plate with wells: ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12'] and protocol type: read
+2026-02-09 12:00:52,038 - INFO - Read started. Waiting for completion...
+2026-02-09 12:01:04,507 - INFO - Plate read completed successfully.
+2026-02-09 12:01:04,508 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:01:04,510 - DEBUG - Measurement types: ['600']
+2026-02-09 12:01:04,527 - INFO - Running plate with wells: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10', 'C11', 'C12'] and protocol type: read
+2026-02-09 12:01:06,927 - INFO - Read started. Waiting for completion...
+2026-02-09 12:01:17,614 - INFO - Plate read completed successfully.
+2026-02-09 12:01:17,616 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:01:17,621 - DEBUG - Measurement types: ['600']
+2026-02-09 12:01:17,632 - INFO - Running plate with wells: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12'] and protocol type: read
+2026-02-09 12:01:20,035 - INFO - Read started. Waiting for completion...
+2026-02-09 12:01:30,670 - INFO - Plate read completed successfully.
+2026-02-09 12:01:30,671 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:01:30,675 - DEBUG - Measurement types: ['600']
+2026-02-09 12:01:30,687 - INFO - Running plate with wells: ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10', 'E11', 'E12'] and protocol type: read
+2026-02-09 12:01:33,098 - INFO - Read started. Waiting for completion...
+2026-02-09 12:01:43,656 - INFO - Plate read completed successfully.
+2026-02-09 12:01:43,656 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:01:43,656 - DEBUG - Measurement types: ['600']
+2026-02-09 12:01:43,676 - INFO - Running plate with wells: ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'] and protocol type: read
+2026-02-09 12:01:46,080 - INFO - Read started. Waiting for completion...
+2026-02-09 12:01:56,629 - INFO - Plate read completed successfully.
+2026-02-09 12:01:56,630 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:01:56,634 - DEBUG - Measurement types: ['600']
+2026-02-09 12:01:56,647 - INFO - Running plate with wells: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12'] and protocol type: read
+2026-02-09 12:01:59,089 - INFO - Read started. Waiting for completion...
+2026-02-09 12:02:09,602 - INFO - Plate read completed successfully.
+2026-02-09 12:02:09,602 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:02:09,602 - DEBUG - Measurement types: ['600']
+2026-02-09 12:02:09,621 - INFO - Running plate with wells: ['H1', 'H2', 'H3'] and protocol type: read
+2026-02-09 12:02:12,031 - INFO - Read started. Waiting for completion...
+2026-02-09 12:02:21,545 - INFO - Plate read completed successfully.
+2026-02-09 12:02:21,545 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:02:21,545 - DEBUG - Measurement types: ['600']
+2026-02-09 12:02:21,628 - INFO - Moving wellplate 0 back from Cytation
+2026-02-09 12:02:21,628 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-02-09 12:02:23,832 - INFO - Grabbing wellplate from location: cytation_tray
+2026-02-09 12:02:23,832 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-09 12:02:23,896 - DEBUG - Opening gripper
+2026-02-09 12:02:26,476 - DEBUG - Closing gripper
+2026-02-09 12:02:31,918 - INFO - Releasing wellplate at location: pipetting_area
+2026-02-09 12:02:31,918 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-09 12:02:36,169 - DEBUG - Opening gripper
+2026-02-09 12:02:43,010 - DEBUG - Moving North Track to home position
+2026-02-09 12:02:43,021 - INFO - TURBIDITY RAW DEBUG: type = <class 'pandas.core.frame.DataFrame'>
+2026-02-09 12:02:43,021 - INFO - TURBIDITY RAW DEBUG: shape = (87, 1)
+2026-02-09 12:02:43,022 - INFO - TURBIDITY RAW DEBUG: columns = [('rep1_CMC_Absorbance_96', '600')]
+2026-02-09 12:02:43,023 - INFO - TURBIDITY RAW DEBUG: first 3 rows:
+   rep1_CMC_Absorbance_96
+                      600
+A1                 0.1262
+A2                 0.0515
+A3                 0.0468
+2026-02-09 12:02:43,023 - INFO - TURBIDITY PROCESSING: Processing Cytation DataFrame...
+2026-02-09 12:02:43,023 - INFO - TURBIDITY PROCESSING: Flattened MultiIndex columns = ['600']
+2026-02-09 12:02:43,028 - INFO - TURBIDITY PROCESSING: Renamed columns: {'600': 'turbidity_600'}
+2026-02-09 12:02:43,029 - INFO - TURBIDITY PROCESSING: Final columns = ['well_position', 'turbidity_600']
+2026-02-09 12:02:43,029 - INFO - TURBIDITY PROCESSING: Final shape = (87, 2)
+2026-02-09 12:02:43,032 - INFO - TURBIDITY PROCESSING: First few processed rows:
+  well_position  turbidity_600
+0            A1         0.1262
+1            A2         0.0515
+2            A3         0.0468
+2026-02-09 12:02:43,032 - INFO - Successfully measured turbidity for 87 wells
+2026-02-09 12:02:43,034 - INFO -     Saved raw turbidity data: turbidity_plate1_wells0-86_20260209_120243_032.csv
+2026-02-09 12:02:43,035 - INFO -   TURBIDITY DEBUG: wells measured = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86]
+2026-02-09 12:02:43,035 - INFO -   TURBIDITY DEBUG: backup entry = {'plate_number': 1, 'wells_measured': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86], 'measurement_type': 'turbidity_batch', 'data_file': 'turbidity_plate1_wells0-86_20260209_120243_032.csv', 'timestamp': '2026-02-09T12:02:43.035268'}
+2026-02-09 12:02:43,035 - INFO -   TURBIDITY DEBUG: data type = <class 'pandas.core.frame.DataFrame'>
+2026-02-09 12:02:43,035 - INFO -   TURBIDITY DEBUG: columns = ['well_position', 'turbidity_600']
+2026-02-09 12:02:43,036 - INFO -   TURBIDITY DEBUG: shape = (87, 2)
+2026-02-09 12:02:43,038 - INFO -   TURBIDITY DEBUG: first few rows:
+  well_position  turbidity_600
+0            A1         0.1262
+1            A2         0.0515
+2            A3         0.0468
+3            A4         0.0471
+4            A5         0.0478
+2026-02-09 12:02:43,039 - INFO -   Using turbidity column: turbidity_600
+2026-02-09 12:02:43,040 - INFO -   Mapped A1 (idx 0) -> turbidity 0.1262
+2026-02-09 12:02:43,040 - INFO -   Mapped A2 (idx 1) -> turbidity 0.0515
+2026-02-09 12:02:43,041 - INFO -   Mapped A3 (idx 2) -> turbidity 0.0468
+2026-02-09 12:02:43,043 - INFO -   Mapped A4 (idx 3) -> turbidity 0.0471
+2026-02-09 12:02:43,043 - INFO -   Mapped A5 (idx 4) -> turbidity 0.0478
+2026-02-09 12:02:43,044 - INFO -   Mapped A6 (idx 5) -> turbidity 0.0491
+2026-02-09 12:02:43,045 - INFO -   Mapped A7 (idx 6) -> turbidity 0.0481
+2026-02-09 12:02:43,046 - INFO -   Mapped A8 (idx 7) -> turbidity 0.0474
+2026-02-09 12:02:43,046 - INFO -   Mapped A9 (idx 8) -> turbidity 0.0472
+2026-02-09 12:02:43,048 - INFO -   Mapped A10 (idx 9) -> turbidity 0.0465
+2026-02-09 12:02:43,048 - INFO -   Mapped A11 (idx 10) -> turbidity 0.0471
+2026-02-09 12:02:43,050 - INFO -   Mapped A12 (idx 11) -> turbidity 0.0477
+2026-02-09 12:02:43,051 - INFO -   Mapped B1 (idx 12) -> turbidity 0.0469
+2026-02-09 12:02:43,051 - INFO -   Mapped B2 (idx 13) -> turbidity 0.047
+2026-02-09 12:02:43,052 - INFO -   Mapped B3 (idx 14) -> turbidity 0.0511
+2026-02-09 12:02:43,053 - INFO -   Mapped B4 (idx 15) -> turbidity 0.0501
+2026-02-09 12:02:43,053 - INFO -   Mapped B5 (idx 16) -> turbidity 0.0482
+2026-02-09 12:02:43,055 - INFO -   Mapped B6 (idx 17) -> turbidity 0.0473
+2026-02-09 12:02:43,056 - INFO -   Mapped B7 (idx 18) -> turbidity 0.0476
+2026-02-09 12:02:43,057 - INFO -   Mapped B8 (idx 19) -> turbidity 0.0473
+2026-02-09 12:02:43,058 - INFO -   Mapped B9 (idx 20) -> turbidity 0.048
+2026-02-09 12:02:43,059 - INFO -   Mapped B10 (idx 21) -> turbidity 0.0467
+2026-02-09 12:02:43,060 - INFO -   Mapped B11 (idx 22) -> turbidity 0.0472
+2026-02-09 12:02:43,061 - INFO -   Mapped B12 (idx 23) -> turbidity 0.0474
+2026-02-09 12:02:43,062 - INFO -   Mapped C1 (idx 24) -> turbidity 0.0474
+2026-02-09 12:02:43,062 - INFO -   Mapped C2 (idx 25) -> turbidity 0.047
+2026-02-09 12:02:43,062 - INFO -   Mapped C3 (idx 26) -> turbidity 0.0468
+2026-02-09 12:02:43,062 - INFO -   Mapped C4 (idx 27) -> turbidity 0.0477
+2026-02-09 12:02:43,062 - INFO -   Mapped C5 (idx 28) -> turbidity 0.0471
+2026-02-09 12:02:43,062 - INFO -   Mapped C6 (idx 29) -> turbidity 0.0495
+2026-02-09 12:02:43,062 - INFO -   Mapped C7 (idx 30) -> turbidity 0.0472
+2026-02-09 12:02:43,067 - INFO -   Mapped C8 (idx 31) -> turbidity 0.0472
+2026-02-09 12:02:43,067 - INFO -   Mapped C9 (idx 32) -> turbidity 0.0492
+2026-02-09 12:02:43,068 - INFO -   Mapped C10 (idx 33) -> turbidity 0.0484
+2026-02-09 12:02:43,069 - INFO -   Mapped C11 (idx 34) -> turbidity 0.0477
+2026-02-09 12:02:43,069 - INFO -   Mapped C12 (idx 35) -> turbidity 0.0471
+2026-02-09 12:02:43,071 - INFO -   Mapped D1 (idx 36) -> turbidity 0.0476
+2026-02-09 12:02:43,073 - INFO -   Mapped D2 (idx 37) -> turbidity 0.047
+2026-02-09 12:02:43,074 - INFO -   Mapped D3 (idx 38) -> turbidity 0.0483
+2026-02-09 12:02:43,075 - INFO -   Mapped D4 (idx 39) -> turbidity 0.0468
+2026-02-09 12:02:43,076 - INFO -   Mapped D5 (idx 40) -> turbidity 0.0476
+2026-02-09 12:02:43,077 - INFO -   Mapped D6 (idx 41) -> turbidity 0.0473
+2026-02-09 12:02:43,077 - INFO -   Mapped D7 (idx 42) -> turbidity 0.0488
+2026-02-09 12:02:43,078 - INFO -   Mapped D8 (idx 43) -> turbidity 0.0491
+2026-02-09 12:02:43,079 - INFO -   Mapped D9 (idx 44) -> turbidity 0.0485
+2026-02-09 12:02:43,079 - INFO -   Mapped D10 (idx 45) -> turbidity 0.0465
+2026-02-09 12:02:43,079 - INFO -   Mapped D11 (idx 46) -> turbidity 0.0479
+2026-02-09 12:02:43,079 - INFO -   Mapped D12 (idx 47) -> turbidity 0.0542
+2026-02-09 12:02:43,079 - INFO -   Mapped E1 (idx 48) -> turbidity 0.0472
+2026-02-09 12:02:43,079 - INFO -   Mapped E2 (idx 49) -> turbidity 0.0488
+2026-02-09 12:02:43,079 - INFO -   Mapped E3 (idx 50) -> turbidity 0.047
+2026-02-09 12:02:43,079 - INFO -   Mapped E4 (idx 51) -> turbidity 0.047
+2026-02-09 12:02:43,086 - INFO -   Mapped E5 (idx 52) -> turbidity 0.0473
+2026-02-09 12:02:43,087 - INFO -   Mapped E6 (idx 53) -> turbidity 0.2422
+2026-02-09 12:02:43,087 - INFO -   Mapped E7 (idx 54) -> turbidity 0.0462
+2026-02-09 12:02:43,088 - INFO -   Mapped E8 (idx 55) -> turbidity 0.0478
+2026-02-09 12:02:43,089 - INFO -   Mapped E9 (idx 56) -> turbidity 0.0513
+2026-02-09 12:02:43,090 - INFO -   Mapped E10 (idx 57) -> turbidity 0.0469
+2026-02-09 12:02:43,092 - INFO -   Mapped E11 (idx 58) -> turbidity 0.0471
+2026-02-09 12:02:43,093 - INFO -   Mapped E12 (idx 59) -> turbidity 0.0469
+2026-02-09 12:02:43,093 - INFO -   Mapped F1 (idx 60) -> turbidity 0.0471
+2026-02-09 12:02:43,094 - INFO -   Mapped F2 (idx 61) -> turbidity 0.0471
+2026-02-09 12:02:43,094 - INFO -   Mapped F3 (idx 62) -> turbidity 0.0469
+2026-02-09 12:02:43,095 - INFO -   Mapped F4 (idx 63) -> turbidity 0.0548
+2026-02-09 12:02:43,095 - INFO -   Mapped F5 (idx 64) -> turbidity 0.0968
+2026-02-09 12:02:43,097 - INFO -   Mapped F6 (idx 65) -> turbidity 0.0829
+2026-02-09 12:02:43,098 - INFO -   Mapped F7 (idx 66) -> turbidity 0.0481
+2026-02-09 12:02:43,099 - INFO -   Mapped F8 (idx 67) -> turbidity 0.0472
+2026-02-09 12:02:43,100 - INFO -   Mapped F9 (idx 68) -> turbidity 0.0474
+2026-02-09 12:02:43,100 - INFO -   Mapped F10 (idx 69) -> turbidity 0.0469
+2026-02-09 12:02:43,101 - INFO -   Mapped F11 (idx 70) -> turbidity 0.0472
+2026-02-09 12:02:43,101 - INFO -   Mapped F12 (idx 71) -> turbidity 0.0523
+2026-02-09 12:02:43,103 - INFO -   Mapped G1 (idx 72) -> turbidity 0.0521
+2026-02-09 12:02:43,104 - INFO -   Mapped G2 (idx 73) -> turbidity 0.1344
+2026-02-09 12:02:43,104 - INFO -   Mapped G3 (idx 74) -> turbidity 0.0949
+2026-02-09 12:02:43,105 - INFO -   Mapped G4 (idx 75) -> turbidity 0.0474
+2026-02-09 12:02:43,106 - INFO -   Mapped G5 (idx 76) -> turbidity 0.0469
+2026-02-09 12:02:43,108 - INFO -   Mapped G6 (idx 77) -> turbidity 0.0472
+2026-02-09 12:02:43,108 - INFO -   Mapped G7 (idx 78) -> turbidity 0.0467
+2026-02-09 12:02:43,110 - INFO -   Mapped G8 (idx 79) -> turbidity 0.0474
+2026-02-09 12:02:43,111 - INFO -   Mapped G9 (idx 80) -> turbidity 0.048
+2026-02-09 12:02:43,111 - INFO -   Mapped G10 (idx 81) -> turbidity 0.0476
+2026-02-09 12:02:43,112 - INFO -   Mapped G11 (idx 82) -> turbidity 0.1537
+2026-02-09 12:02:43,113 - INFO -   Mapped G12 (idx 83) -> turbidity 0.5952
+2026-02-09 12:02:43,113 - INFO -   Mapped H1 (idx 84) -> turbidity 0.4289
+2026-02-09 12:02:43,114 - INFO -   Mapped H2 (idx 85) -> turbidity 0.0509
+2026-02-09 12:02:43,115 - INFO -   Mapped H3 (idx 86) -> turbidity 0.047
+2026-02-09 12:02:43,115 - INFO -   Measuring fluorescence...
+2026-02-09 12:02:43,116 - INFO -   Measuring fluorescence for wells 0-86
+2026-02-09 12:02:43,116 - INFO - Measuring fluorescence in wells [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86] using protocol C:\Protocols\CMC_Fluorescence_96.prt...
+2026-02-09 12:02:43,116 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\CMC_Fluorescence_96.prt
+2026-02-09 12:02:43,116 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-02-09 12:02:43,116 - INFO - Moving robot to home position
+2026-02-09 12:02:43,322 - INFO - Moving wellplate 0 to Cytation
+2026-02-09 12:02:43,322 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-02-09 12:02:44,421 - INFO - Grabbing wellplate from location: pipetting_area
+2026-02-09 12:02:44,421 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-09 12:02:47,900 - DEBUG - Opening gripper
+2026-02-09 12:02:50,745 - DEBUG - Closing gripper
+2026-02-09 12:02:57,250 - INFO - Releasing wellplate at location: cytation_tray
+2026-02-09 12:02:57,250 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-09 12:02:59,872 - DEBUG - Opening gripper
+2026-02-09 12:03:04,776 - DEBUG - Experiment created successfully.
+2026-02-09 12:03:04,779 - DEBUG - Experiment Protocol Type: Standard
+2026-02-09 12:03:04,779 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-02-09 12:03:04,787 - INFO - Running plate with wells: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10', 'A11', 'A12'] and protocol type: read
+2026-02-09 12:03:07,344 - INFO - Read started. Waiting for completion...
+2026-02-09 12:03:40,177 - INFO - Plate read completed successfully.
+2026-02-09 12:03:40,179 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:03:40,184 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-09 12:03:40,204 - INFO - Running plate with wells: ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12'] and protocol type: read
+2026-02-09 12:03:42,777 - INFO - Read started. Waiting for completion...
+2026-02-09 12:04:15,581 - INFO - Plate read completed successfully.
+2026-02-09 12:04:15,581 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:04:15,581 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-09 12:04:15,604 - INFO - Running plate with wells: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10', 'C11', 'C12'] and protocol type: read
+2026-02-09 12:04:18,181 - INFO - Read started. Waiting for completion...
+2026-02-09 12:04:49,032 - INFO - Plate read completed successfully.
+2026-02-09 12:04:49,032 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:04:49,037 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-09 12:04:49,075 - INFO - Running plate with wells: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12'] and protocol type: read
+2026-02-09 12:04:51,647 - INFO - Read started. Waiting for completion...
+2026-02-09 12:05:22,402 - INFO - Plate read completed successfully.
+2026-02-09 12:05:22,402 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:05:22,403 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-09 12:05:22,421 - INFO - Running plate with wells: ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10', 'E11', 'E12'] and protocol type: read
+2026-02-09 12:05:24,993 - INFO - Read started. Waiting for completion...
+2026-02-09 12:05:55,704 - INFO - Plate read completed successfully.
+2026-02-09 12:05:55,704 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:05:55,711 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-09 12:05:55,731 - INFO - Running plate with wells: ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'] and protocol type: read
+2026-02-09 12:05:58,312 - INFO - Read started. Waiting for completion...
+2026-02-09 12:06:28,983 - INFO - Plate read completed successfully.
+2026-02-09 12:06:28,983 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:06:28,993 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-09 12:06:29,013 - INFO - Running plate with wells: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12'] and protocol type: read
+2026-02-09 12:06:31,583 - INFO - Read started. Waiting for completion...
+2026-02-09 12:07:02,187 - INFO - Plate read completed successfully.
+2026-02-09 12:07:02,187 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:07:02,187 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-09 12:07:02,213 - INFO - Running plate with wells: ['H1', 'H2', 'H3'] and protocol type: read
+2026-02-09 12:07:04,765 - INFO - Read started. Waiting for completion...
+2026-02-09 12:07:21,616 - INFO - Plate read completed successfully.
+2026-02-09 12:07:21,616 - DEBUG - Extracting measurement parameters from plate procedure.
+2026-02-09 12:07:21,616 - DEBUG - Measurement types: ['334_373', '334_384']
+2026-02-09 12:07:21,699 - INFO - Moving wellplate 0 back from Cytation
+2026-02-09 12:07:21,699 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-02-09 12:07:23,912 - INFO - Grabbing wellplate from location: cytation_tray
+2026-02-09 12:07:23,913 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-09 12:07:23,986 - DEBUG - Opening gripper
+2026-02-09 12:07:26,550 - DEBUG - Closing gripper
+2026-02-09 12:07:32,336 - INFO - Releasing wellplate at location: pipetting_area
+2026-02-09 12:07:32,336 - DEBUG - No waypoint locations provided, skipping path movement
+2026-02-09 12:07:36,600 - DEBUG - Opening gripper
+2026-02-09 12:07:43,475 - DEBUG - Moving North Track to home position
+2026-02-09 12:07:43,475 - INFO - FLUORESCENCE RAW DEBUG: type = <class 'pandas.core.frame.DataFrame'>
+2026-02-09 12:07:43,475 - INFO - FLUORESCENCE RAW DEBUG: shape = (87, 2)
+2026-02-09 12:07:43,476 - INFO - FLUORESCENCE RAW DEBUG: columns = [('rep1_CMC_Fluorescence_96', '334_373'), ('rep1_CMC_Fluorescence_96', '334_384')]
+2026-02-09 12:07:43,480 - INFO - FLUORESCENCE RAW DEBUG: first 3 rows:
+   rep1_CMC_Fluorescence_96          
+                    334_373   334_384
+A1                 136125.0  160714.0
+A2                  75142.0   76605.0
+A3                  59742.0   54959.0
+2026-02-09 12:07:43,480 - INFO - FLUORESCENCE PROCESSING: Processing Cytation DataFrame...
+2026-02-09 12:07:43,481 - INFO - FLUORESCENCE PROCESSING: Flattened MultiIndex columns = ['334_373', '334_384']
+2026-02-09 12:07:43,481 - INFO - FLUORESCENCE PROCESSING: Available columns = ['334_373', '334_384']
+2026-02-09 12:07:43,482 - INFO - FLUORESCENCE PROCESSING: Final columns = ['well_position', '334_373', '334_384']
+2026-02-09 12:07:43,482 - INFO - FLUORESCENCE PROCESSING: Final shape = (87, 3)
+2026-02-09 12:07:43,486 - INFO - FLUORESCENCE PROCESSING: First few processed rows:
+  well_position   334_373   334_384
+0            A1  136125.0  160714.0
+1            A2   75142.0   76605.0
+2            A3   59742.0   54959.0
+2026-02-09 12:07:43,486 - INFO - Successfully measured fluorescence for 87 wells
+2026-02-09 12:07:43,488 - INFO -     Saved raw fluorescence data: fluorescence_plate1_wells0-86_20260209_120743_486.csv
+2026-02-09 12:07:43,488 - INFO -   FLUORESCENCE DEBUG: wells measured = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86]
+2026-02-09 12:07:43,489 - INFO -   FLUORESCENCE DEBUG: backup entry = {'plate_number': 1, 'wells_measured': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86], 'measurement_type': 'fluorescence_batch', 'data_file': 'fluorescence_plate1_wells0-86_20260209_120743_486.csv', 'timestamp': '2026-02-09T12:07:43.488762'}
+2026-02-09 12:07:43,489 - INFO -   FLUORESCENCE DEBUG: data type = <class 'pandas.core.frame.DataFrame'>
+2026-02-09 12:07:43,489 - INFO -   FLUORESCENCE DEBUG: columns = ['well_position', '334_373', '334_384']
+2026-02-09 12:07:43,489 - INFO -   FLUORESCENCE DEBUG: shape = (87, 3)
+2026-02-09 12:07:43,494 - INFO -   FLUORESCENCE DEBUG: first few rows:
+  well_position   334_373   334_384
+0            A1  136125.0  160714.0
+1            A2   75142.0   76605.0
+2            A3   59742.0   54959.0
+3            A4   59445.0   54601.0
+4            A5   62843.0   58291.0
+2026-02-09 12:07:43,495 - INFO -   Fluorescence columns available: 334_373=True, 334_384=True
+2026-02-09 12:07:43,497 - INFO -   Mapped A1 (idx 0) -> F373=136125.0, F384=160714.0, ratio=0.847
+2026-02-09 12:07:43,498 - INFO -   Mapped A2 (idx 1) -> F373=75142.0, F384=76605.0, ratio=0.981
+2026-02-09 12:07:43,500 - INFO -   Mapped A3 (idx 2) -> F373=59742.0, F384=54959.0, ratio=1.087
+2026-02-09 12:07:43,501 - INFO -   Mapped A4 (idx 3) -> F373=59445.0, F384=54601.0, ratio=1.089
+2026-02-09 12:07:43,503 - INFO -   Mapped A5 (idx 4) -> F373=62843.0, F384=58291.0, ratio=1.078
+2026-02-09 12:07:43,504 - INFO -   Mapped A6 (idx 5) -> F373=60441.0, F384=55902.0, ratio=1.081
+2026-02-09 12:07:43,506 - INFO -   Mapped A7 (idx 6) -> F373=60616.0, F384=56021.0, ratio=1.082
+2026-02-09 12:07:43,507 - INFO -   Mapped A8 (idx 7) -> F373=61737.0, F384=57088.0, ratio=1.081
+2026-02-09 12:07:43,509 - INFO -   Mapped A9 (idx 8) -> F373=62414.0, F384=57761.0, ratio=1.081
+2026-02-09 12:07:43,511 - INFO -   Mapped A10 (idx 9) -> F373=61194.0, F384=56823.0, ratio=1.077
+2026-02-09 12:07:43,514 - INFO -   Mapped A11 (idx 10) -> F373=61064.0, F384=56552.0, ratio=1.080
+2026-02-09 12:07:43,515 - INFO -   Mapped A12 (idx 11) -> F373=80317.0, F384=82004.0, ratio=0.979
+2026-02-09 12:07:43,516 - INFO -   Mapped B1 (idx 12) -> F373=61715.0, F384=56724.0, ratio=1.088
+2026-02-09 12:07:43,517 - INFO -   Mapped B2 (idx 13) -> F373=56132.0, F384=51257.0, ratio=1.095
+2026-02-09 12:07:43,520 - INFO -   Mapped B3 (idx 14) -> F373=56121.0, F384=51341.0, ratio=1.093
+2026-02-09 12:07:43,521 - INFO -   Mapped B4 (idx 15) -> F373=55436.0, F384=51341.0, ratio=1.080
+2026-02-09 12:07:43,523 - INFO -   Mapped B5 (idx 16) -> F373=55496.0, F384=51182.0, ratio=1.084
+2026-02-09 12:07:43,525 - INFO -   Mapped B6 (idx 17) -> F373=56673.0, F384=52460.0, ratio=1.080
+2026-02-09 12:07:43,526 - INFO -   Mapped B7 (idx 18) -> F373=56919.0, F384=52492.0, ratio=1.084
+2026-02-09 12:07:43,528 - INFO -   Mapped B8 (idx 19) -> F373=57351.0, F384=52717.0, ratio=1.088
+2026-02-09 12:07:43,531 - INFO -   Mapped B9 (idx 20) -> F373=67844.0, F384=67261.0, ratio=1.009
+2026-02-09 12:07:43,533 - INFO -   Mapped B10 (idx 21) -> F373=56986.0, F384=52502.0, ratio=1.085
+2026-02-09 12:07:43,534 - INFO -   Mapped B11 (idx 22) -> F373=57559.0, F384=52845.0, ratio=1.089
+2026-02-09 12:07:43,536 - INFO -   Mapped B12 (idx 23) -> F373=64037.0, F384=59181.0, ratio=1.082
+2026-02-09 12:07:43,538 - INFO -   Mapped C1 (idx 24) -> F373=63897.0, F384=58565.0, ratio=1.091
+2026-02-09 12:07:43,538 - INFO -   Mapped C2 (idx 25) -> F373=58364.0, F384=53598.0, ratio=1.089
+2026-02-09 12:07:43,541 - INFO -   Mapped C3 (idx 26) -> F373=56496.0, F384=52197.0, ratio=1.082
+2026-02-09 12:07:43,542 - INFO -   Mapped C4 (idx 27) -> F373=56444.0, F384=52162.0, ratio=1.082
+2026-02-09 12:07:43,544 - INFO -   Mapped C5 (idx 28) -> F373=56792.0, F384=52375.0, ratio=1.084
+2026-02-09 12:07:43,546 - INFO -   Mapped C6 (idx 29) -> F373=63256.0, F384=60692.0, ratio=1.042
+2026-02-09 12:07:43,548 - INFO -   Mapped C7 (idx 30) -> F373=56027.0, F384=51521.0, ratio=1.087
+2026-02-09 12:07:43,550 - INFO -   Mapped C8 (idx 31) -> F373=56975.0, F384=52129.0, ratio=1.093
+2026-02-09 12:07:43,551 - INFO -   Mapped C9 (idx 32) -> F373=56286.0, F384=51941.0, ratio=1.084
+2026-02-09 12:07:43,551 - INFO -   Mapped C10 (idx 33) -> F373=57692.0, F384=53443.0, ratio=1.080
+2026-02-09 12:07:43,554 - INFO -   Mapped C11 (idx 34) -> F373=58756.0, F384=54049.0, ratio=1.087
+2026-02-09 12:07:43,555 - INFO -   Mapped C12 (idx 35) -> F373=66341.0, F384=61362.0, ratio=1.081
+2026-02-09 12:07:43,558 - INFO -   Mapped D1 (idx 36) -> F373=63291.0, F384=59134.0, ratio=1.070
+2026-02-09 12:07:43,559 - INFO -   Mapped D2 (idx 37) -> F373=60233.0, F384=55729.0, ratio=1.081
+2026-02-09 12:07:43,561 - INFO -   Mapped D3 (idx 38) -> F373=65168.0, F384=63452.0, ratio=1.027
+2026-02-09 12:07:43,563 - INFO -   Mapped D4 (idx 39) -> F373=56551.0, F384=52242.0, ratio=1.082
+2026-02-09 12:07:43,564 - INFO -   Mapped D5 (idx 40) -> F373=56691.0, F384=52122.0, ratio=1.088
+2026-02-09 12:07:43,567 - INFO -   Mapped D6 (idx 41) -> F373=57225.0, F384=52631.0, ratio=1.087
+2026-02-09 12:07:43,568 - INFO -   Mapped D7 (idx 42) -> F373=56247.0, F384=52393.0, ratio=1.074
+2026-02-09 12:07:43,570 - INFO -   Mapped D8 (idx 43) -> F373=58967.0, F384=54643.0, ratio=1.079
+2026-02-09 12:07:43,571 - INFO -   Mapped D9 (idx 44) -> F373=59930.0, F384=55565.0, ratio=1.079
+2026-02-09 12:07:43,573 - INFO -   Mapped D10 (idx 45) -> F373=58867.0, F384=54297.0, ratio=1.084
+2026-02-09 12:07:43,574 - INFO -   Mapped D11 (idx 46) -> F373=61880.0, F384=57377.0, ratio=1.078
+2026-02-09 12:07:43,576 - INFO -   Mapped D12 (idx 47) -> F373=75509.0, F384=74647.0, ratio=1.012
+2026-02-09 12:07:43,578 - INFO -   Mapped E1 (idx 48) -> F373=65430.0, F384=60371.0, ratio=1.084
+2026-02-09 12:07:43,578 - INFO -   Mapped E2 (idx 49) -> F373=59539.0, F384=54743.0, ratio=1.088
+2026-02-09 12:07:43,581 - INFO -   Mapped E3 (idx 50) -> F373=58854.0, F384=54341.0, ratio=1.083
+2026-02-09 12:07:43,583 - INFO -   Mapped E4 (idx 51) -> F373=59038.0, F384=54715.0, ratio=1.079
+2026-02-09 12:07:43,584 - INFO -   Mapped E5 (idx 52) -> F373=58090.0, F384=53654.0, ratio=1.083
+2026-02-09 12:07:43,586 - INFO -   Mapped E6 (idx 53) -> F373=61596.0, F384=58681.0, ratio=1.050
+2026-02-09 12:07:43,587 - INFO -   Mapped E7 (idx 54) -> F373=60665.0, F384=56049.0, ratio=1.082
+2026-02-09 12:07:43,589 - INFO -   Mapped E8 (idx 55) -> F373=60750.0, F384=55700.0, ratio=1.091
+2026-02-09 12:07:43,591 - INFO -   Mapped E9 (idx 56) -> F373=66742.0, F384=63660.0, ratio=1.048
+2026-02-09 12:07:43,593 - INFO -   Mapped E10 (idx 57) -> F373=59849.0, F384=55011.0, ratio=1.088
+2026-02-09 12:07:43,594 - INFO -   Mapped E11 (idx 58) -> F373=60565.0, F384=55667.0, ratio=1.088
+2026-02-09 12:07:43,595 - INFO -   Mapped E12 (idx 59) -> F373=67539.0, F384=62406.0, ratio=1.082
+2026-02-09 12:07:43,598 - INFO -   Mapped F1 (idx 60) -> F373=65368.0, F384=60795.0, ratio=1.075
+2026-02-09 12:07:43,599 - INFO -   Mapped F2 (idx 61) -> F373=61309.0, F384=56556.0, ratio=1.084
+2026-02-09 12:07:43,600 - INFO -   Mapped F3 (idx 62) -> F373=61775.0, F384=57080.0, ratio=1.082
+2026-02-09 12:07:43,602 - INFO -   Mapped F4 (idx 63) -> F373=62795.0, F384=58376.0, ratio=1.076
+2026-02-09 12:07:43,604 - INFO -   Mapped F5 (idx 64) -> F373=64370.0, F384=59810.0, ratio=1.076
+2026-02-09 12:07:43,605 - INFO -   Mapped F6 (idx 65) -> F373=68863.0, F384=67157.0, ratio=1.025
+2026-02-09 12:07:43,607 - INFO -   Mapped F7 (idx 66) -> F373=59330.0, F384=55110.0, ratio=1.077
+2026-02-09 12:07:43,608 - INFO -   Mapped F8 (idx 67) -> F373=59674.0, F384=55349.0, ratio=1.078
+2026-02-09 12:07:43,610 - INFO -   Mapped F9 (idx 68) -> F373=60256.0, F384=56005.0, ratio=1.076
+2026-02-09 12:07:43,612 - INFO -   Mapped F10 (idx 69) -> F373=62809.0, F384=57877.0, ratio=1.085
+2026-02-09 12:07:43,613 - INFO -   Mapped F11 (idx 70) -> F373=64023.0, F384=59354.0, ratio=1.079
+2026-02-09 12:07:43,615 - INFO -   Mapped F12 (idx 71) -> F373=67732.0, F384=62656.0, ratio=1.081
+2026-02-09 12:07:43,617 - INFO -   Mapped G1 (idx 72) -> F373=64575.0, F384=59847.0, ratio=1.079
+2026-02-09 12:07:43,618 - INFO -   Mapped G2 (idx 73) -> F373=85261.0, F384=88759.0, ratio=0.961
+2026-02-09 12:07:43,619 - INFO -   Mapped G3 (idx 74) -> F373=73720.0, F384=73392.0, ratio=1.004
+2026-02-09 12:07:43,621 - INFO -   Mapped G4 (idx 75) -> F373=60299.0, F384=55504.0, ratio=1.086
+2026-02-09 12:07:43,623 - INFO -   Mapped G5 (idx 76) -> F373=58497.0, F384=54333.0, ratio=1.077
+2026-02-09 12:07:43,624 - INFO -   Mapped G6 (idx 77) -> F373=59295.0, F384=54874.0, ratio=1.081
+2026-02-09 12:07:43,626 - INFO -   Mapped G7 (idx 78) -> F373=58834.0, F384=54589.0, ratio=1.078
+2026-02-09 12:07:43,627 - INFO -   Mapped G8 (idx 79) -> F373=60881.0, F384=55960.0, ratio=1.088
+2026-02-09 12:07:43,629 - INFO -   Mapped G9 (idx 80) -> F373=61125.0, F384=56572.0, ratio=1.080
+2026-02-09 12:07:43,631 - INFO -   Mapped G10 (idx 81) -> F373=61545.0, F384=56379.0, ratio=1.092
+2026-02-09 12:07:43,632 - INFO -   Mapped G11 (idx 82) -> F373=72559.0, F384=69756.0, ratio=1.040
+2026-02-09 12:07:43,634 - INFO -   Mapped G12 (idx 83) -> F373=60718.0, F384=58629.0, ratio=1.036
+2026-02-09 12:07:43,636 - INFO -   Mapped H1 (idx 84) -> F373=164381.0, F384=202266.0, ratio=0.813
+2026-02-09 12:07:43,637 - INFO -   Mapped H2 (idx 85) -> F373=76339.0, F384=81598.0, ratio=0.936
+2026-02-09 12:07:43,638 - INFO -   Mapped H3 (idx 86) -> F373=58172.0, F384=54200.0, ratio=1.073
+2026-02-09 12:07:43,638 - INFO - Step 6: Saving results...
+2026-02-09 12:07:43,641 - INFO -   Complete results saved to: output\surfactant_grid_SDS_TTAB_20260209_115936\complete_experiment_results.csv
+2026-02-09 12:07:43,641 - INFO - + Results saved to: output\surfactant_grid_SDS_TTAB_20260209_115936
+2026-02-09 12:07:43,642 - INFO - + Pipette tips used: 91 large, 72 small (total: 163) (actual)
+2026-02-09 12:07:43,644 - INFO - 
+============================================================
+2026-02-09 12:07:43,644 - INFO - EXPERIMENT COMPLETE - SUMMARY
+2026-02-09 12:07:43,644 - INFO - ============================================================
+2026-02-09 12:07:43,644 - INFO - Surfactants: SDS + TTAB
+2026-02-09 12:07:43,644 - INFO - Wells: 81 experiment + 6 control = 87 total
+2026-02-09 12:07:43,644 - INFO - Measurements: 87 wells measured
+2026-02-09 12:07:43,644 - INFO - Mode: HARDWARE
+2026-02-09 12:07:43,644 - INFO - Results: output\surfactant_grid_SDS_TTAB_20260209_115936\complete_experiment_results.csv
+2026-02-09 12:07:43,644 - INFO - ============================================================
+2026-02-09 12:07:43,644 - INFO - DataFrame sample with measurements:
+2026-02-09 12:07:43,647 - INFO - 
+   wellplate_index  surf_A_conc_mm  surf_B_conc_mm turbidity_600 fluorescence_334_373 fluorescence_334_384     ratio
+0                0         50.0000             NaN        0.1262             136125.0             160714.0  0.847002
+1                1             NaN       50.000000        0.0515              75142.0              76605.0  0.980902
+2                2             NaN             NaN        0.0468              59742.0              54959.0  1.087029
+3                3          0.0001        0.000100        0.0471              59445.0              54601.0  1.088716
+4                4          0.0001        0.000467        0.0478              62843.0              58291.0  1.078091
+5                5          0.0001        0.002178        0.0491              60441.0              55902.0  1.081196
+6                6          0.0001        0.010164        0.0481              60616.0              56021.0  1.082023
+7                7          0.0001        0.047434        0.0474              61737.0              57088.0  1.081436
+8                8          0.0001        0.221368        0.0472              62414.0              57761.0  1.080556
+9                9          0.0001        1.033087        0.0465              61194.0              56823.0  1.076923

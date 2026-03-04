@@ -1,0 +1,383 @@
+2025-11-19 10:21:45,293 - INFO - Initializing North Robot...
+2025-11-19 10:21:45,293 - DEBUG - Loading robot configuration files...
+2025-11-19 10:21:45,307 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2025-11-19 10:21:45,310 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2025-11-19 10:21:45,314 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2025-11-19 10:21:45,315 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2025-11-19 10:21:45,319 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-11-19 10:21:45,322 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-11-19 10:21:45,322 - DEBUG - Loading robot state files...
+2025-11-19 10:21:45,322 - DEBUG - Loaded vial data from status/calibration_vials_overnight.csv
+2025-11-19 10:21:45,322 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2025-11-19 10:21:45,322 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2025-11-19 10:21:45,322 - DEBUG - Robot status loaded successfully
+2025-11-19 10:21:45,322 - DEBUG - Loading pumps from YAML configuration...
+2025-11-19 10:21:45,322 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2025-11-19 10:21:45,322 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2025-11-19 10:21:45,322 - DEBUG - Physical initialization of North Robot...
+2025-11-19 10:21:45,322 - INFO - Moving robot to home position
+2025-11-19 10:21:45,336 - INFO - Initializing North Track...
+2025-11-19 10:21:45,336 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2025-11-19 10:21:45,336 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2025-11-19 10:21:45,336 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2025-11-19 10:21:45,336 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2025-11-19 10:21:45,338 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2025-11-19 10:21:45,338 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2025-11-19 10:21:45,338 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2025-11-19 10:21:45,338 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2025-11-19 10:21:45,338 - DEBUG - Moving North Track to home position
+2025-11-19 10:21:45,338 - INFO -    vial_index           vial_name        location  location_index  vial_volume  capped cap_type  vial_type   home_location  home_location_index
+0           0     liquid_source_0   main_8mL_rack               0          8.0    True   closed       8_mL   main_8mL_rack                    0
+1           1  measurement_vial_0   main_8mL_rack               1          0.0    True   closed       8_mL   main_8mL_rack                    1
+2           2             waste_0  50mL_vial_rack               0          0.0    True     open      50_mL  50mL_vial_rack                    0
+3           3         reservoir_0       reservoir               0         50.0   False    False  reservoir       reservoir                    0
+2025-11-19 10:21:45,368 - INFO - Visualizing vial racks...
+2025-11-19 10:21:45,521 - DEBUG - Visualizing rack: Main Rack with filter: main_8mL_rack
+2025-11-19 10:21:45,671 - DEBUG - Visualizing rack: Second Rack with filter: large_vial_rack
+2025-11-19 10:21:47,060 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:21:47,061 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:21:47,065 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:21:47,068 - DEBUG - Selected small_tip for volume 0.100 mL
+2025-11-19 10:22:30,589 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:30,590 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=8.00mL, measurement(measurement_vial_0)=0.00mL, min_threshold=2.5mL
+2025-11-19 10:22:30,590 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:30,592 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:30,593 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=8.00mL, measurement(measurement_vial_0)=0.00mL, min_threshold=2.5mL
+2025-11-19 10:22:30,593 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:30,794 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:30,794 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:30,794 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:30,794 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:30,794 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:30,794 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:30,801 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:30,802 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:30,802 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:30,804 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:30,805 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:31,311 - DEBUG - Selected small_tip for volume 0.151 mL
+2025-11-19 10:22:31,311 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_1
+2025-11-19 10:22:31,313 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:31,313 - INFO - Additional volume from calibration, amount: 0.001 mL
+2025-11-19 10:22:31,313 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-19 10:22:31,313 - DEBUG - Aspirating 0.101 mL then waiting 0.5 s
+2025-11-19 10:22:31,313 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:31,313 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:31,313 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:31,313 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:31,313 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:31,313 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:31,828 - INFO - Moving vial liquid_source_0 to main_8mL_rack: 0
+2025-11-19 10:22:31,828 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:31,828 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-11-19 10:22:31,828 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:22:31,828 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:31,828 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:22:31,828 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:32,336 - INFO - Pipetting into vial measurement_vial_0, amount: 0.1 mL
+2025-11-19 10:22:32,336 - DEBUG - Adjusting pump 0 speed to 12
+2025-11-19 10:22:32,336 - DEBUG - Dispensing 0.151 mL then waiting 0.6 s
+2025-11-19 10:22:32,336 - DEBUG - Blowing out 0.020 mL
+2025-11-19 10:22:32,356 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:32,357 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.90mL, measurement(measurement_vial_0)=0.10mL, min_threshold=2.5mL
+2025-11-19 10:22:32,358 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:32,358 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:32,361 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.90mL, measurement(measurement_vial_0)=0.10mL, min_threshold=2.5mL
+2025-11-19 10:22:32,361 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:32,579 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:32,580 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:32,580 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:32,581 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:32,582 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:33,096 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:33,097 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:33,098 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:33,100 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:33,100 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:33,102 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:33,102 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:33,612 - DEBUG - Selected small_tip for volume 0.152 mL
+2025-11-19 10:22:33,615 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:33,615 - INFO - Additional volume from calibration, amount: 0.002 mL
+2025-11-19 10:22:33,617 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-19 10:22:33,617 - DEBUG - Aspirating 0.102 mL then waiting 0.8 s
+2025-11-19 10:22:33,617 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:33,618 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:33,619 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:33,619 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:33,620 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:33,620 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:34,128 - INFO - Moving vial liquid_source_0 to main_8mL_rack: 0
+2025-11-19 10:22:34,129 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:34,131 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-11-19 10:22:34,133 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:22:34,134 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:34,135 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:22:34,135 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:34,647 - INFO - Pipetting into vial measurement_vial_0, amount: 0.1 mL
+2025-11-19 10:22:34,648 - DEBUG - Adjusting pump 0 speed to 18
+2025-11-19 10:22:34,649 - DEBUG - Dispensing 0.152 mL then waiting 1.0 s
+2025-11-19 10:22:34,649 - DEBUG - Blowing out 0.025 mL
+2025-11-19 10:22:34,658 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:34,661 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.80mL, measurement(measurement_vial_0)=0.20mL, min_threshold=2.5mL
+2025-11-19 10:22:34,661 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:34,661 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:34,663 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.80mL, measurement(measurement_vial_0)=0.20mL, min_threshold=2.5mL
+2025-11-19 10:22:34,664 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:34,879 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:34,879 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:34,879 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:34,879 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:34,879 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:35,381 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:35,382 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:35,383 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:35,385 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:35,385 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:35,386 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:35,387 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:35,897 - DEBUG - Selected small_tip for volume 0.153 mL
+2025-11-19 10:22:35,898 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:35,898 - INFO - Additional volume from calibration, amount: 0.003 mL
+2025-11-19 10:22:35,898 - DEBUG - Adjusting pump 0 speed to 12
+2025-11-19 10:22:35,898 - DEBUG - Aspirating 0.103 mL then waiting 1.2 s
+2025-11-19 10:22:35,898 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:35,898 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:35,898 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:35,898 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:35,898 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:35,898 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:36,414 - INFO - Moving vial liquid_source_0 to main_8mL_rack: 0
+2025-11-19 10:22:36,414 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:36,414 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-11-19 10:22:36,414 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:22:36,414 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:36,414 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:22:36,414 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:36,930 - INFO - Pipetting into vial measurement_vial_0, amount: 0.1 mL
+2025-11-19 10:22:36,931 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-19 10:22:36,933 - DEBUG - Dispensing 0.153 mL then waiting 0.6 s
+2025-11-19 10:22:36,933 - DEBUG - Blowing out 0.015 mL
+2025-11-19 10:22:36,933 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:36,945 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.70mL, measurement(measurement_vial_0)=0.30mL, min_threshold=2.5mL
+2025-11-19 10:22:36,945 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:36,946 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:36,947 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.70mL, measurement(measurement_vial_0)=0.30mL, min_threshold=2.5mL
+2025-11-19 10:22:36,948 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:37,164 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:37,164 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:37,164 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:37,164 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:37,164 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:37,680 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:37,680 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:37,682 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:37,683 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:37,684 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:37,686 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:37,686 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:38,198 - DEBUG - Selected small_tip for volume 0.152 mL
+2025-11-19 10:22:38,198 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:38,198 - INFO - Additional volume from calibration, amount: 0.002 mL
+2025-11-19 10:22:38,198 - DEBUG - Adjusting pump 0 speed to 16
+2025-11-19 10:22:38,198 - DEBUG - Aspirating 0.102 mL then waiting 0.3 s
+2025-11-19 10:22:38,198 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:38,198 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:38,198 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:38,198 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:38,198 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:38,198 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:38,713 - INFO - Moving vial liquid_source_0 to main_8mL_rack: 0
+2025-11-19 10:22:38,713 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:38,715 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-11-19 10:22:38,716 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:22:38,716 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:38,718 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:22:38,718 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:39,224 - INFO - Pipetting into vial measurement_vial_0, amount: 0.1 mL
+2025-11-19 10:22:39,225 - DEBUG - Adjusting pump 0 speed to 10
+2025-11-19 10:22:39,226 - DEBUG - Dispensing 0.152 mL then waiting 0.7 s
+2025-11-19 10:22:39,226 - DEBUG - Blowing out 0.035 mL
+2025-11-19 10:22:39,238 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:39,239 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.60mL, measurement(measurement_vial_0)=0.40mL, min_threshold=2.5mL
+2025-11-19 10:22:39,239 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:39,239 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:39,239 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.60mL, measurement(measurement_vial_0)=0.40mL, min_threshold=2.5mL
+2025-11-19 10:22:39,239 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:39,443 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:39,444 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:39,444 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:39,444 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:39,444 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:39,952 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:39,953 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:39,954 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:39,955 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:39,956 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:39,957 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:39,957 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:40,465 - DEBUG - Selected small_tip for volume 0.154 mL
+2025-11-19 10:22:40,466 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:40,466 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-19 10:22:40,466 - DEBUG - Adjusting pump 0 speed to 18
+2025-11-19 10:22:40,466 - DEBUG - Aspirating 0.104 mL then waiting 1.5 s
+2025-11-19 10:22:40,466 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:40,466 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:40,466 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:40,466 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:40,466 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:40,466 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:40,983 - INFO - Moving vial liquid_source_0 to main_8mL_rack: 0
+2025-11-19 10:22:40,983 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:40,983 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-11-19 10:22:40,983 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:22:40,983 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:40,983 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:22:40,983 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:41,499 - INFO - Pipetting into vial measurement_vial_0, amount: 0.1 mL
+2025-11-19 10:22:41,501 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-19 10:22:41,501 - DEBUG - Dispensing 0.154 mL then waiting 2.0 s
+2025-11-19 10:22:41,501 - DEBUG - Blowing out 0.025 mL
+2025-11-19 10:22:41,501 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:41,506 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.50mL, measurement(measurement_vial_0)=0.50mL, min_threshold=2.5mL
+2025-11-19 10:22:41,506 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:41,717 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:41,717 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:41,717 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:41,717 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:41,717 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:42,233 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:42,234 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:42,235 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:42,237 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:42,237 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:42,237 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:42,237 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:42,750 - DEBUG - Selected small_tip for volume 0.154 mL
+2025-11-19 10:22:42,752 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:42,752 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-19 10:22:42,752 - DEBUG - Adjusting pump 0 speed to 18
+2025-11-19 10:22:42,752 - DEBUG - Aspirating 0.104 mL then waiting 1.5 s
+2025-11-19 10:22:42,752 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:42,752 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:42,752 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:42,752 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:42,752 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:42,752 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:43,267 - INFO - Moving vial liquid_source_0 to main_8mL_rack: 0
+2025-11-19 10:22:43,268 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:43,269 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-11-19 10:22:43,271 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:22:43,271 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:43,273 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:22:43,273 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:43,784 - INFO - Pipetting into vial measurement_vial_0, amount: 0.1 mL
+2025-11-19 10:22:43,786 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-19 10:22:43,786 - DEBUG - Dispensing 0.154 mL then waiting 2.0 s
+2025-11-19 10:22:43,786 - DEBUG - Blowing out 0.025 mL
+2025-11-19 10:22:43,786 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:43,790 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.40mL, measurement(measurement_vial_0)=0.60mL, min_threshold=2.5mL
+2025-11-19 10:22:43,791 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:44,001 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:44,001 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:44,001 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:44,001 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:44,001 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:44,519 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:44,519 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:44,519 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:44,519 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:44,519 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:44,519 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:44,519 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:45,019 - DEBUG - Selected small_tip for volume 0.154 mL
+2025-11-19 10:22:45,020 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:45,020 - INFO - Additional volume from calibration, amount: 0.004 mL
+2025-11-19 10:22:45,020 - DEBUG - Adjusting pump 0 speed to 18
+2025-11-19 10:22:45,020 - DEBUG - Aspirating 0.104 mL then waiting 1.5 s
+2025-11-19 10:22:45,020 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:45,020 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:45,020 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:45,020 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:45,020 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:45,020 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:45,536 - INFO - Moving vial liquid_source_0 to main_8mL_rack: 0
+2025-11-19 10:22:45,537 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:45,538 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-11-19 10:22:45,540 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:22:45,540 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:45,541 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:22:45,541 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:46,052 - INFO - Pipetting into vial measurement_vial_0, amount: 0.1 mL
+2025-11-19 10:22:46,053 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-19 10:22:46,053 - DEBUG - Dispensing 0.154 mL then waiting 2.0 s
+2025-11-19 10:22:46,054 - DEBUG - Blowing out 0.025 mL
+2025-11-19 10:22:46,067 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:46,068 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.30mL, measurement(measurement_vial_0)=0.70mL, min_threshold=2.5mL
+2025-11-19 10:22:46,068 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:46,069 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:46,070 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.30mL, measurement(measurement_vial_0)=0.70mL, min_threshold=2.5mL
+2025-11-19 10:22:46,070 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:46,287 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:46,287 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:46,288 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:46,289 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:46,289 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:46,802 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:46,804 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:46,805 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:46,806 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:46,807 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:46,808 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:46,808 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:47,320 - DEBUG - Selected small_tip for volume 0.163 mL
+2025-11-19 10:22:47,321 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:47,321 - INFO - Additional volume from calibration, amount: 0.013 mL
+2025-11-19 10:22:47,321 - DEBUG - Adjusting pump 0 speed to 18
+2025-11-19 10:22:47,321 - DEBUG - Aspirating 0.113 mL then waiting 1.5 s
+2025-11-19 10:22:47,321 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:47,321 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:47,321 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:47,321 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:47,321 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:47,321 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:47,838 - INFO - Moving vial liquid_source_0 to main_8mL_rack: 0
+2025-11-19 10:22:47,838 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:47,838 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2025-11-19 10:22:47,838 - INFO - Moving vial measurement_vial_0 to clamp: 0
+2025-11-19 10:22:47,838 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:47,838 - DEBUG - Dropping off vial 1 at location clamp with index 0
+2025-11-19 10:22:47,838 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:48,354 - INFO - Pipetting into vial measurement_vial_0, amount: 0.1 mL
+2025-11-19 10:22:48,355 - DEBUG - Adjusting pump 0 speed to 8
+2025-11-19 10:22:48,355 - DEBUG - Dispensing 0.163 mL then waiting 2.0 s
+2025-11-19 10:22:48,355 - DEBUG - Blowing out 0.025 mL
+2025-11-19 10:22:48,378 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:48,378 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.20mL, measurement(measurement_vial_0)=0.80mL, min_threshold=2.5mL
+2025-11-19 10:22:48,378 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:48,378 - INFO - [vial-mgmt] manage_vials called: mode=swap cfg_keys=['source_vial', 'measurement_vial', 'waste_vial', 'reservoir_index', 'min_source_ml', 'refill_target_ml', 'max_measurement_ml']
+2025-11-19 10:22:48,378 - INFO - [swap] Pre-swap volumes: source(liquid_source_0)=7.20mL, measurement(measurement_vial_0)=0.80mL, min_threshold=2.5mL
+2025-11-19 10:22:48,378 - INFO - [vial-mgmt] Using current source vial: liquid_source_0
+2025-11-19 10:22:48,588 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:48,588 - INFO - Moving vial liquid_source_0 to safe pipetting location
+2025-11-19 10:22:48,588 - DEBUG - Clamp occupied by vial 1, returning it home first
+2025-11-19 10:22:48,588 - INFO - Returning vial measurement_vial_0 to home location: main_8mL_rack index 1
+2025-11-19 10:22:48,588 - DEBUG - Recapping clamped vial
+2025-11-19 10:22:49,088 - INFO - Moving vial measurement_vial_0 to main_8mL_rack: 1
+2025-11-19 10:22:49,088 - DEBUG - Grabbing vial 1 with index 1
+2025-11-19 10:22:49,088 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2025-11-19 10:22:49,088 - INFO - Moving vial liquid_source_0 to clamp: 0
+2025-11-19 10:22:49,088 - DEBUG - Grabbing vial 0 with index 0
+2025-11-19 10:22:49,088 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2025-11-19 10:22:49,088 - DEBUG - Removing cap from clamped vial
+2025-11-19 10:22:49,588 - DEBUG - Selected small_tip for volume 0.159 mL
+2025-11-19 10:22:49,588 - INFO - Pipetting from vial liquid_source_0, amount: 0.1 mL
+2025-11-19 10:22:49,588 - INFO - Additional volume from calibration, amount: 0.009 mL
+2025-11-19 10:22:49,588 - DEBUG - Adjusting pump 0 speed to 14
+2025-11-19 10:22:49,588 - DEBUG - Aspirating 0.109 mL then waiting 7.493569254875183 s
+2025-11-19 10:22:49,588 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2025-11-19 10:22:49,588 - DEBUG - Vial move required for pipetting
+2025-11-19 10:22:49,588 - INFO - Moving vial measurement_vial_0 to safe pipetting location
+2025-11-19 10:22:49,588 - DEBUG - Clamp occupied by vial 0, returning it home first
+2025-11-19 10:22:49,588 - INFO - Returning vial liquid_source_0 to home location: main_8mL_rack index 0
+2025-11-19 10:22:49,588 - DEBUG - Recapping clamped vial

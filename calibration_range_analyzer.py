@@ -25,6 +25,8 @@ class CalibrationRangeAnalyzer:
         
         # Regex patterns for the actual dispensing operations in your logs
         self.dispensing_patterns = [
+            # "Dispensing into vial 3 from reservoir 1: 8.000 mL" - MUST BE FIRST
+            r'Dispensing\s+into\s+vial\s+([^\s]+)\s+from\s+reservoir\s+([0-9]+):\s+([0-9.]+)\s+mL',
             # "Dispensing 1.900 mL from 2MeTHF to sample_2"
             r'Dispensing\s+([0-9.]+)\s+mL\s+from\s+([^\s]+)\s+to\s+([^\s]+)',
             # "Pipetting from vial 2MeTHF, amount: 0.950 mL"
@@ -85,7 +87,15 @@ class CalibrationRangeAnalyzer:
                 operation_type = "unknown"
                 
                 # Match the actual patterns from your logs
-                if 'Dispensing' in pattern:
+                if 'into\s+vial' in pattern and 'reservoir' in pattern:
+                    # "Dispensing into vial 3 from reservoir 1: 8.000 mL"
+                    target = groups[0]
+                    reservoir_num = groups[1]
+                    volume = float(groups[2])
+                    source = f"reservoir_{reservoir_num} (reservoir)"
+                    operation_type = 'reservoir_dispensing'
+                    
+                elif 'Dispensing' in pattern:
                     # "Dispensing 1.900 mL from 2MeTHF to sample_2"
                     volume = float(groups[0])
                     source = groups[1]

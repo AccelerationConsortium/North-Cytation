@@ -24,7 +24,8 @@ PIPETTING_PARAMETERS = [
     'blowout_vol',
     'post_asp_air_vol',
     'overaspirate_vol',
-    'post_retract_wait_time'
+    'post_retract_wait_time',
+    'pre_asp_air_vol'
 ]
 
 # Required columns in calibration files  

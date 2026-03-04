@@ -49,6 +49,49 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import json
 
+# Import PipettingParameters for type hints
+try:
+    from pipetting_data.pipetting_parameters import PipettingParameters
+except ImportError:
+    # Fallback for type hints if import fails
+    PipettingParameters = None
+
+def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, liquid_type='water'):
+    """Condition a pipette tip by aspirating and dispensing into source vial multiple times
+    
+    Args:
+        lash_e: Lash_E robot controller
+        vial_name: Name of vial to condition tip with
+        conditioning_volume_ul: Total volume for conditioning (default 100 uL)
+        liquid_type: Type of liquid for pipetting parameters (ignored - always uses dummy params)
+    """
+    try:
+        # Calculate volume per conditioning cycle (3 cycles total)
+        cycles = 3
+        volume_per_cycle_ul = conditioning_volume_ul
+        volume_per_cycle_ml = volume_per_cycle_ul / 1000
+        
+        # Use simple dummy parameters for fast conditioning (accuracy not needed)
+        lash_e.logger.info(f"    Conditioning tip with {vial_name}: {cycles} cycles of {volume_per_cycle_ul:.1f}uL (fast dummy params)")
+        
+        # Simple dummy parameters - fast and reliable for conditioning only
+        from pipetting_data.pipetting_parameters import PipettingParameters
+        dummy_params = PipettingParameters(
+            aspirate_speed=15,      # Fast aspirate
+            dispense_speed=5,       # Fast dispense  
+            dispense_wait_time=0.0, # No waiting
+            blowout_vol=0.5         # Minimal blowout
+        )
+        
+        for cycle in range(cycles):
+            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+            lash_e.nr_robot.dispense_into_vial(vial_name, volume_per_cycle_ml, parameters=dummy_params)
+        
+        lash_e.logger.info(f"    Tip conditioning complete for {vial_name}")
+        
+    except Exception as e:
+        lash_e.logger.info(f"    Warning: Could not condition tip with {vial_name}: {e}")
+
 # Add path for imports if needed
 if "../utoronto_demo" not in sys.path:
     sys.path.append("../utoronto_demo")
@@ -65,6 +108,9 @@ LIQUID_DENSITIES = {
     "glycerol": 1.26,
     "PEG_Water": 1.05,
     "4%_hyaluronic_acid_water": 1.01,
+    "SDS": 1.00,
+    "6M_HCl": 1.10,
+    "TFA": 1.49
 }
 
 def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) -> bool:
@@ -101,6 +147,32 @@ def _evaluate_measurement(stability_info: Dict, std_threshold: float = 0.001) ->
     
     return is_acceptable
 
+def calculate_quality_threshold(volume_ml: float) -> float:
+    """
+    Calculate appropriate quality standard deviation threshold based on volume.
+    
+    Args:
+        volume_ml: Volume being tested in mL
+        
+    Returns:
+        float: Quality threshold in grams
+        
+    Logic:
+        - For volumes <= 0.005 mL (5 uL): threshold = 0.0005g (0.5 mg)
+        - For volumes >= 0.5 mL (500 uL): threshold = 0.005g (5 mg)
+        - For volumes in between: linear interpolation
+    """
+    if volume_ml <= 0.005:
+        return 0.0005
+    elif volume_ml >= 0.5:
+        return 0.005
+    else:
+        # Linear interpolation between the two points
+        # (0.005 mL, 0.0005g) and (0.5 mL, 0.005g)
+        slope = (0.005 - 0.0005) / (0.5 - 0.005)
+        threshold = 0.0005 + slope * (volume_ml - 0.005)
+        return threshold
+
 def validate_pipetting_accuracy(
     lash_e,
     source_vial: str,
@@ -114,7 +186,10 @@ def validate_pipetting_accuracy(
     switch_pipet: bool = False,
     compensate_overvolume: bool = True,
     smooth_overvolume: bool = False,
-    quality_std_threshold: float = 0.001
+    quality_std_threshold: float = None,
+    condition_tip_enabled: bool = False,
+    conditioning_volume_ul: float = 100,
+    parameters: Optional[PipettingParameters] = None,
 ) -> Dict:
     
 
@@ -134,6 +209,10 @@ def validate_pipetting_accuracy(
         switch_pipet: Whether to change pipet tip between measurements (default: False)
         compensate_overvolume: Apply overvolume compensation based on measured accuracy (default: True)
         smooth_overvolume: Apply local smoothing to remove overvolume outliers (default: False)
+        quality_std_threshold: Standard deviation threshold for quality assessment (default: None = auto-calculate per volume)
+        condition_tip_enabled: Whether to condition tip before validation (default: False)
+        conditioning_volume_ul: Volume for tip conditioning in uL (default: 100)
+        parameters: Optional custom pipetting parameters to override liquid-calibrated settings (default: None)
         
     Returns:
         dict: Results summary containing accuracy metrics, file paths, and statistics
@@ -159,11 +238,16 @@ def validate_pipetting_accuracy(
     
     # === SETUP OUTPUT DIRECTORY ===
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    calib_folder = os.path.join(output_folder, "calibration_validation", f"validation_{timestamp}")
     
-    # Only create directories and prepare file operations in non-simulation mode
-    if save_raw_data:
-        os.makedirs(calib_folder, exist_ok=True)
+    # Handle None output_folder for simulation mode
+    if output_folder is not None:
+        calib_folder = os.path.join(output_folder, "calibration_validation", f"validation_{liquid_type}_{source_vial}_{timestamp}")
+        # Only create directories and prepare file operations in non-simulation mode
+        if save_raw_data:
+            os.makedirs(calib_folder, exist_ok=True)
+    else:
+        calib_folder = None
+        save_raw_data = False  # Force disable file saving when output_folder is None
     
     print(f"\\n=== Pipetting Validation ===")
     print(f"Source: {source_vial}")
@@ -172,10 +256,28 @@ def validate_pipetting_accuracy(
     print(f"Volumes: {volumes_ml} mL")
     print(f"Replicates: {replicates}")
     print(f"Switch pipet: {switch_pipet}")
+    print(f"Condition tip: {condition_tip_enabled}")
     if save_raw_data:
         print(f"Output: {calib_folder}")
     else:
         print("Output: Simulation mode - no files saved")
+    
+    # === TIP CONDITIONING (OPTIONAL) ===
+    if condition_tip_enabled:
+        print(f"\n--- Tip Conditioning ---")
+        print(f"Moving {source_vial} to clamp position for conditioning...")
+        
+        try:
+
+            # Move source vial to clamp position
+            lash_e.nr_robot.move_vial_to_location(source_vial, 'clamp', 0)
+            
+            # Condition tip with specified volume
+            condition_tip(lash_e, source_vial, conditioning_volume_ul, liquid_type)
+            
+        except Exception as e:
+            print(f"Warning: Tip conditioning failed: {e}")
+            print("Continuing with validation without conditioning...")
     
     # === DATA COLLECTION ===
     all_results = []
@@ -185,6 +287,10 @@ def validate_pipetting_accuracy(
 
     for volume_ml in volumes_ml:
         print(f"\\nTesting volume: {volume_ml:.3f} mL ({replicates} replicates)")
+        
+        # Calculate appropriate quality threshold for this volume
+        current_threshold = quality_std_threshold if quality_std_threshold is not None else calculate_quality_threshold(volume_ml)
+        print(f"  Using quality threshold: {current_threshold:.6f}g ({current_threshold*1000:.3f}mg)")
         
         for rep in range(replicates):
             print(f"  Replicate {rep + 1}/{replicates}...")
@@ -203,20 +309,24 @@ def validate_pipetting_accuracy(
                     source_vial_name=source_vial,
                     dest_vial_name=destination_vial,
                     volume=volume_ml,
+                    parameters=parameters,  # Pass through custom parameters if provided
                     liquid=liquid_type,
                     remove_tip=switch_pipet,  # Use built-in pipet removal control
                     use_safe_location=False,
                     return_vial_home=False,   # Keep destination vial in clamp for mass measurement
                     compensate_overvolume=compensate_overvolume,
                     smooth_overvolume=smooth_overvolume,
-                    measure_weight=True  # Enable mass measurement with continuous monitoring
+                    measure_weight=True,  # Enable mass measurement with continuous monitoring
+                    continuous_mass_monitoring=True, 
+                    save_mass_data=True
+                    
                 )
                 
                 # Handle new return format (mass, stability_info)
                 if isinstance(transfer_result, tuple):
                     mass_difference, stability_info = transfer_result
                     # Evaluate measurement quality for calibration/validation
-                    measurement_acceptable = _evaluate_measurement(stability_info, quality_std_threshold)
+                    measurement_acceptable = _evaluate_measurement(stability_info, current_threshold)
                 else:
                     # Backwards compatibility - old format returns just mass
                     mass_difference = transfer_result
@@ -450,7 +560,7 @@ def validate_reservoir_accuracy(
     print(f"Volumes: {volumes_ml} mL")
     print(f"Replicates: {replicates}")
     print(f"Output: {calib_folder}")
-    
+           
     # === DATA COLLECTION ===
     all_results = []
     
@@ -656,61 +766,135 @@ def _create_validation_plots(df: pd.DataFrame, stats_df: pd.DataFrame, overall_s
                            output_folder: str, plot_title: Optional[str], liquid_type: str) -> str:
     """Create validation plots and save to file."""
     
-    # Set up the plot
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
-    
-    if plot_title:
-        fig.suptitle(f"{plot_title} - {liquid_type.title()} Validation", fontsize=16)
-    else:
-        fig.suptitle(f"Pipetting Validation - {liquid_type.title()}", fontsize=16)
-    
     # Convert to uL for plotting
     df['target_ul'] = df['target_volume_ml'] * 1000
     df['measured_ul'] = df['measured_volume_ml'] * 1000
     
-    # Plot 1: Target vs Measured with perfect line
-    ax1.scatter(df['target_ul'], df['measured_ul'], alpha=0.7, s=50)
+    # Check if this is a single-volume calibration
+    unique_volumes = df['target_volume_ml'].nunique()
+    is_single_volume = (unique_volumes == 1)
     
-    # Add perfect line
-    min_vol = min(df['target_ul'].min(), df['measured_ul'].min())
-    max_vol = max(df['target_ul'].max(), df['measured_ul'].max())
-    ax1.plot([min_vol, max_vol], [min_vol, max_vol], 'r--', label='Perfect accuracy', linewidth=2)
-    
-    # Add regression line
-    slope, intercept = overall_stats['slope'], overall_stats['intercept']
-    x_fit = np.array([min_vol, max_vol]) / 1000  # Convert back to mL for calculation
-    y_fit = (slope * x_fit + intercept) * 1000  # Convert result to uL
-    ax1.plot(x_fit * 1000, y_fit, 'b-', label=f'Linear fit (R² = {overall_stats["r_squared"]:.4f})', linewidth=2)
-    
-    ax1.set_xlabel('Target Volume (uL)')
-    ax1.set_ylabel('Measured Volume (uL)')
-    ax1.set_title('Accuracy')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-    
-    # Plot 2: Accuracy per volume
-    ax2.bar(stats_df['target_volume_ul'], stats_df['accuracy_pct'])
-    ax2.axhline(y=0, color='r', linestyle='--', alpha=0.7)
-    ax2.set_xlabel('Target Volume (uL)')
-    ax2.set_ylabel('Accuracy (%)')
-    ax2.set_title('Accuracy by Volume')
-    ax2.grid(True, alpha=0.3)
-    
-    # Plot 3: Precision (CV) per volume
-    ax3.bar(stats_df['target_volume_ul'], stats_df['precision_cv_pct'])
-    ax3.set_xlabel('Target Volume (uL)')
-    ax3.set_ylabel('Precision CV (%)')
-    ax3.set_title('Precision by Volume')
-    ax3.grid(True, alpha=0.3)
-    
-    # Plot 4: Error distribution
-    df['error_pct'] = ((df['measured_volume_ml'] - df['target_volume_ml']) / df['target_volume_ml']) * 100
-    ax4.hist(df['error_pct'], bins=max(10, len(df)//3), alpha=0.7, edgecolor='black')
-    ax4.axvline(x=0, color='r', linestyle='--', alpha=0.7)
-    ax4.set_xlabel('Error (%)')
-    ax4.set_ylabel('Frequency')
-    ax4.set_title('Error Distribution')
-    ax4.grid(True, alpha=0.3)
+    if is_single_volume:
+        # Single volume case - use histogram-focused layout
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
+        
+        if plot_title:
+            fig.suptitle(f"{plot_title} - {liquid_type.title()} Single-Volume Validation", fontsize=16)
+        else:
+            fig.suptitle(f"Single-Volume Pipetting Validation - {liquid_type.title()}", fontsize=16)
+        
+        target_volume_ul = df['target_ul'].iloc[0]  # All targets are the same
+        
+        # Plot 1: Histogram of measured volumes with target reference
+        ax1.hist(df['measured_ul'], bins=max(5, len(df)//2), alpha=0.7, edgecolor='black', color='skyblue')
+        ax1.axvline(x=target_volume_ul, color='red', linestyle='--', linewidth=2, 
+                   label=f'Target: {target_volume_ul:.1f}uL')
+        ax1.axvline(x=df['measured_ul'].mean(), color='orange', linestyle='-', linewidth=2,
+                   label=f'Mean: {df["measured_ul"].mean():.1f}uL')
+        ax1.set_xlabel('Measured Volume (uL)')
+        ax1.set_ylabel('Frequency')
+        ax1.set_title('Distribution of Measured Volumes')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Individual measurements with target line
+        measurement_indices = range(1, len(df) + 1)
+        ax2.scatter(measurement_indices, df['measured_ul'], s=60, alpha=0.8, color='blue')
+        ax2.axhline(y=target_volume_ul, color='red', linestyle='--', linewidth=2, 
+                   label=f'Target: {target_volume_ul:.1f}uL')
+        ax2.axhline(y=df['measured_ul'].mean(), color='orange', linestyle='-', linewidth=1,
+                   label=f'Mean: {df["measured_ul"].mean():.1f}uL')
+        ax2.set_xlabel('Measurement #')
+        ax2.set_ylabel('Measured Volume (uL)')
+        ax2.set_title('Individual Measurements')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        
+        # Plot 3: Accuracy and precision summary
+        accuracy_pct = stats_df['accuracy_pct'].iloc[0]
+        precision_cv_pct = stats_df['precision_cv_pct'].iloc[0]
+        
+        metrics = ['Accuracy (%)', 'Precision CV (%)']
+        values = [accuracy_pct, precision_cv_pct]
+        colors = ['green' if accuracy_pct > -5 else 'orange' if accuracy_pct > -10 else 'red',
+                 'green' if precision_cv_pct < 5 else 'orange' if precision_cv_pct < 10 else 'red']
+        
+        bars = ax3.bar(metrics, values, color=colors, alpha=0.7, edgecolor='black')
+        ax3.axhline(y=0, color='black', linestyle='-', alpha=0.5)
+        ax3.set_ylabel('Percentage (%)')
+        ax3.set_title('Performance Summary')
+        ax3.grid(True, alpha=0.3)
+        
+        # Add value labels on bars
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax3.text(bar.get_x() + bar.get_width()/2., height + (0.5 if height >= 0 else -1),
+                    f'{value:.1f}%', ha='center', va='bottom' if height >= 0 else 'top')
+        
+        # Plot 4: Error from target
+        df['error_ul'] = df['measured_ul'] - target_volume_ul
+        ax4.hist(df['error_ul'], bins=max(5, len(df)//2), alpha=0.7, edgecolor='black', color='lightcoral')
+        ax4.axvline(x=0, color='red', linestyle='--', linewidth=2, label='Perfect accuracy')
+        ax4.axvline(x=df['error_ul'].mean(), color='orange', linestyle='-', linewidth=2,
+                   label=f'Mean error: {df["error_ul"].mean():.1f}uL')
+        ax4.set_xlabel('Error from Target (uL)')
+        ax4.set_ylabel('Frequency')
+        ax4.set_title('Error Distribution')
+        ax4.legend()
+        ax4.grid(True, alpha=0.3)
+        
+    else:
+        # Multi-volume case - use existing scatter plot approach
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
+        
+        if plot_title:
+            fig.suptitle(f"{plot_title} - {liquid_type.title()} Validation", fontsize=16)
+        else:
+            fig.suptitle(f"Pipetting Validation - {liquid_type.title()}", fontsize=16)
+        
+        # Plot 1: Target vs Measured with perfect line
+        ax1.scatter(df['target_ul'], df['measured_ul'], alpha=0.7, s=50)
+        
+        # Add perfect line
+        min_vol = min(df['target_ul'].min(), df['measured_ul'].min())
+        max_vol = max(df['target_ul'].max(), df['measured_ul'].max())
+        ax1.plot([min_vol, max_vol], [min_vol, max_vol], 'r--', label='Perfect accuracy', linewidth=2)
+        
+        # Add regression line
+        slope, intercept = overall_stats['slope'], overall_stats['intercept']
+        x_fit = np.array([min_vol, max_vol]) / 1000  # Convert back to mL for calculation
+        y_fit = (slope * x_fit + intercept) * 1000  # Convert result to uL
+        ax1.plot(x_fit * 1000, y_fit, 'b-', label=f'Linear fit (R² = {overall_stats["r_squared"]:.4f})', linewidth=2)
+        
+        ax1.set_xlabel('Target Volume (uL)')
+        ax1.set_ylabel('Measured Volume (uL)')
+        ax1.set_title('Accuracy')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Accuracy per volume
+        ax2.bar(stats_df['target_volume_ul'], stats_df['accuracy_pct'])
+        ax2.axhline(y=0, color='r', linestyle='--', alpha=0.7)
+        ax2.set_xlabel('Target Volume (uL)')
+        ax2.set_ylabel('Accuracy (%)')
+        ax2.set_title('Accuracy by Volume')
+        ax2.grid(True, alpha=0.3)
+        
+        # Plot 3: Precision (CV) per volume
+        ax3.bar(stats_df['target_volume_ul'], stats_df['precision_cv_pct'])
+        ax3.set_xlabel('Target Volume (uL)')
+        ax3.set_ylabel('Precision CV (%)')
+        ax3.set_title('Precision by Volume')
+        ax3.grid(True, alpha=0.3)
+        
+        # Plot 4: Error distribution
+        df['error_pct'] = ((df['measured_volume_ml'] - df['target_volume_ml']) / df['target_volume_ml']) * 100
+        ax4.hist(df['error_pct'], bins=max(10, len(df)//3), alpha=0.7, edgecolor='black')
+        ax4.axvline(x=0, color='r', linestyle='--', alpha=0.7)
+        ax4.set_xlabel('Error (%)')
+        ax4.set_ylabel('Frequency')
+        ax4.set_title('Error Distribution')
+        ax4.grid(True, alpha=0.3)
     
     plt.tight_layout()
     
