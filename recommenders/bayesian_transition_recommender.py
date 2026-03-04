@@ -67,8 +67,9 @@ import os
 # Core algorithm parameters
 Q_BATCH = 14              # Default batch size
 CANDIDATE_POOL = 50_000   # Size of Sobol candidate pool for greedy selection
-# MIN_DIST: Now computed adaptively based on points + dimensions
-ALPHA_SPACING = 0.5       # Boundary density factor (0.5 = balanced spreading)
+
+ALPHA_SPACING = 0.7       # Boundary density factor (0.5 = balanced spreading)
+DISTANCE_SCALE = 0.4     # Scale factor for distance weighting sigmoid (lower = sharper penalty)
 
 # Experimental design parameters
 N_INITIAL = 50            # Initial Sobol points
@@ -520,7 +521,7 @@ class BayesianTransitionRecommender:
         
         # Soft distance weighting: sigmoid penalty based on proximity
         target_distance = min_distance  # Use adaptive min_distance as target
-        distance_scale = target_distance * 0.5  # Controls sigmoid steepness
+        distance_scale = target_distance * DISTANCE_SCALE  # Controls sigmoid steepness
         distance_weights = torch.sigmoid((min_distances - target_distance) / (distance_scale + 1e-12))
         
         # Step 2: Compute unified acquisition scores

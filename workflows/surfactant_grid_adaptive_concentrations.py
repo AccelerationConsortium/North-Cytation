@@ -3249,47 +3249,65 @@ def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
     norm_a = max(0, min(1, norm_a))
     norm_b = max(0, min(1, norm_b))
     
-    # ===== RATIO SIMULATION: Sharp diagonal transition =====
-    # Sharp transition along diagonal (additive CMC effect)
-    diagonal_sum = norm_a + norm_b
-    ratio_threshold = 0.6  # Transition occurs when sum > 0.6
-    ratio_sharpness = 15   # Very sharp transition
-    ratio_transition = np.tanh(ratio_sharpness * (diagonal_sum - ratio_threshold))
-    ratio_factor = 0.5 + 0.5 * ratio_transition  # Maps (-1,1) to (0,1)
+    # ===== RATIO SIMULATION: Inverted edge-based transitions =====
+    # Ratio HIGH everywhere, transitions to LOW along edges
     
-    # Add minor asymmetry (A vs B different effects)
-    asymmetry = 0.1 * (norm_a - norm_b)  # Small directional bias
-    ratio_factor += 0.05 * asymmetry
-    ratio_factor = max(0, min(1, ratio_factor))
+    # Edge effects: transitions when near boundaries (same as before)
+    edge_a_effect = np.tanh(8.0 * (norm_a - 0.7))  # High when A > 0.7
+    edge_b_effect = np.tanh(8.0 * (norm_b - 0.8))  # High when B > 0.8 (slightly different)
     
-    ratio_baseline = 0.75   # Low ratio state
-    ratio_elevated = 0.92   # High ratio state 
+    # Combine edge effects (either edge can trigger transition)
+    edge_combined = np.maximum(edge_a_effect, edge_b_effect)
+    
+    # Extension toward middle: weaker transition in central regions
+    center_distance = np.sqrt((norm_a - 0.5)**2 + (norm_b - 0.5)**2)
+    middle_extension = 0.4 * np.exp(-2.0 * center_distance)  # Weaker effect toward center
+    
+    # INVERT: Start high, go low at edges (opposite of before)
+    ratio_factor = 0.9 - 0.4 * (edge_combined + middle_extension)  # HIGH baseline, LOW at edges
+    
+    ratio_baseline = 0.70   # Low ratio state
+    ratio_elevated = 0.85   # High ratio state 
     simulated_ratio = ratio_baseline + (ratio_elevated - ratio_baseline) * ratio_factor
     
-    # ===== TURBIDITY SIMULATION: Sharp L-shaped boundary =====
-    # Different pattern - turbidity increases when EITHER conc is high
-    # Creates L-shaped boundary instead of diagonal
-    turb_threshold_a = 0.4  # A threshold
-    turb_threshold_b = 0.5  # B threshold (different from A)
-    turb_sharpness = 12     # Sharp transitions
+    # ===== TURBIDITY SIMULATION: Narrow band from upper-right corner toward middle =====
+    # High turbidity starts from upper-right corner, extends in narrow band toward center
     
-    # Independent thresholds - turbidity high if EITHER exceeds threshold
-    transition_a = np.tanh(turb_sharpness * (norm_a - turb_threshold_a))
-    transition_b = np.tanh(turb_sharpness * (norm_b - turb_threshold_b))
+    # Distance from upper-right corner (1,1)
+    corner_distance = np.sqrt((1.0 - norm_a)**2 + (1.0 - norm_b)**2)
     
-    # Combine with OR logic (max of transitions)
-    combined_transition = np.maximum(transition_a, transition_b)
-    turb_factor = 0.5 + 0.5 * combined_transition  # Maps (-1,1) to (0,1)
+    # Create narrow band extending from corner toward middle (0.5, 0.5)
+    # Direction vector from corner to center
+    direction_to_center_a = 0.5 - 1.0  # -0.5
+    direction_to_center_b = 0.5 - 1.0  # -0.5
     
-    # Add interaction term for corner region
-    if norm_a > turb_threshold_a and norm_b > turb_threshold_b:
-        interaction_boost = 0.3 * (norm_a - turb_threshold_a) * (norm_b - turb_threshold_b)
-        turb_factor += interaction_boost
+    # Project current position onto the corner-to-center line
+    relative_a = norm_a - 1.0
+    relative_b = norm_b - 1.0
+    projection_length = (relative_a * direction_to_center_a + relative_b * direction_to_center_b) / 0.707  # Normalize
+    
+    # Distance from the corner-to-center line (perpendicular distance)
+    perp_distance = abs(relative_a * direction_to_center_b - relative_b * direction_to_center_a) / 0.707
+    
+    # Narrow band: high turbidity only within narrow strip
+    band_width = 0.15  # Narrow band
+    band_length = 0.7   # Extends 70% toward middle
+    
+    in_band = (perp_distance < band_width) and (projection_length > 0) and (projection_length < band_length)
+    
+    if in_band:
+        # Strong effect near corner, weaking toward middle
+        length_factor = 1.0 - (projection_length / band_length)
+        width_factor = 1.0 - (perp_distance / band_width)
+        turb_factor = 0.8 * length_factor * width_factor
+    else:
+        # Outside band - minimal turbidity
+        turb_factor = 0.05
     
     turb_factor = max(0, min(1, turb_factor))
     
-    turbidity_baseline = 0.03  # Low turbidity state
-    turbidity_elevated = 0.8   # High turbidity state (reduced range for realism)
+    turbidity_baseline = 0.04  # Low turbidity state
+    turbidity_elevated = 3.0   # High turbidity state - log-space realistic range
     simulated_turbidity = turbidity_baseline + (turbidity_elevated - turbidity_baseline) * turb_factor
     
     # ===== FLUORESCENCE: Derive from ratio =====
