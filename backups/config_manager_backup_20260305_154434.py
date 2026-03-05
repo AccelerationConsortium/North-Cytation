@@ -191,11 +191,7 @@ class ExperimentConfig:
     def get_replicates_for_accurate_measurements(self) -> int:
         """Get additional replicates to run for accurate measurements."""
         return self._config['experiment'].get('replicates_for_accurate_measurements', 2)
-
-    def get_fixed_parameters(self) -> Dict[str, float]:
-        """Get pre-calibrated parameters to hold fixed during optimization."""
-        return self._config['experiment'].get('fixed_parameters', {}) or {}
-
+    
     # Parameter bounds - NEW ARCHITECTURE ONLY
     # Use get_calibration_parameter_bounds() and get_hardware_parameter_bounds() instead
     

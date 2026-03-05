@@ -26,74 +26,38 @@ LIQUIDS_TO_CALIBRATE = [
     {
         'liquid_name': 'heptane',
         'target_vial': 'heptane',
-        'volume_targets_ml': [0.120, 0.100, 0.080],
-        'validation_volumes_ml': [0.120, 0.100, 0.080],
-        # Small tip (<=200uL). No heptane-specific constants - using same as smalltip_toluene_params.
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.5,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 0,
-        }
+        'volume_targets_ml': [0.150, 0.100, 0.050],
+        'validation_volumes_ml': [0.150, 0.100, 0.050]
     },
         {
         'liquid_name': 'heptane',
         'target_vial': 'heptane',
-        'volume_targets_ml': [0.600, 0.400, 0.200],
-        'validation_volumes_ml': [0.600, 0.400, 0.200],
-        # Large tip (>200uL). No heptane large-tip constants - inferred from largetip_2MeTHF_params.
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.3,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 3,
-        }
+        'volume_targets_ml': [0.800, 0.600, 0.400],
+        'validation_volumes_ml': [0.800, 0.600, 0.400]
     },
         {
         'liquid_name': '2MeTHF',
         'target_vial': '2MeTHF',
-        'volume_targets_ml': [0.120, 0.100, 0.080],
-        'validation_volumes_ml': [0.120, 0.100, 0.080],
-        # smalltip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.5,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 0,
-        }
+        'volume_targets_ml': [0.150, 0.100, 0.050],
+        'validation_volumes_ml': [0.150, 0.100, 0.050]
     },
         {
         'liquid_name': '2MeTHF',
         'target_vial': '2MeTHF',
-        'volume_targets_ml': [0.600, 0.400, 0.200],
-        'validation_volumes_ml': [0.600, 0.400, 0.200],
-        # largetip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.3,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 3,
-        }
+        'volume_targets_ml': [0.800, 0.600, 0.400],
+        'validation_volumes_ml': [0.800, 0.600, 0.400]
     },
     {
-        'liquid_name': 'toluene',
-        'target_vial': 'toluene',
-        'volume_targets_ml': [0.120, 0.100, 0.080],
-        'validation_volumes_ml': [0.120, 0.100, 0.080],
-        # smalltip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.7,
-            'post_asp_air_vol': 0.01,
-            'asp_disp_cycles': 0,
-        }
+        'liquid_name': '2MeTHF',
+        'target_vial': '2MeTHF',
+        'volume_targets_ml': [0.150, 0.100, 0.050],
+        'validation_volumes_ml': [0.150, 0.100, 0.050]
     },
         {
         'liquid_name': 'toluene',
         'target_vial': 'toluene',
-        'volume_targets_ml': [0.600, 0.400, 0.200],
-        'validation_volumes_ml': [0.600, 0.400, 0.200],
-        # Large tip. No largetip_toluene constants - pre_asp_air_vol from largetip_2MeTHF, asp_disp_cycles=0 from smalltip_toluene pattern.
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.3,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 0,
-        }
+        'volume_targets_ml': [0.800, 0.600, 0.400],
+        'validation_volumes_ml': [0.800, 0.600, 0.400]
     },
     {
         'liquid_name': 'water',
@@ -175,13 +139,6 @@ class BatchCalibrationAutomator:
             for param_name, param_config in liquid_config['hardware_parameters'].items():
                 config['hardware_parameters'][param_name] = param_config
                 print(f"      {param_name}: bounds={param_config.get('bounds')}, type={param_config.get('type')}")
-
-        # Update fixed parameters if specified (merges with YAML defaults)
-        if 'fixed_parameters' in liquid_config:
-            print(f"    Applying fixed parameters: {liquid_config['fixed_parameters']}")
-            if 'fixed_parameters' not in config['experiment']:
-                config['experiment']['fixed_parameters'] = {}
-            config['experiment']['fixed_parameters'].update(liquid_config['fixed_parameters'])
         
         with open(CONFIG_FILE, 'w') as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)

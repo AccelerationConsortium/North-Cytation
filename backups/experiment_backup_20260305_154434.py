@@ -1003,8 +1003,8 @@ class CalibrationExperiment:
         # Determine optimization strategy
         is_first_volume = self.current_volume_index == 0
         
-        # Set up fixed parameters - start with any pre-calibrated values from YAML
-        fixed_params = dict(self.config.get_fixed_parameters())
+        # Set up fixed parameters for transfer learning
+        fixed_params = {}
         if not is_first_volume and self.config.is_transfer_learning_enabled():
             # For subsequent volumes, fix non-volume-dependent parameters
             # Get volume-dependent parameters from config instead of hardcoding

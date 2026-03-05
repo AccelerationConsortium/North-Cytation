@@ -1,17 +1,24 @@
 experiment:
   name: multi_volume_calibration_test
-  liquid: DMSO
+  liquid: water
   description: "Testing calibration across 4 volumes"
   volume_targets_ml:
-  - 0.010
-  - 0.005
-  - 0.002
-  max_total_measurements: 1000
-  max_measurements_first_volume: 800
-  num_screening_trials: 10
-  replicates_for_accurate_measurements: 9
+  - 0.150
+  - 0.100
+  - 0.050
+  - 0.200
+  max_total_measurements: 200
+  max_measurements_first_volume: 150
+  num_screening_trials: 6
+  replicates_for_accurate_measurements: 4
   simulate: false
   random_seed: 7
+  # Pre-calibrated parameters to hold fixed (not optimized). Leave empty ({}) to optimize all.
+  fixed_parameters:
+    post_asp_air_vol: 0.0
+    dispense_wait_time: 1.5
+    blowout_vol: 0.0
+    asp_disp_cycles: 0.0
   hardware_protocol: calibration_protocol_northrobot
   simulation_protocol: calibration_protocol_simulated
 calibration_parameters:
@@ -62,15 +69,32 @@ hardware_parameters:
     description: Pre-aspiration air volume (mL)
     volume_dependent: true
     round_to_nearest: 0.001
-  blowout_vol:
+  post_asp_air_vol:
     bounds:
     - 0.0
-    - 0.3
+    - 0.1
     default: 0.0
     type: float
     time_affecting: false
-    description: Blowout volume (mL)
-    volume_dependent: true
+    description: Post-aspiration air gap volume (mL)
+    round_to_nearest: 0.001
+  dispense_wait_time:
+    bounds:
+    - 0.0
+    - 5.0
+    default: 1.5
+    type: float
+    time_affecting: true
+    description: Wait time after dispense (seconds)
+    round_to_nearest: 0.1
+  blowout_vol:
+    bounds:
+    - 0.0
+    - 0.05
+    default: 0.0
+    type: float
+    time_affecting: false
+    description: Blowout volume after dispense (mL)
     round_to_nearest: 0.001
 output:
   base_directory: output/
