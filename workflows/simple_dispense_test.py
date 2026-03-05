@@ -10,8 +10,8 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
 
 # Configuration
-INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
-SIMULATE = True  # Set to False for hardware
+INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
+SIMULATE = False  # Set to False for hardware
 NUMBER_OF_WELLS = 50  # How many wells to dispense into
 DISPENSE_VOLUME_ML = 0.005  # Volume to dispense per well
 SOURCE_VIAL = "liquid_source_0"  # Which vial to dispense from
@@ -38,8 +38,8 @@ def run_simple_dispense():
         
         dmso_results = validate_pipetting_accuracy(
             lash_e=lash_e,
-            source_vial='pyrene_DMSO',
-            destination_vial='pyrene_DMSO', 
+            source_vial=SOURCE_VIAL,
+            destination_vial=SOURCE_VIAL, 
             liquid_type='DMSO',
             volumes_ml=[0.005],  # Same volume as main workflow
             replicates=50,
@@ -53,9 +53,7 @@ def run_simple_dispense():
         print(f"DMSO Validation Results: R²={dmso_results['r_squared']:.3f}, Accuracy={dmso_results['mean_accuracy_pct']:.1f}%")
         print("="*50)
         
-        # Get a fresh wellplate for main workflow
-        lash_e.nr_track.get_new_wellplate()
-        
+          
         # Dispense into sequential wells (0, 1, 2, ...)
         well_indices = list(range(NUMBER_OF_WELLS))
         volumes = [DISPENSE_VOLUME_ML] * NUMBER_OF_WELLS
