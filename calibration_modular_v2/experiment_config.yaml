@@ -1,15 +1,15 @@
 experiment:
   name: multi_volume_calibration_test
-  liquid: DMSO
+  liquid: glycerol
   description: "Testing calibration across 4 volumes"
   volume_targets_ml:
   - 0.010
   - 0.005
   - 0.002
-  max_total_measurements: 1000
-  max_measurements_first_volume: 800
-  num_screening_trials: 10
-  replicates_for_accurate_measurements: 9
+  max_total_measurements: 96
+  max_measurements_first_volume: 76
+  num_screening_trials: 6
+  replicates_for_accurate_measurements: 4
   simulate: false
   random_seed: 7
   hardware_protocol: calibration_protocol_northrobot
@@ -133,7 +133,7 @@ optimization:
     enabled: false
     config_path: null
   stopping_criteria:
-    min_good_trials: 10
+    min_good_trials: 4
   use_range_based_variability: false
 screening:
   use_llm_suggestions: false

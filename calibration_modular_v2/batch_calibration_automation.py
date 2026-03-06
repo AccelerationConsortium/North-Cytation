@@ -23,18 +23,18 @@ import shutil
 
 # Configuration - Edit this list for your liquids to calibrate
 LIQUIDS_TO_CALIBRATE = [
-    # {
-    #     'liquid_name': 'water',
-    #     'target_vial': 'SDS_stock',
-    #     'volume_targets_ml': [0.05, 0.025, 0.010],
-    #     'validation_volumes_ml': [0.05, 0.025, 0.010]
-    # },
-    # {
-    #     'liquid_name': 'water',
-    #     'target_vial': 'SDS_stock',
-    #     'volume_targets_ml': [0.180, 0.100, 0.075],
-    #     'validation_volumes_ml': [0.180, 0.100, 0.075]
-    # },
+    {
+        'liquid_name': 'water',
+        'target_vial': 'SDS_stock',
+        'volume_targets_ml': [0.05, 0.025, 0.010],
+        'validation_volumes_ml': [0.05, 0.025, 0.010]
+    },
+    {
+        'liquid_name': 'water',
+        'target_vial': 'SDS_stock',
+        'volume_targets_ml': [0.180, 0.100, 0.075],
+        'validation_volumes_ml': [0.180, 0.100, 0.075]
+    },
     # {
     #     'liquid_name': 'water',
     #     'target_vial': 'SDS_stock',
@@ -55,12 +55,12 @@ LIQUIDS_TO_CALIBRATE = [
     #         }
     #     }
     # },
-    {
-        'liquid_name': 'water',
-        'target_vial': 'water',
-        'volume_targets_ml': [0.180, 0.100, 0.075],
-        'validation_volumes_ml': [0.180, 0.100, 0.075]
-    },
+    # {
+    #     'liquid_name': 'water',
+    #     'target_vial': 'water',
+    #     'volume_targets_ml': [0.180, 0.100, 0.075],
+    #     'validation_volumes_ml': [0.180, 0.100, 0.075]
+    # },
     # {
     #     'liquid_name': 'water',
     #     'target_vial': 'water',
