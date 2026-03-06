@@ -1,17 +1,24 @@
 experiment:
   name: multi_volume_calibration_test
   liquid: water
-  description: "Testing calibration across 4 volumes: 10\xCE\xBCL to 100\xCE\xBCL"
+  description: "Testing calibration across 4 volumes"
   volume_targets_ml:
-  - 0.95
-  - 0.5
-  - 0.2
+  - 0.150
+  - 0.100
+  - 0.050
+  - 0.200
   max_total_measurements: 200
   max_measurements_first_volume: 150
   num_screening_trials: 6
   replicates_for_accurate_measurements: 4
-  simulate: false
+  simulate: true
   random_seed: 7
+  # Pre-calibrated parameters to hold fixed (not optimized). Leave empty ({}) to optimize all.
+  fixed_parameters:
+    post_asp_air_vol: 0.0
+    dispense_wait_time: 1.5
+    blowout_vol: 0.0
+    asp_disp_cycles: 0.0
   hardware_protocol: calibration_protocol_northrobot
   simulation_protocol: calibration_protocol_simulated
 calibration_parameters:
@@ -27,7 +34,7 @@ calibration_parameters:
 hardware_parameters:
   aspirate_speed:
     bounds:
-    - 10
+    - 2
     - 20
     default: 10
     type: integer
@@ -36,7 +43,7 @@ hardware_parameters:
     round_to_nearest: 1
   dispense_speed:
     bounds:
-    - 5
+    - 2
     - 20
     default: 10
     type: integer
@@ -61,6 +68,33 @@ hardware_parameters:
     time_affecting: false
     description: Pre-aspiration air volume (mL)
     volume_dependent: true
+    round_to_nearest: 0.001
+  post_asp_air_vol:
+    bounds:
+    - 0.0
+    - 0.1
+    default: 0.0
+    type: float
+    time_affecting: false
+    description: Post-aspiration air gap volume (mL)
+    round_to_nearest: 0.001
+  dispense_wait_time:
+    bounds:
+    - 0.0
+    - 5.0
+    default: 1.5
+    type: float
+    time_affecting: true
+    description: Wait time after dispense (seconds)
+    round_to_nearest: 0.1
+  blowout_vol:
+    bounds:
+    - 0.0
+    - 0.05
+    default: 0.0
+    type: float
+    time_affecting: false
+    description: Blowout volume after dispense (mL)
     round_to_nearest: 0.001
 output:
   base_directory: output/
@@ -123,7 +157,7 @@ optimization:
     enabled: false
     config_path: null
   stopping_criteria:
-    min_good_trials: 6
+    min_good_trials: 10
   use_range_based_variability: false
 screening:
   use_llm_suggestions: false
@@ -138,12 +172,12 @@ screening:
     - deviation_pct
     - duration_s
 validation:
-  optimal_conditions_file: optimized_parameters/optimal_conditions_water_5_50_new.csv
+  optimal_conditions_file: optimized_parameters/optimal_conditions_DMSO_march5.csv
   volumes_ml:
-  - 0.95
-  - 0.5
-  - 0.2
-  replicates_per_volume: 5
+  - 0.010
+  - 0.005
+
+  replicates_per_volume: 50
   output_directory: validation/
   generate_plots: true
   save_raw_data: true

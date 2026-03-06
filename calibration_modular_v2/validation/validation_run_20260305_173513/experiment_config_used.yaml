@@ -1,12 +1,11 @@
 experiment:
   name: multi_volume_calibration_test
-  liquid: water
+  liquid: heptane
   description: Testing calibration across 4 volumes
   volume_targets_ml:
-  - 0.15
+  - 0.12
   - 0.1
-  - 0.05
-  - 0.2
+  - 0.08
   max_total_measurements: 200
   max_measurements_first_volume: 150
   num_screening_trials: 6
@@ -14,10 +13,11 @@ experiment:
   simulate: true
   random_seed: 7
   fixed_parameters:
-    post_asp_air_vol: 0.0
+    post_asp_air_vol: 0.05
     dispense_wait_time: 1.5
     blowout_vol: 0.0
-    asp_disp_cycles: 0.0
+    asp_disp_cycles: 0
+    pre_asp_air_vol: 0.5
   hardware_protocol: calibration_protocol_northrobot
   simulation_protocol: calibration_protocol_simulated
 calibration_parameters:
@@ -171,10 +171,11 @@ screening:
     - deviation_pct
     - duration_s
 validation:
-  optimal_conditions_file: optimized_parameters/optimal_conditions_DMSO_march5.csv
+  optimal_conditions_file: output/run_1772749979/optimal_conditions.csv
   volumes_ml:
-  - 0.01
-  - 0.005
+  - 0.12
+  - 0.1
+  - 0.08
   replicates_per_volume: 50
   output_directory: validation/
   generate_plots: true
