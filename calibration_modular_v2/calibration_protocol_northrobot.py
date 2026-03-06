@@ -31,6 +31,7 @@ LIQUIDS = {
     "water": {"density": 1.00, "refill_pipets": False},
     "ethanol": {"density": 0.789, "refill_pipets": False},
     "toluene": {"density": 0.867, "refill_pipets": False},
+    "heptane": {"density": 0.68, "refill_pipets": False},
     "2MeTHF": {"density": 0.852, "refill_pipets": False},
     "isopropanol": {"density": 0.789, "refill_pipets": False},
     "DMSO": {"density": 1.1, "refill_pipets": False},
@@ -306,7 +307,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     'blowout_vol': hw_params.get('blowout_vol', 0.0),
                     'post_asp_air_vol': hw_params.get('post_asp_air_vol', 0.0),
                     'post_retract_wait_time': hw_params.get('post_retract_wait_time', 0.0),
-                    'overaspirate_vol': params.get('overaspirate_vol', 0.0)  # This is at top level
+                    'overaspirate_vol': params.get('overaspirate_vol', 0.0),  # This is at top level
+                    'asp_disp_cycles': hw_params.get('asp_disp_cycles', 0)
                 }
             except KeyError as e:
                 raise ValueError(f"Missing required parameter structure - params dict malformed: {e}") from e
