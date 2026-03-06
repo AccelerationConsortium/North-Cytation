@@ -1028,10 +1028,13 @@ def refill_surfactant_vial(lash_e, vial_name, liquid='SDS'):
     """
     # Get current volume and vial capacity
     current_volume_ml = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
-    max_volume_ml = 8
+    surfactant_base_name = vial_name.split('_')[0]  # e.g., "SDS" from "SDS_stock"
+    source_refill_vial = f"{surfactant_base_name}_refill"
+    current_volume_refill_ml = lash_e.nr_robot.get_vial_info(source_refill_vial, 'vial_volume')
+    max_volume_ml = 7.8
     
     # Calculate volume needed to fill to max capacity
-    fill_volume_ml = max_volume_ml - current_volume_ml
+    fill_volume_ml = min(max_volume_ml - current_volume_ml, current_volume_refill_ml)
     
     if fill_volume_ml <= 2.0:  # Already nearly full (within 2mL)
         lash_e.logger.info(f"    Surfactant vial '{vial_name}' already full ({current_volume_ml:.2f}mL), skipping fill")
@@ -1041,8 +1044,7 @@ def refill_surfactant_vial(lash_e, vial_name, liquid='SDS'):
     
     # Fill vial from reservoir
     # Parse surfactant name (everything before first underscore) and add _refill
-    surfactant_base_name = vial_name.split('_')[0]  # e.g., "SDS" from "SDS_stock"
-    source_refill_vial = f"{surfactant_base_name}_refill"
+    
     lash_e.nr_robot.dispense_from_vial_into_vial(source_vial_name=source_refill_vial,dest_vial_name=vial_name, volume=fill_volume_ml, liquid=liquid)
     
     lash_e.logger.info(f"    Surfactant vial '{vial_name}' refilled successfully to {max_volume_ml:.2f}mL")

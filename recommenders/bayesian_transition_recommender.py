@@ -68,8 +68,8 @@ import os
 Q_BATCH = 14              # Default batch size
 CANDIDATE_POOL = 50_000   # Size of Sobol candidate pool for greedy selection
 
-ALPHA_SPACING = 0.7       # Boundary density factor (0.5 = balanced spreading)
-DISTANCE_SCALE = 0.4     # Scale factor for distance weighting sigmoid (lower = sharper penalty)
+ALPHA_SPACING = 0.7       # Boundary density factor (0.5 = balanced spreading), higher means less clumping hopefully
+DISTANCE_SCALE = 0.4     # Scale factor for distance weighting sigmoid (lower = sharper penalty), lower means less clumping
 
 # Experimental design parameters
 N_INITIAL = 50            # Initial Sobol points

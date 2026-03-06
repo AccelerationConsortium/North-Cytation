@@ -36,40 +36,40 @@ def run_simple_dispense():
         print("Testing 50 replicates of 0.005 mL DMSO dispensing")
         print("="*50)
         
-        dmso_results = validate_pipetting_accuracy(
-            lash_e=lash_e,
-            source_vial=SOURCE_VIAL,
-            destination_vial=SOURCE_VIAL, 
-            liquid_type='DMSO',
-            volumes_ml=[0.005],  # Same volume as main workflow
-            replicates=50,
-            output_folder="output",
-            switch_pipet=False,
-            save_raw_data=not SIMULATE,
-            condition_tip_enabled=True,
-            conditioning_volume_ul=25
-        )
+        # dmso_results = validate_pipetting_accuracy(
+        #     lash_e=lash_e,
+        #     source_vial=SOURCE_VIAL,
+        #     destination_vial=SOURCE_VIAL, 
+        #     liquid_type='DMSO',
+        #     volumes_ml=[0.005],  # Same volume as main workflow
+        #     replicates=50,
+        #     output_folder="output",
+        #     switch_pipet=False,
+        #     save_raw_data=not SIMULATE,
+        #     condition_tip_enabled=True,
+        #     conditioning_volume_ul=25
+        # )
         
-        print(f"DMSO Validation Results: R²={dmso_results['r_squared']:.3f}, Accuracy={dmso_results['mean_accuracy_pct']:.1f}%")
-        print("="*50)
+        # print(f"DMSO Validation Results: R²={dmso_results['r_squared']:.3f}, Accuracy={dmso_results['mean_accuracy_pct']:.1f}%")
+        # print("="*50)
         
           
         # Dispense into sequential wells (0, 1, 2, ...)
         well_indices = list(range(NUMBER_OF_WELLS))
-        volumes = [DISPENSE_VOLUME_ML] * NUMBER_OF_WELLS
+        volumes = [DISPENSE_VOLUME_ML]
         
         # Single aspirate, multiple dispense for efficiency
-        total_volume = DISPENSE_VOLUME_ML * NUMBER_OF_WELLS
-        
-        print(f"\nAspirating {total_volume*1000:.1f} µL from {SOURCE_VIAL}")
-        lash_e.nr_robot.aspirate_from_vial(SOURCE_VIAL, total_volume, liquid="DMSO")
-        
         print(f"Dispensing into wells {well_indices[0]} to {well_indices[-1]}")
-        lash_e.nr_robot.dispense_into_wellplate(
-            dest_wp_num_array=well_indices,
-            amount_mL_array=volumes,
-            liquid="DMSO"
-        )
+        
+        for i in range (0, NUMBER_OF_WELLS):
+            lash_e.nr_robot.aspirate_from_vial(SOURCE_VIAL, DISPENSE_VOLUME_ML, liquid="DMSO")
+            
+            
+            lash_e.nr_robot.dispense_into_wellplate(
+                dest_wp_num_array=[i],
+                amount_mL_array=volumes,
+                liquid="DMSO"
+            )
         
         # Clean up
         lash_e.nr_robot.remove_pipet()

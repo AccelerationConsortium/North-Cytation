@@ -38,8 +38,8 @@ LIQUIDS_TO_CALIBRATE = [
         {
         'liquid_name': 'heptane',
         'target_vial': 'heptane',
-        'volume_targets_ml': [0.600, 0.400, 0.200],
-        'validation_volumes_ml': [0.600, 0.400, 0.200],
+        'volume_targets_ml': [0.600, 0.500, 0.400],
+        'validation_volumes_ml': [0.600, 0.500, 0.400],
         # Large tip (>200uL). No heptane large-tip constants - inferred from largetip_2MeTHF_params.
         'fixed_parameters': {
             'pre_asp_air_vol': 0.3,
@@ -62,8 +62,8 @@ LIQUIDS_TO_CALIBRATE = [
         {
         'liquid_name': '2MeTHF',
         'target_vial': '2MeTHF',
-        'volume_targets_ml': [0.600, 0.400, 0.200],
-        'validation_volumes_ml': [0.600, 0.400, 0.200],
+        'volume_targets_ml': [0.600, 0.500, 0.400],
+        'validation_volumes_ml': [0.600, 0.500, 0.400],
         # largetip_2MeTHF_params from SERENA_CONSTANTS
         'fixed_parameters': {
             'pre_asp_air_vol': 0.3,
@@ -86,8 +86,8 @@ LIQUIDS_TO_CALIBRATE = [
         {
         'liquid_name': 'toluene',
         'target_vial': 'toluene',
-        'volume_targets_ml': [0.600, 0.400, 0.200],
-        'validation_volumes_ml': [0.600, 0.400, 0.200],
+        'volume_targets_ml': [0.600, 0.500, 0.400],
+        'validation_volumes_ml': [0.600, 0.500, 0.400],
         # Large tip. No largetip_toluene constants - pre_asp_air_vol from largetip_2MeTHF, asp_disp_cycles=0 from smalltip_toluene pattern.
         'fixed_parameters': {
             'pre_asp_air_vol': 0.3,
@@ -95,18 +95,18 @@ LIQUIDS_TO_CALIBRATE = [
             'asp_disp_cycles': 0,
         }
     },
-    {
-        'liquid_name': 'water',
-        'target_vial': 'water',
-        'volume_targets_ml': [0.200, 0.150, 0.100, 0.050],
-        'validation_volumes_ml': [0.200, 0.150, 0.100, 0.050]
-    },
-    {
-    'liquid_name': 'ethanol',
-    'target_vial': 'ethanol',
-    'volume_targets_ml': [0.200, 0.150, 0.100, 0.050],
-    'validation_volumes_ml': [0.200, 0.150, 0.100, 0.050]
-},
+#     {
+#         'liquid_name': 'water',
+#         'target_vial': 'water',
+#         'volume_targets_ml': [0.200, 0.150, 0.100, 0.050],
+#         'validation_volumes_ml': [0.200, 0.150, 0.100, 0.050]
+#     },
+#     {
+#     'liquid_name': 'ethanol',
+#     'target_vial': 'ethanol',
+#     'volume_targets_ml': [0.200, 0.150, 0.100, 0.050],
+#     'validation_volumes_ml': [0.200, 0.150, 0.100, 0.050]
+# },
  {
     'liquid_name': 'TFA',
     'target_vial': 'TFA',
