@@ -892,9 +892,8 @@ class CombinedRackWidget(QScrollArea):
         self.large_vial_grid = large_vial_layout
         self.large_vial_placeholders = {}
         
-        # Column-major right-to-left layout (same as small rack): [2,0][3,1]
-        # Moves down the column then to the left, matching physical robot layout
-        clockwise_positions = [[2, 0], [3, 1]]
+        # Clockwise position mapping to match physical robot layout: [3,0][2,1]
+        clockwise_positions = [[3, 0], [2, 1]]
         
         for row in range(2):
             for col in range(2):

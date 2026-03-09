@@ -298,16 +298,6 @@ class BatchCalibrationAutomator:
             
         print("Files restored to original state")
         
-    def show_vial_gui(self):
-        """Launch vial manager GUI once before batch starts so user can review/edit vial setup."""
-        print("Opening Vial Manager GUI - review/edit vials, then close the window to begin batch calibration...")
-        gui_script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "vial_manager_gui.py")
-        if os.path.exists(gui_script):
-            subprocess.run([sys.executable, gui_script, VIALS_CSV])
-            print("Vial Manager closed - proceeding with batch calibration.")
-        else:
-            print(f"WARNING: vial_manager_gui.py not found at {gui_script}, skipping GUI.")
-
     def run_batch_calibration(self):
         """Main batch calibration loop."""
         print("="*60)
@@ -318,9 +308,6 @@ class BatchCalibrationAutomator:
             print(f"  - {liquid['liquid_name']} ({liquid['target_vial']})")
         print()
         
-        # Show GUI once for vial review before starting
-        self.show_vial_gui()
-
         try:
             # Setup
             self.create_backups()
