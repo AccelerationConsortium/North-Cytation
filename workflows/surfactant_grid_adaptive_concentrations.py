@@ -1031,7 +1031,7 @@ def refill_surfactant_vial(lash_e, vial_name, liquid='SDS'):
     surfactant_base_name = vial_name.split('_')[0]  # e.g., "SDS" from "SDS_stock"
     source_refill_vial = f"{surfactant_base_name}_refill"
     current_volume_refill_ml = lash_e.nr_robot.get_vial_info(source_refill_vial, 'vial_volume')
-    max_volume_ml = 7.8
+    max_volume_ml = 7.5
     
     # Calculate volume needed to fill to max capacity
     fill_volume_ml = min(max_volume_ml - current_volume_ml, current_volume_refill_ml)
