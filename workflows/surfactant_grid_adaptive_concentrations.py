@@ -1031,7 +1031,7 @@ def refill_surfactant_vial(lash_e, vial_name, liquid='SDS'):
     surfactant_base_name = vial_name.split('_')[0]  # e.g., "SDS" from "SDS_stock"
     source_refill_vial = f"{surfactant_base_name}_refill"
     current_volume_refill_ml = lash_e.nr_robot.get_vial_info(source_refill_vial, 'vial_volume')
-    max_volume_ml = 7.8
+    max_volume_ml = 7.5
     
     # Calculate volume needed to fill to max capacity
     fill_volume_ml = min(max_volume_ml - current_volume_ml, current_volume_refill_ml)
@@ -3403,7 +3403,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder):
         # Split into two separate tests as requested
         
         # Test 1a: Small water volumes with conditioning
-        small_volumes = [0.02,0.05,0.1]
+        small_volumes = [0.02,0.05,0.1,0.15]
         lash_e.logger.info("      Testing small water volumes (10-100 uL) with conditioning...")
         
         small_water_results = validate_pipetting_accuracy(
@@ -3476,7 +3476,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder):
             switch_pipet=False,
             save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
             condition_tip_enabled=True,
-            conditioning_volume_ul=100
+            conditioning_volume_ul=150
         )
         validation_results['surfactant_a_small'] = surf_a_small_results
         lash_e.logger.info(f"        Small {surfactant_a_stock}: R^2={surf_a_small_results['r_squared']:.3f}, Accuracy={surf_a_small_results['mean_accuracy_pct']:.1f}%")
@@ -4980,6 +4980,7 @@ if __name__ == "__main__":
         # For double iterative, we'll create separate folders for each pairing later
         print("Double iterative workflow - individual experiment folders will be created for each pairing...")
         base_experiment_name = None  # Will be set during pairing loop
+        experiment_output_folder = None  # Will be created for each pairing
     else:
         # For single workflows, create unified experiment folder
         experiment_output_folder, experiment_name = setup_experiment_environment(
@@ -4987,7 +4988,7 @@ if __name__ == "__main__":
         )
         print(f"Unified experiment folder created: {experiment_output_folder}")
 
-    if VALIDATE_LIQUIDS:
+    if VALIDATE_LIQUIDS and experiment_output_folder is not None:
         validate_pipetting_system(lash_e, experiment_output_folder)
 
     if WORKFLOW_TYPE == '2_stage':

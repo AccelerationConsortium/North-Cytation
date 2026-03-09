@@ -23,96 +23,40 @@ import shutil
 
 # Configuration - Edit this list for your liquids to calibrate
 LIQUIDS_TO_CALIBRATE = [
-    {
-        'liquid_name': 'heptane',
-        'target_vial': 'heptane',
-        'volume_targets_ml': [0.120, 0.100, 0.080],
-        'validation_volumes_ml': [0.120, 0.100, 0.080],
-        # Small tip (<=200uL). No heptane-specific constants - using same as smalltip_toluene_params.
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.5,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 0,
-        }
-    },
-        {
-        'liquid_name': 'heptane',
-        'target_vial': 'heptane',
-        'volume_targets_ml': [0.600, 0.500, 0.400],
-        'validation_volumes_ml': [0.600, 0.500, 0.400],
-        # Large tip (>200uL). No heptane large-tip constants - inferred from largetip_2MeTHF_params.
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.3,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 3,
-        }
-    },
-        {
-        'liquid_name': '2MeTHF',
-        'target_vial': '2MeTHF',
-        'volume_targets_ml': [0.120, 0.100, 0.080],
-        'validation_volumes_ml': [0.120, 0.100, 0.080],
-        # smalltip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.5,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 0,
-        }
-    },
-        {
-        'liquid_name': '2MeTHF',
-        'target_vial': '2MeTHF',
-        'volume_targets_ml': [0.600, 0.500, 0.400],
-        'validation_volumes_ml': [0.600, 0.500, 0.400],
-        # largetip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.3,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 3,
-        }
-    },
-    {
-        'liquid_name': 'toluene',
-        'target_vial': 'toluene',
-        'volume_targets_ml': [0.120, 0.100, 0.080],
-        'validation_volumes_ml': [0.120, 0.100, 0.080],
-        # smalltip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.7,
-            'post_asp_air_vol': 0.01,
-            'asp_disp_cycles': 0,
-        }
-    },
-        {
-        'liquid_name': 'toluene',
-        'target_vial': 'toluene',
-        'volume_targets_ml': [0.600, 0.500, 0.400],
-        'validation_volumes_ml': [0.600, 0.500, 0.400],
-        # Large tip. No largetip_toluene constants - pre_asp_air_vol from largetip_2MeTHF, asp_disp_cycles=0 from smalltip_toluene pattern.
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.3,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 0,
-        }
-    },
-#     {
-#         'liquid_name': 'water',
-#         'target_vial': 'water',
-#         'volume_targets_ml': [0.200, 0.150, 0.100, 0.050],
-#         'validation_volumes_ml': [0.200, 0.150, 0.100, 0.050]
+ 
+#  {
+#         'liquid_name': '2MeTHF',
+#         'target_vial': '2MeTHF',
+#         'volume_targets_ml': [0.120, 0.100, 0.080],
+#         'validation_volumes_ml': [0.120, 0.100, 0.080],
+#         # smalltip_2MeTHF_params from SERENA_CONSTANTS
+#         'fixed_parameters': {
+#             'pre_asp_air_vol': 0.5,
+#             'post_asp_air_vol': 0.05,
+#             'asp_disp_cycles': 0,
+#         }
 #     },
-#     {
-#     'liquid_name': 'ethanol',
-#     'target_vial': 'ethanol',
-#     'volume_targets_ml': [0.200, 0.150, 0.100, 0.050],
-#     'validation_volumes_ml': [0.200, 0.150, 0.100, 0.050]
-# },
- {
-    'liquid_name': 'TFA',
-    'target_vial': 'TFA',
-    'volume_targets_ml': [0.025, 0.015, 0.005],
-    'validation_volumes_ml': [0.025, 0.015, 0.005]
+#  
+    {
+        'liquid_name': 'water',
+        'target_vial': 'water',
+        'volume_targets_ml': [0.180, 0.100, 0.050],
+        'validation_volumes_ml': [0.150, 0.100, 0.070]
+
+    },
+    {
+    'liquid_name': 'ethanol',
+    'target_vial': 'ethanol',
+    'volume_targets_ml': [ 0.180, 0.100, 0.050],
+    'validation_volumes_ml': [0.150, 0.100, 0.070]
 },
+  {
+    'liquid_name': 'ethanol',
+    'target_vial': 'ethanol',
+    'volume_targets_ml': [ 0.800, 0.500, 0.200],
+    'validation_volumes_ml': [ 0.800, 0.500, 0.200]
+},
+
 ]
 
 # File paths - assumes running from main utoronto_demo directory (like other workflows)
@@ -298,16 +242,40 @@ class BatchCalibrationAutomator:
             
         print("Files restored to original state")
         
-    def show_vial_gui(self):
-        """Launch vial manager GUI once before batch starts so user can review/edit vial setup."""
-        print("Opening Vial Manager GUI - review/edit vials, then close the window to begin batch calibration...")
-        gui_script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "vial_manager_gui.py")
-        if os.path.exists(gui_script):
-            subprocess.run([sys.executable, gui_script, VIALS_CSV])
-            print("Vial Manager closed - proceeding with batch calibration.")
-        else:
-            print(f"WARNING: vial_manager_gui.py not found at {gui_script}, skipping GUI.")
-
+    def show_initial_gui(self):
+        """Show the GUI once at the start for system setup/verification."""
+        print("Initializing GUI for system setup...")
+        try:
+            # Add parent directory to path for imports  
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from master_usdl_coordinator import Lash_E
+            
+            # Initialize Lash_E with GUI enabled for setup
+            vial_file = VIALS_CSV
+            lash_e = Lash_E(vial_file, simulate=False, show_gui=True, initialize_biotek=False)
+            
+            # Give user time to interact with GUI
+            print("GUI launched for system setup and verification.")
+            print("Please use the GUI to:")
+            print("  - Verify vial positions")  
+            print("  - Check robot status")
+            print("  - Perform any manual setup needed")
+            input("\nPress Enter when ready to proceed with batch calibration...")
+            
+            # Clean shutdown
+            try:
+                lash_e.nr_robot.move_home()
+            except:
+                pass
+                
+            print("GUI setup complete. Starting batch calibration...")
+            return True
+            
+        except Exception as e:
+            print(f"Warning: Could not initialize GUI ({e})")
+            print("Proceeding without GUI setup...")
+            return False
+    
     def run_batch_calibration(self):
         """Main batch calibration loop."""
         print("="*60)
@@ -322,6 +290,9 @@ class BatchCalibrationAutomator:
         self.show_vial_gui()
 
         try:
+            # Show GUI once for system setup before batch starts
+            self.show_initial_gui()
+            
             # Setup
             self.create_backups()
             self.load_original_files()

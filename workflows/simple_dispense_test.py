@@ -14,7 +14,7 @@ INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/calibration_vials_short.csv"
 SIMULATE = False  # Set to False for hardware
 NUMBER_OF_WELLS = 50  # How many wells to dispense into
 DISPENSE_VOLUME_ML = 0.005  # Volume to dispense per well
-SOURCE_VIAL = "liquid_source_0"  # Which vial to dispense from
+SOURCE_VIAL = "water"  # Which vial to dispense from
 
 def run_simple_dispense():
     """Run the simple dispense workflow."""
