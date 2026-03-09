@@ -4930,6 +4930,7 @@ if __name__ == "__main__":
         # For double iterative, we'll create separate folders for each pairing later
         print("Double iterative workflow - individual experiment folders will be created for each pairing...")
         base_experiment_name = None  # Will be set during pairing loop
+        experiment_output_folder = None  # Will be created for each pairing
     else:
         # For single workflows, create unified experiment folder
         experiment_output_folder, experiment_name = setup_experiment_environment(
@@ -4937,7 +4938,7 @@ if __name__ == "__main__":
         )
         print(f"Unified experiment folder created: {experiment_output_folder}")
 
-    if VALIDATE_LIQUIDS:
+    if VALIDATE_LIQUIDS and experiment_output_folder is not None:
         validate_pipetting_system(lash_e, experiment_output_folder)
 
     if WORKFLOW_TYPE == '2_stage':

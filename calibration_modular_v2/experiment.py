@@ -923,16 +923,19 @@ class CalibrationExperiment:
             from .bayesian_recommender import create_optimizer, OptimizerType
             # Create temporary optimizer for SOBOL screening
             screening_trials = self.config.get_screening_trials()
+            # Use fixed parameters from config during screening phase
+            fixed_params = dict(self.config.get_fixed_parameters())
             self._screening_optimizer = create_optimizer(
                 self.config, 
                 target_volume_ml, 
                 optimizer_type=OptimizerType.MULTI_OBJECTIVE,
-                fixed_params=None,
+                fixed_params=fixed_params,  # Use config fixed parameters instead of None
                 volume_dependent_only=False,
                 num_sobol_trials=screening_trials,  # 5 SOBOL trials for screening
                 protocol_instance=self.protocol_module  # Pass protocol for constraints
             )
             logger.info(f"Created SOBOL optimizer for screening phase ({screening_trials} trials)")
+            logger.info(f"Applied fixed parameters during screening: {fixed_params}")
         
         # Get SOBOL parameter suggestion
         parameters = self._screening_optimizer.suggest_parameters()

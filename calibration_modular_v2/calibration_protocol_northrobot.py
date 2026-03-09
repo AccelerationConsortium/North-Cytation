@@ -108,6 +108,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         SINGLE_VIAL = True #True if you just want to use one vial, eg for a capped vial use "liquid_source_0"
 
         continuous_monitoring = True
+
+        show_gui = False
                
         # Quality control threshold for mass measurement stability (in grams)
         # Default: 0.001g (1mg) - good for most pipetting
@@ -125,7 +127,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             vial_file = "status/calibration_vials_short.csv"
             
             # Initialize Lash_E coordinator
-            lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
+            lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False, show_gui=show_gui)
             
             # Validate hardware files
             #lash_e.nr_robot.check_input_file()

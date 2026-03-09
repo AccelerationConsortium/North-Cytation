@@ -239,8 +239,8 @@ class PipettingWizardV2:
                 col_name = f'hardware_parameters_{param}'
                 if col_name in exact_match.columns:
                     value = float(exact_match.iloc[0][col_name])
-                    # Convert speed parameters to integers to avoid conversion warnings
-                    if param in ['aspirate_speed', 'dispense_speed', 'retract_speed']:
+                    # Convert speed parameters and cycle counts to integers to avoid conversion warnings
+                    if param in ['aspirate_speed', 'dispense_speed', 'retract_speed', 'asp_disp_cycles']:
                         value = int(round(value))
                     result[param] = value
             
@@ -293,8 +293,8 @@ class PipettingWizardV2:
                 interpolated_value = np.interp(target_volume_ul, volumes_sorted, param_sorted)
                 value = float(interpolated_value)
                 
-                # Convert speed parameters to integers to avoid conversion warnings
-                if param in ['aspirate_speed', 'dispense_speed', 'retract_speed']:
+                # Convert speed parameters and cycle counts to integers to avoid conversion warnings
+                if param in ['aspirate_speed', 'dispense_speed', 'retract_speed', 'asp_disp_cycles']:
                     value = int(round(value))
                 
                 result[param] = value

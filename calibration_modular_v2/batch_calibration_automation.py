@@ -23,6 +23,31 @@ import shutil
 
 # Configuration - Edit this list for your liquids to calibrate
 LIQUIDS_TO_CALIBRATE = [
+ 
+#  {
+#         'liquid_name': '2MeTHF',
+#         'target_vial': '2MeTHF',
+#         'volume_targets_ml': [0.120, 0.100, 0.080],
+#         'validation_volumes_ml': [0.120, 0.100, 0.080],
+#         # smalltip_2MeTHF_params from SERENA_CONSTANTS
+#         'fixed_parameters': {
+#             'pre_asp_air_vol': 0.5,
+#             'post_asp_air_vol': 0.05,
+#             'asp_disp_cycles': 0,
+#         }
+#     },
+#         {
+#         'liquid_name': '2MeTHF',
+#         'target_vial': '2MeTHF',
+#         'volume_targets_ml': [0.600, 0.500, 0.400],
+#         'validation_volumes_ml': [0.600, 0.500, 0.400],
+#         # largetip_2MeTHF_params from SERENA_CONSTANTS
+#         'fixed_parameters': {
+#             'pre_asp_air_vol': 0.3,
+#             'post_asp_air_vol': 0.05,
+#             'asp_disp_cycles': 3,
+#         }
+#     },
     {
         'liquid_name': 'heptane',
         'target_vial': 'heptane',
@@ -47,54 +72,31 @@ LIQUIDS_TO_CALIBRATE = [
             'asp_disp_cycles': 3,
         }
     },
-        {
-        'liquid_name': '2MeTHF',
-        'target_vial': '2MeTHF',
-        'volume_targets_ml': [0.120, 0.100, 0.080],
-        'validation_volumes_ml': [0.120, 0.100, 0.080],
-        # smalltip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.5,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 0,
-        }
-    },
-        {
-        'liquid_name': '2MeTHF',
-        'target_vial': '2MeTHF',
-        'volume_targets_ml': [0.600, 0.500, 0.400],
-        'validation_volumes_ml': [0.600, 0.500, 0.400],
-        # largetip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.3,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 3,
-        }
-    },
-    {
-        'liquid_name': 'toluene',
-        'target_vial': 'toluene',
-        'volume_targets_ml': [0.120, 0.100, 0.080],
-        'validation_volumes_ml': [0.120, 0.100, 0.080],
-        # smalltip_2MeTHF_params from SERENA_CONSTANTS
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.7,
-            'post_asp_air_vol': 0.01,
-            'asp_disp_cycles': 0,
-        }
-    },
-        {
-        'liquid_name': 'toluene',
-        'target_vial': 'toluene',
-        'volume_targets_ml': [0.600, 0.500, 0.400],
-        'validation_volumes_ml': [0.600, 0.500, 0.400],
-        # Large tip. No largetip_toluene constants - pre_asp_air_vol from largetip_2MeTHF, asp_disp_cycles=0 from smalltip_toluene pattern.
-        'fixed_parameters': {
-            'pre_asp_air_vol': 0.3,
-            'post_asp_air_vol': 0.05,
-            'asp_disp_cycles': 0,
-        }
-    },
+       
+    # {
+    #     'liquid_name': 'toluene',
+    #     'target_vial': 'toluene',
+    #     'volume_targets_ml': [0.120, 0.100, 0.080],
+    #     'validation_volumes_ml': [0.120, 0.100, 0.080],
+    #     # smalltip_2MeTHF_params from SERENA_CONSTANTS
+    #     'fixed_parameters': {
+    #         'pre_asp_air_vol': 0.7,
+    #         'post_asp_air_vol': 0.01,
+    #         'asp_disp_cycles': 0,
+    #     }
+    # },
+    #     {
+    #     'liquid_name': 'toluene',
+    #     'target_vial': 'toluene',
+    #     'volume_targets_ml': [0.600, 0.500, 0.400],
+    #     'validation_volumes_ml': [0.600, 0.500, 0.400],
+    #     # Large tip. No largetip_toluene constants - pre_asp_air_vol from largetip_2MeTHF, asp_disp_cycles=0 from smalltip_toluene pattern.
+    #     'fixed_parameters': {
+    #         'pre_asp_air_vol': 0.3,
+    #         'post_asp_air_vol': 0.05,
+    #         'asp_disp_cycles': 0,
+    #     }
+    # },
 #     {
 #         'liquid_name': 'water',
 #         'target_vial': 'water',
@@ -107,12 +109,7 @@ LIQUIDS_TO_CALIBRATE = [
 #     'volume_targets_ml': [0.200, 0.150, 0.100, 0.050],
 #     'validation_volumes_ml': [0.200, 0.150, 0.100, 0.050]
 # },
- {
-    'liquid_name': 'TFA',
-    'target_vial': 'TFA',
-    'volume_targets_ml': [0.025, 0.015, 0.005],
-    'validation_volumes_ml': [0.025, 0.015, 0.005]
-},
+
 ]
 
 # File paths - assumes running from main utoronto_demo directory (like other workflows)
