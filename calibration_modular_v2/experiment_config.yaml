@@ -1,17 +1,16 @@
 experiment:
   name: multi_volume_calibration_test
-  liquid: TFA
+  liquid: water
   description: Testing calibration across 4 volumes
   volume_targets_ml:
-  - 0.15
+  - 0.18
   - 0.1
   - 0.05
-  - 0.2
   max_total_measurements: 200
   max_measurements_first_volume: 150
   num_screening_trials: 6
   replicates_for_accurate_measurements: 4
-  simulate: true
+  simulate: false
   random_seed: 7
   fixed_parameters:
     post_asp_air_vol: 0.0
@@ -173,9 +172,9 @@ screening:
 validation:
   optimal_conditions_file: optimized_parameters/optimal_conditions_TFA_new.csv
   volumes_ml:
-  - 0.025
-  - 0.015
-  - 0.005
+  - 0.15
+  - 0.1
+  - 0.07
   replicates_per_volume: 5
   output_directory: validation/
   generate_plots: true

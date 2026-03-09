@@ -3403,7 +3403,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder):
         # Split into two separate tests as requested
         
         # Test 1a: Small water volumes with conditioning
-        small_volumes = [0.02,0.05,0.1]
+        small_volumes = [0.02,0.05,0.1,0.15]
         lash_e.logger.info("      Testing small water volumes (10-100 uL) with conditioning...")
         
         small_water_results = validate_pipetting_accuracy(
@@ -3476,7 +3476,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder):
             switch_pipet=False,
             save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
             condition_tip_enabled=True,
-            conditioning_volume_ul=100
+            conditioning_volume_ul=150
         )
         validation_results['surfactant_a_small'] = surf_a_small_results
         lash_e.logger.info(f"        Small {surfactant_a_stock}: R^2={surf_a_small_results['r_squared']:.3f}, Accuracy={surf_a_small_results['mean_accuracy_pct']:.1f}%")
