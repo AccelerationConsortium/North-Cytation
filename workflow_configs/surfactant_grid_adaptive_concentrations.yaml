@@ -1,5 +1,5 @@
 # Workflow Configuration File
-# Generated: 2026-03-05 14:39:29
+# Generated: 2026-03-06 19:53:38
 # Workflow: surfactant_grid_adaptive_concentrations
 #
 # Edit this file to customize workflow behavior.
@@ -8,10 +8,10 @@
 
 SURFACTANT_A: SDS
 SURFACTANT_B: TTAB
-WORKFLOW_TYPE: iterative
-EXPERIMENT_TAG: SDS_TTAB_Bayesian
-SIMULATE: false
-VALIDATE_LIQUIDS: true
+WORKFLOW_TYPE: double_iterative
+EXPERIMENT_TAG: double_surfactant_test
+SIMULATE: true
+VALIDATE_LIQUIDS: false
 MIN_CONC: 0.01
 FINAL_SUBSTOCK_VOLUME_ML: 6.0
 PAIRING_QUEUE: '[{''SURFACTANT_A'': ''SDS'', ''SURFACTANT_B'': ''TTAB'', ''ADD_BUFFER'':
@@ -21,7 +21,7 @@ NUM_SUBSTOCKS: 6
 ITERATIVE_CONCENTRATIONS: 5
 GRADIENT_SUGGESTIONS_PER_ITERATION: 14
 OPTIMIZE_METRIC: both
-RECOMMENDER_TYPE: bayesian
+RECOMMENDER_TYPE: delaunay
 ITERATIVE_MEASUREMENT_TOTAL: 192
 ADD_CMC_CONTROLS: true
 CMC_CONTROL_POINTS: 8
