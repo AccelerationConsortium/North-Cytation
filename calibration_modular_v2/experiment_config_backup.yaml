@@ -11,7 +11,7 @@ experiment:
   max_measurements_first_volume: 150
   num_screening_trials: 6
   replicates_for_accurate_measurements: 4
-  simulate: false
+  simulate: true
   random_seed: 7
   fixed_parameters:
     post_asp_air_vol: 0.0
@@ -34,6 +34,7 @@ hardware_parameters:
   aspirate_speed:
     bounds:
     - 2
+    - 2
     - 20
     default: 10
     type: integer
@@ -42,6 +43,7 @@ hardware_parameters:
     round_to_nearest: 1
   dispense_speed:
     bounds:
+    - 2
     - 2
     - 20
     default: 10
@@ -67,6 +69,33 @@ hardware_parameters:
     time_affecting: false
     description: Pre-aspiration air volume (mL)
     volume_dependent: true
+    round_to_nearest: 0.001
+  post_asp_air_vol:
+    bounds:
+    - 0.0
+    - 0.1
+    default: 0.0
+    type: float
+    time_affecting: false
+    description: Post-aspiration air gap volume (mL)
+    round_to_nearest: 0.001
+  dispense_wait_time:
+    bounds:
+    - 0.0
+    - 5.0
+    default: 1.5
+    type: float
+    time_affecting: true
+    description: Wait time after dispense (seconds)
+    round_to_nearest: 0.1
+  blowout_vol:
+    bounds:
+    - 0.0
+    - 0.05
+    default: 0.0
+    type: float
+    time_affecting: false
+    description: Blowout volume after dispense (mL)
     round_to_nearest: 0.001
   post_asp_air_vol:
     bounds:

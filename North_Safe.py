@@ -2174,18 +2174,33 @@ class North_Robot(North_Base):
                                     parameters.pre_asp_air_vol + 
                                     parameters.post_asp_air_vol)
 
-        # Handle large volumes by splitting based on TOTAL tip volume requirement
+        # Handle large volumes by splitting based on TOTAL tip volume requirement.
+        # After recalculating parameters for a sub-volume the pre_asp_air_vol and other
+        # overheads may change, so we iterate: split → recalculate → verify → re-split if
+        # necessary, until the recalculated total fits within the tip's physical capacity.
         max_system_volume = max((tip_config.get('volume', 0) for tip_config in self.PIPET_TIPS.values()), default=1.0)
         repeats = 1
-        
+
         if total_tip_volume_required > max_system_volume:
-            # Calculate how many splits we need based on total tip volume
             repeats = math.ceil(total_tip_volume_required / max_system_volume)
-            volume = volume / repeats  # Split the BASE volume, not the total tip volume
-            self.logger.info(f"Total tip volume ({total_tip_volume_required:.3f} mL) exceeds capacity, splitting into {repeats} transfers of {round(volume,3)} mL each")
-            
-            # Recalculate optimized parameters for the new smaller volume
+            sub_volume = volume / repeats
+
+            # Iteratively increase splits until the recalculated params for the sub-volume
+            # also fit — handles cases where pre_asp_air_vol grows for smaller volumes.
+            for _ in range(10):  # safety cap to prevent infinite loop
+                sub_params = self._get_optimized_parameters(sub_volume, liquid, parameters)
+                sub_total = (sub_volume +
+                             sub_params.overaspirate_vol +
+                             sub_params.pre_asp_air_vol +
+                             sub_params.post_asp_air_vol)
+                if sub_total <= max_system_volume:
+                    break
+                repeats += 1
+                sub_volume = volume / repeats
+
+            volume = sub_volume
             parameters = self._get_optimized_parameters(volume, liquid, parameters)
+            self.logger.info(f"Total tip volume ({total_tip_volume_required:.3f} mL) exceeds capacity, splitting into {repeats} transfers of {round(volume,3)} mL each")
 
         total_mass = 0
         for i in range(repeats):

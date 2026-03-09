@@ -1423,108 +1423,145 @@ def calculate_dilution_recipes(lash_e, plan_a, plan_b, surfactant_a_name, surfac
     
     return recipes
 
+REFILL_THRESHOLD_ML = 4.0  # Top up vials below this volume
+
 def create_substocks_from_recipes(lash_e, recipes):
     """
     Create physical substocks according to the calculated recipes.
-    Checks for existing substocks (volume > 0) before creating new ones.
+    - Vials >= REFILL_THRESHOLD_ML: skipped (sufficient)
+    - Vials 0 < v < REFILL_THRESHOLD_ML: topped up proportionally to FINAL_SUBSTOCK_VOLUME_ML
+    - Vials <= 0: full remake
     """
     logger = lash_e.logger
-    logger.info(f"Checking for existing substocks and creating {len(recipes)} new ones as needed")
-    
-    # First, check for existing substocks
-    existing_substocks = {}
-    try:
-        vial_file_path = "status/surfactant_grid_vials_expanded.csv"
-        if os.path.exists(vial_file_path):
-            import pandas as pd
-            df = pd.read_csv(vial_file_path)
-            
-            for _, row in df.iterrows():
-                vial_name = row['vial_name']
-                volume = float(row['vial_volume']) if pd.notna(row['vial_volume']) else 0.0
-                
-                if volume > 0:
-                    existing_substocks[vial_name] = volume
-                    logger.info(f"Found existing substock: {vial_name} ({volume:.1f} mL)")
-    except Exception as e:
-        logger.warning(f"Could not check existing substocks: {e}")
-    
-    created_substocks = []
-    skipped_count = 0
-    
+    logger.info(f"Checking {len(recipes)} substocks (threshold: {REFILL_THRESHOLD_ML} mL)...")
+
+    # Read live volumes from robot tracker for all recipe vials
+    current_volumes = {}
     for recipe in recipes:
         vial_name = recipe['Vial_Name']
-        surfactant = recipe['Surfactant']
+        try:
+            vol = lash_e.nr_robot.get_vial_info(vial_name, 'vial_volume')
+            current_volumes[vial_name] = max(0.0, float(vol)) if vol is not None else 0.0
+        except Exception:
+            current_volumes[vial_name] = 0.0
+
+    # Print full status table before doing anything
+    print("\n" + "="*65)
+    print(f"  SUBSTOCK STATUS ({len(recipes)} vials, threshold={REFILL_THRESHOLD_ML} mL)")
+    print(f"  {'Vial':<22} {'Current':>8}  {'Action'}")
+    print("  " + "-"*60)
+    for recipe in recipes:
+        vial_name = recipe['Vial_Name']
+        vol = current_volumes[vial_name]
+        if vol >= REFILL_THRESHOLD_ML:
+            action = f"SKIP  (sufficient)"
+            breakdown = None
+        elif vol > 0:
+            top_up = FINAL_SUBSTOCK_VOLUME_ML - vol
+            ratio = top_up / FINAL_SUBSTOCK_VOLUME_ML
+            src_uL = recipe['Source_Volume_mL'] * ratio * 1000
+            wtr_uL = recipe['Water_Volume_mL']  * ratio * 1000
+            action = f"TOPUP +{top_up*1000:.0f} uL -> {FINAL_SUBSTOCK_VOLUME_ML:.1f} mL"
+            breakdown = f"       ({src_uL:.0f} uL {recipe['Source_Vial']} + {wtr_uL:.0f} uL water)"
+        else:
+            src_uL = recipe['Source_Volume_mL'] * 1000
+            wtr_uL = recipe['Water_Volume_mL']  * 1000
+            action = f"CREATE (full {FINAL_SUBSTOCK_VOLUME_ML:.1f} mL)"
+            breakdown = f"       ({src_uL:.0f} uL {recipe['Source_Vial']} + {wtr_uL:.0f} uL water)"
+        print(f"  {vial_name:<22} {vol:>6.2f} mL  {action}")
+        if breakdown:
+            print(f"  {breakdown}")
+    print("="*65)
+
+    created_substocks = []
+    skipped_count = 0
+    topup_count = 0
+
+    for recipe in recipes:
+        vial_name   = recipe['Vial_Name']
         target_conc = recipe['Target_Conc_mM']
         source_vial = recipe['Source_Vial']
-        source_volume_ml = recipe['Source_Volume_mL'] 
-        water_volume_ml = recipe['Water_Volume_mL']
-        
-        # Check if this substock already exists with sufficient volume
-        if vial_name in existing_substocks and existing_substocks[vial_name] > 0:
-            logger.info(f"Skipping {vial_name}: already exists with {existing_substocks[vial_name]:.1f} mL")
+        full_source_ml = recipe['Source_Volume_mL']
+        full_water_ml  = recipe['Water_Volume_mL']
+        final_vol_ml   = recipe['Final_Volume_mL']
+        current_vol    = current_volumes[vial_name]
+
+        # --- SKIP ---
+        if current_vol >= REFILL_THRESHOLD_ML:
+            logger.info(f"  SKIP  {vial_name}: {current_vol:.2f} mL (>= {REFILL_THRESHOLD_ML} mL threshold)")
             created_substocks.append({
-                'vial_name': vial_name,
-                'concentration_mm': target_conc,
-                'volume_ml': existing_substocks[vial_name],
-                'created': False,  # Not newly created
-                'existed': True
+                'vial_name': vial_name, 'concentration_mm': target_conc,
+                'volume_ml': current_vol, 'created': False, 'existed': True
             })
             skipped_count += 1
             continue
-        
-        logger.info(f"Creating {vial_name}: {target_conc:.2e} mM")
-        logger.info(f"  Recipe: {source_volume_ml*1000:.0f}uL {source_vial} + {water_volume_ml*1000:.0f}uL water")
-        
-        # Always call robot functions - Lash_E handles simulation internally
+
+        # --- TOP-UP or FULL CREATE ---
+        if current_vol > 0:
+            # Proportional top-up
+            top_up_ml   = final_vol_ml - current_vol
+            ratio       = top_up_ml / final_vol_ml
+            source_to_add = full_source_ml * ratio
+            water_to_add  = full_water_ml  * ratio
+            action_label  = f"TOP-UP +{top_up_ml*1000:.0f} uL"
+        else:
+            # Full remake
+            source_to_add = full_source_ml
+            water_to_add  = full_water_ml
+            action_label  = f"CREATE {final_vol_ml:.1f} mL"
+
+        # Guard: source volume must be pipettable
+        if source_to_add * 1000 < 10.0:
+            logger.warning(f"  SKIP  {vial_name}: source volume too small ({source_to_add*1000:.1f} uL < 10 uL min)")
+            created_substocks.append({
+                'vial_name': vial_name, 'concentration_mm': target_conc,
+                'volume_ml': current_vol, 'created': False, 'existed': True
+            })
+            skipped_count += 1
+            continue
+
+        print(f"\n  >> {action_label}: {vial_name} ({target_conc:.2e} mM)")
+        print(f"     Source : {source_to_add*1000:.1f} uL from {source_vial}")
+        print(f"     Water  : {water_to_add*1000:.1f} uL")
+
         try:
-            # Add source solution
             lash_e.nr_robot.dispense_from_vial_into_vial(
-                source_vial_name=source_vial, 
-                dest_vial_name=vial_name, 
-                volume=source_volume_ml,
+                source_vial_name=source_vial,
+                dest_vial_name=vial_name,
+                volume=source_to_add,
                 liquid='water'
             )
-
-            # Add water first if needed
-            if water_volume_ml > 0:
+            if water_to_add > 0:
                 lash_e.nr_robot.dispense_into_vial_from_reservoir(
-                    reservoir_index=1, vial_index=vial_name, 
-                    volume=water_volume_ml, return_home=False
+                    reservoir_index=1, vial_index=vial_name,
+                    volume=water_to_add, return_home=False
                 )
-            
-
-            
-            # Vortex to mix
             lash_e.nr_robot.vortex_vial(vial_name=vial_name, vortex_time=8, vortex_speed=80)
             lash_e.nr_robot.return_vial_home(vial_name=vial_name)
-            
+
+            new_vol = current_vol + source_to_add + water_to_add
+            print(f"     Done   : {vial_name} now ~{new_vol:.2f} mL")
+            logger.info(f"  + {action_label} {vial_name}: now ~{new_vol:.2f} mL")
 
             created_substocks.append({
-                'vial_name': vial_name,
-                'concentration_mm': target_conc,
-                'volume_ml': recipe['Final_Volume_mL'],
-                'created': True,
-                'existed': False
+                'vial_name': vial_name, 'concentration_mm': target_conc,
+                'volume_ml': new_vol, 'created': True, 'existed': current_vol > 0,
+                'action': 'topup' if current_vol > 0 else 'created'
             })
-            
-            logger.info(f"  + Successfully created {vial_name}")
-            
+            if current_vol > 0:
+                topup_count += 1
+
         except Exception as e:
-            logger.error(f"  - Failed to create {vial_name}: {str(e)}")
+            logger.error(f"  - Failed {action_label} {vial_name}: {e}")
             created_substocks.append({
-                'vial_name': vial_name,
-                'concentration_mm': target_conc,
-                'volume_ml': 0,
-                'created': False,
-                'existed': False,
-                'error': str(e)
+                'vial_name': vial_name, 'concentration_mm': target_conc,
+                'volume_ml': 0, 'created': False, 'existed': False, 'error': str(e)
             })
-    
-    newly_created = len([s for s in created_substocks if s['created'] and not s.get('existed', False)])
-    total_available = len([s for s in created_substocks if (s['created'] or s.get('existed', False))])
-    
-    logger.info(f"Substock summary: {newly_created} newly created, {skipped_count} already existed, {total_available} total available")
+
+    newly_created = len([s for s in created_substocks if s.get('action') == 'created'])
+    total_available = len([s for s in created_substocks if s['created'] or s.get('existed', False)])
+    print(f"\n  Substock summary: {newly_created} created, {topup_count} topped up, {skipped_count} skipped, {total_available} total available\n")
+    logger.info(f"Substock summary: {newly_created} created, {topup_count} topped up, {skipped_count} skipped, {total_available} total available")
     return created_substocks
 
 
@@ -2052,24 +2089,53 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     wells_needing_component = wells_needing_component.sort_values([volume_column, 'wellplate_index'], ascending=[False, True])
     
     logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells (sorted by volume, then well order)")
-    
-    condition_tip(lash_e, vial_name, conditioning_volume_ul=200)
 
-    # Dispense to each well individually
-    for _, row in wells_needing_component.iterrows():
-        well_idx = row['wellplate_index']
-        volume_ul = row[volume_column]
-        volume_ml = volume_ul / 1000
-        
-        logger.debug(f"    Well {well_idx}: {volume_ul:.1f}uL from {vial_name}")
-        
-        # Robot actions (Lash_E handles simulation internally)
-        lash_e.nr_robot.aspirate_from_vial(vial_name, volume_ml, liquid=liquid_type)
-        lash_e.nr_robot.dispense_into_wellplate(
-            dest_wp_num_array=[well_idx], 
-            amount_mL_array=[volume_ml],
-            liquid=liquid_type
-        )
+    # Split wells into two passes by tip type.
+    # Small tip physical max = 200 uL; effective safe threshold = 180 uL (leaves room for
+    # overaspirate + air volumes added by aspirate_from_vial).
+    # Pass 1: small-tip wells (< 200 uL) — condition with 150 uL, lock to small_tip.
+    #         Runs first so the small tip held from previous dilution vials carries through.
+    # Pass 2: large-tip wells (>= 200 uL) — condition with 300 uL, lock to large_tip.
+    #         Runs last; only present on the stock vial (1 well at exactly 200 uL).
+    # This ordering means all-small vials (dilutions) never trigger a remove_pipet between
+    # them, so one small tip serves the entire dilution series + the stock's small wells.
+    SMALL_TIP_SAFE_UL = 200
+    large_wells = wells_needing_component[wells_needing_component[volume_column] >= SMALL_TIP_SAFE_UL]
+    small_wells = wells_needing_component[wells_needing_component[volume_column] < SMALL_TIP_SAFE_UL]
+
+    # --- Pass 1: small tip ---
+    if len(small_wells) > 0:
+        logger.debug(f"  {component_name}: Pass 1 - {len(small_wells)} wells with small_tip (<{SMALL_TIP_SAFE_UL}uL)")
+        condition_tip(lash_e, vial_name, conditioning_volume_ul=150)
+        for _, row in small_wells.iterrows():
+            well_idx = row['wellplate_index']
+            volume_ml = row[volume_column] / 1000
+            logger.debug(f"    Well {well_idx}: {volume_ml*1000:.1f}uL (small_tip) from {vial_name}")
+            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_ml, liquid=liquid_type, specified_tip="small_tip")
+            lash_e.nr_robot.dispense_into_wellplate(
+                dest_wp_num_array=[well_idx],
+                amount_mL_array=[volume_ml],
+                liquid=liquid_type
+            )
+
+    # --- Pass 2: large tip ---
+    if len(large_wells) > 0:
+        # Only drop the tip if Pass 1 ran (small tip is held); if Pass 1 was empty
+        # there is no tip to remove before conditioning for the large tip.
+        if len(small_wells) > 0:
+            lash_e.nr_robot.remove_pipet()
+        logger.debug(f"  {component_name}: Pass 2 - {len(large_wells)} wells with large_tip (>={SMALL_TIP_SAFE_UL}uL)")
+        condition_tip(lash_e, vial_name, conditioning_volume_ul=300)
+        for _, row in large_wells.iterrows():
+            well_idx = row['wellplate_index']
+            volume_ml = row[volume_column] / 1000
+            logger.debug(f"    Well {well_idx}: {volume_ml*1000:.1f}uL (large_tip) from {vial_name}")
+            lash_e.nr_robot.aspirate_from_vial(vial_name, volume_ml, liquid=liquid_type, specified_tip="large_tip")
+            lash_e.nr_robot.dispense_into_wellplate(
+                dest_wp_num_array=[well_idx],
+                amount_mL_array=[volume_ml],
+                liquid=liquid_type
+            )
            
     logger.info(f"    {component_name}: Dispensing complete")
 
@@ -2841,7 +2907,8 @@ def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, s
     """Initialize experiment environment: create folders, set name, log header."""
     # Create experiment name with timestamp
     experiment_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}_{experiment_timestamp}"
+    tag_suffix = f"_{EXPERIMENT_TAG}" if EXPERIMENT_TAG else ""
+    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}{tag_suffix}_{experiment_timestamp}"
     lash_e.current_experiment_name = experiment_name  # Store for access by other functions
     
     # Create organized experiment folder structure
@@ -2907,7 +2974,12 @@ def execute_dispensing(lash_e, well_recipes_df):
             # Dispense water - split between two water vials to prevent running out
             water_wells = batch_df[batch_df['water_volume_ul'] > 0]
             if len(water_wells) > 0:
-                # Split water dispensing in half
+                # Sort ascending by volume so any large-tip wells (>=200uL) land in
+                # batch_2 (dispensed last). This avoids a large->small tip switch
+                # between the two water vials: batch_1 ends with small tip held,
+                # batch_2 continues on small then switches to large at the end,
+                # and the explicit remove_pipet() below drops that final large tip.
+                water_wells = water_wells.sort_values('water_volume_ul', ascending=True)
                 mid_point = len(water_wells) // 2
                 water_batch_1 = water_wells.iloc[:mid_point]
                 water_batch_2 = water_wells.iloc[mid_point:]
@@ -4593,35 +4665,13 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     else:
         raise ValueError(f"Invalid OPTIMIZE_METRIC: {OPTIMIZE_METRIC}. Must be 'turbidity', 'ratio', or 'both'")
     
-    # Apply log transformation to turbidity for consistency between algorithms
-    # Delaunay uses log+zscore, so we pre-log the data for Bayesian's zscore-only normalization
     data_for_recommender = experiment_data_df.copy()  # Don't modify original
-    if 'turbidity_600' in data_for_recommender.columns and 'turbidity_600' in output_columns:
-        epsilon = 1e-6
-        original_turbidity = data_for_recommender['turbidity_600'].copy()
-        # Create separate log-transformed column for optimizer (preserve original for plotting)
-        data_for_recommender['turbidity_600_log'] = (data_for_recommender['turbidity_600'] + epsilon).apply(lambda x: np.log10(x))
-        
-        # Update output_columns to use log-transformed column for recommender
-        log_output_columns = []
-        for col in output_columns:
-            if col == 'turbidity_600':
-                log_output_columns.append('turbidity_600_log')  # Use log version for optimizer
-            else:
-                log_output_columns.append(col)  # Keep ratio as-is
-        
-        print(f"Applied log10 transform to turbidity_600 for algorithm consistency")
-        print(f"  Original range: [{original_turbidity.min():.4f}, {original_turbidity.max():.4f}]")
-        print(f"  Log-transformed: [{data_for_recommender['turbidity_600_log'].min():.3f}, {data_for_recommender['turbidity_600_log'].max():.3f}]")
-        print(f"  Optimizer will use columns: {log_output_columns}")
-    else:
-        log_output_columns = output_columns  # No change needed
     
     # Initialize the selected recommender algorithm
     if RECOMMENDER_TYPE == 'delaunay':
         recommender = DelaunayTriangleRecommender(
             input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
-            output_columns=log_output_columns,                    # Use log-transformed columns when applicable
+            output_columns=output_columns,
             log_transform_inputs=True,    # Work in log concentration space
             normalization_method='log_zscore'  # Log + z-score normalization
         )
@@ -4629,7 +4679,7 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     elif RECOMMENDER_TYPE == 'bayesian':
         recommender = BayesianTransitionRecommender(
             input_columns=['surf_A_conc_mm', 'surf_B_conc_mm'],  # 2D concentration space (X, Y)
-            output_columns=log_output_columns,                    # Use log-transformed columns when applicable
+            output_columns=output_columns,
             log_transform_inputs=True,    # Work in log concentration space
             delta=0.03,      # Step size for directional gradients
             K=24,            # Number of random directions
@@ -4641,7 +4691,7 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     # Get recommendations from selected algorithm
     print(f"Running {algorithm_name} analysis for {n_suggestions} boundary suggestions...")
     print(f"DEBUG: Algorithm: {RECOMMENDER_TYPE} ({algorithm_name})")
-    print(f"DEBUG: Optimization target: {OPTIMIZE_METRIC} -> output columns: {log_output_columns}")
+    print(f"DEBUG: Optimization target: {OPTIMIZE_METRIC} -> output columns: {output_columns}")
     print(f"DEBUG: Input data shape: {experiment_data_df.shape}")
     print(f"DEBUG: Available columns: {list(data_for_recommender.columns)}")
     
