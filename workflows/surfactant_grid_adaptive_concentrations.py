@@ -1504,13 +1504,25 @@ def create_substocks_from_recipes(lash_e, recipes):
             source_to_add = full_source_ml * ratio
             water_to_add  = full_water_ml  * ratio
             action_label  = f"TOP-UP +{top_up_ml*1000:.0f} uL"
+            
+            # ENFORCE MINIMUM 200 µL PIPETTING VOLUME (prevents small tip usage and crashes)
+            if source_to_add * 1000 < 200.0:
+                logger.info(f"    Enforcing 200µL minimum: {source_to_add*1000:.1f}µL -> 200µL (scaling both volumes proportionally)")
+                # Scale both source and water to maintain correct concentration ratio
+                scale_factor = 0.2 / source_to_add  # Factor to make source = 200µL
+                source_to_add = 0.2  # 200 µL minimum
+                water_to_add = water_to_add * scale_factor  # Scale water proportionally
+                
+                new_total_vol = current_vol + source_to_add + water_to_add
+                action_label = f"TOP-UP +{(source_to_add + water_to_add)*1000:.0f} uL (200µL min, scaled) -> {new_total_vol:.1f}mL"
+                
         else:
             # Full remake
             source_to_add = full_source_ml
             water_to_add  = full_water_ml
             action_label  = f"CREATE {final_vol_ml:.1f} mL"
 
-        # Guard: source volume must be pipettable
+        # Guard: source volume must be pipettable (after enforcement)
         if source_to_add * 1000 < 10.0:
             logger.warning(f"  SKIP  {vial_name}: source volume too small ({source_to_add*1000:.1f} uL < 10 uL min)")
             created_substocks.append({
@@ -2015,7 +2027,7 @@ def validate_and_convert_recipe_volumes(batch_df):
     
     return validated_df
 
-def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, volume_column):
+def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, volume_column, should_condition_tip=True):
     """
     Unified dispensing method for any liquid component.
     
@@ -2025,6 +2037,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
         vial_name: Name of source vial (e.g., 'water', 'SDS_1.0mM', 'pyrene_DMSO')
         liquid_type: Type of liquid for pipetting parameters ('water', 'DMSO')
         volume_column: Column name for volume (e.g., 'surf_A_volume_ul', 'water_volume_ul')
+        should_condition_tip: Boolean, condition tip for first dispense only (default True)
     """
     logger = lash_e.logger
     
@@ -2106,7 +2119,8 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     # --- Pass 1: small tip ---
     if len(small_wells) > 0:
         logger.debug(f"  {component_name}: Pass 1 - {len(small_wells)} wells with small_tip (<{SMALL_TIP_SAFE_UL}uL)")
-        condition_tip(lash_e, vial_name, conditioning_volume_ul=150)
+        if should_condition_tip:
+            condition_tip(lash_e, vial_name, conditioning_volume_ul=150)
         for _, row in small_wells.iterrows():
             well_idx = row['wellplate_index']
             volume_ml = row[volume_column] / 1000
@@ -2963,9 +2977,10 @@ def execute_dispensing(lash_e, well_recipes_df):
             if len(surf_a_vials) > 0:
                 sorted_surf_a_vials = position_surfactant_vials_by_concentration(lash_e, surf_a_vials, batch_df, 'A')
                 
-                # Dispense surfactant A substocks in concentration order
-                for surf_a_vial in sorted_surf_a_vials:
-                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'water', 'surf_A_volume_ul')
+                # Dispense surfactant A substocks in concentration order (condition tip only for first vial)
+                for i, surf_a_vial in enumerate(sorted_surf_a_vials):
+                    should_condition = (i == 0)  # Only condition for first vial in the series
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'water', 'surf_A_volume_ul', should_condition_tip=should_condition)
                 
                 # Return surfactant A vials to home
                 lash_e.nr_robot.remove_pipet()
@@ -3013,9 +3028,10 @@ def execute_dispensing(lash_e, well_recipes_df):
             if len(surf_b_vials) > 0:
                 sorted_surf_b_vials = position_surfactant_vials_by_concentration(lash_e, surf_b_vials, batch_df, 'B')
                 
-                # Dispense surfactant B substocks in concentration order
-                for surf_b_vial in sorted_surf_b_vials:
-                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'water', 'surf_B_volume_ul')
+                # Dispense surfactant B substocks in concentration order (condition tip only for first vial)
+                for i, surf_b_vial in enumerate(sorted_surf_b_vials):
+                    should_condition = (i == 0)  # Only condition for first vial in the series
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'water', 'surf_B_volume_ul', should_condition_tip=should_condition)
                 
                 # Return surfactant B vials to home
                 lash_e.nr_robot.remove_pipet()
@@ -3607,6 +3623,11 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     lash_e.logger.info("  Refilling water vials to reset volume tracking...")
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")
+    
+    # Refill both surfactant stock vials before creating substocks
+    lash_e.logger.info("  Refilling surfactant stock vials...")
+    refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid=surfactant_a_name)
+    refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid=surfactant_b_name)
     
     # Use provided experiment folder or create new one if not provided
     if experiment_output_folder is None:
@@ -4988,8 +5009,18 @@ if __name__ == "__main__":
         )
         print(f"Unified experiment folder created: {experiment_output_folder}")
 
-    if VALIDATE_LIQUIDS and experiment_output_folder is not None:
-        validate_pipetting_system(lash_e, experiment_output_folder)
+    if VALIDATE_LIQUIDS:
+        if experiment_output_folder is not None:
+            validate_pipetting_system(lash_e, experiment_output_folder)
+        elif WORKFLOW_TYPE == 'double_iterative':
+            # For double_iterative, create temporary validation folder
+            import time
+            validation_output_folder = f"output/validation_{int(time.time())}"
+            os.makedirs(validation_output_folder, exist_ok=True)
+            print(f"Running validation with temporary folder: {validation_output_folder}")
+            validate_pipetting_system(lash_e, validation_output_folder)
+        else:
+            print("Skipping validation: no output folder available and not double_iterative workflow")
 
     if WORKFLOW_TYPE == '2_stage':
         print("Starting 2-stage adaptive surfactant grid screening...")

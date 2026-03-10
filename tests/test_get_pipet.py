@@ -21,7 +21,7 @@ def test_get_pipet(tip_types):
 # Available types: 'large_tip', 'small_tip'
 
 # Test small tips multiple times
-test_get_pipet(['small_tip'] * 5)
+test_get_pipet(['large_tip'] * 42)
 
 # Uncomment to test large tips:
 # test_get_pipet(['large_tip'] * 3)
