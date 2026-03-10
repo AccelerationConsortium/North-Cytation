@@ -3845,6 +3845,7 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
     print(f"Mode: {'SIMULATION' if simulate else 'HARDWARE'}")
     print("="*80)
 
+    lash_e.nr_robot.home_robot_components()
     lash_e.grab_new_wellplate()
 
     # Execute initial adaptive screening with configurable number of concentrations
@@ -5022,269 +5023,270 @@ if __name__ == "__main__":
         else:
             print("Skipping validation: no output folder available and not double_iterative workflow")
 
-    if WORKFLOW_TYPE == '2_stage':
-        print("Starting 2-stage adaptive surfactant grid screening...")
-        if not SIMULATE:
-            slack_agent.send_slack_message("Starting 2-stage adaptive surfactant grid screening workflow...")
+    if not VALIDATION_ONLY:
+        if WORKFLOW_TYPE == '2_stage':
+            print("Starting 2-stage adaptive surfactant grid screening...")
+            if not SIMULATE:
+                slack_agent.send_slack_message("Starting 2-stage adaptive surfactant grid screening workflow...")
 
-        results = execute_2_stage_workflow(
-            lash_e=lash_e,
-            surfactant_a_name=SURFACTANT_A, 
-            surfactant_b_name=SURFACTANT_B, 
-            experiment_output_folder=experiment_output_folder,
-            simulate=SIMULATE
-        )
-        
-        if results and results['workflow_complete']:
-            print("="*80)
-            print("2-STAGE WORKFLOW COMPLETE!")
-            print("="*80)
-            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-            print(f"+ Stage 1 wells: {len(results['stage_1_results']['well_recipes_df'])}")
-            print(f"+ Stage 2 wells: {len(results['stage_2_results']['well_recipes_df'])}")
-            print(f"+ Total wells: {results['total_wells']}")
-            print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
-            
-            # Run post-experiment analysis  
-            if results['stage_2_results'].get('experiment_results_file'):
-                run_post_experiment_analysis(
-                    experiment_results_csv=results['stage_2_results']['experiment_results_file'],
-                    output_dir=experiment_output_folder,
-                    surfactant_a_name=SURFACTANT_A,
-                    surfactant_b_name=SURFACTANT_B,
-                    logger=lash_e.logger
-                )
-        else:
-            print("2-stage workflow failed!")
-            
-    elif WORKFLOW_TYPE == 'single':
-        # SINGLE STAGE WORKFLOW 
-        print("Starting single-stage adaptive surfactant grid screening...")
-        if not SIMULATE:
-            slack_agent.send_slack_message("Starting adaptive surfactant grid screening workflow...")
-
-        results = execute_adaptive_surfactant_screening(
-            surfactant_a_name=SURFACTANT_A, 
-            surfactant_b_name=SURFACTANT_B,
-            num_substocks=NUM_SUBSTOCKS,  # Use configurable number of substocks
-            lash_e=lash_e,
-            experiment_output_folder=experiment_output_folder,
-            simulate=SIMULATE
-        )
-        
-        if results and results['workflow_complete']:
-            print("="*80)
-            print("SINGLE-STAGE WORKFLOW COMPLETE!")
-            print("="*80)
-            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-            print(f"+ Wells: {results['total_wells']}")
-            print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
-            
-            # Run post-experiment analysis
-            if results.get('experiment_results_file'):
-                run_post_experiment_analysis(
-                    experiment_results_csv=results['experiment_results_file'],
-                    output_dir=experiment_output_folder,
-                    surfactant_a_name=SURFACTANT_A,
-                    surfactant_b_name=SURFACTANT_B,
-                    logger=lash_e.logger
-                )
-        else:
-            print("Single-stage workflow failed!")
-    
-    elif WORKFLOW_TYPE == 'iterative':
-        # SINGLE ITERATIVE WORKFLOW WITH GRADIENT EXPLORATION
-        print("Starting iterative gradient exploration workflow...")
-        if not SIMULATE:
-            slack_agent.send_slack_message("Starting iterative gradient exploration workflow...")
-
-        results = execute_iterative_workflow(
-            surfactant_a_name=SURFACTANT_A, 
-            surfactant_b_name=SURFACTANT_B,
-            number_concentrations=ITERATIVE_CONCENTRATIONS,  # Start with rapid 5x5 screening
-            num_substocks=NUM_SUBSTOCKS,  # Use configurable number of substocks
-            target_measurements=ITERATIVE_MEASUREMENT_TOTAL,   # Fill one wellplate with iterative exploration
-            gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION,
-            lash_e=lash_e,
-            experiment_output_folder=experiment_output_folder,
-            simulate=SIMULATE
-        )
-        
-        if results and results['workflow_complete']:
-            print("="*80)
-            print("ITERATIVE WORKFLOW COMPLETE!")
-            print("="*80)
-            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-            print(f"+ Total wells: {results['total_wells']}")
-            print(f"+ Measured wells: {results['measured_wells']}")
-            print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
-            
-            # Run post-experiment analysis
-            if results.get('output_folder'):
-                experiment_results_csv = os.path.join(results['output_folder'], 'iterative_experiment_results.csv')
-                run_post_experiment_analysis(
-                    experiment_results_csv=experiment_results_csv,
-                    output_dir=results['output_folder'],
-                    surfactant_a_name=SURFACTANT_A,
-                    surfactant_b_name=SURFACTANT_B,
-                    logger=lash_e.logger
-                )
-
-            print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
-        else:
-            print("Iterative workflow failed!")
-    
-    elif WORKFLOW_TYPE == 'double_iterative':
-        # DOUBLE ITERATIVE WORKFLOW - Multiple pairings overnight
-        print("Starting double iterative workflow with pairing queue...")
-        
-        # Fix: Handle case where Lash_E config loaded PAIRING_QUEUE as string
-        if isinstance(PAIRING_QUEUE, str):
-            print(f"WARNING: PAIRING_QUEUE loaded as string by config. Converting to list...")
-            import ast
-            try:
-                pairing_queue = ast.literal_eval(PAIRING_QUEUE)
-                print(f"✅ Converted to list with {len(pairing_queue)} pairings")
-            except Exception as e:
-                print(f"❌ Failed to parse PAIRING_QUEUE: {e}")
-                raise RuntimeError("PAIRING_QUEUE config is corrupted")
-        else:
-            pairing_queue = PAIRING_QUEUE
-        
-        # Debug PAIRING_QUEUE structure
-        print(f"DEBUG: pairing_queue type: {type(pairing_queue)}")
-        print(f"DEBUG: pairing_queue length: {len(pairing_queue)}")
-        print(f"DEBUG: pairing_queue structure: {pairing_queue}")
-        
-        print(f"Pairings planned: {len(pairing_queue)}")
-        if not SIMULATE:
-            slack_agent.send_slack_message(f"Starting double iterative workflow with {len(pairing_queue)} pairings...")
-        
-        all_results = []
-        successful_pairings = []
-        
-        for i, pairing_config in enumerate(pairing_queue):
-            print(f"\n{'='*80}")
-            print(f"PAIRING {i+1}/{len(pairing_queue)}: {pairing_config['SURFACTANT_A']} + {pairing_config['SURFACTANT_B']}")
-            print(f"{'='*80}")
-            
-            # Create separate experiment folder for this pairing
-            pairing_experiment_folder, pairing_experiment_name = setup_experiment_environment(
-                lash_e, pairing_config['SURFACTANT_A'], pairing_config['SURFACTANT_B'], SIMULATE
-            )
-            print(f"Pairing experiment folder: {pairing_experiment_folder}")
-                                  
-            # Run iterative workflow with updated globals and pairing-specific folder
-            results = execute_iterative_workflow(
-                surfactant_a_name=pairing_config['SURFACTANT_A'], 
-                surfactant_b_name=pairing_config['SURFACTANT_B'],
-                number_concentrations=ITERATIVE_CONCENTRATIONS,
-                num_substocks=NUM_SUBSTOCKS,
-                target_measurements=ITERATIVE_MEASUREMENT_TOTAL,
-                gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION,
+            results = execute_2_stage_workflow(
                 lash_e=lash_e,
-                experiment_output_folder=pairing_experiment_folder,  # Use pairing-specific folder
+                surfactant_a_name=SURFACTANT_A, 
+                surfactant_b_name=SURFACTANT_B, 
+                experiment_output_folder=experiment_output_folder,
                 simulate=SIMULATE
             )
             
-            all_results.append(results)
+            if results and results['workflow_complete']:
+                print("="*80)
+                print("2-STAGE WORKFLOW COMPLETE!")
+                print("="*80)
+                print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+                print(f"+ Stage 1 wells: {len(results['stage_1_results']['well_recipes_df'])}")
+                print(f"+ Stage 2 wells: {len(results['stage_2_results']['well_recipes_df'])}")
+                print(f"+ Total wells: {results['total_wells']}")
+                print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+                
+                # Run post-experiment analysis  
+                if results['stage_2_results'].get('experiment_results_file'):
+                    run_post_experiment_analysis(
+                        experiment_results_csv=results['stage_2_results']['experiment_results_file'],
+                        output_dir=experiment_output_folder,
+                        surfactant_a_name=SURFACTANT_A,
+                        surfactant_b_name=SURFACTANT_B,
+                        logger=lash_e.logger
+                    )
+            else:
+                print("2-stage workflow failed!")
+                
+        elif WORKFLOW_TYPE == 'single':
+            # SINGLE STAGE WORKFLOW 
+            print("Starting single-stage adaptive surfactant grid screening...")
+            if not SIMULATE:
+                slack_agent.send_slack_message("Starting adaptive surfactant grid screening workflow...")
+
+            results = execute_adaptive_surfactant_screening(
+                surfactant_a_name=SURFACTANT_A, 
+                surfactant_b_name=SURFACTANT_B,
+                num_substocks=NUM_SUBSTOCKS,  # Use configurable number of substocks
+                lash_e=lash_e,
+                experiment_output_folder=experiment_output_folder,
+                simulate=SIMULATE
+            )
             
             if results and results['workflow_complete']:
-                successful_pairings.append(results)
-                print(f"✅ Pairing {i+1} complete: {results['surfactant_a']} + {results['surfactant_b']} ({results['total_wells']} wells)")
-                print(f"   Folder: {pairing_experiment_folder}")
+                print("="*80)
+                print("SINGLE-STAGE WORKFLOW COMPLETE!")
+                print("="*80)
+                print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+                print(f"+ Wells: {results['total_wells']}")
+                print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
                 
-                # Run post-experiment analysis for this pairing
+                # Run post-experiment analysis
+                if results.get('experiment_results_file'):
+                    run_post_experiment_analysis(
+                        experiment_results_csv=results['experiment_results_file'],
+                        output_dir=experiment_output_folder,
+                        surfactant_a_name=SURFACTANT_A,
+                        surfactant_b_name=SURFACTANT_B,
+                        logger=lash_e.logger
+                    )
+            else:
+                print("Single-stage workflow failed!")
+        
+        elif WORKFLOW_TYPE == 'iterative':
+            # SINGLE ITERATIVE WORKFLOW WITH GRADIENT EXPLORATION
+            print("Starting iterative gradient exploration workflow...")
+            if not SIMULATE:
+                slack_agent.send_slack_message("Starting iterative gradient exploration workflow...")
+
+            results = execute_iterative_workflow(
+                surfactant_a_name=SURFACTANT_A, 
+                surfactant_b_name=SURFACTANT_B,
+                number_concentrations=ITERATIVE_CONCENTRATIONS,  # Start with rapid 5x5 screening
+                num_substocks=NUM_SUBSTOCKS,  # Use configurable number of substocks
+                target_measurements=ITERATIVE_MEASUREMENT_TOTAL,   # Fill one wellplate with iterative exploration
+                gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION,
+                lash_e=lash_e,
+                experiment_output_folder=experiment_output_folder,
+                simulate=SIMULATE
+            )
+            
+            if results and results['workflow_complete']:
+                print("="*80)
+                print("ITERATIVE WORKFLOW COMPLETE!")
+                print("="*80)
+                print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+                print(f"+ Total wells: {results['total_wells']}")
+                print(f"+ Measured wells: {results['measured_wells']}")
+                print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+                
+                # Run post-experiment analysis
                 if results.get('output_folder'):
                     experiment_results_csv = os.path.join(results['output_folder'], 'iterative_experiment_results.csv')
                     run_post_experiment_analysis(
                         experiment_results_csv=experiment_results_csv,
                         output_dir=results['output_folder'],
-                        surfactant_a_name=pairing_config['SURFACTANT_A'],
-                        surfactant_b_name=pairing_config['SURFACTANT_B'],
+                        surfactant_a_name=SURFACTANT_A,
+                        surfactant_b_name=SURFACTANT_B,
                         logger=lash_e.logger
                     )
+
+                print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
             else:
-                print(f"❌ Pairing {i+1} failed: {pairing_config['SURFACTANT_A']} + {pairing_config['SURFACTANT_B']}")
+                print("Iterative workflow failed!")
+        
+        elif WORKFLOW_TYPE == 'double_iterative':
+            # DOUBLE ITERATIVE WORKFLOW - Multiple pairings overnight
+            print("Starting double iterative workflow with pairing queue...")
+            
+            # Fix: Handle case where Lash_E config loaded PAIRING_QUEUE as string
+            if isinstance(PAIRING_QUEUE, str):
+                print(f"WARNING: PAIRING_QUEUE loaded as string by config. Converting to list...")
+                import ast
+                try:
+                    pairing_queue = ast.literal_eval(PAIRING_QUEUE)
+                    print(f"✅ Converted to list with {len(pairing_queue)} pairings")
+                except Exception as e:
+                    print(f"❌ Failed to parse PAIRING_QUEUE: {e}")
+                    raise RuntimeError("PAIRING_QUEUE config is corrupted")
+            else:
+                pairing_queue = PAIRING_QUEUE
+            
+            # Debug PAIRING_QUEUE structure
+            print(f"DEBUG: pairing_queue type: {type(pairing_queue)}")
+            print(f"DEBUG: pairing_queue length: {len(pairing_queue)}")
+            print(f"DEBUG: pairing_queue structure: {pairing_queue}")
+            
+            print(f"Pairings planned: {len(pairing_queue)}")
+            if not SIMULATE:
+                slack_agent.send_slack_message(f"Starting double iterative workflow with {len(pairing_queue)} pairings...")
+            
+            all_results = []
+            successful_pairings = []
+            
+            for i, pairing_config in enumerate(pairing_queue):
+                print(f"\n{'='*80}")
+                print(f"PAIRING {i+1}/{len(pairing_queue)}: {pairing_config['SURFACTANT_A']} + {pairing_config['SURFACTANT_B']}")
+                print(f"{'='*80}")
                 
-            # Brief pause between pairings
-            if i < len(pairing_queue) - 1:
-                print(f"Pairing {i+1} complete. Preparing for next pairing...")
-        
-        # Summary of all pairings
-        total_wells = sum(r.get('total_wells', 0) for r in successful_pairings)
-        
-        print(f"\n{'='*80}")
-        print("DOUBLE ITERATIVE WORKFLOW COMPLETE!")
-        print(f"{'='*80}")
-        print(f"+ Successful pairings: {len(successful_pairings)}/{len(pairing_queue)}")
-        print(f"+ Total wells measured: {total_wells}")
-        print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
-
-        print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
-        
-        # List successful pairings and their folders
-        if successful_pairings:
-            print("\n📁 Experiment folders created:")
-            for j, result in enumerate(successful_pairings):
-                print(f"   {j+1}. {result['surfactant_a']} + {result['surfactant_b']}: {result['output_folder']}")
-    
-    elif WORKFLOW_TYPE == 'kinetics':
-        # KINETICS WORKFLOW - Single sequence (4x4 grid with modular measurement control)
-        print("Starting kinetics workflow with modular measurement control...")
-        if not SIMULATE:
-            slack_agent.send_slack_message("Starting kinetics workflow...")
-
-        # Execute modular kinetics workflow (dispensing + kinetics measurements)
-        results = execute_kinetics_workflow(
-            surfactant_a_name=SURFACTANT_A, 
-            surfactant_b_name=SURFACTANT_B,
-            lash_e=lash_e,
-            experiment_output_folder=experiment_output_folder,
-            simulate=SIMULATE
-        )
-        
-        if results and results['workflow_complete']:
-            print("="*80)
-            print("KINETICS WORKFLOW COMPLETE!")
-            print("="*80)
-            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-            print(f"+ Wells: {len(results['well_recipes_df'])}")
-            print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
-            print(f"+ Sequence: {results['kinetics_sequence']}")
-            print("+ Ready for kinetic measurements...")
-        else:
-            print("Kinetics workflow failed!")
-
-    elif WORKFLOW_TYPE == 'kinetics_all':
-        # ALL KINETICS SEQUENCES - Run all 3 measurement sequences (prep_turbidity, prep_dmso_turbidity_ratio, prep_turbidity_dmso_ratio)  
-        print("Starting comprehensive kinetics workflow - all 3 sequences...")
-        if not SIMULATE:
-            slack_agent.send_slack_message("Starting comprehensive kinetics workflow (all sequences)...")
-
-        # Execute all 3 kinetics sequences with fresh wellplates
-        results = execute_all_kinetics_sequences(
-            surfactant_a_name=SURFACTANT_A, 
-            surfactant_b_name=SURFACTANT_B,
-            lash_e=lash_e,
-            experiment_output_folder=experiment_output_folder,
-            simulate=SIMULATE
-        )
-        
-        if results and results['workflow_complete']:
-            print("="*80)
-            print("COMPREHENSIVE KINETICS WORKFLOW COMPLETE!")
-            print("="*80)
-            print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
-            print(f"+ Sequences completed: {len(results['sequence_results'])}")
-            total_wells = sum(len(seq_result['well_recipes_df']) for seq_result in results['sequence_results'].values())
+                # Create separate experiment folder for this pairing
+                pairing_experiment_folder, pairing_experiment_name = setup_experiment_environment(
+                    lash_e, pairing_config['SURFACTANT_A'], pairing_config['SURFACTANT_B'], SIMULATE
+                )
+                print(f"Pairing experiment folder: {pairing_experiment_folder}")
+                                    
+                # Run iterative workflow with updated globals and pairing-specific folder
+                results = execute_iterative_workflow(
+                    surfactant_a_name=pairing_config['SURFACTANT_A'], 
+                    surfactant_b_name=pairing_config['SURFACTANT_B'],
+                    number_concentrations=ITERATIVE_CONCENTRATIONS,
+                    num_substocks=NUM_SUBSTOCKS,
+                    target_measurements=ITERATIVE_MEASUREMENT_TOTAL,
+                    gradient_suggestions_per_iteration=GRADIENT_SUGGESTIONS_PER_ITERATION,
+                    lash_e=lash_e,
+                    experiment_output_folder=pairing_experiment_folder,  # Use pairing-specific folder
+                    simulate=SIMULATE
+                )
+                
+                all_results.append(results)
+                
+                if results and results['workflow_complete']:
+                    successful_pairings.append(results)
+                    print(f"✅ Pairing {i+1} complete: {results['surfactant_a']} + {results['surfactant_b']} ({results['total_wells']} wells)")
+                    print(f"   Folder: {pairing_experiment_folder}")
+                    
+                    # Run post-experiment analysis for this pairing
+                    if results.get('output_folder'):
+                        experiment_results_csv = os.path.join(results['output_folder'], 'iterative_experiment_results.csv')
+                        run_post_experiment_analysis(
+                            experiment_results_csv=experiment_results_csv,
+                            output_dir=results['output_folder'],
+                            surfactant_a_name=pairing_config['SURFACTANT_A'],
+                            surfactant_b_name=pairing_config['SURFACTANT_B'],
+                            logger=lash_e.logger
+                        )
+                else:
+                    print(f"❌ Pairing {i+1} failed: {pairing_config['SURFACTANT_A']} + {pairing_config['SURFACTANT_B']}")
+                    
+                # Brief pause between pairings
+                if i < len(pairing_queue) - 1:
+                    print(f"Pairing {i+1} complete. Preparing for next pairing...")
+            
+            # Summary of all pairings
+            total_wells = sum(r.get('total_wells', 0) for r in successful_pairings)
+            
+            print(f"\n{'='*80}")
+            print("DOUBLE ITERATIVE WORKFLOW COMPLETE!")
+            print(f"{'='*80}")
+            print(f"+ Successful pairings: {len(successful_pairings)}/{len(pairing_queue)}")
             print(f"+ Total wells measured: {total_wells}")
             print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
-            print("+ All kinetics sequences complete...")
+
+            print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
+            
+            # List successful pairings and their folders
+            if successful_pairings:
+                print("\n📁 Experiment folders created:")
+                for j, result in enumerate(successful_pairings):
+                    print(f"   {j+1}. {result['surfactant_a']} + {result['surfactant_b']}: {result['output_folder']}")
+        
+        elif WORKFLOW_TYPE == 'kinetics':
+            # KINETICS WORKFLOW - Single sequence (4x4 grid with modular measurement control)
+            print("Starting kinetics workflow with modular measurement control...")
+            if not SIMULATE:
+                slack_agent.send_slack_message("Starting kinetics workflow...")
+
+            # Execute modular kinetics workflow (dispensing + kinetics measurements)
+            results = execute_kinetics_workflow(
+                surfactant_a_name=SURFACTANT_A, 
+                surfactant_b_name=SURFACTANT_B,
+                lash_e=lash_e,
+                experiment_output_folder=experiment_output_folder,
+                simulate=SIMULATE
+            )
+            
+            if results and results['workflow_complete']:
+                print("="*80)
+                print("KINETICS WORKFLOW COMPLETE!")
+                print("="*80)
+                print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+                print(f"+ Wells: {len(results['well_recipes_df'])}")
+                print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+                print(f"+ Sequence: {results['kinetics_sequence']}")
+                print("+ Ready for kinetic measurements...")
+            else:
+                print("Kinetics workflow failed!")
+
+        elif WORKFLOW_TYPE == 'kinetics_all':
+            # ALL KINETICS SEQUENCES - Run all 3 measurement sequences (prep_turbidity, prep_dmso_turbidity_ratio, prep_turbidity_dmso_ratio)  
+            print("Starting comprehensive kinetics workflow - all 3 sequences...")
+            if not SIMULATE:
+                slack_agent.send_slack_message("Starting comprehensive kinetics workflow (all sequences)...")
+
+            # Execute all 3 kinetics sequences with fresh wellplates
+            results = execute_all_kinetics_sequences(
+                surfactant_a_name=SURFACTANT_A, 
+                surfactant_b_name=SURFACTANT_B,
+                lash_e=lash_e,
+                experiment_output_folder=experiment_output_folder,
+                simulate=SIMULATE
+            )
+            
+            if results and results['workflow_complete']:
+                print("="*80)
+                print("COMPREHENSIVE KINETICS WORKFLOW COMPLETE!")
+                print("="*80)
+                print(f"+ Surfactants: {results['surfactant_a']} + {results['surfactant_b']}")
+                print(f"+ Sequences completed: {len(results['sequence_results'])}")
+                total_wells = sum(len(seq_result['well_recipes_df']) for seq_result in results['sequence_results'].values())
+                print(f"+ Total wells measured: {total_wells}")
+                print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
+                print("+ All kinetics sequences complete...")
+            else:
+                print("Comprehensive kinetics workflow failed!")
+        
         else:
-            print("Comprehensive kinetics workflow failed!")
-    
-    else:
-        print(f"Unknown workflow type: '{WORKFLOW_TYPE}'.")
-        print("Set WORKFLOW_TYPE to one of: 'single', '2_stage', 'iterative', 'kinetics', 'kinetics_all'")
+            print(f"Unknown workflow type: '{WORKFLOW_TYPE}'.")
+            print("Set WORKFLOW_TYPE to one of: 'single', '2_stage', 'iterative', 'kinetics', 'kinetics_all'")
 
