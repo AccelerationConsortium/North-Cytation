@@ -66,6 +66,7 @@ class TemplateCalibrationProtocol(CalibrationProtocolBase):
                 'volume': measured_volume_mL,  # Measured volume in mL
                 'elapsed_s': elapsed_s,        # Time taken in seconds
                 'target_volume_mL': volume_mL, # Target volume
+                'measurement_budget_consumed': 1,  # Budget units consumed for this measurement (adjust if needed)
                 **params  # Echo back all parameters
             }
             

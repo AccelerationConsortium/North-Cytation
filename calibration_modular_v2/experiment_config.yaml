@@ -6,19 +6,18 @@ experiment:
   - 0.15
   - 0.1
   - 0.05
-  - 0.2
-  max_total_measurements: 200
-  max_measurements_first_volume: 150
-  num_screening_trials: 6
-  max_replicates_per_trial: 5
-  two_point_calibration_replicates: 1
+  max_total_measurements: 96
+  max_measurements_first_volume: 70
+  num_screening_trials: 10
+  max_replicates_per_trial: 3
+  two_point_calibration_replicates: 2
   simulate: false
   random_seed: 7
   fixed_parameters:
     post_asp_air_vol: 0.0
-    dispense_wait_time: 1.5
-    blowout_vol: 0.0
     asp_disp_cycles: 0
+    post_retract_wait_time: 5.0
+    retract_speed: 2.0
   hardware_protocol: calibration_protocol_northrobot
   simulation_protocol: calibration_protocol_simulated
 calibration_parameters:
@@ -35,7 +34,7 @@ hardware_parameters:
   aspirate_speed:
     bounds:
     - 2
-    - 20
+    - 30
     default: 10
     type: integer
     time_affecting: true
@@ -44,7 +43,7 @@ hardware_parameters:
   dispense_speed:
     bounds:
     - 2
-    - 20
+    - 30
     default: 10
     type: integer
     time_affecting: true
@@ -53,7 +52,7 @@ hardware_parameters:
   aspirate_wait_time:
     bounds:
     - 0.0
-    - 5
+    - 30
     default: 10.0
     type: float
     time_affecting: true
@@ -81,7 +80,7 @@ hardware_parameters:
   dispense_wait_time:
     bounds:
     - 0.0
-    - 5.0
+    - 15.0
     default: 1.5
     type: float
     time_affecting: true
@@ -90,7 +89,7 @@ hardware_parameters:
   blowout_vol:
     bounds:
     - 0.0
-    - 0.05
+    - 0.3
     default: 0.0
     type: float
     time_affecting: false
@@ -150,7 +149,7 @@ optimization:
     carry_optimizer_state: false
   first_volume_final_calibration:
     enabled: true
-    skip_if_good_trial: true
+    skip_if_good_trial: false
     description: Performs final 2-point overaspirate calibration on first volume before
       proceeding to next volume
   llm_optimization:

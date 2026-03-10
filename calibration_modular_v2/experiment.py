@@ -1078,12 +1078,12 @@ class CalibrationExperiment:
             is_successful = self._is_trial_successful(inherited_trial, target_volume_ml)
             optimizer.seed_with_historical_data(inherited_trial.parameters, objectives, len(inherited_trial.measurements), is_successful=is_successful)
         
-        # Load two-point calibration trials for subsequent volumes only
-        # (First volume does multi-objective optimization including precision, 
-        #  so single-replicate two-point trials would mess up the precision model)
-        if not is_first_volume and hasattr(self, '_current_two_point_trials') and self._current_two_point_trials:
+        # Load two-point calibration trials if they have sufficient replicates for precision assessment
+        # (Multi-objective optimization needs precision data, so only include trials with >=2 replicates)
+        two_point_reps = self.config.get_two_point_calibration_replicates()
+        if two_point_reps >= 2 and hasattr(self, '_current_two_point_trials') and self._current_two_point_trials:
             logger.info(f"Loading {len(self._current_two_point_trials)} two-point calibration trials into optimizer")
-            logger.info("Note: Only using for subsequent volumes (single-objective accuracy optimization)")
+            logger.info(f"Note: Using {two_point_reps}-replicate trials for {'multi' if is_first_volume else 'single'}-objective optimization")
             for trial in self._current_two_point_trials:
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
                 is_successful = self._is_trial_successful(trial, target_volume_ml)
@@ -1536,7 +1536,10 @@ class CalibrationExperiment:
         for replicate_idx in range(initial_replicates):
             measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
             measurements.append(measurement)
-            self.total_measurements += 1
+            
+            # Increment by protocol-defined budget consumption (hardware-agnostic)
+            budget_consumed = measurement.metadata.get('measurement_budget_consumed', 1)
+            self.total_measurements += budget_consumed
             
             # EMERGENCY DATA SAVE - Write measurement immediately
             self._save_measurement_immediately(measurement, target_volume_ml, strategy, parameters)
@@ -1562,7 +1565,10 @@ class CalibrationExperiment:
             replicate_idx = len(measurements)
             measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
             measurements.append(measurement)
-            self.total_measurements += 1
+            
+            # Increment by protocol-defined budget consumption (hardware-agnostic)
+            budget_consumed = measurement.metadata.get('measurement_budget_consumed', 1)
+            self.total_measurements += budget_consumed
             
             # EMERGENCY DATA SAVE - Write measurement immediately
             self._save_measurement_immediately(measurement, target_volume_ml, strategy, parameters)
