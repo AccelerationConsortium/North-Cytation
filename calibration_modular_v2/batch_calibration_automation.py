@@ -21,7 +21,7 @@ import glob
 from datetime import datetime
 import shutil
 
-# Configuration - Edit this list for your liquids to calibrate
+# Configuration - Edit this list for your liquids to calibrateasd
 LIQUIDS_TO_CALIBRATE = [
  
 #  {
