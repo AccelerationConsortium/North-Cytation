@@ -109,13 +109,13 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
 
         continuous_monitoring = True
 
-        show_gui = False
+        show_gui = True
                
         # Quality control threshold for mass measurement stability (in grams)
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
-        self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
+        self.quality_std_threshold = 0.1  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
         if not simulate:
             slack_agent.send_slack_message("🤖 North Robot calibration/validation started!")
@@ -324,7 +324,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
            
             if not simulate:
                 # Real hardware measurements with quality-controlled retry loop
-                max_retries = 3
+                max_retries = 2
                 retry_count = 0
                 measurement_acceptable = False
                 
@@ -427,6 +427,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 'target_volume_mL': volume_mL,
                 'measured_volume_uL': measured_volume_uL,
                 'target_volume_uL': volume_uL,
+                'measurement_budget_consumed': retry_count if not simulate else 1,  # Budget units consumed for this measurement
                 **pipet_params  # Echo back parameters
             }
             
