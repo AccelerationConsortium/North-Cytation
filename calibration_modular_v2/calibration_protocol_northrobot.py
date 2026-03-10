@@ -465,29 +465,22 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         constraints = []
         
         # North Robot tip volume constraint
-        # Use 0.2 mL tips for volumes <= 150 uL, otherwise 1.0 mL tips
-        if target_volume_ml <= 0.20:  # 150 uL or less
+        # Use 0.2 mL tips for volumes <= 200 uL, otherwise 1.0 mL tips
+        if target_volume_ml <= 0.20:  # 200 uL or less
             tip_volume_ml = 0.2
         else:
             tip_volume_ml = 1.0
-            
-
-        max_volume = 1.0    
         
-        # Check if post_asp_air_vol parameter exists in hardware_parameters
-        hardware_params = self.config.get_hardware_parameters()
-        has_post_asp_air = 'post_asp_air_vol' in hardware_params.keys()
+        # Available tip capacity after target volume
+        available_capacity = tip_volume_ml - target_volume_ml
         
-        # Add tip volume constraint - only include post_asp_air_vol if it exists
-        if has_post_asp_air:
-            constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
-        else:
-            constraints.append(f"overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
-
-        if has_post_asp_air:
-            constraints.append(f"pre_asp_air_vol + post_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
-        else:
-            constraints.append(f"pre_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
+        # CRITICAL: All air volumes + overaspirate must fit in remaining tip capacity
+        # This prevents physical tip overflow
+        constraints.append(f"post_asp_air_vol + overaspirate_vol <= {available_capacity:.6f}")
+        
+        # Secondary constraint: Total volume cannot exceed maximum safe volume (1.0 mL)
+        max_safe_volume = 1.0 - target_volume_ml
+        constraints.append(f"pre_asp_air_vol + post_asp_air_vol + overaspirate_vol <= {max_safe_volume:.6f}")
         
         return constraints
 
