@@ -113,6 +113,12 @@ class LabUtilizationAnalyzer:
             duration = last_timestamp - first_timestamp
             duration_hours = duration.total_seconds() / 3600
             
+            # Override: sessions > 1 hour tagged as simulate are almost certainly real hardware runs
+            is_simulate = session_info['is_simulate']
+            if is_simulate and duration_hours > 1.0:
+                is_simulate = False
+                print(f"  - Tagged simulate but duration {duration_hours:.2f}h > 1h - treating as hardware run")
+            
             session = {
                 'filename': log_path.name,
                 'file_start_time': session_info['file_start_time'],
@@ -120,7 +126,7 @@ class LabUtilizationAnalyzer:
                 'log_end_time': last_timestamp,
                 'duration_hours': duration_hours,
                 'duration_minutes': duration.total_seconds() / 60,
-                'is_simulate': session_info['is_simulate'],
+                'is_simulate': is_simulate,
                 'date': session_info['date'],
                 'total_lines': len(lines)
             }

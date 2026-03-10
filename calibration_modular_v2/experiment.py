@@ -1269,12 +1269,13 @@ class CalibrationExperiment:
             return calibration_trials, None
         
         # Point 1: Test with base overaspirate from optimized parameters
-        logger.info(f"Point 1: Testing with base overaspirate {optimized_params.overaspirate_vol*1000:.1f}uL")
+        two_point_reps = self.config.get_two_point_calibration_replicates()
+        logger.info(f"Point 1: Testing with base overaspirate {optimized_params.overaspirate_vol*1000:.1f}uL ({two_point_reps} replicates)")
         point_1_trial = self._execute_trial(
             optimized_params,
             target_volume_ml,
             f"two_point_cal_point1_{target_volume_ml}",
-            force_replicates=1,  # Single measurement for two-point calibration
+            force_replicates=two_point_reps,
             strategy="calibration",
             liquid=self.config.get_liquid_name()
         )
@@ -1313,12 +1314,12 @@ class CalibrationExperiment:
             hardware=optimized_params.hardware
         )
         
-        logger.info(f"Point 2: Testing with {direction} overaspirate {point_2_overaspirate_ml*1000:.1f}uL ({direction_sign}{spread_ul:.1f}uL)")
+        logger.info(f"Point 2: Testing with {direction} overaspirate {point_2_overaspirate_ml*1000:.1f}uL ({direction_sign}{spread_ul:.1f}uL, {two_point_reps} replicates)")
         point_2_trial = self._execute_trial(
             point_2_params,
             target_volume_ml,
             f"two_point_cal_point2_{target_volume_ml}",
-            force_replicates=1,
+            force_replicates=two_point_reps,
             strategy="calibration", 
             liquid=self.config.get_liquid_name()
         )

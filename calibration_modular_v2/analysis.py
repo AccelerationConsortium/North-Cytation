@@ -316,16 +316,11 @@ class CalibrationAnalyzer:
             return False
         
         adaptive_config = self.config.get_adaptive_measurement_config()
-        base_replicates = adaptive_config.get('base_replicates', 1)
-        max_additional = self.config.get_replicates_for_accurate_measurements()
+        max_total = self.config.get_max_replicates_per_trial()
         deviation_threshold_pct = adaptive_config.get('deviation_threshold_pct', 10.0)
         
         # Don't add replicates if we already have enough
-        if len(measurements) >= base_replicates + max_additional:
-            return False
-        
-        # Only consider adding replicates if we have at least the base number
-        if len(measurements) < base_replicates:
+        if len(measurements) >= max_total:
             return False
         
         # Add replicates if accuracy is good (might be worth further optimization)

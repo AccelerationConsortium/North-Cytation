@@ -188,9 +188,13 @@ class ExperimentConfig:
         """Get number of screening trials for initial exploration."""
         return self._config['experiment'].get('num_screening_trials', 10)
     
-    def get_replicates_for_accurate_measurements(self) -> int:
-        """Get additional replicates to run for accurate measurements."""
-        return self._config['experiment'].get('replicates_for_accurate_measurements', 2)
+    def get_max_replicates_per_trial(self) -> int:
+        """Get maximum total replicates per trial (includes the initial replicate)."""
+        return self._config['experiment'].get('max_replicates_per_trial', 5)
+
+    def get_two_point_calibration_replicates(self) -> int:
+        """Get number of replicates per point in two-point constraint calibration."""
+        return self._config['experiment'].get('two_point_calibration_replicates', 1)
 
     def get_fixed_parameters(self) -> Dict[str, float]:
         """Get pre-calibrated parameters to hold fixed during optimization."""
