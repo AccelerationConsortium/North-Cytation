@@ -4,9 +4,9 @@ home = [0.0, 0.0, 0.0, 0.0]
 #For the z-axis 100 units ~ 1 mm, lower is higher for z-axis
 
 #Location of the clamp (gripper)
-vial_clamp = [2476, 7635, 44106, 17350]
+vial_clamp = [2476, 7635, 44106, 17350] #Grab vial with gripper
 vial_clamp_cap = [2476, 7635, 44106, 16950] #17350 breaks caps - SQ
-vial_clamp_pip = [2440, 5885, 39839, 11501]
+vial_clamp_pip = [2440, 5885, 39839, 11501] #Pipetting position at clamp
 
 #Tip removal
 p_remove_cap = [-97, 27004, 6864, 9160]
