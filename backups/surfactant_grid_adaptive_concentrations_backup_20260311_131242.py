@@ -38,6 +38,7 @@ import os
 import json
 from datetime import datetime
 from master_usdl_coordinator import Lash_E, flatten_cytation_data
+import slack_agent
 
 # ================================================================================
 # MEASUREMENT DATA HANDLING HELPERS
@@ -147,7 +148,7 @@ SURFACTANT_B = "TTAB"
 EXPERIMENT_TAG = "new_min_conc_plus_1d_cmc_assay"
 
 # WORKFLOW CONSTANTS
-SIMULATE = True # Set to False for actual hardware execution
+SIMULATE = False # Set to False for actual hardware execution
 VALIDATE_LIQUIDS = True # Set to False to skip pipetting validation during initialization
 CREATE_WELLPLATE = True  # Set to True to create wellplate, False to skip to measurements only
 VALIDATION_ONLY = True  # Set to True to run only pipetting validation and skip experiment (great for testing)
@@ -379,32 +380,6 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
             plt.close(fig)
         
         logger.info("   [SUCCESS] Contour plots generated successfully")
-        
-        # Generate clean linear contour maps (new clean style)
-        logger.info("1b. Generating clean linear contour maps...")
-        try:
-            # Import and call clean contour function
-            import sys
-            new_folder_path = os.path.join(os.path.dirname(experiment_results_csv), "..", "New folder")
-            if os.path.exists(new_folder_path):
-                sys.path.insert(0, new_folder_path)
-            
-                from complete_linear_contours import create_complete_linear_contours
-                
-                # Generate with surfactant names that adapt to the experiment
-                clean_output_path = create_complete_linear_contours(
-                    experiment_results_csv,
-                    surfactant_a_name=surfactant_a_name,
-                    surfactant_b_name=surfactant_b_name
-                )
-                
-                logger.info(f"   [SUCCESS] Clean linear contour maps saved: {os.path.basename(clean_output_path)}")
-            else:
-                logger.warning(f"   Clean contour module not found at: {new_folder_path}")
-                
-        except Exception as e:
-            logger.error(f"   [ERROR] Clean contour plot generation failed: {str(e)}")
-            logger.info("   Continuing analysis without clean contour plots...")
         
     except Exception as e:
         logger.error(f"   [ERROR] Contour plot generation failed: {str(e)}")
@@ -1887,7 +1862,7 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
     
     return controls
 
-def create_cmc_control_series(surfactant_name, surfactant_a_name, surfactant_b_name, num_points=7, concentration_span_factor=3.0):
+def create_cmc_control_series(surfactant_name, num_points=7, concentration_span_factor=3.0):
     """
     Create CMC control wells - CMC-centered concentration series with dense sampling near transition.
     Points are densely spaced near the CMC value and increasingly sparse toward bounds.
@@ -1896,8 +1871,6 @@ def create_cmc_control_series(surfactant_name, surfactant_a_name, surfactant_b_n
     
     Args:
         surfactant_name: Name of surfactant (must have 'cmc_mm' in SURFACTANT_LIBRARY)
-        surfactant_a_name: Current surfactant A name for this pairing
-        surfactant_b_name: Current surfactant B name for this pairing
         num_points: Number of concentration points (default 7)
         concentration_span_factor: How many decades around CMC to span (default 3.0)
         
@@ -1975,9 +1948,9 @@ def create_cmc_control_series(surfactant_name, surfactant_a_name, surfactant_b_n
     
     # Create control specifications (vial selection happens in create_well_recipe_from_control)
     for i, conc in enumerate(concentrations):
-        # Determine which surfactant this is for using current pairing parameters
-        is_surfactant_a = (surfactant_name == surfactant_a_name)
-        is_surfactant_b = (surfactant_name == surfactant_b_name)
+        # Determine which surfactant this is for
+        is_surfactant_a = (surfactant_name == SURFACTANT_A)
+        is_surfactant_b = (surfactant_name == SURFACTANT_B)
         
         controls.append({
             'control_type': f'cmc_{surfactant_name}_{i+1}',
@@ -2836,8 +2809,8 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         lash_e.logger.info("  Creating CMC-specific vial selection plans...")
         
         # Get CMC concentrations for each surfactant
-        cmc_controls_a_preview = create_cmc_control_series(surfactant_a_name, surfactant_a_name, surfactant_b_name, CMC_CONTROL_POINTS)
-        cmc_controls_b_preview = create_cmc_control_series(surfactant_b_name, surfactant_a_name, surfactant_b_name, CMC_CONTROL_POINTS)
+        cmc_controls_a_preview = create_cmc_control_series(surfactant_a_name, CMC_CONTROL_POINTS)
+        cmc_controls_b_preview = create_cmc_control_series(surfactant_b_name, CMC_CONTROL_POINTS)
         
         cmc_target_concs_a = get_cmc_concentrations_from_controls(cmc_controls_a_preview, surfactant_a_name)
         cmc_target_concs_b = get_cmc_concentrations_from_controls(cmc_controls_b_preview, surfactant_b_name)
@@ -2871,14 +2844,14 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         lash_e.logger.info(f"  Adding CMC control series ({CMC_CONTROL_POINTS} points each)...")
         
         # CMC controls for surfactant A
-        cmc_controls_a = create_cmc_control_series(surfactant_a_name, surfactant_a_name, surfactant_b_name, CMC_CONTROL_POINTS)
+        cmc_controls_a = create_cmc_control_series(surfactant_a_name, CMC_CONTROL_POINTS)
         for control in cmc_controls_a:
             well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, cmc_plan_a, cmc_plan_b)
             well_recipes.append(well_recipe)
             well_index += 1
             
         # CMC controls for surfactant B  
-        cmc_controls_b = create_cmc_control_series(surfactant_b_name, surfactant_a_name, surfactant_b_name, CMC_CONTROL_POINTS)
+        cmc_controls_b = create_cmc_control_series(surfactant_b_name, CMC_CONTROL_POINTS)
         for control in cmc_controls_b:
             well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, cmc_plan_a, cmc_plan_b)
             well_recipes.append(well_recipe)
@@ -3422,26 +3395,12 @@ def simulate_surfactant_measurements(surf_a_conc, surf_b_conc, add_noise=True):
         'ratio': round(simulated_ratio, 4)
     }
 
-def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names=None):
-    """Perform comprehensive pipetting validation tests for all liquid types.
-    
-    Args:
-        lash_e: Robot coordinator
-        experiment_output_folder: Folder for validation results
-        surfactant_names: List of surfactant names to validate (e.g., ['SDS', 'TTAB', 'DTAB'])
-                         If None, defaults to [SURFACTANT_A, SURFACTANT_B]
-    """
-    # Default to global surfactants if none specified
-    if surfactant_names is None:
-        surfactant_names = [SURFACTANT_A, SURFACTANT_B]
-    
-    # Remove duplicates and ensure we have a list
-    surfactant_names = list(set(surfactant_names))
-    
+def validate_pipetting_system(lash_e, experiment_output_folder):
+    """Perform comprehensive pipetting validation tests for all liquid types."""
     if VALIDATION_ONLY:
-        lash_e.logger.info(f"  VALIDATION-ONLY MODE: Running comprehensive pipetting validation for {len(surfactant_names)} surfactants...")
+        lash_e.logger.info("  VALIDATION-ONLY MODE: Running comprehensive pipetting validation...")
     else:
-        lash_e.logger.info(f"  Validating pipetting capability for {len(surfactant_names)} surfactants: {', '.join(surfactant_names)}...")
+        lash_e.logger.info("  Validating pipetting capability using embedded validation...")
     
     # Use the already-created experiment output folder
     lash_e.logger.info(f"  Validation data will be saved to: {experiment_output_folder}/calibration_validation/")
@@ -3474,8 +3433,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
             switch_pipet=False,
             save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
             condition_tip_enabled=True,
-            conditioning_volume_ul=150,
-            adaptive_correction=True
+            conditioning_volume_ul=150
         )
         validation_results['water_small'] = small_water_results
         lash_e.logger.info(f"        Small water: R^2={small_water_results['r_squared']:.3f}, Accuracy={small_water_results['mean_accuracy_pct']:.1f}%")
@@ -3519,48 +3477,83 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
         validation_results['dmso'] = dmso_results
         lash_e.logger.info(f"      DMSO validation: R^2={dmso_results['r_squared']:.3f}, Accuracy={dmso_results['mean_accuracy_pct']:.1f}%")
         
-        # Test 3+: Surfactant stock validation for all specified surfactants
-        for i, surfactant_name in enumerate(surfactant_names):
-            surfactant_stock = f"{surfactant_name}_stock"
-            lash_e.logger.info(f"    Validating {surfactant_stock} pipetting ({i+1}/{len(surfactant_names)})...")
-            
-            # Small volume validation (small tips)
-            lash_e.logger.info(f"      Small volumes (10-100 uL) with conditioning...")
-            surf_small_results = validate_pipetting_accuracy(
-                lash_e=lash_e,
-                source_vial=surfactant_stock,
-                destination_vial=surfactant_stock,
-                liquid_type='water',  # Aqueous surfactant solution
-                volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
-                replicates=3,
-                output_folder=experiment_output_folder,
-                switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=150,
-                adaptive_correction=True
-            )
-            validation_results[f'{surfactant_name}_small'] = surf_small_results
-            lash_e.logger.info(f"        Small {surfactant_stock}: R^2={surf_small_results['r_squared']:.3f}, Accuracy={surf_small_results['mean_accuracy_pct']:.1f}%")
-            
-            # Large volume validation (large tips)
-            lash_e.logger.info(f"      Large volumes (200-900 uL) with conditioning...")
-            surf_large_results = validate_pipetting_accuracy(
-                lash_e=lash_e,
-                source_vial=surfactant_stock,
-                destination_vial=surfactant_stock,
-                liquid_type='water',  # Aqueous surfactant solution
-                volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
-                replicates=1 if i > 0 else 3,  # Full validation on first surfactant, reduced on others
-                output_folder=experiment_output_folder,
-                switch_pipet=False,
-                save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
-                condition_tip_enabled=True,
-                conditioning_volume_ul=800
-            )
-            validation_results[f'{surfactant_name}_large'] = surf_large_results
-            lash_e.logger.info(f"        Large {surfactant_stock}: R^2={surf_large_results['r_squared']:.3f}, Accuracy={surf_large_results['mean_accuracy_pct']:.1f}%")
-            lash_e.logger.info(f"      {surfactant_name} validation complete")
+        # Test 3a: Surfactant A stock validation - Small volumes (small tips)
+        surfactant_a_stock = f"{SURFACTANT_A}_stock"
+        lash_e.logger.info(f"    Validating {surfactant_a_stock} pipetting - Small volumes (10-100 uL) with conditioning...")
+        
+        surf_a_small_results = validate_pipetting_accuracy(
+            lash_e=lash_e,
+            source_vial=surfactant_a_stock,
+            destination_vial=surfactant_a_stock,
+            liquid_type='water',  # Aqueous surfactant solution
+            volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
+            replicates=3,
+            output_folder=experiment_output_folder,
+            switch_pipet=False,
+            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+            condition_tip_enabled=True,
+            conditioning_volume_ul=150
+        )
+        validation_results['surfactant_a_small'] = surf_a_small_results
+        lash_e.logger.info(f"        Small {surfactant_a_stock}: R^2={surf_a_small_results['r_squared']:.3f}, Accuracy={surf_a_small_results['mean_accuracy_pct']:.1f}%")
+        
+        # Test 3b: Surfactant A stock validation - Large volumes (large tips)
+        lash_e.logger.info(f"    Validating {surfactant_a_stock} pipetting - Large volumes (200-900 uL) with conditioning...")
+        
+        surf_a_large_results = validate_pipetting_accuracy(
+            lash_e=lash_e,
+            source_vial=surfactant_a_stock,
+            destination_vial=surfactant_a_stock,
+            liquid_type='water',  # Aqueous surfactant solution
+            volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
+            replicates=3,
+            output_folder=experiment_output_folder,
+            switch_pipet=False,
+            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+            condition_tip_enabled=True,
+            conditioning_volume_ul=800
+        )
+        validation_results['surfactant_a_large'] = surf_a_large_results
+        lash_e.logger.info(f"        Large {surfactant_a_stock}: R^2={surf_a_large_results['r_squared']:.3f}, Accuracy={surf_a_large_results['mean_accuracy_pct']:.1f}%")
+        
+        # Test 4a: Surfactant B stock validation - Small volumes (small tips)
+        surfactant_b_stock = f"{SURFACTANT_B}_stock"
+        lash_e.logger.info(f"    Validating {surfactant_b_stock} pipetting - Small volumes (10-100 uL) with conditioning...")
+        
+        surf_b_small_results = validate_pipetting_accuracy(
+            lash_e=lash_e,
+            source_vial=surfactant_b_stock,
+            destination_vial=surfactant_b_stock,
+            liquid_type='water',  # Aqueous surfactant solution
+            volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
+            replicates=1,
+            output_folder=experiment_output_folder,
+            switch_pipet=False,
+            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+            condition_tip_enabled=True,
+            conditioning_volume_ul=150
+        )
+        validation_results['surfactant_b_small'] = surf_b_small_results
+        lash_e.logger.info(f"        Small {surfactant_b_stock}: R^2={surf_b_small_results['r_squared']:.3f}, Accuracy={surf_b_small_results['mean_accuracy_pct']:.1f}%")
+        
+        # Test 4b: Surfactant B stock validation - Large volumes (large tips)
+        lash_e.logger.info(f"    Validating {surfactant_b_stock} pipetting - Large volumes (200-900 uL) with conditioning...")
+        
+        surf_b_large_results = validate_pipetting_accuracy(
+            lash_e=lash_e,
+            source_vial=surfactant_b_stock,
+            destination_vial=surfactant_b_stock,
+            liquid_type='water',  # Aqueous surfactant solution
+            volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
+            replicates=1,
+            output_folder=experiment_output_folder,
+            switch_pipet=False,
+            save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
+            condition_tip_enabled=True,
+            conditioning_volume_ul=800
+        )
+        validation_results['surfactant_b_large'] = surf_b_large_results
+        lash_e.logger.info(f"        Large {surfactant_b_stock}: R^2={surf_b_large_results['r_squared']:.3f}, Accuracy={surf_b_large_results['mean_accuracy_pct']:.1f}%")
         
         # Overall validation summary
         all_r_squared = [r['r_squared'] for r in validation_results.values()]
@@ -3806,7 +3799,6 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     # Send Slack completion message (hardware mode only)
     if not simulate:
         stage_info = f"Adaptive screening complete: {surfactant_a_name}+{surfactant_b_name}, {len(well_recipes_df)} wells, {len(measured_wells)} measured"
-        import slack_agent
         slack_agent.send_slack_message(stage_info)
     
     # Return clean results with just the essential data
@@ -3943,7 +3935,6 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         if not simulate:
             # Send Slack update with current progress
             stage_info = f"Iteration {iteration} complete: {current_measurements}/{target_measurements} measurements, wellplate usage: {current_wellplate_wells}/96"
-            import slack_agent
             slack_agent.send_slack_message(stage_info)
         
         iteration += 1
@@ -5021,34 +5012,14 @@ if __name__ == "__main__":
 
     if VALIDATE_LIQUIDS:
         if experiment_output_folder is not None:
-            # For single/regular workflows, validate the current surfactant pair
-            validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names=[SURFACTANT_A, SURFACTANT_B])
+            validate_pipetting_system(lash_e, experiment_output_folder)
         elif WORKFLOW_TYPE == 'double_iterative':
-            # For double_iterative, extract all unique surfactants and create temporary validation folder
+            # For double_iterative, create temporary validation folder
             import time
             validation_output_folder = f"output/validation_{int(time.time())}"
             os.makedirs(validation_output_folder, exist_ok=True)
-            
-            # Extract all unique surfactants from PAIRING_QUEUE
-            all_surfactants = set()
-            pairing_queue = PAIRING_QUEUE if isinstance(PAIRING_QUEUE, list) else []
-            if isinstance(PAIRING_QUEUE, str):
-                import ast
-                try:
-                    pairing_queue = ast.literal_eval(PAIRING_QUEUE)
-                except:
-                    pairing_queue = []
-            
-            for pairing in pairing_queue:
-                all_surfactants.add(pairing.get('SURFACTANT_A', ''))
-                all_surfactants.add(pairing.get('SURFACTANT_B', ''))
-            
-            # Remove empty strings and convert to sorted list
-            surfactant_list = sorted([s for s in all_surfactants if s])
-            print(f"Running validation for all surfactants in double_iterative: {surfactant_list}")
-            print(f"Validation folder: {validation_output_folder}")
-            
-            validate_pipetting_system(lash_e, validation_output_folder, surfactant_names=surfactant_list)
+            print(f"Running validation with temporary folder: {validation_output_folder}")
+            validate_pipetting_system(lash_e, validation_output_folder)
         else:
             print("Skipping validation: no output folder available and not double_iterative workflow")
 
@@ -5056,7 +5027,6 @@ if __name__ == "__main__":
         if WORKFLOW_TYPE == '2_stage':
             print("Starting 2-stage adaptive surfactant grid screening...")
             if not SIMULATE:
-                import slack_agent
                 slack_agent.send_slack_message("Starting 2-stage adaptive surfactant grid screening workflow...")
 
             results = execute_2_stage_workflow(
@@ -5093,7 +5063,6 @@ if __name__ == "__main__":
             # SINGLE STAGE WORKFLOW 
             print("Starting single-stage adaptive surfactant grid screening...")
             if not SIMULATE:
-                import slack_agent
                 slack_agent.send_slack_message("Starting adaptive surfactant grid screening workflow...")
 
             results = execute_adaptive_surfactant_screening(
@@ -5129,7 +5098,6 @@ if __name__ == "__main__":
             # SINGLE ITERATIVE WORKFLOW WITH GRADIENT EXPLORATION
             print("Starting iterative gradient exploration workflow...")
             if not SIMULATE:
-                import slack_agent
                 slack_agent.send_slack_message("Starting iterative gradient exploration workflow...")
 
             results = execute_iterative_workflow(
@@ -5192,7 +5160,6 @@ if __name__ == "__main__":
             
             print(f"Pairings planned: {len(pairing_queue)}")
             if not SIMULATE:
-                import slack_agent
                 slack_agent.send_slack_message(f"Starting double iterative workflow with {len(pairing_queue)} pairings...")
             
             all_results = []
@@ -5268,7 +5235,6 @@ if __name__ == "__main__":
             # KINETICS WORKFLOW - Single sequence (4x4 grid with modular measurement control)
             print("Starting kinetics workflow with modular measurement control...")
             if not SIMULATE:
-                import slack_agent
                 slack_agent.send_slack_message("Starting kinetics workflow...")
 
             # Execute modular kinetics workflow (dispensing + kinetics measurements)
@@ -5296,7 +5262,6 @@ if __name__ == "__main__":
             # ALL KINETICS SEQUENCES - Run all 3 measurement sequences (prep_turbidity, prep_dmso_turbidity_ratio, prep_turbidity_dmso_ratio)  
             print("Starting comprehensive kinetics workflow - all 3 sequences...")
             if not SIMULATE:
-                import slack_agent
                 slack_agent.send_slack_message("Starting comprehensive kinetics workflow (all sequences)...")
 
             # Execute all 3 kinetics sequences with fresh wellplates
