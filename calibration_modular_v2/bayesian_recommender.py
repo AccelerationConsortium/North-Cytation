@@ -208,6 +208,14 @@ class AxBayesianOptimizer:
             # No config constraints defined, that's fine
             pass
         
+        # Summary logging
+        if constraint_list:
+            logger.info(f"📋 TOTAL CONSTRAINTS TO PASS TO AX: {len(constraint_list)}")
+            for i, constraint in enumerate(constraint_list, 1):
+                logger.info(f"    {i}. {constraint}")
+        else:
+            logger.warning(f"⚠️  NO CONSTRAINTS FOUND - Ax will use unconstrained optimization!")
+        
         return constraint_list
     
     def _process_constraints_with_fixed_params(self, constraints: List[str]) -> List[str]:
@@ -315,6 +323,9 @@ class AxBayesianOptimizer:
             objectives=objectives,
             parameter_constraints=self._get_parameter_constraints(),
         )
+        
+        # DEBUG: Check what constraints Ax actually received
+        self._debug_ax_constraints(ax_client, "AFTER_CREATE_EXPERIMENT")
         
         # Store references
         self.state.ax_client = ax_client
@@ -553,6 +564,56 @@ class AxBayesianOptimizer:
                 rounded_params[param_name] = value
         
         return rounded_params
+
+    def _debug_ax_constraints(self, ax_client, label=""):
+        """Debug function to check what constraints Ax actually has."""
+        try:
+            experiment = ax_client.experiment
+            search_space = experiment.search_space
+            
+            logger.info(f"🔍 AX CONSTRAINTS CHECK {label}:")
+            
+            # Debug: show all parameters
+            logger.info(f"   All parameters: {list(search_space.parameters.keys())}")
+            
+            for param_name, param in search_space.parameters.items():
+                if param_name == "overaspirate_vol":
+                    logger.info(f"   Found parameter '{param_name}': type = {type(param)}")
+                    
+                    # For RangeParameter, use lower and upper attributes  
+                    if hasattr(param, 'lower') and hasattr(param, 'upper'):
+                        lower_ml = param.lower
+                        upper_ml = param.upper
+                        lower_ul = lower_ml * 1000  # Convert mL to μL
+                        upper_ul = upper_ml * 1000  # Convert mL to μL
+                        logger.info(f"   Parameter '{param_name}': range = [{lower_ml:.6f}, {upper_ml:.6f}] mL")
+                        logger.info(f"   → In uL: [{lower_ul:.6f}, {upper_ul:.6f}]uL") 
+                        logger.info(f"   ✅ CONSTRAINT ACTIVE: Ax will limit overaspirate_vol to {upper_ul:.1f}μL")
+                    else:
+                        logger.info(f"   Parameter '{param_name}': No lower/upper bounds found")
+                    break
+            else:
+                logger.info(f"   ⚠️  'overaspirate_vol' parameter not found!")
+            
+            # Check parameter constraints
+            if hasattr(search_space, 'parameter_constraints'):
+                constraints = search_space.parameter_constraints
+                if constraints:
+                    logger.info(f"   Parameter constraints: {len(constraints)} found")
+                    for i, constraint in enumerate(constraints):
+                        logger.info(f"     Constraint {i+1}: {constraint}")
+                else:
+                    logger.info(f"   No parameter constraints found")
+            
+            # Check outcome constraints too
+            outcome_constraints = experiment.optimization_config.outcome_constraints if experiment.optimization_config else []
+            if outcome_constraints:
+                logger.info(f"   Outcome constraints: {len(outcome_constraints)} found")
+            else:
+                logger.info(f"   No outcome constraints found")
+                
+        except Exception as e:
+            logger.error(f"   ❌ Error checking Ax constraints: {e}")
 
 
 # Factory function for creating optimizers

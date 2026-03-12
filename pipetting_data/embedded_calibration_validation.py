@@ -560,8 +560,16 @@ def validate_pipetting_accuracy(
         calib_folder = None
         save_raw_data = False  # Force disable file saving when output_folder is None
     
-    # Extract parameter values with defaults  
-    param_values = _get_parameter_values(parameters, "pipetting")
+    # Store actual parameters used for validation session (not defaults)
+    # Get the robot's actual optimized parameters that were used
+    actual_params = lash_e.nr_robot._get_optimized_parameters(
+        volume=volumes_ml[0] if volumes_ml else 0.1,  # Use first volume as representative
+        liquid=liquid_type,
+        user_parameters=parameters,
+        compensate_overvolume=compensate_overvolume,
+        smooth_overvolume=smooth_overvolume
+    )
+    param_values = _get_parameter_values(actual_params, "pipetting")
     
     print(f"\\n=== Vial-to-Vial Validation ===\\nSession ID: {session_id}")
     print(f"Source: {source_vial}")
@@ -599,7 +607,7 @@ def validate_pipetting_accuracy(
     # Pre-position destination vial in clamp before starting pipetting
     lash_e.nr_robot.move_vial_to_location(destination_vial, "clamp", 0)
 
-    for volume_ml in volumes_ml:
+    for volume_idx, volume_ml in enumerate(volumes_ml):
         print(f"\\nTesting volume: {volume_ml:.3f} mL ({replicates} replicates)")
         
         # Calculate appropriate quality threshold for this volume
@@ -676,10 +684,12 @@ def validate_pipetting_accuracy(
                 print(f"    SIMULATION: Generated mass {mass_difference:.6f}g for validation")
             elif mass_difference == 0:
                 # Real hardware returned zero - this is a problem!
-                raise ValueError(
+                error_msg = (
                     f"Hardware returned zero mass for volume {volume_ml*1000:.1f}uL. "
                     f"Check scale connection, vial positioning, or liquid availability."
                 )
+                lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
+                raise ValueError(error_msg)
 
             measured_volume_ml = mass_difference / density  # mass(g) / density(g/mL) = volume(mL)
             
@@ -697,6 +707,7 @@ def validate_pipetting_accuracy(
                 'switch_pipet': switch_pipet,
                 'retry_count': retry_count,
                 'stability_info': stability_info,
+                'volume_index': volume_idx,  # Track which volume in the list
                 'optimization_stage': 1  # Mark initial measurements as Stage 1
             }
             all_results.append(result)
@@ -739,13 +750,23 @@ def validate_pipetting_accuracy(
                         print(f"      Over-dispensing: trying lower overaspirate {stage2_overaspirate:.4f} mL")
                     
                     # Create Stage 2 parameters
-                    stage2_params = PipettingParameters(overaspirate_vol=stage2_overaspirate)
-                    if parameters:
-                        for attr in ['aspirate_speed', 'dispense_speed', 'retract_speed', 'blowout_speed',
-                                   'aspirate_wait_time', 'dispense_wait_time', 'post_retract_wait_time',
-                                   'pre_asp_air_vol', 'post_asp_air_vol', 'blowout_vol', 'asp_disp_cycles']:
-                            if hasattr(parameters, attr):
-                                setattr(stage2_params, attr, getattr(parameters, attr))
+                    # Get the robot's current optimized parameters for this volume/liquid
+                    base_params = lash_e.nr_robot._get_optimized_parameters(
+                        volume=volume_ml, 
+                        liquid=liquid_type, 
+                        user_parameters=parameters,  # Include any user overrides
+                        compensate_overvolume=compensate_overvolume,
+                        smooth_overvolume=smooth_overvolume
+                    )
+                    
+                    # Create Stage 2 parameters by copying all optimized params
+                    stage2_params = PipettingParameters()
+                    for attr in dir(base_params):
+                        if not attr.startswith('_') and hasattr(stage2_params, attr):
+                            setattr(stage2_params, attr, getattr(base_params, attr))
+                    
+                    # Apply ONLY the overaspirate adjustment
+                    stage2_params.overaspirate_vol = stage2_overaspirate
                     
                     # Take Stage 2 measurements (3 replicates)
                     stage2_volumes = []
@@ -789,10 +810,12 @@ def validate_pipetting_accuracy(
                             )
                             print(f"        SIMULATION: Generated Stage 2 mass {stage2_mass:.6f}g")
                         elif stage2_mass == 0:
-                            raise ValueError(
+                            error_msg = (
                                 f"Stage 2 hardware returned zero mass for {volume_ml*1000:.1f}uL. "
                                 f"Check scale/hardware during optimization."
                             )
+                            lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
+                            raise ValueError(error_msg)
                         
                         stage2_volume = stage2_mass / density
                         stage2_volumes.append(stage2_volume)
@@ -811,6 +834,7 @@ def validate_pipetting_accuracy(
                             'switch_pipet': switch_pipet,
                             'retry_count': 0,
                             'stability_info': None,
+                            'volume_index': volume_idx,
                             'optimization_stage': 2
                         }
                         all_results.append(stage2_result_dict)
@@ -838,13 +862,23 @@ def validate_pipetting_accuracy(
                     print(f"      Optimized overaspirate: {optimal_overaspirate:.4f} mL")
                     
                     # Create Stage 3 parameters
-                    stage3_params = PipettingParameters(overaspirate_vol=optimal_overaspirate)
-                    if parameters:
-                        for attr in ['aspirate_speed', 'dispense_speed', 'retract_speed', 'blowout_speed',
-                                   'aspirate_wait_time', 'dispense_wait_time', 'post_retract_wait_time',
-                                   'pre_asp_air_vol', 'post_asp_air_vol', 'blowout_vol', 'asp_disp_cycles']:
-                            if hasattr(parameters, attr):
-                                setattr(stage3_params, attr, getattr(parameters, attr))
+                    # Get fresh optimized parameters for Stage 3
+                    base_params = lash_e.nr_robot._get_optimized_parameters(
+                        volume=volume_ml, 
+                        liquid=liquid_type, 
+                        user_parameters=parameters,
+                        compensate_overvolume=compensate_overvolume,
+                        smooth_overvolume=smooth_overvolume
+                    )
+                    
+                    # Create Stage 3 parameters preserving all calibration
+                    stage3_params = PipettingParameters()
+                    for attr in dir(base_params):
+                        if not attr.startswith('_') and hasattr(stage3_params, attr):
+                            setattr(stage3_params, attr, getattr(base_params, attr))
+                    
+                    # Apply ONLY the optimized overaspirate
+                    stage3_params.overaspirate_vol = optimal_overaspirate
                     
                     # Take Stage 3 measurements (3 replicates) 
                     stage3_volumes = []
@@ -888,10 +922,12 @@ def validate_pipetting_accuracy(
                             )
                             print(f"        SIMULATION: Generated Stage 3 mass {stage3_mass:.6f}g")
                         elif stage3_mass == 0:
-                            raise ValueError(
+                            error_msg = (
                                 f"Stage 3 hardware returned zero mass for {volume_ml*1000:.1f}uL. "
                                 f"Check scale/hardware during final optimization."
                             )
+                            lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
+                            raise ValueError(error_msg)
                         
                         stage3_volume = stage3_mass / density
                         stage3_volumes.append(stage3_volume)
@@ -910,6 +946,7 @@ def validate_pipetting_accuracy(
                             'switch_pipet': switch_pipet,
                             'retry_count': 0,
                             'stability_info': None,
+                            'volume_index': volume_idx,
                             'optimization_stage': 3
                         }
                         all_results.append(stage3_result_dict)
@@ -1142,10 +1179,11 @@ def validate_pipetting_accuracy(
     # Prepare individual measurements data
     measurements_data = []
     for idx, row in df.iterrows():
-        # Calculate precision if multiple replicates of same volume exist
-        same_volume_measurements = df[df['target_volume_ml'] == row['target_volume_ml']]
-        precision_cv_pct = (same_volume_measurements['measured_volume_ml'].std() / 
-                           same_volume_measurements['measured_volume_ml'].mean() * 100) if len(same_volume_measurements) > 1 else None
+        # Individual measurements don't have precision - that's a group property
+        # Precision will be calculated separately for volume groups
+        
+        # Calculate accuracy for this measurement
+        accuracy_pct = ((row['measured_volume_ml'] - row['target_volume_ml']) / row['target_volume_ml']) * 100
         
         measurement_record = {
             'timestamp': timestamp,
@@ -1155,42 +1193,41 @@ def validate_pipetting_accuracy(
             'density_used': density,
             'target_volume_ml': row['target_volume_ml'],
             'measured_volume_ml': row['measured_volume_ml'],
-            'accuracy_pct': row['accuracy_pct'],
-            'precision_cv_pct': precision_cv_pct,
+            'accuracy_pct': accuracy_pct,
             'replicate_number': row['replicate'],
             'volume_index': row['volume_index'],
             'source_vial': source_vial,
             'destination_vial': destination_vial,
-            'reservoir_index': None,
             **param_values  # Add all parameter columns
         }
         measurements_data.append(measurement_record)
     
     _append_to_master_measurements(measurements_data, "pipetting")
     
-    # Prepare session summary data
-    session_record = {
-        'timestamp': timestamp,
-        'session_id': session_id,
-        'validation_type': 'vial_to_vial',
-        'liquid_type': liquid_type,
-        'density_used': density,
-        'volumes_tested': str(volumes_ml),  # Convert list to string
-        'num_replicates': replicates,
-        'total_measurements': len(df),
-        'r_squared': r_squared,
-        'mean_accuracy_pct': overall_stats['mean_accuracy_pct'],
-        'mean_precision_cv_pct': overall_stats['mean_precision_cv_pct'],
-        'linear_slope': slope,
-        'linear_intercept': intercept,
-        'output_folder_path': calib_folder,
-        'source_vial': source_vial,
-        'destination_vial': destination_vial,
-        'reservoir_index': None,
-        **param_values  # Add all parameter columns
-    }
-    
-    _append_to_master_sessions(session_record, "pipetting")
+    # Prepare session summary data - separate records for each volume
+    for idx, volume_stat in enumerate(stats_per_volume):
+        session_record = {
+            'timestamp': timestamp,
+            'session_id': session_id,
+            'validation_type': 'vial_to_vial',
+            'liquid_type': liquid_type,
+            'density_used': density,
+            'target_volume_ml': volume_stat['target_volume_ml'],
+            'num_replicates': volume_stat['n_replicates'],
+            'accuracy_pct': volume_stat['accuracy_pct'],
+            'precision_cv_pct': volume_stat['precision_cv_pct'],
+            'measured_mean_ml': volume_stat['measured_mean_ml'],
+            'measured_std_ml': volume_stat['measured_std_ml'],
+            'r_squared': r_squared,  # Overall fit still applies to all volumes
+            'linear_slope': slope,
+            'linear_intercept': intercept,
+            'output_folder_path': calib_folder,
+            'source_vial': source_vial,
+            'destination_vial': destination_vial,
+            **param_values  # Add all parameter columns
+        }
+        
+        _append_to_master_sessions(session_record, "pipetting")
     
     # === CLEANUP ===
     # Return destination vial to home position at the very end
@@ -1353,7 +1390,8 @@ def validate_reservoir_accuracy(
                 'reservoir_index': reservoir_index,
                 'target_vial': target_vial,
                 'retry_count': retry_count,
-                'stability_info': stability_info
+                'stability_info': stability_info,
+                'volume_index': volume_idx  # Track which volume in the list
             }
             all_results.append(result)
             
@@ -1543,10 +1581,11 @@ def validate_reservoir_accuracy(
     # Prepare individual measurements data
     measurements_data = []
     for idx, row in df.iterrows():
-        # Calculate precision if multiple replicates of same volume exist
-        same_volume_measurements = df[df['target_volume_ml'] == row['target_volume_ml']]
-        precision_cv_pct = (same_volume_measurements['measured_volume_ml'].std() / 
-                           same_volume_measurements['measured_volume_ml'].mean() * 100) if len(same_volume_measurements) > 1 else None
+        # Individual measurements don't have precision - that's a group property
+        # Precision will be calculated separately for volume groups
+        
+        # Calculate accuracy for this measurement
+        accuracy_pct = ((row['measured_volume_ml'] - row['target_volume_ml']) / row['target_volume_ml']) * 100
         
         measurement_record = {
             'timestamp': timestamp,
@@ -1556,8 +1595,7 @@ def validate_reservoir_accuracy(
             'density_used': density,
             'target_volume_ml': row['target_volume_ml'],
             'measured_volume_ml': row['measured_volume_ml'],
-            'accuracy_pct': row['accuracy_pct'],
-            'precision_cv_pct': precision_cv_pct,
+            'accuracy_pct': accuracy_pct,
             'replicate_number': row['replicate'],
             'volume_index': row['volume_index'],
             'source_vial': None,
@@ -1569,29 +1607,31 @@ def validate_reservoir_accuracy(
     
     _append_to_master_measurements(measurements_data, "reservoir")
     
-    # Prepare session summary data
-    session_record = {
-        'timestamp': timestamp,
-        'session_id': session_id,
-        'validation_type': 'reservoir_dispensing',
-        'liquid_type': liquid_type,
-        'density_used': density,
-        'volumes_tested': str(volumes_ml),  # Convert list to string
-        'num_replicates': replicates,
-        'total_measurements': len(df),
-        'r_squared': r_squared,
-        'mean_accuracy_pct': overall_stats['mean_accuracy_pct'],
-        'mean_precision_cv_pct': overall_stats['mean_precision_cv_pct'],
-        'linear_slope': slope,
-        'linear_intercept': intercept,
-        'output_folder_path': calib_folder,
-        'source_vial': None,
-        'destination_vial': target_vial,
-        'reservoir_index': reservoir_index,
-        **reservoir_param_values  # Add all reservoir parameter columns
-    }
-    
-    _append_to_master_sessions(session_record, "reservoir")
+    # Prepare session summary data - separate records for each volume
+    for idx, volume_stat in enumerate(stats_per_volume):
+        session_record = {
+            'timestamp': timestamp,
+            'session_id': session_id,
+            'validation_type': 'reservoir_dispensing',
+            'liquid_type': liquid_type,
+            'density_used': density,
+            'target_volume_ml': volume_stat['target_volume_ml'],
+            'num_replicates': volume_stat['n_replicates'],
+            'accuracy_pct': volume_stat['accuracy_pct'],
+            'precision_cv_pct': volume_stat['precision_cv_pct'],
+            'measured_mean_ml': volume_stat['measured_mean_ml'],
+            'measured_std_ml': volume_stat['measured_std_ml'],
+            'r_squared': r_squared,  # Overall fit still applies to all volumes
+            'linear_slope': slope,
+            'linear_intercept': intercept,
+            'output_folder_path': calib_folder,
+            'source_vial': None,
+            'destination_vial': target_vial,
+            'reservoir_index': reservoir_index,
+            **reservoir_param_values  # Add all reservoir parameter columns
+        }
+        
+        _append_to_master_sessions(session_record, "reservoir")
     
     # === CLEANUP ===
     # Return target vial to home position at the very end
