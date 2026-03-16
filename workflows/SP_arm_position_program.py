@@ -1,1292 +1,918 @@
-# NorthC9 Teach & Save (ULTRA-SAFE Motor Driver Protection)  
-# - Press & Hold jog buttons for SLOW continuous movement (0.5° joints, 0.5mm Z)
-# - Single-click jog buttons for precise single steps (ULTRA-CONSERVATIVE speeds)
-# - Name & Save current position (joint counts + xyz/theta)
-# - Go To Selected (safe) for re-teach flow
-# - Update Selected after fine-tuning
-# - Import/Export JSON
-# - Enhanced: Predefined workflow positions and timestamped saves
-# - CRITICAL: All speeds severely limited to prevent motor driver crashes
-#
-# Safety: Ultra-conservative speeds (1000-2000 cts/s), blocking movements, minimum delays
+#!/usr/bin/env python3
+"""
+North Robotics Arm Position Control Program
+==========================================
+
+This program provides a simple GUI interface to control the North robot arm
+using keyboard arrow keys and includes a home button.
+
+Features:
+- Up/Down arrow keys to move the Z-axis
+- Home button to home the robot
+- Real-time position display
+- Safety features and error handling
+- Support for both simulation and real hardware
+
+Controls:
+- UP Arrow: Move arm up by 5mm
+- DOWN Arrow: Move arm down by 5mm
+- HOME Button: Home the robot
+- ESC: Exit program
+
+Author: Generated for North Robotics Control
+Date: March 16, 2026
+"""
 
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import json, math, os
-from datetime import datetime
+from tkinter import ttk, messagebox
+import logging
+import time
+import sys
+import os
+from pathlib import Path
 
-# -------- Defaults --------
-DEFAULT_ADDR   = "A"     # Controller address (e.g., 'A')
-DEFAULT_SERIAL = None    # FTDI network serial (or None to auto-pick first)
-DEFAULT_VEL    = 1000    # counts/s (ultra-conservative for motor driver protection)
-DEFAULT_ACC    = 5000    # counts/s^2 (ultra-conservative to prevent crashes)
-STEP_DEG       = 1.0     # rotational jog step (deg)
-STEP_MM        = 0.5     # Z jog step (mm)
-
-# Safe movement speeds for homing and position changes - conservative to prevent motor driver failures
-SAFE_VEL       = 2000    # counts/s (very conservative for motor protection)
-SAFE_ACC       = 8000    # counts/s^2 (very conservative acceleration)
-SAFE_HOME_VEL  = 1500    # counts/s (very slow homing to prevent overload)
-SAFE_HOME_ACC  = 6000    # counts/s^2 (very conservative homing acceleration)
-
-# Predefined workflow positions from the main surfactant screening workflow
-WORKFLOW_POSITIONS = {
-    "Clamp Position": {"location": "clamp", "index": 0},
-    "Water Vial Position": {"location": "main_8mL_rack", "index": 44},
-    "Water 2 Vial Position": {"location": "main_8mL_rack", "index": 45}, 
-    "Pyrene DMSO Position": {"location": "main_8mL_rack", "index": 47},
-    "Buffer Position": {"location": "main_8mL_rack", "index": 47},
-    "Safe Position 46": {"location": "main_8mL_rack", "index": 46},
-    "Safe Position 43": {"location": "main_8mL_rack", "index": 43},
-    "Safe Position 36": {"location": "main_8mL_rack", "index": 36},
-    "Cytation Position": {"location": "cytation", "index": None},
-    "Pipetting Area": {"location": "pipetting_area", "index": None},
-    "Home Position": {"location": "home", "index": None}
-}
+# Add the project root to path for imports
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 try:
-    from north.north_c9 import NorthC9
-    # Add parent directory to path to import coordinator from root
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from master_usdl_coordinator import Lash_E
-except Exception as e:
-    raise SystemExit("Could not import north.north_c9 or Lash_E. Install the North Robotics SDK.\n" + str(e))
+    from north import NorthC9
+    NORTH_AVAILABLE = True
+except ImportError:
+    NORTH_AVAILABLE = False
+    print("Warning: North robotics library not available. Running in simulation mode.")
 
-# Axis IDs from API
-GRIPPER  = NorthC9.GRIPPER
-ELBOW    = NorthC9.ELBOW
-SHOULDER = NorthC9.SHOULDER
-ZAXIS    = NorthC9.Z_AXIS
-FREE     = NorthC9.FREE
+# Configuration
+SIMULATE = not NORTH_AVAILABLE  # Automatically simulate if North library not available
+NETWORK_SERIAL = "AU06CNCF"  # Default network serial - update as needed
+CONTROLLER_ADDR = "A"  # Controller address
 
-class TeachSaveApp(tk.Tk):
+# Movement parameters
+DEFAULT_MOVE_INCREMENT_MM = 5.0      # Default mm per arrow key press for Z-axis
+DEFAULT_MOVE_INCREMENT_RAD = 0.1     # Default radians per key press for rotational joints
+MAX_MOVE_INCREMENT_MM = 50.0         # Maximum allowed Z increment (mm)
+MAX_MOVE_INCREMENT_RAD = 1.0         # Maximum allowed rotational increment (radians)
+MIN_MOVE_INCREMENT_MM = 0.1          # Minimum allowed Z increment (mm)
+MIN_MOVE_INCREMENT_RAD = 0.01        # Minimum allowed rotational increment (radians)
+Z_AXIS_MIN_MM = 30.0                 # Minimum Z position (mm)
+Z_AXIS_MAX_MM = 292.0                # Maximum Z position (mm)
+ELBOW_MIN_RAD = -(5/6) * 3.14159    # Minimum elbow angle (radians)
+ELBOW_MAX_RAD = (5/6) * 3.14159     # Maximum elbow angle (radians)
+SHOULDER_MIN_RAD = -(2/3) * 3.14159 # Minimum shoulder angle (radians)
+SHOULDER_MAX_RAD = (2/3) * 3.14159  # Maximum shoulder angle (radians)
+GRIPPER_MIN_RAD = -6.28              # Minimum gripper angle (radians)
+GRIPPER_MAX_RAD = 6.28               # Maximum gripper angle (radians)
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('arm_position_control.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+class RobotArmController:
+    """Main controller class for the robot arm GUI application."""
+    
     def __init__(self):
-        super().__init__()
-        self.title("NorthC9 Teach & Save - ⚠️ MOTOR DRIVER PROTECTION MODE ⚠️")
-        self.geometry("980x640")
-        self.c9 = None
-        self.lash_e = None
-        self.poll_ms = 150
-        self.locations = []
-        self.safe_z_counts = None
-        self.connection_attempts = 0
-        self.max_connection_attempts = 3
-        self.auto_reconnect = tk.BooleanVar(value=True)
-        self.connecting = False  # Track connection state
+        self.robot = None
+        self.root = None
+        self.is_connected = False
+        self.current_z_position = 0.0
+        self.current_elbow_angle = 0.0
+        self.current_shoulder_angle = 0.0
+        self.current_gripper_angle = 0.0
+        self.gripper_is_open = False  # Track gripper open/close state
+        self.is_homed = False
         
-        # In-memory position tracking (cleared on restart)
-        self.workflow_positions_taught = {}  # Store learned workflow positions
-        self.home_position = None  # Store home position as reference
-        self.session_positions = {}  # Store any positions learned this session
-
-        # Session state
-        self.addr_var = tk.StringVar(value=DEFAULT_ADDR)
-        self.ser_var  = tk.StringVar(value=DEFAULT_SERIAL if DEFAULT_SERIAL else "")
-        self.vel_var  = tk.IntVar(value=DEFAULT_VEL)
-        self.acc_var  = tk.IntVar(value=DEFAULT_ACC)
-        self.step_deg = tk.DoubleVar(value=STEP_DEG)
-        self.step_mm  = tk.DoubleVar(value=STEP_MM)
-        self.tool_len_mm  = tk.DoubleVar(value=0.0)
-        self.pipette_tip  = tk.BooleanVar(value=False)
-        self.status = tk.StringVar(value="Disconnected")
+        # Movement increments (user configurable)
+        self.move_increment_mm = DEFAULT_MOVE_INCREMENT_MM
+        self.move_increment_rad = DEFAULT_MOVE_INCREMENT_RAD
         
-        # Press-and-hold jogging state
-        self.jog_active = {}
-        self.jog_timer = None
-        self.jog_repeat_ms = 500  # MUCH slower (500ms = 2 steps/second) to prevent shoot-through
-        self.jog_buttons = {'buttons': [], 'z_buttons': []}  # Initialize button storage
-        self.jog_busy = False  # Prevent overlapping jog commands
-        self.last_jog_time = 0  # Track timing for minimum intervals
-        self.last_move_axis = None  # Track which axis moved last
-        self.last_move_direction = None  # Track last direction to prevent rapid reversals
-        self.motor_off_time = 0.1  # Minimum OFF time between moves (100ms deadtime)
-
-        self._build_ui()
-        self._set_controls("disabled")
+        # GUI components will be set in create_gui()
+        self.z_position_label = None
+        self.elbow_position_label = None
+        self.shoulder_position_label = None
+        self.gripper_position_label = None
+        self.status_label = None
+        self.home_button = None
+        self.z_increment_entry = None
+        self.rad_increment_entry = None
+        self.increment_status_label = None
+        self.gripper_status_label = None  # Display gripper open/close status
         
-        # Show startup safety warning
-        self.after(1000, self._show_startup_warning)
-        
-        # Ensure cleanup on window close
-        self.protocol("WM_DELETE_WINDOW", self._on_closing)
-    
-    def _show_startup_warning(self):
-        """Show critical safety warning on startup"""
-        messagebox.showwarning("MOTOR DRIVER PROTECTION MODE", 
-                             "CRITICAL HARDWARE PROTECTION ACTIVE:\n\n" +
-                             "⚠️ Anti-shoot-through protection enabled\n" +
-                             "⚠️ Direction reversal blocking (500ms deadtime)\n" + 
-                             "⚠️ 300ms minimum delay between button clicks\n" +
-                             "⚠️ 100ms motor-off deadtime before movements\n" +
-                             "⚠️ All speeds ultra-conservative (1000-2000 cts/s)\n" +
-                             "⚠️ Blocking waits prevent command stacking\n\n" +
-                             "These protections prevent motor driver hardware damage.\n" +
-                             "Movement will be VERY SLOW but completely stable.")
-    
-    def _on_closing(self):
-        """Clean shutdown when window is closed"""
-        self._stop_jog()  # Stop any active jogging
-        
-        # Force clear all jog states
-        self.jog_active = {}
-        self.jog_busy = False
-        if hasattr(self, 'jog_timer') and self.jog_timer:
-            self.after_cancel(self.jog_timer)
-            
-        self.destroy()
-
-    # ---------- UI ----------
-    def _build_ui(self):
-        top = ttk.Frame(self, padding=8); top.pack(fill="x")
-        ttk.Label(top, text="Addr").grid(row=0, column=0)
-        ttk.Entry(top, textvariable=self.addr_var, width=6).grid(row=0, column=1, padx=4)
-        ttk.Label(top, text="Network Serial").grid(row=0, column=2)
-        ttk.Entry(top, textvariable=self.ser_var, width=24).grid(row=0, column=3, padx=4)
-        ttk.Button(top, text="Connect", command=self.connect).grid(row=0, column=4, padx=6)
-        ttk.Button(top, text="Disconnect", command=self.disconnect).grid(row=0, column=5, padx=6)
-        ttk.Checkbutton(top, text="Auto-reconnect", variable=self.auto_reconnect).grid(row=0, column=6, padx=6)
-        ttk.Button(top, text="Home", command=self.home).grid(row=0, column=7, padx=6)
-        ttk.Button(top, text="Quick Stop", command=self.quick_stop).grid(row=0, column=8, padx=6)
-        
-        # Connection progress bar
-        progress_frame = ttk.Frame(self, padding=4)
-        progress_frame.pack(fill="x", padx=8)
-        ttk.Label(progress_frame, text="Connection Progress:").pack(side="left")
-        self.progress_bar = ttk.Progressbar(progress_frame, mode='indeterminate', length=300)
-        self.progress_bar.pack(side="left", padx=6, fill="x", expand=True)
-
-        cfg = ttk.LabelFrame(self, text="Move Config (AUTO-CAPPED for Motor Safety)", padding=8); cfg.pack(fill="x", padx=8, pady=6)
-        ttk.Label(cfg, text="Vel (cts/s)", foreground="red").grid(row=0, column=0, sticky="e")
-        ttk.Entry(cfg, textvariable=self.vel_var, width=8).grid(row=0, column=1, padx=6)
-        ttk.Label(cfg, text="Acc (cts/s²)", foreground="red").grid(row=0, column=2, sticky="e")
-        ttk.Entry(cfg, textvariable=self.acc_var, width=8).grid(row=0, column=3, padx=6)
-        ttk.Label(cfg, text="Step (deg)").grid(row=0, column=4, sticky="e")
-        ttk.Entry(cfg, textvariable=self.step_deg, width=8).grid(row=0, column=5, padx=6)
-        ttk.Label(cfg, text="Z Step (mm)").grid(row=0, column=6, sticky="e")
-        ttk.Entry(cfg, textvariable=self.step_mm, width=8).grid(row=0, column=7, padx=6)
-        ttk.Label(cfg, text="Tool length (mm)").grid(row=0, column=8, sticky="e")
-        ttk.Entry(cfg, textvariable=self.tool_len_mm, width=8).grid(row=0, column=9, padx=6)
-        ttk.Checkbutton(cfg, text="Pipette tip offset", variable=self.pipette_tip).grid(row=0, column=10, padx=8)
-        ttk.Button(cfg, text="Set Safe-Z = Current", command=self.set_safe_z_current).grid(row=0, column=11, padx=8)
-        
-        # Add speed safety info
-        speed_info = ttk.Label(cfg, text=f"WARNING: Jog speeds auto-capped at {SAFE_VEL} cts/s (ULTRA-CONSERVATIVE for motor protection)", 
-                              font=("Arial", 8), foreground="red")
-        speed_info.grid(row=1, column=0, columnspan=12, pady=3, sticky="w")
-        
-        # Add movement safety info
-        movement_info = ttk.Label(cfg, text="All movements use blocking waits & minimum delays to prevent motor driver crashes", 
-                              font=("Arial", 8), foreground="green")
-        movement_info.grid(row=2, column=0, columnspan=12, pady=3, sticky="w")
-
-        # Predefined Workflow Positions
-        workflow_frame = ttk.LabelFrame(self, text="Workflow Positions", padding=8)
-        workflow_frame.pack(fill="x", padx=8, pady=6)
-        
-        ttk.Label(workflow_frame, text="Position:").grid(row=0, column=0, sticky="w", padx=6)
-        self.position_var = tk.StringVar()
-        position_combo = ttk.Combobox(workflow_frame, textvariable=self.position_var, 
-                                     values=list(WORKFLOW_POSITIONS.keys()), 
-                                     state="readonly", width=25)
-        position_combo.grid(row=0, column=1, padx=6, pady=3)
-        position_combo.set("Clamp Position")  # Default selection
-        
-        ttk.Button(workflow_frame, text="Go to Position", 
-                  command=self.go_to_workflow_position).grid(row=0, column=2, padx=6)
-        ttk.Button(workflow_frame, text="Save New Position", 
-                  command=self.save_new_position_timestamped).grid(row=0, column=3, padx=6)
-        
-        # Add session info
-        session_info = ttk.Label(workflow_frame, 
-                               text="Note: Positions taught this session, auto-home on connect with safe speeds", 
-                               font=("Arial", 8), foreground="green")
-        session_info.grid(row=1, column=0, columnspan=4, pady=3, sticky="w")
-
-        # Jogging
-        jog = ttk.LabelFrame(self, text="Jog (Press & Hold for Continuous Movement)", padding=8); jog.pack(fill="x", padx=8, pady=6)
-        self._mk_jog_row(jog, "Shoulder (±0.5deg)", SHOULDER, row=0)
-        self._mk_jog_row(jog, "Elbow (±0.5deg)", ELBOW, row=1)
-        self._mk_jog_row(jog, "Gripper (±0.5deg)", GRIPPER, row=2)
-        
-        ttk.Label(jog, text="Z (±0.5mm)").grid(row=3, column=0, sticky="w")
-        
-        # Create Z buttons with press-and-hold functionality  
-        btn_z_up = ttk.Button(jog, text="▲  Z Up")
-        btn_z_down = ttk.Button(jog, text="▼  Z Down")
-        
-        btn_z_up.grid(row=3, column=1, padx=6, pady=3, sticky="ew")
-        btn_z_down.grid(row=3, column=2, padx=6, pady=3, sticky="ew")
-        
-        # Store Z button references for visual feedback
-        if not hasattr(self, 'jog_buttons'):
-            self.jog_buttons = {'buttons': [], 'z_buttons': []}
-        self.jog_buttons['z_buttons'] = [btn_z_up, btn_z_down]
-        
-        # Bind mouse events for Z-axis press-and-hold (note: direction inverted for intuitive up/down)
-        btn_z_up.bind("<Button-1>", lambda e: self._start_jog_z_with_ui_lock(-1, btn_z_up))  # Up = negative Z
-        btn_z_up.bind("<ButtonRelease-1>", lambda e: self._stop_jog())
-        btn_z_up.bind("<Leave>", lambda e: self._stop_jog())
-        
-        btn_z_down.bind("<Button-1>", lambda e: self._start_jog_z_with_ui_lock(+1, btn_z_down))  # Down = positive Z  
-        btn_z_down.bind("<ButtonRelease-1>", lambda e: self._stop_jog())
-        btn_z_down.bind("<Leave>", lambda e: self._stop_jog())
-        
-        # Also support single-click (for accessibility)
-        btn_z_up.configure(command=lambda: self._single_jog_z_with_ui_lock(-1, btn_z_up))
-        btn_z_down.configure(command=lambda: self._single_jog_z_with_ui_lock(+1, btn_z_down))
-
-        # Add jog step info
-        jog_info = ttk.Label(jog, 
-                           text="� MOTOR DRIVER PROTECTION: 300ms delay between clicks | 0.5° or 0.5mm steps | Anti-shoot-through", 
-                           font=("Arial", 8), foreground="red")
-        jog_info.grid(row=4, column=0, columnspan=3, pady=3, sticky="w")
-
-        # Live pose
-        pose = ttk.LabelFrame(self, text="Live Pose", padding=8); pose.pack(fill="x", padx=8, pady=6)
-        self.pose_txt = tk.Text(pose, height=8, font=("Consolas", 10)); self.pose_txt.pack(fill="x")
-
-        # Naming + Save
-        teach = ttk.LabelFrame(self, text="Teach / Save", padding=8); teach.pack(fill="x", padx=8, pady=6)
-        self.name_var = tk.StringVar(value="")
-        self.note_var = tk.StringVar(value="")
-        ttk.Label(teach, text="Name").grid(row=0, column=0, sticky="e")
-        ttk.Entry(teach, textvariable=self.name_var, width=24).grid(row=0, column=1, padx=6)
-        ttk.Label(teach, text="Note").grid(row=0, column=2, sticky="e")
-        ttk.Entry(teach, textvariable=self.note_var, width=40).grid(row=0, column=3, padx=6)
-        ttk.Button(teach, text="Add @ Current", command=self.add_current).grid(row=0, column=4, padx=6)
-        ttk.Button(teach, text="Update Selected", command=self.update_selected).grid(row=0, column=5, padx=6)
-
-        # List + GoTo + Export
-        listf = ttk.LabelFrame(self, text="Locations", padding=8); listf.pack(fill="both", expand=True, padx=8, pady=6)
-        cols = ("name","x","y","z","theta","g_cts","e_cts","s_cts","z_cts","note")
-        self.tree = ttk.Treeview(listf, columns=cols, show="headings", height=12)
-        for c in cols:
-            self.tree.heading(c, text=c)
-            self.tree.column(c, width=90 if c not in ("name","note") else 140)
-        self.tree.pack(side="left", fill="both", expand=True)
-        sb = ttk.Scrollbar(listf, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscroll=sb.set); sb.pack(side="right", fill="y")
-
-        btns = ttk.Frame(self, padding=8); btns.pack(fill="x")
-        ttk.Button(btns, text="Go To Selected (safe)", command=self.goto_selected).pack(side="left", padx=6)
-        ttk.Button(btns, text="Import JSON", command=self.import_json).pack(side="left", padx=6)
-        ttk.Button(btns, text="Export JSON", command=self.export_json).pack(side="left", padx=6)
-
-        ttk.Label(self, textvariable=self.status, relief="sunken", anchor="w").pack(side="bottom", fill="x")
-
-    def _mk_jog_row(self, parent, label, axis, row):
-        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w")
-        
-        # Create buttons with press-and-hold functionality
-        btn_left = ttk.Button(parent, text="⟵")
-        btn_right = ttk.Button(parent, text="⟶")
-        
-        btn_left.grid(row=row, column=1, padx=6, pady=3, sticky="ew")
-        btn_right.grid(row=row, column=2, padx=6, pady=3, sticky="ew")
-        
-        # Store button references for visual feedback
-        self.jog_buttons['buttons'].extend([btn_left, btn_right])
-        
-        # Bind mouse events for press-and-hold
-        btn_left.bind("<Button-1>", lambda e: self._start_jog_with_ui_lock(axis, -1, btn_left))
-        btn_left.bind("<ButtonRelease-1>", lambda e: self._stop_jog())
-        btn_left.bind("<Leave>", lambda e: self._stop_jog())  # Stop if mouse leaves button
-        
-        btn_right.bind("<Button-1>", lambda e: self._start_jog_with_ui_lock(axis, +1, btn_right))
-        btn_right.bind("<ButtonRelease-1>", lambda e: self._stop_jog())
-        btn_right.bind("<Leave>", lambda e: self._stop_jog())  # Stop if mouse leaves button
-        
-        # Also support single-click (for accessibility)
-        btn_left.configure(command=lambda: self._single_jog_with_ui_lock(axis, -1, btn_left))
-        btn_right.configure(command=lambda: self._single_jog_with_ui_lock(axis, +1, btn_right))
-
-    # ---------- Connection & Poll ----------
-    def connect(self):
-        """Connect to robot with fallback strategies and auto-reconnection"""
-        if self.connecting:
-            self.status.set("Connection already in progress...")
-            return
-            
-        self.connecting = True
-        self.connection_attempts += 1
-        
-        # Start progress bar and disable connect button
-        self.progress_bar.start(10)  # Animation speed
-        self._set_connect_button_state("disabled")
-        
-        # Update UI and process events
-        self.status.set(f"🔄 Connecting... (attempt {self.connection_attempts}/3)")
-        self.update_idletasks()
-        
+    def connect_robot(self):
+        """Initialize connection to the North robot."""
         try:
-            # Strategy 1: Try simple direct NorthC9 connection first (fastest)
-            self.status.set(f"🔄 Step 1/2: Testing direct NorthC9 connection...")
-            self.update_idletasks()
-            
-            self.c9 = NorthC9(
-                addr=self.addr_var.get().strip(),
-                network_serial=(self.ser_var.get().strip() or None),
-                verbose=False, 
-                project=True
-            )
-            
-            # Test connection by getting status
-            self.status.set(f"🔄 Step 2/2: Verifying robot communication...")
-            self.update_idletasks()
-            
-            status = self.c9.get_robot_status()
-            
-            # Success!
-            self._connection_success(f"✅ Connected Successfully! (Direct NorthC9) - Robot Status: {status}")
-            return
-            
-        except Exception as direct_error:
-            self.status.set(f"❌ Direct connection failed: {str(direct_error)[:40]}...")
-            self.update_idletasks()
-            
-            # Strategy 2: Try with minimal Lash_E setup if direct fails
-            try:
-                self.status.set(f"🔄 Trying fallback method (Lash_E coordinator)...")
-                self.update_idletasks()
-                
-                # Create a minimal vial file if it doesn't exist
-                self._ensure_minimal_vial_file()
-                
-                self.status.set(f"🔄 Initializing Lash_E coordinator...")
-                self.update_idletasks()
-                
-                self.lash_e = Lash_E(
-                    vial_file="status/minimal_vials.csv", 
-                    initialize_robot=True,
-                    initialize_track=False,
-                    initialize_biotek=False,
-                    simulate=False,
-                    show_gui=False
+            if SIMULATE:
+                logger.info("Starting in simulation mode")
+                # Create a mock robot for simulation
+                self.robot = self._create_mock_robot()
+                self.is_connected = True
+                self.current_z_position = 100.0  # Start at middle position
+                return True
+            else:
+                logger.info(f"Connecting to robot at address {CONTROLLER_ADDR} with serial {NETWORK_SERIAL}")
+                self.robot = NorthC9(
+                    CONTROLLER_ADDR,
+                    network_serial=NETWORK_SERIAL,
+                    verbose=True
                 )
-                self.c9 = self.lash_e.nr_robot.c9
                 
-                # Success with fallback!
-                self._connection_success("✅ Connected Successfully! (Lash_E Fallback)")
+                # Test connection
+                self.robot.get_info()
+                self.is_connected = True
+                logger.info("Successfully connected to robot")
+                
+                # Get current positions for all axes
+                positions = self.robot.get_robot_positions()  # [gripper, elbow, shoulder, z-axis]
+                self.current_gripper_position = self.robot.counts_to_rad(self.robot.GRIPPER, positions[0])
+                self.current_elbow_position = self.robot.counts_to_rad(self.robot.ELBOW, positions[1])
+                self.current_shoulder_position = self.robot.counts_to_rad(self.robot.SHOULDER, positions[2])
+                self.current_z_position = self.robot.counts_to_mm(self.robot.Z_AXIS, positions[3])
+                
+                elbow_counts = self.robot.get_axis_position(self.robot.ELBOW)
+                self.current_elbow_angle = self.robot.counts_to_rad(self.robot.ELBOW, elbow_counts)
+                
+                shoulder_counts = self.robot.get_axis_position(self.robot.SHOULDER)
+                self.current_shoulder_angle = self.robot.counts_to_rad(self.robot.SHOULDER, shoulder_counts)
+                
+                return True
+                
+        except Exception as e:
+            logger.error(f"Failed to connect to robot: {str(e)}")
+            messagebox.showerror("Connection Error", f"Failed to connect to robot:\n{str(e)}")
+            return False
+    
+    def _create_mock_robot(self):
+        """Create a mock robot object for simulation."""
+        class MockRobot:
+            Z_AXIS = 3
+            ELBOW = 1
+            SHOULDER = 2
+            GRIPPER = 0
+            
+            def __init__(self):
+                self.z_position_mm = 100.0
+                self.elbow_angle_rad = 0.0
+                self.shoulder_angle_rad = 0.0
+                self.gripper_angle_rad = 0.0
+                self.gripper_is_open = False  # Gripper starts closed
+                self.is_homed = False
+                
+            def home_robot(self, wait=True):
+                logger.info("SIMULATION: Homing robot")
+                time.sleep(0.5)  # Simulate homing time
+                self.z_position_mm = Z_AXIS_MAX_MM  # Home position is at top
+                self.elbow_angle_rad = 0.0  # Home elbow to center
+                self.shoulder_angle_rad = 0.0  # Home shoulder to center
+                self.gripper_angle_rad = 0.0  # Home gripper to center
+                self.gripper_is_open = False  # Gripper closes on home
+                self.is_homed = True
+                return True
+                
+            def move_z(self, mm, wait=True):
+                logger.info(f"SIMULATION: Moving Z-axis to {mm:.1f}mm")
+                if mm < Z_AXIS_MIN_MM or mm > Z_AXIS_MAX_MM:
+                    raise ValueError(f"Z position {mm:.1f}mm is out of range [{Z_AXIS_MIN_MM}-{Z_AXIS_MAX_MM}]")
+                time.sleep(0.2)  # Simulate movement time
+                self.z_position_mm = mm
+                
+            def move_axis_rad(self, axis, rad, wait=True):
+                logger.info(f"SIMULATION: Moving axis {axis} to {rad:.2f} radians")
+                time.sleep(0.2)  # Simulate movement time
+                if axis == self.SHOULDER:
+                    if rad < SHOULDER_MIN_RAD or rad > SHOULDER_MAX_RAD:
+                        raise ValueError(f"Shoulder position {rad:.2f}rad is out of range [{SHOULDER_MIN_RAD:.2f}-{SHOULDER_MAX_RAD:.2f}]")
+                    self.shoulder_angle_rad = rad
+                elif axis == self.ELBOW:
+                    if rad < ELBOW_MIN_RAD or rad > ELBOW_MAX_RAD:
+                        raise ValueError(f"Elbow position {rad:.2f}rad is out of range [{ELBOW_MIN_RAD:.2f}-{ELBOW_MAX_RAD:.2f}]")
+                    self.elbow_angle_rad = rad
+                elif axis == self.GRIPPER:
+                    if rad < GRIPPER_MIN_RAD or rad > GRIPPER_MAX_RAD:
+                        raise ValueError(f"Gripper position {rad:.2f}rad is out of range [{GRIPPER_MIN_RAD:.2f}-{GRIPPER_MAX_RAD:.2f}]")
+                    self.gripper_angle_rad = rad
+                
+            def open_gripper(self):
+                logger.info("SIMULATION: Opening gripper")
+                self.gripper_is_open = True
+                
+            def close_gripper(self):
+                logger.info("SIMULATION: Closing gripper")
+                self.gripper_is_open = False
+                
+            def get_axis_position(self, axis):
+                if axis == self.Z_AXIS:
+                    return int(self.z_position_mm * 100)  # Mock conversion to counts
+                elif axis == self.ELBOW:
+                    return int(self.elbow_angle_rad * 1000)  # Mock conversion to counts
+                elif axis == self.SHOULDER:
+                    return int(self.shoulder_angle_rad * 1000)  # Mock conversion to counts
+                elif axis == self.GRIPPER:
+                    return int(self.gripper_angle_rad * 1000)  # Mock conversion to counts
+                return 0
+                
+            def get_robot_positions(self):
+                # Return [gripper, elbow, shoulder, z-axis] positions in counts
+                return [
+                    int(self.gripper_angle_rad * 1000),  # Mock conversion
+                    int(self.elbow_angle_rad * 1000),
+                    int(self.shoulder_angle_rad * 1000), 
+                    int(self.z_position_mm * 100)
+                ]
+                
+            def counts_to_mm(self, axis, counts):
+                return counts / 100.0  # Mock conversion from counts
+                
+            def counts_to_rad(self, axis, counts):
+                return counts / 1000.0  # Mock conversion from counts to radians
+                
+            def get_info(self):
+                logger.info("SIMULATION: Robot info - Mock North C9 Controller")
+        
+        return MockRobot()
+    
+    def create_gui(self):
+        """Create the main GUI window."""
+        self.root = tk.Tk()
+        self.root.title("North Robot Arm Position Control")
+        self.root.geometry("580x700")
+        self.root.resizable(False, False)
+        
+        # Set up the GUI layout
+        main_frame = ttk.Frame(self.root, padding="20")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Title
+        title_label = ttk.Label(main_frame, text="North Robot Arm Control", 
+                               font=("Arial", 16, "bold"))
+        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
+        
+        # Status section
+        status_frame = ttk.LabelFrame(main_frame, text="Status", padding="10")
+        status_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        self.status_label = ttk.Label(status_frame, text="Disconnected", foreground="red")
+        self.status_label.grid(row=0, column=0, sticky=tk.W)
+        
+        # Position section
+        position_frame = ttk.LabelFrame(main_frame, text="Joint Positions", padding="10")
+        position_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        self.z_position_label = ttk.Label(position_frame, text="Z-Axis: Unknown", 
+                                         font=("Arial", 10))
+        self.z_position_label.grid(row=0, column=0, sticky=tk.W)
+        
+        self.shoulder_position_label = ttk.Label(position_frame, text="Shoulder: Unknown", 
+                                                font=("Arial", 10))
+        self.shoulder_position_label.grid(row=1, column=0, sticky=tk.W)
+        
+        self.elbow_position_label = ttk.Label(position_frame, text="Elbow: Unknown", 
+                                             font=("Arial", 10))
+        self.elbow_position_label.grid(row=2, column=0, sticky=tk.W)
+        
+        self.gripper_position_label = ttk.Label(position_frame, text="Gripper: Unknown", 
+                                               font=("Arial", 10))
+        self.gripper_position_label.grid(row=3, column=0, sticky=tk.W)
+        
+        # Gripper status (open/closed)
+        self.gripper_status_label = ttk.Label(position_frame, text="Gripper: Closed", 
+                                             font=("Arial", 10, "bold"))
+        self.gripper_status_label.grid(row=4, column=0, sticky=tk.W)
+        
+        # Movement increment settings
+        increment_frame = ttk.LabelFrame(main_frame, text="Movement Settings", padding="10")
+        increment_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        # Z-axis increment setting
+        z_inc_frame = ttk.Frame(increment_frame)
+        z_inc_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=2)
+        ttk.Label(z_inc_frame, text="Z-Axis Step (mm):").grid(row=0, column=0, sticky=tk.W)
+        self.z_increment_entry = ttk.Entry(z_inc_frame, width=8)
+        self.z_increment_entry.grid(row=0, column=1, padx=(10, 5))
+        self.z_increment_entry.insert(0, str(DEFAULT_MOVE_INCREMENT_MM))
+        
+        z_update_button = ttk.Button(z_inc_frame, text="Set", command=self.update_z_increment)
+        z_update_button.grid(row=0, column=2, padx=2)
+        
+        # Rotational increment setting
+        rad_inc_frame = ttk.Frame(increment_frame)
+        rad_inc_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=2)
+        ttk.Label(rad_inc_frame, text="Rotation Step (rad):").grid(row=0, column=0, sticky=tk.W)
+        self.rad_increment_entry = ttk.Entry(rad_inc_frame, width=8)
+        self.rad_increment_entry.grid(row=0, column=1, padx=(10, 5))
+        self.rad_increment_entry.insert(0, str(DEFAULT_MOVE_INCREMENT_RAD))
+        
+        rad_update_button = ttk.Button(rad_inc_frame, text="Set", command=self.update_rad_increment)
+        rad_update_button.grid(row=0, column=2, padx=2)
+        
+        # Show degrees equivalent
+        self.rad_degrees_label = ttk.Label(increment_frame, text=f"({DEFAULT_MOVE_INCREMENT_RAD * 180/3.14159:.1f}°)", 
+                                          font=("Arial", 8), foreground="gray")
+        self.rad_degrees_label.grid(row=1, column=1, sticky=tk.W, padx=(120, 0))
+        
+        # Status for increment changes
+        self.increment_status_label = ttk.Label(increment_frame, text="Ready", foreground="green")
+        self.increment_status_label.grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
+        
+        # Control buttons
+        control_frame = ttk.LabelFrame(main_frame, text="Controls", padding="10")
+        control_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        self.home_button = ttk.Button(control_frame, text="🏠 HOME ROBOT", 
+                                     command=self.home_robot, style="Accent.TButton")
+        self.home_button.grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky=(tk.W, tk.E))
+        
+        # Z-Axis movement buttons
+        z_frame = ttk.Frame(control_frame)
+        z_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        ttk.Label(z_frame, text="Z-Axis:").grid(row=0, column=0, pady=2)
+        
+        up_button = ttk.Button(z_frame, text="▲ UP (5mm)", 
+                              command=self.move_up)
+        up_button.grid(row=0, column=1, padx=2, sticky=(tk.W, tk.E))
+        
+        down_button = ttk.Button(z_frame, text="▼ DOWN (5mm)", 
+                                command=self.move_down)
+        down_button.grid(row=0, column=2, padx=2, sticky=(tk.W, tk.E))
+        
+        # Elbow movement buttons
+        elbow_frame = ttk.Frame(control_frame)
+        elbow_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        ttk.Label(elbow_frame, text="Elbow:").grid(row=0, column=0, pady=2)
+        
+        elbow_up_button = ttk.Button(elbow_frame, text="↗ EXTEND", 
+                                    command=self.move_elbow_extend)
+        elbow_up_button.grid(row=0, column=1, padx=2, sticky=(tk.W, tk.E))
+        
+        elbow_down_button = ttk.Button(elbow_frame, text="↙ RETRACT", 
+                                      command=self.move_elbow_retract)
+        elbow_down_button.grid(row=0, column=2, padx=2, sticky=(tk.W, tk.E))
+        
+        # Shoulder movement buttons
+        shoulder_frame = ttk.Frame(control_frame)
+        shoulder_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        ttk.Label(shoulder_frame, text="Shoulder:").grid(row=0, column=0, pady=2)
+        
+        shoulder_left_button = ttk.Button(shoulder_frame, text="← LEFT", 
+                                         command=self.move_shoulder_left)
+        shoulder_left_button.grid(row=0, column=1, padx=2, sticky=(tk.W, tk.E))
+        
+        shoulder_right_button = ttk.Button(shoulder_frame, text="→ RIGHT", 
+                                          command=self.move_shoulder_right)
+        shoulder_right_button.grid(row=0, column=2, padx=2, sticky=(tk.W, tk.E))
+        
+        # Gripper movement buttons
+        gripper_frame = ttk.Frame(control_frame)
+        gripper_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        ttk.Label(gripper_frame, text="Gripper:").grid(row=0, column=0, pady=2)
+        
+        gripper_ccw_button = ttk.Button(gripper_frame, text="↺ CCW", 
+                                       command=self.move_gripper_ccw)
+        gripper_ccw_button.grid(row=0, column=1, padx=2, sticky=(tk.W, tk.E))
+        
+        gripper_cw_button = ttk.Button(gripper_frame, text="↻ CW", 
+                                      command=self.move_gripper_cw)
+        gripper_cw_button.grid(row=0, column=2, padx=2, sticky=(tk.W, tk.E))
+        
+        # Gripper Open/Close buttons
+        gripper_action_frame = ttk.Frame(control_frame)
+        gripper_action_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        ttk.Label(gripper_action_frame, text="Actions:").grid(row=0, column=0, pady=2)
+        
+        gripper_open_button = ttk.Button(gripper_action_frame, text="✋ OPEN", 
+                                        command=self.open_gripper,
+                                        style="Success.TButton")
+        gripper_open_button.grid(row=0, column=1, padx=2, sticky=(tk.W, tk.E))
+        
+        gripper_close_button = ttk.Button(gripper_action_frame, text="👊 CLOSE", 
+                                         command=self.close_gripper,
+                                         style="Warning.TButton")
+        gripper_close_button.grid(row=0, column=2, padx=2, sticky=(tk.W, tk.E))
+        
+        # Configure grid weights for button frames
+        z_frame.columnconfigure(1, weight=1)
+        z_frame.columnconfigure(2, weight=1)
+        elbow_frame.columnconfigure(1, weight=1)
+        elbow_frame.columnconfigure(2, weight=1)
+        shoulder_frame.columnconfigure(1, weight=1)
+        shoulder_frame.columnconfigure(2, weight=1)
+        gripper_frame.columnconfigure(1, weight=1)
+        gripper_frame.columnconfigure(2, weight=1)
+        gripper_action_frame.columnconfigure(1, weight=1)
+        gripper_action_frame.columnconfigure(2, weight=1)
+        
+        # Instructions
+        instruction_frame = ttk.LabelFrame(main_frame, text="Keyboard Controls", padding="10")
+        instruction_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        instructions = [
+            "↑/↓ Arrows: Move Z-axis up/down (current step shown above)",
+            "←/→ Arrows: Rotate shoulder left/right (current step shown above)",
+            "W/S Keys: Extend/Retract elbow (current step shown above)",
+            "Q/E Keys: Rotate gripper CCW/CW (current step shown above)",
+            "O/C Keys: Open/Close gripper teeth",
+            "SPACE: Home robot",
+            "ESC: Exit program"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            ttk.Label(instruction_frame, text=instruction).grid(row=i, column=0, sticky=tk.W, pady=2)
+        
+        # Configure grid weights
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        control_frame.columnconfigure(0, weight=1)
+        control_frame.columnconfigure(1, weight=1)
+        
+        # Bind keyboard events
+        self.root.bind('<Key>', self.on_key_press)
+        self.root.focus_set()
+        
+        # Window close event
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # Configure button styles
+        style = ttk.Style()
+        style.configure("Accent.TButton", foreground="blue")
+        style.configure("Success.TButton", foreground="green")
+        style.configure("Warning.TButton", foreground="orange")
+        
+    def update_display(self):
+        """Update the position and status display."""
+        if self.is_connected:
+            try:
+                # Get current positions
+                if hasattr(self.robot, 'z_position_mm'):  # Mock robot
+                    self.current_z_position = self.robot.z_position_mm
+                    self.current_elbow_angle = self.robot.elbow_angle_rad
+                    self.current_shoulder_angle = self.robot.shoulder_angle_rad
+                    self.current_gripper_angle = self.robot.gripper_angle_rad
+                    self.gripper_is_open = self.robot.gripper_is_open
+                    self.is_homed = self.robot.is_homed
+                else:  # Real robot
+                    positions = self.robot.get_robot_positions()  # [gripper, elbow, shoulder, z-axis]
+                    self.current_gripper_angle = self.robot.counts_to_rad(self.robot.GRIPPER, positions[0])
+                    self.current_elbow_angle = self.robot.counts_to_rad(self.robot.ELBOW, positions[1])
+                    self.current_shoulder_angle = self.robot.counts_to_rad(self.robot.SHOULDER, positions[2])
+                    self.current_z_position = self.robot.counts_to_mm(self.robot.Z_AXIS, positions[3])
+                    
+                    # For real robot, we need to track gripper state separately
+                    # since the API doesn't provide a way to query open/closed state
+                
+                # Update all position labels
+                self.z_position_label.config(text=f"Z-Axis: {self.current_z_position:.1f} mm")
+                self.elbow_position_label.config(text=f"Elbow: {self.current_elbow_angle:.2f} rad ({self.current_elbow_angle*180/3.14159:.1f}°)")
+                self.shoulder_position_label.config(text=f"Shoulder: {self.current_shoulder_angle:.2f} rad ({self.current_shoulder_angle*180/3.14159:.1f}°)")
+                self.gripper_position_label.config(text=f"Gripper: {self.current_gripper_angle:.2f} rad ({self.current_gripper_angle*180/3.14159:.1f}°)")
+                
+                # Update gripper status
+                if self.gripper_is_open:
+                    self.gripper_status_label.config(text="Gripper: OPEN ✋", foreground="green")
+                else:
+                    self.gripper_status_label.config(text="Gripper: CLOSED 👊", foreground="red")
+                
+                if self.is_homed:
+                    self.status_label.config(text="Connected & Homed", foreground="green")
+                else:
+                    self.status_label.config(text="Connected - Not Homed", foreground="orange")
+                    
+            except Exception as e:
+                logger.error(f"Error updating display: {str(e)}")
+                self.status_label.config(text="Error reading position", foreground="red")
+        else:
+            self.z_position_label.config(text="Z-Axis: Unknown")
+            self.elbow_position_label.config(text="Elbow: Unknown")
+            self.shoulder_position_label.config(text="Shoulder: Unknown")
+            self.gripper_position_label.config(text="Gripper: Unknown")
+            self.gripper_status_label.config(text="Gripper: Unknown", foreground="gray")
+            self.status_label.config(text="Disconnected", foreground="red")
+    
+    def home_robot(self):
+        """Home the robot to its reference position."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        try:
+            logger.info("Homing robot...")
+            self.home_button.config(text="Homing...", state="disabled")
+            self.root.update()
+            
+            self.robot.home_robot(wait=True)
+            self.is_homed = True
+            # Home operation typically closes the gripper
+            self.gripper_is_open = False
+            
+            logger.info("Robot homed successfully")
+            messagebox.showinfo("Success", "Robot homed successfully!")
+            
+        except Exception as e:
+            logger.error(f"Error homing robot: {str(e)}")
+            messagebox.showerror("Error", f"Failed to home robot:\n{str(e)}")
+        finally:
+            self.home_button.config(text="🏠 HOME ROBOT", state="normal")
+            self.update_display()
+    
+    def update_z_increment(self):
+        """Update the Z-axis movement increment from user input."""
+        try:
+            value = float(self.z_increment_entry.get())
+            if value < MIN_MOVE_INCREMENT_MM:
+                self.increment_status_label.config(text=f"Z increment too small (min: {MIN_MOVE_INCREMENT_MM}mm)", foreground="red")
                 return
-                
-            except Exception as lash_e_error:
-                self._connection_failure(direct_error, lash_e_error)
-                
-    def _connection_success(self, message):
-        """Handle successful connection"""
-        self.progress_bar.stop()
-        self.status.set("✅ Connected! Auto-homing for position reference...")
-        self.connection_attempts = 0
-        self.connecting = False
-        
-        # Force enable controls immediately
-        self._set_controls("normal")
-        self._set_connect_button_state("normal")
-        
-        # Auto-home to establish position reference
-        self.after(500, self._auto_home_and_setup)
-        
-    def _auto_home_and_setup(self):
-        """Auto-home after connection and set up position tracking"""
-        try:
-            self.status.set("🏠 Homing robot to establish position reference...")
-            self.update_idletasks()
-            
-            # Home robot - API only accepts wait parameter
-            try:
-                # Home robot with blocking wait (API doesn't accept vel/accel parameters)
-                self.c9.home_robot(wait=True)
-                self.status.set("✅ Homing successful")
-            except Exception as home_error:
-                raise Exception(f"Homing failed: {str(home_error)}")
-            
-            # Store home position as reference
-            self.home_position = self.c9.get_robot_positions()
-            
-            # Clear any previous session data
-            self.workflow_positions_taught.clear()
-            self.session_positions.clear()
-            
-            self.status.set("✅ Ready! Robot homed and position tracking initialized")
-            
-            # Start polling
-            self.after(self.poll_ms, self._poll)
-            
-            # Show success message
-            messagebox.showinfo("Setup Complete", 
-                              "Robot connected and homed successfully!\n\n" + 
-                              "• All workflow positions are now available\n" +
-                              "• Position tracking active for this session\n" +
-                              "• Using safe speeds to prevent motor driver failures\n" +
-                              "• Robot will re-home when program restarts")
-                              
-        except Exception as e:
-            messagebox.showerror("Homing Failed", f"Could not home robot:\n{str(e)}\n\nPlease home manually using the Home button.")
-            self.status.set("⚠️ Connected but homing failed - home manually")
-            self.after(self.poll_ms, self._poll)
-    
-    def _connection_failure(self, direct_error, lash_e_error):
-        """Handle connection failure"""
-        self.progress_bar.stop()
-        self.status.set(f"❌ All connection methods failed")
-        
-        # Auto-retry logic
-        if self.auto_reconnect.get() and self.connection_attempts < self.max_connection_attempts:
-            self.status.set(f"🔄 Auto-retry in 2 seconds... ({self.connection_attempts}/{self.max_connection_attempts})")
-            self.after(2000, self._retry_connection)  # Retry after 2 seconds
-            return
-        else:
-            # Final failure
-            self.connecting = False
-            self._set_connect_button_state("normal")
-            
-            error_msg = (f"Connection failed after {self.connection_attempts} attempts:\n\n"
-                        f"Method 1 (Direct): {str(direct_error)[:100]}...\n\n"
-                        f"Method 2 (Lash_E): {str(lash_e_error)[:100]}...\n\n"
-                        f"Please check:\n"
-                        f"• Robot power and network connection\n"
-                        f"• Network serial number (if specified)\n"
-                        f"• No other programs using the robot")
-            
-            messagebox.showerror("Connection Failed", error_msg)
-            self.status.set("❌ Connection failed - check robot status")
-            self.connection_attempts = 0
-            self._set_controls("disabled")
-    
-    def _retry_connection(self):
-        """Retry connection (called by timer)"""
-        self.connecting = False  # Reset flag for retry
-        self.connect()
-        
-    def _set_connect_button_state(self, state):
-        """Enable/disable just the connect button"""
-        for child in self.winfo_children():
-            if isinstance(child, ttk.Frame):
-                for widget in child.winfo_children():
-                    if isinstance(widget, ttk.Button):
-                        try:
-                            if widget.cget('text') == 'Connect':
-                                widget.configure(state=state)
-                                return  # Found it, stop searching
-                        except tk.TclError:
-                            pass  # Button might not have text or be destroyed
-                    
-    def _ensure_minimal_vial_file(self):
-        """Create minimal vial file if it doesn't exist"""
-        import os
-        vial_path = "status/minimal_vials.csv"
-        if not os.path.exists(vial_path):
-            os.makedirs("status", exist_ok=True)
-            with open(vial_path, "w") as f:
-                f.write("vial_name,location,location_index,contents,volume_mL\n")
-                f.write("dummy_vial,clamp,0,empty,0.0\n")
-    
-    def disconnect(self):
-        """Clean disconnect"""
-        if self.connecting:
-            self.progress_bar.stop()
-            self.connecting = False
-            
-        # Stop any active jogging IMMEDIATELY
-        self._stop_jog()
-        
-        # Clear all jog states for complete safety
-        self.jog_active = {}
-        self.jog_busy = False
-        if self.jog_timer:
-            self.after_cancel(self.jog_timer)
-            self.jog_timer = None
-        
-        if self.c9:
-            self.c9 = None
-        if self.lash_e:
-            self.lash_e = None
-        self._set_controls("disabled")
-        self._set_connect_button_state("normal")
-        self.status.set("Disconnected")
-
-    def _poll(self):
-        if not self.c9: 
-            if self.auto_reconnect.get() and not self.connecting:
-                self.status.set("🔄 No connection - auto-reconnecting...")
-                self.connect()
-            return
-            
-        try:
-            self._refresh_pose()
-            robot_status = self.c9.get_robot_status()
-            
-            if robot_status == FREE:
-                # Ensure controls stay enabled when robot is free
-                self._set_controls("normal")
-                # Only update status if it's not already a success message
-                if not ("✅" in self.status.get() or "Connected Successfully" in self.status.get()):
-                    self.status.set(f"✅ Connected and ready - Robot status: {robot_status}")
-            else:
-                # Keep controls enabled but show robot is busy
-                # Don't disable controls - user should still be able to use UI
-                self.status.set(f"⚠️ Robot busy - Status: {robot_status}")
-                
-        except Exception as e:
-            self.status.set(f"❌ Communication error: {str(e)[:40]}...")
-            
-            # Auto-reconnect with limits to prevent motor driver overload
-            if (self.auto_reconnect.get() and not self.connecting and 
-                self.connection_attempts < self.max_connection_attempts):
-                self.c9 = None  # Clear bad connection
-                self.after(5000, self.connect)  # Increased delay to prevent overload
+            if value > MAX_MOVE_INCREMENT_MM:
+                self.increment_status_label.config(text=f"Z increment too large (max: {MAX_MOVE_INCREMENT_MM}mm)", foreground="red")
                 return
+            
+            self.move_increment_mm = value
+            self.increment_status_label.config(text=f"Z-axis step set to {value:.1f}mm", foreground="green")
+            logger.info(f"Z-axis movement increment updated to {value:.1f}mm")
+            
+        except ValueError:
+            self.increment_status_label.config(text="Invalid Z increment value", foreground="red")
+    
+    def update_rad_increment(self):
+        """Update the rotational movement increment from user input."""
+        try:
+            value = float(self.rad_increment_entry.get())
+            if value < MIN_MOVE_INCREMENT_RAD:
+                self.increment_status_label.config(text=f"Rotation increment too small (min: {MIN_MOVE_INCREMENT_RAD:.3f}rad)", foreground="red")
+                return
+            if value > MAX_MOVE_INCREMENT_RAD:
+                self.increment_status_label.config(text=f"Rotation increment too large (max: {MAX_MOVE_INCREMENT_RAD:.1f}rad)", foreground="red")
+                return
+            
+            self.move_increment_rad = value
+            degrees = value * 180 / 3.14159
+            self.rad_degrees_label.config(text=f"({degrees:.1f}°)")
+            self.increment_status_label.config(text=f"Rotation step set to {value:.3f}rad ({degrees:.1f}°)", foreground="green")
+            logger.info(f"Rotational movement increment updated to {value:.3f}rad ({degrees:.1f}°)")
+            
+        except ValueError:
+            self.increment_status_label.config(text="Invalid rotation increment value", foreground="red")
+    
+    def move_up(self):
+        """Move the arm up by the configured increment."""
+        self._move_z_relative(self.move_increment_mm)
+    
+    def move_down(self):
+        """Move the arm down by the configured increment."""
+        self._move_z_relative(-self.move_increment_mm)
+    
+    def move_shoulder_left(self):
+        """Move the shoulder joint left (counter-clockwise)."""
+        self._move_joint_relative("shoulder", MOVE_INCREMENT_RAD)
+    
+    def move_shoulder_right(self):
+        """Move the shoulder joint right (clockwise)."""
+        self._move_joint_relative("shoulder", -MOVE_INCREMENT_RAD)
+    
+    def move_elbow_in(self):
+        """Move the elbow joint inward."""
+        self._move_joint_relative("elbow", MOVE_INCREMENT_RAD)
+    
+    def move_elbow_out(self):
+        """Move the elbow joint outward."""
+        self._move_joint_relative("elbow", -MOVE_INCREMENT_RAD)
+    
+    def move_gripper_ccw(self):
+        """Rotate the gripper counter-clockwise."""
+        self._move_joint_relative("gripper", MOVE_INCREMENT_RAD)
+    
+    def move_gripper_cw(self):
+        """Rotate the gripper clockwise."""
+        self._move_joint_relative("gripper", -MOVE_INCREMENT_RAD)
+    
+    def move_elbow_extend(self):
+        """Extend the elbow joint."""
+        self._move_elbow_relative(MOVE_INCREMENT_RAD)
+    
+    def move_elbow_retract(self):
+        """Retract the elbow joint."""
+        self._move_elbow_relative(-MOVE_INCREMENT_RAD)
+    
+    def move_shoulder_left(self):
+        """Rotate shoulder left."""
+        self._move_shoulder_relative(-MOVE_INCREMENT_RAD)
+    
+    def move_shoulder_right(self):
+        """Rotate shoulder right."""
+        self._move_shoulder_relative(MOVE_INCREMENT_RAD)
+    
+    def _move_z_relative(self, delta_mm):
+        """Move the Z-axis by a relative amount."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        if not self.is_homed:
+            messagebox.showwarning("Warning", "Robot must be homed before moving")
+            return
+            
+        try:
+            new_position = self.current_z_position + delta_mm
+            
+            # Safety check
+            if new_position < Z_AXIS_MIN_MM:
+                messagebox.showwarning("Movement Not Allowed", 
+                    f"Cannot move Z-axis to {new_position:.1f}mm\n" +
+                    f"Minimum limit: {Z_AXIS_MIN_MM}mm")
+                return
+            if new_position > Z_AXIS_MAX_MM:
+                messagebox.showwarning("Movement Not Allowed", 
+                    f"Cannot move Z-axis to {new_position:.1f}mm\n" +
+                    f"Maximum limit: {Z_AXIS_MAX_MM}mm")
+                return
+            
+            logger.info(f"Moving Z-axis to {new_position:.1f}mm")
+            self.robot.move_z(new_position, wait=True)
+            
+            self.update_display()
+            
+        except Exception as e:
+            logger.error(f"Error moving robot: {str(e)}")
+            messagebox.showerror("Error", f"Failed to move robot:\n{str(e)}")
+    
+    def _move_joint_relative(self, joint_name, delta_rad):
+        """Move a rotational joint by a relative amount."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        if not self.is_homed:
+            messagebox.showwarning("Warning", "Robot must be homed before moving")
+            return
+            
+        try:
+            # Get current position and calculate new position
+            if joint_name == "shoulder":
+                current_pos = self.current_shoulder_angle
+                new_position = current_pos + delta_rad
+                min_pos, max_pos = SHOULDER_MIN_RAD, SHOULDER_MAX_RAD
+                axis = self.robot.SHOULDER
+            elif joint_name == "elbow":
+                current_pos = self.current_elbow_angle
+                new_position = current_pos + delta_rad
+                min_pos, max_pos = ELBOW_MIN_RAD, ELBOW_MAX_RAD
+                axis = self.robot.ELBOW
+            elif joint_name == "gripper":
+                current_pos = self.current_gripper_angle
+                new_position = current_pos + delta_rad
+                min_pos, max_pos = GRIPPER_MIN_RAD, GRIPPER_MAX_RAD
+                axis = self.robot.GRIPPER
             else:
-                # Too many failures - disable auto-reconnect temporarily
-                self.status.set("❌ Communication failed - auto-reconnect paused")
-                
+                logger.error(f"Unknown joint name: {joint_name}")
+                return
+            
+            # Safety check
+            if new_position < min_pos:
+                degrees_min = min_pos * 180 / 3.14159
+                degrees_new = new_position * 180 / 3.14159
+                messagebox.showwarning("Movement Not Allowed", 
+                    f"Cannot move {joint_name} to {new_position:.2f}rad ({degrees_new:.1f}°)\n" +
+                    f"Minimum limit: {min_pos:.2f}rad ({degrees_min:.1f}°)")
+                return
+            if new_position > max_pos:
+                degrees_max = max_pos * 180 / 3.14159
+                degrees_new = new_position * 180 / 3.14159
+                messagebox.showwarning("Movement Not Allowed", 
+                    f"Cannot move {joint_name} to {new_position:.2f}rad ({degrees_new:.1f}°)\n" +
+                    f"Maximum limit: {max_pos:.2f}rad ({degrees_max:.1f}°)")
+                return
+            
+            logger.info(f"Moving {joint_name} to {new_position:.2f} radians")
+            self.robot.move_axis_rad(axis, new_position, wait=True)
+            
+            self.update_display()
+            
+        except Exception as e:
+            logger.error(f"Error moving {joint_name}: {str(e)}")
+            messagebox.showerror("Error", f"Failed to move {joint_name}:\n{str(e)}")
+    
+    def _move_elbow_relative(self, delta_rad):
+        """Move the elbow by a relative amount."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        if not self.is_homed:
+            messagebox.showwarning("Warning", "Robot must be homed before moving")
+            return
+            
+        try:
+            new_angle = self.current_elbow_angle + delta_rad
+            
+            # Safety check
+            if new_angle < ELBOW_MIN_RAD:
+                messagebox.showwarning("Warning", f"Cannot move elbow below {ELBOW_MIN_RAD:.2f} radians")
+                return
+            if new_angle > ELBOW_MAX_RAD:
+                messagebox.showwarning("Warning", f"Cannot move elbow above {ELBOW_MAX_RAD:.2f} radians")
+                return
+            
+            logger.info(f"Moving elbow to {new_angle:.2f} radians")
+            self.robot.move_axis_rad(self.robot.ELBOW, new_angle, wait=True)
+            
+            self.update_display()
+            
+        except Exception as e:
+            logger.error(f"Error moving elbow: {str(e)}")
+            messagebox.showerror("Error", f"Failed to move elbow:\n{str(e)}")
+    
+    def _move_shoulder_relative(self, delta_rad):
+        """Move the shoulder by a relative amount."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        if not self.is_homed:
+            messagebox.showwarning("Warning", "Robot must be homed before moving")
+            return
+            
+        try:
+            new_angle = self.current_shoulder_angle + delta_rad
+            
+            # Safety check
+            if new_angle < SHOULDER_MIN_RAD:
+                messagebox.showwarning("Warning", f"Cannot move shoulder below {SHOULDER_MIN_RAD:.2f} radians")
+                return
+            if new_angle > SHOULDER_MAX_RAD:
+                messagebox.showwarning("Warning", f"Cannot move shoulder above {SHOULDER_MAX_RAD:.2f} radians")
+                return
+            
+            logger.info(f"Moving shoulder to {new_angle:.2f} radians")
+            self.robot.move_axis_rad(self.robot.SHOULDER, new_angle, wait=True)
+            
+            self.update_display()
+            
+        except Exception as e:
+            logger.error(f"Error moving shoulder: {str(e)}")
+            messagebox.showerror("Error", f"Failed to move shoulder:\n{str(e)}")
+    
+    def move_shoulder_left(self):
+        """Move the shoulder joint left (counter-clockwise)."""
+        self._move_shoulder_relative(self.move_increment_rad)
+    
+    def move_shoulder_right(self):
+        """Move the shoulder joint right (clockwise)."""
+        self._move_shoulder_relative(-self.move_increment_rad)
+    
+    def move_elbow_extend(self):
+        """Extend the elbow joint outward."""
+        self._move_elbow_relative(self.move_increment_rad)
+    
+    def move_elbow_retract(self):
+        """Retract the elbow joint inward."""
+        self._move_elbow_relative(-self.move_increment_rad)
+    
+    def move_gripper_ccw(self):
+        """Rotate gripper counter-clockwise."""
+        self._move_joint_relative("gripper", self.move_increment_rad)
+    
+    def move_gripper_cw(self):
+        """Rotate gripper clockwise."""
+        self._move_joint_relative("gripper", -self.move_increment_rad)
+    
+    def open_gripper(self):
+        """Open the gripper teeth."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        if not self.is_homed:
+            messagebox.showwarning("Warning", "Robot must be homed before opening gripper")
+            return
+            
+        if self.gripper_is_open:
+            messagebox.showinfo("Info", "Gripper is already open")
+            return
+            
+        try:
+            logger.info("Opening gripper...")
+            self.robot.open_gripper()
+            self.gripper_is_open = True
+            logger.info("Gripper opened successfully")
+            self.update_display()
+            
+        except Exception as e:
+            logger.error(f"Error opening gripper: {str(e)}")
+            messagebox.showerror("Error", f"Failed to open gripper:\n{str(e)}")
+    
+    def close_gripper(self):
+        """Close the gripper teeth."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        if not self.is_homed:
+            messagebox.showwarning("Warning", "Robot must be homed before closing gripper")
+            return
+            
+        if not self.gripper_is_open:
+            messagebox.showinfo("Info", "Gripper is already closed")
+            return
+            
+        try:
+            logger.info("Closing gripper...")
+            self.robot.close_gripper()
+            self.gripper_is_open = False
+            logger.info("Gripper closed successfully")
+            self.update_display()
+            
+        except Exception as e:
+            logger.error(f"Error closing gripper: {str(e)}")
+            messagebox.showerror("Error", f"Failed to close gripper:\n{str(e)}")
+    
+    def on_key_press(self, event):
+        """Handle keyboard input for robot control."""
+        key = event.keysym
+        
+        if key == 'Up':
+            self.move_up()
+        elif key == 'Down':
+            self.move_down()
+        elif key == 'Left':
+            self.move_shoulder_left()
+        elif key == 'Right':
+            self.move_shoulder_right()
+        elif key == 'w' or key == 'W':
+            self.move_elbow_extend()
+        elif key == 's' or key == 'S':
+            self.move_elbow_retract()
+        elif key == 'q' or key == 'Q':
+            self.move_gripper_ccw()
+        elif key == 'e' or key == 'E':
+            self.move_gripper_cw()
+        elif key == 'o' or key == 'O':
+            self.open_gripper()
+        elif key == 'c' or key == 'C':
+            self.close_gripper()
+        elif key == 'Escape':
+            self.on_closing()
+        elif key == 'space':
+            self.home_robot()
+    
+    def on_closing(self):
+        """Handle application closing."""
+        try:
+            logger.info("Closing application...")
+            if self.is_connected and hasattr(self.robot, 'network'):
+                try:
+                    self.robot.network.disconnect()
+                except:
+                    pass
+        except Exception as e:
+            logger.error(f"Error during cleanup: {str(e)}")
         finally:
-            if not self.connecting:
-                self.after(self.poll_ms, self._poll)
-
-    def _refresh_pose(self):
-        g,e,s,z = self.c9.get_robot_positions()  # counts
-        g_rad = NorthC9.counts_to_rad(GRIPPER, g)
-        e_rad = NorthC9.counts_to_rad(ELBOW,   e)
-        s_rad = NorthC9.counts_to_rad(SHOULDER,s)
-        z_mm  = NorthC9.counts_to_mm(ZAXIS,    z)
-        x_mm, y_mm, theta_mm = self.c9.n9_fk(
-            g, e, s,
-            tool_length=self.tool_len_mm.get(),
-            pipette_tip_offset=self.pipette_tip.get()
-        )
-        self.pose_txt.delete("1.0","end")
-        self.pose_txt.insert("end",
-            f"Counts [G,E,S,Z]: {g:7d} {e:7d} {s:7d} {z:7d}\n"
-            f"Joints [deg]:     {math.degrees(g_rad):8.3f} {math.degrees(e_rad):8.3f} {math.degrees(s_rad):8.3f}\n"
-            f"Z [mm]:           {z_mm:8.3f}\n"
-            f"Task [x,y,θ]:     {x_mm:8.3f} {y_mm:8.3f} {theta_mm:8.3f}\n"
-        )
-
-    def _set_controls(self, state):
-        """Enable/disable interactive widgets except connection row"""
-        # Handle all frames (both LabelFrame and regular Frame)
-        for frame in self.winfo_children():
-            if isinstance(frame, (ttk.LabelFrame, ttk.Frame)):
-                # Skip the connection frame (first frame with Connect button)
-                is_connection_frame = False
-                for widget in frame.winfo_children():
-                    if isinstance(widget, ttk.Button) and widget.cget('text') == 'Connect':
-                        is_connection_frame = True
-                        break
-                
-                if is_connection_frame:
-                    continue  # Skip connection controls
-                
-                # Enable/disable all widgets in this frame
-                self._set_frame_controls(frame, state)
+            self.root.destroy()
     
-    def _set_frame_controls(self, frame, state):
-        """Recursively enable/disable controls in a frame"""
-        for widget in frame.winfo_children():
-            try:
-                if isinstance(widget, ttk.Combobox):
-                    # Special handling for comboboxes - use 'readonly' or 'disabled'
-                    if state == "normal":
-                        widget.configure(state="readonly")  # Keep readonly but functional
-                    else:
-                        widget.configure(state="disabled")
-                elif isinstance(widget, (ttk.Button, ttk.Entry, ttk.Checkbutton)):
-                    widget.configure(state=state)
-                elif isinstance(widget, tk.Text):
-                    # Text widgets use different state values
-                    widget.configure(state="normal" if state == "normal" else "disabled")
-                elif hasattr(widget, 'configure') and hasattr(widget, 'cget'):
-                    # Try to configure any other widget that supports state
-                    try:
-                        widget.configure(state=state)
-                    except tk.TclError:
-                        pass  # Widget doesn't support state attribute
-                
-                # Recursively handle nested frames
-                if isinstance(widget, (ttk.Frame, ttk.LabelFrame)):
-                    self._set_frame_controls(widget, state)
-                    
-            except (tk.TclError, AttributeError):
-                pass  # Skip widgets that don't support state configuration
-
-    # ---------- Safety / Utilities ----------
-    def home(self):
-        if not self.c9: return
-        try:
-            # Home robot - API accepts only wait parameter
-            self.status.set("Homing robot...")
-            
-            # Home robot with blocking wait (API doesn't accept vel/accel parameters)
-            self.c9.home_robot(wait=False)
-            self.status.set("Homing initiated...")
-                
-        except Exception as e:
-            messagebox.showerror("Home failed", f"Error during homing:\n{str(e)}\n\nCheck robot status and ensure robot is free to move.")
-
-    def quick_stop(self):
-        if not self.c9: return
-        try:
-            self.c9.quick_stop()
-            self.status.set("Quick stop sent")
-        except Exception as e:
-            messagebox.showerror("Quick stop error", str(e))
-
-    def set_safe_z_current(self):
-        if not self.c9: return
-        z = self.c9.get_axis_position(ZAXIS)
-        self.safe_z_counts = z
-        mm = NorthC9.counts_to_mm(ZAXIS, z)
-        self.status.set(f"Safe-Z set to {mm:.2f} mm")
-
-    # ---------- Press-and-Hold Jogging ----------
-    def _start_jog(self, axis, sign):
-        """Start continuous jogging for rotational axes"""
-        if not self.c9: 
-            self.status.set("❌ Robot not connected")
-            return
-            
-        if self.jog_busy: 
-            self.status.set("⚠️ Jog already active")
-            return
+    def run(self):
+        """Main application entry point."""
+        logger.info("Starting North Robot Arm Control Program")
         
-        # Stop any existing jog first
-        if self.jog_active:
-            self._stop_jog()
+        # Create GUI
+        self.create_gui()
         
-        # Simple timing check (reduced from 300ms to 100ms)
-        import time
-        current_time = time.time()
-        if hasattr(self, 'last_jog_time') and current_time - self.last_jog_time < 0.1:  # REDUCED to 100ms
-            return
-                
-        self.last_jog_time = current_time
-        self.last_move_axis = axis
-        self.last_move_direction = sign
-        
-        # Store the active jog parameters
-        self.jog_active = {'type': 'axis', 'axis': axis, 'sign': sign}
-        
-        # Perform first movement immediately
-        self._do_jog_step()
-        
-        # Start continuous movement timer
-        self._schedule_next_jog()
-    
-    def _start_jog_z(self, sign):
-        """Start continuous jogging for Z axis"""
-        if not self.c9:
-            self.status.set("❌ Robot not connected")
-            return
-            
-        if self.jog_busy:
-            self.status.set("⚠️ Jog already active")
-            return
-        
-        # Stop any existing jog first
-        if self.jog_active:
-            self._stop_jog()
-        
-        # Simple timing check (reduced from 300ms to 100ms)
-        import time
-        current_time = time.time()
-        if hasattr(self, 'last_jog_time') and current_time - self.last_jog_time < 0.1:  # REDUCED to 100ms
-            return
-                
-        self.last_jog_time = current_time
-        self.last_move_axis = ZAXIS
-        self.last_move_direction = sign
-        
-        # Store the active jog parameters 
-        self.jog_active = {'type': 'z', 'sign': sign}
-        
-        # Perform first movement immediately
-        self._do_jog_step()
-        
-        # Start continuous movement timer
-        self._schedule_next_jog()
-    
-    def _stop_jog(self):
-        """Stop continuous jogging"""
-        if self.jog_active:
-            self.jog_active = {}
-            if self.jog_timer:
-                self.after_cancel(self.jog_timer)
-                self.jog_timer = None
-            
-            # Reset button styles and busy flag
-            self._reset_button_styles()
-            self.jog_busy = False
-            self.status.set("✅ Jogging stopped safely")
+        # Connect to robot
+        if self.connect_robot():
+            logger.info("Robot connection successful")
         else:
-            self.jog_busy = False  # Ensure flag is clear
-            self.status.set("ℹ️ Ready for jogging")
-    
-    def _reset_button_styles(self):
-        """Reset all jog button styles to normal"""
+            logger.error("Failed to connect to robot")
+            # Still show GUI even if connection failed
+        
+        # Update initial display
+        self.update_display()
+        
+        # Start GUI event loop
         try:
-            if hasattr(self, 'jog_buttons'):
-                for btn_list in [self.jog_buttons.get('buttons', []), self.jog_buttons.get('z_buttons', [])]:
-                    for btn in btn_list:
-                        if btn.winfo_exists():
-                            btn.configure(style="TButton")  # Reset to default style
-        except Exception:
-            pass  # Ignore style errors
-    
-    def _schedule_next_jog(self):
-        """Schedule the next jog step"""
-        if self.jog_active:  # Only continue if still active
-            self.jog_timer = self.after(self.jog_repeat_ms, self._do_jog_step)
-    
-    def _do_jog_step(self):
-        """Perform one step of jogging movement with motor driver protection"""
-        if not self.c9 or not self.jog_active:
-            self._stop_jog()
-            return
-        
-        # Set busy flag to prevent overlapping commands
-        self.jog_busy = True
-        
-        try:
-            # Reduced motor-off deadtime (from 100ms to 20ms)
-            import time
-            time.sleep(0.02)  # 20ms deadtime - still safe but much more responsive
-            
-            # Safety check - ensure robot is connected and responsive
-            try:
-                robot_status = self.c9.get_robot_status()
-                if robot_status != FREE:
-                    self._stop_jog()
-                    self.status.set(f"⚠️ Robot busy - status: {robot_status}")
-                    return
-            except Exception:
-                # If status check fails, continue anyway - might be a temporary comm issue
-                pass
-            
-            # Get VERY conservative speeds (auto-capped for motor protection)
-            safe_vel = min(self.vel_var.get(), SAFE_VEL)
-            safe_acc = min(self.acc_var.get(), SAFE_ACC)
-            
-            if self.jog_active['type'] == 'axis':
-                # Rotational axis movement (0.5 degrees per step)
-                axis = self.jog_active['axis']
-                sign = self.jog_active['sign']
-                step_deg = 0.5 * sign  # Fixed 0.5 degree steps
-                
-                curr = self.c9.get_axis_position(axis)
-                delta = NorthC9.rad_to_counts(axis, math.radians(step_deg))
-                
-                # Use VERY conservative speeds and WAIT for completion to prevent driver overload
-                conservative_vel = min(safe_vel, 1500)  # Extra speed limit for continuous jog
-                conservative_acc = min(safe_acc, 5000)   # Extra acceleration limit
-                
-                self.c9.move_axis(axis=axis, cts=curr + delta,
-                                 vel=conservative_vel, accel=conservative_acc, wait=True)  # BLOCKING to prevent command stacking
-                
-                # CRITICAL: Ensure movement completes before continuing
-                time.sleep(0.05)  # Extra 50ms to ensure driver fully settles
-                                 
-            elif self.jog_active['type'] == 'z':
-                # Z axis movement (0.5mm per step as requested)
-                sign = self.jog_active['sign']
-                step_mm = 0.5 * sign  # Fixed 0.5mm steps as requested
-                
-                curr = self.c9.get_axis_position(ZAXIS)
-                delta = NorthC9.mm_to_counts(ZAXIS, step_mm)
-                
-                # Use VERY conservative speeds and WAIT for completion to prevent driver overload
-                conservative_vel = min(safe_vel, 1500)  # Extra speed limit for continuous jog
-                conservative_acc = min(safe_acc, 5000)   # Extra acceleration limit
-                
-                self.c9.move_axis(axis=ZAXIS, cts=curr + delta,
-                                 vel=conservative_vel, accel=conservative_acc, wait=True)  # BLOCKING to prevent command stacking
-                
-                # CRITICAL: Ensure movement completes before continuing  
-                time.sleep(0.05)  # Extra 50ms to ensure driver fully settles
-            
-            self.status.set(f"� Conservative jog: {'Z-axis' if self.jog_active['type'] == 'z' else 'Joint'} ({'up' if self.jog_active.get('sign', 1) < 0 else 'down' if self.jog_active['type'] == 'z' else 'pos'}), slow & safe")
-            
-            # Add much longer delay before scheduling next movement (CRITICAL for driver protection)
-            # Also ensure robot is still responsive before next move
-            if self.jog_active:  # Only continue if jog is still active
-                self.after(100, self._check_and_continue_jog)  # 100ms extra safety delay
-        
+            logger.info("Starting GUI...")
+            self.root.mainloop()
+        except KeyboardInterrupt:
+            logger.info("Program interrupted by user")
         except Exception as e:
-            self._stop_jog()
-            self.status.set("❌ Motor driver error - all jogging stopped")
-            messagebox.showerror("Motor Driver Failure", f"CRITICAL: Motor driver crashed during jog:\n{str(e)}\n\nAll movement stopped for safety.\nTry restarting the program.")
+            logger.error(f"Unexpected error: {str(e)}")
         finally:
-            # Always clear busy flag
-            self.jog_busy = False
-    
-    def _check_and_continue_jog(self):
-        """Extra safety check before continuing jog sequence"""
-        if not self.c9 or not self.jog_active:
-            self._stop_jog()
-            return
-            
-        try:
-            # Quick robot status check before next movement
-            robot_status = self.c9.get_robot_status()
-            if robot_status == FREE and self.jog_active:
-                self._schedule_next_jog()  # Continue if all is well
-            else:
-                self._stop_jog()
-                self.status.set("⚠️ Jog stopped - Robot status changed")
-        except Exception:
-            # If we can't even check status, stop immediately
-            self._stop_jog()
-            self.status.set("❌ Jog stopped - Communication error")
-    
-    # ---------- Single-Click Jog Functions (Fallback) ----------
-    def _single_jog(self, axis, sign):
-        """Single step jog for rotational axes (0.5 degrees)"""
-        if not self.c9:
-            self.status.set("❌ Robot not connected")
-            return
-            
-        if self.jog_active or self.jog_busy: 
-            self.status.set("⚠️ Jog already active")
-            return
-        
-        self.jog_busy = True  # Prevent overlapping
-        
-        try:
-            step_deg = 0.5 * sign  # Fixed 0.5 degree step
-            curr = self.c9.get_axis_position(axis)
-            delta = NorthC9.rad_to_counts(axis, math.radians(step_deg))
-            
-            # Use conservative but functional speeds
-            safe_vel = min(self.vel_var.get(), SAFE_VEL)  # Cap at SAFE_VEL but don't over-restrict
-            safe_acc = min(self.acc_var.get(), SAFE_ACC)  # Cap at SAFE_ACC
-            
-            self.c9.move_axis(axis=axis, cts=curr + delta,
-                              vel=safe_vel, accel=safe_acc, wait=True)
-            self.status.set(f"✅ Single step: 0.5° ({'CW' if sign > 0 else 'CCW'})")
-        except Exception as e:
-            self.status.set(f"❌ Jog failed: {str(e)[:30]}...")
-        finally:
-            self.jog_busy = False
-    
-    def _single_jog_z(self, sign):
-        """Single step jog for Z axis (0.5mm)"""
-        if not self.c9:
-            self.status.set("❌ Robot not connected")
-            return
-            
-        if self.jog_active or self.jog_busy:
-            self.status.set("⚠️ Jog already active")
-            return
-        
-        self.jog_busy = True  # Prevent overlapping
-        
-        try:
-            step_mm = 0.5 * sign  # Fixed 0.5mm step
-            curr = self.c9.get_axis_position(ZAXIS)
-            delta = NorthC9.mm_to_counts(ZAXIS, step_mm)
-            
-            # Use conservative but functional speeds
-            safe_vel = min(self.vel_var.get(), SAFE_VEL)  # Cap at SAFE_VEL but don't over-restrict
-            safe_acc = min(self.acc_var.get(), SAFE_ACC)  # Cap at SAFE_ACC
-            
-            self.c9.move_axis(axis=ZAXIS, cts=curr + delta,
-                              vel=safe_vel, accel=safe_acc, wait=True)
-            self.status.set(f"✅ Single Z step: 0.5mm ({'down' if sign > 0 else 'up'})")
-        except Exception as e:
-            self.status.set(f"❌ Z jog failed: {str(e)[:30]}...")
-        finally:
-            self.jog_busy = False
+            logger.info("Program ended")
 
-    # ---------- UI Lock Functions (Prevent Rapid Button Presses) ----------  
-    def _start_jog_with_ui_lock(self, axis, sign, button):
-        """Start jog with UI button lock to prevent rapid clicks"""
-        # Temporarily disable button to prevent rapid clicking
-        button.configure(state="disabled")
-        self.after(300, lambda: self._safe_enable_button(button))  # Re-enable after 300ms
-        self._start_jog(axis, sign)
+
+def main():
+    """Program entry point."""
+    try:
+        app = RobotArmController()
+        app.run()
+    except Exception as e:
+        print(f"Fatal error: {str(e)}")
+        logging.error(f"Fatal error: {str(e)}", exc_info=True)
+        return 1
     
-    def _start_jog_z_with_ui_lock(self, sign, button):
-        """Start Z jog with UI button lock to prevent rapid clicks"""  
-        # Temporarily disable button to prevent rapid clicking
-        button.configure(state="disabled")
-        self.after(300, lambda: self._safe_enable_button(button))  # Re-enable after 300ms
-        self._start_jog_z(sign)
-    
-    def _single_jog_with_ui_lock(self, axis, sign, button):
-        """Single jog with UI button lock to prevent rapid clicks"""
-        # Temporarily disable button to prevent rapid clicking  
-        button.configure(state="disabled")
-        self.after(300, lambda: self._safe_enable_button(button))  # Re-enable after 300ms
-        self._single_jog(axis, sign)
-    
-    def _single_jog_z_with_ui_lock(self, sign, button):
-        """Single Z jog with UI button lock to prevent rapid clicks"""
-        # Temporarily disable button to prevent rapid clicking
-        button.configure(state="disabled") 
-        self.after(300, lambda: self._safe_enable_button(button))  # Re-enable after 300ms
-        self._single_jog_z(sign)
-    
-    def _safe_enable_button(self, button):
-        """Safely re-enable button if it still exists"""
-        try:
-            if button.winfo_exists():
-                button.configure(state="normal")
-        except Exception:
-            pass  # Button may have been destroyed
+    return 0
 
-    # ---------- Teach / Save ----------
-    def _current_record(self):
-        g,e,s,z = self.c9.get_robot_positions()
-        g_deg = math.degrees(NorthC9.counts_to_rad(GRIPPER,  g))
-        e_deg = math.degrees(NorthC9.counts_to_rad(ELBOW,    e))
-        s_deg = math.degrees(NorthC9.counts_to_rad(SHOULDER, s))
-        z_mm  = NorthC9.counts_to_mm(ZAXIS, z)
-        x_mm, y_mm, theta_mm = self.c9.n9_fk(
-            g, e, s,
-            tool_length=self.tool_len_mm.get(),
-            pipette_tip_offset=self.pipette_tip.get()
-        )
-        return {
-            "name": self.name_var.get().strip() or f"Loc_{len(self.locations)+1}",
-            "note": self.note_var.get().strip(),
-            # Robot-native joint counts -> used for replay
-            "g_cts": g, "e_cts": e, "s_cts": s, "z_cts": z,
-            # Human-readable references
-            "x": x_mm, "y": y_mm, "z": z_mm, "theta": theta_mm,
-            "g_deg": g_deg, "e_deg": e_deg, "s_deg": s_deg,
-            # session parameters for context
-            "tool_len_mm": self.tool_len_mm.get(),
-            "pipette_tip": bool(self.pipette_tip.get()),
-            "timestamp": datetime.now().isoformat(timespec="seconds")
-        }
-
-    def add_current(self):
-        if not self.c9: return
-        rec = self._current_record()
-        self.locations.append(rec)
-        self._refresh_table()
-        self.status.set(f"Added: {rec['name']}")
-
-    def update_selected(self):
-        if not self.c9: return
-        idx = self._selected_index()
-        if idx is None:
-            messagebox.showinfo("Update", "Select a location in the list.")
-            return
-        rec = self._current_record()
-        self.locations[idx] = rec
-        self._refresh_table()
-        self.status.set(f"Updated: {rec['name']}")
-
-    def _refresh_table(self):
-        for it in self.tree.get_children():
-            self.tree.delete(it)
-        for i, r in enumerate(self.locations):
-            vals = (r["name"], f"{r['x']:.3f}", f"{r['y']:.3f}", f"{r['z']:.3f}", f"{r['theta']:.3f}",
-                    r["g_cts"], r["e_cts"], r["s_cts"], r["z_cts"], r.get("note",""))
-            self.tree.insert("", "end", text=str(i), values=vals)
-
-    def _selected_index(self):
-        sel = self.tree.selection()
-        if not sel: return None
-        return int(self.tree.item(sel[0], "text"))
-
-    # ---------- Go To (Safe) ----------
-    def goto_selected(self):
-        if not self.c9: return
-        idx = self._selected_index()
-        if idx is None:
-            messagebox.showinfo("Go To", "Select a location.")
-            return
-        r = self.locations[idx]
-        loc = [r["g_cts"], r["e_cts"], r["s_cts"], r["z_cts"]]  # [gripper, elbow, shoulder, z]
-        safe = self.safe_z_counts  # None -> controller's default max safe height
-        try:
-            # Use safe conservative speeds to prevent motor driver failures
-            # 1) Safe XY to target using joint coords - conservative speed
-            self.c9.goto_xy_safe(loc, safe_height=safe,
-                                 vel=SAFE_VEL, accel=SAFE_ACC)
-            # 2) Then Z down to recorded Z - safe speed with wait for stability
-            self.c9.goto_z(loc, vel=SAFE_VEL, accel=SAFE_ACC, wait=True)
-            self.status.set(f"Moving to {r['name']} (safe speed for stability)...")
-        except Exception as e:
-            messagebox.showerror("Movement Error", f"Motor driver error moving to {r['name']}:\n{str(e)}\n\nTry slower speeds or check robot status.")
-
-    # ---------- Workflow Position Management ----------
-    def go_to_workflow_position(self):
-        """Move robot to selected predefined workflow position using in-memory tracking"""
-        if not self.c9: 
-            messagebox.showwarning("Connection", "Robot not connected!")
-            return
-            
-        if not self.home_position:
-            messagebox.showwarning("Reference Missing", "No home reference position! Please home the robot first.")
-            return
-            
-        position_name = self.position_var.get()
-        if not position_name:
-            messagebox.showwarning("Selection", "Please select a position first!")
-            return
-            
-        # Handle special case: Home position
-        if position_name == "Home Position":
-            self._execute_home_movement()
-            return
-            
-        # Check if we've already taught this position
-        if position_name in self.workflow_positions_taught:
-            self._go_to_taught_position(position_name)
-            return
-            
-        # For new positions, offer to teach current position
-        result = messagebox.askyesno("Teach Position", 
-                                   f"Position '{position_name}' not yet taught.\n\n"
-                                   f"Current robot position will be saved as '{position_name}'.\n\n"
-                                   f"Make sure robot is at desired position, then click YES to save.\n"
-                                   f"Click NO to jog to position first.")
-        
-        if result:
-            self._teach_current_as_workflow_position(position_name)
-        else:
-            messagebox.showinfo("Manual Positioning", 
-                              f"To teach '{position_name}':\n\n"
-                              f"1. Use jog controls below to move robot to desired position\n"
-                              f"2. Select '{position_name}' from dropdown again\n"
-                              f"3. Click 'Go to Position' \n"
-                              f"4. Choose 'YES' to save that position")
-    
-    def _go_to_taught_position(self, position_name):
-        """Move to a previously taught workflow position with SAFE speed and proper movement pattern"""
-        try:
-            taught_pos = self.workflow_positions_taught[position_name]
-            loc = [taught_pos["g_cts"], taught_pos["e_cts"], taught_pos["s_cts"], taught_pos["z_cts"]]
-            
-            self.status.set(f"Moving to {position_name} (safe speed - {SAFE_VEL} cts/s)...")
-            
-            # Use SAFE movement pattern instead of dangerous move_robot_delta
-            # 1) Move to safe Z height first if defined
-            if self.safe_z_counts is not None:
-                self.c9.move_axis(ZAXIS, self.safe_z_counts, vel=SAFE_VEL, accel=SAFE_ACC, wait=True)
-                
-            # 2) Use proper safe XY movement instead of dangerous direct delta movement
-            self.c9.goto_xy_safe(loc, safe_height=self.safe_z_counts, 
-                               vel=SAFE_VEL, accel=SAFE_ACC)
-            
-            # 3) Final Z positioning with wait for stability
-            self.c9.goto_z(loc, vel=SAFE_VEL, accel=SAFE_ACC, wait=True)
-            
-            self.status.set(f"✅ Successfully moved to {position_name}")
-            
-        except Exception as e:
-            self.status.set(f"❌ Movement failed: {position_name}")
-            messagebox.showerror("Movement Error", f"Motor driver failure moving to {position_name}:\n{str(e)}\n\nThis was likely caused by unsafe movement patterns. Position movement cancelled for safety.")
-    
-    def _teach_current_as_workflow_position(self, position_name):
-        """Save current position as a workflow position"""
-        try:
-            current_pos = self.c9.get_robot_positions()
-            g, e, s, z = current_pos
-            
-            # Store in workflow position tracking
-            self.workflow_positions_taught[position_name] = {
-                "g_cts": g, "e_cts": e, "s_cts": s, "z_cts": z,
-                "timestamp": datetime.now().isoformat(),
-                "taught_this_session": True
-            }
-            
-            # Also add to regular locations list for reference
-            record = self._current_record()
-            record["name"] = f"{position_name}_session"
-            record["note"] = f"Workflow position: {position_name}"
-            self.locations.append(record)
-            self._refresh_table()
-            
-            self.status.set(f"✅ Position '{position_name}' saved! Ready for safe movement.")
-            
-            # Ask if they want to test the movement
-            test_move = messagebox.askyesno("Test Position", 
-                                          f"Position '{position_name}' saved successfully!\n\n"
-                                          f"Would you like to test the safe movement?\n\n"
-                                          f"Robot will move away and then return to this position using safe speeds.")
-            
-            if test_move:
-                # Move slightly away then back to test
-                self.status.set("Testing movement - moving slightly away...")
-                self.after(1000, lambda: self._test_position_movement(position_name))
-            
-        except Exception as e:
-            messagebox.showerror("Teaching Error", f"Could not save position:\n{str(e)}")
-    
-    def _test_position_movement(self, position_name):
-        """Test movement to a taught position with safe speeds"""
-        try:
-            # Move to a slightly different position first (small Z move)
-            current_z = self.c9.get_axis_position(ZAXIS)
-            test_z = current_z + NorthC9.mm_to_counts(ZAXIS, 5.0)  # Move 5mm up
-            
-            # Use safe speed for test movement
-            self.c9.move_axis(ZAXIS, test_z, vel=SAFE_VEL, accel=SAFE_ACC, wait=True)
-            self.status.set("Test movement - returning to taught position...")
-            
-            # Wait a moment then return to taught position
-            self.after(1500, lambda: self._go_to_taught_position(position_name))
-            
-        except Exception as e:
-            messagebox.showerror("Test Error", f"Test movement failed (motor driver issue):\n{str(e)}")
-    
-    def _execute_home_movement(self):
-        """Execute safe home movement"""
-        try:
-            self.status.set("Homing robot...")
-            
-            # Home robot (API only accepts wait parameter)
-            self.c9.home_robot(wait=False)
-                    
-        except Exception as e:
-            messagebox.showerror("Homing Error", f"Error during homing:\n{str(e)}\n\nCheck robot status and ensure robot is free to move.")
-        
-    def _execute_workflow_position(self, position_name, location, index):
-        """Execute the actual workflow position movement"""
-        try:
-            if location == "clamp":
-                # Move to clamp position 
-                if self.lash_e and hasattr(self.lash_e, 'nr_robot'):
-                    self.lash_e.nr_robot.move_vial_to_location("dummy_vial", "clamp", 0)
-                    self.status.set(f"Moving to {position_name} (clamp via Lash_E - safe speed)")
-                else:
-                    self._show_manual_position_instructions(position_name, location, index)
-                    
-            elif location == "main_8mL_rack":
-                # Move to specific rack position
-                if self.lash_e and hasattr(self.lash_e, 'nr_robot'):
-                    self.lash_e.nr_robot.move_vial_to_location("dummy_vial", "main_8mL_rack", index)
-                    self.status.set(f"Moving to {position_name} (rack {index} via Lash_E - safe speed)")
-                else:
-                    self._show_manual_position_instructions(position_name, location, index)
-                    
-            elif location == "cytation":
-                # Move wellplate to cytation (if applicable)
-                if self.lash_e and hasattr(self.lash_e, 'move_wellplate_to_cytation'):
-                    self.lash_e.move_wellplate_to_cytation()
-                    self.status.set(f"Moving to {position_name}")
-                else:
-                    messagebox.showinfo("Info", "Cytation movement requires Lash_E with track initialization")
-                    
-            elif location == "pipetting_area":
-                # Move wellplate to pipetting area (if applicable)
-                if self.lash_e and hasattr(self.lash_e, 'move_wellplate_back_from_cytation'):
-                    self.lash_e.move_wellplate_back_from_cytation()
-                    self.status.set(f"Moving to {position_name}")
-                else:
-                    messagebox.showinfo("Info", "Pipetting area movement requires Lash_E with track initialization")
-                    
-            elif location == "home":
-                # Home the robot (works with both connection types)
-                self.c9.home_robot(wait=False)
-                self.status.set("Homing robot...")
-                
-            else:
-                messagebox.showerror("Error", f"Unknown location type: {location}")
-                
-        except KeyError:
-            messagebox.showerror("Error", f"Position '{position_name}' not found in workflow positions")
-        except Exception as e:
-            messagebox.showerror("Movement Error", f"Failed to move to {position_name}:\\n{str(e)}")
-
-    def save_new_position_timestamped(self):
-        """Save current position to a timestamped folder"""
-        if not self.c9:
-            messagebox.showwarning("Connection", "Robot not connected!")
-            return
-            
-        try:
-            # Create timestamped folder
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            position_name = self.position_var.get() or "custom_position"
-            safe_name = position_name.replace(" ", "_").replace("/", "_").replace("\\", "_")
-            folder_name = f"position_{safe_name}_{timestamp}"
-            
-            # Create positions folder if it doesn't exist
-            positions_dir = "robot_positions"
-            os.makedirs(positions_dir, exist_ok=True)
-            
-            # Create specific timestamped folder
-            specific_folder = os.path.join(positions_dir, folder_name)
-            os.makedirs(specific_folder, exist_ok=True)
-            
-            # Get current robot state
-            record = self._current_record()
-            record["workflow_position"] = position_name
-            record["folder_created"] = timestamp
-            
-            # Save as JSON
-            json_path = os.path.join(specific_folder, f"{safe_name}.json")
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(record, f, indent=2)
-                
-            # Save as human-readable text
-            txt_path = os.path.join(specific_folder, f"{safe_name}_readable.txt")
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(f"Robot Position: {position_name}\n")
-                f.write(f"Saved: {record['timestamp']}\n")
-                f.write(f"Folder: {folder_name}\n\n")
-                f.write("=== JOINT POSITIONS ===\n")
-                f.write(f"Gripper:  {record['g_deg']:8.3f} deg ({record['g_cts']:7d} counts)\n")
-                f.write(f"Elbow:    {record['e_deg']:8.3f} deg ({record['e_cts']:7d} counts)\n")
-                f.write(f"Shoulder: {record['s_deg']:8.3f} deg ({record['s_cts']:7d} counts)\n")
-                f.write(f"Z-Axis:   {record['z']:8.3f} mm  ({record['z_cts']:7d} counts)\n\n")
-                f.write("=== CARTESIAN COORDINATES ===\n")
-                f.write(f"X:     {record['x']:8.3f} mm\n")
-                f.write(f"Y:     {record['y']:8.3f} mm\n")
-                f.write(f"Z:     {record['z']:8.3f} mm\n")
-                f.write(f"Theta: {record['theta']:8.3f} mm\n\n")
-                f.write("=== TOOL SETTINGS ===\n")
-                f.write(f"Tool Length: {record['tool_len_mm']:6.1f} mm\n")
-                f.write(f"Pipette Tip Offset: {record['pipette_tip']}\n\n")
-                f.write("=== NOTES ===\n")
-                f.write(f"{record.get('note', 'No notes')}\n")
-            
-            # Update status
-            self.status.set(f"Position saved to: {specific_folder}")
-            
-            # Show success message with folder location
-            messagebox.showinfo("Position Saved", 
-                              f"Position '{position_name}' saved successfully!\n\n"
-                              f"Folder: {specific_folder}\n"
-                              f"Files: {safe_name}.json, {safe_name}_readable.txt")
-            
-            # Optionally add to current session
-            if messagebox.askyesno("Add to Session", 
-                                 "Add this position to the current session list?"):
-                self.name_var.set(f"{safe_name}_{timestamp}")
-                self.add_current()
-                
-        except Exception as e:
-            messagebox.showerror("Save Error", f"Failed to save position:\n{str(e)}")
-
-    # ---------- Import / Export ----------
-    def import_json(self):
-        path = filedialog.askopenfilename(filetypes=[("JSON","*.json")])
-        if not path: return
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                self.locations = json.load(f)
-            self._refresh_table()
-            self.status.set(f"Imported {len(self.locations)} locations.")
-        except Exception as e:
-            messagebox.showerror("Import failed", str(e))
-
-    def export_json(self):
-        path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON","*.json")])
-        if not path: return
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(self.locations, f, indent=2)
-            self.status.set(f"Exported {len(self.locations)} locations.")
-        except Exception as e:
-            messagebox.showerror("Export failed", str(e))
 
 if __name__ == "__main__":
-    TeachSaveApp().mainloop()
+    sys.exit(main())

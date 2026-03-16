@@ -1,28 +1,57 @@
 # Changelog
 
-## [1.2.3] - 2026-03-15
+## [MULTI-JOINT ROBOT ARM CONTROL] - 2026-03-16
 
-### Added
-- **NEW WORKFLOW: Ilya Workflow V2 (Modern API)**: Created updated version of ilya_workflow.py with modern robotics API patterns
-  - **File**: `workflows/ilya_workflow_v2.py` - Complete rewrite using current API standards
-  - **API Updates**: Replaced index-based vial references with string names ('water', 'ethanol', etc.)
-  - **Pipetting Pattern**: Separated aspirate_from_vial() and dispense_into_wellplate() calls instead of composite functions
-  - **Liquid Optimization**: Added liquid= parameter for automatic pipetting parameter optimization by liquid type
-  - **Validation Framework**: Embedded pipetting validation at workflow start with test volumes and error handling
-  - **Configuration**: Added comprehensive configuration section with simulation mode, validation toggles, and volume limits
-  - **Error Handling**: Robust validation for input files, vial availability, and recipe data consistency
-  - **Logging**: Enhanced progress reporting and user confirmation patterns from modern workflows
-- **VIAL STATUS: Ilya Input Vials**: Created proper CSV vial status file for Ilya workflow
-  - **File**: `status/ilya_input_vials.csv` - Replaces missing .txt file with proper CSV format
-  - **Vials**: Configured ethanol, ethanol_dye, water, water_dye, glycerol, glycerol_dye with proper volumes and locations
-  - **Format**: Standard vial status format matching other workflow vial files
+### ENHANCED: Multi-Joint Robot Control System
+- **MAJOR UPGRADE**: Extended SP_arm_position_program.py to control all robot joints (Z-axis, Elbow, Shoulder)
+- **New Controls**: LEFT/RIGHT arrows for shoulder rotation, W/S keys for elbow extend/retract
+- **Enhanced GUI**: Real-time position display for all joints with both radians and degrees
+- **Safety Features**: Proper joint limits for elbow (±150°) and shoulder (±120°) based on North API specs
+- **Button Controls**: Dedicated GUI buttons for each joint movement direction
+- **Simulation Support**: Extended mock robot to simulate all joint movements with realistic limits
+- **Position Tracking**: Real-time updates of current elbow angle and shoulder angle
+- **Error Handling**: Individual safety checks and error handling for each joint type
+- **Files Modified**: workflows/SP_arm_position_program.py
 
-### Changed
-- **WORKFLOW ARCHITECTURE: Modern Validation Patterns**: Updated workflow structure to match current best practices
-  - **Validation**: Pre-flight checks for files, vials, and data consistency before execution
-  - **Safety**: Minimum/maximum volume checks and pipettable range validation
-  - **User Interface**: Clear step-by-step progress reporting with validation confirmations
-  - **Simulation**: Full simulation mode support with automatic progression and validation skip options
+## [ROBOT ARM MULTI-JOINT CONTROL] - 2026-03-16
+
+### ENHANCED: Multi-Joint Robot Arm Control System
+- **ENHANCED**: Extended SP_arm_position_program.py with complete multi-joint control capability
+- **NEW JOINTS**: Added Shoulder, Elbow, and Gripper joint control (previously only Z-axis)
+- **KEYBOARD CONTROLS**: 
+  - ↑/↓ Arrows: Z-axis movement
+  - ←/→ Arrows: Shoulder rotation
+  - W/S Keys: Elbow extend/retract
+  - Q/E Keys: Gripper rotation (CCW/CW)
+- **GUI ENHANCEMENTS**: Individual position displays for all 4 joints with real-time updates
+- **SAFETY LIMITS**: Joint-specific angle limits with error checking and warnings
+- **SIMULATION MODE**: Enhanced mock robot with full 4-joint simulation capability
+- **API INTEGRATION**: Uses proper North API methods (`move_axis_rad()`, `get_robot_positions()`)
+- **FILES MODIFIED**: workflows/SP_arm_position_program.py
+
+## [ROBOT ARM POSITION CONTROL PROGRAM] - 2026-03-16
+
+### NEW: Interactive Robot Arm Control Program
+- **NEW FEATURE**: Created SP_arm_position_program.py for interactive robot arm control
+- **GUI Interface**: Tkinter-based GUI with real-time position display and status indicators
+- **Arrow Key Control**: Up/Down arrow keys move Z-axis in 5mm increments with safety limits
+- **Home Button**: Dedicated button to home the robot to reference position
+- **Keyboard Shortcuts**: ESC to exit, SPACE to home, arrow keys for movement
+- **Safety Features**: Position limits (30-292mm), home requirement before movement, error handling
+- **Simulation Support**: Automatic fallback to simulation mode if North library unavailable
+- **Real-time Feedback**: Live position updates and connection status display
+- **Logging**: Comprehensive logging to file and console for debugging
+- **Files Added**: workflows/SP_arm_position_program.py
+
+## [CONDITION TIP PARAMETER FIX] - 2026-03-16
+
+### FIXED: TypeError in condition_tip function call  
+- **CRITICAL**: Fixed "TypeError: condition_tip() got an unexpected keyword argument 'liquid'" in acid pipetting
+- **Root Cause**: Function call had wrong parameters - `liquid` parameter doesn't exist, volume units mismatch
+- **Fix**: Removed invalid `liquid=liquid` parameter and converted volume from mL to µL  
+- **Impact**: TFA acid addition with tip conditioning now works correctly
+- **Files Modified**: workflows/Degradation_serena.py line 157
+
 ## [CRITICAL MOTOR DRIVER FIX v2] - 2026-03-13
 
 ### EMERGENCY HARDWARE PROTECTION - Anti-Shoot-Through Implementation
