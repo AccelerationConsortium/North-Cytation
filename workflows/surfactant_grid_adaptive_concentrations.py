@@ -194,12 +194,12 @@ SELECTED_BUFFER = 'MES'  # Choose from BUFFER_OPTIONS
 PAIRING_QUEUE = [
     {
         'SURFACTANT_A': 'SDS',
-        'SURFACTANT_B': 'TTAB',
+        'SURFACTANT_B': 'CTAB',
         'ADD_BUFFER': False
     },
     {
         'SURFACTANT_A': 'SDS',
-        'SURFACTANT_B': 'DTAB',
+        'SURFACTANT_B': 'BDDAC',
         'ADD_BUFFER': False
     }
 ]
@@ -267,21 +267,25 @@ SURFACTANT_LIBRARY = {
         "full_name": "Sodium Dodecylbenzenesulfonate",
         "category": "anionic", 
         "stock_conc": 50,  # mM
+        "cmc_mm": 1.7
     },
     "NaLS": {
         "full_name": "N-Lauroylsarcosine Sodium Salt",
         "category": "anionic",
         "stock_conc": 50,  # mM
+        "cmc_mm": 14.6
     },
     "BDDAC": {
         "full_name": "Benzyldimethyldodecylammonium Chloride",
         "category": "cationic",
         "stock_conc": 50,  # mM
+        "cmc_mm": 8.4,  # mM
     },
     "BZT": {
         "full_name": "Benzethonium Chloride",
         "category": "cationic", 
         "stock_conc": 50,  # mM
+        "cmc_mm": 2.9 
     },
     "CHAPS": {
         "full_name": "3-[(Cholamidopropyl) Dimethylammonio]-1-Propanesulfonate",
@@ -383,24 +387,16 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
         # Generate clean linear contour maps (new clean style)
         logger.info("1b. Generating clean linear contour maps...")
         try:
-            # Import and call clean contour function
-            import sys
-            new_folder_path = os.path.join(os.path.dirname(experiment_results_csv), "..", "New folder")
-            if os.path.exists(new_folder_path):
-                sys.path.insert(0, new_folder_path)
+            from analysis.complete_linear_contours import create_complete_linear_contours
             
-                from complete_linear_contours import create_complete_linear_contours
-                
-                # Generate with surfactant names that adapt to the experiment
-                clean_output_path = create_complete_linear_contours(
-                    experiment_results_csv,
-                    surfactant_a_name=surfactant_a_name,
-                    surfactant_b_name=surfactant_b_name
-                )
-                
-                logger.info(f"   [SUCCESS] Clean linear contour maps saved: {os.path.basename(clean_output_path)}")
-            else:
-                logger.warning(f"   Clean contour module not found at: {new_folder_path}")
+            # Generate with surfactant names that adapt to the experiment
+            clean_output_path = create_complete_linear_contours(
+                experiment_results_csv,
+                surfactant_a_name=surfactant_a_name,
+                surfactant_b_name=surfactant_b_name
+            )
+            
+            logger.info(f"   [SUCCESS] Clean linear contour maps saved: {os.path.basename(clean_output_path)}")
                 
         except Exception as e:
             logger.error(f"   [ERROR] Clean contour plot generation failed: {str(e)}")
@@ -1887,7 +1883,7 @@ def create_control_wells(surfactant_a_name, surfactant_b_name, position_prefix="
     
     return controls
 
-def create_cmc_control_series(surfactant_name, surfactant_a_name, surfactant_b_name, num_points=7, concentration_span_factor=3.0):
+def create_cmc_control_series(surfactant_name, surfactant_a_name, surfactant_b_name, lash_e, num_points=7, concentration_span_factor=3.0):
     """
     Create CMC control wells - CMC-centered concentration series with dense sampling near transition.
     Points are densely spaced near the CMC value and increasingly sparse toward bounds.
@@ -1898,6 +1894,7 @@ def create_cmc_control_series(surfactant_name, surfactant_a_name, surfactant_b_n
         surfactant_name: Name of surfactant (must have 'cmc_mm' in SURFACTANT_LIBRARY)
         surfactant_a_name: Current surfactant A name for this pairing
         surfactant_b_name: Current surfactant B name for this pairing
+        lash_e: Lash_E coordinator instance for logging
         num_points: Number of concentration points (default 7)
         concentration_span_factor: How many decades around CMC to span (default 3.0)
         
@@ -1906,72 +1903,107 @@ def create_cmc_control_series(surfactant_name, surfactant_a_name, surfactant_b_n
     """
     controls = []
     
+    lash_e.logger.info(f"DEBUG CMC: === Starting CMC series for {surfactant_name} ===")
+    lash_e.logger.info(f"DEBUG CMC: Params - a_name={surfactant_a_name}, b_name={surfactant_b_name}, points={num_points}")
+    
     # Get CMC value from library
     if surfactant_name not in SURFACTANT_LIBRARY:
+        lash_e.logger.info(f"DEBUG CMC: {surfactant_name} NOT FOUND in SURFACTANT_LIBRARY")
+        lash_e.logger.info(f"DEBUG CMC: Available keys: {list(SURFACTANT_LIBRARY.keys())}")
         return controls  # No CMC controls if surfactant not in library
         
     surfactant_info = SURFACTANT_LIBRARY[surfactant_name]
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} found in library: {surfactant_info}")
+    
     if 'cmc_mm' not in surfactant_info:
+        lash_e.logger.info(f"DEBUG CMC: {surfactant_name} MISSING cmc_mm key")
         return controls  # No CMC controls if no CMC value available
         
     cmc_value = surfactant_info['cmc_mm']
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} CMC = {cmc_value} mM")
     
     # Create concentration range around CMC (log scale)
     # Span from CMC/span_factor to CMC*span_factor
     min_conc = cmc_value / concentration_span_factor
     max_conc = cmc_value * concentration_span_factor
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} raw range: {min_conc:.4f} to {max_conc:.4f} mM")
     
     # Ensure we don't go below global minimum
     min_conc = max(min_conc, MIN_CONC)
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} after MIN_CONC({MIN_CONC}): {min_conc:.4f} to {max_conc:.4f} mM")
     
     # For CMC controls: Total volume = WELL_VOLUME_UL + PYRENE_VOLUME_UL = 205 µL
     # Available volume for surfactant+water depends on buffer setting
     available_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # 200µL (no buffer) or 180µL (with buffer)
     total_well_volume_ul = WELL_VOLUME_UL + PYRENE_VOLUME_UL  # 205 µL total
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} available_volume={available_volume_ul}uL, ADD_BUFFER={ADD_BUFFER}")
     
     # Don't exceed what's achievable with available volume (after buffer) at stock concentration
     stock_conc = surfactant_info['stock_conc']
     max_achievable_with_stock = (stock_conc * available_volume_ul) / WELL_VOLUME_UL  # Scale down for buffer space
     max_conc = min(max_conc, max_achievable_with_stock)
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} stock_conc={stock_conc}, max_achievable={max_achievable_with_stock:.4f}")
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} final range: {min_conc:.4f} to {max_conc:.4f} mM")
+    
+    # Check if range is valid
+    if min_conc > max_conc:
+        lash_e.logger.info(f"DEBUG CMC: {surfactant_name} INVALID RANGE: min_conc > max_conc ({min_conc:.4f} > {max_conc:.4f})")
+        return controls
+    
+    if max_conc <= MIN_CONC:
+        lash_e.logger.info(f"DEBUG CMC: {surfactant_name} INVALID RANGE: max_conc <= MIN_CONC ({max_conc:.4f} <= {MIN_CONC})")
+        return controls
     
     # Generate CMC-centered concentration series with dense center, sparse edges
     # Create symmetric points around CMC with increasing spacing
-    if num_points % 2 == 1:
-        # Odd number: include CMC as center point
-        half_points = (num_points - 1) // 2
-        # Generate points from 0 to 1, then apply stretching function
-        raw_spacing = np.linspace(0, 1, half_points + 1)[1:]  # Exclude 0, include 1
-        # Apply cubic stretching to increase spacing toward edges
-        stretched_spacing = raw_spacing ** 2  # Quadratic stretching
+    try:
+        if num_points % 2 == 1:
+            # Odd number: include CMC as center point
+            half_points = (num_points - 1) // 2
+            # Generate points from 0 to 1, then apply stretching function
+            raw_spacing = np.linspace(0, 1, half_points + 1)[1:]  # Exclude 0, include 1
+            # Apply cubic stretching to increase spacing toward edges
+            stretched_spacing = raw_spacing ** 2  # Quadratic stretching
+            
+            # Map to log scale around CMC
+            log_cmc = np.log10(cmc_value)
+            log_span = np.log10(concentration_span_factor)
+            
+            # Create positive and negative sides
+            positive_logs = log_cmc + stretched_spacing * log_span
+            negative_logs = log_cmc - stretched_spacing * log_span
+            
+            # Combine: [low ... CMC ... high]
+            all_logs = np.concatenate([negative_logs[::-1], [log_cmc], positive_logs])
+            concentrations = 10 ** all_logs
+        else:
+            # Even number: no exact CMC point, symmetric around it
+            half_points = num_points // 2
+            raw_spacing = np.linspace(0, 1, half_points + 1)[1:]  # Exclude 0
+            stretched_spacing = raw_spacing ** 2
+            
+            log_cmc = np.log10(cmc_value)
+            log_span = np.log10(concentration_span_factor)
+            
+            positive_logs = log_cmc + stretched_spacing * log_span
+            negative_logs = log_cmc - stretched_spacing * log_span
+            
+            all_logs = np.concatenate([negative_logs[::-1], positive_logs])
+            concentrations = 10 ** all_logs
+            
+    except (ValueError, FloatingPointError, OverflowError) as e:
+        lash_e.logger.info(f"DEBUG CMC: {surfactant_name} NUMERICAL ERROR in concentration generation: {e}")
+        return controls
         
-        # Map to log scale around CMC
-        log_cmc = np.log10(cmc_value)
-        log_span = np.log10(concentration_span_factor)
-        
-        # Create positive and negative sides
-        positive_logs = log_cmc + stretched_spacing * log_span
-        negative_logs = log_cmc - stretched_spacing * log_span
-        
-        # Combine: [low ... CMC ... high]
-        all_logs = np.concatenate([negative_logs[::-1], [log_cmc], positive_logs])
-        concentrations = 10 ** all_logs
-    else:
-        # Even number: no exact CMC point, symmetric around it
-        half_points = num_points // 2
-        raw_spacing = np.linspace(0, 1, half_points + 1)[1:]  # Exclude 0
-        stretched_spacing = raw_spacing ** 2
-        
-        log_cmc = np.log10(cmc_value)
-        log_span = np.log10(concentration_span_factor)
-        
-        positive_logs = log_cmc + stretched_spacing * log_span
-        negative_logs = log_cmc - stretched_spacing * log_span
-        
-        all_logs = np.concatenate([negative_logs[::-1], positive_logs])
-        concentrations = 10 ** all_logs
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} raw concentrations: {len(concentrations)} points")
     
     # Ensure bounds are respected
     concentrations = np.clip(concentrations, min_conc, max_conc)
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} generated {len(concentrations)} concentrations")
+    
+    if len(concentrations) == 0:
+        lash_e.logger.info(f"DEBUG CMC: {surfactant_name} NO CONCENTRATIONS GENERATED")
+        return controls
     
     # Create control specifications (vial selection happens in create_well_recipe_from_control)
     for i, conc in enumerate(concentrations):
@@ -1991,6 +2023,7 @@ def create_cmc_control_series(surfactant_name, surfactant_a_name, surfactant_b_n
             'is_control': True
         })
     
+    lash_e.logger.info(f"DEBUG CMC: {surfactant_name} === Returning {len(controls)} controls ===")
     return controls
     
 def get_cmc_concentrations_from_controls(cmc_controls, surfactant_name):
@@ -2834,25 +2867,44 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     
     if ADD_CMC_CONTROLS:
         lash_e.logger.info("  Creating CMC-specific vial selection plans...")
+        lash_e.logger.info(f"  DEBUG: CMC_CONTROL_POINTS = {CMC_CONTROL_POINTS}")
+        lash_e.logger.info(f"  DEBUG: surfactant_a_name = {surfactant_a_name}")
+        lash_e.logger.info(f"  DEBUG: surfactant_b_name = {surfactant_b_name}")
         
         # Get CMC concentrations for each surfactant
-        cmc_controls_a_preview = create_cmc_control_series(surfactant_a_name, surfactant_a_name, surfactant_b_name, CMC_CONTROL_POINTS)
-        cmc_controls_b_preview = create_cmc_control_series(surfactant_b_name, surfactant_a_name, surfactant_b_name, CMC_CONTROL_POINTS)
+        lash_e.logger.info(f"  DEBUG: Calling create_cmc_control_series for {surfactant_a_name}...")
+        cmc_controls_a_preview = create_cmc_control_series(surfactant_a_name, surfactant_a_name, surfactant_b_name, lash_e, CMC_CONTROL_POINTS)
+        lash_e.logger.info(f"  DEBUG: {surfactant_a_name} preview controls: {len(cmc_controls_a_preview)}")
         
+        lash_e.logger.info(f"  DEBUG: Calling create_cmc_control_series for {surfactant_b_name}...")
+        cmc_controls_b_preview = create_cmc_control_series(surfactant_b_name, surfactant_a_name, surfactant_b_name, lash_e, CMC_CONTROL_POINTS)
+        lash_e.logger.info(f"  DEBUG: {surfactant_b_name} preview controls: {len(cmc_controls_b_preview)}")
+        
+        lash_e.logger.info(f"  DEBUG: Extracting concentrations for {surfactant_a_name}...")
         cmc_target_concs_a = get_cmc_concentrations_from_controls(cmc_controls_a_preview, surfactant_a_name)
+        lash_e.logger.info(f"  DEBUG: {surfactant_a_name} target concentrations: {len(cmc_target_concs_a)} - {cmc_target_concs_a}")
+        
+        lash_e.logger.info(f"  DEBUG: Extracting concentrations for {surfactant_b_name}...")
         cmc_target_concs_b = get_cmc_concentrations_from_controls(cmc_controls_b_preview, surfactant_b_name)
+        lash_e.logger.info(f"  DEBUG: {surfactant_b_name} target concentrations: {len(cmc_target_concs_b)} - {cmc_target_concs_b}")
         
         # Use existing stock matching pattern (same as iterative workflow)
         # Available volume for CMC controls depends on buffer setting
-        cmc_max_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0)  # 200µL (no buffer) or 180µL (with buffer)
+        cmc_max_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0) - 10  # 190µL (no buffer) or 170µL (with buffer)
         
         if cmc_target_concs_a:
+            lash_e.logger.info(f"  DEBUG: Creating plan from existing stocks for {surfactant_a_name}...")
             cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, lash_e, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_a_name}: {len(cmc_target_concs_a)} concentrations")
+        else:
+            lash_e.logger.info(f"  DEBUG: No CMC target concentrations for {surfactant_a_name} - skipping plan creation")
             
         if cmc_target_concs_b:
+            lash_e.logger.info(f"  DEBUG: Creating plan from existing stocks for {surfactant_b_name}...")
             cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, lash_e, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_b_name}: {len(cmc_target_concs_b)} concentrations")
+        else:
+            lash_e.logger.info(f"  DEBUG: No CMC target concentrations for {surfactant_b_name} - skipping plan creation")
     
     # Step 5: Create complete well-by-well recipes DataFrame
     lash_e.logger.info("  Creating complete well recipes...")
@@ -2871,15 +2923,21 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         lash_e.logger.info(f"  Adding CMC control series ({CMC_CONTROL_POINTS} points each)...")
         
         # CMC controls for surfactant A
-        cmc_controls_a = create_cmc_control_series(surfactant_a_name, surfactant_a_name, surfactant_b_name, CMC_CONTROL_POINTS)
-        for control in cmc_controls_a:
+        lash_e.logger.info(f"  DEBUG: Creating actual CMC controls for {surfactant_a_name}...")
+        cmc_controls_a = create_cmc_control_series(surfactant_a_name, surfactant_a_name, surfactant_b_name, lash_e, CMC_CONTROL_POINTS)
+        lash_e.logger.info(f"  DEBUG: Created {len(cmc_controls_a)} controls for {surfactant_a_name}")
+        for i, control in enumerate(cmc_controls_a):
+            lash_e.logger.info(f"  DEBUG: Processing {surfactant_a_name} control {i+1}: {control.get('description', 'no description')}")
             well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, cmc_plan_a, cmc_plan_b)
             well_recipes.append(well_recipe)
             well_index += 1
             
         # CMC controls for surfactant B  
-        cmc_controls_b = create_cmc_control_series(surfactant_b_name, surfactant_a_name, surfactant_b_name, CMC_CONTROL_POINTS)
-        for control in cmc_controls_b:
+        lash_e.logger.info(f"  DEBUG: Creating actual CMC controls for {surfactant_b_name}...")
+        cmc_controls_b = create_cmc_control_series(surfactant_b_name, surfactant_a_name, surfactant_b_name, lash_e, CMC_CONTROL_POINTS)
+        lash_e.logger.info(f"  DEBUG: Created {len(cmc_controls_b)} controls for {surfactant_b_name}")
+        for i, control in enumerate(cmc_controls_b):
+            lash_e.logger.info(f"  DEBUG: Processing {surfactant_b_name} control {i+1}: {control.get('description', 'no description')}")
             well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, cmc_plan_a, cmc_plan_b)
             well_recipes.append(well_recipe)
             well_index += 1

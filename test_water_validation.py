@@ -69,10 +69,14 @@ def main():
                 save_raw_data=True,
                 compensate_overvolume=True,
                 condition_tip_enabled=True,
-                conditioning_volume_ul=max(LARGE_TIP_VOLUMES_UL),
-                quality_std_threshold=0.0005
+                conditioning_volume_ul=max(max(LARGE_TIP_VOLUMES_UL), 300) if LARGE_TIP_VOLUMES_UL else 300,
+                quality_std_threshold=0.0005,
+                adaptive_correction=True
             )
-            print(f"Large tip calibration complete - R²: {results['large_tip']['r_squared']:.4f}")
+            r_squared = results['large_tip'].get('r_squared', 'N/A')
+            print(f"Large tip calibration complete - R²: {r_squared}")
+
+            lash_e.nr_robot.remove_pipet()
         
         # 2. Small Tip Calibration (< 200 μL volumes)  
         if SMALL_TIP_VOLUMES_UL:
@@ -96,15 +100,22 @@ def main():
                 save_raw_data=True,
                 compensate_overvolume=True,
                 condition_tip_enabled=True,
-                conditioning_volume_ul=max(SMALL_TIP_VOLUMES_UL),
-                quality_std_threshold=0.0005
+                conditioning_volume_ul=max(SMALL_TIP_VOLUMES_UL) if SMALL_TIP_VOLUMES_UL else 150,
+                quality_std_threshold=0.0005,
+                adaptive_correction=True
             )
-            print(f"Small tip calibration complete - R²: {results['small_tip']['r_squared']:.4f}")
+            lash_e.nr_robot.remove_pipet()
+            r_squared = results['small_tip'].get('r_squared', 'N/A')
+            print(f"Small tip calibration complete - R²: {r_squared}")
+        
+        lash_e.nr_robot.move_home()
         
         # Summary
         print(f"\n--- VALIDATION SUMMARY ---")
         for tip_type, result in results.items():
-            print(f"{tip_type.upper()}: R² = {result['r_squared']:.4f}, Accuracy = {result['mean_accuracy_pct']:.1f}%")
+            r_squared = result.get('r_squared', 'N/A')
+            accuracy = result.get('mean_accuracy_pct', 0)
+            print(f"{tip_type.upper()}: R² = {r_squared}, Accuracy = {accuracy:.1f}%")
         
         print("All validations complete")
         return results
