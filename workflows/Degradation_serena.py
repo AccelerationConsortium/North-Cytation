@@ -22,7 +22,7 @@ CYTATION_PROTOCOL_FILE = r"C:\Protocols\300_900_sweep.prt"
 SCHEDULE_FILE = "../utoronto_demo/status/degradation_vial_schedule.csv"
 
     # d. Simulate mode True or False
-SIMULATE = False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
 
     # Configuration
 VALIDATE_LIQUIDS = False  # Set to True to run pipetting validation 
@@ -154,7 +154,7 @@ def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='
         lash_e.logger.info(f"Setting home location of {dest_vial} to 5 for safe pipetting")
 
     if condition_tip:
-        condition_tip(lash_e, source_vial, volume, liquid=liquid)
+        do_condition_tip(lash_e, source_vial, volume, liquid=liquid)
 
     lash_e.nr_robot.dispense_from_vial_into_vial(
         source_vial, dest_vial, volume, 
@@ -205,7 +205,7 @@ def move_lid_to_storage(lash_e):
     lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='quartz_lid', waypoint_locations=waypoint_locations)
     lash_e.nr_track.release_wellplate_in_location('lid_storage', wellplate_type='quartz_lid')
 
-def condition_tip(lash_e, vial_name, conditioning_volume_ul=100, cycles=5):
+def do_condition_tip(lash_e, vial_name, conditioning_volume_ul=100, cycles=5):
     """Condition a pipette tip by aspirating and dispensing into source vial multiple times
     
     Args:
