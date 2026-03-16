@@ -72,9 +72,9 @@ def validate_key_liquids(lash_e, output_dir):
         
         validation_tests = [
             {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3, 'params': None},
-            {'vial': '2MeTHF', 'liquid': '2MeTHF', 'volumes': [0.600], 'reps': 3, 'params': None},
-            {'vial': '6M_HCl', 'liquid': '6M_HCl', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
-            {'vial': 'polymer_stock', 'liquid': '2MeTHF', 'volumes': [0.100, 0.150], 'reps': 3, 'params': None},
+            {'vial': 'heptane', 'liquid': 'heptane', 'volumes': [0.600], 'reps': 3, 'params': None},
+            {'vial': 'TFA', 'liquid': 'TFA', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
+            {'vial': 'polymer_stock', 'liquid': 'heptane', 'volumes': [0.100, 0.150], 'reps': 3, 'params': None},
         ]
         
         lash_e.logger.info("Running compact liquid validation...")
@@ -136,25 +136,28 @@ def pipet_sample_from_well_to_vial(lash_e, wells, sample_name, well_volume=0.15,
     if heater_slot is not None:
         lash_e.nr_robot.move_vial_to_location(vial_name=sample_name, location='heater', location_index=heater_slot)
 
-def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='2MeTHF', return_home=True, move_speed=None, condition_tip=False):
+def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='2MeTHF', return_home=True, move_speed=None, enable_conditioning=False):
     source_home_location_index = lash_e.nr_robot.get_vial_info(source_vial, 'location_index')
     dest_home_location_index = lash_e.nr_robot.get_vial_info(dest_vial, 'location_index')
     move_source = (source_home_location_index > 5)
     move_dest = (dest_home_location_index > 5)
 
+    # Move unsafe vials to safe locations FIRST, before any pipetting operations
     if move_source: 
-        #lash_e.nr_robot.move_vial_to_location(vial_name=source_vial, location='main_8mL_rack', location_index=5)
         vial_index = lash_e.nr_robot.get_vial_info(source_vial, 'vial_index')
         lash_e.nr_robot.VIAL_DF.at[vial_index, 'home_location_index'] = 4
-        lash_e.logger.info(f"Setting home location of {source_vial} to 4 for safe pipetting")
-    elif move_dest:
-        #lash_e.nr_robot.move_vial_to_location(vial_name=dest_vial, location='main_8mL_rack', location_index=5)
+        lash_e.logger.info(f"Moving {source_vial} from unsafe location {source_home_location_index} to safe location 4")
+        lash_e.nr_robot.move_vial_to_location(vial_name=source_vial, location='main_8mL_rack', location_index=4)
+    if move_dest:
         vial_index = lash_e.nr_robot.get_vial_info(dest_vial, 'vial_index')
         lash_e.nr_robot.VIAL_DF.at[vial_index, 'home_location_index'] = 5
-        lash_e.logger.info(f"Setting home location of {dest_vial} to 5 for safe pipetting")
+        lash_e.logger.info(f"Moving {dest_vial} from unsafe location {dest_home_location_index} to safe location 5")
+        lash_e.nr_robot.move_vial_to_location(vial_name=dest_vial, location='main_8mL_rack', location_index=5)
 
-    if condition_tip:
-        condition_tip(lash_e, source_vial, volume, liquid=liquid)
+    if enable_conditioning:
+        # Convert volume from mL to µL for conditioning
+        conditioning_volume_ul = volume
+        condition_tip(lash_e, source_vial, conditioning_volume_ul)
 
     lash_e.nr_robot.dispense_from_vial_into_vial(
         source_vial, dest_vial, volume, 
@@ -163,11 +166,12 @@ def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='
         return_vial_home=return_home, move_speed=move_speed
     )
 
+    # Restore original home locations after pipetting
     if move_source: 
         vial_index = lash_e.nr_robot.get_vial_info(source_vial, 'vial_index')
         lash_e.nr_robot.VIAL_DF.at[vial_index, 'home_location_index'] = int(source_home_location_index)
         lash_e.nr_robot.return_vial_home(vial_name=source_vial)
-    elif move_dest:
+    if move_dest:
         vial_index = lash_e.nr_robot.get_vial_info(dest_vial, 'vial_index')
         lash_e.nr_robot.VIAL_DF.at[vial_index, 'home_location_index'] = int(dest_home_location_index)
         lash_e.nr_robot.return_vial_home(vial_name=dest_vial)
@@ -554,7 +558,7 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
             lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
             acid_volume = round(float(volume_lookup[sample]['acid_volume']), 4)
             lash_e.logger.info(f"\nAdding {acid_volume} mL acid to sample: {sample}")
-            safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=True, liquid=acid_type, condition_tip=True)
+            safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=True, liquid=acid_type, enable_conditioning=True)
             lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5)
 
     # Record per-sample start time using consistent basis (simulated clock = 0; real clock = wall time)

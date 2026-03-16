@@ -113,7 +113,8 @@ LIQUID_DENSITIES = {
     "4%_hyaluronic_acid_water": 1.01,
     "SDS": 1.00,
     "6M_HCl": 1.10,
-    "TFA": 1.49
+    "TFA": 1.49,
+    "heptane": 0.684
 }
 
 # === MASTER DATABASE PATHS ===
