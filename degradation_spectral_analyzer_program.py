@@ -129,48 +129,75 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     ratio_428_556 = np.array(abs_428nm) / np.array(abs_556nm)
     
     # Create the three plots
+    # Set font to Helvetica Neue
+    plt.rcParams['font.sans-serif'] = ['Helvetica Neue']
+    plt.rcParams['font.family'] = 'sans-serif'
+    
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
     sample_label = f" - Sample {sample_name}" if sample_name is not None else ""
-    fig.suptitle(f'Wavelength-Specific Analysis Over Time{sample_label}', fontsize=18, fontweight='bold')
+    fig.suptitle(f'Wavelength-Specific Analysis Over Time{sample_label}', fontsize=16, fontweight='bold', y=0.995)
     
     # Plot 1: 556 nm over time
-    axes[0, 0].plot(timepoints, abs_556nm, 'o-', color='#4A3A7F', linewidth=2, markersize=8)
-    axes[0, 0].set_xlabel('Time (min)', fontsize=14)
-    axes[0, 0].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    axes[0, 0].set_title('556 nm Absorbance vs Time', fontsize=14)
-    axes[0, 0].tick_params(axis='both', which='major', labelsize=12, direction='in')
-    axes[0, 0].grid(False)
+    axes[0, 0].plot(timepoints, abs_556nm, 'o-', color='#4A3A7F', linewidth=2.5, markersize=6)
+    axes[0, 0].set_xlabel('time (min)', fontsize=16)
+    axes[0, 0].set_ylabel('absorbance (a.u.)', fontsize=16)
+    axes[0, 0].set_title('556 nm absorbance', fontsize=14)
+    axes[0, 0].set_ylim(bottom=0)
+    axes[0, 0].tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    axes[0, 0].tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    axes[0, 0].yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    axes[0, 0].spines['top'].set_visible(False)
+    axes[0, 0].spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = axes[0, 0].get_yticks()
+    axes[0, 0].set_yticks(yticks[np.abs(yticks) > 1e-10])
     
     # Plot 2: 428 nm over time
-    axes[0, 1].plot(timepoints, abs_428nm, 'o-', color="#859DE6", linewidth=2, markersize=8)
-    axes[0, 1].set_xlabel('Time (min)', fontsize=14)
-    axes[0, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    axes[0, 1].set_title('428 nm Absorbance vs Time', fontsize=14)
-    axes[0, 1].tick_params(axis='both', which='major', labelsize=12, direction='in')
-    axes[0, 1].grid(False)
+    axes[0, 1].plot(timepoints, abs_428nm, 'o-', color="#859DE6", linewidth=2.5, markersize=6)
+    axes[0, 1].set_xlabel('time (min)', fontsize=16)
+    axes[0, 1].set_ylabel('absorbance (a.u.)', fontsize=16)
+    axes[0, 1].set_title('428 nm absorbance', fontsize=14)
+    axes[0, 1].set_ylim(bottom=0)
+    axes[0, 1].tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    axes[0, 1].tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    axes[0, 1].yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    axes[0, 1].spines['top'].set_visible(False)
+    axes[0, 1].spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = axes[0, 1].get_yticks()
+    axes[0, 1].set_yticks(yticks[np.abs(yticks) > 1e-10])
     
-    # Plot 3: 428/556 ratio over time
-    axes[1, 0].plot(timepoints, ratio_428_556, 'o-', color="#9B6BA8", linewidth=2, markersize=8)
-    axes[1, 0].set_xlabel('Time (min)', fontsize=14)
-    axes[1, 0].set_ylabel('Absorbance Ratio (428/556 nm)', fontsize=14)
-    axes[1, 0].set_title('428/556 nm Ratio vs Time', fontsize=14)
-    axes[1, 0].tick_params(axis='both', which='major', labelsize=12, direction='in')
-    axes[1, 0].grid(False)
+    # Plot 3: 556/428 ratio over time
+    axes[1, 0].plot(timepoints, ratio_428_556, 's-', color="#9B6BA8", linewidth=2, markersize=5)
+    axes[1, 0].set_xlabel('time (min)', fontsize=16)
+    axes[1, 0].set_ylabel('absorbance ratio (556/428 nm)', fontsize=16)
+    axes[1, 0].set_title('556/428 nm ratio', fontsize=14)
+    axes[1, 0].set_ylim(bottom=0, top=2.5)
+    axes[1, 0].tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    axes[1, 0].tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    axes[1, 0].yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    axes[1, 0].spines['top'].set_visible(False)
+    axes[1, 0].spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = axes[1, 0].get_yticks()
+    axes[1, 0].set_yticks(yticks[np.abs(yticks) > 1e-10])
     
     # Plot 4: Combined comparison
-    axes[1, 1].plot(timepoints, abs_556nm, 'o-', color='#4A3A7F', linewidth=2, markersize=6, label='556 nm')
-    axes[1, 1].plot(timepoints, abs_428nm, 'o-', color='#859DE6', linewidth=2, markersize=6, label='428 nm')
-    ax2 = axes[1, 1].twinx()
-    ax2.plot(timepoints, ratio_428_556, 's-', color='#9B6BA8', linewidth=2, markersize=6, label='428/556 nm Ratio')
-    axes[1, 1].set_xlabel('Time (min)', fontsize=14)
-    axes[1, 1].set_ylabel('Absorbance (a.u.)', fontsize=14)
-    ax2.set_ylabel('Absorbance Ratio (428/556 nm)', color="#000000", fontsize=14)
-    axes[1, 1].set_title('Combined Analysis', fontsize=14)
-    axes[1, 1].tick_params(axis='both', which='major', labelsize=12, direction='in')
-    ax2.tick_params(axis='both', which='major', labelsize=12, direction='in')
-    axes[1, 1].legend(loc='upper left', fontsize=12)
-    ax2.legend(loc='upper right', fontsize=12)
-    axes[1, 1].grid(False)
+    axes[1, 1].plot(timepoints, abs_556nm, 'o-', color='#4A3A7F', linewidth=2.5, markersize=6, label='556 nm', alpha=0.8)
+    axes[1, 1].plot(timepoints, abs_428nm, 'o-', color='#859DE6', linewidth=2.5, markersize=6, label='428 nm', alpha=0.8)
+    axes[1, 1].set_xlabel('time (min)', fontsize=16)
+    axes[1, 1].set_ylabel('absorbance (a.u.)', fontsize=16)
+    axes[1, 1].set_title('combined analysis', fontsize=14)
+    axes[1, 1].set_ylim(bottom=0)
+    axes[1, 1].tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    axes[1, 1].tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    axes[1, 1].yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    axes[1, 1].spines['top'].set_visible(False)
+    axes[1, 1].spines['right'].set_visible(False)
+    axes[1, 1].legend(fontsize=15, loc='best', frameon=False)
+    # Remove 0 tick from y-axis
+    yticks = axes[1, 1].get_yticks()
+    axes[1, 1].set_yticks(yticks[np.abs(yticks) > 1e-10])
     
     plt.tight_layout()
     
@@ -278,6 +305,9 @@ def analyze_spectral_data(folder_path, processed_data_dir=None, sample_name=None
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=16)
     plt.tick_params(axis='both', which='major', labelsize=14, direction='in')
     plt.grid(False)
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     plt.tight_layout()
     
     # Save the plot to processed data directory with sample name in filename
