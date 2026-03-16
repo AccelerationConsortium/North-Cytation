@@ -29,7 +29,8 @@
 - **CRITICAL**: Implemented comprehensive motor driver protection against hardware-killing code patterns
 - **Anti-Shoot-Through**: 100ms mandatory motor-off deadtime before ANY movement command
 - **Direction Reversal Protection**: 500ms blocking delay when direction changes detected
-- **Rapid Click Prevention**: 300ms UI button locks prevent rapid command sending  
+- **Rapid Click Prevention**: 300ms UI button locks prevent rapid command sending
+
 - **Command Spacing**: Minimum 300ms between ANY jog commands (was 100ms)
 - **Continuous Jog Rate**: Reduced to 2 steps/second (was 5) with 500ms intervals
 - **Status Monitoring**: Robot status checked before every movement command
