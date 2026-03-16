@@ -73,7 +73,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         
         print(f"Initializing North Robot hardware protocol for {liquid}")
-        print(f"Volume adjustment tracking: {adjust_volume}")
+
         
         # Read full config directly from file to get volume targets
         try:
@@ -116,6 +116,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         show_gui = True
 
         adjust_volume = True
+        print(f"Volume adjustment tracking: {adjust_volume}")
                
         # Quality control threshold for mass measurement stability (in grams)
         # Default: 0.001g (1mg) - good for most pipetting

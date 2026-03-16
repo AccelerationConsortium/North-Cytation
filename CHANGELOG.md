@@ -1,5 +1,157 @@
 # Changelog
 
+## [CRITICAL MOTOR DRIVER FIX v2] - 2026-03-13
+
+### EMERGENCY HARDWARE PROTECTION - Anti-Shoot-Through Implementation
+- **CRITICAL**: Implemented comprehensive motor driver protection against hardware-killing code patterns
+- **Anti-Shoot-Through**: 100ms mandatory motor-off deadtime before ANY movement command
+- **Direction Reversal Protection**: 500ms blocking delay when direction changes detected
+- **Rapid Click Prevention**: 300ms UI button locks prevent rapid command sending  
+- **Command Spacing**: Minimum 300ms between ANY jog commands (was 100ms)
+- **Continuous Jog Rate**: Reduced to 2 steps/second (was 5) with 500ms intervals
+- **Status Monitoring**: Robot status checked before every movement command
+- **Blocking Operations**: All moves use wait=True to prevent command stacking
+- **Extra Settling Time**: 50ms delays after moves to ensure driver fully settles
+
+### Hardware-Specific Protections Added
+Based on common motor driver failure patterns:
+- **Prevents Both Direction Pins Active** (shoot-through condition)  
+- **Eliminates Instant Full-Power Reverse** (no deadtime failures)
+- **Prevents Command Overlap** (rapid state changes)
+- **Ensures Adequate Deadtime** (100ms motor-off before commands)
+- **UI-Level Protection** (button disable/re-enable cycles)
+
+### Speed & Timing Limits  
+- **Ultra-Conservative Speeds**: 1000-2000 cts/s maximum (was 4000)
+- **Gentle Acceleration**: 4000-8000 cts/s² maximum (was 15000)
+- **Extended Delays**: Multiple timing protections at different levels
+- **Frequency Limiting**: Max 2 Hz continuous jog rate (well below driver limits)
+
+### User Interface Updates
+- **Window Title**: Clear "MOTOR DRIVER PROTECTION MODE" warning
+- **Startup Alert**: Detailed protection measure explanation
+- **Status Messages**: "ANTI-SHOOT-THROUGH" and "driver-safe mode" indicators  
+- **UI Warnings**: Red text explaining 300ms click delays and protection measures
+
+### Code Architecture Changes
+- **State Tracking**: Last axis, direction, and timing tracking
+- **Busy Flag System**: Prevents any overlapping jog operations  
+- **Safe Button Management**: Prevents UI callback errors
+- **Exception Handling**: Motor driver failure detection and safe shutdown
+- **Clean Disconnect**: All jog states cleared on disconnect/close
+
+This version addresses the specific code patterns that physically destroy motor drivers, implementing multiple layers of hardware protection beyond just conservative speeds.
+
+## [1.2.4] - 2026-03-13
+
+### Fixed
+- **CRITICAL: SP_arm_position_program Robot Movement Error**: Fixed "NorthC9 object has no attribute 'move_vial_to_location'" error
+  - **Issue**: SP_arm_position_program.py was trying to call `move_vial_to_location()` directly on NorthC9 object, but this method doesn't exist there
+  - **Root cause**: Incorrect architecture - should use Lash_E coordinator that wraps North_Robot class which provides the `move_vial_to_location()` method
+  - **Fix**: Updated SP_arm_position_program.py to use Lash_E coordinator pattern like other workflows
+    - Added Lash_E import and initialization in connect() method
+    - Changed robot movement calls to use `lash_e.nr_robot.move_vial_to_location()`
+    - Added proper error handling for wellplate movements when track not initialized
+  - **Impact**: Program now properly integrates with robot control system and can move vials to predefined workflow positions
+  - **Files**: `workflows/SP_arm_position_program.py` (backup created before changes)
+
+### Improved  
+- **CONNECTION STABILITY: SP_arm_position_program Robust Connection System**: Added multi-strategy connection with auto-reconnection
+  - **Issue**: Connection timeouts and failures due to complex Lash_E initialization, missing vial files, and no auto-reconnection
+  - **Solution**: Implemented dual-strategy connection system:
+    1. **Primary**: Direct NorthC9 connection (fastest, most reliable for teaching)
+    2. **Fallback**: Lash_E with auto-generated minimal vial file if direct fails
+    3. **Auto-reconnection**: Configurable auto-retry with exponential backoff
+    4. **Error recovery**: Graceful handling of communication errors with automatic reconnection attempts
+  - **Features Added**:
+    - Auto-reconnect checkbox for continuous operation
+    - Disconnect button for clean disconnection 
+    - Connection status indicators with attempt counting
+    - Dual-mode operation: full Lash_E (for vial movements) or direct NorthC9 (for manual positioning)
+    - Automatic minimal vial file creation (`status/minimal_vials.csv`)
+  - **Impact**: Dramatically improved connection reliability and user experience for robot positioning/teaching tasks
+  - **Files**: `workflows/SP_arm_position_program.py`
+- **PERFORMANCE: SP_arm_position_program Smart Speed Control**: Implemented intelligent speed management for different movement types
+  - **Issue**: All movements used slow teaching speeds (2000 cts/s), making homing and position changes unnecessarily slow
+  - **Solution**: Added speed differentiation:
+    - **Fast speeds**: 8000-10000 cts/s for homing, going to saved positions, and workflow positions
+    - **Slow speeds**: 2000 cts/s preserved for manual jogging/teaching (precision work)
+    - **Auto-fallback**: Graceful degradation if fast speed parameters not supported
+  - **Speed Constants Added**:
+    - `FAST_VEL = 8000` cts/s for major movements
+    - `FAST_ACC = 40000` cts/s² for fast acceleration  
+    - `FAST_HOME_VEL = 10000` cts/s for homing operations
+  - **UI Improvements**: Updated labels to clarify speed usage, added status messages showing movement type
+- **USER EXPERIENCE: SP_arm_position_program Enhanced Connection Feedback**: Added visual progress indicators and clear status messages
+  - **Issue**: Connection process was silent with no progress indication, leaving users unsure if system was working
+  - **Solution**: Comprehensive connection feedback system:
+    - **Progress bar**: Animated progress indicator during connection attempts
+    - **Step-by-step updates**: Status messages showing connection progress ("Step 1/2: Testing direct connection...")
+    - **Visual status icons**: ✅ success, ❌ errors, 🔄 in progress, ⚠️ warnings
+    - **Smart button management**: Disables Connect button during connection to prevent conflicts
+    - **Success/failure popups**: Clear messagebox notifications with next steps
+    - **Detailed error reporting**: Comprehensive error messages with troubleshooting suggestions
+  - **Features Added**:
+    - Animated progress bar with connection state tracking
+    - Emoji-enhanced status messages for quick visual feedback
+    - Connection attempt counter with max retry limits
+    - Graceful handling of connection interruption (disconnect during connection)
+    - Enhanced auto-reconnection with visual progress
+- **USER EXPERIENCE: SP_arm_position_program Enhanced Connection Feedback**: Added visual progress indicators and clear status messages
+  - **Issue**: Connection process was silent with no progress indication, leaving users unsure if system was working
+  - **Solution**: Comprehensive connection feedback system:
+    - **Progress bar**: Animated progress indicator during connection attempts
+    - **Step-by-step updates**: Status messages showing connection progress ("Step 1/2: Testing direct connection...")
+    - **Visual status icons**: ✅ success, ❌ errors, 🔄 in progress, ⚠️ warnings
+    - **Smart button management**: Disables Connect button during connection to prevent conflicts
+    - **Success/failure popups**: Clear messagebox notifications with next steps
+    - **Detailed error reporting**: Comprehensive error messages with troubleshooting suggestions
+  - **Features Added**:
+    - Animated progress bar with connection state tracking
+    - Emoji-enhanced status messages for quick visual feedback
+    - Connection attempt counter with max retry limits
+    - Graceful handling of connection interruption (disconnect during connection)
+    - Enhanced auto-reconnection with visual progress
+  - **Impact**: Users now have clear feedback on connection status and can diagnose connection issues more effectively
+  - **Files**: `workflows/SP_arm_position_program.py`
+- **CRITICAL: SP_arm_position_program Teaching System Overhaul**: Replaced complex Lash_E system with simple in-memory position tracking
+  - **Issue**: Workflow positions required complex Lash_E upgrade that often failed, and taught positions weren't actually moving the robot
+  - **Root Cause**: Incomplete replacement of old Lash_E code, confusing teaching workflow, and slow movement speeds
+  - **Solution**: Complete rewrite of position management system:
+    - **Auto-homing on connect**: Robot homes immediately after connection (15,000 cts/s) to establish reference
+    - **In-memory tracking**: All positions stored in program memory, cleared on restart for consistency
+    - **Clear teaching flow**: Jog to position → select from dropdown → click "Go to Position" → confirm to save
+    - **Fast movement speeds**: Increased to 12,000 cts/s (50% faster) with 60,000 cts/s² acceleration
+    - **Test movement option**: After teaching, offers to test the fast movement with small displacement
+    - **Multiple speed fallbacks**: Tries multiple API methods to ensure fastest possible speeds
+  - **Workflow Improvements**:
+    - Session-based positions that reset each time (prevents drift/confusion)
+    - Visual speed indicators in status messages
+    - Immediate movement after position taught
+    - Automatic position verification through test movements
+  - **Speed Improvements**: 
+    - Homing: 15,000 cts/s (was 10,000)
+    - Position movements: 12,000 cts/s (was 8,000) 
+    - Acceleration: 60,000 cts/s² (was 40,000)
+  - **Impact**: Robot now actually moves when positions are taught, 50% faster speeds, and much more reliable workflow
+  - **Files**: `workflows/SP_arm_position_program.py`
+
+## [1.2.3] - 2026-03-13
+
+### Fixed
+- **CRITICAL: CMC Control Logging Failure**: Fixed silent failure in CMC control generation for BDDAC surfactant
+  - **Issue**: `create_cmc_control_series()` function used local logger instead of workflow logger, causing debug messages to be invisible during troubleshooting
+  - **Root cause**: Function created `logging.getLogger(__name__)` instead of using `lash_e.logger` from workflow coordinator
+  - **Fix**: Updated function signature to accept `lash_e` parameter and replaced all `logger.info()` calls with `lash_e.logger.info()`
+  - **Impact**: Enables proper debugging of CMC control generation failures, preventing silent fallbacks that mask real errors
+  - **Files**: `workflows/surfactant_grid_adaptive_concentrations.py` - function signature and 4 function call sites updated
+- **CRITICAL: BDDAC Missing CMC Value**: Fixed BDDAC returning 0 CMC controls due to missing CMC value in workflow configuration
+  - **Issue**: BDDAC consistently returned 0 CMC controls while SDS/CTAB worked fine (10 controls each)
+  - **Root cause**: YAML workflow config `SURFACTANT_LIBRARY` entry for BDDAC was missing `cmc_mm: 8.4` key (present in Python code but overridden by config)
+  - **Fix**: Added `cmc_mm: 8.4` to BDDAC entry in `workflow_configs/surfactant_grid_adaptive_concentrations.yaml`
+  - **Impact**: BDDAC now generates proper CMC control series like other surfactants
+  - **Files**: `workflow_configs/surfactant_grid_adaptive_concentrations.yaml`
+
 ## [1.2.2] - 2026-02-26
 
 ### Fixed

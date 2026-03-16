@@ -210,7 +210,7 @@ class AxBayesianOptimizer:
         
         # Summary logging
         if constraint_list:
-            logger.info(f"📋 TOTAL CONSTRAINTS TO PASS TO AX: {len(constraint_list)}")
+            logger.info(f"TOTAL CONSTRAINTS TO PASS TO AX: {len(constraint_list)}")
             for i, constraint in enumerate(constraint_list, 1):
                 logger.info(f"    {i}. {constraint}")
         else:
@@ -219,31 +219,108 @@ class AxBayesianOptimizer:
         return constraint_list
     
     def _process_constraints_with_fixed_params(self, constraints: List[str]) -> List[str]:
-        """Process constraints by substituting fixed parameter values."""
+        """Process constraints by substituting fixed parameter values and simplifying."""
         processed_constraints = []
         fixed_params = self.config.constraints.fixed_parameters
+        optimize_params = self._get_optimize_params()
         
         for constraint in constraints:
-            processed_constraint = constraint
+            logger.info(f"Processing constraint: '{constraint}'")
             
-            # Substitute fixed parameter values in the constraint
-            for param_name, fixed_value in fixed_params.items():
+            # Check which parameters in this constraint are being optimized
+            constraint_vars = []
+            constraint_fixed = []
+            
+            # Find all parameter names in the constraint 
+            for param_name in list(fixed_params.keys()) + optimize_params:
                 if param_name in constraint:
-                    # Replace parameter name with its fixed value
-                    processed_constraint = processed_constraint.replace(param_name, str(fixed_value))
+                    if param_name in fixed_params:
+                        constraint_fixed.append((param_name, fixed_params[param_name]))
+                    else:
+                        constraint_vars.append(param_name)
             
-            # Simplify the constraint if possible (basic arithmetic)
+            logger.info(f"  Fixed params in constraint: {constraint_fixed}")
+            logger.info(f"  Variable params in constraint: {constraint_vars}")
+            
+            if not constraint_vars:
+                # Constraint contains only fixed parameters - evaluate and skip
+                logger.info(f"  Skipping constraint with only fixed parameters")
+                continue
+            
+            if not constraint_fixed:
+                # Constraint contains only variable parameters - pass through
+                logger.info(f"  Passing through constraint with only variable parameters")
+                processed_constraints.append(constraint)
+                continue
+            
+            # Constraint has both fixed and variable parameters - simplify it
             try:
-                processed_constraint = self._simplify_constraint(processed_constraint)
+                simplified = self._simplify_mixed_constraint(constraint, constraint_fixed, constraint_vars)
+                if simplified:
+                    processed_constraints.append(simplified)
+                    logger.info(f"  Simplified to: '{simplified}'")
+                else:
+                    logger.warning(f"  Could not simplify constraint: '{constraint}'")
             except Exception as e:
-                logger.warning(f"Could not simplify constraint '{processed_constraint}': {e}")
-            
-            processed_constraints.append(processed_constraint)
-            
-            if constraint != processed_constraint:
-                logger.info(f"Rewrote constraint: '{constraint}' -> '{processed_constraint}'")
+                logger.error(f"  Error simplifying constraint '{constraint}': {e}")
         
         return processed_constraints
+    
+    def _simplify_mixed_constraint(self, constraint: str, fixed_params: List[Tuple[str, float]], 
+                                 variable_params: List[str]) -> Optional[str]:
+        """Simplify constraint by substituting fixed parameter values and doing arithmetic."""
+        
+        # Split constraint into left and right parts
+        parts = constraint.split('<=')
+        if len(parts) != 2:
+            logger.warning(f"Unsupported constraint format: {constraint}")
+            return None
+        
+        left_expr = parts[0].strip()
+        right_value = float(parts[1].strip())
+        
+        # Process constraint by substituting fixed parameter values
+        # Transform "fixed_param + variable_param <= X" to "variable_param <= X-fixed_value"
+        
+        # Calculate total value of fixed parameters
+        total_fixed_value = 0.0
+        remaining_terms = []
+        
+        # Split the left expression by '+'
+        terms = [term.strip() for term in left_expr.split('+')]
+        
+        for term in terms:
+            if not term:  # Skip empty terms
+                continue
+                
+            # Check if this term is a fixed parameter
+            is_fixed = False
+            for param_name, param_value in fixed_params:
+                if term == param_name:
+                    total_fixed_value += param_value
+                    is_fixed = True
+                    break
+            
+            if not is_fixed:
+                # This is a variable parameter, keep it
+                remaining_terms.append(term)
+        
+        # Build the simplified constraint
+        if not remaining_terms:
+            # No variable terms left - constraint is purely about fixed values
+            return None
+        
+        # Adjust right-hand side by subtracting fixed parameter values
+        new_right_value = right_value - total_fixed_value
+        
+        # Join remaining variable terms
+        if len(remaining_terms) == 1:
+            left_side = remaining_terms[0]
+        else:
+            left_side = ' + '.join(remaining_terms)
+        
+        simplified = f"{left_side} <= {new_right_value:.6f}"
+        return simplified
     
     def _simplify_constraint(self, constraint: str) -> str:
         """Simplify constraints with arithmetic (e.g., '0.075 + x <= 0.190' -> 'x <= 0.115')."""
@@ -571,7 +648,7 @@ class AxBayesianOptimizer:
             experiment = ax_client.experiment
             search_space = experiment.search_space
             
-            logger.info(f"🔍 AX CONSTRAINTS CHECK {label}:")
+            logger.info(f"AX CONSTRAINTS CHECK {label}:")
             
             # Debug: show all parameters
             logger.info(f"   All parameters: {list(search_space.parameters.keys())}")
@@ -587,8 +664,8 @@ class AxBayesianOptimizer:
                         lower_ul = lower_ml * 1000  # Convert mL to μL
                         upper_ul = upper_ml * 1000  # Convert mL to μL
                         logger.info(f"   Parameter '{param_name}': range = [{lower_ml:.6f}, {upper_ml:.6f}] mL")
-                        logger.info(f"   → In uL: [{lower_ul:.6f}, {upper_ul:.6f}]uL") 
-                        logger.info(f"   ✅ CONSTRAINT ACTIVE: Ax will limit overaspirate_vol to {upper_ul:.1f}μL")
+                        logger.info(f"   -> In uL: [{lower_ul:.6f}, {upper_ul:.6f}]uL") 
+                        logger.info(f"   CONSTRAINT ACTIVE: Ax will limit overaspirate_vol to {upper_ul:.1f}uL")
                     else:
                         logger.info(f"   Parameter '{param_name}': No lower/upper bounds found")
                     break

@@ -137,6 +137,23 @@ Copy-Item "path/to/file.py" "backups/file_backup_$timestamp.py"
 - Test backup restoration: `Copy-Item "backups/file_backup_*.py" "original/path/file.py" -Force`
 - Keep backups for at least the duration of the coding session
 
+### CRITICAL: Workflow Debugging Guidelines
+**NEVER use print() statements in workflow files:**
+- Workflows are too long and print() output won't be visible in logs
+- Use `logger.info()` or `lash_e.logger.info()` instead for debugging
+- Print statements make workflows unnecessarily verbose without benefit
+- All debugging output must go through the logging system to be captured in log files
+
+**Correct debugging pattern:**
+```python
+# CORRECT - will appear in log files
+logger.info(f"DEBUG: Processing {item_name} with value {value}")
+lash_e.logger.info(f"DEBUG: CMC controls created: {len(controls)}")
+
+# WRONG - invisible and adds bloat
+print(f"DEBUG: Processing {item_name} with value {value}")
+```
+
 ## Debugging Best Practices
 
 ### Always Start with Data, Not Assumptions
