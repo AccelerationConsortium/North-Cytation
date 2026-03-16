@@ -31,6 +31,7 @@ LIQUIDS = {
     "water": {"density": 1.00, "refill_pipets": False},
     "ethanol": {"density": 0.789, "refill_pipets": False},
     "toluene": {"density": 0.867, "refill_pipets": False},
+    "heptane": {"density": 0.68, "refill_pipets": False},
     "2MeTHF": {"density": 0.852, "refill_pipets": False},
     "isopropanol": {"density": 0.789, "refill_pipets": False},
     "DMSO": {"density": 1.1, "refill_pipets": False},
@@ -68,7 +69,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             raise ValueError("Missing required 'liquid' in experiment configuration")
         liquid = cfg['experiment']['liquid']
         
+        # Volume adjustment tracking for tip carryover/evaporation
+        
+        
         print(f"Initializing North Robot hardware protocol for {liquid}")
+
         
         # Read full config directly from file to get volume targets
         try:
@@ -107,12 +112,17 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         SINGLE_VIAL = True #True if you just want to use one vial, eg for a capped vial use "liquid_source_0"
 
         continuous_monitoring = True
+
+        show_gui = True
+
+        adjust_volume = True
+        print(f"Volume adjustment tracking: {adjust_volume}")
                
         # Quality control threshold for mass measurement stability (in grams)
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
-        self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
+        self.quality_std_threshold = 0.1  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
         if not simulate:
             slack_agent.send_slack_message("🤖 North Robot calibration/validation started!")
@@ -124,7 +134,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             vial_file = "status/calibration_vials_short.csv"
             
             # Initialize Lash_E coordinator
-            lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False)
+            lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False, show_gui=show_gui)
             
             # Validate hardware files
             #lash_e.nr_robot.check_input_file()
@@ -159,6 +169,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             
             print("READY: Hardware initialized successfully")
             
+            # Initialize volume tracking if enabled
+        # Note: Corrects North Robot's nominal volume tracking with actual scale measurements
+            if adjust_volume:
+                print("Volume adjustment tracking enabled - will correct robot volume tracking with scale measurements for tip losses")
             return {
                 'initialized_at': datetime.now(),
                 'liquid': liquid,
@@ -168,7 +182,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 'swap_enabled': SWAP,
                 'measurement_count': 0,
                 'continuous_mass_monitoring': continuous_monitoring,
-                'simulate': simulate
+                'simulate': simulate,
+                'adjust_volume': adjust_volume
             }
             
         except Exception as e:
@@ -306,7 +321,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     'blowout_vol': hw_params.get('blowout_vol', 0.0),
                     'post_asp_air_vol': hw_params.get('post_asp_air_vol', 0.0),
                     'post_retract_wait_time': hw_params.get('post_retract_wait_time', 0.0),
-                    'overaspirate_vol': params.get('overaspirate_vol', 0.0)  # This is at top level
+                    'overaspirate_vol': params.get('overaspirate_vol', 0.0),  # This is at top level
+                    'asp_disp_cycles': hw_params.get('asp_disp_cycles', 0)
                 }
             except KeyError as e:
                 raise ValueError(f"Missing required parameter structure - params dict malformed: {e}") from e
@@ -317,10 +333,25 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             source_vial = state['source_vial']
             measurement_vial = state['measurement_vial']
             simulate = state['simulate']
+            
+            # Volume adjustment tracking - get initial source volume before pipetting  
+            source_volume_before = None
+            before_mass_g = 0.0
+            if state.get('adjust_volume', False) and not simulate:
+                try:
+                    # Get initial source volume from robot tracking
+                    source_volume_before = lash_e.nr_robot.get_vial_info(source_vial, 'vial_volume')
+                    
+                    # Move source vial to scale position and read mass
+                    lash_e.nr_robot.move_vial_to_location(source_vial, "clamp", 0)
+                    before_mass_g = lash_e.nr_robot.c9.read_steady_scale()
+                    print(f"    Before: source={source_volume_before:.3f}mL, source_mass={before_mass_g:.6f}g")
+                except Exception as e:
+                    print(f"    Warning: Could not get initial state for volume adjustment: {e}")
            
             if not simulate:
                 # Real hardware measurements with quality-controlled retry loop
-                max_retries = 3
+                max_retries = 2
                 retry_count = 0
                 measurement_acceptable = False
                 
@@ -378,6 +409,36 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 print(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
                 
+                # Volume adjustment tracking - correct robot's source vial tracking with actual measured changes
+                if state.get('adjust_volume', False) and before_mass_g > 0 and source_volume_before is not None:
+                    try:
+                        # Move source vial back to scale and measure actual mass change
+                        lash_e.nr_robot.move_vial_to_location(source_vial, "clamp", 0)
+                        after_mass_g = lash_e.nr_robot.c9.read_steady_scale()
+                        actual_mass_consumed_g = before_mass_g - after_mass_g
+                        actual_volume_consumed_ml = actual_mass_consumed_g / density_g_mL
+                        
+                        # Get source vial index for direct VIAL_DF access
+                        source_vial_index = lash_e.nr_robot.get_vial_index_from_name(source_vial)
+                        
+                        # Calculate corrected source volume based on actual consumption
+                        corrected_source_volume = source_volume_before - actual_volume_consumed_ml
+                        
+                        # Manually override robot's source volume tracking with actual measurement
+                        if source_vial_index is not None:
+                            lash_e.nr_robot.VIAL_DF.at[source_vial_index, 'vial_volume'] = corrected_source_volume
+                            print(f"    Corrected source: {corrected_source_volume:.6f}mL (actual consumed: {actual_volume_consumed_ml*1000:.2f}µL vs nominal {volume_mL*1000:.2f}µL)")
+                        
+                        # Save the corrected volume
+                        lash_e.nr_robot.save_robot_status()
+                        
+                        # Warning if source volume is getting low
+                        if corrected_source_volume < 0.5:
+                            print(f"    ⚠️  WARNING: Source vial volume low: {corrected_source_volume:.3f}mL remaining")
+                        
+                    except Exception as e:
+                        print(f"    Warning: Could not correct volume tracking: {e}")
+                
                 
                 
             else:
@@ -423,8 +484,17 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 'target_volume_mL': volume_mL,
                 'measured_volume_uL': measured_volume_uL,
                 'target_volume_uL': volume_uL,
+                'measurement_budget_consumed': retry_count if not simulate else 1,  # Budget units consumed for this measurement
                 **pipet_params  # Echo back parameters
             }
+            
+            # Add volume tracking info if enabled (use actual corrected volumes)
+            if state.get('adjust_volume', False):
+                try:
+                    current_volume = lash_e.nr_robot.get_vial_info(source_vial, 'vial_volume')
+                    result['source_volume_remaining_ml'] = current_volume
+                except Exception as e:
+                    print(f"    Warning: Could not get current source volume for results: {e}")
             
             results.append(result)
             print(f"    Measured: {measured_volume_uL:.1f}uL (target: {volume_uL:.1f}uL) in {elapsed_s:.2f}s")
@@ -460,31 +530,41 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         constraints = []
         
         # North Robot tip volume constraint
-        # Use 0.2 mL tips for volumes <= 150 uL, otherwise 1.0 mL tips
-        if target_volume_ml <= 0.20:  # 150 uL or less
+        # Use 0.2 mL tips for volumes <= 200 uL, otherwise 1.0 mL tips
+        if target_volume_ml <= 0.20:  # 200 uL or less
             tip_volume_ml = 0.2
         else:
             tip_volume_ml = 1.0
-            
-
-        max_volume = 1.0    
         
-        # Check if post_asp_air_vol parameter exists in hardware_parameters
-        hardware_params = self.config.get_hardware_parameters()
-        has_post_asp_air = 'post_asp_air_vol' in hardware_params.keys()
+        # Available tip capacity after target volume
+        available_capacity = tip_volume_ml - target_volume_ml
         
-        # Add tip volume constraint - only include post_asp_air_vol if it exists
-        if has_post_asp_air:
-            constraints.append(f"post_asp_air_vol + overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
-        else:
-            constraints.append(f"overaspirate_vol <= {tip_volume_ml-target_volume_ml:.6f}")
-
-        if has_post_asp_air:
-            constraints.append(f"pre_asp_air_vol + post_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
-        else:
-            constraints.append(f"pre_asp_air_vol + overaspirate_vol <= {max_volume-target_volume_ml:.6f}")
+        # CRITICAL: All air volumes + overaspirate must fit in remaining tip capacity
+        # This prevents physical tip overflow
+        constraints.append(f"post_asp_air_vol + overaspirate_vol <= {available_capacity:.6f}")
+        
+        # Secondary constraint: Total volume cannot exceed maximum safe volume (1.0 mL)
+        max_safe_volume = 1.0 - target_volume_ml
+        constraints.append(f"pre_asp_air_vol + post_asp_air_vol + overaspirate_vol <= {max_safe_volume:.6f}")
         
         return constraints
+    
+    def get_source_volume_remaining(self, state: Dict[str, Any]) -> Optional[float]:
+        """Get the current remaining volume in the source vial (corrected for actual consumption).
+        
+        Args:
+            state: Current protocol state from initialize()
+            
+        Returns:
+            float: Remaining volume in mL, or None if volume tracking disabled
+        """
+        if state.get('adjust_volume', False) and state.get('lash_e'):
+            try:
+                source_vial = state.get('source_vial')
+                return state['lash_e'].nr_robot.get_vial_info(source_vial, 'vial_volume')
+            except Exception:
+                return None
+        return None
 
 
 # Export the protocol instance for clean importing

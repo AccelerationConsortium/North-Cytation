@@ -923,16 +923,19 @@ class CalibrationExperiment:
             from .bayesian_recommender import create_optimizer, OptimizerType
             # Create temporary optimizer for SOBOL screening
             screening_trials = self.config.get_screening_trials()
+            # Use fixed parameters from config during screening phase
+            fixed_params = dict(self.config.get_fixed_parameters())
             self._screening_optimizer = create_optimizer(
                 self.config, 
                 target_volume_ml, 
                 optimizer_type=OptimizerType.MULTI_OBJECTIVE,
-                fixed_params=None,
+                fixed_params=fixed_params,  # Use config fixed parameters instead of None
                 volume_dependent_only=False,
                 num_sobol_trials=screening_trials,  # 5 SOBOL trials for screening
                 protocol_instance=self.protocol_module  # Pass protocol for constraints
             )
             logger.info(f"Created SOBOL optimizer for screening phase ({screening_trials} trials)")
+            logger.info(f"Applied fixed parameters during screening: {fixed_params}")
         
         # Get SOBOL parameter suggestion
         parameters = self._screening_optimizer.suggest_parameters()
@@ -1003,8 +1006,8 @@ class CalibrationExperiment:
         # Determine optimization strategy
         is_first_volume = self.current_volume_index == 0
         
-        # Set up fixed parameters for transfer learning
-        fixed_params = {}
+        # Set up fixed parameters - start with any pre-calibrated values from YAML
+        fixed_params = dict(self.config.get_fixed_parameters())
         if not is_first_volume and self.config.is_transfer_learning_enabled():
             # For subsequent volumes, fix non-volume-dependent parameters
             # Get volume-dependent parameters from config instead of hardcoding
@@ -1075,12 +1078,12 @@ class CalibrationExperiment:
             is_successful = self._is_trial_successful(inherited_trial, target_volume_ml)
             optimizer.seed_with_historical_data(inherited_trial.parameters, objectives, len(inherited_trial.measurements), is_successful=is_successful)
         
-        # Load two-point calibration trials for subsequent volumes only
-        # (First volume does multi-objective optimization including precision, 
-        #  so single-replicate two-point trials would mess up the precision model)
-        if not is_first_volume and hasattr(self, '_current_two_point_trials') and self._current_two_point_trials:
+        # Load two-point calibration trials if they have sufficient replicates for precision assessment
+        # (Multi-objective optimization needs precision data, so only include trials with >=2 replicates)
+        two_point_reps = self.config.get_two_point_calibration_replicates()
+        if two_point_reps >= 2 and hasattr(self, '_current_two_point_trials') and self._current_two_point_trials:
             logger.info(f"Loading {len(self._current_two_point_trials)} two-point calibration trials into optimizer")
-            logger.info("Note: Only using for subsequent volumes (single-objective accuracy optimization)")
+            logger.info(f"Note: Using {two_point_reps}-replicate trials for {'multi' if is_first_volume else 'single'}-objective optimization")
             for trial in self._current_two_point_trials:
                 objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
                 is_successful = self._is_trial_successful(trial, target_volume_ml)
@@ -1266,12 +1269,13 @@ class CalibrationExperiment:
             return calibration_trials, None
         
         # Point 1: Test with base overaspirate from optimized parameters
-        logger.info(f"Point 1: Testing with base overaspirate {optimized_params.overaspirate_vol*1000:.1f}uL")
+        two_point_reps = self.config.get_two_point_calibration_replicates()
+        logger.info(f"Point 1: Testing with base overaspirate {optimized_params.overaspirate_vol*1000:.1f}uL ({two_point_reps} replicates)")
         point_1_trial = self._execute_trial(
             optimized_params,
             target_volume_ml,
             f"two_point_cal_point1_{target_volume_ml}",
-            force_replicates=1,  # Single measurement for two-point calibration
+            force_replicates=two_point_reps,
             strategy="calibration",
             liquid=self.config.get_liquid_name()
         )
@@ -1310,12 +1314,12 @@ class CalibrationExperiment:
             hardware=optimized_params.hardware
         )
         
-        logger.info(f"Point 2: Testing with {direction} overaspirate {point_2_overaspirate_ml*1000:.1f}uL ({direction_sign}{spread_ul:.1f}uL)")
+        logger.info(f"Point 2: Testing with {direction} overaspirate {point_2_overaspirate_ml*1000:.1f}uL ({direction_sign}{spread_ul:.1f}uL, {two_point_reps} replicates)")
         point_2_trial = self._execute_trial(
             point_2_params,
             target_volume_ml,
             f"two_point_cal_point2_{target_volume_ml}",
-            force_replicates=1,
+            force_replicates=two_point_reps,
             strategy="calibration", 
             liquid=self.config.get_liquid_name()
         )
@@ -1532,7 +1536,10 @@ class CalibrationExperiment:
         for replicate_idx in range(initial_replicates):
             measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
             measurements.append(measurement)
-            self.total_measurements += 1
+            
+            # Increment by protocol-defined budget consumption (hardware-agnostic)
+            budget_consumed = measurement.metadata.get('measurement_budget_consumed', 1)
+            self.total_measurements += budget_consumed
             
             # EMERGENCY DATA SAVE - Write measurement immediately
             self._save_measurement_immediately(measurement, target_volume_ml, strategy, parameters)
@@ -1558,7 +1565,10 @@ class CalibrationExperiment:
             replicate_idx = len(measurements)
             measurement = self._execute_protocol_measurement(parameters, target_volume_ml)
             measurements.append(measurement)
-            self.total_measurements += 1
+            
+            # Increment by protocol-defined budget consumption (hardware-agnostic)
+            budget_consumed = measurement.metadata.get('measurement_budget_consumed', 1)
+            self.total_measurements += budget_consumed
             
             # EMERGENCY DATA SAVE - Write measurement immediately
             self._save_measurement_immediately(measurement, target_volume_ml, strategy, parameters)

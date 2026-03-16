@@ -84,7 +84,15 @@ class Lash_E:
     powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file=None, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs", workflow_globals=None, workflow_name=None):
+    def __init__(self, vial_file=None, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs", workflow_globals=None, workflow_name=None, show_gui=True):
+        """
+        Initialize Lash_E coordinator.
+        
+        Args:
+            show_gui (bool): If True (default), shows the vial manager GUI for status review.
+                           If False, skips GUI and proceeds directly to hardware initialization.
+                           Use show_gui=False for batch operations or automated workflows.
+        """
         
         # Handle workflow config loading before any other initialization
         if workflow_globals is not None and workflow_name is not None and ConfigManager is not None:
@@ -108,6 +116,7 @@ class Lash_E:
         
         self.simulate = simulate
         self.vial_file = vial_file  # Store vial file for GUI access
+        self.show_gui = show_gui  # Control GUI display
         
         # Flag to control workflow continuation
         self._workflow_should_continue = True
@@ -157,13 +166,16 @@ class Lash_E:
             else:
                 self.logger.debug("No workflow config provided - using default initialization")
 
-        # Check input status before hardware initialization
-        self.check_input_status()
-        
-        # Exit early if workflow was aborted
-        if not self._workflow_should_continue:
-            self.logger.info("Workflow aborted by user - skipping hardware initialization")
-            return
+        # Check input status before hardware initialization (if GUI enabled)
+        if self.show_gui:
+            self.check_input_status()
+            
+            # Exit early if workflow was aborted
+            if not self._workflow_should_continue:
+                self.logger.info("Workflow aborted by user - skipping hardware initialization")
+                return
+        else:
+            self.logger.info("GUI disabled - skipping status review, proceeding directly to hardware initialization")
             
         # Reload config from file after GUI may have updated YAML values
         if workflow_globals is not None and workflow_name is not None and ConfigManager is not None:

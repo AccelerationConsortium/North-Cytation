@@ -1,18 +1,23 @@
 experiment:
   name: multi_volume_calibration_test
-  liquid: DMSO
-  description: "Testing calibration across 4 volumes"
+  liquid: glycerol
+  description: Testing calibration across 4 volumes
   volume_targets_ml:
-  - 0.050
-  - 0.025
-  - 0.010
-  - 0.005
-  max_total_measurements: 200
-  max_measurements_first_volume: 150
-  num_screening_trials: 6
-  replicates_for_accurate_measurements: 4
+  - 0.15
+  - 0.1
+  - 0.05
+  max_total_measurements: 96
+  max_measurements_first_volume: 70
+  num_screening_trials: 10
+  max_replicates_per_trial: 3
+  two_point_calibration_replicates: 2
   simulate: false
   random_seed: 7
+  fixed_parameters:
+    post_asp_air_vol: 0.0
+    asp_disp_cycles: 0
+    post_retract_wait_time: 5.0
+    retract_speed: 2.0
   hardware_protocol: calibration_protocol_northrobot
   simulation_protocol: calibration_protocol_simulated
 calibration_parameters:
@@ -28,8 +33,8 @@ calibration_parameters:
 hardware_parameters:
   aspirate_speed:
     bounds:
-    - 10
-    - 20
+    - 2
+    - 30
     default: 10
     type: integer
     time_affecting: true
@@ -37,8 +42,8 @@ hardware_parameters:
     round_to_nearest: 1
   dispense_speed:
     bounds:
-    - 5
-    - 20
+    - 2
+    - 30
     default: 10
     type: integer
     time_affecting: true
@@ -47,7 +52,7 @@ hardware_parameters:
   aspirate_wait_time:
     bounds:
     - 0.0
-    - 5
+    - 30
     default: 10.0
     type: float
     time_affecting: true
@@ -62,6 +67,33 @@ hardware_parameters:
     time_affecting: false
     description: Pre-aspiration air volume (mL)
     volume_dependent: true
+    round_to_nearest: 0.001
+  post_asp_air_vol:
+    bounds:
+    - 0.0
+    - 0.1
+    default: 0.0
+    type: float
+    time_affecting: false
+    description: Post-aspiration air gap volume (mL)
+    round_to_nearest: 0.001
+  dispense_wait_time:
+    bounds:
+    - 0.0
+    - 15.0
+    default: 1.5
+    type: float
+    time_affecting: true
+    description: Wait time after dispense (seconds)
+    round_to_nearest: 0.1
+  blowout_vol:
+    bounds:
+    - 0.0
+    - 0.3
+    default: 0.0
+    type: float
+    time_affecting: false
+    description: Blowout volume after dispense (mL)
     round_to_nearest: 0.001
 output:
   base_directory: output/
@@ -117,14 +149,14 @@ optimization:
     carry_optimizer_state: false
   first_volume_final_calibration:
     enabled: true
-    skip_if_good_trial: true
+    skip_if_good_trial: false
     description: Performs final 2-point overaspirate calibration on first volume before
       proceeding to next volume
   llm_optimization:
     enabled: false
     config_path: null
   stopping_criteria:
-    min_good_trials: 6
+    min_good_trials: 4
   use_range_based_variability: false
 screening:
   use_llm_suggestions: false
@@ -139,11 +171,11 @@ screening:
     - deviation_pct
     - duration_s
 validation:
-  optimal_conditions_file: optimized_parameters/optimal_conditions_water_feb21.csv
+  optimal_conditions_file: optimized_parameters/optimal_conditions_glycerol_50_150.csv
   volumes_ml:
-  - 0.180
-  - 0.130
-  - 0.080
+  - 0.150
+  - 0.100
+  - 0.070
   replicates_per_volume: 5
   output_directory: validation/
   generate_plots: true

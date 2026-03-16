@@ -2041,15 +2041,25 @@ class North_Robot(North_Base):
         
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
 
-        # Ensure vial is accessible for pipetting
-        if not self._ensure_vial_accessible_for_pipetting(source_vial_name, use_safe_location):
-            return
+        # Check if source vial has a closed cap that will require uncapping
+        source_vial_needs_uncapping = not self.is_vial_pipetable(source_vial_num)
 
-        #Check if has pipet, get one if needed based on volume being aspirated (or if tip is specified)
         required_tip_type = self.select_pipet_tip(total_tip_vol, specified_tip)
-
-        #Get a tip if we need one
-        self.get_tip_if_needed(required_tip_type)
+        if source_vial_needs_uncapping:
+            # Get pipet tip FIRST to avoid cap-rack interference when uncapping
+            
+            self.get_tip_if_needed(required_tip_type)
+            
+            # Then ensure accessibility (will uncap and hold cap in gripper)
+            if not self._ensure_vial_accessible_for_pipetting(source_vial_name, use_safe_location):
+                return
+        else:
+            # Normal sequence: accessibility first, then pipet tip (for uncapped or open caps)
+            if not self._ensure_vial_accessible_for_pipetting(source_vial_name, use_safe_location):
+                return
+                
+            #Get a tip if we need one
+            self.get_tip_if_needed(required_tip_type)
         
         #Check for an issue with the pipet and the specified amount, pause and send slack message if so
         self.check_if_aspiration_volume_unacceptable(total_tip_vol) 
@@ -2164,18 +2174,33 @@ class North_Robot(North_Base):
                                     parameters.pre_asp_air_vol + 
                                     parameters.post_asp_air_vol)
 
-        # Handle large volumes by splitting based on TOTAL tip volume requirement
+        # Handle large volumes by splitting based on TOTAL tip volume requirement.
+        # After recalculating parameters for a sub-volume the pre_asp_air_vol and other
+        # overheads may change, so we iterate: split → recalculate → verify → re-split if
+        # necessary, until the recalculated total fits within the tip's physical capacity.
         max_system_volume = max((tip_config.get('volume', 0) for tip_config in self.PIPET_TIPS.values()), default=1.0)
         repeats = 1
-        
+
         if total_tip_volume_required > max_system_volume:
-            # Calculate how many splits we need based on total tip volume
             repeats = math.ceil(total_tip_volume_required / max_system_volume)
-            volume = volume / repeats  # Split the BASE volume, not the total tip volume
-            self.logger.info(f"Total tip volume ({total_tip_volume_required:.3f} mL) exceeds capacity, splitting into {repeats} transfers of {round(volume,3)} mL each")
-            
-            # Recalculate optimized parameters for the new smaller volume
+            sub_volume = volume / repeats
+
+            # Iteratively increase splits until the recalculated params for the sub-volume
+            # also fit — handles cases where pre_asp_air_vol grows for smaller volumes.
+            for _ in range(10):  # safety cap to prevent infinite loop
+                sub_params = self._get_optimized_parameters(sub_volume, liquid, parameters)
+                sub_total = (sub_volume +
+                             sub_params.overaspirate_vol +
+                             sub_params.pre_asp_air_vol +
+                             sub_params.post_asp_air_vol)
+                if sub_total <= max_system_volume:
+                    break
+                repeats += 1
+                sub_volume = volume / repeats
+
+            volume = sub_volume
             parameters = self._get_optimized_parameters(volume, liquid, parameters)
+            self.logger.info(f"Total tip volume ({total_tip_volume_required:.3f} mL) exceeds capacity, splitting into {repeats} transfers of {round(volume,3)} mL each")
 
         total_mass = 0
         for i in range(repeats):
@@ -2390,6 +2415,17 @@ class North_Robot(North_Base):
         
         dest_vial_clamped = self.get_vial_info(dest_vial_num,'location')=='clamp' #Is the destination vial clamped?
         dest_vial_volume = self.get_vial_info(dest_vial_num,'vial_volume') #What is the current vial volume?
+
+        # Check if dispensing would exceed vial capacity
+        dest_vial_location = self.get_vial_info(dest_vial_num, 'location')
+        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
+        
+        if max_vial_volume is not None:
+            post_dispense_volume = dest_vial_volume + amount_mL
+            if post_dispense_volume > max_vial_volume:
+                self.pause_after_error(f"Cannot dispense {amount_mL:.3f} mL into vial {self.get_vial_info(dest_vial_num, 'vial_name')}: "
+                                     f"would exceed capacity ({post_dispense_volume:.3f} mL > {max_vial_volume:.3f} mL max)")
+                return
 
         #If the destination vial is at the clamp and you want weight measurement using TRADITIONAL method
         if measure_weight and not continuous_mass_monitoring and dest_vial_clamped:

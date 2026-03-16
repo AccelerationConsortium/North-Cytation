@@ -23,8 +23,9 @@ Missing parameters added with reasonable defaults:
 - post_retract_wait_time = 0.0
 
 Usage:
-    python convert_to_pipetting_wizard_format.py [input_file] [output_file]
-    python convert_to_pipetting_wizard_format.py  # Convert all files
+    python convert_to_pipetting_wizard_format.py                    # Convert default file (edit DEFAULT_INPUT_FILE)
+    python convert_to_pipetting_wizard_format.py input.csv          # Convert specific file
+    python convert_to_pipetting_wizard_format.py input.csv output.csv  # Convert with custom output
 """
 
 import pandas as pd
@@ -33,6 +34,9 @@ from pathlib import Path
 import argparse
 import logging
 import sys
+
+# Default file path - edit this to point to your target file
+DEFAULT_INPUT_FILE = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1772849500_large_toluene\optimal_conditions_toluene_large.csv"
 
 # Column mapping from v2 format to original format
 COLUMN_MAPPING = {
@@ -43,6 +47,8 @@ COLUMN_MAPPING = {
     'hardware_parameters_blowout_vol': 'blowout_vol',
     'hardware_parameters_post_asp_air_vol': 'post_asp_air_vol',
     'hardware_parameters_pre_asp_air_vol': 'pre_asp_air_vol',
+    'hardware_parameters_dispense_wait_time': 'dispense_wait_time',
+    'hardware_parameters_asp_disp_cycles': 'asp_disp_cycles',
     'calibration_overaspirate_vol': 'overaspirate_vol',
     'volume_target_ml': 'volume_target',  # Will convert mL to uL
 }
@@ -52,18 +58,23 @@ ADDITIONAL_COLUMN_MAPPING = {
     'volume_measured_ml': 'volume_measured',  # Will convert mL to uL
     'volume_measured_ul': 'volume_measured', 
     'volume_measured': 'volume_measured',
+    'volume_target_ul': 'volume_target_ul',  # Keep original uL target for reference
     'duration_s': 'time',
     'time': 'time', 
     'deviation_pct': 'average_deviation',
     'average_deviation': 'average_deviation',
     'precision_cv_pct': 'variability',
     'variability': 'variability',
+    'trials_count': 'trials_count',
+    'status': 'status',
+    'measurement_count': 'measurement_count',
 }
 
 # Parameters that should be added if missing (with default values)
 DEFAULT_PARAMETERS = {
-    'dispense_wait_time': 0.0,
-    'post_retract_wait_time': 0.0
+    'post_retract_wait_time': 0.0,
+    'asp_disp_cycles': 0,
+    'retract_speed': 5.0,
 }
 
 def setup_logging():
@@ -180,37 +191,49 @@ def main():
     parser = argparse.ArgumentParser(description="Convert v2 calibration files to pipetting wizard format")
     parser.add_argument("input", nargs="?", help="Input v2 calibration file (if not specified, converts all files)")
     parser.add_argument("output", nargs="?", help="Output file path (if not specified, saves to pipetting_data/)")
+    parser.add_argument("--single", "-s", action="store_true", help="Process single file mode (requires input file)")
     
     args = parser.parse_args()
     
     # Get script directory
     script_dir = Path(__file__).parent
     
-    if args.input and args.output:
+    if args.input:
         # Convert single file
         input_path = Path(args.input)
-        output_path = Path(args.output)
         
         if not input_path.exists():
             logging.error(f"Input file {input_path} does not exist")
             return 1
         
+        # Generate output path if not provided
+        if args.output:
+            output_path = Path(args.output)
+        else:
+            # Save to pipetting_data with same filename
+            output_dir = script_dir.parent / "pipetting_data"
+            output_path = output_dir / input_path.name
+        
+        logging.info(f"Converting single file: {input_path} -> {output_path}")
         success = convert_file(input_path, output_path)
         return 0 if success else 1
     
     else:
-        # Convert all files
-        input_dir = script_dir / "optimized_parameters"
-        output_dir = script_dir.parent / "pipetting_data"
+        # Use default file path
+        input_path = Path(DEFAULT_INPUT_FILE)
         
-        if not input_dir.exists():
-            logging.error(f"Input directory {input_dir} does not exist")
+        if not input_path.exists():
+            logging.error(f"Default file {input_path} does not exist")
+            logging.error("Update DEFAULT_INPUT_FILE constant at top of script or provide input file as argument")
             return 1
         
-        logging.info(f"Converting all files from {input_dir} to {output_dir}")
-        convert_all_files(input_dir, output_dir)
+        # Save to pipetting_data with same filename
+        output_dir = script_dir.parent / "pipetting_data"
+        output_path = output_dir / input_path.name
         
-        return 0
+        logging.info(f"Converting default file: {input_path} -> {output_path}")
+        success = convert_file(input_path, output_path)
+        return 0 if success else 1
 
 if __name__ == "__main__":
     sys.exit(main())

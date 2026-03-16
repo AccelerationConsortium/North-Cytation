@@ -1,30 +1,30 @@
 # Workflow Configuration File
-# Generated: 2026-02-27 17:14:55
+# Generated: 2026-03-16 09:23:38
 # Workflow: surfactant_grid_adaptive_concentrations
 #
 # Edit this file to customize workflow behavior.
 # Changes will be loaded automatically on next run.
 #
 
-SURFACTANT_A: SDS
-SURFACTANT_B: TTAB
-WORKFLOW_TYPE: iterative
-EXPERIMENT_TAG: SDS_TTAB_Exp1
-SIMULATE: false
-VALIDATE_LIQUIDS: false
+SURFACTANT_A: SDBS
+SURFACTANT_B: CTAB
+WORKFLOW_TYPE: double_iterative
+EXPERIMENT_TAG: Mar_13_Validation__SDBS_TTAB_DTAB
+SIMULATE: true
+VALIDATE_LIQUIDS: true
 MIN_CONC: 0.01
 FINAL_SUBSTOCK_VOLUME_ML: 6.0
-PAIRING_QUEUE: '[{''SURFACTANT_A'': ''SDS'', ''SURFACTANT_B'': ''TTAB'', ''ADD_BUFFER'':
-  False}, {''SURFACTANT_A'': ''SDS'', ''SURFACTANT_B'': ''DTAB'', ''ADD_BUFFER'':
+PAIRING_QUEUE: '[{''SURFACTANT_A'': ''SDBS'', ''SURFACTANT_B'': ''CTAB'', ''ADD_BUFFER'':
+  False}, {''SURFACTANT_A'': ''SDBS'', ''SURFACTANT_B'': ''BDDAC'', ''ADD_BUFFER'':
   False}]'
 NUM_SUBSTOCKS: 6
 ITERATIVE_CONCENTRATIONS: 5
-GRADIENT_SUGGESTIONS_PER_ITERATION: 14
+GRADIENT_SUGGESTIONS_PER_ITERATION: 16
 OPTIMIZE_METRIC: both
-RECOMMENDER_TYPE: bayesian
+RECOMMENDER_TYPE: delaunay
 ITERATIVE_MEASUREMENT_TOTAL: 192
 ADD_CMC_CONTROLS: true
-CMC_CONTROL_POINTS: 8
+CMC_CONTROL_POINTS: 10
 ADD_BUFFER: false
 BUFFER_VOLUME_UL: 20
 BUFFER_OPTIONS:
@@ -45,7 +45,7 @@ MEASUREMENT_INTERVAL: 96
 MIN_WELL_PIPETTE_VOLUME_UL: 10.0
 MAX_SURFACTANT_VOLUME_UL: 90.0
 KINETICS_SEQUENCE: prep_turbidity_dmso_ratio
-SHAKE_WAIT_PROTOCOL: C:\Protocols\shake_5_wait_5.prt
+SHAKE_WAIT_PROTOCOL: C:\Protocols\shake_10_wait_10.prt
 TURBIDITY_PROTOCOL_FILE: C:\Protocols\CMC_Absorbance_96.prt
 FLUORESCENCE_PROTOCOL_FILE: C:\Protocols\CMC_Fluorescence_96.prt
 SHAKE_PROTOCOL: C:\Protocols\shake_5.prt
@@ -53,10 +53,12 @@ INPUT_VIAL_STATUS_FILE: ../utoronto_demo/status/surfactant_grid_vials_expanded.c
 SURFACTANT_LIBRARY:
   BDDAC:
     category: cationic
+    cmc_mm: 8.4
     full_name: Benzyldimethyldodecylammonium Chloride
     stock_conc: 50
   BZT:
     category: cationic
+    cmc_mm: 2.9
     full_name: Benzethonium Chloride
     stock_conc: 50
   CHAPS:
@@ -86,10 +88,12 @@ SURFACTANT_LIBRARY:
     stock_conc: 50
   NaLS:
     category: anionic
+    cmc_mm: 14.6
     full_name: N-Lauroylsarcosine Sodium Salt
     stock_conc: 50
   SDBS:
     category: anionic
+    cmc_mm: 1.7
     full_name: Sodium Dodecylbenzenesulfonate
     stock_conc: 50
   SDS:

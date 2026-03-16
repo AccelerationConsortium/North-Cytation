@@ -21,66 +21,42 @@ import glob
 from datetime import datetime
 import shutil
 
-# Configuration - Edit this list for your liquids to calibrate
+# Configuration - Edit this list for your liquids to calibrateasd
 LIQUIDS_TO_CALIBRATE = [
-    # {
-    #     'liquid_name': 'water',
-    #     'target_vial': 'SDS_stock',
-    #     'volume_targets_ml': [0.05, 0.025, 0.010],
-    #     'validation_volumes_ml': [0.05, 0.025, 0.010]
-    # },
-    # {
-    #     'liquid_name': 'water',
-    #     'target_vial': 'SDS_stock',
-    #     'volume_targets_ml': [0.180, 0.100, 0.075],
-    #     'validation_volumes_ml': [0.180, 0.100, 0.075]
-    # },
-    # {
-    #     'liquid_name': 'water',
-    #     'target_vial': 'SDS_stock',
-    #     'volume_targets_ml': [0.95, 0.5, 0.2],
-    #     'validation_volumes_ml': [0.95, 0.5, 0.2],
-    #     'hardware_parameters': {
-    #         'post_asp_air_vol': {
-    #             'bounds': [0.0, 0.050],
-    #             'type': 'float',
-    #             'round_to_nearest': 0.001,
-    #             'default': 0.010,
-    #         },
-    #         'blowout_vol': {
-    #             'bounds': [0.0, 0.5],
-    #             'type': 'float',
-    #             'round_to_nearest': 0.001,
-    #             'default': 0.1
-    #         }
-    #     }
-    # },
+ 
+#  {
+#         'liquid_name': '2MeTHF',
+#         'target_vial': '2MeTHF',
+#         'volume_targets_ml': [0.120, 0.100, 0.080],
+#         'validation_volumes_ml': [0.120, 0.100, 0.080],
+#         # smalltip_2MeTHF_params from SERENA_CONSTANTS
+#         'fixed_parameters': {
+#             'pre_asp_air_vol': 0.5,
+#             'post_asp_air_vol': 0.05,
+#             'asp_disp_cycles': 0,
+#         }
+#     },
+#  
     {
         'liquid_name': 'water',
         'target_vial': 'water',
-        'volume_targets_ml': [0.180, 0.100, 0.075],
-        'validation_volumes_ml': [0.180, 0.100, 0.075]
+        'volume_targets_ml': [0.180, 0.100, 0.050],
+        'validation_volumes_ml': [0.150, 0.100, 0.070]
+
     },
-    # {
-    #     'liquid_name': 'water',
-    #     'target_vial': 'water',
-    #     'volume_targets_ml': [0.95, 0.5, 0.2],
-    #     'validation_volumes_ml': [0.95, 0.5, 0.2],
-    #     'hardware_parameters': {
-    #         'post_asp_air_vol': {
-    #             'bounds': [0.0, 0.050],
-    #             'type': 'float',
-    #             'round_to_nearest': 0.001,
-    #             'default': 0.010,
-    #         },
-    #         'blowout_vol': {
-    #             'bounds': [0.0, 0.5],
-    #             'type': 'float',
-    #             'round_to_nearest': 0.001,
-    #             'default': 0.1
-    #         }
-    #     }
-    # }
+    {
+    'liquid_name': 'ethanol',
+    'target_vial': 'ethanol',
+    'volume_targets_ml': [ 0.180, 0.100, 0.050],
+    'validation_volumes_ml': [0.150, 0.100, 0.070]
+},
+  {
+    'liquid_name': 'ethanol',
+    'target_vial': 'ethanol',
+    'volume_targets_ml': [ 0.800, 0.500, 0.200],
+    'validation_volumes_ml': [ 0.800, 0.500, 0.200]
+},
+
 ]
 
 # File paths - assumes running from main utoronto_demo directory (like other workflows)
@@ -143,6 +119,13 @@ class BatchCalibrationAutomator:
             for param_name, param_config in liquid_config['hardware_parameters'].items():
                 config['hardware_parameters'][param_name] = param_config
                 print(f"      {param_name}: bounds={param_config.get('bounds')}, type={param_config.get('type')}")
+
+        # Update fixed parameters if specified (merges with YAML defaults)
+        if 'fixed_parameters' in liquid_config:
+            print(f"    Applying fixed parameters: {liquid_config['fixed_parameters']}")
+            if 'fixed_parameters' not in config['experiment']:
+                config['experiment']['fixed_parameters'] = {}
+            config['experiment']['fixed_parameters'].update(liquid_config['fixed_parameters'])
         
         with open(CONFIG_FILE, 'w') as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
@@ -259,6 +242,40 @@ class BatchCalibrationAutomator:
             
         print("Files restored to original state")
         
+    def show_initial_gui(self):
+        """Show the GUI once at the start for system setup/verification."""
+        print("Initializing GUI for system setup...")
+        try:
+            # Add parent directory to path for imports  
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from master_usdl_coordinator import Lash_E
+            
+            # Initialize Lash_E with GUI enabled for setup
+            vial_file = VIALS_CSV
+            lash_e = Lash_E(vial_file, simulate=False, show_gui=True, initialize_biotek=False)
+            
+            # Give user time to interact with GUI
+            print("GUI launched for system setup and verification.")
+            print("Please use the GUI to:")
+            print("  - Verify vial positions")  
+            print("  - Check robot status")
+            print("  - Perform any manual setup needed")
+            input("\nPress Enter when ready to proceed with batch calibration...")
+            
+            # Clean shutdown
+            try:
+                lash_e.nr_robot.move_home()
+            except:
+                pass
+                
+            print("GUI setup complete. Starting batch calibration...")
+            return True
+            
+        except Exception as e:
+            print(f"Warning: Could not initialize GUI ({e})")
+            print("Proceeding without GUI setup...")
+            return False
+    
     def run_batch_calibration(self):
         """Main batch calibration loop."""
         print("="*60)
@@ -269,7 +286,13 @@ class BatchCalibrationAutomator:
             print(f"  - {liquid['liquid_name']} ({liquid['target_vial']})")
         print()
         
+        # Show GUI once for vial review before starting
+        self.show_vial_gui()
+
         try:
+            # Show GUI once for system setup before batch starts
+            self.show_initial_gui()
+            
             # Setup
             self.create_backups()
             self.load_original_files()
