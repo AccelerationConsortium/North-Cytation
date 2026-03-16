@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.2.3] - 2026-03-15
+
+### Added
+- **NEW WORKFLOW: Ilya Workflow V2 (Modern API)**: Created updated version of ilya_workflow.py with modern robotics API patterns
+  - **File**: `workflows/ilya_workflow_v2.py` - Complete rewrite using current API standards
+  - **API Updates**: Replaced index-based vial references with string names ('water', 'ethanol', etc.)
+  - **Pipetting Pattern**: Separated aspirate_from_vial() and dispense_into_wellplate() calls instead of composite functions
+  - **Liquid Optimization**: Added liquid= parameter for automatic pipetting parameter optimization by liquid type
+  - **Validation Framework**: Embedded pipetting validation at workflow start with test volumes and error handling
+  - **Configuration**: Added comprehensive configuration section with simulation mode, validation toggles, and volume limits
+  - **Error Handling**: Robust validation for input files, vial availability, and recipe data consistency
+  - **Logging**: Enhanced progress reporting and user confirmation patterns from modern workflows
+- **VIAL STATUS: Ilya Input Vials**: Created proper CSV vial status file for Ilya workflow
+  - **File**: `status/ilya_input_vials.csv` - Replaces missing .txt file with proper CSV format
+  - **Vials**: Configured ethanol, ethanol_dye, water, water_dye, glycerol, glycerol_dye with proper volumes and locations
+  - **Format**: Standard vial status format matching other workflow vial files
+
+### Changed
+- **WORKFLOW ARCHITECTURE: Modern Validation Patterns**: Updated workflow structure to match current best practices
+  - **Validation**: Pre-flight checks for files, vials, and data consistency before execution
+  - **Safety**: Minimum/maximum volume checks and pipettable range validation
+  - **User Interface**: Clear step-by-step progress reporting with validation confirmations
+  - **Simulation**: Full simulation mode support with automatic progression and validation skip options
+
 ## [1.2.2] - 2026-02-26
 
 ### Fixed
