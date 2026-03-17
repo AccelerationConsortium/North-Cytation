@@ -1,5 +1,30 @@
 # Changelog
 
+## [X-Y COORDINATE CONTROL SYSTEM] - 2026-03-17
+
+### MAJOR ENHANCEMENT: Intuitive X-Y Coordinate Robot Control
+- **X-Y COORDINATE INTERFACE**: Converted shoulder/elbow joint controls to intuitive X-Y coordinate system
+- **NORTH API KINEMATICS**: Integrated `n9_fk()` and `n9_ik()` functions for seamless coordinate conversion
+- **UNIFIED STEP SIZE**: Single movement increment (mm) now controls both Z-axis and X-Y movement
+- **ENHANCED MOVEMENT FUNCTIONS**: 
+  - Added `move_x_left()`, `move_x_right()`, `move_y_forward()`, `move_y_back()` using inverse kinematics
+  - Implemented `_safe_move_xy()` with workspace bounds checking and fallback joint control
+- **GUI IMPROVEMENTS**:
+  - Updated position display labels: \"Shoulder\" → \"Y-Position\", \"Elbow\" → \"X-Position\"
+  - Modified control buttons: \"← SHOULDER -\" → \"← X LEFT\", \"→ SHOULDER +\" → \"→ X RIGHT\"
+  - Updated Y-axis controls: \"↓ ELBOW -\" → \"↓ Y BACK\", \"↑ ELBOW +\" → \"↑ Y FORWARD\"
+- **COORDINATE TRACKING**: Added `current_x_position` and `current_y_position` tracking variables
+- **REAL-TIME CONVERSION**: Forward kinematics automatically updates X-Y display from joint positions
+- **KEYBOARD CONTROLS MAINTAINED**: 
+  - Arrow keys (Left/Right) now control X-axis movement
+  - W/S keys control Y-axis movement (forward/back)
+  - Up/Down arrows still control Z-axis
+- **BACKWARD COMPATIBILITY**: Joint angle tracking and functions preserved for internal use
+- **TESTING FRAMEWORK**: Created comprehensive test suite for coordinate conversion validation
+- **FILES MODIFIED**: 
+  - workflows/enhanced_SP_arm_position_program.py (major X-Y coordinate system integration)
+  - workflows/test_xy_coordinates.py (new testing framework)
+
 ## [SURFACTANT LIQUID_TYPE FIX] - 2026-03-16
 
 ### BUG FIX: Corrected liquid_type Parameters for Surfactant Operations

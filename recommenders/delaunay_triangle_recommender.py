@@ -89,7 +89,8 @@ class DelaunayTriangleRecommender:
     
     def get_recommendations(self, data_df, n_points=12, min_spacing_factor=0.5, 
                           tol_factor=0.1, triangle_score_method='max',
-                          beta=0.5, output_dir=None, create_visualization=True):
+                          beta=0.5, output_dir=None, create_visualization=True, 
+                          output_reliability=None):
         """
         Get triangle-based refinement recommendations from experimental data.
         
@@ -112,6 +113,9 @@ class DelaunayTriangleRecommender:
             Directory for saving visualizations and results
         create_visualization : bool
             Whether to create and save visualization plots
+        output_reliability : array of shape (n_points, n_outputs), optional
+            Boolean mask indicating reliable outputs for each point.
+            If provided, triangles use only outputs reliable for ALL vertices.
             
         Returns:
         --------
@@ -148,7 +152,7 @@ class DelaunayTriangleRecommender:
         
         # Step 5: Score triangles
         print("\\n5. Scoring triangles by output disagreement...")
-        triangle_scores = self._score_triangles(triangles, Y_norm, U, triangle_score_method, beta)
+        triangle_scores = self._score_triangles(triangles, Y_norm, U, triangle_score_method, beta, output_reliability)
         
         # Step 5.5: Create visualization with scores overlaid
         print("\\n5.5. Creating scored triangulation visualization...")
@@ -656,22 +660,66 @@ class DelaunayTriangleRecommender:
         except Exception as e:
             print(f"    Warning: Could not create scored visualization: {e}")
     
-    def _score_triangles(self, triangles, Y_norm, U, score_method='max', beta=0.5):
-        """Score each triangle by output disagreement among vertices with power-based area scaling."""
+    def _score_triangles(self, triangles, Y_norm, U, score_method='max', beta=0.5, output_reliability=None):
+        """Score each triangle by output disagreement among vertices with power-based area scaling.
+        
+        Parameters:
+        -----------
+        output_reliability : array of shape (n_points, n_outputs), optional
+            Boolean mask indicating which outputs are reliable for each point.
+            If provided, triangles will only use outputs that are reliable for ALL 3 vertices.
+            If None, all outputs are used (backward compatibility).
+        """
         
         triangle_scores = []
         all_areas = []
+        
+        # Statistics for reliability masking
+        if output_reliability is not None:
+            n_triangles_full = 0      # Triangles using all outputs
+            n_triangles_partial = 0   # Triangles using subset of outputs  
+            n_triangles_failed = 0    # Triangles with no reliable outputs
+            output_usage_counts = [0] * self.n_outputs  # Count usage per output
         
         # First pass: calculate all basic scores and areas
         for t_idx, triangle in enumerate(triangles):
             i, j, k = triangle
             
-            # Get output vectors for the three vertices
-            a = Y_norm[i]  # shape (n_outputs,)
-            b = Y_norm[j]
-            c = Y_norm[k]
+            # Determine which outputs to use for this triangle
+            if output_reliability is not None:
+                # Find outputs that are reliable for ALL 3 vertices
+                reliable_for_triangle = (output_reliability[i] & 
+                                       output_reliability[j] & 
+                                       output_reliability[k])
+                
+                if not reliable_for_triangle.any():
+                    # No outputs are reliable for this triangle - skip it
+                    n_triangles_failed += 1
+                    continue
+                
+                # Use only reliable outputs
+                a = Y_norm[i][reliable_for_triangle]
+                b = Y_norm[j][reliable_for_triangle] 
+                c = Y_norm[k][reliable_for_triangle]
+                
+                # Track usage statistics
+                n_reliable = reliable_for_triangle.sum()
+                if n_reliable == self.n_outputs:
+                    n_triangles_full += 1
+                else:
+                    n_triangles_partial += 1
+                
+                for output_idx, is_used in enumerate(reliable_for_triangle):
+                    if is_used:
+                        output_usage_counts[output_idx] += 1
+                        
+            else:
+                # Default: use all outputs (backward compatibility)
+                a = Y_norm[i]  # shape (n_outputs,)
+                b = Y_norm[j]
+                c = Y_norm[k]
             
-            # Calculate pairwise distances in output space
+            # Calculate pairwise distances in (possibly filtered) output space
             d_ab = np.linalg.norm(a - b)
             d_ac = np.linalg.norm(a - c)
             d_bc = np.linalg.norm(b - c)
@@ -707,6 +755,23 @@ class DelaunayTriangleRecommender:
                 'distances': {'d_ab': d_ab, 'd_ac': d_ac, 'd_bc': d_bc},
                 'normalized_outputs': {'a': a, 'b': b, 'c': c}  # Store for debugging
             })
+        
+        # Print reliability statistics if masking was used
+        if output_reliability is not None:
+            total_triangles = len(triangles)
+            used_triangles = len(triangle_scores)
+            print(f"  Reliability masking statistics:")
+            print(f"    Total triangles: {total_triangles}")
+            print(f"    Usable triangles: {used_triangles} ({used_triangles/total_triangles*100:.1f}%)")
+            print(f"    Full outputs: {n_triangles_full}, Partial outputs: {n_triangles_partial}, Failed: {n_triangles_failed}")
+            
+            # Show per-output usage
+            for i, count in enumerate(output_usage_counts):
+                output_name = self.output_columns[i] if hasattr(self, 'output_columns') else f"output_{i}"
+                print(f"    {output_name}: used in {count}/{used_triangles} triangles ({count/used_triangles*100:.1f}% if triangles exist)")
+        
+        if len(triangle_scores) == 0:
+            raise ValueError("No triangles could be scored! All triangles may have been filtered out due to reliability constraints.")
         
         # Second pass: apply power-based area scaling
         areas = np.array(all_areas)

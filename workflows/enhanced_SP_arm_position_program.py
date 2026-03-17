@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Enhanced North Robotics Arm Position Control with Position Management
-===================================================================
+Enhanced North Robotics Arm Position Control with X-Y Coordinate Interface
+==========================================================================
 
 This program provides a comprehensive GUI interface to control the North robot arm
 with position presets, adjustment capabilities, and export functionality.
@@ -12,24 +12,34 @@ NEW FEATURES:
 - CSV/TXT export of position modifications
 - Position validation and safety checks
 - Integration with workflow position data
+- X-Y coordinate control system (more intuitive than joint angles)
+- Unified step size setting for both Z-axis and X-Y movement
 
 Features:
-- Full robot arm control (Z, elbow, shoulder, gripper)
+- Full robot arm control (Z-axis, X-Y coordinates, gripper)
 - Predefined position templates
 - Position adjustment and temporary storage
 - Export position data for workflow integration
-- Real-time position display
+- Real-time position display in Cartesian coordinates
 - Safety features and error handling
 - Support for both simulation and real hardware
 
 Controls:
-- Arrow keys for movement
+- Arrow keys for X-Y movement (Left/Right = X-axis, W/S keys = Y-axis)
+- Up/Down arrow keys for Z-axis movement
+- Unified step size setting (affects both Z and X-Y movement)
 - Dropdown position selection
 - Save/Load position presets
 - Export position modifications
 
-Author: Enhanced for North Robotics Position Management
-Date: March 16, 2026
+Coordinate System:
+- X-axis: Left/Right movement (negative X = left, positive X = right)
+- Y-axis: Forward/Back movement (negative Y = back, positive Y = forward) 
+- Z-axis: Up/Down movement (higher mm = higher position)
+- Step size setting controls movement increment for all axes
+
+Author: Enhanced for North Robotics X-Y Position Management
+Date: March 17, 2026
 """
 
 import tkinter as tk
@@ -525,6 +535,8 @@ class EnhancedRobotArmController:
         self.root = None
         self.is_connected = False
         self.current_z_position = 0.0
+        self.current_x_position = 0.0  # X-Y coordinate tracking for intuitive control
+        self.current_y_position = 0.0
         self.current_elbow_angle = 0.0
         self.current_shoulder_angle = 0.0
         self.current_gripper_angle = 0.0
@@ -549,17 +561,16 @@ class EnhancedRobotArmController:
         self.temp_dir = Path("temp")
         self.temp_dir.mkdir(exist_ok=True)
         
-        # Movement increments
-        self.move_increment_mm = DEFAULT_MOVE_INCREMENT_MM
-        self.move_increment_rad = DEFAULT_MOVE_INCREMENT_RAD
+        # Movement increments - unified step size for both Z and X-Y movement
+        self.move_increment_mm = DEFAULT_MOVE_INCREMENT_MM  # Used for Z-axis and X-Y coordinates
         
         # GUI components
         self.status_label = None
         self.position_dropdown = None
         self.position_description_label = None
         self.z_position_label = None
-        self.elbow_position_label = None
-        self.shoulder_position_label = None
+        self.x_position_label = None
+        self.y_position_label = None
         self.gripper_position_label = None
         self.gripper_status_label = None
         self.home_button = None
@@ -618,8 +629,8 @@ class EnhancedRobotArmController:
             
             def __init__(self):
                 self.z_position_mm = 100.0
-                self.elbow_angle_rad = 0.0
-                self.shoulder_angle_rad = 0.0
+                self.x_position_mm = 0.0
+                self.y_position_mm = 0.0
                 self.gripper_angle_rad = 0.0
                 self.gripper_is_open = False
                 self.is_homed = False
@@ -628,8 +639,8 @@ class EnhancedRobotArmController:
                 logger.info("SIMULATION: Homing robot")
                 time.sleep(0.5)
                 self.z_position_mm = Z_AXIS_MAX_MM
-                self.elbow_angle_rad = 0.0
-                self.shoulder_angle_rad = 0.0
+                self.x_position_mm = 0.0
+                self.y_position_mm = 0.0
                 self.gripper_angle_rad = 0.0
                 self.gripper_is_open = False
                 self.is_homed = True
@@ -641,6 +652,16 @@ class EnhancedRobotArmController:
                     raise ValueError(f"Z position {mm:.1f}mm is out of range [{Z_AXIS_MIN_MM}-{Z_AXIS_MAX_MM}]")
                 time.sleep(0.2)
                 self.z_position_mm = mm
+            
+            def move_xy(self, x, y, wait=True, **kwargs):
+                """Move to X-Y coordinates."""
+                logger.info(f"SIMULATION: Moving to X={x:.1f}mm, Y={y:.1f}mm")
+                # Basic workspace bounds checking
+                if abs(x) > 300 or abs(y) > 300:
+                    raise ValueError(f"X-Y position ({x:.1f}, {y:.1f}) is out of workspace")
+                time.sleep(0.3)
+                self.x_position_mm = x
+                self.y_position_mm = y
                 
             def move_axis_rad(self, axis, rad, wait=True):
                 logger.info(f"SIMULATION: Moving axis {axis} to {rad:.2f} radians")
@@ -709,6 +730,8 @@ class EnhancedRobotArmController:
                 
             def counts_to_rad(self, axis, counts):
                 return counts / 1000.0
+            
+
                 
             def get_info(self):
                 logger.info("SIMULATION: Robot info - Mock North C9 Controller")
@@ -838,7 +861,7 @@ class EnhancedRobotArmController:
         # Z-axis increment
         z_inc_frame = ttk.Frame(increment_frame)
         z_inc_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=2)
-        ttk.Label(z_inc_frame, text="Z-Axis Step (mm):").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(z_inc_frame, text="Movement Step (mm):").grid(row=0, column=0, sticky=tk.W)
         self.z_increment_entry = ttk.Entry(z_inc_frame, width=8)
         self.z_increment_entry.grid(row=0, column=1, padx=(10, 5))
         self.z_increment_entry.insert(0, str(DEFAULT_MOVE_INCREMENT_MM))
@@ -872,12 +895,12 @@ class EnhancedRobotArmController:
         ttk.Button(control_frame, text="▼ DOWN", command=self.move_down).grid(row=1, column=2, padx=2)
         
         ttk.Label(control_frame, text="Shoulder:").grid(row=2, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="← LEFT", command=self.move_shoulder_left).grid(row=2, column=1, padx=2)
-        ttk.Button(control_frame, text="→ RIGHT", command=self.move_shoulder_right).grid(row=2, column=2, padx=2)
+        ttk.Button(control_frame, text="← SHOULDER -", command=self.move_x_left).grid(row=2, column=1, padx=2)
+        ttk.Button(control_frame, text="→ SHOULDER +", command=self.move_x_right).grid(row=2, column=2, padx=2)
         
         ttk.Label(control_frame, text="Elbow:").grid(row=3, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="↗ EXTEND", command=self.move_elbow_extend).grid(row=3, column=1, padx=2)
-        ttk.Button(control_frame, text="↙ RETRACT", command=self.move_elbow_retract).grid(row=3, column=2, padx=2)
+        ttk.Button(control_frame, text="↓ ELBOW -", command=self.move_y_back).grid(row=3, column=1, padx=2)
+        ttk.Button(control_frame, text="↑ ELBOW +", command=self.move_y_forward).grid(row=3, column=2, padx=2)
         
         ttk.Label(control_frame, text="Gripper:").grid(row=4, column=0, sticky=tk.W)
         ttk.Button(control_frame, text="✋ OPEN", command=self.open_gripper, 
@@ -1476,21 +1499,81 @@ class EnhancedRobotArmController:
         """Move Z-axis down."""
         self._safe_move_z(self.current_z_position - self.move_increment_mm)
         
-    def move_shoulder_left(self):
-        """Move shoulder left."""
-        self._safe_move_shoulder(self.current_shoulder_angle - self.move_increment_rad)
+    def move_x_left(self):
+        """Move in X-axis negative direction (left)."""
+        target_x = self.current_x_position - self.move_increment_mm
+        self._safe_move_xy(target_x, self.current_y_position)
         
-    def move_shoulder_right(self):
-        """Move shoulder right."""
-        self._safe_move_shoulder(self.current_shoulder_angle + self.move_increment_rad)
+    def move_x_right(self):
+        """Move in X-axis positive direction (right)."""
+        target_x = self.current_x_position + self.move_increment_mm
+        self._safe_move_xy(target_x, self.current_y_position)
         
-    def move_elbow_extend(self):
-        """Extend elbow.""" 
-        self._safe_move_elbow(self.current_elbow_angle + self.move_increment_rad)
+    def move_y_forward(self):
+        """Move in Y-axis positive direction (forward)."""
+        target_y = self.current_y_position + self.move_increment_mm
+        self._safe_move_xy(self.current_x_position, target_y)
         
-    def move_elbow_retract(self):
-        """Retract elbow."""
-        self._safe_move_elbow(self.current_elbow_angle - self.move_increment_rad)
+    def move_y_back(self):
+        """Move in Y-axis negative direction (back)."""
+        target_y = self.current_y_position - self.move_increment_mm
+        self._safe_move_xy(self.current_x_position, target_y)
+        
+    def _safe_move_xy(self, target_x, target_y):
+        """Safely move to X-Y coordinates using inverse kinematics."""
+        if not self.is_connected:
+            return
+        
+        try:
+            # Validate X-Y coordinates are within robot workspace
+            # Basic workspace bounds check (approximate for North robot)
+            max_reach = 300  # mm - approximate maximum reach
+            distance = (target_x**2 + target_y**2)**0.5
+            
+            if distance > max_reach:
+                logger.warning(f"Target position ({target_x:.1f}, {target_y:.1f}) outside workspace")
+                return
+                
+            # Use North API inverse kinematics to convert X-Y to joint angles
+            try:
+                gripper_cts, elbow_cts, shoulder_cts = self.robot.n9_ik(target_x, target_y)
+                
+                # Convert to radians for logging
+                gripper_rad = self.robot.counts_to_rad(self.robot.GRIPPER, gripper_cts)
+                elbow_rad = self.robot.counts_to_rad(self.robot.ELBOW, elbow_cts) 
+                shoulder_rad = self.robot.counts_to_rad(self.robot.SHOULDER, shoulder_cts)
+                
+                logger.info(f"Moving to X-Y: ({target_x:.1f}, {target_y:.1f}) mm -> joints: ({gripper_rad:.3f}, {elbow_rad:.3f}, {shoulder_rad:.3f}) rad")
+                
+                # Move only elbow and shoulder (gripper stays at current angle)
+                self.robot.move_axis_rad(self.robot.ELBOW, elbow_rad, wait=True)
+                self.robot.move_axis_rad(self.robot.SHOULDER, shoulder_rad, wait=True)
+                
+                # Update tracking variables
+                self.current_x_position = target_x
+                self.current_y_position = target_y
+                self.current_elbow_angle = elbow_rad
+                self.current_shoulder_angle = shoulder_rad
+                
+                self.update_display()
+                
+            except Exception as ik_error:
+                logger.error(f"Inverse kinematics failed for ({target_x:.1f}, {target_y:.1f}): {ik_error}")
+                # Fall back to joint control if IK fails
+                logger.info("Falling back to incremental joint movement")
+                if target_x != self.current_x_position:
+                    # X movement -> shoulder adjustment  
+                    direction = 1 if target_x > self.current_x_position else -1
+                    target_angle = self.current_shoulder_angle + (direction * 0.05)
+                    self._safe_move_shoulder(target_angle)
+                elif target_y != self.current_y_position:
+                    # Y movement -> elbow adjustment
+                    direction = 1 if target_y > self.current_y_position else -1
+                    target_angle = self.current_elbow_angle + (direction * 0.05)
+                    self._safe_move_elbow(target_angle)
+                    
+        except Exception as e:
+            logger.error(f"Error in X-Y movement: {str(e)}")
         
     def _safe_move_z(self, target_mm):
         """Safely move Z-axis with bounds checking."""
@@ -1504,26 +1587,36 @@ class EnhancedRobotArmController:
         except Exception as e:
             logger.error(f"Error moving Z-axis: {str(e)}")
             
-    def _safe_move_shoulder(self, target_rad):
-        """Safely move shoulder with bounds checking."""
+    def _safe_move_shoulder(self, target_angle):
+        """Safely move shoulder to target angle."""
         if not self.is_connected:
             return
             
-        target_rad = max(SHOULDER_MIN_RAD, min(SHOULDER_MAX_RAD, target_rad))
+        # Basic angle bounds checking (typical range -3.14 to +3.14 radians)
+        SHOULDER_MIN, SHOULDER_MAX = -3.14, 3.14
+        target_angle = max(SHOULDER_MIN, min(SHOULDER_MAX, target_angle))
+        
         try:
-            self.robot.move_axis_rad(self.robot.SHOULDER, target_rad, wait=True)
+            logger.info(f"Moving shoulder to {target_angle:.3f} rad")
+            self.robot.move_axis_rad(self.robot.SHOULDER, target_angle, wait=True)
+            self.current_shoulder_angle = target_angle
             self.update_display()
         except Exception as e:
             logger.error(f"Error moving shoulder: {str(e)}")
             
-    def _safe_move_elbow(self, target_rad):
-        """Safely move elbow with bounds checking."""
+    def _safe_move_elbow(self, target_angle):
+        """Safely move elbow to target angle."""
         if not self.is_connected:
             return
             
-        target_rad = max(ELBOW_MIN_RAD, min(ELBOW_MAX_RAD, target_rad))
+        # Basic angle bounds checking (typical range -3.14 to +3.14 radians)
+        ELBOW_MIN, ELBOW_MAX = -3.14, 3.14
+        target_angle = max(ELBOW_MIN, min(ELBOW_MAX, target_angle))
+        
         try:
-            self.robot.move_axis_rad(self.robot.ELBOW, target_rad, wait=True)
+            logger.info(f"Moving elbow to {target_angle:.3f} rad")
+            self.robot.move_axis_rad(self.robot.ELBOW, target_angle, wait=True)
+            self.current_elbow_angle = target_angle
             self.update_display()
         except Exception as e:
             logger.error(f"Error moving elbow: {str(e)}")
@@ -1586,21 +1679,21 @@ class EnhancedRobotArmController:
             self.update_display()
             
     def update_z_increment(self):
-        """Update Z-axis movement increment."""
+        """Update movement increment for both Z-axis and X-Y movement."""
         try:
             value = float(self.z_increment_entry.get())
             if value < MIN_MOVE_INCREMENT_MM or value > MAX_MOVE_INCREMENT_MM:
                 self.increment_status_label.config(
-                    text=f"Z increment out of range [{MIN_MOVE_INCREMENT_MM}-{MAX_MOVE_INCREMENT_MM}]mm", 
+                    text=f"Movement increment out of range [{MIN_MOVE_INCREMENT_MM}-{MAX_MOVE_INCREMENT_MM}]mm", 
                     foreground="red")
                 return
             
             self.move_increment_mm = value
-            self.increment_status_label.config(text=f"Z-axis step set to {value:.1f}mm", foreground="green")
-            logger.info(f"Z-axis movement increment updated to {value:.1f}mm")
+            self.increment_status_label.config(text=f"Movement step set to {value:.1f}mm (Z-axis & X-Y)", foreground="green")
+            logger.info(f"Movement increment updated to {value:.1f}mm for Z-axis and X-Y movement")
             
         except ValueError:
-            self.increment_status_label.config(text="Invalid Z increment value", foreground="red")
+            self.increment_status_label.config(text="Invalid movement increment value", foreground="red")
             
     def update_rad_increment(self):
         """Update rotational movement increment."""
@@ -1626,8 +1719,8 @@ class EnhancedRobotArmController:
                 # Get current positions
                 if hasattr(self.robot, 'z_position_mm'):  # Mock robot
                     self.current_z_position = self.robot.z_position_mm
-                    self.current_elbow_angle = self.robot.elbow_angle_rad
-                    self.current_shoulder_angle = self.robot.shoulder_angle_rad
+                    self.current_x_position = getattr(self.robot, 'x_position_mm', 0.0)
+                    self.current_y_position = getattr(self.robot, 'y_position_mm', 0.0)
                     self.current_gripper_angle = self.robot.gripper_angle_rad
                     self.gripper_is_open = self.robot.gripper_is_open
                     self.is_homed = self.robot.is_homed
@@ -1637,11 +1730,19 @@ class EnhancedRobotArmController:
                     self.current_elbow_angle = self.robot.counts_to_rad(self.robot.ELBOW, positions[1])
                     self.current_shoulder_angle = self.robot.counts_to_rad(self.robot.SHOULDER, positions[2])
                     self.current_z_position = self.robot.counts_to_mm(self.robot.Z_AXIS, positions[3])
+                    
+                    # Calculate X-Y coordinates using forward kinematics
+                    try:
+                        x, y, theta = self.robot.n9_fk(positions[0], positions[1], positions[2])
+                        self.current_x_position = x
+                        self.current_y_position = y
+                    except Exception as fk_error:
+                        logger.warning(f'Forward kinematics failed: {fk_error}')
                 
                 # Update position labels
                 self.z_position_label.config(text=f"Z-Axis: {self.current_z_position:.1f} mm")
-                self.elbow_position_label.config(text=f"Elbow: {self.current_elbow_angle:.2f} rad ({self.current_elbow_angle*180/3.14159:.1f}°)")
-                self.shoulder_position_label.config(text=f"Shoulder: {self.current_shoulder_angle:.2f} rad ({self.current_shoulder_angle*180/3.14159:.1f}°)")
+                self.elbow_position_label.config(text=f"Elbow: {self.current_elbow_angle:.3f} rad ({self.current_elbow_angle*180/3.14159:.1f}°)")
+                self.shoulder_position_label.config(text=f"Shoulder: {self.current_shoulder_angle:.3f} rad ({self.current_shoulder_angle*180/3.14159:.1f}°)")
                 self.gripper_position_label.config(text=f"Gripper: {self.current_gripper_angle:.2f} rad ({self.current_gripper_angle*180/3.14159:.1f}°)")
                 
                 # Update gripper status
@@ -1662,8 +1763,8 @@ class EnhancedRobotArmController:
         else:
             # Disconnected state
             self.z_position_label.config(text="Z-Axis: Unknown")
-            self.elbow_position_label.config(text="Elbow: Unknown")
-            self.shoulder_position_label.config(text="Shoulder: Unknown")
+            self.x_position_label.config(text="X-Position: Unknown")
+            self.y_position_label.config(text="Y-Position: Unknown")
             self.gripper_position_label.config(text="Gripper: Unknown")
             self.gripper_status_label.config(text="Gripper: Unknown", foreground="gray")
             self.status_label.config(text="Disconnected", foreground="red")
@@ -1717,16 +1818,16 @@ class EnhancedRobotArmController:
             self.move_up()
         elif key == 'Down':
             self.move_down()
-        # Shoulder movement
+        # X-Y coordinate movement
         elif key == 'Left':
-            self.move_shoulder_left()
+            self.move_x_left()
         elif key == 'Right':
-            self.move_shoulder_right()
-        # Elbow movement
+            self.move_x_right()
+        # Y-axis movement using W/S keys
         elif key.lower() == 'w':
-            self.move_elbow_extend()
+            self.move_y_forward()
         elif key.lower() == 's':
-            self.move_elbow_retract()
+            self.move_y_back()
         # Gripper control
         elif key.lower() == 'o':
             self.open_gripper()

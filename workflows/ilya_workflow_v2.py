@@ -49,6 +49,13 @@ SMALL_TIP_MAX_UL = 150.0  # Maximum volume for small tips
 # VALIDATION FUNCTIONS  
 # ========================================
 
+def move_lid_to_wellplate(lash_e):
+    lash_e.nr_track.grab_wellplate_from_location('lid_storage_96', wellplate_type='96_wellplate_lid', waypoint_locations=['cytation_safe_area'])
+    lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type='96_wellplate_lid')
+
+def remove_lid_from_wellplate(lash_e):
+    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='96_wellplate_lid', waypoint_locations=['cytation_safe_area'])
+    lash_e.nr_track.release_wellplate_in_location('lid_storage_96', wellplate_type='96_wellplate_lid')
 
 
 def validate_recipe_data(input_data):
@@ -268,6 +275,10 @@ def ilya_workflow_v2():
         
         print(f"\nRound {round_num} dispensing complete!")
         
+        # Place lid before measurement
+        print("Placing wellplate lid for measurement...")
+        move_lid_to_wellplate(lash_e)
+        
         # Measure wellplate after dispensing
         wells_list = list(wells)
         print(f"Measuring wellplate: wells {wells_list[0]}-{wells_list[-1]}")
@@ -288,6 +299,11 @@ def ilya_workflow_v2():
             
         except Exception as e:
             print(f"⚠️  Measurement failed for round {round_num}: {e}")
+        
+        # Remove lid after measurement
+        print("Removing wellplate lid after measurement...")
+        remove_lid_from_wellplate(lash_e)
+        print("✓ Lid removed successfully")
         
         if round_num < N_ROUNDS:
             if not SIMULATE:

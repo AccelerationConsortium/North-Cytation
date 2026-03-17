@@ -177,7 +177,12 @@ GRADIENT_SUGGESTIONS_PER_ITERATION = 14  # Number of gradient suggestions per it
 OPTIMIZE_METRIC = 'ratio'  # Options: 'turbidity', 'ratio', 'both' (for ratio + turbidity boundaries)
 
 # Recommender algorithm selection
-RECOMMENDER_TYPE = 'bayesian'  # Options: 'delaunay', 'bayesian' - choose algorithm for boundary exploration
+RECOMMENDER_TYPE = 'delaunay'  # Options: 'delaunay', 'bayesian' - choose algorithm for boundary exploration
+
+# Turbidity filtering for unreliable ratio measurements
+TURBIDITY_FILTER_THRESHOLD = 0.2  # Above this turbidity, ratio measurements become unreliable
+HIGH_RATIO_THRESHOLD = 1.0        # Above this ratio value, measurements are invalid (ratios should be < 1.0)
+FILTER_UNRELIABLE_RATIOS = True    # Set to True to exclude high-turbidity ratio data from recommender
 
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
@@ -1562,7 +1567,7 @@ def create_substocks_from_recipes(lash_e, recipes):
                 source_vial_name=source_vial,
                 dest_vial_name=vial_name,
                 volume=source_to_add,
-                liquid='water'
+                liquid='SDS'  # FIXED: Use SDS parameters for surfactant transfers
             )
             if water_to_add > 0:
                 lash_e.nr_robot.dispense_into_vial_from_reservoir(
@@ -2180,7 +2185,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     if len(small_wells) > 0:
         logger.debug(f"  {component_name}: Pass 1 - {len(small_wells)} wells with small_tip (<{SMALL_TIP_SAFE_UL}uL)")
         if should_condition_tip:
-            condition_tip(lash_e, vial_name, conditioning_volume_ul=150)
+            condition_tip(lash_e, vial_name, conditioning_volume_ul=150, liquid_type=liquid_type)
         for _, row in small_wells.iterrows():
             well_idx = row['wellplate_index']
             volume_ml = row[volume_column] / 1000
@@ -2199,7 +2204,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
         if len(small_wells) > 0:
             lash_e.nr_robot.remove_pipet()
         logger.debug(f"  {component_name}: Pass 2 - {len(large_wells)} wells with large_tip (>={SMALL_TIP_SAFE_UL}uL)")
-        condition_tip(lash_e, vial_name, conditioning_volume_ul=300)
+        condition_tip(lash_e, vial_name, conditioning_volume_ul=300, liquid_type=liquid_type)
         for _, row in large_wells.iterrows():
             well_idx = row['wellplate_index']
             volume_ml = row[volume_column] / 1000
@@ -3071,7 +3076,7 @@ def execute_dispensing(lash_e, well_recipes_df):
                 lash_e.nr_robot.remove_pipet()
                 return_surfactant_vials_home(lash_e, sorted_surf_a_vials, 'A')
             
-            # Dispense water - split between two water vials to prevent running out
+            # Dispense water and buffer together without dropping tip
             water_wells = batch_df[batch_df['water_volume_ul'] > 0]
             if len(water_wells) > 0:
                 # Sort ascending by volume so any large-tip wells (>=200uL) land in
@@ -3084,8 +3089,12 @@ def execute_dispensing(lash_e, well_recipes_df):
                 water_batch_1 = water_wells.iloc[:mid_point]
                 water_batch_2 = water_wells.iloc[mid_point:]
 
+                # Position both water and buffer vials at safe positions simultaneously
                 lash_e.nr_robot.move_vial_to_location('water', 'main_8mL_rack', 44)
                 lash_e.nr_robot.move_vial_to_location('water_2', 'main_8mL_rack', 45)
+                if ADD_BUFFER:
+                    lash_e.logger.info(f"  Positioning {SELECTED_BUFFER} buffer at safe position with water")
+                    lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, 'main_8mL_rack', 47)
 
                 # Dispense first half with water vial
                 if len(water_batch_1) > 0:
@@ -3097,17 +3106,20 @@ def execute_dispensing(lash_e, well_recipes_df):
 
                 lash_e.logger.info("    Water dispensing complete")
 
+                # Dispense buffer immediately after water without dropping tip
+                if ADD_BUFFER:
+                    lash_e.logger.info("    Dispensing buffer without tip change...")
+                    dispense_component_to_wellplate(lash_e, batch_df, SELECTED_BUFFER, 'water', 'buffer_volume_ul')
+                    lash_e.logger.info("    Buffer dispensing complete")
+
+                # Drop tip only after both water and buffer are complete
                 lash_e.nr_robot.remove_pipet()
+                
+                # Return both water and buffer vials home together
                 return_water_vial_home(lash_e, 'water')
                 return_water_vial_home(lash_e, 'water_2')
-            
-            # Dispense buffer with safe positioning
-            if ADD_BUFFER:
-                lash_e.logger.info(f"  Positioning {SELECTED_BUFFER} buffer at highest priority safe position")
-                lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, 'main_8mL_rack', 47)
-                dispense_component_to_wellplate(lash_e, batch_df, SELECTED_BUFFER, 'water', 'buffer_volume_ul')
-                lash_e.nr_robot.remove_pipet()
-                lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
+                if ADD_BUFFER:
+                    lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
             
             # Position surfactant B vials by concentration (concentrated -> dilute)
             if len(surf_b_vials) > 0:
@@ -3691,8 +3703,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     
     # Refill both surfactant stock vials before creating substocks
     lash_e.logger.info("  Refilling surfactant stock vials...")
-    refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid=surfactant_a_name)
-    refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid=surfactant_b_name)
+    refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid='SDS')
+    refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid='SDS')
     
     # Use provided experiment folder or create new one if not provided
     if experiment_output_folder is None:
@@ -3948,8 +3960,8 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         fill_water_vial(lash_e, "water_2")  # Refill second water vial as well
 
         # Refill both surfactant stock vials
-        refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid=surfactant_a_name)
-        refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid=surfactant_b_name)
+        refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid='SDS')
+        refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid='SDS')
 
         # Calculate how many wells we can use in current wellplate
         wells_remaining_in_plate = 96 - current_wellplate_wells
@@ -4733,20 +4745,29 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         output_columns = ['ratio', 'turbidity_600']
         
         # ADAPTIVE: Check if turbidity is essentially flat (≤0.05) - if so, ignore it
+        # Only check experimental wells, not controls (same as triangle recommender)
         if 'turbidity_600' in experiment_data_df.columns:
-            turbidity_values = experiment_data_df['turbidity_600'].dropna()
+            # Filter to experimental wells only (same logic as triangle recommender)
+            if 'well_type' in experiment_data_df.columns:
+                experimental_data = experiment_data_df[experiment_data_df['well_type'] == 'experiment']
+                turbidity_values = experimental_data['turbidity_600'].dropna()
+                data_description = "experimental wells"
+            else:
+                turbidity_values = experiment_data_df['turbidity_600'].dropna()
+                data_description = "all wells"
+                
             if len(turbidity_values) > 0:
                 max_turbidity = turbidity_values.max()
-                print(f"DEBUG: Turbidity analysis - max value: {max_turbidity:.4f}")
+                print(f"DEBUG: Turbidity analysis ({data_description}) - max value: {max_turbidity:.4f}")
                 
                 if max_turbidity <= 0.05:
-                    print(f"⚠️  Turbidity is flat (max={max_turbidity:.4f} ≤ 0.05) - switching to ratio-only optimization")
+                    print(f"⚠️  Turbidity is flat in {data_description} (max={max_turbidity:.4f} ≤ 0.05) - switching to ratio-only optimization")
                     print("   (This prevents baseline noise from being treated as significant variation)")
                     output_columns = ['ratio']  # Switch to ratio-only
                 else:
-                    print(f"✅ Turbidity shows variation (max={max_turbidity:.4f} > 0.05) - using both metrics")
+                    print(f"✅ Turbidity shows variation in {data_description} (max={max_turbidity:.4f} > 0.05) - using both metrics")
             else:
-                print("⚠️  No turbidity data available - switching to ratio-only optimization") 
+                print(f"⚠️  No turbidity data available in {data_description} - switching to ratio-only optimization") 
                 output_columns = ['ratio']
         else:
             print("⚠️  No turbidity_600 column found - switching to ratio-only optimization")
@@ -4755,6 +4776,30 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         raise ValueError(f"Invalid OPTIMIZE_METRIC: {OPTIMIZE_METRIC}. Must be 'turbidity', 'ratio', or 'both'")
     
     data_for_recommender = experiment_data_df.copy()  # Don't modify original
+    
+    # Create reliability mask for outputs (general approach for any number of outputs)
+    output_reliability = None
+    if FILTER_UNRELIABLE_RATIOS and OPTIMIZE_METRIC in ['ratio', 'both']:
+        n_points = len(data_for_recommender)
+        n_outputs = len(output_columns)
+        output_reliability = np.ones((n_points, n_outputs), dtype=bool)  # Default: all reliable
+        
+        # Apply reliability criteria for each output
+        for i, output_col in enumerate(output_columns):
+            if output_col == 'ratio':
+                # Mark ratio as unreliable if turbidity > threshold or ratio > 1.0
+                unreliable_mask = (
+                    (data_for_recommender.get('turbidity_600', 0) > TURBIDITY_FILTER_THRESHOLD) |
+                    (data_for_recommender[output_col] > HIGH_RATIO_THRESHOLD)
+                )
+                output_reliability[:, i] = ~unreliable_mask
+            # Could add other reliability criteria for other outputs here
+        
+        # Report reliability statistics
+        n_unreliable_ratios = (~output_reliability[:, output_columns.index('ratio')] if 'ratio' in output_columns else 0)
+        if isinstance(n_unreliable_ratios, np.ndarray):
+            n_unreliable_ratios = n_unreliable_ratios.sum()
+        print(f"🔍 Created reliability mask: {n_unreliable_ratios}/{n_points} points have unreliable ratios")
     
     # Initialize the selected recommender algorithm
     if RECOMMENDER_TYPE == 'delaunay':
@@ -4793,7 +4838,8 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
             tol_factor=0.1,         # Tolerance for duplicate detection
             triangle_score_method='max',  # Use max distance for sensitivity
             output_dir=output_dir,  # Save triangle visualizations to output folder
-            create_visualization=False  # Disable visualization to prevent popup windows
+            create_visualization=False,  # Disable visualization to prevent popup windows
+            output_reliability=output_reliability  # Pass reliability mask
         )
     elif RECOMMENDER_TYPE == 'bayesian':
         recommendations_df = recommender.get_recommendations(
