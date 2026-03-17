@@ -18,10 +18,6 @@ def move_vials(input_vial_status_file, repeats=3):
 
         input("Press Enter to continue...")
 
-        for j in range(0, repeats):
-            lash_e.nr_robot.dispense_from_vial_into_vial("target_vial","target_vial",0.100, return_vial_home=False, remove_tip=False)
-        lash_e.nr_robot.remove_pipet()
-
         lash_e.nr_robot.return_vial_home("target_vial")
         lash_e.nr_robot.move_home()
 
