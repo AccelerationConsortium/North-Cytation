@@ -198,6 +198,109 @@ def _log_parameter_correction(timestamp: str, liquid_type: str, target_volume_ml
     except Exception as e:
         print(f"    ⚠ Warning: Could not log parameter correction: {e}")
 
+
+def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overaspirate_ml: float, lash_e=None):
+    """Update the optimal_conditions CSV with a new overaspirate value.
+
+    If a row for the target volume already exists, only overaspirate_vol is updated.
+    If not, a new row is inserted with all other parameters interpolated from the
+    two nearest volumes, sorted back into the file.
+
+    Args:
+        liquid_type: Liquid name matching calibration file naming (e.g. 'water', 'DMSO')
+        target_volume_ml: Target volume in mL
+        new_overaspirate_ml: Optimized overaspirate value in mL
+        lash_e: Lash_E instance for simulation check
+    """
+    if lash_e and hasattr(lash_e, 'simulate') and lash_e.simulate:
+        print(f"    SIMULATION: Would update calibration CSV for {liquid_type} "
+              f"{target_volume_ml*1000:.1f}uL overaspirate -> {new_overaspirate_ml:.4f}mL")
+        return
+
+    try:
+        import glob as _glob
+
+        target_volume_ul = target_volume_ml * 1000
+        data_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Same search patterns as PipettingWizard
+        patterns = [
+            f"optimal_conditions*{liquid_type.lower()}*.csv",
+            f"optimal_conditions*{liquid_type.upper()}*.csv",
+            f"optimal_conditions*{liquid_type.title()}*.csv",
+        ]
+        candidates = []
+        for pattern in patterns:
+            candidates.extend(_glob.glob(os.path.join(data_dir, pattern)))
+        candidates = list(set(candidates))
+
+        if not candidates:
+            print(f"    Warning: No calibration file found for '{liquid_type}' - skipping CSV update")
+            return
+
+        # Pick the file that best covers the target volume
+        best_file = None
+        best_df = None
+        best_score = float('inf')
+        for path in candidates:
+            try:
+                df_c = pd.read_csv(path)
+                if 'volume_target' not in df_c.columns or df_c.empty:
+                    continue
+                df_c = df_c.sort_values('volume_target').reset_index(drop=True)
+                vols = df_c['volume_target'].values
+                lo, hi = vols.min(), vols.max()
+                score = 0 if lo <= target_volume_ul <= hi else min(abs(target_volume_ul - lo), abs(target_volume_ul - hi))
+                score += 1.0 / len(vols)
+                if score < best_score:
+                    best_score = score
+                    best_file = path
+                    best_df = df_c
+            except Exception:
+                continue
+
+        if best_df is None:
+            print(f"    Warning: Could not load any calibration file for '{liquid_type}' - skipping CSV update")
+            return
+
+        df = best_df
+        match_mask = (df['volume_target'] - target_volume_ul).abs() < 0.5
+
+        if match_mask.any():
+            # Update existing row - only change overaspirate_vol
+            idx = df[match_mask].index[0]
+            old_val = df.at[idx, 'overaspirate_vol']
+            df.at[idx, 'overaspirate_vol'] = new_overaspirate_ml
+            df.to_csv(best_file, index=False)
+            print(f"    Updated {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
+                  f"overaspirate {old_val:.4f} -> {new_overaspirate_ml:.4f}mL")
+        else:
+            # Insert new row - interpolate all numeric columns from surrounding data
+            vols = df['volume_target'].values
+            new_row = {}
+            for col in df.columns:
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    new_row[col] = float(np.interp(target_volume_ul, vols, df[col].values))
+                else:
+                    nearest_idx = int(np.abs(vols - target_volume_ul).argmin())
+                    new_row[col] = df.iloc[nearest_idx][col]
+            # Set identifying columns explicitly
+            new_row['volume_target'] = target_volume_ul
+            new_row['overaspirate_vol'] = new_overaspirate_ml
+            if 'volume_ml' in df.columns:
+                new_row['volume_ml'] = target_volume_ml
+            if 'volume_ul' in df.columns:
+                new_row['volume_ul'] = target_volume_ul
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            df = df.sort_values('volume_target').reset_index(drop=True)
+            df.to_csv(best_file, index=False)
+            print(f"    Inserted new row in {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
+                  f"overaspirate {new_overaspirate_ml:.4f}mL")
+
+    except Exception as e:
+        print(f"    Warning: Could not update calibration CSV: {e}")
+
+
 def _generate_simulated_mass(target_volume_ml: float, density: float, 
                             current_overaspirate: float = 0.004, 
                             replicate_num: int = 1, 
@@ -965,6 +1068,9 @@ def validate_pipetting_accuracy(
                         initial_overaspirate, optimal_overaspirate,
                         "iterative_optimization", session_id, lash_e
                     )
+
+                    # Persist the optimized overaspirate back to the calibration CSV
+                    _update_calibration_csv(liquid_type, volume_ml, optimal_overaspirate, lash_e)
                     
                     # Send Slack notification about optimization (skip in simulation)
                     if hasattr(lash_e, 'simulate') and lash_e.simulate:
