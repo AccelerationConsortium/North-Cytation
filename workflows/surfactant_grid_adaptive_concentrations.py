@@ -3065,7 +3065,7 @@ def execute_dispensing(lash_e, well_recipes_df):
                 # Dispense surfactant A substocks in concentration order (condition tip only for first vial)
                 for i, surf_a_vial in enumerate(sorted_surf_a_vials):
                     should_condition = (i == 0)  # Only condition for first vial in the series
-                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'water', 'surf_A_volume_ul', should_condition_tip=should_condition)
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'SDS', 'surf_A_volume_ul', should_condition_tip=should_condition)
                 
                 # Return surfactant A vials to home
                 lash_e.nr_robot.remove_pipet()
@@ -3116,7 +3116,7 @@ def execute_dispensing(lash_e, well_recipes_df):
                 # Dispense surfactant B substocks in concentration order (condition tip only for first vial)
                 for i, surf_b_vial in enumerate(sorted_surf_b_vials):
                     should_condition = (i == 0)  # Only condition for first vial in the series
-                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'water', 'surf_B_volume_ul', should_condition_tip=should_condition)
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'SDS', 'surf_B_volume_ul', should_condition_tip=should_condition)
                 
                 # Return surfactant B vials to home
                 lash_e.nr_robot.remove_pipet()
@@ -3588,7 +3588,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
                 lash_e=lash_e,
                 source_vial=surfactant_stock,
                 destination_vial=surfactant_stock,
-                liquid_type='water',  # Aqueous surfactant solution
+                liquid_type='SDS',  # Surfactant solution
                 volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
                 replicates=3,
                 output_folder=experiment_output_folder,
@@ -3607,7 +3607,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
                 lash_e=lash_e,
                 source_vial=surfactant_stock,
                 destination_vial=surfactant_stock,
-                liquid_type='water',  # Aqueous surfactant solution
+                liquid_type='SDS',  # Surfactant solution
                 volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
                 replicates=1 if i > 0 else 3,  # Full validation on first surfactant, reduced on others
                 output_folder=experiment_output_folder,

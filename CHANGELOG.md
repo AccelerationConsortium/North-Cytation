@@ -1,5 +1,153 @@
 # Changelog
 
+## [SURFACTANT LIQUID_TYPE FIX] - 2026-03-16
+
+### BUG FIX: Corrected liquid_type Parameters for Surfactant Operations
+- **VALIDATION CALLS**: Fixed surfactant validation to use `liquid_type='SDS'` instead of `'water'`
+- **DISPENSING CALLS**: Fixed surfactant dispensing to use `liquid_type='SDS'` instead of `'water'`  
+- **SLACK NOTIFICATIONS**: Now correctly show "Liquid: SDS" in Slack messages for surfactant operations
+- **PIPETTING PARAMETERS**: Surfactant operations now use SDS-optimized parameters instead of water parameters
+- **DATABASE LOGGING**: Surfactant operations now logged as "SDS" for proper tracking and analysis
+- **AFFECTED FUNCTIONS**: 
+  - `dispense_component_to_wellplate()` calls for surf_A_volume_ul and surf_B_volume_ul
+  - `validate_pipetting_accuracy()` calls for surfactant stock validation (both small and large volumes)
+- **FILES MODIFIED**: workflows/surfactant_grid_adaptive_concentrations.py (4 liquid_type corrections)
+
+## [USER-DEFINED POSITION NAMES] - 2026-03-16
+
+### MAJOR FEATURE: Custom Position Saving with User-Defined Names
+- **CUSTOM POSITION NAMES**: Text input field for user-defined position names
+- **TEMP FOLDER SAVING**: Saves positions with custom names to temp/ directory 
+- **MULTIPLE EXPORT FORMATS**: 
+  - JSON format with full position data
+  - TXT format with coordinates for easy copy-paste
+  - Array format for direct code integration
+  - Python dictionary format for workflow files
+- **SAVED POSITIONS MANAGER**: GUI window to view, copy, and manage all saved positions
+- **AUTOMATED NAMING**: Auto-increments position names (my_position_1 → my_position_2)
+- **COPY COORDINATES**: Quick clipboard copy of current position coordinates
+- **TEMP FOLDER ACCESS**: Direct button to open temp folder in explorer
+- **ENHANCED EXPORT**: CSV export of all saved positions with timestamps
+- **USER WORKFLOW**: Save → Name → Export coordinates → Paste into other files
+- **FILES MODIFIED**: workflows/enhanced_SP_arm_position_program.py (added custom naming system)
+
+## [COMPLETE PIPETTE INTEGRATION] - 2026-03-16
+
+### MAJOR FEATURE: Complete Pipette Tip Rack Position System
+- **PIPETTE TIP POSITIONS**: Added 96 pipette tip positions (48 large + 48 small tips)
+- **TIP REMOVAL STATIONS**: Added 3 tip removal/disposal positions (Cap, Approach, Small)
+- **POSITION EXPANSION**: Total positions increased from ~70 to 166 
+- **YAML INTEGRATION**: Extended robot_state/vial_positions.yaml with pipette tip rack configurations
+- **WORKFLOW SUPPORT**: Enhanced position program now supports complete pipette tip pickup/disposal workflow
+- **COORDINATE MAPPING**: Proper coordinate mapping from Locator.py pgrid_low_2/pgrid_high_2 arrays
+- **CATEGORY ORGANIZATION**: Added Pipette_Tips and Tip_Removal position categories
+- **FILES MODIFIED**: 
+  - workflows/enhanced_SP_arm_position_program.py (added pipette position generation)
+  - robot_state/vial_positions.yaml (added tip rack mappings)
+
+## [CRITICAL SAFETY FIX] - 2026-03-16
+
+### CRITICAL: Safe Two-Step Movement to Prevent Vial Collisions
+- **SAFETY ISSUE**: Robot was lowering Z-axis first then moving X-Y, causing collisions with vials on rack
+- **SOLUTION**: Implemented safe two-step movement pattern:
+  1. Move to safe Z height (10,000 counts = ~100mm high) while maintaining current X-Y position
+  2. Move X-Y to target position while staying at safe height  
+  3. Finally lower Z-axis to target position
+- **COLLISION AVOIDANCE**: Prevents robot from hitting vials/obstacles during movement
+- **ERROR HANDLING**: Added try/catch for current position detection with safe defaults
+- **COORDINATE FIX**: Fixed MockRobot coordinate order to match Locator.py format [gripper, shoulder, elbow, z]
+- **CONSTANT ADDED**: SAFE_Z_HEIGHT_COUNTS = 10000 for consistent safe movement height
+- **FILES MODIFIED**: workflows/enhanced_SP_arm_position_program.py (goto_selected_position method and MockRobot class)
+
+## [PANDAS FALLBACK FIX] - 2026-03-16
+
+### CRITICAL FIX: CSV Loading Pandas Dependency Issue
+- **CSV LOADING FIX**: Added fallback CSV reader using built-in csv module when pandas fails
+- **ROOT CAUSE**: Pandas installation issue preventing dynamic position loading (pandas missing read_csv attribute)
+- **SOLUTION**: Created SimpleDataFrame class to mock pandas behavior for compatibility
+- **IMPACT**: Dynamic position loading now works reliably - loads 67 positions including 51 named vials
+- **VERIFICATION**: All coordinate mappings verified correct (water, clamp positions match Locator.py exactly)
+- **FALLBACK PATH**: System gracefully falls back from pandas -> csv module -> hardcoded positions
+- **FILES FIXED**: workflows/enhanced_SP_arm_position_program.py (CSV loading section)
+
+## [CRITICAL COORDINATE BUG FIX] - 2026-03-16
+
+### CRITICAL FIX: Robot Position Coordinate Order Bug
+- **COORDINATE ORDER BUG**: Fixed critical bug where shoulder and elbow coordinates were swapped
+- **ROOT CAUSE**: Program incorrectly treated Locator.py coordinates as [gripper, elbow, shoulder, z] instead of [gripper, shoulder, elbow, z]
+- **IMPACT**: Robot was going to wrong positions when using dynamic positioning system
+- **SOLUTION**: Corrected target_position array order in goto_selected_position() method
+- **VERIFICATION**: Coordinate mapping now matches Locator.py format: [gripper, shoulder, elbow, z_axis]
+- **FILES FIXED**: workflows/enhanced_SP_arm_position_program.py (line ~846-851)
+
+## [DYNAMIC POSITIONING SYSTEM] - 2026-03-16
+
+### MAJOR: Integrated Multi-Layer Dynamic Positioning System
+- **DYNAMIC POSITIONS**: Enhanced position controller now loads positions from multi-layer positioning system
+- **CSV INTEGRATION**: Automatically loads vial positions from CSV files (e.g., surfactant_grid_vials_expanded.csv)
+- **YAML CONFIG**: Uses vial_positions.yaml for rack configuration and Locator.py coordinates
+- **DUAL ACCESS**: Supports both gripper and pipetting positions for each vial location
+- **NAMED VIALS**: Shows actual vial names (water, SDBS_stock, etc.) instead of just coordinates
+- **LIVE RELOAD**: Configuration UI allows users to change vial files and reload positions on-demand
+- **FALLBACK SAFETY**: Maintains hardcoded positions if dynamic loading fails
+- **AUTO DETECTION**: Automatically detects and loads default vial file if available
+- **BACKUP CREATED**: enhanced_SP_arm_position_program_backup_YYYYMMDD_HHMMSS.py
+- **FILES MODIFIED**: workflows/enhanced_SP_arm_position_program.py
+
+## [POSITION SYSTEM FIX] - 2026-03-16
+
+### FIXED: Enhanced Position Controller Positioning Issues
+- **COORDINATE FIX**: Updated enhanced_SP_arm_position_program.py to use real robot coordinates from Locator.py
+- **MOVEMENT METHOD**: Changed from move_z/move_axis_rad to goto() method for precise absolute positioning
+- **REAL POSITIONS**: All 20+ positions now use actual robot count values instead of estimated mm/rad values
+- **GOTO METHOD**: Added goto() method to MockRobot simulation for testing
+- **POSITION CLEANUP**: Removed leftover old position definitions that were causing conflicts
+- **ENHANCED GUI**: Expanded window to 750x900 for better visibility
+- **COMPREHENSIVE POSITIONS**: Includes all vial racks, tip racks, processing stations with real coordinates
+- **FILES FIXED**: workflows/enhanced_SP_arm_position_program.py
+
+## [COMPREHENSIVE WORKFLOW POSITIONS] - 2026-03-16
+
+### MAJOR: Complete Workflow Position System with Real Coordinates
+- **REAL COORDINATES**: Updated all positions with actual robot counts from Locator.py
+- **COMPREHENSIVE POSITIONS**: Added 25 workflow positions including all vial racks, tip racks, and processing stations
+- **VIAL POSITIONS**: Main 8mL rack (positions 36, 43-47), Large vial rack, Small vial rack, 50mL vial rack
+- **TIP RACK POSITIONS**: Small tip rack (positions 0, 24, 47), Large tip rack (positions 0, 24, 47)
+- **PROCESSING STATIONS**: Photoreactor, Heater grid (positions 0, 5), Clamp position
+- **TIP REMOVAL**: Small and large pipet tip removal positions
+- **SAFETY POSITIONS**: Home and Safe transport height
+- **ROBOT MOVEMENT**: Uses goto() method with absolute count positioning for precise movement
+- **EXPANDED GUI**: Increased window size to 750x850, wider dropdown for longer position names
+- **ENHANCED SIMULATION**: Mock robot now supports goto() method with count-based positioning
+- **FILES MODIFIED**: workflows/SP_arm_position_program.py
+
+## [WORKFLOW POSITION DROPDOWN] - 2026-03-16
+
+### ENHANCED: SP_arm_position_program.py with Workflow Position Dropdown
+- **NEW FEATURE**: Position dropdown menu with 11 predefined surfactant workflow positions
+- **WORKFLOW POSITIONS**: Added positions from surfactant workflow (Home, Clamp, Main Rack 36/43-47, Photoreactor, Heater Grid, Safe Transport)
+- **POSITION SELECTION**: Dropdown shows position names with descriptions when selected
+- **GO TO POSITION**: One-click button to move robot arm to selected workflow position
+- **SAFETY FIRST**: Z-axis moves first for safe positioning, then rotational axes
+- **SUCCESS FEEDBACK**: Confirmation messages when position movement completes
+- **ENHANCED GUI**: Expanded window size (650x800) to accommodate new Position Selection section
+- **INTEGRATED WORKFLOW**: Positions match those used in surfactant_grid_adaptive_concentrations.py
+- **FILES MODIFIED**: workflows/SP_arm_position_program.py
+
+## [ENHANCED POSITION MANAGEMENT SYSTEM] - 2026-03-16
+
+### MAJOR: Enhanced Robot Position Control with Workflow Integration
+- **NEW FEATURE**: Position dropdown with 13 predefined surfactant workflow positions
+- **WORKFLOW INTEGRATION**: Includes positions like 'Clamp Position', 'Main Rack 36-47', 'Photoreactor', etc.
+- **POSITION MANAGEMENT**: Temporary position storage system for adjustment sessions
+- **EXPORT FUNCTIONALITY**: CSV export for position modifications, TXT export for session history, JSON export for complete data
+- **POSITION CATEGORIES**: Organized positions by function (Storage, Reagents, Processing, Manipulation, Large Volume, Small Volume, Standard)
+- **TEMPORARY MODIFICATIONS**: Save current position as temporary, reset to original, clear all temporary positions
+- **SESSION TRACKING**: Complete history of movements and position changes during session
+- **ENHANCED GUI**: New sections for Position Selection, Position Modifications, and Export controls
+- **SAFETY ENHANCED**: Proper position validation and bounds checking for all workflow positions
+- **FILES CREATED**: workflows/enhanced_SP_arm_position_program.py (extends original with position management)
+
 ## [MULTI-JOINT ROBOT ARM CONTROL] - 2026-03-16
 
 ### ENHANCED: Multi-Joint Robot Control System
@@ -12,6 +160,26 @@
 - **Position Tracking**: Real-time updates of current elbow angle and shoulder angle
 - **Error Handling**: Individual safety checks and error handling for each joint type
 - **Files Modified**: workflows/SP_arm_position_program.py
+
+## [USER-CONFIGURABLE MOVEMENT INCREMENTS] - 2026-03-16
+
+### NEW: Custom Movement Step Control System
+- **NEW FEATURE**: Added user-configurable movement increments for all joints
+- **INPUT VALIDATION**: Real-time validation with safety limits and error feedback
+- **Z-AXIS CONTROL**: Configurable step size (0.1-50.0mm) with live input validation
+- **ROTATIONAL CONTROL**: Configurable step size (0.01-1.0 radians) with degrees display
+- **ENHANCED SAFETY**: Improved error messages showing attempted values and limits
+- **VISUAL FEEDBACK**: Real-time degrees conversion display and status updates  
+- **PRECEDENT CHECKING**: System validates movements won't exceed joint limits before execution
+- **USER GUIDANCE**: Clear min/max limits displayed in validation messages
+- **PERSISTENT SETTINGS**: Custom increments stay active until manually changed
+- **FILES MODIFIED**: workflows/SP_arm_position_program.py
+
+### Testing Confirmed:
+- ✅ Set Z-axis from 5.0mm to 10.0mm - successful movement validation
+- ✅ Set rotational increment from 0.1rad to 1.0rad (57.3°) - full functionality
+- ✅ All safety limits and range checking working properly
+- ✅ Enhanced error messages providing clear user guidance
 
 ## [ROBOT ARM MULTI-JOINT CONTROL] - 2026-03-16
 
