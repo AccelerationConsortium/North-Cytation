@@ -5079,16 +5079,14 @@ if __name__ == "__main__":
 
     if VALIDATE_LIQUIDS:
         if experiment_output_folder is not None:
-            # For single/regular workflows, validate the current surfactant pair
-            validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names=[SURFACTANT_A, SURFACTANT_B])
+            # For single/regular workflows, validate one surfactant only
+            validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names=[SURFACTANT_A])
         elif WORKFLOW_TYPE == 'double_iterative':
-            # For double_iterative, extract all unique surfactants and create temporary validation folder
+            # For double_iterative, validate only the first surfactant A in the queue
             import time
             validation_output_folder = f"output/validation_{int(time.time())}"
             os.makedirs(validation_output_folder, exist_ok=True)
             
-            # Extract all unique surfactants from PAIRING_QUEUE
-            all_surfactants = set()
             pairing_queue = PAIRING_QUEUE if isinstance(PAIRING_QUEUE, list) else []
             if isinstance(PAIRING_QUEUE, str):
                 import ast
@@ -5097,13 +5095,10 @@ if __name__ == "__main__":
                 except:
                     pairing_queue = []
             
-            for pairing in pairing_queue:
-                all_surfactants.add(pairing.get('SURFACTANT_A', ''))
-                all_surfactants.add(pairing.get('SURFACTANT_B', ''))
-            
-            # Remove empty strings and convert to sorted list
-            surfactant_list = sorted([s for s in all_surfactants if s])
-            print(f"Running validation for all surfactants in double_iterative: {surfactant_list}")
+            # Use only the first surfactant A - one is sufficient to validate the system
+            first_surfactant = pairing_queue[0].get('SURFACTANT_A', SURFACTANT_A) if pairing_queue else SURFACTANT_A
+            surfactant_list = [first_surfactant]
+            print(f"Running validation for one surfactant in double_iterative: {surfactant_list}")
             print(f"Validation folder: {validation_output_folder}")
             
             validate_pipetting_system(lash_e, validation_output_folder, surfactant_names=surfactant_list)

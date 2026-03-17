@@ -5,7 +5,7 @@ Multi-Sample Spectral Comparison
 Creates 3 plots comparing samples 1, 2, and 3:
 1. Absorbance at 556 nm over time
 2. Absorbance at 428 nm over time
-3. Ratio 428/556 nm over time
+3. Ratio 556/428 nm over time
 
 Each plot shows all 3 samples with standard deviation bands
 """
@@ -13,6 +13,7 @@ Each plot shows all 3 samples with standard deviation bands
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import os
 import glob
 import re
@@ -88,13 +89,13 @@ def process_sample_data(folder_path, sample_num):
     abs_556nm = np.array(abs_556nm)[sorted_indices]
     abs_428nm = np.array(abs_428nm)[sorted_indices]
     
-    ratio_428_556 = abs_428nm / abs_556nm
+    ratio_556_428 = abs_556nm / abs_428nm
     
     return {
         'timepoints': timepoints,
         'abs_556nm': abs_556nm,
         'abs_428nm': abs_428nm,
-        'ratio_428_556': ratio_428_556
+        'ratio_556_428': ratio_556_428
     }
 
 
@@ -102,6 +103,9 @@ def create_comparison_plots(folder_path, output_dir=None):
     """
     Create 3 subplots in a single figure comparing all samples with error bars
     """
+    # Set filename for output files
+    filename = "file_name"
+    
     print("Loading spectral data from all samples...")
     
     # Load data for all three samples
@@ -130,7 +134,7 @@ def create_comparison_plots(folder_path, output_dir=None):
     
     # Create output directory if not specified
     if output_dir is None:
-        output_dir = os.path.join(folder_path, 'comparison_plots')
+        output_dir = "/Users/serenaqiu/Desktop/Human vs Robot Data/Degradation_Automated_Data"
     os.makedirs(output_dir, exist_ok=True)
     
     # Get timepoints (use first sample as reference)
@@ -143,16 +147,16 @@ def create_comparison_plots(folder_path, output_dir=None):
     # Prepare arrays for all metrics, keeping only common timepoints
     all_abs_556nm = []
     all_abs_428nm = []
-    all_ratio_428_556 = []
+    all_ratio_556_428 = []
     
     for data in data_list:
         all_abs_556nm.append(data['abs_556nm'][:min_timepoints])
         all_abs_428nm.append(data['abs_428nm'][:min_timepoints])
-        all_ratio_428_556.append(data['ratio_428_556'][:min_timepoints])
+        all_ratio_556_428.append(data['ratio_556_428'][:min_timepoints])
     
     all_abs_556nm = np.array(all_abs_556nm)
     all_abs_428nm = np.array(all_abs_428nm)
-    all_ratio_428_556 = np.array(all_ratio_428_556)
+    all_ratio_556_428 = np.array(all_ratio_556_428)
     
     # Calculate statistics
     mean_abs_556nm = np.mean(all_abs_556nm, axis=0)
@@ -161,11 +165,15 @@ def create_comparison_plots(folder_path, output_dir=None):
     mean_abs_428nm = np.mean(all_abs_428nm, axis=0)
     std_abs_428nm = np.std(all_abs_428nm, axis=0)
     
-    mean_ratio_428_556 = np.mean(all_ratio_428_556, axis=0)
-    std_ratio_428_556 = np.std(all_ratio_428_556, axis=0)
+    mean_ratio_556_428 = np.mean(all_ratio_556_428, axis=0)
+    std_ratio_556_428 = np.std(all_ratio_556_428, axis=0)
     
     # Define colors for each sample
     sample_colors = {1: '#4A3A7F', 2: '#859DE6', 3: '#9B6BA8'}
+    
+    # Set font to Helvetica Neue
+    plt.rcParams['font.sans-serif'] = ['Helvetica Neue']
+    plt.rcParams['font.family'] = 'sans-serif'
     
     # Create figure with 2 rows: measurements and standard deviations
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
@@ -183,13 +191,21 @@ def create_comparison_plots(folder_path, output_dir=None):
     ax.errorbar(timepoints, mean_abs_556nm, yerr=std_abs_556nm, fmt='none', 
                 color='black', elinewidth=2, capsize=5, capthick=2, alpha=0.95, zorder=10)
     
-    ax.set_xlabel('Time (min)', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Absorbance (a.u.)', fontsize=11, fontweight='bold')
-    ax.set_title('556 nm Absorbance', fontsize=12, fontweight='bold')
+    ax.set_xlabel('time (min)', fontsize=16)
+    ax.set_ylabel('absorbance (a.u.)', fontsize=16)
+    ax.set_title('556 nm absorbance', fontsize=14)
     ax.set_xlim(-1, 61)
+    ax.set_ylim(bottom=0)
     ax.set_xticks(np.arange(0, 65, 5))
-    ax.legend(fontsize=9, loc='best', framealpha=0.95)
-    ax.tick_params(axis='both', which='major', labelsize=10, direction='in')
+    ax.legend(fontsize=15, loc='best', frameon=False)
+    ax.tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    ax.tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = ax.get_yticks()
+    ax.set_yticks(yticks[np.abs(yticks) > 1e-10])
     
     # ===== Subplot 2: 428 nm Absorbance =====
     ax = axes[0, 1]
@@ -203,31 +219,47 @@ def create_comparison_plots(folder_path, output_dir=None):
     ax.errorbar(timepoints, mean_abs_428nm, yerr=std_abs_428nm, fmt='none', 
                 color='black', elinewidth=2, capsize=5, capthick=2, alpha=0.95, zorder=10)
     
-    ax.set_xlabel('Time (min)', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Absorbance (a.u.)', fontsize=11, fontweight='bold')
-    ax.set_title('428 nm Absorbance', fontsize=12, fontweight='bold')
+    ax.set_xlabel('time (min)', fontsize=16)
+    ax.set_ylabel('absorbance (a.u.)', fontsize=16)
+    ax.set_title('428 nm absorbance', fontsize=14)
     ax.set_xlim(-1, 61)
+    ax.set_ylim(bottom=0)
     ax.set_xticks(np.arange(0, 65, 5))
-    ax.legend(fontsize=9, loc='best', framealpha=0.95)
-    ax.tick_params(axis='both', which='major', labelsize=10, direction='in')
+    ax.legend(fontsize=15, loc='best', frameon=False)
+    ax.tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    ax.tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = ax.get_yticks()
+    ax.set_yticks(yticks[np.abs(yticks) > 1e-10])
     ax = axes[0, 2]
     
     # Plot individual samples
     for idx, sample_num in enumerate(samples_loaded):
-        ax.plot(timepoints, all_ratio_428_556[idx], 's-', color=sample_colors[sample_num], 
+        ax.plot(timepoints, all_ratio_556_428[idx], 's-', color=sample_colors[sample_num], 
                 linewidth=2, markersize=5, label=f'Sample {sample_num}', alpha=0.7)
     
     # Add error bars only (no mean line)
-    ax.errorbar(timepoints, mean_ratio_428_556, yerr=std_ratio_428_556, fmt='none', 
+    ax.errorbar(timepoints, mean_ratio_556_428, yerr=std_ratio_556_428, fmt='none', 
                 color='black', elinewidth=2, capsize=5, capthick=2, alpha=0.95, zorder=10)
     
-    ax.set_xlabel('Time (min)', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Absorbance Ratio (428/556 nm)', fontsize=11, fontweight='bold')
-    ax.set_title('428/556 nm Ratio', fontsize=12, fontweight='bold')
+    ax.set_xlabel('time (min)', fontsize=16)
+    ax.set_ylabel('absorbance ratio (556/428 nm)', fontsize=16)
+    ax.set_title('556/428 nm ratio', fontsize=14)
     ax.set_xlim(-1, 61)
+    ax.set_ylim(bottom=0, top=2.5)
     ax.set_xticks(np.arange(0, 65, 5))
-    ax.legend(fontsize=9, loc='best', framealpha=0.95)
-    ax.tick_params(axis='both', which='major', labelsize=10, direction='in')
+    ax.legend(fontsize=15, loc='best', frameon=False)
+    ax.tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    ax.tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = ax.get_yticks()
+    ax.set_yticks(yticks[np.abs(yticks) > 1e-10])
     
     # ===== Subplot 4: 556 nm Standard Deviation =====
     ax = axes[1, 0]
@@ -238,38 +270,62 @@ def create_comparison_plots(folder_path, output_dir=None):
     x_positions = np.arange(len(timepoints_bar))
     ax.bar(x_positions, std_percent_556nm_bar, width=0.6, color='#4A3A7F', alpha=0.7)
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([f'{int(tp)}' for tp in timepoints_bar], fontsize=10)
-    ax.set_xlabel('Time (min)', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Coefficient of Variation (%)', fontsize=11, fontweight='bold')
-    ax.set_title('556 nm Std Dev', fontsize=12, fontweight='bold')
-    ax.tick_params(axis='both', which='major', labelsize=10, direction='in')
+    ax.set_xticklabels([f'{int(tp)}' for tp in timepoints_bar], fontsize=14)
+    ax.set_xlabel('time (min)', fontsize=16)
+    ax.set_ylabel('coefficient of variation (%)', fontsize=16)
+    ax.set_title('556 nm Std Dev', fontsize=14)
+    ax.set_ylim(bottom=0)
+    ax.tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    ax.tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = ax.get_yticks()
+    ax.set_yticks(yticks[np.abs(yticks) > 1e-10])
     
     # ===== Subplot 5: 428 nm Standard Deviation =====
     ax = axes[1, 1]
     std_percent_428nm_bar = (std_abs_428nm / mean_abs_428nm)[bar_mask] * 100
     ax.bar(x_positions, std_percent_428nm_bar, width=0.6, color='#859DE6', alpha=0.7)
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([f'{int(tp)}' for tp in timepoints_bar], fontsize=10)
-    ax.set_xlabel('Time (min)', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Coefficient of Variation (%)', fontsize=11, fontweight='bold')
-    ax.set_title('428 nm Std Dev', fontsize=12, fontweight='bold')
-    ax.tick_params(axis='both', which='major', labelsize=10, direction='in')
+    ax.set_xticklabels([f'{int(tp)}' for tp in timepoints_bar], fontsize=14)
+    ax.set_xlabel('time (min)', fontsize=16)
+    ax.set_ylabel('coefficient of variation (%)', fontsize=16)
+    ax.set_title('428 nm Std Dev', fontsize=14)
+    ax.set_ylim(bottom=0)
+    ax.tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    ax.tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = ax.get_yticks()
+    ax.set_yticks(yticks[np.abs(yticks) > 1e-10])
     
-    # ===== Subplot 6: 428/556 Ratio Standard Deviation =====
+    # ===== Subplot 6: 556/428 Ratio Standard Deviation =====
     ax = axes[1, 2]
-    std_percent_ratio_bar = (std_ratio_428_556 / mean_ratio_428_556)[bar_mask] * 100
-    ax.bar(x_positions, std_percent_ratio_bar, width=0.6, color="#846BA8", alpha=0.7)
+    std_percent_ratio_bar = (std_ratio_556_428 / mean_ratio_556_428)[bar_mask] * 100
+    ax.bar(x_positions, std_percent_ratio_bar, width=0.6, color="#8FB6D3F7", alpha=0.7)
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([f'{int(tp)}' for tp in timepoints_bar], fontsize=10)
-    ax.set_xlabel('Time (min)', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Coefficient of Variation (%)', fontsize=11, fontweight='bold')
-    ax.set_title('428/556 Ratio Std Dev', fontsize=12, fontweight='bold')
-    ax.tick_params(axis='both', which='major', labelsize=10, direction='in')
+    ax.set_xticklabels([f'{int(tp)}' for tp in timepoints_bar], fontsize=14)
+    ax.set_xlabel('time (min)', fontsize=16)
+    ax.set_ylabel('coefficient of variation (%)', fontsize=16)
+    ax.set_title('556/428 Ratio Std Dev', fontsize=14)
+    ax.set_ylim(bottom=0)
+    ax.tick_params(axis='both', which='major', labelsize=15, direction='in', length=8, width=1.2)
+    ax.tick_params(axis='both', which='minor', direction='in', length=4, width=0.8)
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    # Remove 0 tick from y-axis
+    yticks = ax.get_yticks()
+    ax.set_yticks(yticks[np.abs(yticks) > 1e-10])
     
     plt.tight_layout()
     
-    # Save the combined plot
-    combined_plot_filename = os.path.join(output_dir, 'combined_comparison.png')
+    # Save the combined plot with user-provided filename
+    combined_plot_filename = os.path.join(output_dir, f'{filename}_combined_comparison.png')
     plt.savefig(combined_plot_filename, dpi=300, bbox_inches='tight')
     print(f"✓ Combined comparison plot saved as: {combined_plot_filename}")
     
@@ -279,7 +335,7 @@ def create_comparison_plots(folder_path, output_dir=None):
     # Calculate CV for table and summary
     cv_abs_556nm = (std_abs_556nm / mean_abs_556nm) * 100
     cv_abs_428nm = (std_abs_428nm / mean_abs_428nm) * 100
-    cv_ratio_428_556 = (std_ratio_428_556 / mean_ratio_428_556) * 100
+    cv_ratio_556_428 = (std_ratio_556_428 / mean_ratio_556_428) * 100
     
     # Create and save table as figure
     fig_table, ax_table = plt.subplots(figsize=(16, 10))
@@ -299,9 +355,9 @@ def create_comparison_plots(folder_path, output_dir=None):
             f'{mean_abs_428nm[i]:.4f}',
             f'{std_abs_428nm[i]:.4f}',
             f'{cv_abs_428nm[i]:.2f}',
-            f'{mean_ratio_428_556[i]:.4f}',
-            f'{std_ratio_428_556[i]:.4f}',
-            f'{cv_ratio_428_556[i]:.2f}'
+            f'{mean_ratio_556_428[i]:.4f}',
+            f'{std_ratio_556_428[i]:.4f}',
+            f'{cv_ratio_556_428[i]:.2f}'
         ])
     
     table = ax_table.table(cellText=table_data, cellLoc='center', loc='center',
@@ -326,7 +382,7 @@ def create_comparison_plots(folder_path, output_dir=None):
     
     plt.title('Multi-Sample Spectral Comparison - Detailed Statistics', fontsize=14, fontweight='bold', pad=20)
     
-    table_filename = os.path.join(output_dir, 'statistics_table.png')
+    table_filename = os.path.join(output_dir, f'{filename}_statistics_table.png')
     plt.savefig(table_filename, dpi=300, bbox_inches='tight')
     print(f"✓ Statistics table saved as: {table_filename}")
     
@@ -343,12 +399,12 @@ def create_comparison_plots(folder_path, output_dir=None):
         'abs_428nm_mean': mean_abs_428nm,
         'abs_428nm_std': std_abs_428nm,
         'abs_428nm_cv_percent': cv_abs_428nm,
-        'ratio_428_556_mean': mean_ratio_428_556,
-        'ratio_428_556_std': std_ratio_428_556,
-        'ratio_428_556_cv_percent': cv_ratio_428_556
+        'ratio_556_428_mean': mean_ratio_556_428,
+        'ratio_556_428_std': std_ratio_556_428,
+        'ratio_556_428_cv_percent': cv_ratio_556_428
     })
     
-    summary_filename = os.path.join(output_dir, 'comparison_summary_statistics.csv')
+    summary_filename = os.path.join(output_dir, f'{filename}_comparison_summary_statistics.csv')
     summary_data.to_csv(summary_filename, index=False)
     print(f"✓ Summary statistics saved as: {summary_filename}")
     
@@ -362,7 +418,7 @@ def create_comparison_plots(folder_path, output_dir=None):
     print(f"{'Time(min)':<12} {'556nm Mean':<12} {'556nm SD':<12} {'556nm CV%':<12} {'428nm Mean':<12} {'428nm SD':<12} {'428nm CV%':<12} {'Ratio Mean':<12} {'Ratio SD':<12} {'Ratio CV%':<12}")
     print("-" * 100)
     for i, tp in enumerate(timepoints):
-        print(f"{tp:<12.1f} {mean_abs_556nm[i]:<12.4f} {std_abs_556nm[i]:<12.4f} {cv_abs_556nm[i]:<12.2f} {mean_abs_428nm[i]:<12.4f} {std_abs_428nm[i]:<12.4f} {cv_abs_428nm[i]:<12.2f} {mean_ratio_428_556[i]:<12.4f} {std_ratio_428_556[i]:<12.4f} {cv_ratio_428_556[i]:<12.2f}")
+        print(f"{tp:<12.1f} {mean_abs_556nm[i]:<12.4f} {std_abs_556nm[i]:<12.4f} {cv_abs_556nm[i]:<12.2f} {mean_abs_428nm[i]:<12.4f} {std_abs_428nm[i]:<12.4f} {cv_abs_428nm[i]:<12.2f} {mean_ratio_556_428[i]:<12.4f} {std_ratio_556_428[i]:<12.4f} {cv_ratio_556_428[i]:<12.2f}")
     print("="*100)
 
 

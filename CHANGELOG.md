@@ -148,6 +148,16 @@
 - **SAFETY ENHANCED**: Proper position validation and bounds checking for all workflow positions
 - **FILES CREATED**: workflows/enhanced_SP_arm_position_program.py (extends original with position management)
 
+## [CALIBRATION CSV UPDATE] - 2026-03-17
+
+### FIXED: Adaptive Overaspirate Correction Now Persists to Calibration File
+- **Added** `_update_calibration_csv()` in `pipetting_data/embedded_calibration_validation.py`
+- After Stage 3 optimization, the winning `overaspirate_vol` is written back to `optimal_conditions_{liquid}.csv`
+- If the exact volume row already exists, only `overaspirate_vol` is updated; all other params unchanged
+- If the volume is new, a fully interpolated row is inserted (all numeric columns interpolated from surrounding volumes), then the file is re-sorted
+- Simulation mode prints what would be written without touching the file
+- **Files Modified**: `pipetting_data/embedded_calibration_validation.py`
+
 ## [MULTI-JOINT ROBOT ARM CONTROL] - 2026-03-16
 
 ### ENHANCED: Multi-Joint Robot Control System

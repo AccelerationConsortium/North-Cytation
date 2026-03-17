@@ -22,7 +22,7 @@ CYTATION_PROTOCOL_FILE = r"C:\Protocols\300_900_sweep.prt"
 SCHEDULE_FILE = "../utoronto_demo/status/degradation_vial_schedule.csv"
 
     # d. Simulate mode True or False
-SIMULATE = False #Set to True if you want to simulate the robot, False if you want to run it on the real robot
+SIMULATE = True #Set to True if you want to simulate the robot, False if you want to run it on the real robot
 
     # Configuration
 VALIDATE_LIQUIDS = False  # Set to True to run pipetting validation 
@@ -155,9 +155,7 @@ def safe_pipet(source_vial, dest_vial, volume, lash_e, parameters=None, liquid='
         lash_e.nr_robot.move_vial_to_location(vial_name=dest_vial, location='main_8mL_rack', location_index=5)
 
     if enable_conditioning:
-        # Convert volume from mL to µL for conditioning
-        conditioning_volume_ul = volume
-        condition_tip(lash_e, source_vial, conditioning_volume_ul)
+        condition_tip(lash_e, source_vial, max(volume * 1000, 10.0))
 
     lash_e.nr_robot.dispense_from_vial_into_vial(
         source_vial, dest_vial, volume, 
@@ -256,7 +254,7 @@ def create_samples_in_wellplate(lash_e,sample_name,first_well_index,well_volume=
     move_lid_to_storage(lash_e)
 
     lash_e.temp_controller.turn_off_stirring()
-    #lash_e.nr_robot.move_vial_to_location(vial_name=sample_name,location='clamp',location_index=0) <--- happens automatically
+    lash_e.nr_robot.move_vial_to_location(vial_name=sample_name, location='clamp', location_index=0)
 
     # Simple vial-to-wellplate transfer with custom parameters - one well at a time
     for i in range(replicates):
@@ -303,8 +301,9 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
 
     PLATE = "96 WELL PLATE"
 
-    # Pipette all measured samples from wells into waste
-    current_waste = check_and_switch_waste_vial(lash_e, waste_state)
+    # Pre-calculate total waste volume for entire wash and switch vial if needed before staging
+    total_wash_volume = (1 + solvent_repeats + acetone_repeats) * len(used_wells) * well_volume
+    current_waste = check_and_switch_waste_vial(lash_e, waste_state, volume_needed=total_wash_volume)
     move_lid_to_storage(lash_e)
 
 
@@ -383,18 +382,16 @@ def get_time(simulate,current_time=None):
         else:
             return current_time + 1
 
-def check_and_switch_waste_vial(lash_e, waste_state):
-    """Check if current waste vial is full and switch to next one if needed"""
+def check_and_switch_waste_vial(lash_e, waste_state, volume_needed=0.0):
+    """Check if current waste vial has capacity for volume_needed and switch if not"""
     current_waste = waste_state["current_waste_vial"]
     try:
         current_vol = lash_e.nr_robot.get_vial_info(current_waste, "vial_volume")
-        if current_vol > 7.0:  # Waste vial is full
-            # Switch to next waste vial
+        if current_vol + volume_needed > 7.0:  # Would exceed safe threshold
             waste_state["waste_index"] += 1
             new_waste_vial = f"waste_{waste_state['waste_index']}"
             waste_state["current_waste_vial"] = new_waste_vial
-            lash_e.logger.info(f"[info] Waste vial {current_waste} is full ({current_vol:.1f}mL), switching to {new_waste_vial}")
-            lash_e.logger.info(f"Switching from {current_waste} to {new_waste_vial} (was {current_vol:.1f}mL)")
+            lash_e.logger.info(f"Waste vial {current_waste} ({current_vol:.1f}mL + {volume_needed:.2f}mL needed), switching to {new_waste_vial}")
             return new_waste_vial
         else:
             return current_waste
@@ -450,7 +447,7 @@ def process_sample_spectral_data(output_dir, sample_name, logger=None):
                 logger.error(f"Error processing {sample_name}: {str(e)}")
             return False
 
-def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, solvent='2MeTHF'):
+def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, solvent='2MeTHF', waste_state=None):
   
     # g. Polymer dilution calculation:
     sample_volume = 2.0 # Total volume of each polymer sample (mL)
@@ -486,11 +483,12 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
     lash_e.logger.info("Calculated volumes for each sample:")
     lash_e.logger.info("%s", samples[[sample_col, 'acid_molar_excess', 'acid_volume']])
 
-    # k. Initialize waste vial management
-    waste_state = {
-        "waste_index": 0,  # Start with waste_0
-        "current_waste_vial": "waste_0"
-    }
+    # k. Initialize waste vial management (if not passed in from outer loop)
+    if waste_state is None:
+        waste_state = {
+            "waste_index": 0,
+            "current_waste_vial": "waste_0"
+        }
 
     # Select only the specified sample
     sample_name = f'sample_{i}'
@@ -661,7 +659,8 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
 # f. Initialize the workstation, which includes the robot, track, cytation and photoreactors
 lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_t8=True, workflow_globals=globals(), workflow_name='Degradation_serena')
 
+waste_state = {"waste_index": 0, "current_waste_vial": "waste_0"}
 for i in range(1, EXPERIMENT_REPEATS+1): 
-    degradation_workflow(lash_e, i, acid_type='TFA', solvent='heptane', acid_molar_excess=1000, water_volume=0.010)
+    degradation_workflow(lash_e, i, acid_type='TFA', solvent='heptane', acid_molar_excess=1000, water_volume=0.010, waste_state=waste_state)
 
 
