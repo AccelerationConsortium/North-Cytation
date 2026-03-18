@@ -4744,7 +4744,7 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     elif OPTIMIZE_METRIC == 'both':
         output_columns = ['ratio', 'turbidity_600']
         
-        # ADAPTIVE: Check if turbidity is essentially flat (≤0.05) - if so, ignore it
+        # ADAPTIVE: Check if turbidity is essentially flat (≤0.08) - if so, ignore it
         # Only check experimental wells, not controls (same as triangle recommender)
         if 'turbidity_600' in experiment_data_df.columns:
             # Filter to experimental wells only (same logic as triangle recommender)
@@ -4760,12 +4760,12 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
                 max_turbidity = turbidity_values.max()
                 print(f"DEBUG: Turbidity analysis ({data_description}) - max value: {max_turbidity:.4f}")
                 
-                if max_turbidity <= 0.05:
-                    print(f"⚠️  Turbidity is flat in {data_description} (max={max_turbidity:.4f} ≤ 0.05) - switching to ratio-only optimization")
+                if max_turbidity <= 0.08:
+                    print(f"⚠️  Turbidity is flat in {data_description} (max={max_turbidity:.4f} ≤ 0.08) - switching to ratio-only optimization")
                     print("   (This prevents baseline noise from being treated as significant variation)")
                     output_columns = ['ratio']  # Switch to ratio-only
                 else:
-                    print(f"✅ Turbidity shows variation in {data_description} (max={max_turbidity:.4f} > 0.05) - using both metrics")
+                    print(f"✅ Turbidity shows variation in {data_description} (max={max_turbidity:.4f} > 0.08) - using both metrics")
             else:
                 print(f"⚠️  No turbidity data available in {data_description} - switching to ratio-only optimization") 
                 output_columns = ['ratio']
