@@ -22,6 +22,9 @@ import numpy as np
 import os
 from datetime import datetime
 
+# Import embedded calibration validation
+from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
+
 # ========================================
 # CONFIGURATION SECTION
 # ========================================
@@ -140,12 +143,17 @@ def dispense_component_to_wells(lash_e, component_df, vial_name, liquid_type, we
     """
     Dispense a specific component from vial to multiple wellplate positions.
     Uses modern separate aspirate/dispense pattern with liquid parameter.
+    Includes vial movement from storage to working position and back.
     """
     if len(component_df) == 0:
         print(f"  No wells need {vial_name}")
         return
         
     print(f"  Dispensing {vial_name} to {len(component_df)} wells (liquid={liquid_type})")
+    
+    # Move vial from storage to working position
+    print(f"    Moving {vial_name} to working position...")
+    lash_e.nr_robot.move_vial_to_location(vial_name, "main_8mL_rack", 43)
     
     # Tip strategy: condition ethanol/water, change tip for glycerol every time
     if liquid_type == 'glycerol':
@@ -193,6 +201,71 @@ def dispense_component_to_wells(lash_e, component_df, vial_name, liquid_type, we
             print(f"    ERROR dispensing to well {well_idx}: {e}")
             if not SIMULATE:
                 raise
+    
+    # Move vial back to storage position
+    lash_e.nr_robot.remove_pipet()
+    print(f"    Moving {vial_name} back to storage...")
+    lash_e.nr_robot.return_vial_home(vial_name)
+
+# ========================================
+# CALIBRATION FUNCTION
+# ========================================
+
+def run_embedded_calibration(lash_e):
+    """Run embedded calibration for dye solutions using validate_pipetting_accuracy.
+    
+    Args:
+        lash_e: Lash_E coordinator instance
+        
+    Returns:
+        dict: Calibration results for each dye solution
+    """
+    print(f"\nRunning embedded calibration...")
+    cal_results = {}
+    
+    # Calibrate dye solutions using embedded validation
+    dye_calibrations = [
+        ("water_dye", "water"), 
+        ("ethanol_dye", "ethanol"),
+        ("glycerol_dye", "glycerol")
+    ]
+    
+    for source_vial, liquid_type in dye_calibrations:
+        print(f"Calibrating {source_vial} (liquid={liquid_type})")
+        
+        # Add tip conditioning for water and ethanol, but not glycerol
+        use_tip_conditioning = liquid_type in ['water', 'ethanol']
+        
+        try:
+            if use_tip_conditioning:
+                result = validate_pipetting_accuracy(
+                    lash_e=lash_e,
+                    source_vial=source_vial,
+                    destination_vial=source_vial,  # Self-calibration
+                    liquid_type=liquid_type,
+                    volumes_ml=[0.070, 0.100, 0.150, 0.200],  # 70, 100, 150, 200 μL
+                    replicates=3,
+                    condition_tip_enabled=True,
+                    conditioning_volume_ul=150
+                )
+            else:
+                # Glycerol: no tip conditioning
+                result = validate_pipetting_accuracy(
+                    lash_e=lash_e,
+                    source_vial=source_vial,
+                    destination_vial=source_vial,  # Self-calibration
+                    liquid_type=liquid_type,
+                    volumes_ml=[0.070, 0.100, 0.150, 0.200],  # 70, 100, 150, 200 μL
+                    replicates=3
+                )
+            cal_results[source_vial] = result
+            print(f"✓ {source_vial} calibration complete")
+        except Exception as e:
+            print(f"⚠️ {source_vial} calibration failed: {e}")
+            cal_results[source_vial] = {"error": str(e)}
+    
+    return cal_results
+
 
 # ========================================
 # MAIN WORKFLOW FUNCTION
@@ -208,6 +281,17 @@ def ilya_workflow_v2():
     
     # Initialize Lash_E coordinator
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
+    
+    # Load and display vial information
+    vial_data = pd.read_csv(INPUT_VIAL_STATUS_FILE)
+    print(f"\n=== VIAL SETUP ===")
+    print(vial_data[['vial_name', 'location', 'location_index', 'vial_volume', 'notes']].to_string(index=False))
+    
+    RUN_VALIDATION = True  # Set to False to skip embedded calibration validation
+
+    # Run embedded calibration before main workflow
+    if RUN_VALIDATION:
+        cal_results = run_embedded_calibration(lash_e)
              
     # Validate recipe data (before converting to mL)
     input_data = validate_recipe_data(input_data)
@@ -239,8 +323,16 @@ def ilya_workflow_v2():
             lash_e.nr_track.get_new_wellplate()
         
         # Set well indices for this round
-        input_data.index = wells
-        round_data = input_data.loc[wells].copy()
+        # Always use the same CSV data (wells 0-47) but map to different wellplate positions
+        csv_wells = range(0, 48)  # Always use CSV wells 0-47
+        round_data = input_data[input_data.index.isin(csv_wells)].copy()
+        
+        # Map CSV well indices to actual wellplate positions
+        if round_num == 2:
+            # For round 2, map CSV wells 0-47 to wellplate wells 48-95
+            wellplate_mapping = {i: i + 48 for i in range(48)}
+            round_data.index = [wellplate_mapping[i] for i in round_data.index]
+        # Rounds 1 and 3 use wells 0-47 as-is
         
         print(f"Round {round_num} data shape: {round_data.shape}")
         
@@ -289,13 +381,16 @@ def ilya_workflow_v2():
             )
             print(f"✓ Measurement complete for round {round_num}")
             
-            # Save measurement data
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"ilya_measurement_round{round_num}_{timestamp}.csv"
-            filepath = os.path.join("output", filename)
-            os.makedirs("output", exist_ok=True)
-            measurement_data.to_csv(filepath)
-            print(f"✓ Saved: {filename}")
+            # Save measurement data if valid
+            if measurement_data is not None:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"ilya_measurement_round{round_num}_{timestamp}.csv"
+                filepath = os.path.join("output", filename)
+                os.makedirs("output", exist_ok=True)
+                measurement_data.to_csv(filepath)
+                print(f"✓ Saved: {filename}")
+            else:
+                print(f"⚠️  No measurement data returned for round {round_num}")
             
         except Exception as e:
             print(f"⚠️  Measurement failed for round {round_num}: {e}")
@@ -318,13 +413,17 @@ def ilya_workflow_v2():
     print(f"Successfully completed {N_ROUNDS} rounds")
     print(f"Total wells processed: {N_ROUNDS * WELLS_PER_ROUND}")
     
-    # Generate summary report
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    print(f"\nWorkflow completed at: {timestamp}")
-    print(f"Simulation mode: {SIMULATE}")
-    
-    if SIMULATE:
-        print("NOTE: This was a simulation run - no actual liquid handling occurred")
+    # Display vial information at completion
+    print("\n=== VIAL INFORMATION ===")
+    # Display with all columns visible (no truncation)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    pd.set_option('display.max_colwidth', None)
+    print(lash_e.nr_robot.VIAL_DF.to_string(index=False))
+    # Reset display options
+    pd.reset_option('display.max_columns')
+    pd.reset_option('display.width') 
+    pd.reset_option('display.max_colwidth')
 
 # ========================================
 # EXECUTION SECTION

@@ -1,5 +1,14 @@
 # Changelog
 
+## [VIAL POSITIONING FIX] - 2026-03-18
+
+### CRITICAL BUG FIX: Invalid Vial Location
+- **FIXED**: `glycerol_dye` vial invalid location causing workflow failures
+- **ROOT CAUSE**: Vial at `location_index: 48` but `main_8mL_rack` only supports positions 0-47
+- **SOLUTION**: Moved `glycerol_dye` from position 48 → position 5
+- **IMPACT**: Workflow now correctly consumes `glycerol_dye` in wells 8-11, 20-23
+- **SYMPTOM RESOLVED**: Vial volumes now decrease as expected during workflow execution
+
 ## [X-Y COORDINATE CONTROL SYSTEM] - 2026-03-17
 
 ### MAJOR ENHANCEMENT: Intuitive X-Y Coordinate Robot Control
