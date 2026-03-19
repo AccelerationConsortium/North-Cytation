@@ -3,11 +3,10 @@ experiment:
   liquid: glycerol
   description: Testing calibration across 4 volumes
   volume_targets_ml:
-  - 0.400
-  - 0.200
+   - 0.200
   max_total_measurements: 96
-  max_measurements_first_volume: 70
-  num_screening_trials: 10
+  max_measurements_first_volume: 85
+  num_screening_trials: 15
   max_replicates_per_trial: 3
   two_point_calibration_replicates: 2
   simulate: false
@@ -23,7 +22,7 @@ calibration_parameters:
   overaspirate_vol:
     bounds:
     - 0.0
-    - 0.0075
+    - 0.050
     default: 0.004
     type: float
     description: Overaspiration volume for volume accuracy (mL)
@@ -32,7 +31,7 @@ calibration_parameters:
 hardware_parameters:
   aspirate_speed:
     bounds:
-    - 2
+    - 10
     - 30
     default: 10
     type: integer

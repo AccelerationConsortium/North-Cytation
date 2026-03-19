@@ -171,8 +171,9 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         constraints = []
         
         # North Robot tip volume constraint (same logic as hardware)
-        # Use 0.2 mL tips for volumes <= 150 µL, otherwise 1.0 mL tips
-        if target_volume_ml <= 0.15:  # 150 µL or less
+        # Use 0.2 mL tips for volumes < 200 µL, otherwise 1.0 mL tips
+        # Fixed: 200 µL exactly should use large tips to allow overaspiration
+        if target_volume_ml < 0.20:  # Less than 200 µL (not equal)
             tip_volume_ml = 0.2
         else:
             tip_volume_ml = 1.0

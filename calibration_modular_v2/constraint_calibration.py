@@ -141,7 +141,7 @@ class ConstraintCalibrator:
                 logger.warning(f"Two-point calibration failed due to impossible efficiency ({slope:.3f}uL/uL)")
                 logger.warning("Falling back to conservative single-point approach with 5% safety margins")
                 return self._calculate_conservative_fallback_bounds(
-                    target_volume_ml, low_point, high_point
+                    target_volume_ml, low_point, high_point, existing_trials
                 )
             
             # For moderately unrealistic efficiency, clamp to physically realistic range
@@ -249,7 +249,8 @@ class ConstraintCalibrator:
     def _calculate_conservative_fallback_bounds(self, 
                                               target_volume_ml: float,
                                               low_point: 'TwoPointCalibrationPoint', 
-                                              high_point: 'TwoPointCalibrationPoint') -> 'TwoPointCalibrationResult':
+                                              high_point: 'TwoPointCalibrationPoint',
+                                              existing_trials: List = None) -> 'TwoPointCalibrationResult':
         """
         Calculate conservative bounds when two-point calibration fails due to impossible efficiency.
         Uses averaged reference point with fixed efficiency assumption and 5% safety margins.
@@ -301,6 +302,27 @@ class ConstraintCalibrator:
         logger.info(f"Conservative bounds: [{min_overaspirate_ul:.1f}, {max_overaspirate_ul:.1f}]uL")
         logger.info(f"Optimal overaspirate: {optimal_overaspirate_ul:.1f}uL")
         
+        # Convert back to mL for bounds expansion
+        min_overaspirate_ml = min_overaspirate_ul / 1000
+        max_overaspirate_ml = max_overaspirate_ul / 1000
+        
+        # Expand bounds to include existing trial data (critical for screening data)
+        if existing_trials:
+            existing_overaspirate_values = [trial.parameters.overaspirate_vol for trial in existing_trials]
+            if existing_overaspirate_values:
+                existing_min = min(existing_overaspirate_values)
+                existing_max = max(existing_overaspirate_values)
+                
+                # Expand bounds to include existing data
+                original_min, original_max = min_overaspirate_ml, max_overaspirate_ml
+                min_overaspirate_ml = min(min_overaspirate_ml, existing_min)
+                max_overaspirate_ml = max(max_overaspirate_ml, existing_max)
+                
+                logger.info(f"CONSERVATIVE FALLBACK: Expanded bounds to include existing trials:")
+                logger.info(f"  Original conservative bounds: [{original_min*1000:.1f}, {original_max*1000:.1f}]uL")
+                logger.info(f"  Existing data range: [{existing_min*1000:.1f}, {existing_max*1000:.1f}]uL")
+                logger.info(f"  Final expanded bounds: [{min_overaspirate_ml*1000:.1f}, {max_overaspirate_ml*1000:.1f}]uL")
+        
         return TwoPointCalibrationResult(
             target_volume_ml=target_volume_ml,
             point_1=low_point,
@@ -308,8 +330,8 @@ class ConstraintCalibrator:
             volume_efficiency_ul_per_ul=conservative_efficiency,
             shortfall_ml=(target_volume_ml - avg_measured_ml),
             optimal_overaspirate_ml=optimal_overaspirate_ul / 1000,
-            min_overaspirate_ml=min_overaspirate_ul / 1000,
-            max_overaspirate_ml=max_overaspirate_ul / 1000,
+            min_overaspirate_ml=min_overaspirate_ml,
+            max_overaspirate_ml=max_overaspirate_ml,
             tolerance_range_ml=safety_margin_ul / 1000  # Convert back to mL
         )
     
