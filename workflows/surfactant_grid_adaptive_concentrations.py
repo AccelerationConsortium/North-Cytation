@@ -181,7 +181,7 @@ RECOMMENDER_TYPE = 'delaunay'  # Options: 'delaunay', 'bayesian' - choose algori
 
 # Turbidity filtering for unreliable ratio measurements
 TURBIDITY_FILTER_THRESHOLD = 0.2  # Above this turbidity, ratio measurements become unreliable
-HIGH_RATIO_THRESHOLD = 1.0        # Above this ratio value, measurements are invalid (ratios should be < 1.0)
+HIGH_RATIO_THRESHOLD = 0.95        # Above this ratio value, measurements are invalid (ratios should be < 1.0)
 FILTER_UNRELIABLE_RATIOS = True    # Set to True to exclude high-turbidity ratio data from recommender
 
 N_REPLICATES = 1
