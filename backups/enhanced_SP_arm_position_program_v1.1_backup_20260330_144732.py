@@ -119,8 +119,8 @@ def load_positions_from_system():
                 positions[name] = {
                     "description": name,
                     "gripper_cts": int(value[0]),
-                    "elbow_cts":   int(value[1]),  # API index 1 = elbow
-                    "shoulder_cts": int(value[2]), # API index 2 = shoulder
+                    "shoulder_cts": int(value[1]),
+                    "elbow_cts": int(value[2]),
                     "z_cts": int(value[3]),
                     "category": "single",
                     "locator_var": name,
@@ -133,9 +133,9 @@ def load_positions_from_system():
                     if isinstance(coords, list) and len(coords) == 4:
                         positions[f"{name}[{i}]"] = {
                             "description": f"{name} index {i}",
-                            "gripper_cts":  int(coords[0]),
-                            "elbow_cts":    int(coords[1]),  # API index 1 = elbow
-                            "shoulder_cts": int(coords[2]),  # API index 2 = shoulder
+                            "gripper_cts": int(coords[0]),
+                            "shoulder_cts": int(coords[1]),
+                            "elbow_cts": int(coords[2]),
                             "z_cts": int(coords[3]),
                             "category": name,
                             "locator_var": name,
@@ -285,10 +285,10 @@ class EnhancedRobotArmController:
 
                 # Get current positions for all axes
                 positions = self.robot.get_robot_positions()
-                self.current_gripper_angle  = self.robot.counts_to_rad(self.robot.GRIPPER,   positions[0])
-                self.current_elbow_angle    = self.robot.counts_to_rad(self.robot.ELBOW,     positions[1])  # index 1 = elbow
-                self.current_shoulder_angle = self.robot.counts_to_rad(self.robot.SHOULDER,  positions[2])  # index 2 = shoulder
-                self.current_z_position     = self.robot.counts_to_mm(self.robot.Z_AXIS,     positions[3])
+                self.current_gripper_angle = self.robot.counts_to_rad(self.robot.GRIPPER, positions[0])
+                self.current_shoulder_angle = self.robot.counts_to_rad(self.robot.SHOULDER, positions[1])  # index 1 = shoulder
+                self.current_elbow_angle = self.robot.counts_to_rad(self.robot.ELBOW, positions[2])        # index 2 = elbow
+                self.current_z_position = self.robot.counts_to_mm(self.robot.Z_AXIS, positions[3])
 
                 return True
 
@@ -411,13 +411,16 @@ class EnhancedRobotArmController:
                 self.gripper_is_open = False
                 
             def goto(self, position_list, wait=True):
-                """Move to absolute position [gripper, elbow, shoulder, z] per API."""
+                """Move to absolute position using counts [gripper, shoulder, elbow, z] (Locator.py format)."""
                 logger.info(f"SIMULATION: Moving to position {position_list}")
-                time.sleep(0.5)
-                self.gripper_angle_rad = position_list[0] / 1000.0  # index 0 = gripper
-                self.elbow_angle_rad   = position_list[1] / 1000.0  # index 1 = elbow
-                self.shoulder_angle_rad = position_list[2] / 1000.0 # index 2 = shoulder
-                self.z_position_mm     = position_list[3] / 100.0   # index 3 = z
+                time.sleep(0.5)  # Simulate movement time
+                
+                # Convert counts to internal values (simplified conversion)
+                # Format: [gripper, shoulder, elbow, z_axis] as per Locator.py
+                self.gripper_angle_rad = position_list[0] / 1000.0   # Mock conversion
+                self.shoulder_angle_rad = position_list[1] / 1000.0  # shoulder is index 1
+                self.elbow_angle_rad = position_list[2] / 1000.0     # elbow is index 2  
+                self.z_position_mm = position_list[3] / 100.0        # Mock conversion (100 counts = 1mm)
                 
                 # Apply limits
                 self.gripper_angle_rad = max(GRIPPER_MIN_RAD, min(GRIPPER_MAX_RAD, self.gripper_angle_rad))
@@ -448,12 +451,12 @@ class EnhancedRobotArmController:
                 return 0
                 
             def get_robot_positions(self):
-                """Return [gripper, elbow, shoulder, z] per API (same order as goto)."""
+                """Return current robot positions in Locator.py format [gripper, shoulder, elbow, z]."""
                 return [
-                    int(self.gripper_angle_rad * 1000),   # index 0 = gripper
-                    int(self.elbow_angle_rad * 1000),     # index 1 = elbow
-                    int(self.shoulder_angle_rad * 1000),  # index 2 = shoulder
-                    int(self.z_position_mm * 100)         # index 3 = z
+                    int(self.gripper_angle_rad * 1000),   # gripper (index 0)
+                    int(self.shoulder_angle_rad * 1000),  # shoulder (index 1)  
+                    int(self.elbow_angle_rad * 1000),     # elbow (index 2)
+                    int(self.z_position_mm * 100)         # z_axis (index 3)
                 ]
                 
             def counts_to_mm(self, axis, counts):
@@ -791,37 +794,40 @@ class EnhancedRobotArmController:
                 # SAFE TWO-STEP MOVEMENT to avoid collision with vials:
                 # Step 1: Move to safe Z height first if not already high enough
                 try:
-                    current_pos = self.robot.get_robot_positions()  # [gripper, elbow, shoulder, z]
+                    current_pos = self.robot.get_robot_positions()  # [gripper, shoulder, elbow, z]
                     current_z = current_pos[3]
                 except (AttributeError, IndexError):
+                    # If we can't get position, assume we need to go to safe height
                     current_z = SAFE_Z_HEIGHT_COUNTS + 1000
-                    current_pos = [0, 0, 0, current_z]
+                    current_pos = [0, 0, 0, current_z]  # Default safe position
                 
-                if current_z > SAFE_Z_HEIGHT_COUNTS:
+                if current_z > SAFE_Z_HEIGHT_COUNTS:  # Lower count = higher position
                     logger.info(f"Moving to safe Z height ({SAFE_Z_HEIGHT_COUNTS} counts) first")
                     safe_position = [
-                        current_pos[0],  # gripper unchanged
-                        current_pos[1],  # elbow unchanged
-                        current_pos[2],  # shoulder unchanged
-                        SAFE_Z_HEIGHT_COUNTS
+                        current_pos[0],  # Keep current gripper
+                        current_pos[1],  # Keep current shoulder  
+                        current_pos[2],  # Keep current elbow
+                        SAFE_Z_HEIGHT_COUNTS  # Move to safe height
                     ]
                     self.robot.goto(safe_position, wait=True)
                 
+                # Step 2: Move X-Y to target position while staying at safe height
                 logger.info(f"Moving to target X-Y position: {self.selected_position}")
                 safe_xy_position = [
                     position_data["gripper_cts"],
-                    position_data["elbow_cts"],    # index 1 = elbow
-                    position_data["shoulder_cts"], # index 2 = shoulder
-                    SAFE_Z_HEIGHT_COUNTS
+                    position_data["shoulder_cts"],  # shoulder comes second in Locator format
+                    position_data["elbow_cts"],     # elbow comes third in Locator format
+                    SAFE_Z_HEIGHT_COUNTS  # Stay at safe height
                 ]
                 self.robot.goto(safe_xy_position, wait=True)
                 
+                # Step 3: Finally lower to target Z position
                 logger.info(f"Lowering to target Z position ({position_data['z_cts']} counts)")
                 target_position = [
                     position_data["gripper_cts"],
-                    position_data["elbow_cts"],
-                    position_data["shoulder_cts"],
-                    position_data["z_cts"]
+                    position_data["shoulder_cts"],  
+                    position_data["elbow_cts"],     
+                    position_data["z_cts"]  # Final target Z
                 ]
                 self.robot.goto(target_position, wait=True)
                 logger.info(f"Successfully moved to {self.selected_position}")
@@ -1325,13 +1331,13 @@ class EnhancedRobotArmController:
         if not self.is_connected:
             return
         try:
-            # Current joint counts: get_robot_positions() -> [gripper, elbow, shoulder, z]
+            # Current joint counts: [gripper, shoulder, elbow, z] (Locator.py format)
             positions = self.robot.get_robot_positions()
-            gripper_cts, elbow_cts, shoulder_cts, z_cts = (
+            gripper_cts, shoulder_cts, elbow_cts, z_cts = (
                 positions[0], positions[1], positions[2], positions[3]
             )
 
-            # Current XY via FK: n9_fk(gripper, elbow, shoulder) per API
+            # Current XY via FK: n9_fk(gripper, elbow, shoulder)
             x, y, _ = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
             target_x = x + dx
             target_y = y + dy
@@ -1344,9 +1350,9 @@ class EnhancedRobotArmController:
                                           shoulder_preference=self.robot.SHOULDER_CENTER)
                 sol_o = self.robot.n9_ik(target_x, target_y,
                                           shoulder_preference=self.robot.SHOULDER_OUT)
-                # n9_ik returns (gripper, elbow, shoulder); goto expects [gripper, elbow, shoulder, z]
+                # n9_ik returns (gripper, elbow, shoulder); goto expects [gripper, shoulder, elbow, z]
                 chosen = sol_c if abs(sol_c[2] - shoulder_cts) <= abs(sol_o[2] - shoulder_cts) else sol_o
-                self.robot.goto([chosen[0], chosen[1], chosen[2], z_cts], wait=True)
+                self.robot.goto([chosen[0], chosen[2], chosen[1], z_cts], wait=True)
                 logger.info(f"IK XY move ({dx:+.1f}, {dy:+.1f})mm -> ({target_x:.1f}, {target_y:.1f})mm")
             else:
                 # Simulation: nudge shoulder for X, elbow for Y
@@ -1455,7 +1461,7 @@ class EnhancedRobotArmController:
             return
         try:
             positions = self.robot.get_robot_positions()
-            gripper_cts, elbow_cts, shoulder_cts, z_cts = (
+            gripper_cts, shoulder_cts, elbow_cts, z_cts = (
                 positions[0], positions[1], positions[2], positions[3]
             )
             x, y, _ = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
@@ -1516,8 +1522,8 @@ class EnhancedRobotArmController:
                                              shoulder_preference=self.robot.SHOULDER_OUT)
                     # Pick config closest to origin shoulder to stay consistent
                     chosen = sol_c if abs(sol_c[2] - shoulder_cts) <= abs(sol_o[2] - shoulder_cts) else sol_o
-                    # n9_ik returns (gripper, elbow, shoulder); goto expects [gripper, elbow, shoulder, z]
-                    entry = [int(chosen[0]), int(chosen[1]), int(chosen[2]), int(z_cts)]
+                    # n9_ik returns (gripper, elbow, shoulder); Locator format: [gripper, shoulder, elbow, z]
+                    entry = [int(chosen[0]), int(chosen[2]), int(chosen[1]), int(z_cts)]
                     entries.append((col, row, entry))
                 except Exception as e:
                     ik_errors.append(f"col={col}, row={row}: {e}")
@@ -1528,7 +1534,7 @@ class EnhancedRobotArmController:
             f"# Grid: {n_cols} cols x {n_rows} rows",
             f"# x_offset={x_offset}mm per col, y_offset={y_offset}mm per row",
             f"# Origin: X={x0:.1f}mm, Y={y0:.1f}mm",
-            f"# Format: [gripper, elbow, shoulder, z]  (API convention, same as goto)",
+            f"# Format: [gripper, shoulder, elbow, z]  (Locator.py convention)",
             f"my_grid = [",
         ]
         for i, (col, row, pos) in enumerate(entries):
