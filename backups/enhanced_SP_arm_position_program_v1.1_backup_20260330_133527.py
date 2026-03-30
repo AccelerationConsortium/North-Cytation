@@ -475,296 +475,284 @@ class EnhancedRobotArmController:
     def create_gui(self):
         """Create the enhanced GUI window with position management."""
         self.root = tk.Tk()
-        self.root.title("North Robot Arm Position Control")
-        self.root.geometry("1100x740")
+        self.root.title("Enhanced North Robot Arm Position Control")
+        self.root.geometry("750x900")
         self.root.resizable(True, True)
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-
-        main_frame = ttk.Frame(self.root, padding="10")
+        
+        # Set up the GUI layout
+        main_frame = ttk.Frame(self.root, padding="20")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(1, weight=1)
-
-        # ── Title (full width) ──────────────────────────────────────────────
-        ttk.Label(main_frame, text="North Robot Arm Position Control",
-                  font=("Arial", 14, "bold")).grid(
-            row=0, column=0, columnspan=2, pady=(0, 8))
-
-        # ── Left column ────────────────────────────────────────────────────
-        left_frame = ttk.Frame(main_frame)
-        left_frame.grid(row=1, column=0, sticky=(tk.N, tk.W, tk.E), padx=(0, 8))
-        left_frame.columnconfigure(0, weight=1)
-
-        # Right column
-        right_frame = ttk.Frame(main_frame)
-        right_frame.grid(row=1, column=1, sticky=(tk.N, tk.W, tk.E))
-        right_frame.columnconfigure(0, weight=1)
-
-        # ── LEFT: Connection Status ─────────────────────────────────────────
-        status_frame = ttk.LabelFrame(left_frame, text="Connection Status", padding="8")
-        status_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        
+        # Title
+        title_label = ttk.Label(main_frame, text="Enhanced North Robot Arm Control", 
+                               font=("Arial", 16, "bold"))
+        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
+        
+        # Status section
+        status_frame = ttk.LabelFrame(main_frame, text="Connection Status", padding="10")
+        status_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        
         self.status_label = ttk.Label(status_frame, text="Disconnected", foreground="red")
-        self.status_label.pack(anchor=tk.W)
-
-        # ── LEFT: Position Selection (2 dropdowns) ─────────────────────────
-        pos_sel_frame = ttk.LabelFrame(left_frame, text="Position Selection", padding="8")
-        pos_sel_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-
-        # Build position groups: locator_var -> [full_key, ...]
-        self.position_groups = {}
-        for key, data in self.workflow_positions.items():
-            var = data['locator_var']
-            self.position_groups.setdefault(var, []).append(key)
-        obj_names = sorted(self.position_groups.keys())
-
-        obj_row = ttk.Frame(pos_sel_frame)
-        obj_row.pack(fill=tk.X, pady=2)
-        ttk.Label(obj_row, text="Object:", width=7).pack(side=tk.LEFT)
-        self.position_object_dropdown = ttk.Combobox(obj_row, values=obj_names,
-                                                      state="readonly", width=22)
-        self.position_object_dropdown.pack(side=tk.LEFT, padx=(4, 0))
-        self.position_object_dropdown.bind('<<ComboboxSelected>>',
-                                           self.on_position_object_selected)
-
-        idx_row = ttk.Frame(pos_sel_frame)
-        idx_row.pack(fill=tk.X, pady=2)
-        ttk.Label(idx_row, text="Index:", width=7).pack(side=tk.LEFT)
-        self.position_dropdown = ttk.Combobox(idx_row, values=[], state="readonly", width=22)
-        self.position_dropdown.pack(side=tk.LEFT, padx=(4, 6))
+        self.status_label.grid(row=0, column=0, sticky=tk.W)
+        
+        # Position Selection section
+        position_select_frame = ttk.LabelFrame(main_frame, text="Position Selection", padding="10")
+        position_select_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        ttk.Label(position_select_frame, text="Select Workflow Position:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        
+        # Position dropdown
+        position_names = list(self.workflow_positions.keys())
+        self.position_dropdown = ttk.Combobox(position_select_frame, values=position_names, 
+                                            state="readonly", width=30)
+        self.position_dropdown.grid(row=0, column=1, padx=(10, 5), pady=2)
         self.position_dropdown.bind('<<ComboboxSelected>>', self.on_position_selected)
-        ttk.Button(idx_row, text="Go To",
-                   command=self.goto_selected_position).pack(side=tk.LEFT)
-
-        self.position_description_label = ttk.Label(pos_sel_frame,
-            text="Select an object then an index",
-            font=("Arial", 9), foreground="gray")
-        self.position_description_label.pack(anchor=tk.W, pady=(4, 0))
-
-        # ── LEFT: Current Position ──────────────────────────────────────────
-        pos_frame = ttk.LabelFrame(left_frame, text="Current Position", padding="8")
-        pos_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-
-        self.z_position_label = ttk.Label(pos_frame, text="Z: Unknown")
+        
+        # Go to position button
+        goto_button = ttk.Button(position_select_frame, text="Go To Position", 
+                                command=self.goto_selected_position)
+        goto_button.grid(row=0, column=2, padx=(5, 0), pady=2)
+        
+        # Position description
+        self.position_description_label = ttk.Label(position_select_frame, text="Select a position to see description",
+                                                   font=("Arial", 9), foreground="gray")
+        self.position_description_label.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
+        
+        # Current Position section
+        position_frame = ttk.LabelFrame(main_frame, text="Current Joint Positions", padding="10")
+        position_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        self.z_position_label = ttk.Label(position_frame, text="Z-Axis: Unknown", 
+                                         font=("Arial", 10))
         self.z_position_label.grid(row=0, column=0, sticky=tk.W)
-        self.shoulder_position_label = ttk.Label(pos_frame, text="Shoulder: Unknown")
-        self.shoulder_position_label.grid(row=0, column=1, sticky=tk.W, padx=(12, 0))
-        self.elbow_position_label = ttk.Label(pos_frame, text="Elbow: Unknown")
-        self.elbow_position_label.grid(row=1, column=0, sticky=tk.W)
-        self.gripper_position_label = ttk.Label(pos_frame, text="Gripper: Unknown")
-        self.gripper_position_label.grid(row=1, column=1, sticky=tk.W, padx=(12, 0))
-        self.gripper_status_label = ttk.Label(pos_frame, text="Gripper: Closed",
-                                              font=("Arial", 9, "bold"))
-        self.gripper_status_label.grid(row=2, column=0, columnspan=2, sticky=tk.W)
-
-        # ── LEFT: Robot Controls ────────────────────────────────────────────
-        control_frame = ttk.LabelFrame(left_frame, text="Robot Controls", padding="8")
-        control_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-
-        self.home_button = ttk.Button(control_frame, text="HOME ROBOT",
-                                      command=self.home_robot, style="Accent.TButton")
-        self.home_button.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 6))
-
-        ttk.Label(control_frame, text="Z:").grid(row=1, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="▲ UP",
-                   command=self.move_up).grid(row=1, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="▼ DOWN",
-                   command=self.move_down).grid(row=1, column=2, padx=2, sticky=(tk.W, tk.E))
-
-        ttk.Label(control_frame, text="X:").grid(row=2, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="← -X",
-                   command=self.move_x_left).grid(row=2, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="→ +X",
-                   command=self.move_x_right).grid(row=2, column=2, padx=2, sticky=(tk.W, tk.E))
-
-        ttk.Label(control_frame, text="Y:").grid(row=3, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="↓ -Y",
-                   command=self.move_y_back).grid(row=3, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="↑ +Y",
-                   command=self.move_y_forward).grid(row=3, column=2, padx=2, sticky=(tk.W, tk.E))
-
-        ttk.Label(control_frame, text="Grip:").grid(row=4, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="✋ OPEN", command=self.open_gripper,
-                   style="Success.TButton").grid(row=4, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="👊 CLOSE", command=self.close_gripper,
-                   style="Warning.TButton").grid(row=4, column=2, padx=2, sticky=(tk.W, tk.E))
-
-        ttk.Label(control_frame, text="Pipet:").grid(row=5, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="GET LARGE",
-                   command=self.get_pipet_large).grid(row=5, column=1, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="GET SMALL",
-                   command=self.get_pipet_small).grid(row=5, column=2, padx=2, sticky=(tk.W, tk.E))
-        ttk.Button(control_frame, text="REMOVE PIPET",
-                   command=self.remove_pipet_action).grid(
-            row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
-
-        control_frame.columnconfigure(1, weight=1)
-        control_frame.columnconfigure(2, weight=1)
-
-        # ── RIGHT: Position Modifications ──────────────────────────────────
-        modifications_frame = ttk.LabelFrame(right_frame, text="Position Modifications", padding="8")
-        modifications_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-
-        self.modifications_display = tk.Text(modifications_frame, height=4, width=46,
-                                             font=("Consolas", 8))
-        self.modifications_display.pack(fill=tk.X, pady=(0, 5))
-        self.modifications_display.insert(tk.END,
-            "No modifications yet. Select a position and make adjustments.")
+        
+        self.shoulder_position_label = ttk.Label(position_frame, text="Shoulder: Unknown", 
+                                                font=("Arial", 10))
+        self.shoulder_position_label.grid(row=1, column=0, sticky=tk.W)
+        
+        self.elbow_position_label = ttk.Label(position_frame, text="Elbow: Unknown", 
+                                             font=("Arial", 10))
+        self.elbow_position_label.grid(row=2, column=0, sticky=tk.W)
+        
+        self.gripper_position_label = ttk.Label(position_frame, text="Gripper: Unknown", 
+                                               font=("Arial", 10))
+        self.gripper_position_label.grid(row=3, column=0, sticky=tk.W)
+        
+        self.gripper_status_label = ttk.Label(position_frame, text="Gripper: Closed", 
+                                             font=("Arial", 10, "bold"))
+        self.gripper_status_label.grid(row=4, column=0, sticky=tk.W)
+        
+        # Position Modifications section
+        modifications_frame = ttk.LabelFrame(main_frame, text="Position Modifications", padding="10")
+        modifications_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # Text widget to show modifications
+        self.modifications_display = tk.Text(modifications_frame, height=4, width=70, 
+                                           font=("Consolas", 8))
+        self.modifications_display.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 5))
+        self.modifications_display.insert(tk.END, "No modifications yet. Select a position and make adjustments.")
         self.modifications_display.config(state=tk.DISABLED)
-
-        name_row = ttk.Frame(modifications_frame)
-        name_row.pack(fill=tk.X, pady=(0, 4))
-        ttk.Label(name_row, text="Name:").pack(side=tk.LEFT)
-        self.custom_position_name = ttk.Entry(name_row, width=24)
-        self.custom_position_name.pack(side=tk.LEFT, padx=(6, 0), fill=tk.X, expand=True)
+        
+        # Custom position name input
+        name_frame = ttk.Frame(modifications_frame)
+        name_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(5, 5))
+        ttk.Label(name_frame, text="Position Name:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        self.custom_position_name = ttk.Entry(name_frame, width=25, font=("Arial", 9))
+        self.custom_position_name.grid(row=0, column=1, padx=(0, 10), sticky=(tk.W, tk.E))
         self.custom_position_name.insert(0, "my_position_1")
-
-        btn_row1 = ttk.Frame(modifications_frame)
-        btn_row1.pack(fill=tk.X, pady=2)
-        ttk.Button(btn_row1, text="Save w/ Name",
-                   command=self.save_custom_position).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(btn_row1, text="Save Temp",
-                   command=self.save_temporary_position).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(btn_row1, text="Reset",
-                   command=self.reset_to_original_position).pack(side=tk.LEFT)
-
-        btn_row2 = ttk.Frame(modifications_frame)
-        btn_row2.pack(fill=tk.X, pady=2)
-        ttk.Button(btn_row2, text="View Saved",
-                   command=self.show_saved_positions_window).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(btn_row2, text="Clear Temp",
-                   command=self.clear_temporary_positions).pack(side=tk.LEFT)
-
-        # ── RIGHT: Movement Settings ────────────────────────────────────────
-        increment_frame = ttk.LabelFrame(right_frame, text="Movement Settings", padding="8")
-        increment_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-
-        step_row = ttk.Frame(increment_frame)
-        step_row.pack(fill=tk.X, pady=2)
-        ttk.Label(step_row, text="Step (mm):").pack(side=tk.LEFT)
-        self.z_increment_entry = ttk.Entry(step_row, width=7)
-        self.z_increment_entry.pack(side=tk.LEFT, padx=(6, 4))
+        
+        # Modification buttons
+        button_frame = ttk.Frame(modifications_frame)
+        button_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(5, 0))
+        
+        save_custom_button = ttk.Button(button_frame, text="💾 Save with Custom Name", 
+                                       command=self.save_custom_position)
+        save_custom_button.grid(row=0, column=0, padx=(0, 5), pady=2)
+        
+        save_temp_button = ttk.Button(button_frame, text="Save as Temp", 
+                                     command=self.save_temporary_position)
+        save_temp_button.grid(row=0, column=1, padx=(0, 5), pady=2)
+        
+        reset_button = ttk.Button(button_frame, text="Reset to Original", 
+                                 command=self.reset_to_original_position)
+        reset_button.grid(row=0, column=2, padx=(0, 5), pady=2)
+        
+        view_saved_button = ttk.Button(button_frame, text="📋 View Saved", 
+                                      command=self.show_saved_positions_window)
+        view_saved_button.grid(row=1, column=0, padx=(0, 5), pady=2)
+        
+        clear_temp_button = ttk.Button(button_frame, text="Clear All Temp", 
+                                      command=self.clear_temporary_positions)
+        clear_temp_button.grid(row=1, column=1, pady=2)
+        
+        # Configure grid weights for name frame
+        name_frame.columnconfigure(1, weight=1)
+        
+        # Movement Settings section
+        increment_frame = ttk.LabelFrame(main_frame, text="Movement Settings", padding="10")
+        increment_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # Z-axis increment
+        z_inc_frame = ttk.Frame(increment_frame)
+        z_inc_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=2)
+        ttk.Label(z_inc_frame, text="Movement Step (mm):").grid(row=0, column=0, sticky=tk.W)
+        self.z_increment_entry = ttk.Entry(z_inc_frame, width=8)
+        self.z_increment_entry.grid(row=0, column=1, padx=(10, 5))
         self.z_increment_entry.insert(0, str(DEFAULT_MOVE_INCREMENT_MM))
-        ttk.Button(step_row, text="Set", command=self.update_z_increment).pack(side=tk.LEFT)
-
-        rot_row = ttk.Frame(increment_frame)
-        rot_row.pack(fill=tk.X, pady=2)
-        ttk.Label(rot_row, text="Rot (rad):").pack(side=tk.LEFT)
-        self.rad_increment_entry = ttk.Entry(rot_row, width=7)
-        self.rad_increment_entry.pack(side=tk.LEFT, padx=(6, 4))
+        ttk.Button(z_inc_frame, text="Set", command=self.update_z_increment).grid(row=0, column=2, padx=2)
+        
+        # Rotational increment
+        rad_inc_frame = ttk.Frame(increment_frame)
+        rad_inc_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=2)
+        ttk.Label(rad_inc_frame, text="Rotation Step (rad):").grid(row=0, column=0, sticky=tk.W)
+        self.rad_increment_entry = ttk.Entry(rad_inc_frame, width=8)
+        self.rad_increment_entry.grid(row=0, column=1, padx=(10, 5))
         self.rad_increment_entry.insert(0, str(DEFAULT_MOVE_INCREMENT_RAD))
-        ttk.Button(rot_row, text="Set", command=self.update_rad_increment).pack(side=tk.LEFT)
-
-        self.increment_status_label = ttk.Label(increment_frame, text="Ready",
-                                                foreground="green")
-        self.increment_status_label.pack(anchor=tk.W, pady=(4, 0))
-
-        # ── RIGHT: Export ───────────────────────────────────────────────────
-        export_frame = ttk.LabelFrame(right_frame, text="Export Position Data", padding="8")
-        export_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-
-        ttk.Button(export_frame, text="Export CSV",
-                   command=self.export_saved_positions_csv).grid(row=0, column=0, padx=(0, 4), pady=2)
-        ttk.Button(export_frame, text="Copy Coords",
-                   command=self.copy_current_position).grid(row=0, column=1, padx=(0, 4), pady=2)
-        ttk.Button(export_frame, text="Export History",
-                   command=self.export_session_history).grid(row=0, column=2, pady=2)
-        ttk.Button(export_frame, text="Open Temp Folder",
-                   command=self.open_temp_folder).grid(row=1, column=0, padx=(0, 4), pady=2)
-        ttk.Button(export_frame, text="Export JSON",
-                   command=self.export_all_positions_json).grid(row=1, column=1, pady=2)
-
-        # ── BOTTOM: Grid Array Generator (full width) ───────────────────────
+        ttk.Button(rad_inc_frame, text="Set", command=self.update_rad_increment).grid(row=0, column=2, padx=2)
+        
+        # Status for increments
+        self.increment_status_label = ttk.Label(increment_frame, text="Ready", foreground="green")
+        self.increment_status_label.grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
+        
+        # Controls section
+        control_frame = ttk.LabelFrame(main_frame, text="Robot Controls", padding="10")
+        control_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # Home button
+        self.home_button = ttk.Button(control_frame, text="🏠 HOME ROBOT", 
+                                     command=self.home_robot, style="Accent.TButton")
+        self.home_button.grid(row=0, column=0, columnspan=3, pady=(0, 10), sticky=(tk.W, tk.E))
+        
+        # Movement buttons (condensed layout)
+        ttk.Label(control_frame, text="Z-Axis:").grid(row=1, column=0, sticky=tk.W)
+        ttk.Button(control_frame, text="▲ UP", command=self.move_up).grid(row=1, column=1, padx=2)
+        ttk.Button(control_frame, text="▼ DOWN", command=self.move_down).grid(row=1, column=2, padx=2)
+        
+        ttk.Label(control_frame, text="X-Axis:").grid(row=2, column=0, sticky=tk.W)
+        ttk.Button(control_frame, text="← LEFT (-X)", command=self.move_x_left).grid(row=2, column=1, padx=2)
+        ttk.Button(control_frame, text="→ RIGHT (+X)", command=self.move_x_right).grid(row=2, column=2, padx=2)
+        
+        ttk.Label(control_frame, text="Y-Axis:").grid(row=3, column=0, sticky=tk.W)
+        ttk.Button(control_frame, text="↓ BACK (-Y)", command=self.move_y_back).grid(row=3, column=1, padx=2)
+        ttk.Button(control_frame, text="↑ FORWARD (+Y)", command=self.move_y_forward).grid(row=3, column=2, padx=2)
+        
+        ttk.Label(control_frame, text="Gripper:").grid(row=4, column=0, sticky=tk.W)
+        ttk.Button(control_frame, text="✋ OPEN", command=self.open_gripper, 
+                  style="Success.TButton").grid(row=4, column=1, padx=2)
+        ttk.Button(control_frame, text="👊 CLOSE", command=self.close_gripper, 
+                  style="Warning.TButton").grid(row=4, column=2, padx=2)
+        
+        ttk.Label(control_frame, text="Pipet:").grid(row=5, column=0, sticky=tk.W)
+        ttk.Button(control_frame, text="GET LARGE", command=self.get_pipet_large).grid(row=5, column=1, padx=2)
+        ttk.Button(control_frame, text="GET SMALL", command=self.get_pipet_small).grid(row=5, column=2, padx=2)
+        ttk.Button(control_frame, text="REMOVE PIPET", command=self.remove_pipet_action).grid(
+            row=6, column=0, columnspan=3, pady=(2, 0), sticky=(tk.W, tk.E))
+        
+        # Configuration section
+        if hasattr(self, 'create_config_frame'):
+            self.create_config_frame(main_frame)
+        
+        # Export section
+        export_frame = ttk.LabelFrame(main_frame, text="Export Position Data", padding="10")
+        export_frame.grid(row=8, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        ttk.Button(export_frame, text="📊 Export Saved Positions (CSV)", 
+                  command=self.export_saved_positions_csv).grid(row=0, column=0, padx=(0, 5))
+        ttk.Button(export_frame, text="📋 Copy Position Coordinates", 
+                  command=self.copy_current_position).grid(row=0, column=1, padx=(0, 5))  
+        ttk.Button(export_frame, text="📄 Export Session History", 
+                  command=self.export_session_history).grid(row=0, column=2, padx=(0, 5))
+        ttk.Button(export_frame, text="🗂️ Open Temp Folder", 
+                  command=self.open_temp_folder).grid(row=1, column=0, padx=(0, 5), pady=(5, 0))
+        ttk.Button(export_frame, text="📤 Export All Positions (JSON)", 
+                  command=self.export_all_positions_json).grid(row=1, column=1, padx=(0, 5), pady=(5, 0))
+        
+        # Grid Array Generator section
         grid_gen_frame = ttk.LabelFrame(main_frame, text="Grid Array Generator", padding="10")
-        grid_gen_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(8, 0))
-
-        self.grid_origin_label = ttk.Label(grid_gen_frame, text="Origin: not set",
-                                           foreground="gray")
-        self.grid_origin_label.grid(row=0, column=0, columnspan=7, sticky=tk.W, pady=(0, 5))
-
-        ttk.Label(grid_gen_frame, text="Load config:").grid(row=1, column=0, sticky=tk.W)
-        obj_names_grid = [n for n, c in self.grid_configs.items() if c['num_cols'] is not None]
-        self.grid_object_dropdown = ttk.Combobox(grid_gen_frame, values=obj_names_grid,
-                                                  state="readonly", width=20)
-        self.grid_object_dropdown.grid(row=1, column=1, padx=(4, 16))
+        grid_gen_frame.grid(row=9, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        self.grid_origin_label = ttk.Label(grid_gen_frame, text="Origin: not set", foreground="gray")
+        self.grid_origin_label.grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=(0, 5))
+        
+        # Load config from object row
+        load_cfg_frame = ttk.Frame(grid_gen_frame)
+        load_cfg_frame.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=(0, 6))
+        ttk.Label(load_cfg_frame, text="Load config from:").grid(row=0, column=0, sticky=tk.W)
+        obj_names = [n for n, c in self.grid_configs.items() if c['num_cols'] is not None]
+        self.grid_object_dropdown = ttk.Combobox(load_cfg_frame, values=obj_names,
+                                                  state="readonly", width=22)
+        self.grid_object_dropdown.grid(row=0, column=1, padx=(8, 0))
         self.grid_object_dropdown.bind('<<ComboboxSelected>>', self.on_grid_object_selected)
-
+        
         ttk.Button(grid_gen_frame, text="Set Origin (Current Position)",
-                   command=self.set_grid_origin).grid(row=1, column=2, columnspan=5,
-                   sticky=(tk.W, tk.E), padx=(0, 0))
-
-        ttk.Label(grid_gen_frame, text="X offset (mm):").grid(row=2, column=0, sticky=tk.W, pady=(6, 0))
-        self.grid_x_offset_entry = ttk.Entry(grid_gen_frame, width=7)
-        self.grid_x_offset_entry.grid(row=2, column=1, padx=(4, 16), pady=(6, 0))
+                   command=self.set_grid_origin).grid(row=2, column=0, columnspan=4,
+                   sticky=(tk.W, tk.E), pady=(0, 8))
+        
+        ttk.Label(grid_gen_frame, text="X offset (mm):").grid(row=3, column=0, sticky=tk.W)
+        self.grid_x_offset_entry = ttk.Entry(grid_gen_frame, width=8)
+        self.grid_x_offset_entry.grid(row=3, column=1, padx=(5, 15))
         self.grid_x_offset_entry.insert(0, "9.0")
-
-        ttk.Label(grid_gen_frame, text="Y offset (mm):").grid(row=2, column=2, sticky=tk.W, pady=(6, 0))
-        self.grid_y_offset_entry = ttk.Entry(grid_gen_frame, width=7)
-        self.grid_y_offset_entry.grid(row=2, column=3, padx=(4, 16), pady=(6, 0))
+        
+        ttk.Label(grid_gen_frame, text="Y offset (mm):").grid(row=3, column=2, sticky=tk.W)
+        self.grid_y_offset_entry = ttk.Entry(grid_gen_frame, width=8)
+        self.grid_y_offset_entry.grid(row=3, column=3, padx=(5, 0))
         self.grid_y_offset_entry.insert(0, "9.0")
-
-        ttk.Label(grid_gen_frame, text="Cols:").grid(row=2, column=4, sticky=tk.W, pady=(6, 0))
-        self.grid_cols_entry = ttk.Entry(grid_gen_frame, width=5)
-        self.grid_cols_entry.grid(row=2, column=5, padx=(4, 12), pady=(6, 0))
+        
+        ttk.Label(grid_gen_frame, text="Columns:").grid(row=4, column=0, sticky=tk.W, pady=(5, 0))
+        self.grid_cols_entry = ttk.Entry(grid_gen_frame, width=8)
+        self.grid_cols_entry.grid(row=4, column=1, padx=(5, 15), pady=(5, 0))
         self.grid_cols_entry.insert(0, "8")
-
-        ttk.Label(grid_gen_frame, text="Rows:").grid(row=2, column=6, sticky=tk.W, pady=(6, 0))
-        self.grid_rows_entry = ttk.Entry(grid_gen_frame, width=5)
-        self.grid_rows_entry.grid(row=2, column=7, padx=(4, 0), pady=(6, 0))
+        
+        ttk.Label(grid_gen_frame, text="Rows:").grid(row=4, column=2, sticky=tk.W, pady=(5, 0))
+        self.grid_rows_entry = ttk.Entry(grid_gen_frame, width=8)
+        self.grid_rows_entry.grid(row=4, column=3, padx=(5, 0), pady=(5, 0))
         self.grid_rows_entry.insert(0, "6")
-
+        
         ttk.Button(grid_gen_frame, text="Generate Grid Array",
-                   command=self.generate_grid_array).grid(
-            row=3, column=0, columnspan=8, sticky=(tk.W, tk.E), pady=(6, 4))
-
-        self.grid_output_text = tk.Text(grid_gen_frame, height=6, font=("Consolas", 8),
-                                        state=tk.DISABLED)
-        self.grid_output_text.grid(row=4, column=0, columnspan=7, sticky=(tk.W, tk.E))
+                   command=self.generate_grid_array).grid(row=5, column=0, columnspan=4,
+                   sticky=(tk.W, tk.E), pady=(8, 5))
+        
+        self.grid_output_text = tk.Text(grid_gen_frame, height=7, width=70,
+                                        font=("Consolas", 8), state=tk.DISABLED)
+        self.grid_output_text.grid(row=6, column=0, columnspan=4, sticky=(tk.W, tk.E))
         grid_scroll = ttk.Scrollbar(grid_gen_frame, orient=tk.VERTICAL,
                                     command=self.grid_output_text.yview)
-        grid_scroll.grid(row=4, column=7, sticky=(tk.N, tk.S))
+        grid_scroll.grid(row=6, column=4, sticky=(tk.N, tk.S))
         self.grid_output_text.config(yscrollcommand=grid_scroll.set)
-
+        
         ttk.Button(grid_gen_frame, text="Copy Output to Clipboard",
-                   command=self.copy_grid_output).grid(
-            row=5, column=0, columnspan=8, sticky=(tk.W, tk.E), pady=(4, 0))
-
+                   command=self.copy_grid_output).grid(row=7, column=0, columnspan=4,
+                   sticky=(tk.W, tk.E), pady=(5, 0))
+        
         grid_gen_frame.columnconfigure(1, weight=1)
         grid_gen_frame.columnconfigure(3, weight=1)
-
-        # ── Styles, bindings ────────────────────────────────────────────────
+        
+        # Configure styles
         style = ttk.Style()
         style.configure("Accent.TButton", foreground="blue")
         style.configure("Success.TButton", foreground="green")
         style.configure("Warning.TButton", foreground="orange")
-
+        
+        # Bind keyboard events
         self.root.bind('<Key>', self.on_key_press)
         self.root.focus_set()
+        
+        # Window close event
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-
-    def on_position_object_selected(self, event):
-        """Populate the index dropdown when an object is chosen."""
-        obj = self.position_object_dropdown.get()
-        keys = self.position_groups.get(obj, [])
-        # Sort numerically by locator_index so [0],[1]... appear in order
-        keys_sorted = sorted(
-            keys,
-            key=lambda k: (self.workflow_positions[k].get('locator_index') or 0)
-        )
-        self.position_dropdown['values'] = keys_sorted
-        self.position_dropdown.set('')
-        self.position_description_label.config(
-            text=f"{len(keys_sorted)} position(s) in '{obj}'", foreground="gray")
-        self.selected_position = None
-
+        
+        # Configure grid weights
+        main_frame.columnconfigure(0, weight=1)
+        control_frame.columnconfigure(0, weight=1)
+        control_frame.columnconfigure(1, weight=1)
+        control_frame.columnconfigure(2, weight=1)
+        
     def on_position_selected(self, event):
-        """Handle index dropdown selection."""
+        """Handle position dropdown selection."""
         position_name = self.position_dropdown.get()
         if position_name in self.workflow_positions:
             position_data = self.workflow_positions[position_name]
             description = f"{position_data['description']} (Category: {position_data['category']})"
-            self.position_description_label.config(text=description, foreground="black")
+            self.position_description_label.config(text=description)
             self.selected_position = position_name
             
     def goto_selected_position(self):
