@@ -121,6 +121,14 @@ class ExperimentConfig:
         volumes = self._config['experiment']['volume_targets_ml']
         if not volumes or not isinstance(volumes, list):
             raise ValueError("Must specify at least one target volume")
+        
+        # Convert string volumes to float and validate
+        try:
+            volumes = [float(v) for v in volumes]
+            self._config['experiment']['volume_targets_ml'] = volumes  # Store converted values
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"All target volumes must be valid numbers: {e}")
+            
         if any(v <= 0 for v in volumes):
             raise ValueError("All target volumes must be positive")
             

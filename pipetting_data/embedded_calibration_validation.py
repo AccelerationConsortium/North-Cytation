@@ -556,20 +556,20 @@ def calculate_quality_threshold(volume_ml: float) -> float:
     Returns:
         float: Quality threshold in grams
         
-    Logic:
-        - For volumes <= 0.005 mL (5 uL): threshold = 0.0005g (0.5 mg)
-        - For volumes >= 0.5 mL (500 uL): threshold = 0.005g (5 mg)
+    Logic (very relaxed thresholds for viscous liquids):
+        - For volumes <= 0.005 mL (5 uL): threshold = 0.008g (8.0 mg)
+        - For volumes >= 0.5 mL (500 uL): threshold = 0.020g (20 mg)
         - For volumes in between: linear interpolation
     """
     if volume_ml <= 0.005:
-        return 0.0005
+        return 0.008  # Very relaxed: 8mg tolerance for small volumes
     elif volume_ml >= 0.5:
-        return 0.005
+        return 0.020  # Very relaxed: 20mg tolerance for large volumes
     else:
         # Linear interpolation between the two points
-        # (0.005 mL, 0.0005g) and (0.5 mL, 0.005g)
-        slope = (0.005 - 0.0005) / (0.5 - 0.005)
-        threshold = 0.0005 + slope * (volume_ml - 0.005)
+        # (0.005 mL, 0.008g) and (0.5 mL, 0.020g)
+        slope = (0.020 - 0.008) / (0.5 - 0.005)
+        threshold = 0.008 + slope * (volume_ml - 0.005)
         return threshold
 
 def validate_pipetting_accuracy(

@@ -3,9 +3,11 @@ experiment:
   liquid: glycerol
   description: Testing calibration across 4 volumes
   volume_targets_ml:
-   - 0.200
+   - 0.150
+   - 0.100
+   - 0.070
   max_total_measurements: 96
-  max_measurements_first_volume: 85
+  max_measurements_first_volume: 70
   num_screening_trials: 15
   max_replicates_per_trial: 3
   two_point_calibration_replicates: 2
@@ -50,7 +52,7 @@ hardware_parameters:
   aspirate_wait_time:
     bounds:
     - 0.0
-    - 30
+    - 40
     default: 10.0
     type: float
     time_affecting: true
@@ -77,7 +79,7 @@ hardware_parameters:
     round_to_nearest: 0.001
   dispense_wait_time:
     bounds:
-    - 0.0
+    - 1.5
     - 15.0
     default: 1.5
     type: float
@@ -126,7 +128,7 @@ tolerances:
     variability_multiplier: 1.5
 adaptive_measurement:
   enabled: true
-  deviation_threshold_pct: 10.0
+  deviation_threshold_pct: 15.0
   base_replicates: 1
   penalty_variability_pct: 100.0
 optimization:

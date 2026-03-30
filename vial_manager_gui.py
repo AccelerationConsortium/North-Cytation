@@ -1860,6 +1860,15 @@ class VialManagerMainWindow(QMainWindow):
         )
         button_layout.addWidget(self.save_all_button)
         
+        self.return_home_button = QPushButton("🏠 Return All Home")
+        self.return_home_button.clicked.connect(self._return_all_home)
+        self.return_home_button.setStyleSheet(
+            "QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 8px 16px; border-radius: 4px; }"
+            "QPushButton:hover { background-color: #1976D2; }"
+        )
+        self.return_home_button.setToolTip("Reset all vials' current locations to their home locations (digital only)")
+        button_layout.addWidget(self.return_home_button)
+        
         button_layout.addStretch()
         
         # Workflow control buttons (hidden by default)
@@ -2353,6 +2362,84 @@ class VialManagerMainWindow(QMainWindow):
             self.status_bar.showMessage(f"Saved {success_count} items with some errors")
         else:
             self.status_bar.showMessage(f"All {success_count} items saved successfully")
+    
+    def _return_all_home(self):
+        """Reset all vials' current locations to their home locations (digital only)."""
+        if not hasattr(self, 'original_vials_data') or not self.original_vials_data:
+            self.status_bar.showMessage("No vials loaded")
+            return
+        
+        changes_made = 0
+        total_vials = len(self.original_vials_data)
+        debug_info = []
+        
+        try:
+            # Work directly with the master data structure that gets saved
+            for i, vial_data in enumerate(self.original_vials_data):
+                vial_name = vial_data.get('vial_name', 'Unknown')
+                current_location = vial_data.get('location', '')
+                home_location = vial_data.get('home_location', '')
+                
+                debug_info.append(f"{vial_name}: {current_location} -> {home_location}")
+                
+                # If vial is not at home location, move it digitally
+                if current_location and home_location and current_location != home_location:
+                    # Update the master data structure directly
+                    self.original_vials_data[i]['location'] = home_location
+                    
+                    # Also update location_index if there's a home_location_index
+                    if 'home_location_index' in vial_data:
+                        self.original_vials_data[i]['location_index'] = vial_data['home_location_index']
+                    
+                    changes_made += 1
+                    debug_info.append(f"  -> MOVED: {vial_name} from {current_location} to {home_location}")
+            
+            # Debug output
+            print(f"Debug - Total: {total_vials} vials, Changes: {changes_made}")
+            for line in debug_info:
+                print(line)
+            
+            if changes_made > 0:
+                # Force reload all widgets with updated data
+                self._reload_all_widgets()
+                
+                self.status_bar.showMessage(f"Returned {changes_made} vials home (digitally) out of {total_vials} total")
+                
+                QMessageBox.information(self, "Success", 
+                                      f"Returned {changes_made} vials to their home locations out of {total_vials} total vials.\n\n"
+                                      f"Modified master data structure and refreshed display.\n"
+                                      f"Click 'Save All' to write changes to file.")
+            else:
+                self.status_bar.showMessage(f"All {total_vials} vials already at home locations")
+                QMessageBox.information(self, "No Changes", "All vials are already at their home locations.")
+                
+        except Exception as e:
+            error_msg = f"Failed to return vials home: {str(e)}"
+            QMessageBox.critical(self, "Error", error_msg)
+            self.status_bar.showMessage("Failed to return vials home")
+            print(f"ERROR: {error_msg}")
+            import traceback
+            traceback.print_exc()
+    
+    def _reload_all_widgets(self):
+        """Force reload all rack widgets with current data."""
+        try:
+            # Clear and reload each rack widget type
+            for rack_name, rack_widget in self.rack_widgets.items():
+                if hasattr(rack_widget, 'add_vials'):
+                    # For widgets that accept vials data directly
+                    rack_widget.add_vials(self.original_vials_data)
+                elif hasattr(rack_widget, 'vial_data_list'):
+                    # For auxiliary widgets with internal data lists
+                    location_vials = [v for v in self.original_vials_data 
+                                    if v.get('location') in ['large_vial_rack', 'photoreactor_array', 'clamp']]
+                    rack_widget.vial_data_list = location_vials
+                    # Force refresh display if method exists
+                    if hasattr(rack_widget, 'refresh_display'):
+                        rack_widget.refresh_display()
+                        
+        except Exception as e:
+            print(f"Warning: Failed to reload some widgets: {e}")
     
     def _has_unsaved_changes(self) -> bool:
         """Check if there are any unsaved changes across all tabs."""

@@ -35,7 +35,7 @@ MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Ilya_Measurement.prt"
 INSTRUCTIONS_FILE = "../utoronto_demo/status/ilya_input.csv"
 
 # Workflow settings
-SIMULATE = True  # Set to False for hardware execution
+SIMULATE = False  # Set to False for hardware execution
 N_ROUNDS = 3  # Number of rounds to execute
 WELLS_PER_ROUND = 48  # Wells per round (48 for rounds 1-2, alternative: 96 for full plate)
 
@@ -223,11 +223,10 @@ def run_embedded_calibration(lash_e):
     print(f"\nRunning embedded calibration...")
     cal_results = {}
     
-    # Calibrate dye solutions using embedded validation
+    # Calibrate all liquid components using embedded validation
     dye_calibrations = [
-        ("water_dye", "water"), 
-        ("ethanol_dye", "ethanol"),
-        ("glycerol_dye", "glycerol")
+        ("glycerol_dye", "glycerol"),
+        ("glycerol", "glycerol")
     ]
     
     for source_vial, liquid_type in dye_calibrations:
@@ -249,14 +248,17 @@ def run_embedded_calibration(lash_e):
                     conditioning_volume_ul=150
                 )
             else:
-                # Glycerol: no tip conditioning
+                # Glycerol: no tip conditioning, but use fresh tips for each measurement
+                # Enable adaptive correction for better parameter tuning with viscous liquids
                 result = validate_pipetting_accuracy(
                     lash_e=lash_e,
                     source_vial=source_vial,
                     destination_vial=source_vial,  # Self-calibration
                     liquid_type=liquid_type,
                     volumes_ml=[0.070, 0.100, 0.150, 0.200],  # 70, 100, 150, 200 μL
-                    replicates=3
+                    replicates=3,
+                    switch_pipet=True,  # Fresh tip for each measurement (like real workflow)
+                    adaptive_correction=True  # Enable dynamic parameter tuning for viscous glycerol
                 )
             cal_results[source_vial] = result
             print(f"✓ {source_vial} calibration complete")

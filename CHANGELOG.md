@@ -1,5 +1,40 @@
 # Changelog
 
+## [WORKFLOW TESTER IMPROVEMENTS] - 2026-03-30
+
+### MAJOR ENHANCEMENT: Flow-Based Operation Testing 
+- **REVAMPED**: `tests/surfactant_workflow_tester.py` - Complete redesign from predefined test cycles to flow-based button operations
+- **NEW ARCHITECTURE**: Individual operation buttons organized by workflow stage (Source → Transfer → Liquid → Analysis → Disposal)  
+- **PROPER IMPLEMENTATIONS**: Updated all functions to match actual surfactant workflow patterns and API usage
+- **ENHANCED VIAL HANDLING**: Use real vial names ("water", "SDS_stock", "TTAB_stock", "pyrene_DMSO") instead of placeholders
+- **SMART POSITIONING**: Implements idempotent track positioning with status checking (only moves if needed)
+- **PROPER LIQUID HANDLING**: Correct `aspirate_from_vial` and `dispense_into_wellplate` usage with proper liquid types
+- **TIP MANAGEMENT**: Proper pipet conditioning, removal, and volume tracking
+- **ATOMIC OPERATIONS**: Cytation operations follow proper carrier in/out patterns with error recovery
+- **WORKFLOW STATE TRACKING**: Real-time display of vial, wellplate position, and pipet status
+- **EXAMPLE FLOWS**: "Source → Pipetting → Waste" or "Analysis → Cytation → Read → Return" button sequences
+- **IMPROVED ERROR HANDLING**: Comprehensive simulation mode support and safety checks
+
+## [COMPONENT TEST GUI] - 2026-03-30
+
+### NEW FEATURE: Workflow Component Testing GUI
+- **ADDED**: `tests/surfactant_workflow_tester.py` - Comprehensive GUI for testing individual workflow components
+- **TESTING CAPABILITIES**: Wellplate movement, robot operations, Cytation protocols, and vial manipulation
+- **REPETITIVE TESTING**: Run any operation multiple times with configurable delays to test consistency
+- **REAL-TIME MONITORING**: Progress tracking, success/error counters, and detailed test logs
+- **DUAL MODE SUPPORT**: Both simulation and real hardware testing modes
+- **SAFETY FEATURES**: Emergency stop functionality and error isolation per test iteration
+- **USE CASE**: Validate equipment reliability before running critical experiments
+
+## [TRIANGLE RELIABILITY INDEXING FIX] - 2026-03-27
+
+### CRITICAL BUG FIX: Delaunay Triangle Reliability Mask Index Mismatch
+- **FIXED**: Triangle recommender filtering center triangles due to index mismatch between data and reliability mask
+- **ROOT CAUSE**: Workflow passed all 48 points to recommender but triangle scorer internally filtered to 25 experimental points, causing index misalignment
+- **SOLUTION**: Filter data to experimental points BEFORE passing to recommender, eliminating internal filtering and index confusion
+- **IMPACT**: Center triangles now properly evaluated instead of being incorrectly filtered as "unreliable"
+- **ARCHITECTURAL IMPROVEMENT**: Cleaner separation - recommender receives only the data it needs, no internal filtering required
+
 ## [VIAL POSITIONING FIX] - 2026-03-18
 
 ### CRITICAL BUG FIX: Invalid Vial Location
