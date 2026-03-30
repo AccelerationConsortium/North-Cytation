@@ -219,9 +219,6 @@ class EnhancedRobotArmController:
         self.include_pipetting_var = None
         self.config_frame = None
         
-        # Grid array generator state
-        self.grid_origin = None  # {x, y, z_cts, gripper_cts, shoulder_cts}
-        
     def connect_robot(self):
         """Initialize Lash_E coordinator and wire up robot references.
         
@@ -448,7 +445,7 @@ class EnhancedRobotArmController:
         self.root = tk.Tk()
         self.root.title("Enhanced North Robot Arm Position Control")
         self.root.geometry("750x900")
-        self.root.resizable(True, True)
+        self.root.resizable(True, False)
         
         # Set up the GUI layout
         main_frame = ttk.Frame(self.root, padding="20")
@@ -637,56 +634,6 @@ class EnhancedRobotArmController:
                   command=self.open_temp_folder).grid(row=1, column=0, padx=(0, 5), pady=(5, 0))
         ttk.Button(export_frame, text="📤 Export All Positions (JSON)", 
                   command=self.export_all_positions_json).grid(row=1, column=1, padx=(0, 5), pady=(5, 0))
-        
-        # Grid Array Generator section
-        grid_gen_frame = ttk.LabelFrame(main_frame, text="Grid Array Generator", padding="10")
-        grid_gen_frame.grid(row=9, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
-        
-        self.grid_origin_label = ttk.Label(grid_gen_frame, text="Origin: not set", foreground="gray")
-        self.grid_origin_label.grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=(0, 5))
-        
-        ttk.Button(grid_gen_frame, text="Set Origin (Current Position)",
-                   command=self.set_grid_origin).grid(row=1, column=0, columnspan=4,
-                   sticky=(tk.W, tk.E), pady=(0, 8))
-        
-        ttk.Label(grid_gen_frame, text="X offset (mm):").grid(row=2, column=0, sticky=tk.W)
-        self.grid_x_offset_entry = ttk.Entry(grid_gen_frame, width=8)
-        self.grid_x_offset_entry.grid(row=2, column=1, padx=(5, 15))
-        self.grid_x_offset_entry.insert(0, "9.0")
-        
-        ttk.Label(grid_gen_frame, text="Y offset (mm):").grid(row=2, column=2, sticky=tk.W)
-        self.grid_y_offset_entry = ttk.Entry(grid_gen_frame, width=8)
-        self.grid_y_offset_entry.grid(row=2, column=3, padx=(5, 0))
-        self.grid_y_offset_entry.insert(0, "9.0")
-        
-        ttk.Label(grid_gen_frame, text="Columns:").grid(row=3, column=0, sticky=tk.W, pady=(5, 0))
-        self.grid_cols_entry = ttk.Entry(grid_gen_frame, width=8)
-        self.grid_cols_entry.grid(row=3, column=1, padx=(5, 15), pady=(5, 0))
-        self.grid_cols_entry.insert(0, "8")
-        
-        ttk.Label(grid_gen_frame, text="Rows:").grid(row=3, column=2, sticky=tk.W, pady=(5, 0))
-        self.grid_rows_entry = ttk.Entry(grid_gen_frame, width=8)
-        self.grid_rows_entry.grid(row=3, column=3, padx=(5, 0), pady=(5, 0))
-        self.grid_rows_entry.insert(0, "6")
-        
-        ttk.Button(grid_gen_frame, text="Generate Grid Array",
-                   command=self.generate_grid_array).grid(row=4, column=0, columnspan=4,
-                   sticky=(tk.W, tk.E), pady=(8, 5))
-        
-        self.grid_output_text = tk.Text(grid_gen_frame, height=7, width=70,
-                                        font=("Consolas", 8), state=tk.DISABLED)
-        self.grid_output_text.grid(row=5, column=0, columnspan=4, sticky=(tk.W, tk.E))
-        grid_scroll = ttk.Scrollbar(grid_gen_frame, orient=tk.VERTICAL,
-                                    command=self.grid_output_text.yview)
-        grid_scroll.grid(row=5, column=4, sticky=(tk.N, tk.S))
-        self.grid_output_text.config(yscrollcommand=grid_scroll.set)
-        
-        ttk.Button(grid_gen_frame, text="Copy Output to Clipboard",
-                   command=self.copy_grid_output).grid(row=6, column=0, columnspan=4,
-                   sticky=(tk.W, tk.E), pady=(5, 0))
-        
-        grid_gen_frame.columnconfigure(1, weight=1)
-        grid_gen_frame.columnconfigure(3, weight=1)
         
         # Configure styles
         style = ttk.Style()
@@ -1385,117 +1332,6 @@ class EnhancedRobotArmController:
                 logger.error(f"Error removing pipet: {str(e)}")
         else:
             logger.warning("nr_robot not available - connect robot first")
-
-    def set_grid_origin(self):
-        """Freeze current robot position as the grid origin for array generation."""
-        if not self.is_connected:
-            messagebox.showerror("Error", "Robot not connected")
-            return
-        try:
-            positions = self.robot.get_robot_positions()
-            gripper_cts, shoulder_cts, elbow_cts, z_cts = (
-                positions[0], positions[1], positions[2], positions[3]
-            )
-            x, y, _ = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
-            self.grid_origin = {
-                'x': x, 'y': y,
-                'z_cts': z_cts,
-                'gripper_cts': gripper_cts,
-                'shoulder_cts': shoulder_cts,
-            }
-            self.grid_origin_label.config(
-                text=f"Origin: X={x:.1f}mm, Y={y:.1f}mm  |  Z={z_cts}cts  G={gripper_cts}cts",
-                foreground="green"
-            )
-            logger.info(f"Grid origin set: X={x:.1f}, Y={y:.1f}, Z_cts={z_cts}, G_cts={gripper_cts}")
-        except Exception as e:
-            logger.error(f"Error setting grid origin: {str(e)}")
-
-    def generate_grid_array(self):
-        """Generate Locator.py-format position array from origin + grid parameters.
-        
-        Ordering: column-major (all rows in col 0, then all rows in col 1, ...)
-        so index = col * n_rows + row.  Different rows have different Y,
-        different columns have different X.
-        Output format: [gripper, shoulder, elbow, z]  (matches Locator.py convention)
-        """
-        if self.grid_origin is None:
-            messagebox.showerror("Error", "Set origin first (jog to position, then click Set Origin)")
-            return
-        if not hasattr(self.robot, 'n9_ik'):
-            messagebox.showerror("Error",
-                "Grid generation requires real hardware.\n"
-                "n9_ik is not available in simulation mode.")
-            return
-        try:
-            x_offset = float(self.grid_x_offset_entry.get())
-            y_offset = float(self.grid_y_offset_entry.get())
-            n_cols = int(self.grid_cols_entry.get())
-            n_rows = int(self.grid_rows_entry.get())
-        except ValueError:
-            messagebox.showerror("Error", "Invalid parameter values - check x_offset, y_offset, cols, rows")
-            return
-
-        x0 = self.grid_origin['x']
-        y0 = self.grid_origin['y']
-        z_cts = self.grid_origin['z_cts']
-        shoulder_cts = self.grid_origin['shoulder_cts']
-
-        entries = []
-        ik_errors = []
-        for col in range(n_cols):
-            for row in range(n_rows):
-                target_x = x0 + col * x_offset
-                target_y = y0 + row * y_offset
-                try:
-                    sol_c = self.robot.n9_ik(target_x, target_y,
-                                             shoulder_preference=self.robot.SHOULDER_CENTER)
-                    sol_o = self.robot.n9_ik(target_x, target_y,
-                                             shoulder_preference=self.robot.SHOULDER_OUT)
-                    # Pick config closest to origin shoulder to stay consistent
-                    chosen = sol_c if abs(sol_c[2] - shoulder_cts) <= abs(sol_o[2] - shoulder_cts) else sol_o
-                    # n9_ik returns (gripper, elbow, shoulder); Locator format: [gripper, shoulder, elbow, z]
-                    entry = [int(chosen[0]), int(chosen[2]), int(chosen[1]), int(z_cts)]
-                    entries.append((col, row, entry))
-                except Exception as e:
-                    ik_errors.append(f"col={col}, row={row}: {e}")
-                    entries.append((col, row, None))
-
-        # Build output string
-        lines = [
-            f"# Grid: {n_cols} cols x {n_rows} rows",
-            f"# x_offset={x_offset}mm per col, y_offset={y_offset}mm per row",
-            f"# Origin: X={x0:.1f}mm, Y={y0:.1f}mm",
-            f"# Format: [gripper, shoulder, elbow, z]  (Locator.py convention)",
-            f"my_grid = [",
-        ]
-        for i, (col, row, pos) in enumerate(entries):
-            comma = "," if i < len(entries) - 1 else ""
-            if pos is not None:
-                lines.append(f"    {pos}{comma}  # col={col}, row={row}")
-            else:
-                lines.append(f"    # IK FAILED col={col}, row={row}")
-        lines.append("]")
-
-        output = "\n".join(lines)
-        self.grid_output_text.config(state=tk.NORMAL)
-        self.grid_output_text.delete("1.0", tk.END)
-        self.grid_output_text.insert(tk.END, output)
-        self.grid_output_text.config(state=tk.DISABLED)
-
-        n_ok = sum(1 for _, _, p in entries if p is not None)
-        if ik_errors:
-            logger.warning(f"Grid generation: {n_ok}/{len(entries)} succeeded. Failures: {ik_errors}")
-        else:
-            logger.info(f"Grid generated: {n_cols}x{n_rows}={len(entries)} positions")
-
-    def copy_grid_output(self):
-        """Copy the grid output text to clipboard."""
-        content = self.grid_output_text.get("1.0", tk.END).strip()
-        if content:
-            self.root.clipboard_clear()
-            self.root.clipboard_append(content)
-            logger.info("Grid array copied to clipboard")
 
     def home_robot(self):
         """Home the robot."""

@@ -64,7 +64,6 @@ sys.path.append("../utoronto_demo")
 
 try:
     from north import NorthC9
-    from master_usdl_coordinator import Lash_E
     NORTH_AVAILABLE = True
 except ImportError:
     NORTH_AVAILABLE = False
@@ -92,63 +91,430 @@ SHOULDER_MAX_RAD = (2/3) * 3.14159  # Maximum shoulder angle (radians)
 GRIPPER_MIN_RAD = -6.28              # Minimum gripper angle (radians)
 GRIPPER_MAX_RAD = 6.28               # Maximum gripper angle (radians)
 
-def load_positions_from_system():
-    """Load all positions directly from robot_state/Locator.py.
-    
-    Single positions (flat list of 4) are keyed by variable name.
-    Array positions (list of lists) are keyed as name[index].
-    category = variable name for arrays, 'single' for standalone positions.
+def load_positions_from_system(vial_file_path=None, include_pipetting=False):
     """
-    import inspect
+    Load positions dynamically from the multi-layer positioning system.
+    
+    Args:
+        vial_file_path: Path to CSV file with vial definitions 
+        include_pipetting: Include pipetting positions in addition to gripper positions
+    
+    Returns:
+        Dictionary of positions in WORKFLOW_POSITIONS format
+    """
     positions = {}
     
+    # Add standard positions
+    positions["Home"] = {
+        "description": "Robot home position",
+        "gripper_cts": 0,
+        "shoulder_cts": 0, 
+        "elbow_cts": 0,
+        "z_cts": 0,
+        "category": "Standard"
+    }
+    
     try:
+        # Import positioning system
         import robot_state.Locator as Locator
-
-        for name, value in inspect.getmembers(Locator):
-            if name.startswith('_') or not isinstance(value, list) or len(value) == 0:
-                continue
-
-            # Single position: flat list of 4 numbers
-            if len(value) == 4 and not isinstance(value[0], list):
-                positions[name] = {
-                    "description": name,
-                    "gripper_cts": int(value[0]),
-                    "shoulder_cts": int(value[1]),
-                    "elbow_cts": int(value[2]),
-                    "z_cts": int(value[3]),
-                    "category": "single",
-                    "locator_var": name,
-                    "locator_index": None,
+        
+        # Load vial positions YAML
+        yaml_path = os.path.join("robot_state", "vial_positions.yaml")
+        if not os.path.exists(yaml_path):
+            yaml_path = os.path.join("..", "robot_state", "vial_positions.yaml")
+            if not os.path.exists(yaml_path):
+                # Try from project root
+                yaml_path = os.path.join("..", "utoronto_demo", "robot_state", "vial_positions.yaml")
+        with open(yaml_path, 'r') as f:
+            vial_config = yaml.safe_load(f)
+        
+        # Load vial definitions from CSV if provided
+        if vial_file_path and os.path.exists(vial_file_path):
+            # Try pandas first, fallback to csv module if pandas fails
+            try:
+                vial_df = pd.read_csv(vial_file_path)
+            except (AttributeError, ImportError):
+                # Fallback CSV reader using built-in csv module
+                import csv
+                vial_data = []
+                with open(vial_file_path, 'r') as csvfile:
+                    reader = csv.DictReader(csvfile)
+                    for row in reader:
+                        vial_data.append(row)
+                print(f"Loaded CSV using fallback reader: {len(vial_data)} vials")
+                
+                # Mock pandas DataFrame behavior for compatibility
+                class SimpleDataFrame:
+                    def __init__(self, data):
+                        self.data = data
+                    def iterrows(self):
+                        for i, row in enumerate(self.data):
+                            yield i, row
+                
+                vial_df = SimpleDataFrame(vial_data)
+            
+            # Add positions for each defined vial
+            for _, vial in vial_df.iterrows():
+                vial_name = vial['vial_name']
+                location = vial['location']
+                location_index = int(vial['location_index'])
+                
+                if location in vial_config:
+                    config = vial_config[location]
+                    
+                    # Add gripper position
+                    if config.get('vial_positions_in_Locator'):
+                        locator_var = config['vial_positions_in_Locator']
+                        if hasattr(Locator, locator_var):
+                            coords_array = getattr(Locator, locator_var)
+                            if location_index < len(coords_array):
+                                coords = coords_array[location_index]
+                                positions[f"{vial_name} (Gripper)"] = {
+                                    "description": f"{vial_name} at {location}[{location_index}] - gripper access",
+                                    "gripper_cts": coords[0],
+                                    "shoulder_cts": coords[1], 
+                                    "elbow_cts": coords[2],
+                                    "z_cts": coords[3],
+                                    "category": "Vial_Gripper"
+                                }
+                    
+                    # Add pipetting position if requested
+                    if include_pipetting and config.get('pipetting_positions_in_Locator'):
+                        pip_var = config['pipetting_positions_in_Locator']
+                        if hasattr(Locator, pip_var):
+                            coords_array = getattr(Locator, pip_var)
+                            if location_index < len(coords_array):
+                                coords = coords_array[location_index]
+                                positions[f"{vial_name} (Pipetting)"] = {
+                                    "description": f"{vial_name} at {location}[{location_index}] - pipetting access",
+                                    "gripper_cts": coords[0],
+                                    "shoulder_cts": coords[1],
+                                    "elbow_cts": coords[2], 
+                                    "z_cts": coords[3],
+                                    "category": "Vial_Pipetting"
+                                }
+        
+        # Add special positions
+        if hasattr(Locator, 'vial_clamp'):
+            coords = Locator.vial_clamp
+            positions["Clamp Position"] = {
+                "description": "Vial clamping station for manipulation", 
+                "gripper_cts": coords[0],
+                "shoulder_cts": coords[1],
+                "elbow_cts": coords[2],
+                "z_cts": coords[3],
+                "category": "Manipulation"
+            }
+            
+        # Add main rack positions for reference
+        if hasattr(Locator, 'rack'):
+            for i in range(min(10, len(Locator.rack))):  # Limit to first 10 for UI
+                coords = Locator.rack[i]
+                positions[f"Main Rack - Position {i}"] = {
+                    "description": f"8mL vial rack position {i}",
+                    "gripper_cts": coords[0],
+                    "shoulder_cts": coords[1],
+                    "elbow_cts": coords[2], 
+                    "z_cts": coords[3],
+                    "category": "Storage"
                 }
-
-            # Array of positions: list of lists
-            elif isinstance(value[0], list):
-                for i, coords in enumerate(value):
-                    if isinstance(coords, list) and len(coords) == 4:
-                        positions[f"{name}[{i}]"] = {
-                            "description": f"{name} index {i}",
-                            "gripper_cts": int(coords[0]),
-                            "shoulder_cts": int(coords[1]),
-                            "elbow_cts": int(coords[2]),
-                            "z_cts": int(coords[3]),
-                            "category": name,
-                            "locator_var": name,
-                            "locator_index": i,
-                        }
-
+        
+        # Add large vial positions
+        if hasattr(Locator, 'large_vial_pip'):
+            for i, coords in enumerate(Locator.large_vial_pip):
+                positions[f"Large Vial Rack - Position {i}"] = {
+                    "description": f"20mL vial rack position {i}",
+                    "gripper_cts": coords[0],
+                    "shoulder_cts": coords[1],
+                    "elbow_cts": coords[2],
+                    "z_cts": coords[3],
+                    "category": "Large Volume"
+                }
+        
+        # Add pipette tip rack positions (MISSING from original implementation)
+        if hasattr(Locator, 'pgrid_low_2'):
+            for i, coords in enumerate(Locator.pgrid_low_2):
+                positions[f"Large Pipette Tip - Position {i}"] = {
+                    "description": f"Large pipette tip rack position {i} (for picking up tips)",
+                    "gripper_cts": coords[0],
+                    "shoulder_cts": coords[1],
+                    "elbow_cts": coords[2],
+                    "z_cts": coords[3],
+                    "category": "Pipette_Tips"
+                }
+        
+        if hasattr(Locator, 'pgrid_high_2'):
+            for i, coords in enumerate(Locator.pgrid_high_2):
+                positions[f"Small Pipette Tip - Position {i}"] = {
+                    "description": f"Small pipette tip rack position {i} (for picking up tips)",
+                    "gripper_cts": coords[0],
+                    "shoulder_cts": coords[1],
+                    "elbow_cts": coords[2],
+                    "z_cts": coords[3],
+                    "category": "Pipette_Tips"
+                }
+        
+        # Add tip removal positions (CRITICAL for tip disposal)
+        if hasattr(Locator, 'p_remove_cap'):
+            coords = Locator.p_remove_cap
+            positions["Tip Removal - Cap"] = {
+                "description": "Tip removal station for cap tips",
+                "gripper_cts": coords[0],
+                "shoulder_cts": coords[1],
+                "elbow_cts": coords[2],
+                "z_cts": coords[3],
+                "category": "Tip_Removal"
+            }
+        
+        if hasattr(Locator, 'p_remove_approach'):
+            coords = Locator.p_remove_approach
+            positions["Tip Removal - Approach"] = {
+                "description": "Safe approach position before tip removal",
+                "gripper_cts": coords[0],
+                "shoulder_cts": coords[1],
+                "elbow_cts": coords[2],
+                "z_cts": coords[3],
+                "category": "Tip_Removal"
+            }
+        
+        if hasattr(Locator, 'p_remove_small'):
+            coords = Locator.p_remove_small
+            positions["Tip Removal - Small"] = {
+                "description": "Tip removal station for small tips",
+                "gripper_cts": coords[0],
+                "shoulder_cts": coords[1],
+                "elbow_cts": coords[2],
+                "z_cts": coords[3],
+                "category": "Tip_Removal"
+            }
+                
     except Exception as e:
-        logger.warning(f"Could not load positions from Locator: {e}")
-        positions["home"] = {
-            "description": "Home position",
-            "gripper_cts": 0, "shoulder_cts": 0, "elbow_cts": 0, "z_cts": 0,
-            "category": "single", "locator_var": "home", "locator_index": None,
-        }
-
+        print(f"Warning: Could not load dynamic positions: {e}")
+        print("Using fallback hardcoded positions")
+        # Add fallback positions
+        positions.update({
+            "Clamp Position": {
+                "description": "Vial clamping station for manipulation",
+                "gripper_cts": 2476,
+                "shoulder_cts": 7635,
+                "elbow_cts": 44106,
+                "z_cts": 17350,
+                "category": "Manipulation"
+            },
+            "Main Rack - Position 3 (Water)": {
+                "description": "8mL vial rack position 3 (water)",
+                "gripper_cts": 1922,
+                "shoulder_cts": 12072,
+                "elbow_cts": 38811,
+                "z_cts": 22200,
+                "category": "Reagents"
+            }})
+        
     return positions
 
 # Initialize with default positions - will be updated by controller
 WORKFLOW_POSITIONS = load_positions_from_system()
+
+# Legacy fallback positions for reference
+FALLBACK_POSITIONS = {
+    # Standard positions
+    "Home": {
+        "description": "Robot home position",
+        "gripper_cts": 0,
+        "shoulder_cts": 0,
+        "elbow_cts": 0,
+        "z_cts": 0,
+        "category": "Standard"
+    },
+    
+    # Clamp position (from Locator.py vial_clamp)
+    "Clamp Position": {
+        "description": "Vial clamping station for manipulation",
+        "gripper_cts": 2476,
+        "shoulder_cts": 7635,
+        "elbow_cts": 44106,
+        "z_cts": 17350,
+        "category": "Manipulation"
+    },
+    
+    # Main 8mL vial rack positions (key positions used in surfactant workflow)
+    "Main Rack - Position 36": {
+        "description": "8mL vial rack position 36",
+        "gripper_cts": 1708,
+        "shoulder_cts": 9251,
+        "elbow_cts": 27829,
+        "z_cts": 22200,
+        "category": "Storage"
+    },
+    "Main Rack - Position 43": {
+        "description": "8mL vial rack position 43",
+        "gripper_cts": 2021,
+        "shoulder_cts": 1163,
+        "elbow_cts": 19726,
+        "z_cts": 22200,
+        "category": "Storage"
+    },
+    "Main Rack - Position 44 (Water)": {
+        "description": "8mL vial rack position 44 (water)",
+        "gripper_cts": 1928,
+        "shoulder_cts": 2422,
+        "elbow_cts": 19859,
+        "z_cts": 22200,
+        "category": "Reagents"
+    },
+    "Main Rack - Position 45 (Water_2)": {
+        "description": "8mL vial rack position 45 (water_2)",
+        "gripper_cts": 1845,
+        "shoulder_cts": 3750,
+        "elbow_cts": 20404,
+        "z_cts": 22200,
+        "category": "Reagents"
+    },
+    "Main Rack - Position 46": {
+        "description": "8mL vial rack position 46",
+        "gripper_cts": 1768,
+        "shoulder_cts": 5155,
+        "elbow_cts": 21233,
+        "z_cts": 22200,
+        "category": "Storage"
+    },
+    "Main Rack - Position 47": {
+        "description": "8mL vial rack position 47",
+        "gripper_cts": 1692,
+        "shoulder_cts": 6655,
+        "elbow_cts": 22291,
+        "z_cts": 22200,
+        "category": "Storage"
+    },
+    
+    # Large vial positions
+    "Large Vial Rack - Position 0": {
+        "description": "20mL vial rack position 0",
+        "gripper_cts": 721,
+        "shoulder_cts": 9854,
+        "elbow_cts": 26732,
+        "z_cts": 13921,
+        "category": "Large Volume"
+    },
+    "Large Vial Rack - Position 1": {
+        "description": "20mL vial rack position 1", 
+        "gripper_cts": 405,
+        "shoulder_cts": 17735,
+        "elbow_cts": 34375,
+        "z_cts": 13921,
+        "category": "Large Volume"
+    },
+    
+    # Small vial positions
+    "Small Vial Rack - Position 0": {
+        "description": "1mL vial rack position 0",
+        "gripper_cts": 848,
+        "shoulder_cts": 15038,
+        "elbow_cts": 44585,
+        "z_cts": 16166,
+        "category": "Small Volume"
+    },
+    "Small Vial Rack - Position 1": {
+        "description": "1mL vial rack position 1",
+        "gripper_cts": 788,
+        "shoulder_cts": 16021,
+        "elbow_cts": 45013,
+        "z_cts": 16166,
+        "category": "Small Volume"
+    },
+    
+    # 50mL vial positions
+    "50mL Vial Rack - Position 0": {
+        "description": "50mL vial rack position 0",
+        "gripper_cts": -1378,
+        "shoulder_cts": 14164,
+        "elbow_cts": 35944,
+        "z_cts": 11100,
+        "category": "Large Volume"
+    },
+    "50mL Vial Rack - Position 3": {
+        "description": "50mL vial rack position 3",
+        "gripper_cts": -1518,
+        "shoulder_cts": 15521,
+        "elbow_cts": 35093,
+        "z_cts": 11100,
+        "category": "Large Volume"
+    },
+    
+    # Photoreactor position
+    "Photoreactor Position": {
+        "description": "Photoreactor array position",
+        "gripper_cts": 69,
+        "shoulder_cts": 33380,
+        "elbow_cts": 24059,
+        "z_cts": 20577,
+        "category": "Processing"
+    },
+    
+    # Heater grid positions
+    "Heater Grid - Position 0": {
+        "description": "Heater grid position 0",
+        "gripper_cts": -1232,
+        "shoulder_cts": 39645,
+        "elbow_cts": 13715,
+        "z_cts": 15241,
+        "category": "Processing"
+    },
+    "Heater Grid - Position 5": {
+        "description": "Heater grid position 5 (center area)",
+        "gripper_cts": -949,
+        "shoulder_cts": 39840,
+        "elbow_cts": 21249,
+        "z_cts": 15241,
+        "category": "Processing"
+    },
+    
+    # Tip rack positions - Small tips
+    "Small Tip Rack - Position 0": {
+        "description": "Small pipet tip rack position 0",
+        "gripper_cts": 2668,
+        "shoulder_cts": 37357,
+        "elbow_cts": 8247,
+        "z_cts": 9150,
+        "category": "Tip Racks"
+    },
+    "Small Tip Rack - Position 24": {
+        "description": "Small pipet tip rack position 24 (middle)",
+        "gripper_cts": 2893,
+        "shoulder_cts": 35374,
+        "elbow_cts": 9991,
+        "z_cts": 9150,
+        "category": "Tip Racks"
+    },
+    
+    # Tip rack positions - Large tips
+    "Large Tip Rack - Position 0": {
+        "description": "Large pipet tip rack position 0",
+        "gripper_cts": 2677,
+        "shoulder_cts": 39055,
+        "elbow_cts": 11930,
+        "z_cts": 12562,
+        "category": "Tip Racks"
+    },
+    "Large Tip Rack - Position 24": {
+        "description": "Large pipet tip rack position 24 (middle)",
+        "gripper_cts": 2912,
+        "shoulder_cts": 36904,
+        "elbow_cts": 13611,
+        "z_cts": 12562,
+        "category": "Tip Racks"
+    },
+    
+    # Safe positions for transport
+    "Safe Transport Height": {
+        "description": "Safe height for moving between positions",
+        "gripper_cts": 0,
+        "shoulder_cts": 0,
+        "elbow_cts": 0,
+        "z_cts": 5000,  # High safe position
+        "category": "Standard"
+    }
+}
 
 # Setup logging
 logging.basicConfig(
@@ -165,10 +531,8 @@ logger = logging.getLogger(__name__)
 class EnhancedRobotArmController:
     """Enhanced controller class with position presets and export functionality."""
     
-    def __init__(self, vial_file_path=None):
-        self.lash_e = None      # Lash_E coordinator (owns all hardware)
-        self.nr_robot = None    # lash_e.nr_robot  - high-level robot ops (get_pipet, move_vial, etc.)
-        self.robot = None       # lash_e.nr_robot.c9 - raw NorthC9 (goto, n9_fk/ik, move_z, etc.)
+    def __init__(self, vial_file_path=None, include_pipetting=False):
+        self.robot = None
         self.root = None
         self.is_connected = False
         self.current_z_position = 0.0
@@ -180,7 +544,8 @@ class EnhancedRobotArmController:
         
         # Position system configuration
         self.vial_file_path = vial_file_path
-        self.workflow_positions = load_positions_from_system()
+        self.include_pipetting = include_pipetting
+        self.workflow_positions = load_positions_from_system(vial_file_path, include_pipetting)
         
         # Position management
         self.selected_position = None
@@ -219,50 +584,36 @@ class EnhancedRobotArmController:
         self.include_pipetting_var = None
         self.config_frame = None
         
-        # Grid array generator state
-        self.grid_origin = None  # {x, y, z_cts, gripper_cts, shoulder_cts}
-        
     def connect_robot(self):
-        """Initialize Lash_E coordinator and wire up robot references.
-        
-        self.lash_e   - full Lash_E coordinator (high-level ops, track, cytation, etc.)
-        self.nr_robot - lash_e.nr_robot (get_pipet, remove_pipet, move_vial_to_location, aspirate, etc.)
-        self.robot    - lash_e.nr_robot.c9 (raw NorthC9: goto, n9_fk/ik, move_z, counts, etc.)
-        """
+        """Initialize connection to the North robot."""
         try:
             if SIMULATE:
-                logger.info("Starting in simulation mode via Lash_E")
-                self.lash_e = Lash_E(
-                    self.vial_file_path,
-                    simulate=True
-                )
-                self.nr_robot = self.lash_e.nr_robot
-                self.robot = self._create_mock_robot()  # mock still used for raw C9 interface in sim
+                logger.info("Starting in simulation mode")
+                self.robot = self._create_mock_robot()
                 self.is_connected = True
                 self.current_z_position = 100.0
                 return True
             else:
-                logger.info(f"Connecting via Lash_E (serial {NETWORK_SERIAL})")
-                self.lash_e = Lash_E(
-                    self.vial_file_path,
-                    simulate=False
+                logger.info(f"Connecting to robot at address {CONTROLLER_ADDR} with serial {NETWORK_SERIAL}")
+                self.robot = NorthC9(
+                    CONTROLLER_ADDR,
+                    network_serial=NETWORK_SERIAL,
+                    verbose=True
                 )
-                self.nr_robot = self.lash_e.nr_robot
-                self.robot = self.lash_e.nr_robot.c9  # raw NorthC9 alias
-
+                
                 self.robot.get_info()
                 self.is_connected = True
-                logger.info("Successfully connected via Lash_E")
-
+                logger.info("Successfully connected to robot")
+                
                 # Get current positions for all axes
                 positions = self.robot.get_robot_positions()
                 self.current_gripper_angle = self.robot.counts_to_rad(self.robot.GRIPPER, positions[0])
-                self.current_shoulder_angle = self.robot.counts_to_rad(self.robot.SHOULDER, positions[1])  # index 1 = shoulder
-                self.current_elbow_angle = self.robot.counts_to_rad(self.robot.ELBOW, positions[2])        # index 2 = elbow
+                self.current_elbow_angle = self.robot.counts_to_rad(self.robot.ELBOW, positions[1])
+                self.current_shoulder_angle = self.robot.counts_to_rad(self.robot.SHOULDER, positions[2])
                 self.current_z_position = self.robot.counts_to_mm(self.robot.Z_AXIS, positions[3])
-
+                
                 return True
-
+                
         except Exception as e:
             logger.error(f"Failed to connect to robot: {str(e)}")
             messagebox.showerror("Connection Error", f"Failed to connect to robot:\n{str(e)}")
@@ -448,7 +799,7 @@ class EnhancedRobotArmController:
         self.root = tk.Tk()
         self.root.title("Enhanced North Robot Arm Position Control")
         self.root.geometry("750x900")
-        self.root.resizable(True, True)
+        self.root.resizable(True, False)
         
         # Set up the GUI layout
         main_frame = ttk.Frame(self.root, padding="20")
@@ -613,12 +964,6 @@ class EnhancedRobotArmController:
         ttk.Button(control_frame, text="👊 CLOSE", command=self.close_gripper, 
                   style="Warning.TButton").grid(row=4, column=2, padx=2)
         
-        ttk.Label(control_frame, text="Pipet:").grid(row=5, column=0, sticky=tk.W)
-        ttk.Button(control_frame, text="GET LARGE", command=self.get_pipet_large).grid(row=5, column=1, padx=2)
-        ttk.Button(control_frame, text="GET SMALL", command=self.get_pipet_small).grid(row=5, column=2, padx=2)
-        ttk.Button(control_frame, text="REMOVE PIPET", command=self.remove_pipet_action).grid(
-            row=6, column=0, columnspan=3, pady=(2, 0), sticky=(tk.W, tk.E))
-        
         # Configuration section
         if hasattr(self, 'create_config_frame'):
             self.create_config_frame(main_frame)
@@ -637,56 +982,6 @@ class EnhancedRobotArmController:
                   command=self.open_temp_folder).grid(row=1, column=0, padx=(0, 5), pady=(5, 0))
         ttk.Button(export_frame, text="📤 Export All Positions (JSON)", 
                   command=self.export_all_positions_json).grid(row=1, column=1, padx=(0, 5), pady=(5, 0))
-        
-        # Grid Array Generator section
-        grid_gen_frame = ttk.LabelFrame(main_frame, text="Grid Array Generator", padding="10")
-        grid_gen_frame.grid(row=9, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
-        
-        self.grid_origin_label = ttk.Label(grid_gen_frame, text="Origin: not set", foreground="gray")
-        self.grid_origin_label.grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=(0, 5))
-        
-        ttk.Button(grid_gen_frame, text="Set Origin (Current Position)",
-                   command=self.set_grid_origin).grid(row=1, column=0, columnspan=4,
-                   sticky=(tk.W, tk.E), pady=(0, 8))
-        
-        ttk.Label(grid_gen_frame, text="X offset (mm):").grid(row=2, column=0, sticky=tk.W)
-        self.grid_x_offset_entry = ttk.Entry(grid_gen_frame, width=8)
-        self.grid_x_offset_entry.grid(row=2, column=1, padx=(5, 15))
-        self.grid_x_offset_entry.insert(0, "9.0")
-        
-        ttk.Label(grid_gen_frame, text="Y offset (mm):").grid(row=2, column=2, sticky=tk.W)
-        self.grid_y_offset_entry = ttk.Entry(grid_gen_frame, width=8)
-        self.grid_y_offset_entry.grid(row=2, column=3, padx=(5, 0))
-        self.grid_y_offset_entry.insert(0, "9.0")
-        
-        ttk.Label(grid_gen_frame, text="Columns:").grid(row=3, column=0, sticky=tk.W, pady=(5, 0))
-        self.grid_cols_entry = ttk.Entry(grid_gen_frame, width=8)
-        self.grid_cols_entry.grid(row=3, column=1, padx=(5, 15), pady=(5, 0))
-        self.grid_cols_entry.insert(0, "8")
-        
-        ttk.Label(grid_gen_frame, text="Rows:").grid(row=3, column=2, sticky=tk.W, pady=(5, 0))
-        self.grid_rows_entry = ttk.Entry(grid_gen_frame, width=8)
-        self.grid_rows_entry.grid(row=3, column=3, padx=(5, 0), pady=(5, 0))
-        self.grid_rows_entry.insert(0, "6")
-        
-        ttk.Button(grid_gen_frame, text="Generate Grid Array",
-                   command=self.generate_grid_array).grid(row=4, column=0, columnspan=4,
-                   sticky=(tk.W, tk.E), pady=(8, 5))
-        
-        self.grid_output_text = tk.Text(grid_gen_frame, height=7, width=70,
-                                        font=("Consolas", 8), state=tk.DISABLED)
-        self.grid_output_text.grid(row=5, column=0, columnspan=4, sticky=(tk.W, tk.E))
-        grid_scroll = ttk.Scrollbar(grid_gen_frame, orient=tk.VERTICAL,
-                                    command=self.grid_output_text.yview)
-        grid_scroll.grid(row=5, column=4, sticky=(tk.N, tk.S))
-        self.grid_output_text.config(yscrollcommand=grid_scroll.set)
-        
-        ttk.Button(grid_gen_frame, text="Copy Output to Clipboard",
-                   command=self.copy_grid_output).grid(row=6, column=0, columnspan=4,
-                   sticky=(tk.W, tk.E), pady=(5, 0))
-        
-        grid_gen_frame.columnconfigure(1, weight=1)
-        grid_gen_frame.columnconfigure(3, weight=1)
         
         # Configure styles
         style = ttk.Style()
@@ -1261,66 +1556,39 @@ class EnhancedRobotArmController:
         self._safe_move_z(self.current_z_position - self.move_increment_mm)
         
     def move_x_left(self):
-        self._move_xy_delta(-self.move_increment_mm, 0)
-
+        """Move X-axis left by moving shoulder joint independently."""
+        # Convert mm step size to shoulder angle increment
+        angle_increment = self._convert_mm_to_joint_increment()
+        target_angle = self.current_shoulder_angle - angle_increment
+        self._safe_move_shoulder(target_angle)
+        
     def move_x_right(self):
-        self._move_xy_delta(self.move_increment_mm, 0)
-
+        """Move X-axis right by moving shoulder joint independently."""
+        # Convert mm step size to shoulder angle increment  
+        angle_increment = self._convert_mm_to_joint_increment()
+        target_angle = self.current_shoulder_angle + angle_increment
+        self._safe_move_shoulder(target_angle)
+        
     def move_y_back(self):
-        self._move_xy_delta(0, -self.move_increment_mm)
-
+        """Move Y-axis back by moving elbow joint independently."""
+        # Convert mm step size to elbow angle increment
+        angle_increment = self._convert_mm_to_joint_increment()
+        target_angle = self.current_elbow_angle - angle_increment
+        self._safe_move_elbow(target_angle)
+        
     def move_y_forward(self):
-        self._move_xy_delta(0, self.move_increment_mm)
-
-    def _move_xy_delta(self, dx, dy):
-        """Move end-effector by (dx, dy) mm in Cartesian space.
-        On real hardware uses IK (n9_fk + n9_ik) for true Cartesian steps.
-        In simulation falls back to single-joint nudge since mock has no n9_ik.
-        """
-        if not self.is_connected:
-            return
-        try:
-            # Current joint counts: [gripper, shoulder, elbow, z] (Locator.py format)
-            positions = self.robot.get_robot_positions()
-            gripper_cts, shoulder_cts, elbow_cts, z_cts = (
-                positions[0], positions[1], positions[2], positions[3]
-            )
-
-            # Current XY via FK: n9_fk(gripper, elbow, shoulder)
-            x, y, _ = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
-            target_x = x + dx
-            target_y = y + dy
-
-            if hasattr(self.robot, 'n9_ik'):
-                # Real robot: solve IK for both shoulder configurations,
-                # pick whichever keeps the shoulder closest to its current count
-                # so the arm stays in whatever pose it was already in.
-                sol_c = self.robot.n9_ik(target_x, target_y,
-                                          shoulder_preference=self.robot.SHOULDER_CENTER)
-                sol_o = self.robot.n9_ik(target_x, target_y,
-                                          shoulder_preference=self.robot.SHOULDER_OUT)
-                # n9_ik returns (gripper, elbow, shoulder); goto expects [gripper, shoulder, elbow, z]
-                chosen = sol_c if abs(sol_c[2] - shoulder_cts) <= abs(sol_o[2] - shoulder_cts) else sol_o
-                self.robot.goto([chosen[0], chosen[2], chosen[1], z_cts], wait=True)
-                logger.info(f"IK XY move ({dx:+.1f}, {dy:+.1f})mm -> ({target_x:.1f}, {target_y:.1f})mm")
-            else:
-                # Simulation: nudge shoulder for X, elbow for Y
-                if dx != 0:
-                    new_s = max(SHOULDER_MIN_RAD, min(SHOULDER_MAX_RAD,
-                                self.current_shoulder_angle + dx * 0.01))
-                    self.robot.move_axis_rad(self.robot.SHOULDER, new_s, wait=True)
-                    self.current_shoulder_angle = new_s
-                if dy != 0:
-                    new_e = max(ELBOW_MIN_RAD, min(ELBOW_MAX_RAD,
-                                self.current_elbow_angle + dy * 0.01))
-                    self.robot.move_axis_rad(self.robot.ELBOW, new_e, wait=True)
-                    self.current_elbow_angle = new_e
-                logger.info(f"SIM XY nudge ({dx:+.1f}, {dy:+.1f})mm")
-
-            self.update_display()
-        except Exception as e:
-            logger.error(f"Error in XY movement: {str(e)}")
-
+        """Move Y-axis forward by moving elbow joint independently."""
+        # Convert mm step size to elbow angle increment
+        angle_increment = self._convert_mm_to_joint_increment()
+        target_angle = self.current_elbow_angle + angle_increment
+        self._safe_move_elbow(target_angle)
+    
+    def _convert_mm_to_joint_increment(self):
+        """Convert Z-axis mm step size to equivalent joint angle increment."""
+        # Approximate conversion: 1mm ≈ 0.01 radians for intuitive feel
+        # User can adjust this by changing the Z-axis step size
+        return self.move_increment_mm * 0.01
+        
     def _safe_move_z(self, target_mm):
         """Safely move Z-axis with bounds checking."""
         if not self.is_connected:
@@ -1332,6 +1600,63 @@ class EnhancedRobotArmController:
             self.update_display()
         except Exception as e:
             logger.error(f"Error moving Z-axis: {str(e)}")
+            
+    def _safe_move_shoulder(self, target_angle):
+        """Safely move shoulder joint and update X-Y coordinates."""
+        if not self.is_connected:
+            return
+            
+        # Apply joint limits for shoulder
+        SHOULDER_MIN, SHOULDER_MAX = -(2/3) * 3.14159, (2/3) * 3.14159
+        target_angle = max(SHOULDER_MIN, min(SHOULDER_MAX, target_angle))
+        
+        try:
+            logger.info(f"Moving shoulder to {target_angle:.3f} rad (X-axis control)")
+            self.robot.move_axis_rad(self.robot.SHOULDER, target_angle, wait=True)
+            self.current_shoulder_angle = target_angle
+            self._update_xy_from_joints()  # Calculate new X-Y position
+            self.update_display()
+        except Exception as e:
+            logger.error(f"Error moving shoulder: {str(e)}")
+            
+    def _safe_move_elbow(self, target_angle):
+        """Safely move elbow joint and update X-Y coordinates."""
+        if not self.is_connected:
+            return
+            
+        # Apply joint limits for elbow
+        ELBOW_MIN, ELBOW_MAX = -(5/6) * 3.14159, (5/6) * 3.14159
+        target_angle = max(ELBOW_MIN, min(ELBOW_MAX, target_angle))
+        
+        try:
+            logger.info(f"Moving elbow to {target_angle:.3f} rad (Y-axis control)")
+            self.robot.move_axis_rad(self.robot.ELBOW, target_angle, wait=True)
+            self.current_elbow_angle = target_angle
+            self._update_xy_from_joints()  # Calculate new X-Y position
+            self.update_display()
+        except Exception as e:
+            logger.error(f"Error moving elbow: {str(e)}")
+            
+    def _update_xy_from_joints(self):
+        """Update X-Y coordinates from current joint angles using forward kinematics."""
+        try:
+            if hasattr(self.robot, 'n9_fk'):  # Real robot with kinematics
+                # Convert current angles to counts for forward kinematics
+                gripper_cts = self.robot.rad_to_counts(self.robot.GRIPPER, self.current_gripper_angle)
+                elbow_cts = self.robot.rad_to_counts(self.robot.ELBOW, self.current_elbow_angle) 
+                shoulder_cts = self.robot.rad_to_counts(self.robot.SHOULDER, self.current_shoulder_angle)
+                
+                # Calculate X-Y coordinates
+                x, y, theta = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
+                self.current_x_position = x
+                self.current_y_position = y
+                logger.info(f"Joint movement resulted in X-Y: ({x:.1f}, {y:.1f}) mm")
+            else:  # Mock robot - approximate X-Y from joint angles
+                # Simple approximation for display purposes
+                self.current_x_position = 150 + (self.current_shoulder_angle * 50)  # Approximate
+                self.current_y_position = 100 + (self.current_elbow_angle * 50)     # Approximate
+        except Exception as e:
+            logger.warning(f"Could not update X-Y coordinates: {e}")
             
     def open_gripper(self):
         """Open gripper."""
@@ -1352,151 +1677,7 @@ class EnhancedRobotArmController:
                 self.update_display()
             except Exception as e:
                 logger.error(f"Error closing gripper: {str(e)}")
-
-    def get_pipet_large(self):
-        """Get a large tip using nr_robot."""
-        if self.nr_robot is not None:
-            try:
-                self.nr_robot.get_pipet("large_tip")
-                self.update_display()
-            except Exception as e:
-                logger.error(f"Error getting large tip: {str(e)}")
-        else:
-            logger.warning("nr_robot not available - connect robot first")
-
-    def get_pipet_small(self):
-        """Get a small tip using nr_robot."""
-        if self.nr_robot is not None:
-            try:
-                self.nr_robot.get_pipet("small_tip")
-                self.update_display()
-            except Exception as e:
-                logger.error(f"Error getting small tip: {str(e)}")
-        else:
-            logger.warning("nr_robot not available - connect robot first")
-
-    def remove_pipet_action(self):
-        """Remove pipet tip using nr_robot."""
-        if self.nr_robot is not None:
-            try:
-                self.nr_robot.remove_pipet()
-                self.update_display()
-            except Exception as e:
-                logger.error(f"Error removing pipet: {str(e)}")
-        else:
-            logger.warning("nr_robot not available - connect robot first")
-
-    def set_grid_origin(self):
-        """Freeze current robot position as the grid origin for array generation."""
-        if not self.is_connected:
-            messagebox.showerror("Error", "Robot not connected")
-            return
-        try:
-            positions = self.robot.get_robot_positions()
-            gripper_cts, shoulder_cts, elbow_cts, z_cts = (
-                positions[0], positions[1], positions[2], positions[3]
-            )
-            x, y, _ = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
-            self.grid_origin = {
-                'x': x, 'y': y,
-                'z_cts': z_cts,
-                'gripper_cts': gripper_cts,
-                'shoulder_cts': shoulder_cts,
-            }
-            self.grid_origin_label.config(
-                text=f"Origin: X={x:.1f}mm, Y={y:.1f}mm  |  Z={z_cts}cts  G={gripper_cts}cts",
-                foreground="green"
-            )
-            logger.info(f"Grid origin set: X={x:.1f}, Y={y:.1f}, Z_cts={z_cts}, G_cts={gripper_cts}")
-        except Exception as e:
-            logger.error(f"Error setting grid origin: {str(e)}")
-
-    def generate_grid_array(self):
-        """Generate Locator.py-format position array from origin + grid parameters.
-        
-        Ordering: column-major (all rows in col 0, then all rows in col 1, ...)
-        so index = col * n_rows + row.  Different rows have different Y,
-        different columns have different X.
-        Output format: [gripper, shoulder, elbow, z]  (matches Locator.py convention)
-        """
-        if self.grid_origin is None:
-            messagebox.showerror("Error", "Set origin first (jog to position, then click Set Origin)")
-            return
-        if not hasattr(self.robot, 'n9_ik'):
-            messagebox.showerror("Error",
-                "Grid generation requires real hardware.\n"
-                "n9_ik is not available in simulation mode.")
-            return
-        try:
-            x_offset = float(self.grid_x_offset_entry.get())
-            y_offset = float(self.grid_y_offset_entry.get())
-            n_cols = int(self.grid_cols_entry.get())
-            n_rows = int(self.grid_rows_entry.get())
-        except ValueError:
-            messagebox.showerror("Error", "Invalid parameter values - check x_offset, y_offset, cols, rows")
-            return
-
-        x0 = self.grid_origin['x']
-        y0 = self.grid_origin['y']
-        z_cts = self.grid_origin['z_cts']
-        shoulder_cts = self.grid_origin['shoulder_cts']
-
-        entries = []
-        ik_errors = []
-        for col in range(n_cols):
-            for row in range(n_rows):
-                target_x = x0 + col * x_offset
-                target_y = y0 + row * y_offset
-                try:
-                    sol_c = self.robot.n9_ik(target_x, target_y,
-                                             shoulder_preference=self.robot.SHOULDER_CENTER)
-                    sol_o = self.robot.n9_ik(target_x, target_y,
-                                             shoulder_preference=self.robot.SHOULDER_OUT)
-                    # Pick config closest to origin shoulder to stay consistent
-                    chosen = sol_c if abs(sol_c[2] - shoulder_cts) <= abs(sol_o[2] - shoulder_cts) else sol_o
-                    # n9_ik returns (gripper, elbow, shoulder); Locator format: [gripper, shoulder, elbow, z]
-                    entry = [int(chosen[0]), int(chosen[2]), int(chosen[1]), int(z_cts)]
-                    entries.append((col, row, entry))
-                except Exception as e:
-                    ik_errors.append(f"col={col}, row={row}: {e}")
-                    entries.append((col, row, None))
-
-        # Build output string
-        lines = [
-            f"# Grid: {n_cols} cols x {n_rows} rows",
-            f"# x_offset={x_offset}mm per col, y_offset={y_offset}mm per row",
-            f"# Origin: X={x0:.1f}mm, Y={y0:.1f}mm",
-            f"# Format: [gripper, shoulder, elbow, z]  (Locator.py convention)",
-            f"my_grid = [",
-        ]
-        for i, (col, row, pos) in enumerate(entries):
-            comma = "," if i < len(entries) - 1 else ""
-            if pos is not None:
-                lines.append(f"    {pos}{comma}  # col={col}, row={row}")
-            else:
-                lines.append(f"    # IK FAILED col={col}, row={row}")
-        lines.append("]")
-
-        output = "\n".join(lines)
-        self.grid_output_text.config(state=tk.NORMAL)
-        self.grid_output_text.delete("1.0", tk.END)
-        self.grid_output_text.insert(tk.END, output)
-        self.grid_output_text.config(state=tk.DISABLED)
-
-        n_ok = sum(1 for _, _, p in entries if p is not None)
-        if ik_errors:
-            logger.warning(f"Grid generation: {n_ok}/{len(entries)} succeeded. Failures: {ik_errors}")
-        else:
-            logger.info(f"Grid generated: {n_cols}x{n_rows}={len(entries)} positions")
-
-    def copy_grid_output(self):
-        """Copy the grid output text to clipboard."""
-        content = self.grid_output_text.get("1.0", tk.END).strip()
-        if content:
-            self.root.clipboard_clear()
-            self.root.clipboard_append(content)
-            logger.info("Grid array copied to clipboard")
-
+                
     def home_robot(self):
         """Home the robot."""
         if not self.is_connected:
@@ -1741,7 +1922,8 @@ def main():
     
     try:
         controller = EnhancedRobotArmController(
-            vial_file_path=vial_file
+            vial_file_path=vial_file,
+            include_pipetting=True  # Include both gripper and pipetting positions by default
         )
         controller.run()
     except Exception as e:
