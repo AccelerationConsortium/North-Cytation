@@ -254,6 +254,7 @@ def create_samples_in_wellplate(lash_e,sample_name,first_well_index,well_volume=
 
     lash_e.temp_controller.turn_off_stirring()
     lash_e.nr_robot.move_vial_to_location(vial_name=sample_name, location='clamp', location_index=0)
+    lash_e.nr_robot.c9.close_clamp()
 
     # Simple vial-to-wellplate transfer with custom parameters - one well at a time
     for i in range(replicates):

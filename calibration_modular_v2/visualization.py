@@ -347,7 +347,8 @@ class CalibrationVisualizer:
         _flatten_recursive(parameters)
 
 def generate_calibration_plots(trial_results: List[Dict], optimal_conditions: List[Dict], 
-                             raw_measurements: List[Dict], output_dir: str) -> None:
+                             raw_measurements: List[Dict], output_dir: str,
+                             insights=None) -> None:
     """
     Convenience function to generate all calibration plots matching original system.
     
@@ -356,6 +357,7 @@ def generate_calibration_plots(trial_results: List[Dict], optimal_conditions: Li
         optimal_conditions: List of optimal condition dictionaries  
         raw_measurements: List of raw measurement dictionaries
         output_dir: Directory to save plots
+        insights: Optional analysis insights dict for SHAP plot
     """
     visualizer = CalibrationVisualizer(output_dir)
-    visualizer.generate_all_plots(trial_results, optimal_conditions, raw_measurements)
+    visualizer.generate_all_plots(trial_results, optimal_conditions, raw_measurements, insights=insights)
