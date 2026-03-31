@@ -1,5 +1,17 @@
 # Changelog
 
+## [CRITICAL X-Y MOVEMENT BUG FIXES] - 2026-03-31
+
+### CRITICAL BUG FIX: Motor Fault Prevention in X-Y Movement
+- **FIXED**: Motor faults caused by massive unintended movements during small X-Y adjustments
+- **ROOT CAUSE 1**: Wrong parameter order in forward kinematics call - `n9_fk(gripper, shoulder, elbow)` instead of correct `n9_fk(gripper, elbow, shoulder)`
+- **ROOT CAUSE 2**: IK function returns radians despite documentation claiming counts, causing unit conversion errors
+- **SOLUTION 1**: Corrected FK parameter order in `update_display()` to properly calculate current X-Y position
+- **SOLUTION 2**: Added automatic unit detection and conversion for IK results (radians → counts)
+- **SAFETY ENHANCEMENT**: Added movement safety limits (2000 cts per axis, 5000 cts total) to abort unsafe movements
+- **IMPACT**: Small 2mm movements now execute safely instead of attempting 38,000+ count dangerous movements
+- **PREVENTION**: Robot aborts movements exceeding safety limits instead of triggering motor controller faults
+
 ## [WORKFLOW TESTER IMPROVEMENTS] - 2026-03-30
 
 ### MAJOR ENHANCEMENT: Flow-Based Operation Testing 

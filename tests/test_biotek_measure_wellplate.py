@@ -10,12 +10,16 @@ def test_measure_wellplate(): #tests track movement of wellplate to and from cyt
     #protocol = r"C:\Protocols\300_900_sweep.prt"
     #protocol = r"C:\Protocols\SQ_degradation_sweep.prt" 
     protocol = r"C:\Protocols\300_900_sweep.prt"
+    protocol = None
 
-    data = lash_e.measure_wellplate(protocol, [0], plate_type='96 WELL PLATE')
+    for i in range(0, 4):
+        lash_e.nr_track.get_new_wellplate()
+        data = lash_e.measure_wellplate(protocol, [0], plate_type='96 WELL PLATE')
+        lash_e.nr_track.discard_wellplate()
 
     #data = lash_e.cytation.run_protocol(protocols, wells=range(0,3), plate_type="48 WELL PLATE")
 
-    print (data)
+    #print (data)
  
 
 #asd

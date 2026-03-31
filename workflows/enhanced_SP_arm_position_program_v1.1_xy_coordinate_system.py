@@ -361,6 +361,11 @@ class EnhancedRobotArmController:
                 
                 return True
                 
+            def goto_safe(self, position_list, wait=True):
+                """Move to position safely (same as goto in simulation)."""
+                logger.info(f"SIMULATION: Moving to position safely {position_list}")
+                self.goto(position_list, wait)  # Just use regular goto
+                
             def move_z(self, mm, wait=True):
                 logger.info(f"SIMULATION: Moving Z-axis to {mm:.1f}mm")
                 if mm < Z_AXIS_MIN_MM or mm > Z_AXIS_MAX_MM:
@@ -409,6 +414,12 @@ class EnhancedRobotArmController:
             def close_gripper(self):
                 logger.info("SIMULATION: Closing gripper")
                 self.gripper_is_open = False
+                
+            def open_clamp(self):
+                logger.info("SIMULATION: Opening clamp")
+                
+            def close_clamp(self):
+                logger.info("SIMULATION: Closing clamp")
                 
             def goto(self, position_list, wait=True):
                 """Move to absolute position [gripper, elbow, shoulder, z] per API."""
@@ -561,7 +572,10 @@ class EnhancedRobotArmController:
 
         self.home_button = ttk.Button(control_frame, text="HOME ROBOT",
                                       command=self.home_robot, style="Accent.TButton")
-        self.home_button.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 6))
+        self.home_button.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 6))
+        
+        ttk.Button(control_frame, text="MOVE HOME",
+                   command=self.move_home, style="Warning.TButton").grid(row=0, column=2, sticky=(tk.W, tk.E), pady=(0, 6), padx=(4, 0))
 
         ttk.Label(control_frame, text="Z:").grid(row=1, column=0, sticky=tk.W)
         ttk.Button(control_frame, text="▲ UP",
@@ -586,15 +600,21 @@ class EnhancedRobotArmController:
                    style="Success.TButton").grid(row=4, column=1, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="👊 CLOSE", command=self.close_gripper,
                    style="Warning.TButton").grid(row=4, column=2, padx=2, sticky=(tk.W, tk.E))
+        
+        ttk.Label(control_frame, text="Clamp:").grid(row=5, column=0, sticky=tk.W)
+        ttk.Button(control_frame, text="🔓 OPEN", command=self.open_clamp,
+                   style="Success.TButton").grid(row=5, column=1, padx=2, sticky=(tk.W, tk.E))
+        ttk.Button(control_frame, text="🔒 CLOSE", command=self.close_clamp,
+                   style="Warning.TButton").grid(row=5, column=2, padx=2, sticky=(tk.W, tk.E))
 
-        ttk.Label(control_frame, text="Pipet:").grid(row=5, column=0, sticky=tk.W)
+        ttk.Label(control_frame, text="Pipet:").grid(row=6, column=0, sticky=tk.W)
         ttk.Button(control_frame, text="GET LARGE",
-                   command=self.get_pipet_large).grid(row=5, column=1, padx=2, sticky=(tk.W, tk.E))
+                   command=self.get_pipet_large).grid(row=6, column=1, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="GET SMALL",
-                   command=self.get_pipet_small).grid(row=5, column=2, padx=2, sticky=(tk.W, tk.E))
+                   command=self.get_pipet_small).grid(row=6, column=2, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="REMOVE PIPET",
                    command=self.remove_pipet_action).grid(
-            row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
+            row=7, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
 
         control_frame.columnconfigure(1, weight=1)
         control_frame.columnconfigure(2, weight=1)
@@ -788,42 +808,22 @@ class EnhancedRobotArmController:
                 self.robot.home_robot(wait=True)
                 logger.info(f"Successfully homed robot to {self.selected_position}")
             else:
-                # SAFE TWO-STEP MOVEMENT to avoid collision with vials:
-                # Step 1: Move to safe Z height first if not already high enough
-                try:
-                    current_pos = self.robot.get_robot_positions()  # [gripper, elbow, shoulder, z]
-                    current_z = current_pos[3]
-                except (AttributeError, IndexError):
-                    current_z = SAFE_Z_HEIGHT_COUNTS + 1000
-                    current_pos = [0, 0, 0, current_z]
-                
-                if current_z > SAFE_Z_HEIGHT_COUNTS:
-                    logger.info(f"Moving to safe Z height ({SAFE_Z_HEIGHT_COUNTS} counts) first")
-                    safe_position = [
-                        current_pos[0],  # gripper unchanged
-                        current_pos[1],  # elbow unchanged
-                        current_pos[2],  # shoulder unchanged
-                        SAFE_Z_HEIGHT_COUNTS
-                    ]
-                    self.robot.goto(safe_position, wait=True)
-                
-                logger.info(f"Moving to target X-Y position: {self.selected_position}")
-                safe_xy_position = [
-                    position_data["gripper_cts"],
-                    position_data["elbow_cts"],    # index 1 = elbow
-                    position_data["shoulder_cts"], # index 2 = shoulder
-                    SAFE_Z_HEIGHT_COUNTS
-                ]
-                self.robot.goto(safe_xy_position, wait=True)
-                
-                logger.info(f"Lowering to target Z position ({position_data['z_cts']} counts)")
+                # Direct movement to target position using goto_safe for collision avoidance
                 target_position = [
                     position_data["gripper_cts"],
                     position_data["elbow_cts"],
                     position_data["shoulder_cts"],
                     position_data["z_cts"]
                 ]
-                self.robot.goto(target_position, wait=True)
+                logger.info(f"Moving directly to target position: {target_position}")
+                
+                # Use goto_safe if available for collision-aware direct movement
+                if hasattr(self.robot, 'goto_safe'):
+                    self.robot.goto_safe(target_position)
+                    logger.info("Moved to position using goto_safe")
+                else:
+                    self.robot.goto(target_position, wait=True)  
+                    logger.info("Moved to position using goto")
                 logger.info(f"Successfully moved to {self.selected_position}")
             
             # Record the movement in session history
@@ -1057,8 +1057,8 @@ class EnhancedRobotArmController:
                 "name": custom_name,
                 "timestamp": datetime.now().isoformat(),
                 "gripper_cts": current_pos[0],
-                "shoulder_cts": current_pos[1], 
-                "elbow_cts": current_pos[2],
+                "elbow_cts": current_pos[1],      # FIXED: elbow is now index 1
+                "shoulder_cts": current_pos[2],   # FIXED: shoulder is now index 2
                 "z_cts": current_pos[3],
                 "description": f"User-defined position: {custom_name}",
                 "category": "User_Defined"
@@ -1076,16 +1076,16 @@ class EnhancedRobotArmController:
                 f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\\n\\n")
                 f.write("Robot Coordinates:\\n")
                 f.write(f"gripper_cts: {current_pos[0]}\\n")
-                f.write(f"shoulder_cts: {current_pos[1]}\\n") 
-                f.write(f"elbow_cts: {current_pos[2]}\\n")
+                f.write(f"elbow_cts: {current_pos[1]}\\n")      # FIXED: elbow is now index 1
+                f.write(f"shoulder_cts: {current_pos[2]}\\n")   # FIXED: shoulder is now index 2
                 f.write(f"z_cts: {current_pos[3]}\\n\\n")
                 f.write("Array Format (for copy-paste):\\n")
                 f.write(f"[{current_pos[0]}, {current_pos[1]}, {current_pos[2]}, {current_pos[3]}]\\n\\n")
                 f.write("Python Dictionary Format:\\n")
                 f.write(f"'{custom_name}': {{\\n")
                 f.write(f"    'gripper_cts': {current_pos[0]},\\n")
-                f.write(f"    'shoulder_cts': {current_pos[1]},\\n")
-                f.write(f"    'elbow_cts': {current_pos[2]},\\n")
+                f.write(f"    'elbow_cts': {current_pos[1]},\\n")      # FIXED: elbow is now index 1
+                f.write(f"    'shoulder_cts': {current_pos[2]},\\n")   # FIXED: shoulder is now index 2
                 f.write(f"    'z_cts': {current_pos[3]},\\n")
                 f.write(f"    'description': '{custom_name}',\\n")
                 f.write(f"    'category': 'User_Defined'\\n")
@@ -1170,7 +1170,7 @@ class EnhancedRobotArmController:
                     if 'T' in timestamp:
                         timestamp = timestamp.split('T')[0] + ' ' + timestamp.split('T')[1].split('.')[0]
                     
-                    coords = f"[{data.get('gripper_cts', 0)}, {data.get('shoulder_cts', 0)}, {data.get('elbow_cts', 0)}, {data.get('z_cts', 0)}]"
+                    coords = f"[{data.get('gripper_cts', 0)}, {data.get('elbow_cts', 0)}, {data.get('shoulder_cts', 0)}, {data.get('z_cts', 0)}]"
                     
                     tree.insert("", tk.END, values=(name, timestamp, coords))
                 except Exception as e:
@@ -1210,7 +1210,7 @@ class EnhancedRobotArmController:
                         timestamp = data.get('timestamp', 'Unknown')
                         if 'T' in timestamp:
                             timestamp = timestamp.split('T')[0] + ' ' + timestamp.split('T')[1].split('.')[0]
-                        coords = f"[{data.get('gripper_cts', 0)}, {data.get('shoulder_cts', 0)}, {data.get('elbow_cts', 0)}, {data.get('z_cts', 0)}]"
+                        coords = f"[{data.get('gripper_cts', 0)}, {data.get('elbow_cts', 0)}, {data.get('shoulder_cts', 0)}, {data.get('z_cts', 0)}]"
                         tree.insert("", tk.END, values=(name, timestamp, coords))
                     except:
                         pass
@@ -1306,16 +1306,126 @@ class EnhancedRobotArmController:
         self._safe_move_z(self.current_z_position - self.move_increment_mm)
         
     def move_x_left(self):
-        self._move_xy_delta(-self.move_increment_mm, 0)
+        if self._check_robot_health():
+            self._move_xy_delta(-self.move_increment_mm, 0)
 
     def move_x_right(self):
-        self._move_xy_delta(self.move_increment_mm, 0)
+        if self._check_robot_health():
+            self._move_xy_delta(self.move_increment_mm, 0)
 
     def move_y_back(self):
-        self._move_xy_delta(0, -self.move_increment_mm)
+        if self._check_robot_health():
+            self._move_xy_delta(0, -self.move_increment_mm)
 
     def move_y_forward(self):
-        self._move_xy_delta(0, self.move_increment_mm)
+        if self._check_robot_health():
+            self._move_xy_delta(0, self.move_increment_mm)
+
+    def _check_robot_health(self):
+        """Check if robot is in a safe state to move."""
+        if not self.is_connected:
+            logger.error("Robot not connected - cannot move")
+            return False
+        
+        try:
+            # Check robot status
+            status = self.robot.get_robot_status()
+            logger.info(f"Robot status check: {status}")
+            
+            # Check for any error states
+            if hasattr(self.robot, 'get_robot_errors'):
+                errors = self.robot.get_robot_errors()
+                if errors:
+                    logger.error(f"Robot has errors: {errors}")
+                    return False
+            
+            # For real robot, check individual axis status
+            if not hasattr(self.robot, 'z_position_mm'):  # Real robot
+                for axis in [0, 1, 2, 3]:  # gripper, elbow, shoulder, z
+                    axis_status = self.robot.get_axis_status(axis)
+                    logger.info(f"Axis {axis} status: {axis_status}")
+                    if 'ERR' in str(axis_status) or 'FAULT' in str(axis_status):
+                        logger.error(f"Axis {axis} has fault: {axis_status}")
+                        return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error checking robot health: {e}")
+            return False
+
+    def diagnose_motor_fault(self):
+        """Diagnose motor fault issues and provide recovery suggestions."""
+        logger.info("=== MOTOR FAULT DIAGNOSIS ===")
+        
+        if not self.is_connected:
+            logger.error("Cannot diagnose: Robot not connected")
+            return
+        
+        try:
+            # Get overall robot status
+            try:
+                overall_status = self.robot.get_robot_status()
+                logger.info(f"Overall robot status: {overall_status}")
+            except Exception as e:
+                logger.error(f"Could not get overall status: {e}")
+            
+            # Check each axis individually
+            axis_names = ["GRIPPER", "ELBOW", "SHOULDER", "Z_AXIS"]
+            for i, name in enumerate(axis_names):
+                try:
+                    axis_status = self.robot.get_axis_status(i)
+                    axis_pos = self.robot.get_axis_position(i)
+                    logger.info(f"Axis {i} ({name}): status={axis_status}, position={axis_pos}")
+                    
+                    # Check if axis is served/enabled
+                    try:
+                        # Try to read servo status if available
+                        if hasattr(self.robot, 'get_axis_servo_status'):
+                            servo_status = self.robot.get_axis_servo_status(i)
+                            logger.info(f"Axis {i} servo status: {servo_status}")
+                    except Exception as servo_e:
+                        logger.warning(f"Could not get servo status for axis {i}: {servo_e}")
+                        
+                except Exception as e:
+                    logger.error(f"Error checking axis {i} ({name}): {e}")
+            
+            # Try to read any error messages from the controller
+            try:
+                # Some robots have error message queues
+                if hasattr(self.robot, 'read_error_queue'):
+                    errors = self.robot.read_error_queue()
+                    if errors:
+                        logger.error(f"Error queue: {errors}")
+                    else:
+                        logger.info("Error queue is clear")
+            except Exception as e:
+                logger.warning(f"Could not read error queue: {e}")
+            
+            # Check temperature and power status if available
+            try:
+                if hasattr(self.robot, 'get_temp'):
+                    for ch in range(4):  # Common number of temp channels
+                        try:
+                            temp = self.robot.get_temp(ch)
+                            logger.info(f"Temperature channel {ch}: {temp}")
+                        except:
+                            break  # Stop when we run out of valid channels
+            except Exception as e:
+                logger.warning(f"Could not read temperature: {e}")
+            
+            logger.info("=== SUGGESTED RECOVERY ACTIONS ===")
+            logger.info("1. Check if robot is properly homed (robot.home_robot())")
+            logger.info("2. Check all cables and connections")
+            logger.info("3. Verify power supply is adequate")
+            logger.info("4. Try restarting the controller")
+            logger.info("5. Check for mechanical obstructions")
+            logger.info("6. Verify axis limits and positions are within range")
+            
+        except Exception as e:
+            logger.error(f"Error during motor fault diagnosis: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
 
     def _move_xy_delta(self, dx, dy):
         """Move end-effector by (dx, dy) mm in Cartesian space.
@@ -1323,60 +1433,164 @@ class EnhancedRobotArmController:
         In simulation falls back to single-joint nudge since mock has no n9_ik.
         """
         if not self.is_connected:
+            logger.error("Cannot move XY: Robot not connected")
             return
         try:
+            logger.info(f"=== Starting XY movement: dx={dx:.1f}mm, dy={dy:.1f}mm ===")
+            
+            # Check robot status before movement
+            try:
+                robot_status = self.robot.get_robot_status()
+                logger.info(f"Robot status before movement: {robot_status}")
+            except Exception as e:
+                logger.warning(f"Could not get robot status: {e}")
+
             # Current joint counts: get_robot_positions() -> [gripper, elbow, shoulder, z]
+            logger.info("Getting current robot positions...")
             positions = self.robot.get_robot_positions()
+            logger.info(f"Current positions (counts): gripper={positions[0]}, elbow={positions[1]}, shoulder={positions[2]}, z={positions[3]}")
+            
             gripper_cts, elbow_cts, shoulder_cts, z_cts = (
                 positions[0], positions[1], positions[2], positions[3]
             )
 
             # Current XY via FK: n9_fk(gripper, elbow, shoulder) per API
-            x, y, _ = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
+            logger.info("Computing current X-Y position via forward kinematics...")
+            x, y, tool_angle = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
+            logger.info(f"Current X-Y position: ({x:.1f}, {y:.1f})mm, tool_angle={tool_angle:.2f}rad")
+            
             target_x = x + dx
             target_y = y + dy
+            logger.info(f"Target X-Y position: ({target_x:.1f}, {target_y:.1f})mm")
 
             if hasattr(self.robot, 'n9_ik'):
+                logger.info("Real robot detected - using inverse kinematics")
+                
                 # Real robot: solve IK for both shoulder configurations,
                 # pick whichever keeps the shoulder closest to its current count
                 # so the arm stays in whatever pose it was already in.
+                logger.info("Computing IK solutions...")
+                
                 sol_c = self.robot.n9_ik(target_x, target_y,
                                           shoulder_preference=self.robot.SHOULDER_CENTER)
+                logger.info(f"Center shoulder solution: gripper={sol_c[0]}, elbow={sol_c[1]}, shoulder={sol_c[2]}")
+                
                 sol_o = self.robot.n9_ik(target_x, target_y,
                                           shoulder_preference=self.robot.SHOULDER_OUT)
-                # n9_ik returns (gripper, elbow, shoulder); goto expects [gripper, elbow, shoulder, z]
-                chosen = sol_c if abs(sol_c[2] - shoulder_cts) <= abs(sol_o[2] - shoulder_cts) else sol_o
-                self.robot.goto([chosen[0], chosen[1], chosen[2], z_cts], wait=True)
-                logger.info(f"IK XY move ({dx:+.1f}, {dy:+.1f})mm -> ({target_x:.1f}, {target_y:.1f})mm")
+                logger.info(f"Out shoulder solution: gripper={sol_o[0]:.3f}, elbow={sol_o[1]:.3f}, shoulder={sol_o[2]:.3f}")
+                
+                # Convert current position to radians for proper comparison
+                current_gripper_rad = self.robot.counts_to_rad(self.robot.GRIPPER, gripper_cts)
+                current_elbow_rad = self.robot.counts_to_rad(self.robot.ELBOW, elbow_cts)
+                current_shoulder_rad = self.robot.counts_to_rad(self.robot.SHOULDER, shoulder_cts)
+                
+                # Pick solution that keeps shoulder closest to current position (compare radians to radians)
+                center_diff = abs(sol_c[2] - current_shoulder_rad)
+                out_diff = abs(sol_o[2] - current_shoulder_rad)
+                chosen = sol_c if center_diff <= out_diff else sol_o
+                logger.info(f"Current shoulder: {current_shoulder_rad:.3f}rad")
+                logger.info(f"Choosing solution with smaller shoulder change: center_diff={center_diff:.3f}rad, out_diff={out_diff:.3f}rad")
+                logger.info(f"Selected: {'CENTER' if chosen == sol_c else 'OUT'}")
+                
+                # Convert IK solution from radians to counts
+                gripper_cts_target = self.robot.rad_to_counts(self.robot.GRIPPER, chosen[0])
+                elbow_cts_target = self.robot.rad_to_counts(self.robot.ELBOW, chosen[1])
+                shoulder_cts_target = self.robot.rad_to_counts(self.robot.SHOULDER, chosen[2])
+                target_pos = [gripper_cts_target, elbow_cts_target, shoulder_cts_target, z_cts]
+                
+                logger.info(f"IK solution (radians): gripper={chosen[0]:.3f}, elbow={chosen[1]:.3f}, shoulder={chosen[2]:.3f}")
+                logger.info(f"Converted to counts: gripper={gripper_cts_target}, elbow={elbow_cts_target}, shoulder={shoulder_cts_target}")
+                
+                # Check movement safety with converted values
+                gripper_diff = abs(gripper_cts_target - gripper_cts)
+                elbow_diff = abs(elbow_cts_target - elbow_cts)
+                shoulder_diff = abs(shoulder_cts_target - shoulder_cts)
+                
+                logger.info(f"Movement deltas: gripper={gripper_diff:.0f}cts, elbow={elbow_diff:.0f}cts, shoulder={shoulder_diff:.0f}cts")
+                logger.info(f"Moving to target position: {target_pos}")
+                
+                # Safety checks - prevent motor faults from excessive movement
+                MAX_SAFE_DELTA = 5000  # Maximum safe movement per axis (counts)
+                MAX_TOTAL_MOVEMENT = 5000  # Maximum total movement magnitude (counts)
+                
+                max_single_delta = max(gripper_diff, elbow_diff, shoulder_diff)
+                total_movement = gripper_diff + elbow_diff + shoulder_diff
+                
+                if max_single_delta > MAX_SAFE_DELTA:
+                    logger.error(f"UNSAFE: Single axis movement too large! Max delta = {max_single_delta:.0f}cts (limit: {MAX_SAFE_DELTA}cts) - ABORTING")
+                    return
+                    
+                if total_movement > MAX_TOTAL_MOVEMENT:
+                    logger.error(f"UNSAFE: Total movement too large! Total = {total_movement:.0f}cts (limit: {MAX_TOTAL_MOVEMENT}cts) - ABORTING")
+                    return
+                
+                logger.info(f"Movement safety check PASSED: max_delta={max_single_delta:.0f}cts, total={total_movement:.0f}cts")
+                
+                self.robot.goto(target_pos, wait=True)
+                logger.info(f"Successfully completed XY move ({dx:+.1f}, {dy:+.1f})mm -> ({target_x:.1f}, {target_y:.1f})mm")
             else:
+                logger.info("Simulation robot detected - using joint nudging")
                 # Simulation: nudge shoulder for X, elbow for Y
                 if dx != 0:
                     new_s = max(SHOULDER_MIN_RAD, min(SHOULDER_MAX_RAD,
                                 self.current_shoulder_angle + dx * 0.01))
+                    logger.info(f"Moving shoulder from {self.current_shoulder_angle:.3f} to {new_s:.3f} rad")
                     self.robot.move_axis_rad(self.robot.SHOULDER, new_s, wait=True)
                     self.current_shoulder_angle = new_s
                 if dy != 0:
                     new_e = max(ELBOW_MIN_RAD, min(ELBOW_MAX_RAD,
                                 self.current_elbow_angle + dy * 0.01))
+                    logger.info(f"Moving elbow from {self.current_elbow_angle:.3f} to {new_e:.3f} rad")
                     self.robot.move_axis_rad(self.robot.ELBOW, new_e, wait=True)
                     self.current_elbow_angle = new_e
-                logger.info(f"SIM XY nudge ({dx:+.1f}, {dy:+.1f})mm")
+                logger.info(f"SIM XY nudge ({dx:+.1f}, {dy:+.1f})mm completed")
 
+            logger.info("=== XY movement completed successfully ===")
             self.update_display()
+            
         except Exception as e:
-            logger.error(f"Error in XY movement: {str(e)}")
+            logger.error(f"=== ERROR in XY movement: {str(e)} ===")
+            logger.error(f"Error type: {type(e).__name__}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            
+            # Try to read robot status after error
+            try:
+                robot_status = self.robot.get_robot_status()
+                logger.error(f"Robot status after error: {robot_status}")
+            except Exception as status_e:
+                logger.error(f"Could not get robot status after error: {status_e}")
 
     def _safe_move_z(self, target_mm):
         """Safely move Z-axis with bounds checking."""
         if not self.is_connected:
+            logger.error("Cannot move Z: Robot not connected")
+            return
+            
+        # Check robot health first
+        if not self._check_robot_health():
+            logger.error("Cannot move Z: Robot health check failed")
             return
             
         target_mm = max(Z_AXIS_MIN_MM, min(Z_AXIS_MAX_MM, target_mm))
+        logger.info(f"Moving Z-axis to {target_mm:.1f}mm (current: {self.current_z_position:.1f}mm)")
+        
         try:
             self.robot.move_z(target_mm, wait=True)
+            logger.info(f"Successfully moved Z-axis to {target_mm:.1f}mm")
             self.update_display()
         except Exception as e:
-            logger.error(f"Error moving Z-axis: {str(e)}")
+            logger.error(f"Error moving Z-axis to {target_mm:.1f}mm: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            
+            # Try to get more diagnostic info
+            try:
+                positions = self.robot.get_robot_positions()
+                current_z_cts = positions[3]
+                current_z_mm = self.robot.counts_to_mm(self.robot.Z_AXIS, current_z_cts)
+                logger.error(f"Current Z position after error: {current_z_mm:.1f}mm ({current_z_cts} cts)")
+            except Exception as diag_e:
+                logger.error(f"Could not get diagnostic position info: {diag_e}")
             
     def open_gripper(self):
         """Open gripper."""
@@ -1397,6 +1611,34 @@ class EnhancedRobotArmController:
                 self.update_display()
             except Exception as e:
                 logger.error(f"Error closing gripper: {str(e)}")
+
+    def open_clamp(self):
+        """Open the robot clamp (clamp 0)."""
+        if not self.is_connected:
+            logger.warning("Cannot open clamp: Robot not connected")
+            return
+        try:
+            if hasattr(self.robot, 'open_clamp'):
+                self.robot.open_clamp()  # Remove wait parameter
+                logger.info("Clamp opened")
+            else:
+                logger.warning("Clamp control not available on this robot")
+        except Exception as e:
+            logger.error(f"Error opening clamp: {str(e)}")
+    
+    def close_clamp(self):
+        """Close the robot clamp (clamp 0)."""
+        if not self.is_connected:
+            logger.warning("Cannot close clamp: Robot not connected")
+            return
+        try:
+            if hasattr(self.robot, 'close_clamp'):
+                self.robot.close_clamp()  # Remove wait parameter
+                logger.info("Clamp closed")
+            else:
+                logger.warning("Clamp control not available on this robot")
+        except Exception as e:
+            logger.error(f"Error closing clamp: {str(e)}")
 
     def get_pipet_large(self):
         """Get a large tip using nr_robot."""
@@ -1479,7 +1721,7 @@ class EnhancedRobotArmController:
         Ordering: column-major (all rows in col 0, then all rows in col 1, ...)
         so index = col * n_rows + row.  Different rows have different Y,
         different columns have different X.
-        Output format: [gripper, shoulder, elbow, z]  (matches Locator.py convention)
+        Output format: [gripper, elbow, shoulder, z]  (matches standard API convention)
         """
         if self.grid_origin is None:
             messagebox.showerror("Error", "Set origin first (jog to position, then click Set Origin)")
@@ -1505,8 +1747,10 @@ class EnhancedRobotArmController:
 
         entries = []
         ik_errors = []
-        for col in range(n_cols):
-            for row in range(n_rows):
+        last_shoulder_rad = self.robot.counts_to_rad(self.robot.SHOULDER, shoulder_cts)  # Track shoulder progression
+        
+        for col in range(n_cols):          # COLUMN-MAJOR: Column loop (outer)
+            for row in range(n_rows):      # Row loop (inner) - go down Y first
                 target_x = x0 + col * x_offset
                 target_y = y0 + row * y_offset
                 try:
@@ -1514,32 +1758,26 @@ class EnhancedRobotArmController:
                                              shoulder_preference=self.robot.SHOULDER_CENTER)
                     sol_o = self.robot.n9_ik(target_x, target_y,
                                              shoulder_preference=self.robot.SHOULDER_OUT)
-                    # Pick config closest to origin shoulder to stay consistent
-                    chosen = sol_c if abs(sol_c[2] - shoulder_cts) <= abs(sol_o[2] - shoulder_cts) else sol_o
-                    # n9_ik returns (gripper, elbow, shoulder); goto expects [gripper, elbow, shoulder, z]
-                    entry = [int(chosen[0]), int(chosen[1]), int(chosen[2]), int(z_cts)]
+                    # Pick config closest to PREVIOUS position shoulder for smooth progression
+                    chosen = sol_c if abs(sol_c[2] - last_shoulder_rad) <= abs(sol_o[2] - last_shoulder_rad) else sol_o
+                    
+                    # Update shoulder reference for next position
+                    last_shoulder_rad = chosen[2]
+                    
+                    # CRITICAL: n9_ik returns radians, must convert to counts before creating entry
+                    gripper_cts = int(self.robot.rad_to_counts(self.robot.GRIPPER, chosen[0]))
+                    elbow_cts = int(self.robot.rad_to_counts(self.robot.ELBOW, chosen[1]))
+                    shoulder_cts_target = int(self.robot.rad_to_counts(self.robot.SHOULDER, chosen[2]))
+                    
+                    entry = [gripper_cts, elbow_cts, shoulder_cts_target, int(z_cts)]
                     entries.append((col, row, entry))
                 except Exception as e:
                     ik_errors.append(f"col={col}, row={row}: {e}")
                     entries.append((col, row, None))
 
         # Build output string
-        lines = [
-            f"# Grid: {n_cols} cols x {n_rows} rows",
-            f"# x_offset={x_offset}mm per col, y_offset={y_offset}mm per row",
-            f"# Origin: X={x0:.1f}mm, Y={y0:.1f}mm",
-            f"# Format: [gripper, elbow, shoulder, z]  (API convention, same as goto)",
-            f"my_grid = [",
-        ]
-        for i, (col, row, pos) in enumerate(entries):
-            comma = "," if i < len(entries) - 1 else ""
-            if pos is not None:
-                lines.append(f"    {pos}{comma}  # col={col}, row={row}")
-            else:
-                lines.append(f"    # IK FAILED col={col}, row={row}")
-        lines.append("]")
-
-        output = "\n".join(lines)
+        valid_positions = [pos for _, _, pos in entries if pos is not None]
+        output = f"my_grid = {valid_positions}"
         self.grid_output_text.config(state=tk.NORMAL)
         self.grid_output_text.delete("1.0", tk.END)
         self.grid_output_text.insert(tk.END, output)
@@ -1594,6 +1832,48 @@ class EnhancedRobotArmController:
             messagebox.showerror("Error", f"Failed to home robot:\n{str(e)}")
         finally:
             self.home_button.config(text="🏠 HOME ROBOT", state="normal")
+            self.update_display()
+            
+    def move_home(self):
+        """Move robot to home position (faster than homing - just moves to [0,0,0,0])."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        try:
+            logger.info("Moving robot to home position...")
+            
+            # Home position from Locator.py: [0, 0, 0, 0]
+            home_position = [0, 0, 0, 0]
+            
+            if hasattr(self.robot, 'goto_safe'):
+                # Use goto_safe if available (real robot via nr_robot)
+                self.robot.goto_safe(home_position, wait=True)
+                logger.info("Moved to home position using goto_safe")
+            else:
+                # Fallback to regular goto for direct NorthC9 access
+                self.robot.goto(home_position, wait=True)
+                logger.info("Moved to home position using goto")
+            
+            # Record move in session history
+            self.session_history.append({
+                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                "action": "move_home",
+                "target_position": {
+                    "gripper_cts": 0,
+                    "elbow_cts": 0,
+                    "shoulder_cts": 0,
+                    "z_cts": 0
+                }
+            })
+            
+            logger.info("Successfully moved to home position")
+            # Don't show popup for move home since it's a quick operation
+            
+        except Exception as e:
+            logger.error(f"Error moving to home: {str(e)}")
+            messagebox.showerror("Error", f"Failed to move to home:\n{str(e)}")
+        finally:
             self.update_display()
             
     def update_z_increment(self):
@@ -1652,53 +1932,70 @@ class EnhancedRobotArmController:
                     self.current_z_position = self.robot.counts_to_mm(self.robot.Z_AXIS, positions[3])
                     # Convert joint positions to x-y coordinates using forward kinematics
                     try:
-                        cartesian_pos = self.robot.n9_fk(positions[0], positions[2], positions[1])  # gripper, elbow, shoulder order
+                        cartesian_pos = self.robot.n9_fk(positions[0], positions[1], positions[2])  # gripper, elbow, shoulder (CORRECT ORDER)
                         self.current_x_position = cartesian_pos[0]
                         self.current_y_position = cartesian_pos[1]
+                        logger.debug(f"FK: positions[gripper={positions[0]}, elbow={positions[1]}, shoulder={positions[2]}] -> XY=({cartesian_pos[0]:.1f}, {cartesian_pos[1]:.1f})")
                     except Exception as e:
                         logger.warning(f"Could not get x-y position from kinematics during display update: {e}")
                         # Keep current values if FK fails
                 
                 # Update position labels
-                self.z_position_label.config(text=f"Z-Axis: {self.current_z_position:.1f} mm")
-                self.x_position_label.config(text=f"X-Position: {self.current_x_position:.1f} mm")
-                self.y_position_label.config(text=f"Y-Position: {self.current_y_position:.1f} mm")
-                self.gripper_position_label.config(text=f"Gripper: {self.current_gripper_angle:.2f} rad ({self.current_gripper_angle*180/3.14159:.1f}°)")
+                if self.z_position_label is not None:
+                    self.z_position_label.config(text=f"Z-Axis: {self.current_z_position:.1f} mm")
+                if self.x_position_label is not None:
+                    self.x_position_label.config(text=f"X-Position: {self.current_x_position:.1f} mm")
+                if self.y_position_label is not None:
+                    self.y_position_label.config(text=f"Y-Position: {self.current_y_position:.1f} mm")
+                if self.gripper_position_label is not None:
+                    self.gripper_position_label.config(text=f"Gripper: {self.current_gripper_angle:.2f} rad ({self.current_gripper_angle*180/3.14159:.1f}°)")
                 
                 # Update gripper status
-                if self.gripper_is_open:
-                    self.gripper_status_label.config(text="Gripper: OPEN ✋", foreground="green")
-                else:
-                    self.gripper_status_label.config(text="Gripper: CLOSED 👊", foreground="red")
+                if self.gripper_status_label is not None:
+                    if self.gripper_is_open:
+                        self.gripper_status_label.config(text="Gripper: OPEN ✋", foreground="green")
+                    else:
+                        self.gripper_status_label.config(text="Gripper: CLOSED 👊", foreground="red")
                 
                 # Update connection status
-                if self.is_homed:
-                    self.status_label.config(text="Connected & Homed", foreground="green")
-                else:
-                    self.status_label.config(text="Connected - Not Homed", foreground="orange")
-                    
+                if self.status_label is not None:
+                    if self.is_homed:
+                        self.status_label.config(text="Connected & Homed", foreground="green")
+                    else:
+                        self.status_label.config(text="Connected - Not Homed", foreground="orange")
+                        
             except Exception as e:
                 logger.error(f"Error updating display: {str(e)}")
-                self.status_label.config(text="Error reading position", foreground="red")
+                logger.error(f"Error type: {type(e).__name__}")
+                import traceback
+                logger.error(f"Full traceback: {traceback.format_exc()}")
+                if self.status_label is not None:
+                    self.status_label.config(text="Error reading position", foreground="red")
         else:
             # Disconnected state
-            self.z_position_label.config(text="Z-Axis: Unknown")
-            self.x_position_label.config(text="X-Position: Unknown")
-            self.y_position_label.config(text="Y-Position: Unknown")
-            self.gripper_position_label.config(text="Gripper: Unknown")
-            self.gripper_status_label.config(text="Gripper: Unknown", foreground="gray")
-            self.status_label.config(text="Disconnected", foreground="red")
+            if self.z_position_label is not None:
+                self.z_position_label.config(text="Z-Axis: Unknown")
+            if self.x_position_label is not None:
+                self.x_position_label.config(text="X-Position: Unknown")
+            if self.y_position_label is not None:
+                self.y_position_label.config(text="Y-Position: Unknown")
+            if self.gripper_position_label is not None:
+                self.gripper_position_label.config(text="Gripper: Unknown")
+            if self.gripper_status_label is not None:
+                self.gripper_status_label.config(text="Gripper: Unknown", foreground="gray")
+            if self.status_label is not None:
+                self.status_label.config(text="Disconnected", foreground="red")
     
     def get_current_positions(self):
-        """Get current robot positions in counts format [gripper, shoulder, elbow, z]."""
+        """Get current robot positions in counts format [gripper, elbow, shoulder, z]."""
         try:
             if not self.is_connected:
                 # Return default/last known positions if not connected
                 if hasattr(self, 'robot') and hasattr(self.robot, 'gripper_cts'):  # Mock robot
                     return [
                         self.robot.gripper_cts,
+                        self.robot.elbow_cts,      # Fixed order: elbow before shoulder
                         self.robot.shoulder_cts, 
-                        self.robot.elbow_cts,
                         self.robot.z_cts
                     ]
                 else:
@@ -1708,16 +2005,16 @@ class EnhancedRobotArmController:
             if hasattr(self.robot, 'z_position_mm'):  # Mock robot
                 return [
                     self.robot.gripper_cts,
+                    self.robot.elbow_cts,        # Fixed order: elbow before shoulder
                     self.robot.shoulder_cts,
-                    self.robot.elbow_cts, 
                     self.robot.z_cts
                 ]
             else:  # Real robot
-                positions = self.robot.get_robot_positions()
+                positions = self.robot.get_robot_positions()  # Returns [gripper, elbow, shoulder, z]
                 return [
                     positions[0],  # gripper_cts
-                    positions[2],  # shoulder_cts (note: real robot returns [gripper, elbow, shoulder, z])
-                    positions[1],  # elbow_cts
+                    positions[1],  # elbow_cts (FIXED: was positions[2])  
+                    positions[2],  # shoulder_cts (FIXED: was positions[1])
                     positions[3]   # z_cts
                 ]
                 
