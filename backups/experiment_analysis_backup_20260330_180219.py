@@ -29,13 +29,6 @@ import warnings
 # Suppress sklearn warnings for cleaner output
 warnings.filterwarnings('ignore', category=UserWarning)
 
-# SHAP for feature importance analysis - skipped gracefully if not installed
-try:
-    import shap
-    SHAP_AVAILABLE = True
-except ImportError:
-    SHAP_AVAILABLE = False
-
 # Set up logging
 logger = logging.getLogger(__name__)
 
@@ -162,14 +155,9 @@ class CalibrationAnalyzer:
         # Extract parameter data (hardware-agnostic)
         param_data = []
         deviations = []
-        cv_pcts = []       # precision - raw, before penalty filtering
-        times = []         # mean duration
         
         for trial in trial_results:
-            analysis = trial.get('analysis', {})
-            deviation = analysis.get('absolute_deviation_pct', 0)
-            cv_pct = analysis.get('cv_volume_pct', 0)
-            duration = analysis.get('mean_duration_s', 0)
+            deviation = trial.get('analysis', {}).get('absolute_deviation_pct', 0)
             parameters = trial.get('parameters', {})
             
             # Flatten parameters
@@ -177,8 +165,6 @@ class CalibrationAnalyzer:
             if flat_params:  # Only include if we have parameter data
                 param_data.append(flat_params)
                 deviations.append(deviation)
-                cv_pcts.append(cv_pct)
-                times.append(duration)
         
         if len(param_data) < 2:
             return sensitivity
@@ -217,70 +203,31 @@ class CalibrationAnalyzer:
         sensitivity['parameter_correlations'] = dict(sorted_correlations)
         sensitivity['most_influential_parameters'] = [item[0] for item in sorted_correlations[:5]]
         
-        # SHAP feature importance for 3 targets (requires shap + enough data)
-        if SHAP_AVAILABLE and len(param_data) >= 10 and len(numeric_cols) >= 2:
+        # Try feature importance with Random Forest (if enough data)
+        if len(param_data) >= 10 and len(numeric_cols) >= 2:
             try:
                 X = param_df[numeric_cols].fillna(0)
+                y = np.array(deviations)
+                
+                # Standardize features
                 scaler = StandardScaler()
                 X_scaled = scaler.fit_transform(X)
-                X_scaled_df = pd.DataFrame(X_scaled, columns=numeric_cols)
-
-                shap_targets = {
-                    'accuracy': (np.array(deviations), list(range(len(deviations)))),
-                    # Precision: filter out 100% penalty rows (penalized by accuracy failure, not real precision)
-                    'precision': (
-                        np.array([v for v in cv_pcts if v < 99.0]),
-                        [i for i, v in enumerate(cv_pcts) if v < 99.0]
-                    ),
-                    'time': (np.array(times), list(range(len(times)))),
-                }
-
-                shap_importance = {}
-                for target_name, (y_vals, row_idx) in shap_targets.items():
-                    if len(y_vals) < 5 or len(set(y_vals)) < 2:
-                        logger.debug(f"Skipping SHAP for {target_name}: insufficient data variation")
-                        continue
-                    try:
-                        X_subset = X_scaled_df.iloc[row_idx]
-                        rf = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=5)
-                        rf.fit(X_subset, y_vals)
-                        explainer = shap.TreeExplainer(rf)
-                        shap_values = explainer.shap_values(X_subset)
-                        mean_abs_shap = np.abs(shap_values).mean(axis=0)
-                        importance_dict = dict(zip(numeric_cols, mean_abs_shap))
-                        # Sort descending by importance
-                        shap_importance[target_name] = dict(
-                            sorted(importance_dict.items(), key=lambda x: x[1], reverse=True)
-                        )
-                        logger.debug(f"SHAP computed for {target_name} ({len(y_vals)} trials)")
-                    except Exception as e:
-                        logger.debug(f"SHAP failed for {target_name}: {e}")
-
-                if shap_importance:
-                    sensitivity['shap_importance'] = shap_importance
-                    # Top features across all targets (union, ranked by accuracy importance)
-                    accuracy_imp = shap_importance.get('accuracy', {})
-                    sensitivity['top_important_features'] = list(accuracy_imp.keys())[:5]
-                    logger.info(f"SHAP analysis complete for targets: {list(shap_importance.keys())}")
-
-            except Exception as e:
-                logger.debug(f"SHAP analysis failed: {e}")
-
-        elif not SHAP_AVAILABLE and len(param_data) >= 10 and len(numeric_cols) >= 2:
-            # Fallback: RF feature importance (accuracy only) when shap not installed
-            try:
-                X = param_df[numeric_cols].fillna(0)
-                scaler = StandardScaler()
-                X_scaled = scaler.fit_transform(X)
+                
+                # Fit Random Forest
                 rf = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=5)
-                rf.fit(X_scaled, np.array(deviations))
+                rf.fit(X_scaled, y)
+                
+                # Get feature importance
                 importance_scores = dict(zip(numeric_cols, rf.feature_importances_))
-                sorted_importance = sorted(importance_scores.items(), key=lambda x: x[1], reverse=True)
+                sorted_importance = sorted(importance_scores.items(), 
+                                         key=lambda x: x[1], reverse=True)
+                
                 sensitivity['feature_importance'] = dict(sorted_importance)
                 sensitivity['top_important_features'] = [item[0] for item in sorted_importance[:5]]
+                
             except Exception as e:
-                logger.debug(f"RF feature importance fallback failed: {e}")
-
+                logger.debug(f"Feature importance analysis failed: {e}")
+        
         return sensitivity
     
     def _analyze_volume_scaling(self, optimal_conditions: List[Dict]) -> Dict[str, Any]:
@@ -536,31 +483,9 @@ class CalibrationAnalyzer:
             
             # Parameter Sensitivity
             sensitivity = insights.get('parameter_sensitivity', {})
-
-            # SHAP importance (preferred - shows direction and covers 3 targets)
-            shap_imp = sensitivity.get('shap_importance', {})
-            if shap_imp:
-                f.write("PARAMETER IMPORTANCE (SHAP - mean |effect| on each target)\n")
-                f.write("-" * 55 + "\n")
-                # Collect all params across targets for aligned table
-                all_params = list(dict.fromkeys(
-                    p for target_dict in shap_imp.values() for p in target_dict
-                ))
-                targets_present = list(shap_imp.keys())
-                header = f"{'Parameter':<30}" + "".join(f"{t.capitalize():>12}" for t in targets_present)
-                f.write(header + "\n")
-                f.write("-" * len(header) + "\n")
-                for param in all_params[:10]:  # top 10
-                    row = f"{param:<30}"
-                    for t in targets_present:
-                        val = shap_imp[t].get(param, 0.0)
-                        row += f"{val:>12.4f}"
-                    f.write(row + "\n")
-                f.write("\n")
-            elif 'most_influential_parameters' in sensitivity:
-                # Fallback: Pearson correlation (shap not available)
-                f.write("MOST INFLUENTIAL PARAMETERS (Pearson correlation, accuracy only)\n")
-                f.write("-" * 50 + "\n")
+            if 'most_influential_parameters' in sensitivity:
+                f.write("MOST INFLUENTIAL PARAMETERS\n")
+                f.write("-" * 30 + "\n")
                 for param in sensitivity['most_influential_parameters'][:5]:
                     corr_data = sensitivity.get('parameter_correlations', {}).get(param, {})
                     corr = corr_data.get('correlation', 0)

@@ -190,15 +190,19 @@ class BatchCalibrationAutomator:
         # latest_folder is like: "calibration_modular_v2/output/run_1770420779"
         # We want: "output/run_1770420779/optimal_conditions.csv"
         relative_folder = latest_folder.replace("calibration_modular_v2/", "").replace("calibration_modular_v2\\", "")
-        optimal_conditions_path = os.path.join(relative_folder, "optimal_conditions.csv").replace("\\", "/")
+        # Find the optimal_conditions_*.csv file (name includes liquid)
+        import glob as _glob
+        oc_matches = _glob.glob(os.path.join(latest_folder, "optimal_conditions_*.csv"))
+        oc_filename = os.path.basename(oc_matches[0]) if oc_matches else "optimal_conditions.csv"
+        optimal_conditions_path = os.path.join(relative_folder, oc_filename).replace("\\", "/")
         
-        print(f"    Checking for optimal_conditions.csv at: {latest_folder}/optimal_conditions.csv")
+        print(f"    Checking for {oc_filename} at: {latest_folder}/{oc_filename}")
         print(f"    Will write to config as: {optimal_conditions_path}")
         
         # Check if the file actually exists (using full path)
-        full_optimal_conditions_path = os.path.join(latest_folder, "optimal_conditions.csv")
+        full_optimal_conditions_path = os.path.join(latest_folder, oc_filename)
         if not os.path.exists(full_optimal_conditions_path):
-            print(f"    WARNING: optimal_conditions.csv not found at {full_optimal_conditions_path}")
+            print(f"    WARNING: {oc_filename} not found at {full_optimal_conditions_path}")
             # Try to list what files ARE in the directory
             try:
                 actual_files = os.listdir(latest_folder)
