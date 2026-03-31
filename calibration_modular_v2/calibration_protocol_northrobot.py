@@ -43,6 +43,11 @@ LIQUIDS = {
     "agar_water_refill": {"density": 1.01, "refill_pipets": True},
     "TFA": {"density": 1.49, "refill_pipets": False},
     "6M_HCl": {"density": 1.10, "refill_pipets": False},
+    "6M_TFA": {"density": 1.25, "refill_pipets": False},
+    "6M_p_TSA": {"density": 1.25, "refill_pipets": False},
+    "6M_Citric_Acid": {"density": 1.27, "refill_pipets": False},
+    "6M_H2SO4": {"density": 1.34, "refill_pipets": False},
+    "6M_H3PO4": {"density": 1.35, "refill_pipets": False},
 }
 
 
@@ -113,7 +118,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
 
         continuous_monitoring = True
 
-        show_gui = True
+        show_gui = False
 
         adjust_volume = True
         print(f"Volume adjustment tracking: {adjust_volume}")
@@ -122,7 +127,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
-        self.quality_std_threshold = 0.1  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
+        self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
         if not simulate:
             slack_agent.send_slack_message("🤖 North Robot calibration/validation started!")

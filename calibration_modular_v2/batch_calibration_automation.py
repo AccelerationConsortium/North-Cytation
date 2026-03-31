@@ -37,25 +37,37 @@ LIQUIDS_TO_CALIBRATE = [
 #         }
 #     },
 #  
+ 
     {
-        'liquid_name': 'water',
-        'target_vial': 'water',
-        'volume_targets_ml': [0.180, 0.100, 0.050],
-        'validation_volumes_ml': [0.150, 0.100, 0.070]
-
+        'liquid_name': '6M_TFA',
+        'target_vial': '6M_TFA',
+        'volume_targets_ml': [0.050, 0.025, 0.010, 0.005],
+        'validation_volumes_ml': [0.050, 0.025, 0.010, 0.005],
     },
     {
-    'liquid_name': 'ethanol',
-    'target_vial': 'ethanol',
-    'volume_targets_ml': [ 0.180, 0.100, 0.050],
-    'validation_volumes_ml': [0.150, 0.100, 0.070]
-},
-  {
-    'liquid_name': 'ethanol',
-    'target_vial': 'ethanol',
-    'volume_targets_ml': [ 0.800, 0.500, 0.200],
-    'validation_volumes_ml': [ 0.800, 0.500, 0.200]
-},
+        'liquid_name': '6M_p_TSA',
+        'target_vial': '6M_p_TSA',
+        'volume_targets_ml': [0.050, 0.025, 0.010, 0.005],
+        'validation_volumes_ml': [0.050, 0.025, 0.010, 0.005],
+    },
+    {
+        'liquid_name': '6M_Citric_Acid',
+        'target_vial': '6M_Citric_Acid',
+        'volume_targets_ml': [0.050, 0.025, 0.010, 0.005],
+        'validation_volumes_ml': [0.050, 0.025, 0.010, 0.005],
+    },
+    {
+        'liquid_name': '6M_H2SO4',
+        'target_vial': '6M_H2SO4',
+        'volume_targets_ml': [0.050, 0.025, 0.010, 0.005],
+        'validation_volumes_ml': [0.050, 0.025, 0.010, 0.005],
+    },
+    {
+        'liquid_name': '6M_H3PO4',
+        'target_vial': '6M_H3PO4',
+        'volume_targets_ml': [0.050, 0.025, 0.010, 0.005],
+        'validation_volumes_ml': [0.050, 0.025, 0.010, 0.005],
+    },
 
 ]
 
@@ -286,9 +298,6 @@ class BatchCalibrationAutomator:
             print(f"  - {liquid['liquid_name']} ({liquid['target_vial']})")
         print()
         
-        # Show GUI once for vial review before starting
-        self.show_vial_gui()
-
         try:
             # Show GUI once for system setup before batch starts
             self.show_initial_gui()

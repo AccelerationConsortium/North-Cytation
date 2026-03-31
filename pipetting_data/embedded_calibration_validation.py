@@ -114,7 +114,12 @@ LIQUID_DENSITIES = {
     "SDS": 1.00,
     "6M_HCl": 1.10,
     "TFA": 1.49,
-    "heptane": 0.684
+    "heptane": 0.684,
+    "6M_TFA": 1.25,
+    "6M_p_TSA": 1.25, 
+    "6M_Citric_Acid":1.27, 
+    "6M_H2SO4": 1.34,
+    "6M_H3PO4": 1.35, 
 }
 
 # === MASTER DATABASE PATHS ===

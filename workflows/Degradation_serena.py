@@ -10,7 +10,7 @@ import pandas as pd
 from pathlib import Path
 from degradation_spectral_analyzer_program import process_degradation_spectral_data
 
-EXPERIMENT_REPEATS = 2  # Define at module level
+EXPERIMENT_REPEATS = 1  # Define at module level
 
  # a. Initial State of your Vials, so the robot can know where to pipet:
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/degradation_vial_status.csv"
@@ -35,10 +35,14 @@ EXPERIMENT_NAME = "degradation_experiment"  # Used for naming output folder
 REPLICATES = 1  # Number of wells to use for each measurement (default: 3)
 
 #  -------------------------------------------------------------- Define my workflow here! ---------------------------------------------------
-# Acid library: maps acid name to {'molar_mass': g/mol, 'molarity': mol/L}
+# Acid library: maps acid name to {'molar_mass': g/mol, 'molarity': mol/L, 'density': g/mL}
 ACID_LIBRARY = {
-    '6M_HCl': {'molar_mass': 36.46, 'molarity': 6.0},
-    'TFA': {'molar_mass': 114.02, 'molarity': 6.5},
+    '6M_HCl': {'molar_mass': 36.46, 'molarity': 6.0, 'density': 1.10},
+    '6M_TFA': {'molar_mass': 114.02, 'molarity': 6.0, 'density': 1.48},
+    '6M_p_TSA': {'molar_mass': 190.22, 'molarity': 6.0, 'density': 1.24},
+    '6M_citric_acid': {'molar_mass': 192.12, 'molarity': 6.0, 'density': 1.67},
+    '6M_H2SO4': {'molar_mass': 98.079, 'molarity': 6.0, 'density': 1.34},
+    '6M_H3PO4': {'molar_mass': 97.994, 'molarity': 6.0, 'density': 1.27}
 }
 
 # Global well tracking
@@ -71,7 +75,7 @@ def validate_key_liquids(lash_e, output_dir):
         from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
         
         validation_tests = [
-            {'vial': '6M_HCl', 'liquid': '6M_HCl', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
+            {'vial': '6M_H3PO4', 'liquid': '6M_H3PO4', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
             {'vial': 'polymer_stock', 'liquid': 'heptane', 'volumes': [0.100, 0.150], 'reps': 3, 'params': None},
             {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3, 'params': None},
             {'vial': 'heptane', 'liquid': 'heptane', 'volumes': [0.600], 'reps': 3, 'params': None},
@@ -295,7 +299,7 @@ def save_data(data_out,output_dir,first_well_index,simulate,lash_e,time=None,sam
 
 
 # Clean well plate = Solvent wash *1 + Acetone wash *1 <- DO it serially (ie wash 5 wells at a time, and wash all wells w solvent first before moving on to acetone)
-def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, well_volume=0.19, solvent_repeats=1, acetone_repeats=1):
+def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, well_volume=0.19, solvent_repeats=0, acetone_repeats=1):
     lash_e.logger.info(f"\nWashing wellplate wells: {used_wells}")
 
     PLATE = "96 WELL PLATE"
@@ -313,7 +317,10 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
 
     # take aliquots out
     waste_temp_home = stage_vial_safe(lash_e, current_waste, safe_index=4)
-    solvent_temp_home = stage_vial_safe(lash_e, solvent_vial,safe_index=5)
+    
+    # Only stage solvent vial if we're actually doing solvent wash
+    if solvent_repeats > 0:
+        solvent_temp_home = stage_vial_safe(lash_e, solvent_vial, safe_index=5)
 
     for well in used_wells:
         lash_e.nr_robot.pipet_from_wellplate(well, volume=well_volume, aspirate=True, well_plate_type="quartz")
@@ -335,7 +342,10 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
 
         lash_e.nr_robot.remove_pipet()
         lash_e.nr_robot.recap_clamp_vial()  # Recaps whatever vial is currently in clamp
-        restore_vial_home(lash_e, solvent_vial, solvent_temp_home)
+        
+        # Only restore solvent vial if it was staged
+        if solvent_repeats > 0:
+            restore_vial_home(lash_e, solvent_vial, solvent_temp_home)
 
         for wells in chunk(used_wells):
         # 3) Mix each well
@@ -351,6 +361,7 @@ def wash_wellplate(lash_e, used_wells, solvent_vial, acetone_vial, waste_state, 
 
         lash_e.nr_robot.remove_pipet()
         lash_e.nr_robot.recap_clamp_vial()  # Recaps whatever vial is currently in clamp
+    
     restore_vial_home(lash_e, current_waste, waste_temp_home)
 
     lash_e.logger.info("\nSolvent wash completed.")
@@ -457,7 +468,7 @@ def process_sample_spectral_data(output_dir, sample_name, logger=None):
                 logger.error(f"Error processing {sample_name}: {str(e)}")
             return False
 
-def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, solvent='2MeTHF', waste_state=None):
+def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, solvent='2MeTHF', waste_state=None):
   
     # g. Polymer dilution calculation:
     sample_volume = 2.0 # Total volume of each polymer sample (mL)
@@ -482,15 +493,11 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
     # Get acid properties from library
     acid_molarity = ACID_LIBRARY[acid_type]['molarity']
     acid_molar_mass = ACID_LIBRARY[acid_type]['molar_mass']
-    acid_density= ACID_LIBRARY[acid_type]['density']
     lash_e.logger.info(f"Using acid: {acid_type}")
   
     # Calculates the volume of acid to be added
     samples['acid_molar_excess'] = acid_molar_excess
-    if acid_type == '6M_HCl':
-        samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * acid_molar_excess) / acid_molarity) * 1000 # in mL
-    if acid_type == 'TFA':
-        samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * acid_molar_excess) / acid_molarity) * 1000  * 2 # in mL
+    samples['acid_volume'] = ((((samples['concentration(mg/mL)'] * sample_volume) / polymer_molar_mass) * acid_molar_excess) / acid_molarity) * 1000 # in mL
     lash_e.logger.info("Calculated volumes for each sample:")
     lash_e.logger.info("%s", samples[[sample_col, 'acid_molar_excess', 'acid_volume']])
 
@@ -546,8 +553,8 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, water_volume, 
             lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5) #move_speeddefault is 15
 
     for sample in sample_solutions:
-        lash_e.logger.info(f"\nAdding {water_volume} mL water to sample: {sample}")
-        lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
+        # lash_e.logger.info(f"\nAdding {water_volume} mL water to sample: {sample}")
+        # lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
         acid_volume = round(float(volume_lookup[sample]['acid_volume']), 4)
         lash_e.logger.info(f"\nAdding {acid_volume} mL acid to sample: {sample}")
         safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=True, liquid=acid_type, enable_conditioning=True)
@@ -675,7 +682,7 @@ else:
 lash_e.nr_robot.home_robot_components()
 
 for i in range(1, EXPERIMENT_REPEATS+1): 
-    degradation_workflow(lash_e, i, acid_type='6M_HCl', solvent='heptane', acid_molar_excess=2000, water_volume=0.010, waste_state=waste_state)
+    degradation_workflow(lash_e, i, acid_type='6M_H3PO4', solvent='2MeTHF', acid_molar_excess=500,waste_state=waste_state)
 
 # Print final vial status
 lash_e.logger.info("Final vial status:")
