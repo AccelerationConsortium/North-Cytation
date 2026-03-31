@@ -841,11 +841,23 @@ def validate_pipetting_accuracy(
             if stage1_error_ul > tolerance_ul:
                 print(f"    Stage 1 outside tolerance - proceeding to iterative optimization")
                 
-                # Get initial overaspirate
-                initial_overaspirate = parameters.overaspirate_vol if parameters else 0.004
-                
                 try:
                     from pipetting_data.pipetting_parameters import PipettingParameters
+                    
+                    # Get the robot's current optimized parameters for this volume/liquid.
+                    # This reads the persisted calibration CSV so initial_overaspirate
+                    # reflects the value saved by a previous optimization run.
+                    base_params = lash_e.nr_robot._get_optimized_parameters(
+                        volume=volume_ml, 
+                        liquid=liquid_type, 
+                        user_parameters=parameters,  # Include any user overrides
+                        compensate_overvolume=compensate_overvolume,
+                        smooth_overvolume=smooth_overvolume
+                    )
+                    
+                    # Get initial overaspirate from calibration CSV (via base_params),
+                    # NOT from the user-supplied parameters arg (typically None -> 0.004).
+                    initial_overaspirate = base_params.overaspirate_vol
                     
                     # === STAGE 2: First Optimization ===
                     print(f"    Stage 2: Testing adjusted parameters...")
@@ -857,16 +869,6 @@ def validate_pipetting_accuracy(
                     else:  # Over-dispensing
                         stage2_overaspirate = max(0.0, initial_overaspirate - 0.003)  # Decrease by 3uL  
                         print(f"      Over-dispensing: trying lower overaspirate {stage2_overaspirate:.4f} mL")
-                    
-                    # Create Stage 2 parameters
-                    # Get the robot's current optimized parameters for this volume/liquid
-                    base_params = lash_e.nr_robot._get_optimized_parameters(
-                        volume=volume_ml, 
-                        liquid=liquid_type, 
-                        user_parameters=parameters,  # Include any user overrides
-                        compensate_overvolume=compensate_overvolume,
-                        smooth_overvolume=smooth_overvolume
-                    )
                     
                     # Create Stage 2 parameters by copying all optimized params
                     stage2_params = PipettingParameters()
