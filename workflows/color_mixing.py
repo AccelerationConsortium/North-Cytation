@@ -8,14 +8,6 @@ from datetime import datetime
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/color_mixing_vials.csv"
 
-#Define your workflow! 
-#In this case we have two parameters: 
-def check_input_file(input_file):  
-    # Initial State of your Vials, so the robot can know where to pipet
-    vial_status = pd.read_csv(input_file, sep=",")
-    print(vial_status)
-    input("Only hit enter if the status of the vials (including open/close) is correct, otherwise hit ctrl-c")
-
 def generate_random_matrix(rows, cols, row_sum, divisible_by):
     if row_sum % divisible_by != 0:
         raise ValueError("Row sum must be a multiple of divisible_by.")
@@ -64,8 +56,6 @@ def mix_wells(lash_e, wells, wash_index=4, wash_volume=0.150, repeats=1,replicat
 
 def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,well_volume=240):
   
-    # Initial State of your Vials, so the robot can know where to pipet
-    check_input_file(INPUT_VIAL_STATUS_FILE)
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=False)
@@ -111,6 +101,7 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
                 output_folder=validation_folder,
                 plot_title=f"Pipetting Validation - {vial_name}",
                 switch_pipet=False,
+                adaptive_correction=True
             )
             lash_e.logger.info(f"{vial_name} validation: R²={results['r_squared']:.4f}, "
                         f"Accuracy={results['mean_accuracy_pct']:.2f}%")
