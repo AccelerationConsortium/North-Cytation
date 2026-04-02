@@ -111,8 +111,6 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
                 output_folder=validation_folder,
                 plot_title=f"Pipetting Validation - {vial_name}",
                 switch_pipet=False,
-                compensate_overvolume=True,  # Apply compensation for accuracy
-                smooth_overvolume=True       # Apply smoothing to remove outliers
             )
             lash_e.logger.info(f"{vial_name} validation: R²={results['r_squared']:.4f}, "
                         f"Accuracy={results['mean_accuracy_pct']:.2f}%")
