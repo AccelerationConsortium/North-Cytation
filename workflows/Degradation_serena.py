@@ -553,9 +553,10 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, solvent='2MeTH
             safe_pipet('polymer_stock', sample, stock_vol, lash_e, liquid=solvent, move_speed=10)
             lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5) #move_speeddefault is 15
 
+        water_volume=0.01
     for sample in sample_solutions:
-        # lash_e.logger.info(f"\nAdding {water_volume} mL water to sample: {sample}")
-        # lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
+        lash_e.logger.info(f"\nAdding {water_volume} mL water to sample: {sample}")
+        lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
         acid_volume = round(float(volume_lookup[sample]['acid_volume']), 4)
         lash_e.logger.info(f"\nAdding {acid_volume} mL acid to sample: {sample}")
         safe_pipet(acid_type,sample, acid_volume, lash_e, return_home=True, liquid=acid_type, enable_conditioning=True)
@@ -683,7 +684,7 @@ else:
 lash_e.nr_robot.home_robot_components()
 
 for i in range(1, EXPERIMENT_REPEATS+1): 
-    degradation_workflow(lash_e, i, acid_type='6M_H3PO4', solvent='2MeTHF', acid_molar_excess=500,waste_state=waste_state)
+    degradation_workflow(lash_e, i, acid_type='6M_H2SO4', solvent='2MeTHF', acid_molar_excess=500, waste_state=waste_state)
 
 # Print final vial status
 lash_e.logger.info("Final vial status:")

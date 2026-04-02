@@ -1,5 +1,5 @@
 # Workflow Configuration File
-# Generated: 2026-03-31 11:17:57
+# Generated: 2026-04-01 15:01:25
 # Workflow: Degradation_serena
 #
 # Edit this file to customize workflow behavior.
@@ -10,20 +10,34 @@ EXPERIMENT_REPEATS: 1
 INPUT_VIAL_STATUS_FILE: ../utoronto_demo/status/degradation_vial_status.csv
 CYTATION_PROTOCOL_FILE: C:\Protocols\300_900_sweep.prt
 SCHEDULE_FILE: ../utoronto_demo/status/degradation_vial_schedule.csv
-SIMULATE: true
+SIMULATE: false
 VALIDATE_LIQUIDS: false
 PREP_SOLUTIONS: true
-EXPERIMENT_NAME: p(IDT-TIT)_500x_H3PO4_2MeTHF
-ACID_MOLAR_EXCESS: 500
-WATER_VOLUME: 0.0
+EXPERIMENT_NAME: p(IDT-TIT)_500xH2SO4_2MeTHF
 REPLICATES: 1
 ACID_LIBRARY:
+  6M_H2SO4:
+    density: 1.34
+    molar_mass: 98.079
+    molarity: 6.0
+  6M_H3PO4:
+    density: 1.27
+    molar_mass: 97.994
+    molarity: 6.0
   6M_HCl:
     density: 1.1
     molar_mass: 36.46
     molarity: 6.0
-  TFA:
-    density: 1.49
+  6M_TFA:
+    density: 1.48
     molar_mass: 114.02
     molarity: 6.0
-CURRENT_WELL_COUNT: 0
+  6M_citric_acid:
+    density: 1.67
+    molar_mass: 192.12
+    molarity: 6.0
+  6M_p_TSA:
+    density: 1.24
+    molar_mass: 190.22
+    molarity: 6.0
+CURRENT_WELL_COUNT: 8
