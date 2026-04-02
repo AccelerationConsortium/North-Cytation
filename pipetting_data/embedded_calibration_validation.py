@@ -821,7 +821,7 @@ def validate_pipetting_accuracy(
             }
             all_results.append(result)
             
-            print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:.1f}%)")
+            print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:+.1f}%)")
         
         # === ITERATIVE ADAPTIVE CORRECTION (3-STAGE PROCESS) ===
         if adaptive_correction:
@@ -950,7 +950,7 @@ def validate_pipetting_accuracy(
                         }
                         all_results.append(stage2_result_dict)
                         
-                        print(f"        Target: {volume_ml*1000:.1f} uL -> Stage 2: {stage2_volume*1000:.1f} uL (Error: {((stage2_volume-volume_ml)/volume_ml)*100:.1f}%)")
+                        print(f"        Target: {volume_ml*1000:.1f} uL -> Stage 2: {stage2_volume*1000:.1f} uL (Error: {((stage2_volume-volume_ml)/volume_ml)*100:+.1f}%)") # Show +/- direction
                     
                     # Evaluate Stage 2
                     stage2_mean = np.mean(stage2_volumes)
@@ -1062,7 +1062,7 @@ def validate_pipetting_accuracy(
                         }
                         all_results.append(stage3_result_dict)
                         
-                        print(f"        Target: {volume_ml*1000:.1f} uL -> Stage 3: {stage3_volume*1000:.1f} uL (Error: {((stage3_volume-volume_ml)/volume_ml)*100:.1f}%)")
+                        print(f"        Target: {volume_ml*1000:.1f} uL -> Stage 3: {stage3_volume*1000:.1f} uL (Error: {((stage3_volume-volume_ml)/volume_ml)*100:+.1f}%)") # Show +/- direction
                     
                     # Evaluate final Stage 3 performance
                     stage3_mean = np.mean(stage3_volumes)
@@ -1090,10 +1090,10 @@ def validate_pipetting_accuracy(
                             f"🎯 3-STAGE PARAMETER OPTIMIZATION\n"
                             f"Liquid: {liquid_type}\n"
                             f"Volume: {volume_ml*1000:.1f}uL\n"
-                            f"Stage 1 Error: {stage1_error_ul:.1f}uL\n"
-                            f"Stage 2 Error: {stage2_error_ul:.1f}uL\n" 
-                            f"Stage 3 Error: {stage3_error_ul:.1f}uL\n"
-                            f"Overaspirate: {initial_overaspirate:.4f} → {optimal_overaspirate:.4f} mL\n"
+                            f"Stage 1 Error: {stage1_error_ul:+.1f}uL\n"
+                            f"Stage 2 Error: {stage2_error_ul:+.1f}uL\n" 
+                            f"Stage 3 Error: {stage3_error_ul:+.1f}uL\n"
+                            f"Overaspirate: {initial_overaspirate:.4f} → {optimal_overaspirate:.4f} mL ({correction_change_ul:+.1f}uL)\n"
                             f"Session: {session_id}"
                         )
                         
@@ -1509,7 +1509,7 @@ def validate_reservoir_accuracy(
             }
             all_results.append(result)
             
-            print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:.1f}%)")
+            print(f"    Target: {volume_ml*1000:.1f} uL -> Measured: {measured_volume_ml*1000:.1f} uL (Error: {((measured_volume_ml-volume_ml)/volume_ml)*100:+.1f}%)") # Show +/- direction
         
         # === ADAPTIVE CORRECTION (OPTIONAL) ===
         if adaptive_correction:
