@@ -756,7 +756,8 @@ class EnhancedRobotArmController:
         style.configure("Success.TButton", foreground="green")
         style.configure("Warning.TButton", foreground="orange")
 
-        self.root.bind('<Key>', self.on_key_press)
+        # Keyboard controls disabled to prevent interference with text input
+        #self.root.bind('<Key>', self.on_key_press)
         self.root.focus_set()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
