@@ -58,7 +58,7 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
   
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=False)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True)
 
     #data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
     data_colors_uL = pd.read_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition_orig.txt", sep=',',index_col=0)/1000
