@@ -1,5 +1,68 @@
 # Changelog
 
+## [VIAL GUI ENHANCEMENTS] - 2026-04-02
+
+### ENHANCEMENT: Vial GUI "Empty Vial" Feature
+- **ADDED**: "Empty Vial" button to vial editing dialog for quick volume reset
+- **FUNCTIONALITY**: Single click sets volume to 0 and closes dialog (faster than manual entry)
+- **UI STYLING**: Yellow background button placed next to "Remove Vial" for easy access
+- **WORKFLOW**: Improves efficiency when marking vials as empty during experiments
+
+### BUG FIX: Reset Locations Button Not Working
+- **FIXED**: "Return All Home" button now properly refreshes the GUI display
+- **ROOT CAUSE**: Widget refresh method wasn't properly clearing and reloading vial positions
+- **SOLUTION**: Enhanced `_reload_all_widgets()` with proper widget cleanup and grid reset
+- **DEBUGGING**: Added comprehensive logging for troubleshooting reset operations
+- **IMPACT**: Digital vial location reset now visually updates all rack grids correctly
+
+### FILES MODIFIED
+- `vial_manager_gui.py`: Added empty vial feature and fixed reset locations functionality
+
+## [CRITICAL TIP SELECTION BUG FIXES] - 2026-04-02
+
+### ENHANCEMENT: Simplified Water 200µL Calibration Script  
+- **SIMPLIFIED**: Batch calibration automation script to focus solely on water at 200 µL
+- **REMOVED**: Multi-liquid calibration loop, now runs single water calibration only
+- **UPDATED**: UI messages and titles to reflect water-specific calibration purpose
+- **MAINTAINED**: All core functionality (config modification, vial swapping, calibration + validation)
+- **STREAM-LINED**: Single calibration run instead of batch processing multiple liquids
+- **FILES CHANGED**: `calibration_modular_v2/batch_calibration_automation.py`
+
+### CRITICAL BUG FIX: XY Movement Gripper Angle Preservation 
+- **FIXED**: Gripper unwantedly rotating during XY movements in Enhanced SP program
+- **ROOT CAUSE**: IK solver choosing completely different gripper angles to reach target XY position
+- **EXAMPLE**: 0.3mm Y movement caused 905 count gripper rotation (2552→1647 counts)
+- **SOLUTION**: Preserve current gripper angle during XY movements, only adjust elbow and shoulder
+- **METHOD**: Use `current_gripper_rad` instead of IK-calculated gripper angle in target position
+- **IMPACT**: XY movements now keep gripper orientation stable, only adjusting arm joints as intended
+- **FILES FIXED**: Enhanced SP arm position program `_move_xy_delta()` method
+
+### ENHANCEMENT: Added Gripper Rotation Controls to Enhanced SP Program
+- **ADDED**: Gripper rotation controls to Enhanced SP arm position program UI
+- **NEW BUTTONS**: "🔄 CCW" and "↻ CW" for counter-clockwise and clockwise rotation
+- **METHODS**: `move_gripper_ccw()` and `move_gripper_cw()` with safety bounds checking
+- **SAFETY**: Rotation respects GRIPPER_MIN_RAD and GRIPPER_MAX_RAD limits (-6.28 to 6.28 rad)
+- **STEP SIZE**: Uses configurable `move_increment_rad` (default 0.05 rad = ~2.9°)
+- **DISPLAY**: Gripper angle shown in both radians and degrees in position display
+- **UI LAYOUT**: Added rotation row between gripper open/close and clamp controls
+
+### CRITICAL BUG FIX: Color Mixing Workflow Tip Selection Algorithm Error
+- **FIXED**: Excessive tip switching (18 switches during experiment) caused by wrong function usage
+- **ROOT CAUSE**: Color mixing workflow incorrectly used `pipet_from_wellplate(..., aspirate=False)` instead of `dispense_into_wellplate()`
+- **MECHANISM**: `aspirate_from_vial()` selects large_tip (0.221 mL total with overvolumes) → `pipet_from_wellplate()` selects small_tip (0.200 mL base only) → immediate tip switching
+- **SOLUTION**: Changed all dispensing operations from `pipet_from_wellplate(..., aspirate=False)` to `dispense_into_wellplate()`
+- **IMPACT**: Eliminated unnecessary tip selection conflicts during wells 54-65 and 84-89 processing
+
+### CRITICAL BUG FIX: Tip Selection Algorithm Overaspirate Volume Issue
+- **FIXED**: Overaspirate volume incorrectly included in tip selection causing unnecessary large_tip usage
+- **ROOT CAUSE**: Tip selection included overaspirate_vol (0.010 mL) making 200 µL → 221 µL total, exceeding small_tip capacity (200 µL)
+- **SOLUTION**: Removed overaspirate_vol from tip selection calculation: `total_tip_vol = post_asp_air_vol + amount_mL` 
+- **REASONING**: Overaspirate is for liquid handling precision, not tip capacity. Post-aspirate air gap still considered.
+- **IMPACT**: 200 µL now correctly selects small_tip (0.200 + 0.011 air = 0.211 mL < 0.20 mL threshold)
+- **FILES FIXED**: `North_Safe.py` (line 2039)
+- **FILES FIXED**: `workflows/color_mixing.py` (3 instances in main loop + mix_wells function)
+- **ARCHITECTURE ALIGNED**: Color mixing now uses same dispensing pattern as other workflows (aspirate_from_vial → dispense_into_wellplate)
+
 ## [CRITICAL X-Y MOVEMENT BUG FIXES] - 2026-03-31
 
 ### CRITICAL BUG FIX: Motor Fault Prevention in X-Y Movement

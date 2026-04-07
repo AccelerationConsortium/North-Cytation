@@ -601,20 +601,24 @@ class EnhancedRobotArmController:
         ttk.Button(control_frame, text="👊 CLOSE", command=self.close_gripper,
                    style="Warning.TButton").grid(row=4, column=2, padx=2, sticky=(tk.W, tk.E))
         
-        ttk.Label(control_frame, text="Clamp:").grid(row=5, column=0, sticky=tk.W)
+        ttk.Label(control_frame, text="Rotate:").grid(row=5, column=0, sticky=tk.W)
+        ttk.Button(control_frame, text="🔄 CCW", command=self.move_gripper_ccw).grid(row=5, column=1, padx=2, sticky=(tk.W, tk.E))
+        ttk.Button(control_frame, text="↻ CW", command=self.move_gripper_cw).grid(row=5, column=2, padx=2, sticky=(tk.W, tk.E))
+        
+        ttk.Label(control_frame, text="Clamp:").grid(row=6, column=0, sticky=tk.W)
         ttk.Button(control_frame, text="🔓 OPEN", command=self.open_clamp,
-                   style="Success.TButton").grid(row=5, column=1, padx=2, sticky=(tk.W, tk.E))
+                   style="Success.TButton").grid(row=6, column=1, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="🔒 CLOSE", command=self.close_clamp,
-                   style="Warning.TButton").grid(row=5, column=2, padx=2, sticky=(tk.W, tk.E))
+                   style="Warning.TButton").grid(row=6, column=2, padx=2, sticky=(tk.W, tk.E))
 
-        ttk.Label(control_frame, text="Pipet:").grid(row=6, column=0, sticky=tk.W)
+        ttk.Label(control_frame, text="Pipet:").grid(row=7, column=0, sticky=tk.W)
         ttk.Button(control_frame, text="GET LARGE",
-                   command=self.get_pipet_large).grid(row=6, column=1, padx=2, sticky=(tk.W, tk.E))
+                   command=self.get_pipet_large).grid(row=7, column=1, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="GET SMALL",
-                   command=self.get_pipet_small).grid(row=6, column=2, padx=2, sticky=(tk.W, tk.E))
+                   command=self.get_pipet_small).grid(row=7, column=2, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="REMOVE PIPET",
                    command=self.remove_pipet_action).grid(
-            row=7, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
+            row=8, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
 
         control_frame.columnconfigure(1, weight=1)
         control_frame.columnconfigure(2, weight=1)
@@ -1322,6 +1326,24 @@ class EnhancedRobotArmController:
         if self._check_robot_health():
             self._move_xy_delta(0, self.move_increment_mm)
 
+    def move_gripper_ccw(self):
+        """Rotate gripper counter-clockwise."""
+        if self._check_robot_health():
+            new_angle = self.current_gripper_angle - self.move_increment_rad
+            if new_angle >= GRIPPER_MIN_RAD:
+                self._safe_move_gripper_rad(new_angle)
+            else:
+                self.log_message(f"Cannot rotate gripper CCW: would exceed minimum angle ({GRIPPER_MIN_RAD:.3f} rad)")
+
+    def move_gripper_cw(self):
+        """Rotate gripper clockwise."""
+        if self._check_robot_health():
+            new_angle = self.current_gripper_angle + self.move_increment_rad
+            if new_angle <= GRIPPER_MAX_RAD:
+                self._safe_move_gripper_rad(new_angle)
+            else:
+                self.log_message(f"Cannot rotate gripper CW: would exceed maximum angle ({GRIPPER_MAX_RAD:.3f} rad)")
+
     def _check_robot_health(self):
         """Check if robot is in a safe state to move."""
         if not self.is_connected:
@@ -1489,33 +1511,38 @@ class EnhancedRobotArmController:
                 center_diff = abs(sol_c[2] - current_shoulder_rad)
                 out_diff = abs(sol_o[2] - current_shoulder_rad)
                 chosen = sol_c if center_diff <= out_diff else sol_o
+                logger.info(f"Current gripper: {current_gripper_rad:.3f}rad")
                 logger.info(f"Current shoulder: {current_shoulder_rad:.3f}rad")
                 logger.info(f"Choosing solution with smaller shoulder change: center_diff={center_diff:.3f}rad, out_diff={out_diff:.3f}rad")
                 logger.info(f"Selected: {'CENTER' if chosen == sol_c else 'OUT'}")
                 
+                # PRESERVE GRIPPER ANGLE: Use current gripper angle, only change elbow/shoulder
+                logger.info("Preserving current gripper angle during XY movement")
+                final_solution = [current_gripper_rad, chosen[1], chosen[2]]
+                
                 # Convert IK solution from radians to counts
-                gripper_cts_target = self.robot.rad_to_counts(self.robot.GRIPPER, chosen[0])
-                elbow_cts_target = self.robot.rad_to_counts(self.robot.ELBOW, chosen[1])
-                shoulder_cts_target = self.robot.rad_to_counts(self.robot.SHOULDER, chosen[2])
+                gripper_cts_target = gripper_cts  # Keep gripper exactly where it is
+                elbow_cts_target = self.robot.rad_to_counts(self.robot.ELBOW, final_solution[1])
+                shoulder_cts_target = self.robot.rad_to_counts(self.robot.SHOULDER, final_solution[2])
                 target_pos = [gripper_cts_target, elbow_cts_target, shoulder_cts_target, z_cts]
                 
-                logger.info(f"IK solution (radians): gripper={chosen[0]:.3f}, elbow={chosen[1]:.3f}, shoulder={chosen[2]:.3f}")
-                logger.info(f"Converted to counts: gripper={gripper_cts_target}, elbow={elbow_cts_target}, shoulder={shoulder_cts_target}")
+                logger.info(f"Final solution (radians): gripper={final_solution[0]:.3f} (PRESERVED), elbow={final_solution[1]:.3f}, shoulder={final_solution[2]:.3f}")
+                logger.info(f"Converted to counts: gripper={gripper_cts_target} (UNCHANGED), elbow={elbow_cts_target}, shoulder={shoulder_cts_target}")
                 
                 # Check movement safety with converted values
-                gripper_diff = abs(gripper_cts_target - gripper_cts)
+                gripper_diff = 0  # Gripper stays exactly the same
                 elbow_diff = abs(elbow_cts_target - elbow_cts)
                 shoulder_diff = abs(shoulder_cts_target - shoulder_cts)
                 
-                logger.info(f"Movement deltas: gripper={gripper_diff:.0f}cts, elbow={elbow_diff:.0f}cts, shoulder={shoulder_diff:.0f}cts")
+                logger.info(f"Movement deltas: gripper=0cts (PRESERVED), elbow={elbow_diff:.0f}cts, shoulder={shoulder_diff:.0f}cts")
                 logger.info(f"Moving to target position: {target_pos}")
                 
                 # Safety checks - prevent motor faults from excessive movement
                 MAX_SAFE_DELTA = 5000  # Maximum safe movement per axis (counts)
                 MAX_TOTAL_MOVEMENT = 5000  # Maximum total movement magnitude (counts)
                 
-                max_single_delta = max(gripper_diff, elbow_diff, shoulder_diff)
-                total_movement = gripper_diff + elbow_diff + shoulder_diff
+                max_single_delta = max(elbow_diff, shoulder_diff)  # Gripper doesn't move
+                total_movement = elbow_diff + shoulder_diff  # Gripper doesn't move
                 
                 if max_single_delta > MAX_SAFE_DELTA:
                     logger.error(f"UNSAFE: Single axis movement too large! Max delta = {max_single_delta:.0f}cts (limit: {MAX_SAFE_DELTA}cts) - ABORTING")
@@ -1525,7 +1552,7 @@ class EnhancedRobotArmController:
                     logger.error(f"UNSAFE: Total movement too large! Total = {total_movement:.0f}cts (limit: {MAX_TOTAL_MOVEMENT}cts) - ABORTING")
                     return
                 
-                logger.info(f"Movement safety check PASSED: max_delta={max_single_delta:.0f}cts, total={total_movement:.0f}cts")
+                logger.info(f"Movement safety check PASSED: max_delta={max_single_delta:.0f}cts, total={total_movement:.0f}cts (gripper preserved)")
                 
                 self.robot.goto(target_pos, wait=True)
                 logger.info(f"Successfully completed XY move ({dx:+.1f}, {dy:+.1f})mm -> ({target_x:.1f}, {target_y:.1f})mm")
@@ -1590,6 +1617,38 @@ class EnhancedRobotArmController:
                 current_z_cts = positions[3]
                 current_z_mm = self.robot.counts_to_mm(self.robot.Z_AXIS, current_z_cts)
                 logger.error(f"Current Z position after error: {current_z_mm:.1f}mm ({current_z_cts} cts)")
+            except Exception as diag_e:
+                logger.error(f"Could not get diagnostic position info: {diag_e}")
+            
+    def _safe_move_gripper_rad(self, target_rad):
+        """Safely move gripper rotation with bounds checking."""
+        if not self.is_connected:
+            logger.error("Cannot move gripper: Robot not connected")
+            return
+            
+        # Check robot health first
+        if not self._check_robot_health():
+            logger.error("Cannot move gripper: Robot health check failed")
+            return
+            
+        target_rad = max(GRIPPER_MIN_RAD, min(GRIPPER_MAX_RAD, target_rad))
+        logger.info(f"Rotating gripper to {target_rad:.3f} rad (current: {self.current_gripper_angle:.3f} rad)")
+        
+        try:
+            self.robot.move_axis_rad(self.robot.GRIPPER, target_rad, wait=True)
+            self.current_gripper_angle = target_rad
+            logger.info(f"Successfully rotated gripper to {target_rad:.3f} rad")
+            self.update_display()
+        except Exception as e:
+            logger.error(f"Error rotating gripper to {target_rad:.3f} rad: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            
+            # Try to get more diagnostic info
+            try:
+                positions = self.robot.get_robot_positions()
+                current_gripper_cts = positions[0]
+                current_gripper_rad = self.robot.counts_to_rad(self.robot.GRIPPER, current_gripper_cts)
+                logger.error(f"Current gripper position after error: {current_gripper_rad:.3f} rad ({current_gripper_cts} cts)")
             except Exception as diag_e:
                 logger.error(f"Could not get diagnostic position info: {diag_e}")
             

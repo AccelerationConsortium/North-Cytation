@@ -225,8 +225,10 @@ def run_embedded_calibration(lash_e):
     
     # Calibrate all liquid components using embedded validation
     dye_calibrations = [
-        ("glycerol_dye", "glycerol"),
-        ("glycerol", "glycerol")
+        
+        ("ethanol_dye", "ethanol"),
+        ("water_dye", "water"),
+        ("glycerol_dye", "glycerol")
     ]
     
     for source_vial, liquid_type in dye_calibrations:
@@ -245,7 +247,8 @@ def run_embedded_calibration(lash_e):
                     volumes_ml=[0.070, 0.100, 0.150, 0.200],  # 70, 100, 150, 200 μL
                     replicates=3,
                     condition_tip_enabled=True,
-                    conditioning_volume_ul=150
+                    conditioning_volume_ul=150,
+                    adaptive_correction=True
                 )
             else:
                 # Glycerol: no tip conditioning, but use fresh tips for each measurement
@@ -294,6 +297,7 @@ def ilya_workflow_v2():
     # Run embedded calibration before main workflow
     if RUN_VALIDATION:
         cal_results = run_embedded_calibration(lash_e)
+        input("Pausing...")
              
     # Validate recipe data (before converting to mL)
     input_data = validate_recipe_data(input_data)

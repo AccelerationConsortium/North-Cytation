@@ -409,8 +409,8 @@ def _interpolate_optimal_overaspirate(point1_overaspirate: float, point1_measure
     overaspirate_adjustment = volume_needed / slope if abs(slope) > 1e-6 else 0
     optimal_overaspirate = point1_overaspirate + overaspirate_adjustment
     
-    # Safety bounds: keep reasonable
-    optimal_overaspirate = max(0.0, min(0.015, optimal_overaspirate))  # 0-15uL range
+    # Safety bounds: prevent negative values only
+    optimal_overaspirate = max(0.0, optimal_overaspirate)  # No upper limit - trust calibration data
     
     return optimal_overaspirate
 
@@ -968,7 +968,7 @@ def validate_pipetting_accuracy(
                     )
                     
                     # Ensure reasonable bounds
-                    optimal_overaspirate = max(0.0, min(0.020, optimal_overaspirate))  # Cap at 20uL
+                    optimal_overaspirate = max(0.0, optimal_overaspirate)  # No upper limit - trust interpolation
                     
                     print(f"      Optimized overaspirate: {optimal_overaspirate:.4f} mL")
                     

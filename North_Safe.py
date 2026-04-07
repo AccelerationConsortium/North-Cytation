@@ -2012,7 +2012,7 @@ class North_Robot(North_Base):
 
     #Aspirate from a vial using the pipet tool
     def aspirate_from_vial(self, source_vial_name, amount_mL, parameters=None, liquid=None,
-                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False):
+                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False, post_asp_shake=False):
         """
         Aspirate amount_ml from a source vial.
         
@@ -2036,7 +2036,8 @@ class North_Robot(North_Base):
         post_asp_air_vol = parameters.post_asp_air_vol
         overaspirate_vol = parameters.overaspirate_vol
         post_retract_wait_time = parameters.post_retract_wait_time
-        total_tip_vol = post_asp_air_vol + amount_mL + overaspirate_vol
+        # For tip selection, only consider aspirate volume + air gap, NOT overaspirate
+        total_tip_vol = post_asp_air_vol + amount_mL
 
         
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
@@ -2112,11 +2113,19 @@ class North_Robot(North_Base):
         self.pipet_aspirate(amount_mL+overaspirate_vol, wait_time=aspirate_wait_time) #Main aspiration of liquid plus wait
         
         #Step 3: Retract and aspirate air if needed
+        if post_asp_shake:
+            None
+            # self.move_rel_xyz(z_distance=50)
+            # self.move_rel_xyz(x_distance=2)
+            # self.move_rel_xyz(x_distance=-2)
+            # self.move_rel_xyz(y_distance=2)
+            # self.move_rel_xyz(y_distance=-2)
         if move_up:
             self.c9.move_z(disp_height, vel=retract_speed) #Retract with a specific speed
             time.sleep(post_retract_wait_time) #Wait after retracting
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
+
 
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)

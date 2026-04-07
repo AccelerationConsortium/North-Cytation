@@ -540,6 +540,8 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, solvent='2MeTH
     # Tracks used wells as a list of integer indices
     used_wells = []
 
+    water_volume=0.01
+
     if PREP_SOLUTIONS:
         # 1. Polymer sample preparation: Add solvent then stock to each sample vial.
         for sample in sample_solutions:
@@ -553,7 +555,6 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, solvent='2MeTH
             safe_pipet('polymer_stock', sample, stock_vol, lash_e, liquid=solvent, move_speed=10)
             lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5) #move_speeddefault is 15
 
-        water_volume=0.01
     for sample in sample_solutions:
         lash_e.logger.info(f"\nAdding {water_volume} mL water to sample: {sample}")
         lash_e.nr_robot.dispense_from_vial_into_vial('water', sample, water_volume, use_safe_location=False, liquid='water')
@@ -670,7 +671,7 @@ if not SIMULATE:
     output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / EXPERIMENT_NAME #appends exp_name to the output directory
     output_dir.mkdir(parents=True, exist_ok=True)
     lash_e.logger.info("Output directory created at: %s", output_dir)
-        
+    slack_agent.send_slack_message("Degradation workflow started!")
 # Run validation if enabled
     if VALIDATE_LIQUIDS:
         validate_key_liquids(lash_e, output_dir)
@@ -678,13 +679,13 @@ else:
     output_dir = None
     if VALIDATE_LIQUIDS:
         validate_key_liquids(lash_e, output_dir)  # Also validate in simulation
+    
 
-# slack_agent.send_slack_message("Degradation workflow started!")
 
 lash_e.nr_robot.home_robot_components()
 
 for i in range(1, EXPERIMENT_REPEATS+1): 
-    degradation_workflow(lash_e, i, acid_type='6M_H2SO4', solvent='2MeTHF', acid_molar_excess=500, waste_state=waste_state)
+    degradation_workflow(lash_e, i, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=1500, waste_state=waste_state)
 
 # Print final vial status
 lash_e.logger.info("Final vial status:")

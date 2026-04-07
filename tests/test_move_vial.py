@@ -12,7 +12,8 @@ def move_vials(vial_file_path):
 
     # destination = lash_e.nr_robot.get_location(False,'clamp',0)
     # lash_e.nr_robot.c9.goto_safe(destination)
-    lash_e.nr_robot.move_vial_to_location(vial_name="vial_1", location="clamp", location_index=0)
+    lash_e.nr_robot.move_vial_to_location(vial_name="vial_1", location="main_8mL_rack", location_index=37)
+    lash_e.nr_robot.move_vial_to_location(vial_name="vial_1", location="main_8mL_rack", location_index=45)
     
 
 move_vials("../utoronto_demo/status/sample_input_vials.csv")
