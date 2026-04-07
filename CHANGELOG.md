@@ -1,5 +1,22 @@
 # Changelog
 
+## [GLYCEROL BASELINE WORKFLOW] - 2026-04-06
+
+### NEW: GUI-First Gravimetric Vial Dispensing Baseline
+- **ADDED**: workflows/glycerol_dispense_baseline.py as a baseline workflow for vial-on-scale dispensing validation
+- **GUI-FIRST FLOW**: Uses Lash_E status GUI before hardware actions to confirm vial and robot state
+- **NO PLATE HANDLING**: Intentionally disables track/Cytation setup and avoids wellplate operations
+- **TIP INVENTORY BASELINE**: Supports setting starting counters for partially used tips (e.g., 50 small + 50 large already used)
+- **GRAVIMETRIC VALIDATION**: Reuses embedded validation engine to run aspirate/dispense tests into a clamped destination vial with scale measurements
+- **CONFIG-DRIVEN**: Exposes liquid type, source/destination vial names, volume sets, and replicate count as editable workflow constants
+
+### UPDATE: Sobol Batch Execution for Glycerol Benchmark
+- **ADDED**: Batch CSV execution path in workflows/Glycerol_benchmark/glycerol_dispense_baseline.py for both 200uL and 1000uL Sobol files
+- **ROW-PARAMETERIZED RUNS**: Each CSV row is converted into PipettingParameters and executed as a vial-on-scale validation point
+- **UNIT HANDLING**: Converts Sobol CSV volumetric fields from uL to mL for robot API compatibility
+- **SIMULATION-FIRST CONTROL**: Includes MAX_ROWS_PER_FILE to run a short simulation subset before full campaign execution
+- **OUTPUT SUMMARY**: Writes per-campaign summary CSV with row-level metrics after batch completion
+
 ## [CRITICAL X-Y MOVEMENT BUG FIXES] - 2026-03-31
 
 ### CRITICAL BUG FIX: Motor Fault Prevention in X-Y Movement
