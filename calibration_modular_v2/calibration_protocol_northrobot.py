@@ -109,7 +109,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             print("No volume targets found, using default conditioning volume 0.05mL")
 
         # Use hardware simulation mode (different from our simulation protocol)
-        simulate = False  # This enables North Robot's internal simulation
+        simulate = True  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
         SWAP = False  # If True, enables vial swapping when needed
@@ -146,13 +146,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             #lash_e.nr_track.check_input_file()
             lash_e.nr_robot.home_robot_components()
             
-            # Simple vial management: Set up source and measurement vials
-            if SINGLE_VIAL:
-                source_vial = "liquid_source_0"
-                measurement_vial = "liquid_source_0" 
-            else:
-                source_vial = "liquid_source_0"
-                measurement_vial = "measurement_vial_0"
+            # Simple vial management: Set up source and measurement vials (read from config or use defaults)
+            source_vial = cfg['experiment'].get('source_vial', 'liquid_source_0')  # Use config or fallback
+            measurement_vial = cfg['experiment'].get('measurement_vial', 'liquid_source_0')  # Use config or fallback
+            
+            print(f"Using vials: source='{source_vial}', measurement='{measurement_vial}'")
             
             # Move measurement vial to clamp position for pipetting operations
             lash_e.nr_robot.move_vial_to_location(measurement_vial, "clamp", 0)
