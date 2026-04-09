@@ -2,6 +2,7 @@ import sys
 
 from matplotlib.pylab import False_
 sys.path.append("../utoronto_demo")
+from backups.surfactant_grid_adaptive_concentrations_backup_consolidated_data_organization_20260203_172735 import VALIDATE_LIQUIDS
 from master_usdl_coordinator import Lash_E
 import pandas as pd
 import numpy as np
@@ -32,7 +33,7 @@ def condition_tip(lash_e, vial_name, conditioning_volume_ul=200, liquid_type='wa
             lash_e.nr_robot.aspirate_from_vial(
                 source_vial_name=vial_name,
                 amount_mL=volume_per_cycle_ml,
-                liquid=liquid_type
+                liquid=liquid_type,
             )
             
             # Dispense back to same vial
@@ -77,15 +78,15 @@ def generate_random_matrix(rows, cols, row_sum, divisible_by):
     
     return matrix
 
-def mix_wells(lash_e, wells, wash_index=4, wash_volume=0.150, repeats=1,replicates=6):
+def mix_wells(lash_e, wells, wash_vial='wash', wash_volume=0.150, repeats=1,replicates=6):
     for well in wells:
         move_to_wellplate = False  # Default: don't move (stay at current position)
         if well%replicates==0:
-            lash_e.nr_robot.aspirate_from_vial(wash_index,wash_volume)
-            lash_e.nr_robot.dispense_into_vial(wash_index,wash_volume,initial_move=False)
+            lash_e.nr_robot.aspirate_from_vial(wash_vial,wash_volume)
+            lash_e.nr_robot.dispense_into_vial(wash_vial,wash_volume,initial_move=False)
             move_to_wellplate = True  # Now DO move for this first well in group
         #for i in range (0,repeats):
-        #    lash_e.nr_robot.dispense_from_vial_into_vial(wash_index,wash_index,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
+        #    lash_e.nr_robot.dispense_from_vial_into_vial(wash_vial,wash_vial,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
 
         lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=move_to_wellplate)
         lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
@@ -96,8 +97,11 @@ def mix_wells(lash_e, wells, wash_index=4, wash_volume=0.150, repeats=1,replicat
 def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,well_volume=240):
   
 
+    SIMULATE = True
+    VALIDATE_LIQUIDS = False
+
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=True)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=SIMULATE)
 
     #data_colors_uL = generate_random_matrix(number_samples, colors, well_volume, resolution_vol)/1000
     data_colors_uL = pd.read_csv("C:\\Users\\Imaging Controller\\Desktop\\ECON_MIXING\\color_mixing_composition_orig.txt", sep=',',index_col=0)/1000
@@ -123,31 +127,32 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
 
     input("Waiting...")
 
-    # Validate vials with 200 uL tip conditioning
-    from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
-    validation_folder = f"output/pipetting_validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    vials = ['water', 'yellow', 'red', 'blue']
-    for vial_name in vials:
-        try:
-            print(f"Validating {vial_name} with 200 uL tip conditioning...")
-            results = validate_pipetting_accuracy(
-                lash_e=lash_e,
-                source_vial=vial_name,
-                destination_vial=vial_name,
-                liquid_type="water",
-                volumes_ml=[0.15, 0.1, 0.05, 0.02, 0.01],  # Convert 10 µL to 0.01 mL
-                replicates=5,
-                output_folder=validation_folder,
-                plot_title=f"Pipetting Validation - {vial_name}",
-                switch_pipet=False,
-                adaptive_correction=True,
-                condition_tip_enabled=True,  # Enable tip conditioning
-                conditioning_volume_ul=170   # Use 200 uL conditioning 
-            )
-            lash_e.logger.info(f"{vial_name} validation: R²={results['r_squared']:.4f}, "
-                        f"Accuracy={results['mean_accuracy_pct']:.2f}%")
-        except Exception as e:
-            lash_e.logger.warning(f"Could not validate {vial_name}: {e}")
+    if VALIDATE_LIQUIDS:
+        # Validate vials with 200 uL tip conditioning
+        from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
+        validation_folder = f"output/pipetting_validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        vials = ['water', 'yellow', 'red', 'blue']
+        for vial_name in vials:
+            try:
+                print(f"Validating {vial_name} with 200 uL tip conditioning...")
+                results = validate_pipetting_accuracy(
+                    lash_e=lash_e,
+                    source_vial=vial_name,
+                    destination_vial=vial_name,
+                    liquid_type="water",
+                    volumes_ml=[0.15, 0.1, 0.05, 0.02, 0.01],  # Convert 10 µL to 0.01 mL
+                    replicates=5,
+                    output_folder=validation_folder,
+                    plot_title=f"Pipetting Validation - {vial_name}",
+                    switch_pipet=False,
+                    adaptive_correction=True,
+                    condition_tip_enabled=True,  # Enable tip conditioning
+                    conditioning_volume_ul=170   # Use 200 uL conditioning 
+                )
+                lash_e.logger.info(f"{vial_name} validation: R²={results['r_squared']:.4f}, "
+                            f"Accuracy={results['mean_accuracy_pct']:.2f}%")
+            except Exception as e:
+                lash_e.logger.warning(f"Could not validate {vial_name}: {e}")
 
 
     start_time = time.perf_counter()
@@ -158,6 +163,8 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
 
         # Move vial to clamp position
         lash_e.nr_robot.move_vial_to_location(color, 'clamp', 0)
+        lash_e.nr_robot.c9.close_clamp()  # Ensure clamp is closed to hold vial in place
+
         
         # Get tip and condition it with 200 uL for better accuracy
         condition_tip(lash_e, color, conditioning_volume_ul=170, liquid_type='water')
@@ -168,10 +175,11 @@ def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,wel
                 # Aspirate from vial
                 lash_e.nr_robot.aspirate_from_vial(color, volume, liquid='water')
                 # Dispense into wellplate
-                lash_e.nr_robot.dispense_into_wellplate(well_index, volume, liquid='water')
+                lash_e.nr_robot.dispense_into_wellplate([well_index], [volume], liquid='water')
         
         # Remove tip and return vial when done with this color
         lash_e.nr_robot.remove_pipet()
+        lash_e.nr_robot.c9.open_clamp()
         lash_e.nr_robot.return_vial_home(color)
 
     mix_wells(lash_e, wells,replicates=replicates)

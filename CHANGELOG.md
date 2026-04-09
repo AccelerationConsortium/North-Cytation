@@ -1,5 +1,45 @@
 # Changelog
 
+## [CRITICAL DOUBLE CONVERSION FIX] - 2026-04-08
+
+### CRITICAL BUG FIX: Double Unit Conversion in Ilya Workflow V2  
+- **FIXED**: Double conversion causing 50μL to become 0.05μL instead of 0.05mL
+- **ROOT CAUSE**: Line 299 already converts CSV μL→mL, but code assumed data was still in μL
+- **SEQUENCE**: CSV(50μL) → Line299(÷1000=0.05mL) → MyCode(÷1000=0.00005mL) → Display(0.05μL)
+- **SYMPTOM**: All volumes below 10μL minimum, all wells skipped during dispensing
+- **SOLUTION**: Treat data as mL after line 299, convert mL→μL only for display/validation
+- **IMPACT**: 50, 100, 150, 200μL volumes now correctly processed as 0.05, 0.1, 0.15, 0.2mL
+- **FILES AFFECTED**: `workflows/ilya_workflow_v2.py` lines 110-112, 155-157, 163-165, 360-362
+
+## [SIMULATION PERFORMANCE FIX] - 2026-04-08
+
+### BUG FIX: Simulation Mode Timing Issues
+- **FIXED**: 5-second delays in simulation mode during pipetting operations
+- **ROOT CAUSE**: Typo `self.SIMULATE` (uppercase) instead of `self.simulate` (lowercase) in post_retract_wait_time check
+- **RESULT**: AttributeError caused simulation bypass to fail, executing full hardware wait times in simulation
+- **SOLUTION**: Corrected simulation attribute reference to proper lowercase `self.simulate`  
+- **IMPACT**: Simulation now runs at proper speed without unnecessary delays
+- **FILES AFFECTED**: `North_Safe.py` line 2125 (post_retract_wait_time simulation bypass)
+
+## [CRITICAL CALIBRATION FIX] - 2026-04-08
+
+### CRITICAL BUG FIX: Embedded Calibration Corruption Prevention
+- **FIXED**: Calibration system that saved Stage 3 parameters even when accuracy got worse
+- **ENHANCED**: Now compares ALL THREE stages and picks the overall best performer  
+- **FIXED**: CSV measurement data now updated with fresh measurements from optimization process
+- **ROOT CAUSE**: Blind `_update_calibration_csv()` call with no performance validation + stale measurement data
+- **SOLUTION**: Smart stage comparison logic + fresh measurement data replacement from winning stage  
+- **PROTECTION**: System preserves good calibration AND uses only matched parameter-measurement pairs
+- **INTELLIGENCE**: Stage 2 (crossing strategy) can now be selected if it outperforms interpolation
+- **DATA INTEGRITY**: Measurement fields updated with actual measured volumes from optimization process
+- **EVIDENCE**: Previously saved 6.3µL error parameters over existing 1.4µL tolerance parameters
+- **VALIDATION**: Comprehensive stage ranking with fresh measurement data from best performing stage
+- **REPORTING**: Enhanced Slack notifications show winning stage and APPLIED/REJECTED status
+- **IMPACT**: Prevents calibration degradation AND ensures optimal parameters with fresh measurement data
+
+### FILES MODIFIED  
+- `pipetting_data/embedded_calibration_validation.py`: Added conditional update logic and enhanced validation
+
 ## [VIAL GUI ENHANCEMENTS] - 2026-04-02
 
 ### ENHANCEMENT: Vial GUI "Empty Vial" Feature

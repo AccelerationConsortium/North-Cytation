@@ -53,10 +53,12 @@ SMALL_TIP_MAX_UL = 150.0  # Maximum volume for small tips
 # ========================================
 
 def move_lid_to_wellplate(lash_e):
+    lash_e.nr_robot.move_home()
     lash_e.nr_track.grab_wellplate_from_location('lid_storage_96', wellplate_type='96_wellplate_lid', waypoint_locations=['cytation_safe_area'])
     lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type='96_wellplate_lid')
 
 def remove_lid_from_wellplate(lash_e):
+    lash_e.nr_robot.move_home()
     lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type='96_wellplate_lid', waypoint_locations=['cytation_safe_area'])
     lash_e.nr_track.release_wellplate_in_location('lid_storage_96', wellplate_type='96_wellplate_lid')
 
@@ -104,18 +106,10 @@ def validate_recipe_data(input_data):
 def condition_tip_for_liquid(lash_e, vial_name, liquid_type='water', max_volume_ul=None):
     """Condition pipette tip by aspirating and dispensing from source vial multiple times."""
     # Determine tip type and conditioning volume based on expected volumes
-    if max_volume_ul and max_volume_ul > SMALL_TIP_MAX_UL:
-        conditioning_volume_ul = LARGE_TIP_CONDITIONING_UL
-        tip_type = "large"
-    else:
-        conditioning_volume_ul = SMALL_TIP_CONDITIONING_UL  
-        tip_type = "small"
     
     # Standard conditioning: 5 cycles (like other workflows)
     cycles = 5
-    volume_per_cycle_ml = conditioning_volume_ul / 1000
-    
-    print(f"  Conditioning {tip_type} tip with {vial_name}: {cycles} cycles of {conditioning_volume_ul}uL (liquid={liquid_type})")
+    volume_per_cycle_ml = 0.200  # 200 μL conditioning volume (already in mL)
     
     try:
         for cycle in range(cycles):
@@ -160,17 +154,17 @@ def dispense_component_to_wells(lash_e, component_df, vial_name, liquid_type, we
         print(f"    Using fresh tips for glycerol (no conditioning)")
     else:
         # Condition tip for ethanol and water only
-        max_volume_ml = component_df[vial_name].max()  # Use actual column name
-        max_volume_ul = max_volume_ml * 1000  # Convert mL to uL for tip sizing
+        max_volume_ml = component_df[vial_name].max()  # Data already in mL
+        max_volume_ul = max_volume_ml * 1000.0  # Convert to μL for conditioning
         condition_tip_for_liquid(lash_e, vial_name, liquid_type, max_volume_ul)
     
     # Sort wells by volume (descending) for better pipetting efficiency
     component_df_sorted = component_df.sort_values(by=vial_name, ascending=False)  # Use actual column name
     
     for well_idx, row in component_df_sorted.iterrows():
-        # Get volume directly from the vial column (already converted to mL)
-        volume_ml = row[vial_name]  # This is in mL (after /1000 conversion)
-        volume_ul = volume_ml * 1000  # Convert to uL for display and checking
+        # Get volume from dataframe (already in mL from line 299 conversion)
+        volume_ml = row[vial_name]  # Data already in mL
+        volume_ul = volume_ml * 1000.0  # Convert to μL for validation and display
         
         if volume_ul < MIN_PIPETTE_VOLUME_UL:
             print(f"    Skipping well {well_idx}: volume {volume_ul:.1f}uL below minimum {MIN_PIPETTE_VOLUME_UL}uL")
@@ -225,10 +219,10 @@ def run_embedded_calibration(lash_e):
     
     # Calibrate all liquid components using embedded validation
     dye_calibrations = [
-        
+        ("glycerol_dye", "glycerol"),
         ("ethanol_dye", "ethanol"),
         ("water_dye", "water"),
-        ("glycerol_dye", "glycerol")
+        
     ]
     
     for source_vial, liquid_type in dye_calibrations:
@@ -292,7 +286,8 @@ def ilya_workflow_v2():
     print(f"\n=== VIAL SETUP ===")
     print(vial_data[['vial_name', 'location', 'location_index', 'vial_volume', 'notes']].to_string(index=False))
     
-    RUN_VALIDATION = True  # Set to False to skip embedded calibration validation
+    RUN_VALIDATION = False  # Set to False to skip embedded calibration validation
+    lash_e.nr_robot.home_robot_components()
 
     # Run embedded calibration before main workflow
     if RUN_VALIDATION:
@@ -306,7 +301,7 @@ def ilya_workflow_v2():
     input_data = input_data / 1000
     
 
-    for round_num in range(1, N_ROUNDS + 1):
+    for round_num in range(3, N_ROUNDS + 1):
         print(f"\n--- ROUND {round_num}/{N_ROUNDS} ---")
         
         # Set well range for this round
@@ -362,9 +357,9 @@ def ilya_workflow_v2():
                 print(f"    Found {len(component_df)} wells needing {vial_name}")
                 print("    Wells and volumes:")
                 for well_idx, row in component_df.iterrows():
-                    volume_ml = row[vial_name]  # Get from actual column name
-                    volume_ul = volume_ml * 1000  # Convert to uL for display
-                    print(f"      Well {well_idx}: {volume_ul:.1f}uL")
+                    volume_ml = row[vial_name]  # Data already in mL from line 299 conversion
+                    volume_ul = volume_ml * 1000.0  # Convert to μL for display
+                    print(f"      Well {well_idx}: {volume_ul:.1f}uL ({volume_ml:.3f}mL)")
                 
                 # Dispense to wells using modern API
                 dispense_component_to_wells(lash_e, component_df, vial_name, liquid_type, wells)
@@ -373,38 +368,40 @@ def ilya_workflow_v2():
         
         print(f"\nRound {round_num} dispensing complete!")
         
-        # Place lid before measurement
-        print("Placing wellplate lid for measurement...")
-        move_lid_to_wellplate(lash_e)
+        lash_e.nr_robot.move_home()
+
+        # # Place lid before measurement
+        # print("Placing wellplate lid for measurement...")
+        # move_lid_to_wellplate(lash_e)
         
-        # Measure wellplate after dispensing
-        wells_list = list(wells)
-        print(f"Measuring wellplate: wells {wells_list[0]}-{wells_list[-1]}")
-        try:
-            measurement_data = lash_e.measure_wellplate(
-                protocol_file_path=MEASUREMENT_PROTOCOL_FILE,
-                wells_to_measure=wells_list
-            )
-            print(f"✓ Measurement complete for round {round_num}")
+        # # Measure wellplate after dispensing
+        # wells_list = list(wells)
+        # print(f"Measuring wellplate: wells {wells_list[0]}-{wells_list[-1]}")
+        # try:
+        #     measurement_data = lash_e.measure_wellplate(
+        #         protocol_file_path=MEASUREMENT_PROTOCOL_FILE,
+        #         wells_to_measure=wells_list
+        #     )
+        #     print(f"✓ Measurement complete for round {round_num}")
             
-            # Save measurement data if valid
-            if measurement_data is not None:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"ilya_measurement_round{round_num}_{timestamp}.csv"
-                filepath = os.path.join("output", filename)
-                os.makedirs("output", exist_ok=True)
-                measurement_data.to_csv(filepath)
-                print(f"✓ Saved: {filename}")
-            else:
-                print(f"⚠️  No measurement data returned for round {round_num}")
+        #     # Save measurement data if valid
+        #     if measurement_data is not None:
+        #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        #         filename = f"ilya_measurement_round{round_num}_{timestamp}.csv"
+        #         filepath = os.path.join("output", filename)
+        #         os.makedirs("output", exist_ok=True)
+        #         measurement_data.to_csv(filepath)
+        #         print(f"✓ Saved: {filename}")
+        #     else:
+        #         print(f"⚠️  No measurement data returned for round {round_num}")
             
-        except Exception as e:
-            print(f"⚠️  Measurement failed for round {round_num}: {e}")
+        # except Exception as e:
+        #     print(f"⚠️  Measurement failed for round {round_num}: {e}")
         
-        # Remove lid after measurement
-        print("Removing wellplate lid after measurement...")
-        remove_lid_from_wellplate(lash_e)
-        print("✓ Lid removed successfully")
+        # # Remove lid after measurement
+        # print("Removing wellplate lid after measurement...")
+        # remove_lid_from_wellplate(lash_e)
+        # print("✓ Lid removed successfully")
         
         if round_num < N_ROUNDS:
             if not SIMULATE:

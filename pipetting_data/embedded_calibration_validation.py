@@ -204,10 +204,11 @@ def _log_parameter_correction(timestamp: str, liquid_type: str, target_volume_ml
         print(f"    ⚠ Warning: Could not log parameter correction: {e}")
 
 
-def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overaspirate_ml: float, lash_e=None):
-    """Update the optimal_conditions CSV with a new overaspirate value.
+def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overaspirate_ml: float, 
+                          measured_volume_ml: float = None, measurement_count: int = None, lash_e=None):
+    """Update the optimal_conditions CSV with a new overaspirate value and fresh measurement data.
 
-    If a row for the target volume already exists, only overaspirate_vol is updated.
+    If a row for the target volume already exists, overaspirate_vol and measurement data are updated.
     If not, a new row is inserted with all other parameters interpolated from the
     two nearest volumes, sorted back into the file.
 
@@ -215,6 +216,8 @@ def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overa
         liquid_type: Liquid name matching calibration file naming (e.g. 'water', 'DMSO')
         target_volume_ml: Target volume in mL
         new_overaspirate_ml: Optimized overaspirate value in mL
+        measured_volume_ml: Fresh measured volume in mL (optional)
+        measurement_count: Number of measurements used for the average (optional)
         lash_e: Lash_E instance for simulation check
     """
     if lash_e and hasattr(lash_e, 'simulate') and lash_e.simulate:
@@ -272,13 +275,40 @@ def _update_calibration_csv(liquid_type: str, target_volume_ml: float, new_overa
         match_mask = (df['volume_target'] - target_volume_ul).abs() < 0.5
 
         if match_mask.any():
-            # Update existing row - only change overaspirate_vol
+            # Update existing row with new parameters AND fresh measurement data
             idx = df[match_mask].index[0]
-            old_val = df.at[idx, 'overaspirate_vol']
+            old_overasp = df.at[idx, 'overaspirate_vol']
+            old_measured = df.at[idx, 'volume_measured'] if 'volume_measured' in df.columns else None
+            
             df.at[idx, 'overaspirate_vol'] = new_overaspirate_ml
+            
+            # Update measurement fields with fresh data from optimization process
+            if measured_volume_ml is not None:
+                target_volume_ul = target_volume_ml * 1000
+                measured_volume_ul = measured_volume_ml * 1000
+                
+                if 'volume_measured' in df.columns:
+                    df.at[idx, 'volume_measured'] = measured_volume_ul
+                if 'measurement_count' in df.columns and measurement_count is not None:
+                    df.at[idx, 'measurement_count'] = measurement_count
+                
+                # Update status to successful with fresh measurements
+                if 'status' in df.columns:
+                    df.at[idx, 'status'] = 'success'
+                    
+                print(f"    Updated {os.path.basename(best_file)}: {target_volume_ul:.1f}uL")
+                print(f"      overaspirate: {old_overasp:.4f} -> {new_overaspirate_ml:.4f}mL")
+                if old_measured is not None:
+                    print(f"      measured: {old_measured:.1f} -> {measured_volume_ul:.1f}uL (fresh data)")
+                else:
+                    print(f"      measured: {measured_volume_ul:.1f}uL (fresh data)")
+            else:
+                # Should never happen in optimization context - always have fresh measurements
+                print(f"    Warning: No fresh measurement data provided during optimization")
+                print(f"    Updated {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
+                      f"overaspirate {old_overasp:.4f} -> {new_overaspirate_ml:.4f}mL")
+            
             df.to_csv(best_file, index=False)
-            print(f"    Updated {os.path.basename(best_file)}: {target_volume_ul:.1f}uL "
-                  f"overaspirate {old_val:.4f} -> {new_overaspirate_ml:.4f}mL")
         else:
             # Insert new row - interpolate all numeric columns from surrounding data
             vols = df['volume_target'].values
@@ -834,7 +864,8 @@ def validate_pipetting_accuracy(
             tolerance_ul = _calculate_volume_tolerance_ul(volume_ml)
             target_ul = volume_ml * 1000
             stage1_mean_ul = stage1_mean * 1000
-            stage1_error_ul = abs(stage1_mean_ul - target_ul)
+            stage1_error_ul = abs(stage1_mean_ul - target_ul)  # Absolute for tolerance check
+            stage1_signed_error_ul = stage1_mean_ul - target_ul  # Signed for reporting
             
             print(f"    Stage 1 - Error: {stage1_error_ul:.1f}uL vs {tolerance_ul:.1f}uL tolerance")
             
@@ -862,13 +893,27 @@ def validate_pipetting_accuracy(
                     # === STAGE 2: First Optimization ===
                     print(f"    Stage 2: Testing adjusted parameters...")
                     
-                    # Calculate Stage 2 correction
-                    if stage1_mean < volume_ml:  # Under-dispensing
-                        stage2_overaspirate = initial_overaspirate + 0.005  # Increase by 5uL
-                        print(f"      Under-dispensing: trying higher overaspirate {stage2_overaspirate:.4f} mL")
-                    else:  # Over-dispensing
-                        stage2_overaspirate = max(0.0, initial_overaspirate - 0.003)  # Decrease by 3uL  
-                        print(f"      Over-dispensing: trying lower overaspirate {stage2_overaspirate:.4f} mL")
+                    # Calculate Stage 2 correction using "crossing" strategy
+                    # Goal: bracket the target volume between Stage 1 and Stage 2 measurements
+                    stage1_error_ml = stage1_mean - volume_ml  # Signed error
+                    
+                    # Target: cross to opposite side with similar magnitude
+                    target_stage2_error = -stage1_error_ml  # Flip error sign to cross target
+                    
+                    # Calculate adjustment needed: 2x error to cross from -X to +X
+                    needed_adjustment = -2 * stage1_error_ml
+                    
+                    # Apply minimum adjustment for statistical separation
+                    min_adjustment = 0.003  # 3µL minimum to ensure meaningful difference
+                    if abs(needed_adjustment) < min_adjustment:
+                        needed_adjustment = min_adjustment * (1 if needed_adjustment >= 0 else -1)
+                    
+                    # Apply the adjustment
+                    stage2_overaspirate = initial_overaspirate + needed_adjustment
+                    stage2_overaspirate = max(0.0, stage2_overaspirate)  # Non-negative bound
+                    
+                    print(f"      Stage 1 error: {stage1_error_ml*1000:+.1f}uL, targeting opposite error: {target_stage2_error*1000:+.1f}uL")
+                    print(f"      Crossing strategy: adjusting overaspirate by {needed_adjustment*1000:+.1f}uL to {stage2_overaspirate:.4f}mL")
                     
                     # Create Stage 2 parameters by copying all optimized params
                     stage2_params = PipettingParameters()
@@ -954,7 +999,8 @@ def validate_pipetting_accuracy(
                     
                     # Evaluate Stage 2
                     stage2_mean = np.mean(stage2_volumes)
-                    stage2_error_ul = abs((stage2_mean * 1000) - target_ul)
+                    stage2_error_ul = abs((stage2_mean * 1000) - target_ul)  # Absolute for tolerance check
+                    stage2_signed_error_ul = (stage2_mean * 1000) - target_ul  # Signed for reporting
                     print(f"    Stage 2 - Mean error: {stage2_error_ul:.1f}uL vs {tolerance_ul:.1f}uL tolerance")
                     
                     # === STAGE 3: Final Optimization ===
@@ -1066,36 +1112,87 @@ def validate_pipetting_accuracy(
                     
                     # Evaluate final Stage 3 performance
                     stage3_mean = np.mean(stage3_volumes)
-                    stage3_error_ul = abs((stage3_mean * 1000) - target_ul)
+                    stage3_error_ul = abs((stage3_mean * 1000) - target_ul)  # Absolute for tolerance check
+                    stage3_signed_error_ul = (stage3_mean * 1000) - target_ul  # Signed for reporting
                     print(f"    Stage 3 - Final error: {stage3_error_ul:.1f}uL vs {tolerance_ul:.1f}uL tolerance")
                     
-                    # Log the parameter optimization
-                    _log_parameter_correction(
-                        timestamp, liquid_type, volume_ml,
-                        initial_overaspirate, optimal_overaspirate,
-                        "iterative_optimization", session_id, lash_e
-                    )
-
-                    # Persist the optimized overaspirate back to the calibration CSV
-                    _update_calibration_csv(liquid_type, volume_ml, optimal_overaspirate, lash_e)
+                    # Find the best performing stage across all three stages
+                    stage_errors = [
+                        (1, stage1_error_ul, initial_overaspirate, "baseline", stage1_mean, len(stage1_results)),
+                        (2, stage2_error_ul, stage2_overaspirate, "crossing_strategy", stage2_mean, len(stage2_volumes)), 
+                        (3, stage3_error_ul, optimal_overaspirate, "interpolation", stage3_mean, len(stage3_volumes))
+                    ]
                     
-                    # Send Slack notification about optimization (skip in simulation)
-                    if hasattr(lash_e, 'simulate') and lash_e.simulate:
-                        correction_change_ul = (optimal_overaspirate - initial_overaspirate) * 1000
-                        print(f"    SIMULATION: Would send Slack notification:")
-                        print(f"    '3-Stage Optimization: {liquid_type} {volume_ml*1000:.1f}uL, overaspirate {initial_overaspirate:.4f}→{optimal_overaspirate:.4f}mL ({correction_change_ul:+.1f}uL)'")
+                    # Sort by error (lowest first) 
+                    stage_errors.sort(key=lambda x: x[1])
+                    best_stage, best_error_ul, best_overaspirate, best_method, best_mean_ml, best_count = stage_errors[0]
+                    
+                    print(f"\n    📊 STAGE PERFORMANCE SUMMARY:")
+                    for stage_num, error_ul, overaspirate, method, mean_ml, count in stage_errors:
+                        marker = "🏆" if stage_num == best_stage else "  "
+                        print(f"    {marker} Stage {stage_num} ({method}): {error_ul:.1f}uL error")
+                    
+                    # Smart update logic: only save if best stage meets tolerance OR improves over original
+                    should_update = (best_error_ul <= tolerance_ul) or (best_error_ul < stage1_error_ul and best_stage != 1)
+                    
+                    if should_update:
+                        print(f"    ✅ Stage {best_stage} has best accuracy ({best_error_ul:.1f}uL)")
+                        print(f"    📋 Updating calibration CSV with Stage {best_stage} parameters and fresh measurements")
+                        
+                        # Log the parameter optimization
+                        _log_parameter_correction(
+                            timestamp, liquid_type, volume_ml,
+                            initial_overaspirate, best_overaspirate,
+                            f"iterative_optimization_stage{best_stage}", session_id, lash_e
+                        )
+
+                        # Persist the best overaspirate AND fresh measurement data back to the calibration CSV
+                        _update_calibration_csv(liquid_type, volume_ml, best_overaspirate, 
+                                              best_mean_ml, best_count, lash_e)
                     else:
-                        correction_change_ul = (optimal_overaspirate - initial_overaspirate) * 1000
+                        if best_stage == 1:
+                            print(f"    🎯 Stage 1 (baseline) is already optimal ({best_error_ul:.1f}uL)")
+                            print(f"    🛡️ No changes needed - keeping original parameters")
+                        else:
+                            print(f"    ❌ Best stage ({best_stage}) still doesn't improve enough ({best_error_ul:.1f}uL vs {stage1_error_ul:.1f}uL)")
+                            print(f"    🛡️ NOT updating calibration CSV - keeping original parameters")
+                        
+                        print(f"    📋 Original parameters maintained: overaspirate={initial_overaspirate:.6f}mL")
+                        
+                        # Still log the attempt for debugging purposes
+                        _log_parameter_correction(
+                            timestamp, liquid_type, volume_ml,
+                            initial_overaspirate, best_overaspirate,
+                            f"iterative_optimization_stage{best_stage}_rejected", session_id, lash_e
+                        )
+                    
+                    # Send Slack notification about optimization (skip in simulation)  
+                    correction_change_ul = (best_overaspirate - initial_overaspirate) * 1000
+                    update_status = "✅ APPLIED" if should_update else "❌ REJECTED"
+                    
+                    if hasattr(lash_e, 'simulate') and lash_e.simulate:
+                        print(f"    SIMULATION: Would send Slack notification:")
+                        print(f"    '3-Stage Optimization {update_status}: {liquid_type} {volume_ml*1000:.1f}uL, Best: Stage {best_stage} ({best_error_ul:+.1f}uL)'")
+                    else:
                         slack_message = (
-                            f"🎯 3-STAGE PARAMETER OPTIMIZATION\n"
+                            f"🎯 3-STAGE PARAMETER OPTIMIZATION {update_status}\n"
                             f"Liquid: {liquid_type}\n"
                             f"Volume: {volume_ml*1000:.1f}uL\n"
-                            f"Stage 1 Error: {stage1_error_ul:+.1f}uL\n"
-                            f"Stage 2 Error: {stage2_error_ul:+.1f}uL\n" 
-                            f"Stage 3 Error: {stage3_error_ul:+.1f}uL\n"
-                            f"Overaspirate: {initial_overaspirate:.4f} → {optimal_overaspirate:.4f} mL ({correction_change_ul:+.1f}uL)\n"
-                            f"Session: {session_id}"
+                            f"🏆 BEST: Stage {best_stage} ({best_method}) - {best_error_ul:.1f}uL error\n"
+                            f"Stage 1 Error: {stage1_signed_error_ul:+.1f}uL\n"
+                            f"Stage 2 Error: {stage2_signed_error_ul:+.1f}uL\n" 
+                            f"Stage 3 Error: {stage3_signed_error_ul:+.1f}uL\n"
                         )
+                        
+                        if should_update:
+                            slack_message += f"Overaspirate: {initial_overaspirate:.4f} → {best_overaspirate:.4f} mL ({correction_change_ul:+.1f}uL)\n"
+                        else:
+                            if best_stage == 1:
+                                slack_message += f"Overaspirate: {initial_overaspirate:.4f} mL (UNCHANGED - Stage 1 already optimal)\n"
+                            else:
+                                slack_message += f"Overaspirate: {initial_overaspirate:.4f} mL (UNCHANGED - best stage insufficient improvement)\n"
+                            
+                        slack_message += f"Session: {session_id}"
                         
                         try:
                             import slack_agent

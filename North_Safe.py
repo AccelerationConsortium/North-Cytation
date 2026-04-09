@@ -1717,11 +1717,24 @@ class North_Robot(North_Base):
        
 
         if blowout_vol > 0: #Adjust this later into pipetting parameter
-            #blow_speed = 5
             self.logger.debug(f"Blowing out {blowout_vol:.3f} mL")
-            #self.adjust_pump_speed(0, blow_speed)
+            
+            # Get current speed - should be known from pump initialization
+            if 0 not in self.CURRENT_PUMP_SPEEDS:
+                self.pause_after_error("Pump 0 speed not initialized - load_pumps() may have failed")
+                return
+            current_speed = self.CURRENT_PUMP_SPEEDS[0]
+            
+            # Use faster speed for left valve aspirate (air intake)
+            fast_aspirate_speed = 5  # Much faster for air aspirate
+            self.adjust_pump_speed(0, fast_aspirate_speed)
+            
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_LEFT)
             self.c9.aspirate_ml(0, blowout_vol)
+            
+            # Restore original speed for dispense
+            self.adjust_pump_speed(0, current_speed)
+            
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)
             self.c9.dispense_ml(0, blowout_vol)
 
@@ -2122,7 +2135,8 @@ class North_Robot(North_Base):
             # self.move_rel_xyz(y_distance=-2)
         if move_up:
             self.c9.move_z(disp_height, vel=retract_speed) #Retract with a specific speed
-            time.sleep(post_retract_wait_time) #Wait after retracting
+            if not self.simulate:
+                time.sleep(post_retract_wait_time) #Wait after retracting
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
 
