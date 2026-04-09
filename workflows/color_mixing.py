@@ -78,27 +78,26 @@ def generate_random_matrix(rows, cols, row_sum, divisible_by):
     
     return matrix
 
-def mix_wells(lash_e, wells, wash_vial='wash', wash_volume=0.150, repeats=1,replicates=6):
+def mix_wells(lash_e, wells, wash_vial='wash', wash_volume=0.150, repeats=1, replicates=6):
     for well in wells:
-        move_to_wellplate = False  # Default: don't move (stay at current position)
-        if well%replicates==0:
-            lash_e.nr_robot.aspirate_from_vial(wash_vial,wash_volume)
-            lash_e.nr_robot.dispense_into_vial(wash_vial,wash_volume,initial_move=False)
-            move_to_wellplate = True  # Now DO move for this first well in group
-        #for i in range (0,repeats):
-        #    lash_e.nr_robot.dispense_from_vial_into_vial(wash_vial,wash_vial,wash_volume,move_to_aspirate=False,move_to_dispense=False,buffer_vol=0)
-
-        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=move_to_wellplate)
-        lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,aspirate=False,move_to_aspirate=False)
-        for i in range (0, repeats):
-            lash_e.nr_robot.pipet_from_wellplate(well,wash_volume,move_to_aspirate=False)
-            lash_e.nr_robot.pipet_from_wellplate(well, wash_volume,aspirate=False,move_to_aspirate=False)
+        # Mix this well - tip will be automatically gotten if needed
+        lash_e.nr_robot.pipet_from_wellplate(well, wash_volume, move_to_aspirate=True)
+        lash_e.nr_robot.pipet_from_wellplate(well, wash_volume, move_to_aspirate=False, aspirate=False)
+        
+        # Additional mixing cycles
+        for i in range(0, repeats):
+            lash_e.nr_robot.pipet_from_wellplate(well, wash_volume, move_to_aspirate=False)
+            lash_e.nr_robot.pipet_from_wellplate(well, wash_volume, aspirate=False, move_to_aspirate=False)
+        
+        # Remove tip at end of each group (wells 5, 11, 17, 23, etc.)
+        if (well + 1) % replicates == 0:
+            lash_e.nr_robot.remove_pipet()
 
 def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,well_volume=240):
   
 
-    SIMULATE = True
-    VALIDATE_LIQUIDS = False
+    SIMULATE = False
+    VALIDATE_LIQUIDS = True
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=SIMULATE)
