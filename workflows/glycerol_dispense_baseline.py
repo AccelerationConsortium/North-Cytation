@@ -147,7 +147,7 @@ def _row_to_parameters(row):
         blowout_vol=float(row["blowout_vol"]) / 1000.0,
         overaspirate_vol=float(row["overaspirate_vol"]) / 1000.0,
         retract_speed=RETRACT_SPEED,
-        post_asp_wait_time=POST_ASP_WAIT_TIME,
+        post_retract_wait_time=POST_ASP_WAIT_TIME,
         post_asp_air_vol=POST_ASP_AIR_VOL,
     )
     volume_ml = float(row["vol"]) / 1000.0
@@ -405,6 +405,8 @@ def run_baseline():
                 
                 # Get environmental data
                 env_data = _get_latest_environmental_data()
+                if env_data is None:
+                    env_data = {"temp_c": None, "humidity_pct": None, "pressure_pa": None}
                 
                 row_result = {
                     "measured_volume_ml": measured_volume_ml,
