@@ -15,16 +15,16 @@ def test_get_pipet(tip_types):
         print(f"Testing pipet type: {tip_type}")
         lash_e.nr_robot.get_pipet(tip_type)
         lash_e.nr_robot.move_home()
-        #lash_e.nr_robot.remove_pipet()
+        lash_e.nr_robot.remove_pipet()
 
 # Test with different pipet types (use strings, not indices)
 # Available types: 'large_tip', 'small_tip'
 
 # Test small tips multiple times
 #test_get_pipet(['small_tip'] * 3)
-
+lash_e.nr_robot.home_robot_components()
 # Uncomment to test large tips:
-# test_get_pipet(['large_tip'] * 3)
+test_get_pipet(['large_tip'] * 48)
 
 # Uncomment to test mixed types:
 # test_get_pipet(['small_tip', 'large_tip', 'small_tip'])
