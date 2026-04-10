@@ -43,6 +43,11 @@ LIQUIDS = {
     "agar_water_refill": {"density": 1.01, "refill_pipets": True},
     "TFA": {"density": 1.49, "refill_pipets": False},
     "6M_HCl": {"density": 1.10, "refill_pipets": False},
+    "6M_TFA": {"density": 1.25, "refill_pipets": False},
+    "6M_p_TSA": {"density": 1.25, "refill_pipets": False},
+    "6M_Citric_Acid": {"density": 1.27, "refill_pipets": False},
+    "6M_H2SO4": {"density": 1.34, "refill_pipets": False},
+    "6M_H3PO4": {"density": 1.35, "refill_pipets": False},
 }
 
 
@@ -104,7 +109,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             print("No volume targets found, using default conditioning volume 0.05mL")
 
         # Use hardware simulation mode (different from our simulation protocol)
-        simulate = False  # This enables North Robot's internal simulation
+        simulate = True  # This enables North Robot's internal simulation
         
         # Vial management mode - swap roles when measurement vial gets too full
         SWAP = False  # If True, enables vial swapping when needed
@@ -113,7 +118,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
 
         continuous_monitoring = True
 
-        show_gui = True
+        show_gui = False
 
         adjust_volume = True
         print(f"Volume adjustment tracking: {adjust_volume}")
@@ -122,7 +127,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
-        self.quality_std_threshold = 0.1  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
+        self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
         if not simulate:
             slack_agent.send_slack_message("🤖 North Robot calibration/validation started!")
@@ -141,13 +146,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             #lash_e.nr_track.check_input_file()
             lash_e.nr_robot.home_robot_components()
             
-            # Simple vial management: Set up source and measurement vials
-            if SINGLE_VIAL:
-                source_vial = "liquid_source_0"
-                measurement_vial = "liquid_source_0" 
-            else:
-                source_vial = "liquid_source_0"
-                measurement_vial = "measurement_vial_0"
+            # Simple vial management: Set up source and measurement vials (read from config or use defaults)
+            source_vial = cfg['experiment'].get('source_vial', 'liquid_source_0')  # Use config or fallback
+            measurement_vial = cfg['experiment'].get('measurement_vial', 'liquid_source_0')  # Use config or fallback
+            
+            print(f"Using vials: source='{source_vial}', measurement='{measurement_vial}'")
             
             # Move measurement vial to clamp position for pipetting operations
             lash_e.nr_robot.move_vial_to_location(measurement_vial, "clamp", 0)

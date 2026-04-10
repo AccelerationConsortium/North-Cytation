@@ -21,10 +21,10 @@ def test_get_pipet(tip_types):
 # Available types: 'large_tip', 'small_tip'
 
 # Test small tips multiple times
-test_get_pipet(['large_tip'] * 42)
-
+#test_get_pipet(['small_tip'] * 3)
+lash_e.nr_robot.home_robot_components()
 # Uncomment to test large tips:
-# test_get_pipet(['large_tip'] * 3)
+test_get_pipet(['large_tip'] * 48)
 
 # Uncomment to test mixed types:
 # test_get_pipet(['small_tip', 'large_tip', 'small_tip'])

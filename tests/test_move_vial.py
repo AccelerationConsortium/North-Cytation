@@ -6,19 +6,14 @@ from colorama import init
 sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 
-def move_vials(input_vial_status_file, repeats=3):
- 
+def move_vials(vial_file_path): 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(input_vial_status_file,initialize_biotek=False)
+    lash_e = Lash_E(vial_file=vial_file_path, initialize_biotek=False)
 
-    #lash_e.nr_robot.check_input_file()
+    # destination = lash_e.nr_robot.get_location(False,'clamp',0)
+    # lash_e.nr_robot.c9.goto_safe(destination)
+    lash_e.nr_robot.move_vial_to_location(vial_name="vial_1", location="main_8mL_rack", location_index=37)
+    lash_e.nr_robot.move_vial_to_location(vial_name="vial_1", location="main_8mL_rack", location_index=45)
+    
 
-    for i in range (0, 1):
-        lash_e.nr_robot.move_vial_to_location("target_vial",'clamp', 0)
-
-        input("Press Enter to continue...")
-
-        lash_e.nr_robot.return_vial_home("target_vial")
-        lash_e.nr_robot.move_home()
-
-move_vials("../utoronto_demo/status/sample_input_vials.csv", repeats=3)
+move_vials("../utoronto_demo/status/sample_input_vials.csv")

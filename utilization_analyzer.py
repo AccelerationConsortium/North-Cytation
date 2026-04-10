@@ -4,6 +4,21 @@ Laboratory System Utilization Analyzer
 Analyzes log files to calculate equipment utilization metrics and create visualizations.
 """
 
+#=============================================================================
+# CONFIGURATION - Edit these dates to analyze specific periods
+#=============================================================================
+
+# Set date range for analysis (set to None for all data)
+# Examples:
+# ANALYZE_START_DATE = "2026-03-01"    # Specific date
+# ANALYZE_START_DATE = "March 2026"    # Whole month
+# ANALYZE_START_DATE = None            # From beginning
+
+ANALYZE_START_DATE = "March 2026"  # Edit this line to change start date
+ANALYZE_END_DATE = None           # Edit this line to change end date (None = auto-detect end of month/period)
+
+#=============================================================================
+
 import re
 import os
 import glob
@@ -16,11 +31,20 @@ from pathlib import Path
 import json
 
 class LabUtilizationAnalyzer:
-    def __init__(self, logs_dir="logs"):
+    def __init__(self, logs_dir="logs", start_date=None, end_date=None):
         self.logs_dir = Path(logs_dir)
         self.start_cutoff = datetime(2025, 8, 8, 13, 30, 29)  # First timestamped log
         self.sessions = []
         self.analysis_results = {}
+        
+        # Date range filtering
+        self.filter_start_date = start_date
+        self.filter_end_date = end_date
+        
+        if start_date:
+            print(f"Filtering from: {start_date.strftime('%Y-%m-%d')}")
+        if end_date:
+            print(f"Filtering to: {end_date.strftime('%Y-%m-%d')}")
         
         # Regex patterns for different timestamp formats
         self.timestamp_patterns = [
@@ -77,6 +101,14 @@ class LabUtilizationAnalyzer:
         
         if session_info['file_start_time'] < self.start_cutoff:
             print(f"  - Before cutoff date")
+            return None
+                
+        # Check date range filters
+        if self.filter_start_date and session_info['file_start_time'].date() < self.filter_start_date:
+            print(f"  - Before filter start date")
+            return None
+        if self.filter_end_date and session_info['file_start_time'].date() > self.filter_end_date:
+            print(f"  - After filter end date")
             return None
             
         try:
@@ -155,6 +187,8 @@ class LabUtilizationAnalyzer:
                 self.sessions.append(session)
         
         print(f"\nSuccessfully parsed {len(self.sessions)} sessions")
+        if self.filter_start_date or self.filter_end_date:
+            print(f"Note: Weekly metrics will exclude incomplete weeks at period boundaries")
         return self.sessions
     
     def calculate_metrics(self):
@@ -186,12 +220,48 @@ class LabUtilizationAnalyzer:
         business_hours = self.calculate_business_hours(start_date, end_date)
         utilization_business = (total_runtime_hours / business_hours) * 100 if business_hours > 0 else 0
         
-        # Weekly total metrics
+        # Weekly total metrics - only include complete weeks within the date range
         df['week'] = df['date'].dt.to_period('W')
         weekly_usage = df.groupby('week')['duration_hours'].sum()
-        avg_weekly_runtime = weekly_usage.mean()
-        peak_weekly_runtime = weekly_usage.max()
+        
+        # Filter out incomplete weeks if we have date filters
+        if self.filter_start_date or self.filter_end_date:
+            filtered_weeks = []
+            for week_period, hours in weekly_usage.items():
+                week_start = week_period.start_time.date()
+                week_end = week_start + timedelta(days=6)
+                
+                # Check if this week is mostly within our date range
+                week_in_range = True
+                if self.filter_start_date:
+                    # Week must start on or after filter start date
+                    if week_start < self.filter_start_date:
+                        week_in_range = False
+                if self.filter_end_date:
+                    # Week must end on or before filter end date
+                    if week_end > self.filter_end_date:
+                        week_in_range = False
+                
+                if week_in_range:
+                    filtered_weeks.append((week_period, hours))
+            
+            # Rebuild weekly_usage with only complete weeks
+            if filtered_weeks:
+                weekly_usage = pd.Series([hours for _, hours in filtered_weeks], 
+                                       index=[week for week, _ in filtered_weeks])
+            else:
+                weekly_usage = pd.Series(dtype=float)
+        
+        avg_weekly_runtime = weekly_usage.mean() if len(weekly_usage) > 0 else 0
+        peak_weekly_runtime = weekly_usage.max() if len(weekly_usage) > 0 else 0
         current_weekly_runtime = weekly_usage.iloc[-1] if len(weekly_usage) > 0 else 0
+        
+        # Daily total metrics  
+        daily_usage = df.groupby('date')['duration_hours'].sum()
+        avg_daily_runtime = daily_usage.mean()
+        peak_daily_runtime = daily_usage.max()
+        days_with_experiments = len(daily_usage)
+        total_calendar_days = (end_date.date() - start_date.date()).days + 1
         
         # Simulation vs real experiments
         sim_sessions = df[df['is_simulate'] == True]
@@ -213,7 +283,13 @@ class LabUtilizationAnalyzer:
             'real_sessions': len(real_sessions),
             'simulation_hours': sim_sessions['duration_hours'].sum() if len(sim_sessions) > 0 else 0,
             'real_hours': real_sessions['duration_hours'].sum() if len(real_sessions) > 0 else 0,
-            'sessions_per_day': total_sessions / total_period_days if total_period_days > 0 else 0
+            'sessions_per_day': total_sessions / total_period_days if total_period_days > 0 else 0,
+            # Daily metrics
+            'avg_daily_runtime': avg_daily_runtime,
+            'peak_daily_runtime': peak_daily_runtime,
+            'days_with_experiments': days_with_experiments,
+            'total_calendar_days': total_calendar_days,
+            'experiment_days_ratio': days_with_experiments / total_calendar_days if total_calendar_days > 0 else 0
         }
         
         return self.analysis_results
@@ -241,43 +317,88 @@ class LabUtilizationAnalyzer:
         df['log_end_time'] = pd.to_datetime(df['log_end_time'])
         df['date'] = pd.to_datetime(df['date']).dt.date
         
-        # Create figure with subplots - weekly hours and summary
-        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        # Create figure with subplots - daily, weekly, and summary
+        fig, axes = plt.subplots(1, 3, figsize=(20, 6))
         fig.suptitle('Laboratory System Utilization Analysis', fontsize=16, fontweight='bold')
         
-        # 1. Weekly hours utilization
+        # 1. Daily hours utilization
         ax1 = axes[0]
         
-        # Group by week and sum hours
-        df['week'] = df['log_start_time'].dt.to_period('W')
-        weekly_usage = df.groupby('week')['duration_hours'].sum().reset_index()
-        weekly_usage['week_start'] = weekly_usage['week'].dt.start_time
+        # Group by day and sum hours
+        daily_usage = df.groupby('date')['duration_hours'].sum().reset_index()
+        daily_usage['date'] = pd.to_datetime(daily_usage['date'])
         
-        # Calculate 3-week rolling average
-        weekly_usage['rolling_avg_3wk'] = weekly_usage['duration_hours'].rolling(window=3, center=True).mean()
+        # Plot daily data (no rolling average for speed)
+        ax1.plot(daily_usage['date'], daily_usage['duration_hours'], 
+                 'o-', color='lightblue', linewidth=1.5, markersize=4, alpha=0.8, label='Daily Usage')
         
-        # Plot raw weekly data
-        ax1.plot(weekly_usage['week_start'], weekly_usage['duration_hours'], 
-                 'o-', color='lightgreen', linewidth=1.5, markersize=4, alpha=0.7, label='Weekly Usage')
-        
-        # Plot 3-week rolling average
-        ax1.plot(weekly_usage['week_start'], weekly_usage['rolling_avg_3wk'], 
-                 'o-', color='darkgreen', linewidth=3, markersize=6, label='3-Week Rolling Average')
-        
-        ax1.set_xlabel('Week Starting')
+        ax1.set_xlabel('Date')
         ax1.set_ylabel('Total Runtime (hours)')
-        ax1.set_title('Weekly System Utilization (Raw Data + 3-Week Rolling Average)')
+        ax1.set_title('Daily System Utilization')
         ax1.legend(loc='upper right')
         ax1.grid(True, alpha=0.3, axis='y')
         ax1.tick_params(axis='x', rotation=45)
         
-        # Format x-axis dates for weekly view
+        # Format x-axis dates for daily view
         ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-        ax1.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=1))  # Show weekly intervals starting Monday
+        ax1.xaxis.set_major_locator(mdates.DayLocator(interval=max(1, len(daily_usage)//10)))
         
-        # 2. Summary statistics
+        # 2. Weekly hours utilization
         ax2 = axes[1]
-        ax2.axis('off')
+        
+        # Group by week and sum hours - filter incomplete weeks
+        df['week'] = df['log_start_time'].dt.to_period('W')
+        weekly_usage = df.groupby('week')['duration_hours'].sum().reset_index()
+        
+        # Filter out incomplete weeks if we have date filters
+        if self.filter_start_date or self.filter_end_date:
+            filtered_weekly = []
+            for _, row in weekly_usage.iterrows():
+                week_start = row['week'].start_time.date()
+                week_end = week_start + timedelta(days=6)
+                
+                # Check if this week is completely within our date range
+                week_in_range = True
+                if self.filter_start_date:
+                    if week_start < self.filter_start_date:
+                        week_in_range = False
+                if self.filter_end_date:
+                    if week_end > self.filter_end_date:
+                        week_in_range = False
+                
+                if week_in_range:
+                    filtered_weekly.append(row)
+            
+            # Rebuild dataframe with only complete weeks
+            if filtered_weekly:
+                weekly_usage = pd.DataFrame(filtered_weekly)
+            else:
+                weekly_usage = pd.DataFrame(columns=['week', 'duration_hours'])
+        
+        if len(weekly_usage) > 0:
+            weekly_usage['week_start'] = weekly_usage['week'].dt.start_time
+            
+            # Plot raw weekly data only (no rolling average for speed)
+            ax2.plot(weekly_usage['week_start'], weekly_usage['duration_hours'], 
+                     'o-', color='darkgreen', linewidth=2, markersize=6, alpha=0.8, label='Weekly Usage')
+            
+            # Format x-axis dates for weekly view
+            ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+            ax2.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=1))
+        else:
+            ax2.text(0.5, 0.5, 'No complete weeks in date range', transform=ax2.transAxes, 
+                    ha='center', va='center', fontsize=12)
+        
+        ax2.set_xlabel('Week Starting')
+        ax2.set_ylabel('Total Runtime (hours)')
+        ax2.set_title('Weekly System Utilization (Complete Weeks Only)')
+        ax2.legend(loc='upper right')
+        ax2.grid(True, alpha=0.3, axis='y')
+        ax2.tick_params(axis='x', rotation=45)
+        
+        # 3. Summary statistics
+        ax3 = axes[2]
+        ax3.axis('off')
         
         # Create summary text
         results = self.analysis_results
@@ -301,12 +422,17 @@ UTILIZATION RATES
 Business Hours: {results['utilization_business']:.1f}%
 Sessions/Day: {results['sessions_per_day']:.1f}
 
+DAILY STATISTICS
+Average Day: {results['avg_daily_runtime']:.1f} hours
+Peak Day: {results['peak_daily_runtime']:.1f} hours
+Active Days: {results['days_with_experiments']}/{results['total_calendar_days']} ({results['experiment_days_ratio']:.1%})
+
 SESSION BREAKDOWN
 Simulation: {results['simulation_sessions']} sessions ({results['simulation_hours']:.1f}h)
 Real Hardware: {results['real_sessions']} sessions ({results['real_hours']:.1f}h)
         """
         
-        ax2.text(0.05, 0.95, summary_text, transform=ax2.transAxes, fontsize=10, 
+        ax3.text(0.05, 0.95, summary_text, transform=ax3.transAxes, fontsize=9, 
                 verticalalignment='top', fontfamily='monospace',
                 bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.8))
         
@@ -363,6 +489,13 @@ Average Weekly Runtime: {results['avg_weekly_runtime']:.2f} hours
 Peak Weekly Runtime: {results['peak_weekly_runtime']:.2f} hours
 
 ==================================================
+DAILY UTILIZATION STATISTICS
+==================================================
+Average Daily Runtime: {results['avg_daily_runtime']:.2f} hours
+Peak Daily Runtime: {results['peak_daily_runtime']:.2f} hours
+Days with Experiments: {results['days_with_experiments']} out of {results['total_calendar_days']} ({results['experiment_days_ratio']:.1%})
+
+==================================================
 EXPERIMENT TYPE BREAKDOWN
 ==================================================
 Simulation Experiments: {results['simulation_sessions']} sessions ({results['simulation_hours']:.1f} hours)
@@ -405,13 +538,39 @@ INSIGHTS
         return report
 
 
-def main():
+def main(start_date=None, end_date=None):
     """Main analysis function."""
     print("Laboratory System Utilization Analyzer")
+    
+    # Use configuration if no parameters provided
+    if start_date is None and end_date is None:
+        if ANALYZE_START_DATE:
+            start_date = parse_date_argument(ANALYZE_START_DATE)
+            print(f"Using configured start date: {ANALYZE_START_DATE}")
+        if ANALYZE_END_DATE:
+            end_date = parse_date_argument(ANALYZE_END_DATE)
+            print(f"Using configured end date: {ANALYZE_END_DATE}")
+        elif ANALYZE_START_DATE and not ANALYZE_END_DATE:
+            # Auto-detect end date for month names
+            date_str = ANALYZE_START_DATE.lower()
+            if any(month in date_str for month in ['january', 'february', 'march', 'april', 'may', 'june', 
+                                                   'july', 'august', 'september', 'october', 'november', 'december']):
+                # Get last day of the month
+                year = start_date.year
+                month = start_date.month
+                if month == 12:
+                    end_date = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+                else:
+                    end_date = datetime(year, month + 1, 1).date() - timedelta(days=1)
+                print(f"Auto-detected end date: {end_date}")
+    
+    if start_date or end_date:
+        date_range = f" ({start_date.strftime('%Y-%m-%d') if start_date else 'start'} to {end_date.strftime('%Y-%m-%d') if end_date else 'end'})"
+        print(f"Analyzing period: {date_range}")
     print("=" * 50)
     
-    # Initialize analyzer
-    analyzer = LabUtilizationAnalyzer("logs")
+    # Initialize analyzer with date range
+    analyzer = LabUtilizationAnalyzer("logs", start_date=start_date, end_date=end_date)
     
     # Scan and analyze logs
     analyzer.scan_all_logs()
@@ -444,5 +603,109 @@ def main():
     print(f"Session data saved to: {session_data_file}")
 
 
+def parse_date_argument(date_str):
+    """Parse various date formats: 'March', 'March 2026', '2026-03-01', etc."""
+    if not date_str:
+        return None
+        
+    date_str = date_str.strip()
+    
+    # Handle month names (e.g., "March", "March 2026")
+    month_names = {
+        'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+        'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
+        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+    }
+    
+    # Try "March" or "March 2026" format
+    parts = date_str.lower().split()
+    if parts[0] in month_names:
+        month = month_names[parts[0]]
+        year = int(parts[1]) if len(parts) > 1 else datetime.now().year
+        return datetime(year, month, 1).date()
+    
+    # Try standard date formats
+    for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%Y-%m']:
+        try:
+            parsed = datetime.strptime(date_str, fmt)
+            return parsed.date()
+        except ValueError:
+            continue
+            
+    raise ValueError(f"Could not parse date: {date_str}")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    
+    # Simple command line argument parsing
+    start_date = None
+    end_date = None
+    
+    if len(sys.argv) > 1:
+        # Usage examples:
+        # python utilization_analyzer.py March
+        # python utilization_analyzer.py "March 2026" 
+        # python utilization_analyzer.py 2026-03-01 2026-03-31
+        # python utilization_analyzer.py --start "March 1 2026" --end "March 31 2026"
+        
+        args = sys.argv[1:]
+        
+if __name__ == "__main__":
+    import sys
+    
+    # If no command line arguments, use the configuration at the top of the file
+    if len(sys.argv) == 1:
+        try:
+            main()  # Uses ANALYZE_START_DATE and ANALYZE_END_DATE from config
+        except Exception as e:
+            print(f"Error: {e}")
+            print("\nTo change the analysis period, edit ANALYZE_START_DATE and ANALYZE_END_DATE at the top of this file.")
+    else:
+        # Original command line argument parsing for advanced users
+        start_date = None
+        end_date = None
+        
+        args = sys.argv[1:]
+        
+        if '--start' in args:
+            start_idx = args.index('--start') + 1
+            if start_idx < len(args):
+                start_date = parse_date_argument(args[start_idx])
+        
+        if '--end' in args:
+            end_idx = args.index('--end') + 1
+            if end_idx < len(args):
+                end_date = parse_date_argument(args[end_idx])
+        
+        # Handle simple cases: single month or two dates
+        if '--start' not in args and '--end' not in args:
+            if len(args) == 1:
+                # Single month or date
+                date_arg = args[0]
+                start_date = parse_date_argument(date_arg)
+                # If it's a month name, make it the full month
+                if any(month in date_arg.lower() for month in ['january', 'february', 'march', 'april', 'may', 'june', 
+                                                               'july', 'august', 'september', 'october', 'november', 'december']):
+                    # Get last day of the month
+                    year = start_date.year
+                    month = start_date.month
+                    if month == 12:
+                        end_date = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+                    else:
+                        end_date = datetime(year, month + 1, 1).date() - timedelta(days=1)
+            elif len(args) == 2:
+                # Start and end dates
+                start_date = parse_date_argument(args[0])
+                end_date = parse_date_argument(args[1])
+        
+        try:
+            main(start_date=start_date, end_date=end_date)
+        except Exception as e:
+            print(f"Error: {e}")
+            print("\nUsage examples:")
+            print("  python utilization_analyzer.py                    # Use config at top of file")
+            print("  python utilization_analyzer.py March              # Analyze March (current year)")
+            print("  python utilization_analyzer.py \"March 2026\"       # Analyze March 2026")
+            print("  python utilization_analyzer.py 2026-03-01 2026-03-31  # Analyze specific date range")
+            print("  python utilization_analyzer.py --start 2026-03-01 --end 2026-03-31  # Named parameters")

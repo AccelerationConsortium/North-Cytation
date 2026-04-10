@@ -1,28 +1,33 @@
 experiment:
   name: multi_volume_calibration_test
-  liquid: glycerol
+  liquid: 6M_H3PO4
   description: Testing calibration across 4 volumes
   volume_targets_ml:
-   - 0.200
-  max_total_measurements: 96
-  max_measurements_first_volume: 85
-  num_screening_trials: 15
-  max_replicates_per_trial: 3
-  two_point_calibration_replicates: 2
+  - 0.05
+  - 0.025
+  - 0.01
+  - 0.005
+  max_total_measurements: 200
+  max_measurements_first_volume: 150
+  num_screening_trials: 10
+  max_replicates_per_trial: 5
+  two_point_calibration_replicates: 3
   simulate: false
   random_seed: 7
   fixed_parameters:
     post_asp_air_vol: 0.0
     asp_disp_cycles: 0
-    post_retract_wait_time: 5.0
-    retract_speed: 2.0
+    post_retract_wait_time: 0.0
+    retract_speed: 5.0
+    dispense_wait_time: 1.5
+    blowout_vol: 0.0
   hardware_protocol: calibration_protocol_northrobot
   simulation_protocol: calibration_protocol_simulated
 calibration_parameters:
   overaspirate_vol:
     bounds:
     - 0.0
-    - 0.050
+    - 0.0075
     default: 0.004
     type: float
     description: Overaspiration volume for volume accuracy (mL)
@@ -31,8 +36,8 @@ calibration_parameters:
 hardware_parameters:
   aspirate_speed:
     bounds:
-    - 10
-    - 30
+    - 5
+    - 20
     default: 10
     type: integer
     time_affecting: true
@@ -41,7 +46,7 @@ hardware_parameters:
   dispense_speed:
     bounds:
     - 2
-    - 30
+    - 20
     default: 10
     type: integer
     time_affecting: true
@@ -50,7 +55,7 @@ hardware_parameters:
   aspirate_wait_time:
     bounds:
     - 0.0
-    - 30
+    - 5.0
     default: 10.0
     type: float
     time_affecting: true
@@ -77,7 +82,7 @@ hardware_parameters:
     round_to_nearest: 0.001
   dispense_wait_time:
     bounds:
-    - 0.0
+    - 1.5
     - 15.0
     default: 1.5
     type: float
@@ -117,7 +122,7 @@ tolerances:
     tolerance_pct: 3.0
   - volume_min_ul: 2.5
     volume_max_ul: 19
-    tolerance_pct: 5.0
+    tolerance_pct: 10.0
   - volume_min_ul: 0
     volume_max_ul: 2.499
     tolerance_pct: 10.0
@@ -126,7 +131,7 @@ tolerances:
     variability_multiplier: 1.5
 adaptive_measurement:
   enabled: true
-  deviation_threshold_pct: 10.0
+  deviation_threshold_pct: 15.0
   base_replicates: 1
   penalty_variability_pct: 100.0
 optimization:
@@ -154,7 +159,7 @@ optimization:
     enabled: false
     config_path: null
   stopping_criteria:
-    min_good_trials: 4
+    min_good_trials: 6
   use_range_based_variability: false
 screening:
   use_llm_suggestions: false
@@ -169,11 +174,12 @@ screening:
     - deviation_pct
     - duration_s
 validation:
-  optimal_conditions_file: optimized_parameters/optimal_conditions_glycerol_50_150.csv
+  optimal_conditions_file: output/run_1774908149/optimal_conditions.csv
   volumes_ml:
-  - 0.150
-  - 0.100
-  - 0.070
+  - 0.05
+  - 0.025
+  - 0.01
+  - 0.005
   replicates_per_volume: 5
   output_directory: validation/
   generate_plots: true

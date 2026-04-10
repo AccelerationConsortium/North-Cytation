@@ -352,6 +352,8 @@ class Lash_E:
         if safe_movement:
             self.nr_track.move_through_path(['cytation_safe_area'])
         # Use robot's plate_type for robot movements
+
+
         self.nr_track.grab_wellplate_from_location('pipetting_area', plate_type)
         self.nr_track.move_through_path(['cytation_safe_area'])
         if not self.simulate:

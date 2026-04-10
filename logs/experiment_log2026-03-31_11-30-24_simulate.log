@@ -1,0 +1,1859 @@
+2026-03-31 11:30:24,486 - INFO - Workflow config loaded: Degradation_serena
+2026-03-31 11:30:24,486 - INFO - Config keys updated: 11 (EXPERIMENT_REPEATS, INPUT_VIAL_STATUS_FILE, CYTATION_PROTOCOL_FILE, SCHEDULE_FILE, SIMULATE, VALIDATE_LIQUIDS, PREP_SOLUTIONS, EXPERIMENT_NAME, REPLICATES, ACID_LIBRARY, CURRENT_WELL_COUNT)
+2026-03-31 11:30:24,486 - INFO - SIMULATE mode: True
+2026-03-31 11:30:24,486 - INFO - Launching status review GUI...
+2026-03-31 11:30:24,684 - INFO - Detected workflow name: Degradation_serena
+2026-03-31 11:30:25,006 - INFO - Config editor loaded for workflow: Degradation_serena
+2026-03-31 11:30:30,091 - INFO - User selected: Run Workflow
+2026-03-31 11:30:30,102 - INFO - Status review completed - proceeding with hardware initialization
+2026-03-31 11:30:30,115 - DEBUG - Reloading config after status check to get updated values
+2026-03-31 11:30:30,149 - INFO - Config Manager: Updated 11 workflow constants from Degradation_serena.yaml
+2026-03-31 11:30:30,155 - INFO - Initializing North Robot...
+2026-03-31 11:30:30,155 - DEBUG - Loading robot configuration files...
+2026-03-31 11:30:30,182 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-03-31 11:30:30,182 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-03-31 11:30:30,194 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-03-31 11:30:30,201 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-03-31 11:30:30,205 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-03-31 11:30:30,212 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-03-31 11:30:30,212 - DEBUG - Loading robot state files...
+2026-03-31 11:30:30,233 - DEBUG - Loaded vial data from ../utoronto_demo/status/degradation_vial_status.csv
+2026-03-31 11:30:30,236 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-03-31 11:30:30,243 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-03-31 11:30:30,243 - DEBUG - Robot status loaded successfully
+2026-03-31 11:30:30,243 - INFO - Physical initialization of North Robot...
+2026-03-31 11:30:30,247 - DEBUG - Loading pumps from YAML configuration...
+2026-03-31 11:30:30,249 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-03-31 11:30:30,251 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-03-31 11:30:30,251 - INFO - Moving robot to home position
+2026-03-31 11:30:30,252 - DEBUG - Initializing centrifuge controller...
+2026-03-31 11:30:30,257 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='3083795097504'>
+2026-03-31 11:30:30,261 - INFO - Initializing North Track...
+2026-03-31 11:30:30,261 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-03-31 11:30:30,261 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-03-31 11:30:30,264 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-03-31 11:30:30,264 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-03-31 11:30:30,272 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-03-31 11:30:30,272 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-03-31 11:30:30,278 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-03-31 11:30:30,283 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-03-31 11:30:30,284 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:30,284 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:30,284 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:30,285 - DEBUG - Simulating robot component homing...
+2026-03-31 11:30:30,290 - INFO - Stock concentration: 1.0 mg/mL
+2026-03-31 11:30:30,294 - INFO - Calculated volumes for each sample:
+2026-03-31 11:30:30,299 - INFO -    vial_name  concentration(mg/mL)  stock_volume  solvent_volume
+2   sample_2                  0.05           0.1             1.9
+6   sample_1                  0.05           0.1             1.9
+12  sample_3                  0.05           0.1             1.9
+2026-03-31 11:30:30,317 - INFO - Using acid: 6M_H3PO4
+2026-03-31 11:30:30,319 - INFO - Calculated volumes for each sample:
+2026-03-31 11:30:30,319 - INFO -    vial_name  acid_molar_excess  acid_volume
+2   sample_2                500     0.006158
+6   sample_1                500     0.006158
+12  sample_3                500     0.006158
+2026-03-31 11:30:30,329 - INFO - Stock concentration: 1.0 mg/mL
+2026-03-31 11:30:30,329 - INFO - 
+Adding 1.900 mL solvent to sample_1
+2026-03-31 11:30:30,330 - INFO - Moving 2MeTHF from unsafe location 24 to safe location 4
+2026-03-31 11:30:30,332 - INFO - Moving vial 2MeTHF to main_8mL_rack: 4
+2026-03-31 11:30:30,332 - DEBUG - Grabbing vial 14 with index 14
+2026-03-31 11:30:30,334 - DEBUG - Dropping off vial 14 at location main_8mL_rack with index 4
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 1.900mL
+2026-03-31 11:30:30,338 - INFO - Dispensing 1.900 mL from 2MeTHF to sample_1
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,347 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,347 - DEBUG - Applied object param aspirate_speed=8
+2026-03-31 11:30:30,347 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-31 11:30:30,347 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,347 - DEBUG - Applied object param dispense_speed=9
+2026-03-31 11:30:30,347 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,347 - DEBUG - Applied object param overaspirate_vol=-0.0025694835999999894
+2026-03-31 11:30:30,347 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,347 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,347 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-31 11:30:30,348 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,351 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,351 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,351 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,351 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,351 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,351 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,352 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,352 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,352 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,352 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,352 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,352 - DEBUG - Applied object param aspirate_speed=8
+2026-03-31 11:30:30,352 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-31 11:30:30,352 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,352 - DEBUG - Applied object param dispense_speed=9
+2026-03-31 11:30:30,352 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,352 - DEBUG - Applied object param overaspirate_vol=-0.0025694835999999894
+2026-03-31 11:30:30,352 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,352 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,352 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-31 11:30:30,352 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,352 - INFO - Total tip volume (2.247 mL) exceeds capacity, splitting into 3 transfers of 0.633 mL each
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,357 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,357 - DEBUG - Applied object param aspirate_speed=8
+2026-03-31 11:30:30,357 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-31 11:30:30,357 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,357 - DEBUG - Applied object param dispense_speed=9
+2026-03-31 11:30:30,357 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,358 - DEBUG - Applied object param overaspirate_vol=-0.0025694835999999894
+2026-03-31 11:30:30,358 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,358 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,358 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-31 11:30:30,358 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,359 - DEBUG - Selected large_tip for volume 0.680 mL
+2026-03-31 11:30:30,360 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-03-31 11:30:30,363 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,363 - INFO - Moving vial 14 to safe pipetting location
+2026-03-31 11:30:30,365 - INFO - Moving vial 2MeTHF to clamp: 0
+2026-03-31 11:30:30,365 - DEBUG - Grabbing vial 14 with index 14
+2026-03-31 11:30:30,367 - DEBUG - Dropping off vial 14 at location clamp with index 0
+2026-03-31 11:30:30,368 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,370 - INFO - Pipetting from vial 2MeTHF, amount: 0.633 mL
+2026-03-31 11:30:30,370 - INFO - Additional volume from calibration, amount: -0.003 mL
+2026-03-31 11:30:30,372 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,372 - DEBUG - Aspirating 0.300 mL then waiting 0 s
+2026-03-31 11:30:30,373 - DEBUG - Adjusting pump 0 speed to 8
+2026-03-31 11:30:30,373 - DEBUG - Aspirating 0.630 mL then waiting 2.2 s
+2026-03-31 11:30:30,373 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,380 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,380 - DEBUG - Applied object param aspirate_speed=8
+2026-03-31 11:30:30,380 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-31 11:30:30,380 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,380 - DEBUG - Applied object param dispense_speed=9
+2026-03-31 11:30:30,380 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,380 - DEBUG - Applied object param overaspirate_vol=-0.0025694835999999894
+2026-03-31 11:30:30,380 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,380 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,380 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-31 11:30:30,380 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,381 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,382 - INFO - Moving vial 6 to safe pipetting location
+2026-03-31 11:30:30,383 - DEBUG - Clamp occupied by vial 14, returning it home first
+2026-03-31 11:30:30,383 - INFO - Returning vial 2MeTHF to home location: main_8mL_rack index 4
+2026-03-31 11:30:30,383 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,387 - INFO - Moving vial 2MeTHF to main_8mL_rack: 4
+2026-03-31 11:30:30,387 - DEBUG - Grabbing vial 14 with index 14
+2026-03-31 11:30:30,388 - DEBUG - Dropping off vial 14 at location main_8mL_rack with index 4
+2026-03-31 11:30:30,390 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,390 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,392 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,394 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,395 - INFO - Pipetting into vial sample_1, amount: 0.633 mL
+2026-03-31 11:30:30,397 - DEBUG - Adjusting pump 0 speed to 9
+2026-03-31 11:30:30,398 - DEBUG - Dispensing 0.981 mL then waiting 1.5 s
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,404 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,404 - DEBUG - Applied object param aspirate_speed=8
+2026-03-31 11:30:30,404 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-31 11:30:30,404 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,404 - DEBUG - Applied object param dispense_speed=9
+2026-03-31 11:30:30,404 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,404 - DEBUG - Applied object param overaspirate_vol=-0.0025694835999999894
+2026-03-31 11:30:30,404 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,404 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,404 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-31 11:30:30,404 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,404 - DEBUG - Selected large_tip for volume 0.680 mL
+2026-03-31 11:30:30,404 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,404 - INFO - Moving vial 14 to safe pipetting location
+2026-03-31 11:30:30,407 - DEBUG - Clamp occupied by vial 6, returning it home first
+2026-03-31 11:30:30,408 - INFO - Returning vial sample_1 to home location: main_8mL_rack index 1
+2026-03-31 11:30:30,409 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,412 - INFO - Moving vial sample_1 to main_8mL_rack: 1
+2026-03-31 11:30:30,414 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,414 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 1
+2026-03-31 11:30:30,418 - INFO - Moving vial 2MeTHF to clamp: 0
+2026-03-31 11:30:30,418 - DEBUG - Grabbing vial 14 with index 14
+2026-03-31 11:30:30,418 - DEBUG - Dropping off vial 14 at location clamp with index 0
+2026-03-31 11:30:30,420 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,422 - INFO - Pipetting from vial 2MeTHF, amount: 0.633 mL
+2026-03-31 11:30:30,422 - INFO - Additional volume from calibration, amount: -0.003 mL
+2026-03-31 11:30:30,425 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,426 - DEBUG - Aspirating 0.300 mL then waiting 0 s
+2026-03-31 11:30:30,426 - DEBUG - Adjusting pump 0 speed to 8
+2026-03-31 11:30:30,426 - DEBUG - Aspirating 0.630 mL then waiting 2.2 s
+2026-03-31 11:30:30,426 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,430 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,430 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,430 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,432 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,432 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,432 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,432 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,432 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,432 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,432 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,432 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,432 - DEBUG - Applied object param aspirate_speed=8
+2026-03-31 11:30:30,432 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-31 11:30:30,432 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,432 - DEBUG - Applied object param dispense_speed=9
+2026-03-31 11:30:30,432 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,432 - DEBUG - Applied object param overaspirate_vol=-0.0025694835999999894
+2026-03-31 11:30:30,432 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,432 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,432 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-31 11:30:30,432 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,433 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,434 - INFO - Moving vial 6 to safe pipetting location
+2026-03-31 11:30:30,434 - DEBUG - Clamp occupied by vial 14, returning it home first
+2026-03-31 11:30:30,435 - INFO - Returning vial 2MeTHF to home location: main_8mL_rack index 4
+2026-03-31 11:30:30,435 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,437 - INFO - Moving vial 2MeTHF to main_8mL_rack: 4
+2026-03-31 11:30:30,438 - DEBUG - Grabbing vial 14 with index 14
+2026-03-31 11:30:30,439 - DEBUG - Dropping off vial 14 at location main_8mL_rack with index 4
+2026-03-31 11:30:30,442 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,442 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,445 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,446 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,447 - INFO - Pipetting into vial sample_1, amount: 0.633 mL
+2026-03-31 11:30:30,449 - DEBUG - Adjusting pump 0 speed to 9
+2026-03-31 11:30:30,449 - DEBUG - Dispensing 0.981 mL then waiting 1.5 s
+2026-03-31 11:30:30,454 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,454 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,454 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,454 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,454 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,454 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,454 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,454 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,455 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,455 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,455 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,455 - DEBUG - Applied object param aspirate_speed=8
+2026-03-31 11:30:30,455 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-31 11:30:30,455 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,455 - DEBUG - Applied object param dispense_speed=9
+2026-03-31 11:30:30,455 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,455 - DEBUG - Applied object param overaspirate_vol=-0.0025694835999999894
+2026-03-31 11:30:30,455 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,455 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,455 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-31 11:30:30,455 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,456 - DEBUG - Selected large_tip for volume 0.680 mL
+2026-03-31 11:30:30,456 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,458 - INFO - Moving vial 14 to safe pipetting location
+2026-03-31 11:30:30,459 - DEBUG - Clamp occupied by vial 6, returning it home first
+2026-03-31 11:30:30,460 - INFO - Returning vial sample_1 to home location: main_8mL_rack index 1
+2026-03-31 11:30:30,460 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,461 - INFO - Moving vial sample_1 to main_8mL_rack: 1
+2026-03-31 11:30:30,461 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,461 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 1
+2026-03-31 11:30:30,461 - INFO - Moving vial 2MeTHF to clamp: 0
+2026-03-31 11:30:30,461 - DEBUG - Grabbing vial 14 with index 14
+2026-03-31 11:30:30,469 - DEBUG - Dropping off vial 14 at location clamp with index 0
+2026-03-31 11:30:30,469 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,472 - INFO - Pipetting from vial 2MeTHF, amount: 0.633 mL
+2026-03-31 11:30:30,472 - INFO - Additional volume from calibration, amount: -0.003 mL
+2026-03-31 11:30:30,472 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,473 - DEBUG - Aspirating 0.300 mL then waiting 0 s
+2026-03-31 11:30:30,473 - DEBUG - Adjusting pump 0 speed to 8
+2026-03-31 11:30:30,473 - DEBUG - Aspirating 0.630 mL then waiting 2.2 s
+2026-03-31 11:30:30,473 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,473 - DEBUG - Using calibrated aspirate_speed=8 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated dispense_speed=9 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated aspirate_wait_time=2.2 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated overaspirate_vol=-0.0025694835999999894 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Using calibrated pre_asp_air_vol=0.3 for 2MeTHF at 0.633mL
+2026-03-31 11:30:30,479 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,479 - DEBUG - Applied object param aspirate_speed=8
+2026-03-31 11:30:30,479 - DEBUG - Applied object param aspirate_wait_time=2.2
+2026-03-31 11:30:30,479 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,479 - DEBUG - Applied object param dispense_speed=9
+2026-03-31 11:30:30,479 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,479 - DEBUG - Applied object param overaspirate_vol=-0.0025694835999999894
+2026-03-31 11:30:30,479 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,479 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,479 - DEBUG - Applied object param pre_asp_air_vol=0.3
+2026-03-31 11:30:30,479 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,480 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,481 - INFO - Moving vial 6 to safe pipetting location
+2026-03-31 11:30:30,481 - DEBUG - Clamp occupied by vial 14, returning it home first
+2026-03-31 11:30:30,483 - INFO - Returning vial 2MeTHF to home location: main_8mL_rack index 4
+2026-03-31 11:30:30,483 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,485 - INFO - Moving vial 2MeTHF to main_8mL_rack: 4
+2026-03-31 11:30:30,485 - DEBUG - Grabbing vial 14 with index 14
+2026-03-31 11:30:30,487 - DEBUG - Dropping off vial 14 at location main_8mL_rack with index 4
+2026-03-31 11:30:30,489 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,489 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,490 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,491 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,493 - INFO - Pipetting into vial sample_1, amount: 0.633 mL
+2026-03-31 11:30:30,496 - DEBUG - Adjusting pump 0 speed to 9
+2026-03-31 11:30:30,496 - DEBUG - Dispensing 0.981 mL then waiting 1.5 s
+2026-03-31 11:30:30,496 - INFO - Removing pipet
+2026-03-31 11:30:30,497 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,499 - INFO - Returning vial sample_1 to home location: main_8mL_rack index 1
+2026-03-31 11:30:30,500 - INFO - Moving vial sample_1 to main_8mL_rack: 1
+2026-03-31 11:30:30,500 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,501 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 1
+2026-03-31 11:30:30,501 - INFO - Returning vial 2MeTHF to home location: main_8mL_rack index 24
+2026-03-31 11:30:30,505 - INFO - Moving vial 2MeTHF to main_8mL_rack: 24
+2026-03-31 11:30:30,506 - DEBUG - Grabbing vial 14 with index 14
+2026-03-31 11:30:30,507 - DEBUG - Dropping off vial 14 at location main_8mL_rack with index 24
+2026-03-31 11:30:30,508 - INFO - 
+Adding 0.100 mL stock solution to sample_1
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated aspirate_wait_time=2.6 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated overaspirate_vol=-0.0018384379000000019 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - DEBUG - Using calibrated pre_asp_air_vol=0.5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,510 - INFO - Dispensing 0.100 mL from polymer_stock to sample_1
+2026-03-31 11:30:30,519 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,519 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,519 - DEBUG - Using calibrated aspirate_wait_time=2.6 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,519 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,519 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,521 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,521 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,521 - DEBUG - Using calibrated overaspirate_vol=-0.0018384379000000019 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,521 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,521 - DEBUG - Using calibrated pre_asp_air_vol=0.5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,521 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,521 - DEBUG - Applied object param aspirate_speed=10
+2026-03-31 11:30:30,521 - DEBUG - Applied object param aspirate_wait_time=2.6
+2026-03-31 11:30:30,521 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,521 - DEBUG - Applied object param dispense_speed=11
+2026-03-31 11:30:30,521 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,521 - DEBUG - Applied object param overaspirate_vol=-0.0018384379000000019
+2026-03-31 11:30:30,521 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,521 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,521 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-31 11:30:30,521 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,522 - DEBUG - Selected small_tip for volume 0.148 mL
+2026-03-31 11:30:30,522 - INFO - Getting small_tip (pipet number 11) from rack: small_tip_rack_1
+2026-03-31 11:30:30,522 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,522 - INFO - Moving vial 0 to safe pipetting location
+2026-03-31 11:30:30,522 - INFO - Moving vial polymer_stock to clamp: 0
+2026-03-31 11:30:30,526 - DEBUG - Grabbing vial 0 with index 0
+2026-03-31 11:30:30,526 - DEBUG - Dropping off vial 0 at location clamp with index 0
+2026-03-31 11:30:30,526 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,526 - INFO - Pipetting from vial polymer_stock, amount: 0.100 mL
+2026-03-31 11:30:30,526 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:30,532 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,532 - DEBUG - Aspirating 0.500 mL then waiting 0 s
+2026-03-31 11:30:30,532 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,532 - DEBUG - Aspirating 0.098 mL then waiting 2.6 s
+2026-03-31 11:30:30,532 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated aspirate_wait_time=2.6 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated overaspirate_vol=-0.0018384379000000019 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Using calibrated pre_asp_air_vol=0.5 for 2MeTHF at 0.100mL
+2026-03-31 11:30:30,538 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,538 - DEBUG - Applied object param aspirate_speed=10
+2026-03-31 11:30:30,538 - DEBUG - Applied object param aspirate_wait_time=2.6
+2026-03-31 11:30:30,538 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,538 - DEBUG - Applied object param dispense_speed=11
+2026-03-31 11:30:30,538 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,538 - DEBUG - Applied object param overaspirate_vol=-0.0018384379000000019
+2026-03-31 11:30:30,538 - DEBUG - Applied object param post_asp_air_vol=0.05
+2026-03-31 11:30:30,538 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,538 - DEBUG - Applied object param pre_asp_air_vol=0.5
+2026-03-31 11:30:30,538 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,538 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,538 - INFO - Moving vial 6 to safe pipetting location
+2026-03-31 11:30:30,541 - DEBUG - Clamp occupied by vial 0, returning it home first
+2026-03-31 11:30:30,541 - INFO - Returning vial polymer_stock to home location: main_8mL_rack index 0
+2026-03-31 11:30:30,543 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,546 - INFO - Moving vial polymer_stock to main_8mL_rack: 0
+2026-03-31 11:30:30,546 - DEBUG - Grabbing vial 0 with index 0
+2026-03-31 11:30:30,547 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2026-03-31 11:30:30,549 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,549 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,551 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,552 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,553 - INFO - Pipetting into vial sample_1, amount: 0.100 mL
+2026-03-31 11:30:30,553 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:30,553 - DEBUG - Dispensing 0.648 mL then waiting 1.5 s
+2026-03-31 11:30:30,553 - INFO - Removing pipet
+2026-03-31 11:30:30,556 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,557 - INFO - Returning vial sample_1 to home location: main_8mL_rack index 1
+2026-03-31 11:30:30,560 - INFO - Moving vial sample_1 to main_8mL_rack: 1
+2026-03-31 11:30:30,560 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,561 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 1
+2026-03-31 11:30:30,561 - INFO - Vortexing Vial: sample_1
+2026-03-31 11:30:30,561 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,565 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 1
+2026-03-31 11:30:30,566 - INFO - 
+Adding 0.0062 mL acid to sample: sample_1
+2026-03-31 11:30:30,568 - INFO - Moving 6M_H3PO4 from unsafe location 7 to safe location 4
+2026-03-31 11:30:30,569 - INFO - Moving vial 6M_H3PO4 to main_8mL_rack: 4
+2026-03-31 11:30:30,569 - DEBUG - Grabbing vial 5 with index 5
+2026-03-31 11:30:30,570 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 4
+2026-03-31 11:30:30,570 - INFO -     Conditioning tip with 6M_H3PO4: 3 cycles of 10.0uL
+2026-03-31 11:30:30,570 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,570 - DEBUG - Applied object param aspirate_speed=10
+2026-03-31 11:30:30,570 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-31 11:30:30,570 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-31 11:30:30,570 - DEBUG - Applied object param dispense_speed=5
+2026-03-31 11:30:30,570 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-31 11:30:30,570 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-31 11:30:30,570 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-31 11:30:30,570 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,570 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-31 11:30:30,570 - DEBUG - Applied object param retract_speed=10
+2026-03-31 11:30:30,573 - DEBUG - Selected small_tip for volume 0.010 mL
+2026-03-31 11:30:30,573 - INFO - Getting small_tip (pipet number 12) from rack: small_tip_rack_1
+2026-03-31 11:30:30,575 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,575 - INFO - Moving vial 6M_H3PO4 to safe pipetting location
+2026-03-31 11:30:30,578 - INFO - Moving vial 6M_H3PO4 to clamp: 0
+2026-03-31 11:30:30,578 - DEBUG - Grabbing vial 5 with index 5
+2026-03-31 11:30:30,579 - DEBUG - Dropping off vial 5 at location clamp with index 0
+2026-03-31 11:30:30,580 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,582 - INFO - Pipetting from vial 6M_H3PO4, amount: 0.010 mL
+2026-03-31 11:30:30,583 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-31 11:30:30,584 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,584 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,584 - DEBUG - Aspirating 0.010 mL then waiting 0.0 s
+2026-03-31 11:30:30,584 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param aspirate_speed=10
+2026-03-31 11:30:30,584 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-31 11:30:30,584 - DEBUG - Applied object param dispense_speed=5
+2026-03-31 11:30:30,584 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param retract_speed=10
+2026-03-31 11:30:30,584 - INFO - Pipetting into vial 6M_H3PO4, amount: 0.010 mL
+2026-03-31 11:30:30,584 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-31 11:30:30,584 - DEBUG - Dispensing 0.010 mL then waiting 0.0 s
+2026-03-31 11:30:30,584 - DEBUG - Blowing out 0.500 mL
+2026-03-31 11:30:30,584 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param aspirate_speed=10
+2026-03-31 11:30:30,584 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-31 11:30:30,584 - DEBUG - Applied object param dispense_speed=5
+2026-03-31 11:30:30,584 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-31 11:30:30,584 - DEBUG - Applied object param retract_speed=10
+2026-03-31 11:30:30,584 - DEBUG - Selected small_tip for volume 0.010 mL
+2026-03-31 11:30:30,591 - INFO - Pipetting from vial 6M_H3PO4, amount: 0.010 mL
+2026-03-31 11:30:30,591 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-31 11:30:30,591 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,591 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,591 - DEBUG - Aspirating 0.010 mL then waiting 0.0 s
+2026-03-31 11:30:30,591 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,591 - DEBUG - Applied object param aspirate_speed=10
+2026-03-31 11:30:30,591 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-31 11:30:30,591 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-31 11:30:30,591 - DEBUG - Applied object param dispense_speed=5
+2026-03-31 11:30:30,591 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-31 11:30:30,591 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-31 11:30:30,591 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-31 11:30:30,591 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,591 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-31 11:30:30,591 - DEBUG - Applied object param retract_speed=10
+2026-03-31 11:30:30,597 - INFO - Pipetting into vial 6M_H3PO4, amount: 0.010 mL
+2026-03-31 11:30:30,598 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-31 11:30:30,598 - DEBUG - Dispensing 0.010 mL then waiting 0.0 s
+2026-03-31 11:30:30,598 - DEBUG - Blowing out 0.500 mL
+2026-03-31 11:30:30,599 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,599 - DEBUG - Applied object param aspirate_speed=10
+2026-03-31 11:30:30,599 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-31 11:30:30,599 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-31 11:30:30,599 - DEBUG - Applied object param dispense_speed=5
+2026-03-31 11:30:30,599 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-31 11:30:30,599 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-31 11:30:30,599 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-31 11:30:30,599 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,599 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-31 11:30:30,599 - DEBUG - Applied object param retract_speed=10
+2026-03-31 11:30:30,601 - DEBUG - Selected small_tip for volume 0.010 mL
+2026-03-31 11:30:30,602 - INFO - Pipetting from vial 6M_H3PO4, amount: 0.010 mL
+2026-03-31 11:30:30,602 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-31 11:30:30,603 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,603 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,603 - DEBUG - Aspirating 0.010 mL then waiting 0.0 s
+2026-03-31 11:30:30,603 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,603 - DEBUG - Applied object param aspirate_speed=10
+2026-03-31 11:30:30,603 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-03-31 11:30:30,603 - DEBUG - Applied object param blowout_vol=0.5
+2026-03-31 11:30:30,603 - DEBUG - Applied object param dispense_speed=5
+2026-03-31 11:30:30,603 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-03-31 11:30:30,603 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-03-31 11:30:30,603 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-31 11:30:30,603 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,603 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-03-31 11:30:30,603 - DEBUG - Applied object param retract_speed=10
+2026-03-31 11:30:30,603 - INFO - Pipetting into vial 6M_H3PO4, amount: 0.010 mL
+2026-03-31 11:30:30,603 - DEBUG - Adjusting pump 0 speed to 5
+2026-03-31 11:30:30,608 - DEBUG - Dispensing 0.010 mL then waiting 0.0 s
+2026-03-31 11:30:30,608 - DEBUG - Blowing out 0.500 mL
+2026-03-31 11:30:30,608 - INFO -     Tip conditioning complete for 6M_H3PO4
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated aspirate_speed=14 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated dispense_speed=10 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated aspirate_wait_time=1.2000000000000002 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated dispense_wait_time=1.5 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated retract_speed=5 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated blowout_vol=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated post_asp_air_vol=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated overaspirate_vol=0.0018985667748932 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - DEBUG - Using calibrated pre_asp_air_vol=0.229 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,615 - INFO - Dispensing 0.006 mL from 6M_H3PO4 to sample_1
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated aspirate_speed=14 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated dispense_speed=10 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated aspirate_wait_time=1.2000000000000002 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated dispense_wait_time=1.5 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated retract_speed=5 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated blowout_vol=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated post_asp_air_vol=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated overaspirate_vol=0.0018883135957927998 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Using calibrated pre_asp_air_vol=0.229 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,620 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,620 - DEBUG - Applied object param aspirate_speed=14
+2026-03-31 11:30:30,620 - DEBUG - Applied object param aspirate_wait_time=1.2000000000000002
+2026-03-31 11:30:30,620 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,620 - DEBUG - Applied object param dispense_speed=10
+2026-03-31 11:30:30,620 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,620 - DEBUG - Applied object param overaspirate_vol=0.0018985667748932
+2026-03-31 11:30:30,620 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-31 11:30:30,620 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,620 - DEBUG - Applied object param pre_asp_air_vol=0.229
+2026-03-31 11:30:30,620 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,620 - DEBUG - Selected small_tip for volume 0.008 mL
+2026-03-31 11:30:30,620 - INFO - Pipetting from vial 6M_H3PO4, amount: 0.006 mL
+2026-03-31 11:30:30,620 - INFO - Additional volume from calibration, amount: 0.002 mL
+2026-03-31 11:30:30,625 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,625 - DEBUG - Aspirating 0.229 mL then waiting 0 s
+2026-03-31 11:30:30,625 - DEBUG - Adjusting pump 0 speed to 14
+2026-03-31 11:30:30,625 - DEBUG - Aspirating 0.008 mL then waiting 1.2000000000000002 s
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated aspirate_speed=14 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated dispense_speed=10 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated aspirate_wait_time=1.2000000000000002 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated dispense_wait_time=1.5 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated retract_speed=5 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated blowout_vol=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated post_asp_air_vol=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated overaspirate_vol=0.0018985667748932 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Using calibrated pre_asp_air_vol=0.229 for 6M_H3PO4 at 0.006mL
+2026-03-31 11:30:30,625 - DEBUG - Applied object param asp_disp_cycles=0
+2026-03-31 11:30:30,625 - DEBUG - Applied object param aspirate_speed=14
+2026-03-31 11:30:30,625 - DEBUG - Applied object param aspirate_wait_time=1.2000000000000002
+2026-03-31 11:30:30,625 - DEBUG - Applied object param blowout_vol=0.0
+2026-03-31 11:30:30,625 - DEBUG - Applied object param dispense_speed=10
+2026-03-31 11:30:30,625 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-03-31 11:30:30,625 - DEBUG - Applied object param overaspirate_vol=0.0018985667748932
+2026-03-31 11:30:30,625 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-03-31 11:30:30,625 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-03-31 11:30:30,625 - DEBUG - Applied object param pre_asp_air_vol=0.229
+2026-03-31 11:30:30,625 - DEBUG - Applied object param retract_speed=5
+2026-03-31 11:30:30,625 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,625 - INFO - Moving vial 6 to safe pipetting location
+2026-03-31 11:30:30,637 - DEBUG - Clamp occupied by vial 5, returning it home first
+2026-03-31 11:30:30,638 - INFO - Returning vial 6M_H3PO4 to home location: main_8mL_rack index 4
+2026-03-31 11:30:30,638 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,640 - INFO - Moving vial 6M_H3PO4 to main_8mL_rack: 4
+2026-03-31 11:30:30,640 - DEBUG - Grabbing vial 5 with index 5
+2026-03-31 11:30:30,643 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 4
+2026-03-31 11:30:30,647 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,647 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,649 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,650 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,651 - INFO - Pipetting into vial sample_1, amount: 0.006 mL
+2026-03-31 11:30:30,653 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,654 - DEBUG - Dispensing 0.237 mL then waiting 1.5 s
+2026-03-31 11:30:30,654 - INFO - Removing pipet
+2026-03-31 11:30:30,655 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,656 - INFO - Returning vial sample_1 to home location: main_8mL_rack index 1
+2026-03-31 11:30:30,658 - INFO - Moving vial sample_1 to main_8mL_rack: 1
+2026-03-31 11:30:30,658 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,661 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 1
+2026-03-31 11:30:30,663 - INFO - Returning vial 6M_H3PO4 to home location: main_8mL_rack index 7
+2026-03-31 11:30:30,665 - INFO - Moving vial 6M_H3PO4 to main_8mL_rack: 7
+2026-03-31 11:30:30,665 - DEBUG - Grabbing vial 5 with index 5
+2026-03-31 11:30:30,665 - DEBUG - Dropping off vial 5 at location main_8mL_rack with index 7
+2026-03-31 11:30:30,669 - INFO - Vortexing Vial: sample_1
+2026-03-31 11:30:30,669 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,671 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 1
+2026-03-31 11:30:30,671 - INFO - 
+Transferring sample: sample_1 to wellplate at wells 0 to 0 (1 replicates)
+2026-03-31 11:30:30,673 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,673 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,673 - DEBUG - Opening gripper
+2026-03-31 11:30:30,675 - DEBUG - Closing gripper
+2026-03-31 11:30:30,675 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,675 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:30,677 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,677 - DEBUG - Opening gripper
+2026-03-31 11:30:30,677 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,680 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,680 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,681 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,681 - DEBUG - Selected small_tip for volume 0.198 mL
+2026-03-31 11:30:30,681 - INFO - Getting small_tip (pipet number 13) from rack: small_tip_rack_1
+2026-03-31 11:30:30,689 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,689 - INFO - Moving vial sample_1 to safe pipetting location
+2026-03-31 11:30:30,691 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-31 11:30:30,693 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,693 - INFO - Pipetting from vial sample_1, amount: 0.150 mL
+2026-03-31 11:30:30,693 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:30,698 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,698 - DEBUG - Aspirating 0.479 mL then waiting 0 s
+2026-03-31 11:30:30,698 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,698 - DEBUG - Aspirating 0.148 mL then waiting 2.5571428571428574 s
+2026-03-31 11:30:30,698 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,702 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:30,702 - INFO - Transferring 0.150 mL into well #0 of quartz
+2026-03-31 11:30:30,702 - DEBUG - Dispensing 0.676 mL then waiting 1.5 s
+2026-03-31 11:30:30,702 - INFO - Removing pipet
+2026-03-31 11:30:30,704 - INFO - Moving vial sample_1 to heater: 0
+2026-03-31 11:30:30,705 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,705 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,707 - DEBUG - Dropping off vial 6 at location heater with index 0
+2026-03-31 11:30:30,708 - INFO - Grabbing wellplate from location: lid_storage
+2026-03-31 11:30:30,710 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,710 - DEBUG - Opening gripper
+2026-03-31 11:30:30,710 - DEBUG - Closing gripper
+2026-03-31 11:30:30,710 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,710 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,710 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,710 - DEBUG - Opening gripper
+2026-03-31 11:30:30,710 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,713 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\300_900_sweep.prt
+2026-03-31 11:30:30,713 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID'
+2026-03-31 11:30:30,713 - INFO - Moving robot to home position
+2026-03-31 11:30:30,713 - INFO - Moving wellplate 0 to Cytation
+2026-03-31 11:30:30,713 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,713 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,713 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,714 - DEBUG - Opening gripper
+2026-03-31 11:30:30,714 - DEBUG - Closing gripper
+2026-03-31 11:30:30,714 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,714 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,714 - INFO - Releasing wellplate at location: cytation_tray
+2026-03-31 11:30:30,714 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,714 - DEBUG - Opening gripper
+2026-03-31 11:30:30,714 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,714 - INFO - Moving wellplate 0 back from Cytation
+2026-03-31 11:30:30,715 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,715 - INFO - Grabbing wellplate from location: cytation_tray
+2026-03-31 11:30:30,715 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,715 - DEBUG - Opening gripper
+2026-03-31 11:30:30,715 - DEBUG - Closing gripper
+2026-03-31 11:30:30,715 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,715 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-03-31 11:30:30,715 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,715 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,716 - DEBUG - Opening gripper
+2026-03-31 11:30:30,716 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,716 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:30,716 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:30,716 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:30,716 - INFO - Simulation mode: Would save data for well index 0
+2026-03-31 11:30:30,716 - INFO - Used wells so far: [0]
+2026-03-31 11:30:30,718 - INFO - Schedule for sample_1:    start_time                      action sample_index    note
+0       300.0  create_samples_and_measure     sample_1   5_min
+1       600.0  create_samples_and_measure     sample_1  10_min
+2       900.0  create_samples_and_measure     sample_1  15_min
+3      1200.0  create_samples_and_measure     sample_1  20_min
+4      1800.0  create_samples_and_measure     sample_1  30_min
+5      2400.0  create_samples_and_measure     sample_1  40_min
+6      3600.0  create_samples_and_measure     sample_1  60_min
+2026-03-31 11:30:30,729 - INFO - Starting timed portion at (secs): 0
+2026-03-31 11:30:30,732 - INFO - Total time elapsed=60s; Next event in=240s -> sample_1
+2026-03-31 11:30:30,734 - INFO - Total time elapsed=120s; Next event in=180s -> sample_1
+2026-03-31 11:30:30,739 - INFO - Total time elapsed=180s; Next event in=120s -> sample_1
+2026-03-31 11:30:30,741 - INFO - Total time elapsed=240s; Next event in=60s -> sample_1
+2026-03-31 11:30:30,745 - INFO - 
+[TRIGGER] create_samples_and_measure for sample_1 at elapsed 300s (target 300.0s)
+2026-03-31 11:30:30,747 - INFO - 
+Transferring sample: sample_1 to wellplate at wells 1 to 1 (1 replicates)
+2026-03-31 11:30:30,747 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,747 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,749 - DEBUG - Opening gripper
+2026-03-31 11:30:30,749 - DEBUG - Closing gripper
+2026-03-31 11:30:30,749 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,749 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:30,749 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,749 - DEBUG - Opening gripper
+2026-03-31 11:30:30,749 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,751 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,751 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,753 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,757 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,757 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,758 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,758 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,758 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,758 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,758 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,758 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,758 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,758 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,760 - DEBUG - Selected small_tip for volume 0.198 mL
+2026-03-31 11:30:30,760 - INFO - Getting small_tip (pipet number 14) from rack: small_tip_rack_1
+2026-03-31 11:30:30,762 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,762 - INFO - Moving vial sample_1 to safe pipetting location
+2026-03-31 11:30:30,764 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-31 11:30:30,764 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,766 - INFO - Pipetting from vial sample_1, amount: 0.150 mL
+2026-03-31 11:30:30,766 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:30,766 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,766 - DEBUG - Aspirating 0.479 mL then waiting 0 s
+2026-03-31 11:30:30,766 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,766 - DEBUG - Aspirating 0.148 mL then waiting 2.5571428571428574 s
+2026-03-31 11:30:30,766 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,775 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:30,775 - INFO - Transferring 0.150 mL into well #1 of quartz
+2026-03-31 11:30:30,775 - DEBUG - Dispensing 0.676 mL then waiting 1.5 s
+2026-03-31 11:30:30,775 - INFO - Removing pipet
+2026-03-31 11:30:30,775 - INFO - Moving vial sample_1 to heater: 0
+2026-03-31 11:30:30,775 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,775 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,775 - DEBUG - Dropping off vial 6 at location heater with index 0
+2026-03-31 11:30:30,775 - INFO - Grabbing wellplate from location: lid_storage
+2026-03-31 11:30:30,775 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,775 - DEBUG - Opening gripper
+2026-03-31 11:30:30,775 - DEBUG - Closing gripper
+2026-03-31 11:30:30,775 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,775 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,775 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,775 - DEBUG - Opening gripper
+2026-03-31 11:30:30,775 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,785 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\300_900_sweep.prt
+2026-03-31 11:30:30,786 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID'
+2026-03-31 11:30:30,786 - INFO - Moving robot to home position
+2026-03-31 11:30:30,786 - INFO - Moving wellplate 0 to Cytation
+2026-03-31 11:30:30,786 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,786 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,786 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,786 - DEBUG - Opening gripper
+2026-03-31 11:30:30,786 - DEBUG - Closing gripper
+2026-03-31 11:30:30,786 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,786 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,786 - INFO - Releasing wellplate at location: cytation_tray
+2026-03-31 11:30:30,786 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,786 - DEBUG - Opening gripper
+2026-03-31 11:30:30,786 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,786 - INFO - Moving wellplate 0 back from Cytation
+2026-03-31 11:30:30,788 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,788 - INFO - Grabbing wellplate from location: cytation_tray
+2026-03-31 11:30:30,788 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,788 - DEBUG - Opening gripper
+2026-03-31 11:30:30,788 - DEBUG - Closing gripper
+2026-03-31 11:30:30,788 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,788 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-03-31 11:30:30,788 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,788 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,788 - DEBUG - Opening gripper
+2026-03-31 11:30:30,788 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,789 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:30,789 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:30,789 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:30,789 - INFO - Simulation mode: Would save data for well index 1
+2026-03-31 11:30:30,789 - INFO - Used wells so far: [0, 1]
+2026-03-31 11:30:30,789 - INFO - Total time elapsed=301s; Next event in=299s -> sample_1
+2026-03-31 11:30:30,791 - INFO - Total time elapsed=360s; Next event in=240s -> sample_1
+2026-03-31 11:30:30,798 - INFO - Total time elapsed=420s; Next event in=180s -> sample_1
+2026-03-31 11:30:30,801 - INFO - Total time elapsed=480s; Next event in=120s -> sample_1
+2026-03-31 11:30:30,802 - INFO - Total time elapsed=540s; Next event in=60s -> sample_1
+2026-03-31 11:30:30,808 - INFO - 
+[TRIGGER] create_samples_and_measure for sample_1 at elapsed 600s (target 600.0s)
+2026-03-31 11:30:30,808 - INFO - 
+Transferring sample: sample_1 to wellplate at wells 2 to 2 (1 replicates)
+2026-03-31 11:30:30,810 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,810 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,810 - DEBUG - Opening gripper
+2026-03-31 11:30:30,810 - DEBUG - Closing gripper
+2026-03-31 11:30:30,810 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,810 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:30,810 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,810 - DEBUG - Opening gripper
+2026-03-31 11:30:30,810 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,810 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,810 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,815 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,820 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,821 - DEBUG - Selected small_tip for volume 0.198 mL
+2026-03-31 11:30:30,821 - INFO - Getting small_tip (pipet number 15) from rack: small_tip_rack_1
+2026-03-31 11:30:30,821 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,821 - INFO - Moving vial sample_1 to safe pipetting location
+2026-03-31 11:30:30,825 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-31 11:30:30,825 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,829 - INFO - Pipetting from vial sample_1, amount: 0.150 mL
+2026-03-31 11:30:30,829 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:30,831 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,831 - DEBUG - Aspirating 0.479 mL then waiting 0 s
+2026-03-31 11:30:30,831 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,831 - DEBUG - Aspirating 0.148 mL then waiting 2.5571428571428574 s
+2026-03-31 11:30:30,831 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,835 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:30,835 - INFO - Transferring 0.150 mL into well #2 of quartz
+2026-03-31 11:30:30,835 - DEBUG - Dispensing 0.676 mL then waiting 1.5 s
+2026-03-31 11:30:30,835 - INFO - Removing pipet
+2026-03-31 11:30:30,838 - INFO - Moving vial sample_1 to heater: 0
+2026-03-31 11:30:30,839 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,839 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,840 - DEBUG - Dropping off vial 6 at location heater with index 0
+2026-03-31 11:30:30,841 - INFO - Grabbing wellplate from location: lid_storage
+2026-03-31 11:30:30,841 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,841 - DEBUG - Opening gripper
+2026-03-31 11:30:30,841 - DEBUG - Closing gripper
+2026-03-31 11:30:30,841 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,841 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,841 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,843 - DEBUG - Opening gripper
+2026-03-31 11:30:30,843 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,843 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\300_900_sweep.prt
+2026-03-31 11:30:30,843 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID'
+2026-03-31 11:30:30,843 - INFO - Moving robot to home position
+2026-03-31 11:30:30,843 - INFO - Moving wellplate 0 to Cytation
+2026-03-31 11:30:30,843 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,843 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,843 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,843 - DEBUG - Opening gripper
+2026-03-31 11:30:30,846 - DEBUG - Closing gripper
+2026-03-31 11:30:30,846 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,846 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,846 - INFO - Releasing wellplate at location: cytation_tray
+2026-03-31 11:30:30,846 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,846 - DEBUG - Opening gripper
+2026-03-31 11:30:30,846 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,846 - INFO - Moving wellplate 0 back from Cytation
+2026-03-31 11:30:30,846 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,846 - INFO - Grabbing wellplate from location: cytation_tray
+2026-03-31 11:30:30,846 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,846 - DEBUG - Opening gripper
+2026-03-31 11:30:30,846 - DEBUG - Closing gripper
+2026-03-31 11:30:30,846 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,846 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-03-31 11:30:30,847 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,847 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,847 - DEBUG - Opening gripper
+2026-03-31 11:30:30,847 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,847 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:30,847 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:30,847 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:30,847 - INFO - Simulation mode: Would save data for well index 2
+2026-03-31 11:30:30,847 - INFO - Used wells so far: [0, 1, 2]
+2026-03-31 11:30:30,848 - INFO - Total time elapsed=601s; Next event in=299s -> sample_1
+2026-03-31 11:30:30,852 - INFO - Total time elapsed=660s; Next event in=240s -> sample_1
+2026-03-31 11:30:30,852 - INFO - Total time elapsed=720s; Next event in=180s -> sample_1
+2026-03-31 11:30:30,858 - INFO - Total time elapsed=780s; Next event in=120s -> sample_1
+2026-03-31 11:30:30,862 - INFO - Total time elapsed=840s; Next event in=60s -> sample_1
+2026-03-31 11:30:30,862 - INFO - 
+[TRIGGER] create_samples_and_measure for sample_1 at elapsed 900s (target 900.0s)
+2026-03-31 11:30:30,862 - INFO - 
+Transferring sample: sample_1 to wellplate at wells 3 to 3 (1 replicates)
+2026-03-31 11:30:30,867 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,868 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,868 - DEBUG - Opening gripper
+2026-03-31 11:30:30,868 - DEBUG - Closing gripper
+2026-03-31 11:30:30,868 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,868 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:30,868 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,868 - DEBUG - Opening gripper
+2026-03-31 11:30:30,868 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,869 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,870 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,871 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,876 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,876 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,876 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,876 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,876 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,876 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,876 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,877 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,877 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,877 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,878 - DEBUG - Selected small_tip for volume 0.198 mL
+2026-03-31 11:30:30,878 - INFO - Getting small_tip (pipet number 16) from rack: small_tip_rack_1
+2026-03-31 11:30:30,878 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,880 - INFO - Moving vial sample_1 to safe pipetting location
+2026-03-31 11:30:30,882 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-31 11:30:30,882 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,884 - INFO - Pipetting from vial sample_1, amount: 0.150 mL
+2026-03-31 11:30:30,884 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:30,886 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,886 - DEBUG - Aspirating 0.479 mL then waiting 0 s
+2026-03-31 11:30:30,886 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,886 - DEBUG - Aspirating 0.148 mL then waiting 2.5571428571428574 s
+2026-03-31 11:30:30,886 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,889 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:30,891 - INFO - Transferring 0.150 mL into well #3 of quartz
+2026-03-31 11:30:30,891 - DEBUG - Dispensing 0.676 mL then waiting 1.5 s
+2026-03-31 11:30:30,891 - INFO - Removing pipet
+2026-03-31 11:30:30,894 - INFO - Moving vial sample_1 to heater: 0
+2026-03-31 11:30:30,894 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,895 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,896 - DEBUG - Dropping off vial 6 at location heater with index 0
+2026-03-31 11:30:30,897 - INFO - Grabbing wellplate from location: lid_storage
+2026-03-31 11:30:30,897 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,897 - DEBUG - Opening gripper
+2026-03-31 11:30:30,897 - DEBUG - Closing gripper
+2026-03-31 11:30:30,897 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,898 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,898 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,898 - DEBUG - Opening gripper
+2026-03-31 11:30:30,898 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,898 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\300_900_sweep.prt
+2026-03-31 11:30:30,900 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID'
+2026-03-31 11:30:30,900 - INFO - Moving robot to home position
+2026-03-31 11:30:30,900 - INFO - Moving wellplate 0 to Cytation
+2026-03-31 11:30:30,900 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,900 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,900 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,900 - DEBUG - Opening gripper
+2026-03-31 11:30:30,900 - DEBUG - Closing gripper
+2026-03-31 11:30:30,900 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,900 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,900 - INFO - Releasing wellplate at location: cytation_tray
+2026-03-31 11:30:30,900 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,900 - DEBUG - Opening gripper
+2026-03-31 11:30:30,900 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,900 - INFO - Moving wellplate 0 back from Cytation
+2026-03-31 11:30:30,900 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,900 - INFO - Grabbing wellplate from location: cytation_tray
+2026-03-31 11:30:30,900 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,900 - DEBUG - Opening gripper
+2026-03-31 11:30:30,900 - DEBUG - Closing gripper
+2026-03-31 11:30:30,900 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,900 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-03-31 11:30:30,900 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,900 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,900 - DEBUG - Opening gripper
+2026-03-31 11:30:30,900 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,900 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:30,900 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:30,900 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:30,900 - INFO - Simulation mode: Would save data for well index 3
+2026-03-31 11:30:30,900 - INFO - Used wells so far: [0, 1, 2, 3]
+2026-03-31 11:30:30,900 - INFO - Total time elapsed=901s; Next event in=299s -> sample_1
+2026-03-31 11:30:30,906 - INFO - Total time elapsed=960s; Next event in=240s -> sample_1
+2026-03-31 11:30:30,910 - INFO - Total time elapsed=1020s; Next event in=180s -> sample_1
+2026-03-31 11:30:30,914 - INFO - Total time elapsed=1080s; Next event in=120s -> sample_1
+2026-03-31 11:30:30,917 - INFO - Total time elapsed=1140s; Next event in=60s -> sample_1
+2026-03-31 11:30:30,917 - INFO - 
+[TRIGGER] create_samples_and_measure for sample_1 at elapsed 1200s (target 1200.0s)
+2026-03-31 11:30:30,917 - INFO - 
+Transferring sample: sample_1 to wellplate at wells 4 to 4 (1 replicates)
+2026-03-31 11:30:30,917 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,917 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,917 - DEBUG - Opening gripper
+2026-03-31 11:30:30,917 - DEBUG - Closing gripper
+2026-03-31 11:30:30,917 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,917 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:30,917 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,923 - DEBUG - Opening gripper
+2026-03-31 11:30:30,923 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,925 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:30,925 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,927 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,929 - DEBUG - Selected small_tip for volume 0.198 mL
+2026-03-31 11:30:30,929 - INFO - Getting small_tip (pipet number 17) from rack: small_tip_rack_1
+2026-03-31 11:30:30,935 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:30,935 - INFO - Moving vial sample_1 to safe pipetting location
+2026-03-31 11:30:30,938 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-31 11:30:30,938 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:30,940 - INFO - Pipetting from vial sample_1, amount: 0.150 mL
+2026-03-31 11:30:30,940 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:30,941 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,941 - DEBUG - Aspirating 0.479 mL then waiting 0 s
+2026-03-31 11:30:30,941 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:30,941 - DEBUG - Aspirating 0.148 mL then waiting 2.5571428571428574 s
+2026-03-31 11:30:30,941 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:30,948 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:30,948 - INFO - Transferring 0.150 mL into well #4 of quartz
+2026-03-31 11:30:30,948 - DEBUG - Dispensing 0.676 mL then waiting 1.5 s
+2026-03-31 11:30:30,948 - INFO - Removing pipet
+2026-03-31 11:30:30,950 - INFO - Moving vial sample_1 to heater: 0
+2026-03-31 11:30:30,950 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:30,950 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:30,950 - DEBUG - Dropping off vial 6 at location heater with index 0
+2026-03-31 11:30:30,950 - INFO - Grabbing wellplate from location: lid_storage
+2026-03-31 11:30:30,950 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,950 - DEBUG - Opening gripper
+2026-03-31 11:30:30,950 - DEBUG - Closing gripper
+2026-03-31 11:30:30,950 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:30,950 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,950 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,955 - DEBUG - Opening gripper
+2026-03-31 11:30:30,955 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,955 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\300_900_sweep.prt
+2026-03-31 11:30:30,956 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID'
+2026-03-31 11:30:30,956 - INFO - Moving robot to home position
+2026-03-31 11:30:30,956 - INFO - Moving wellplate 0 to Cytation
+2026-03-31 11:30:30,956 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,956 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,956 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,956 - DEBUG - Opening gripper
+2026-03-31 11:30:30,956 - DEBUG - Closing gripper
+2026-03-31 11:30:30,956 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,957 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:30,957 - INFO - Releasing wellplate at location: cytation_tray
+2026-03-31 11:30:30,957 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,957 - DEBUG - Opening gripper
+2026-03-31 11:30:30,957 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,957 - INFO - Moving wellplate 0 back from Cytation
+2026-03-31 11:30:30,957 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:30,957 - INFO - Grabbing wellplate from location: cytation_tray
+2026-03-31 11:30:30,957 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,957 - DEBUG - Opening gripper
+2026-03-31 11:30:30,957 - DEBUG - Closing gripper
+2026-03-31 11:30:30,957 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:30,957 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-03-31 11:30:30,958 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:30,958 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,958 - DEBUG - Opening gripper
+2026-03-31 11:30:30,958 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,958 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:30,958 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:30,958 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:30,958 - INFO - Simulation mode: Would save data for well index 4
+2026-03-31 11:30:30,958 - INFO - Used wells so far: [0, 1, 2, 3, 4]
+2026-03-31 11:30:30,958 - INFO - Total time elapsed=1201s; Next event in=599s -> sample_1
+2026-03-31 11:30:30,962 - INFO - Total time elapsed=1260s; Next event in=540s -> sample_1
+2026-03-31 11:30:30,967 - INFO - Total time elapsed=1320s; Next event in=480s -> sample_1
+2026-03-31 11:30:30,970 - INFO - Total time elapsed=1380s; Next event in=420s -> sample_1
+2026-03-31 11:30:30,974 - INFO - Total time elapsed=1440s; Next event in=360s -> sample_1
+2026-03-31 11:30:30,977 - INFO - Total time elapsed=1500s; Next event in=300s -> sample_1
+2026-03-31 11:30:30,977 - INFO - Total time elapsed=1560s; Next event in=240s -> sample_1
+2026-03-31 11:30:30,985 - INFO - Total time elapsed=1620s; Next event in=180s -> sample_1
+2026-03-31 11:30:30,989 - INFO - Total time elapsed=1680s; Next event in=120s -> sample_1
+2026-03-31 11:30:30,991 - INFO - Total time elapsed=1740s; Next event in=60s -> sample_1
+2026-03-31 11:30:30,996 - INFO - 
+[TRIGGER] create_samples_and_measure for sample_1 at elapsed 1800s (target 1800.0s)
+2026-03-31 11:30:30,997 - INFO - 
+Transferring sample: sample_1 to wellplate at wells 5 to 5 (1 replicates)
+2026-03-31 11:30:30,999 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:30,999 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,999 - DEBUG - Opening gripper
+2026-03-31 11:30:30,999 - DEBUG - Closing gripper
+2026-03-31 11:30:30,999 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:30,999 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:30,999 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:30,999 - DEBUG - Opening gripper
+2026-03-31 11:30:30,999 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:31,000 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:31,000 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:31,000 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,000 - DEBUG - Selected small_tip for volume 0.198 mL
+2026-03-31 11:30:31,000 - INFO - Getting small_tip (pipet number 18) from rack: small_tip_rack_1
+2026-03-31 11:30:31,011 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:31,011 - INFO - Moving vial sample_1 to safe pipetting location
+2026-03-31 11:30:31,013 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-31 11:30:31,013 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:31,016 - INFO - Pipetting from vial sample_1, amount: 0.150 mL
+2026-03-31 11:30:31,016 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:31,016 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,016 - DEBUG - Aspirating 0.479 mL then waiting 0 s
+2026-03-31 11:30:31,016 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,016 - DEBUG - Aspirating 0.148 mL then waiting 2.5571428571428574 s
+2026-03-31 11:30:31,016 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,016 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:31,016 - INFO - Transferring 0.150 mL into well #5 of quartz
+2026-03-31 11:30:31,016 - DEBUG - Dispensing 0.676 mL then waiting 1.5 s
+2026-03-31 11:30:31,016 - INFO - Removing pipet
+2026-03-31 11:30:31,024 - INFO - Moving vial sample_1 to heater: 0
+2026-03-31 11:30:31,025 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:31,027 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:31,028 - DEBUG - Dropping off vial 6 at location heater with index 0
+2026-03-31 11:30:31,029 - INFO - Grabbing wellplate from location: lid_storage
+2026-03-31 11:30:31,029 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:31,029 - DEBUG - Opening gripper
+2026-03-31 11:30:31,029 - DEBUG - Closing gripper
+2026-03-31 11:30:31,029 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:31,029 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:31,030 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,030 - DEBUG - Opening gripper
+2026-03-31 11:30:31,030 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,031 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\300_900_sweep.prt
+2026-03-31 11:30:31,031 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID'
+2026-03-31 11:30:31,031 - INFO - Moving robot to home position
+2026-03-31 11:30:31,031 - INFO - Moving wellplate 0 to Cytation
+2026-03-31 11:30:31,031 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:31,031 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:31,031 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,031 - DEBUG - Opening gripper
+2026-03-31 11:30:31,031 - DEBUG - Closing gripper
+2026-03-31 11:30:31,033 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,033 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:31,033 - INFO - Releasing wellplate at location: cytation_tray
+2026-03-31 11:30:31,033 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,033 - DEBUG - Opening gripper
+2026-03-31 11:30:31,033 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:31,033 - INFO - Moving wellplate 0 back from Cytation
+2026-03-31 11:30:31,033 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:31,033 - INFO - Grabbing wellplate from location: cytation_tray
+2026-03-31 11:30:31,033 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,033 - DEBUG - Opening gripper
+2026-03-31 11:30:31,033 - DEBUG - Closing gripper
+2026-03-31 11:30:31,033 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:31,034 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-03-31 11:30:31,034 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:31,034 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,034 - DEBUG - Opening gripper
+2026-03-31 11:30:31,034 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,034 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:31,034 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:31,034 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:31,034 - INFO - Simulation mode: Would save data for well index 5
+2026-03-31 11:30:31,034 - INFO - Used wells so far: [0, 1, 2, 3, 4, 5]
+2026-03-31 11:30:31,035 - INFO - Total time elapsed=1801s; Next event in=599s -> sample_1
+2026-03-31 11:30:31,037 - INFO - Total time elapsed=1860s; Next event in=540s -> sample_1
+2026-03-31 11:30:31,041 - INFO - Total time elapsed=1920s; Next event in=480s -> sample_1
+2026-03-31 11:30:31,045 - INFO - Total time elapsed=1980s; Next event in=420s -> sample_1
+2026-03-31 11:30:31,048 - INFO - Total time elapsed=2040s; Next event in=360s -> sample_1
+2026-03-31 11:30:31,052 - INFO - Total time elapsed=2100s; Next event in=300s -> sample_1
+2026-03-31 11:30:31,054 - INFO - Total time elapsed=2160s; Next event in=240s -> sample_1
+2026-03-31 11:30:31,055 - INFO - Total time elapsed=2220s; Next event in=180s -> sample_1
+2026-03-31 11:30:31,062 - INFO - Total time elapsed=2280s; Next event in=120s -> sample_1
+2026-03-31 11:30:31,066 - INFO - Total time elapsed=2340s; Next event in=60s -> sample_1
+2026-03-31 11:30:31,066 - INFO - 
+[TRIGGER] create_samples_and_measure for sample_1 at elapsed 2400s (target 2400.0s)
+2026-03-31 11:30:31,066 - INFO - 
+Transferring sample: sample_1 to wellplate at wells 6 to 6 (1 replicates)
+2026-03-31 11:30:31,070 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:31,071 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,071 - DEBUG - Opening gripper
+2026-03-31 11:30:31,071 - DEBUG - Closing gripper
+2026-03-31 11:30:31,071 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,071 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:31,071 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,071 - DEBUG - Opening gripper
+2026-03-31 11:30:31,071 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:31,072 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:31,072 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:31,074 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:31,080 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,080 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,080 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,080 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,080 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,080 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,081 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,081 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,081 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,081 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,082 - DEBUG - Selected small_tip for volume 0.198 mL
+2026-03-31 11:30:31,082 - INFO - Getting small_tip (pipet number 19) from rack: small_tip_rack_1
+2026-03-31 11:30:31,083 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:31,084 - INFO - Moving vial sample_1 to safe pipetting location
+2026-03-31 11:30:31,086 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-31 11:30:31,086 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:31,088 - INFO - Pipetting from vial sample_1, amount: 0.150 mL
+2026-03-31 11:30:31,088 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:31,089 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,089 - DEBUG - Aspirating 0.479 mL then waiting 0 s
+2026-03-31 11:30:31,089 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,089 - DEBUG - Aspirating 0.148 mL then waiting 2.5571428571428574 s
+2026-03-31 11:30:31,089 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,093 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:31,093 - INFO - Transferring 0.150 mL into well #6 of quartz
+2026-03-31 11:30:31,093 - DEBUG - Dispensing 0.676 mL then waiting 1.5 s
+2026-03-31 11:30:31,093 - INFO - Removing pipet
+2026-03-31 11:30:31,098 - INFO - Moving vial sample_1 to heater: 0
+2026-03-31 11:30:31,099 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:31,099 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:31,101 - DEBUG - Dropping off vial 6 at location heater with index 0
+2026-03-31 11:30:31,101 - INFO - Grabbing wellplate from location: lid_storage
+2026-03-31 11:30:31,102 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:31,102 - DEBUG - Opening gripper
+2026-03-31 11:30:31,102 - DEBUG - Closing gripper
+2026-03-31 11:30:31,102 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:31,102 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:31,102 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,102 - DEBUG - Opening gripper
+2026-03-31 11:30:31,102 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,104 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\300_900_sweep.prt
+2026-03-31 11:30:31,104 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID'
+2026-03-31 11:30:31,104 - INFO - Moving robot to home position
+2026-03-31 11:30:31,104 - INFO - Moving wellplate 0 to Cytation
+2026-03-31 11:30:31,104 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:31,104 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:31,104 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,104 - DEBUG - Opening gripper
+2026-03-31 11:30:31,104 - DEBUG - Closing gripper
+2026-03-31 11:30:31,104 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,104 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:31,104 - INFO - Releasing wellplate at location: cytation_tray
+2026-03-31 11:30:31,104 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,104 - DEBUG - Opening gripper
+2026-03-31 11:30:31,104 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:31,104 - INFO - Moving wellplate 0 back from Cytation
+2026-03-31 11:30:31,104 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:31,104 - INFO - Grabbing wellplate from location: cytation_tray
+2026-03-31 11:30:31,104 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,104 - DEBUG - Opening gripper
+2026-03-31 11:30:31,104 - DEBUG - Closing gripper
+2026-03-31 11:30:31,104 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:31,104 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-03-31 11:30:31,104 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:31,104 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,104 - DEBUG - Opening gripper
+2026-03-31 11:30:31,104 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,104 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:31,104 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:31,104 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:31,104 - INFO - Simulation mode: Would save data for well index 6
+2026-03-31 11:30:31,104 - INFO - Used wells so far: [0, 1, 2, 3, 4, 5, 6]
+2026-03-31 11:30:31,104 - INFO - Total time elapsed=2401s; Next event in=1199s -> sample_1
+2026-03-31 11:30:31,110 - INFO - Total time elapsed=2460s; Next event in=1140s -> sample_1
+2026-03-31 11:30:31,113 - INFO - Total time elapsed=2520s; Next event in=1080s -> sample_1
+2026-03-31 11:30:31,117 - INFO - Total time elapsed=2580s; Next event in=1020s -> sample_1
+2026-03-31 11:30:31,120 - INFO - Total time elapsed=2640s; Next event in=960s -> sample_1
+2026-03-31 11:30:31,120 - INFO - Total time elapsed=2700s; Next event in=900s -> sample_1
+2026-03-31 11:30:31,128 - INFO - Total time elapsed=2760s; Next event in=840s -> sample_1
+2026-03-31 11:30:31,130 - INFO - Total time elapsed=2820s; Next event in=780s -> sample_1
+2026-03-31 11:30:31,134 - INFO - Total time elapsed=2880s; Next event in=720s -> sample_1
+2026-03-31 11:30:31,137 - INFO - Total time elapsed=2940s; Next event in=660s -> sample_1
+2026-03-31 11:30:31,137 - INFO - Total time elapsed=3000s; Next event in=600s -> sample_1
+2026-03-31 11:30:31,145 - INFO - Total time elapsed=3060s; Next event in=540s -> sample_1
+2026-03-31 11:30:31,148 - INFO - Total time elapsed=3120s; Next event in=480s -> sample_1
+2026-03-31 11:30:31,151 - INFO - Total time elapsed=3180s; Next event in=420s -> sample_1
+2026-03-31 11:30:31,153 - INFO - Total time elapsed=3240s; Next event in=360s -> sample_1
+2026-03-31 11:30:31,158 - INFO - Total time elapsed=3300s; Next event in=300s -> sample_1
+2026-03-31 11:30:31,162 - INFO - Total time elapsed=3360s; Next event in=240s -> sample_1
+2026-03-31 11:30:31,162 - INFO - Total time elapsed=3420s; Next event in=180s -> sample_1
+2026-03-31 11:30:31,169 - INFO - Total time elapsed=3480s; Next event in=120s -> sample_1
+2026-03-31 11:30:31,173 - INFO - Total time elapsed=3540s; Next event in=60s -> sample_1
+2026-03-31 11:30:31,175 - INFO - 
+[TRIGGER] create_samples_and_measure for sample_1 at elapsed 3600s (target 3600.0s)
+2026-03-31 11:30:31,175 - INFO - 
+Transferring sample: sample_1 to wellplate at wells 7 to 7 (1 replicates)
+2026-03-31 11:30:31,179 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:31,179 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,179 - DEBUG - Opening gripper
+2026-03-31 11:30:31,179 - DEBUG - Closing gripper
+2026-03-31 11:30:31,179 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,179 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:31,179 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,179 - DEBUG - Opening gripper
+2026-03-31 11:30:31,179 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:31,182 - INFO - Moving vial sample_1 to clamp: 0
+2026-03-31 11:30:31,182 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:31,183 - DEBUG - Dropping off vial 6 at location clamp with index 0
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,184 - DEBUG - Selected small_tip for volume 0.198 mL
+2026-03-31 11:30:31,184 - INFO - Getting small_tip (pipet number 20) from rack: small_tip_rack_1
+2026-03-31 11:30:31,190 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:31,190 - INFO - Moving vial sample_1 to safe pipetting location
+2026-03-31 11:30:31,192 - INFO - Vial 6 already at clamp index 0, no move needed
+2026-03-31 11:30:31,194 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:31,196 - INFO - Pipetting from vial sample_1, amount: 0.150 mL
+2026-03-31 11:30:31,196 - INFO - Additional volume from calibration, amount: -0.002 mL
+2026-03-31 11:30:31,198 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,198 - DEBUG - Aspirating 0.479 mL then waiting 0 s
+2026-03-31 11:30:31,198 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,198 - DEBUG - Aspirating 0.148 mL then waiting 2.5571428571428574 s
+2026-03-31 11:30:31,198 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated aspirate_speed=10 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated dispense_speed=11 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated aspirate_wait_time=2.5571428571428574 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated dispense_wait_time=1.5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated retract_speed=5 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated blowout_vol=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated post_asp_air_vol=0.05 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated overaspirate_vol=-0.002365551653571426 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated post_retract_wait_time=0.0 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Using calibrated pre_asp_air_vol=0.4785714285714286 for 2MeTHF at 0.150mL
+2026-03-31 11:30:31,202 - DEBUG - Adjusting pump 0 speed to 11
+2026-03-31 11:30:31,202 - INFO - Transferring 0.150 mL into well #7 of quartz
+2026-03-31 11:30:31,202 - DEBUG - Dispensing 0.676 mL then waiting 1.5 s
+2026-03-31 11:30:31,202 - INFO - Removing pipet
+2026-03-31 11:30:31,204 - INFO - Moving vial sample_1 to heater: 0
+2026-03-31 11:30:31,204 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:31,205 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:31,207 - DEBUG - Dropping off vial 6 at location heater with index 0
+2026-03-31 11:30:31,207 - INFO - Grabbing wellplate from location: lid_storage
+2026-03-31 11:30:31,208 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:31,208 - DEBUG - Opening gripper
+2026-03-31 11:30:31,208 - DEBUG - Closing gripper
+2026-03-31 11:30:31,208 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:31,208 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:31,208 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,208 - DEBUG - Opening gripper
+2026-03-31 11:30:31,208 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,211 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\300_900_sweep.prt
+2026-03-31 11:30:31,211 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID'
+2026-03-31 11:30:31,211 - INFO - Moving robot to home position
+2026-03-31 11:30:31,211 - INFO - Moving wellplate 0 to Cytation
+2026-03-31 11:30:31,211 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:31,211 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:31,211 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,211 - DEBUG - Opening gripper
+2026-03-31 11:30:31,211 - DEBUG - Closing gripper
+2026-03-31 11:30:31,211 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,211 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-03-31 11:30:31,211 - INFO - Releasing wellplate at location: cytation_tray
+2026-03-31 11:30:31,213 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,213 - DEBUG - Opening gripper
+2026-03-31 11:30:31,213 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:31,213 - INFO - Moving wellplate 0 back from Cytation
+2026-03-31 11:30:31,213 - DEBUG - Using robot plate type 'quartz' -> Cytation plate type '96 QUARTZ LID' for CarrierIn
+2026-03-31 11:30:31,213 - INFO - Grabbing wellplate from location: cytation_tray
+2026-03-31 11:30:31,213 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,213 - DEBUG - Opening gripper
+2026-03-31 11:30:31,213 - DEBUG - Closing gripper
+2026-03-31 11:30:31,213 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68325, 'z': 0}
+2026-03-31 11:30:31,214 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-03-31 11:30:31,214 - INFO - Releasing wellplate at location: pipetting_area
+2026-03-31 11:30:31,214 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,214 - DEBUG - Opening gripper
+2026-03-31 11:30:31,214 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,214 - DEBUG - Moving North Track to home position
+2026-03-31 11:30:31,214 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-03-31 11:30:31,214 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-03-31 11:30:31,214 - INFO - Simulation mode: Would save data for well index 7
+2026-03-31 11:30:31,214 - INFO - Used wells so far: [0, 1, 2, 3, 4, 5, 6, 7]
+2026-03-31 11:30:31,215 - INFO - Moving robot to home position
+2026-03-31 11:30:31,216 - INFO - Returning vial sample_1 to home location: main_8mL_rack index 1
+2026-03-31 11:30:31,217 - INFO - Moving vial sample_1 to main_8mL_rack: 1
+2026-03-31 11:30:31,217 - DEBUG - Grabbing vial 6 with index 6
+2026-03-31 11:30:31,217 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 1
+2026-03-31 11:30:31,217 - INFO - Moving robot to home position
+2026-03-31 11:30:31,217 - INFO - 
+Washing wellplate wells: [0, 1, 2, 3, 4, 5, 6, 7]
+2026-03-31 11:30:31,220 - INFO - Grabbing wellplate from location: pipetting_area
+2026-03-31 11:30:31,221 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,221 - DEBUG - Opening gripper
+2026-03-31 11:30:31,221 - DEBUG - Closing gripper
+2026-03-31 11:30:31,221 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131750, 'z': 75000}
+2026-03-31 11:30:31,221 - INFO - Releasing wellplate at location: lid_storage
+2026-03-31 11:30:31,221 - DEBUG - No waypoint locations provided, skipping path movement
+2026-03-31 11:30:31,221 - DEBUG - Opening gripper
+2026-03-31 11:30:31,221 - DEBUG - Updated gripper location to: lid_storage at position {'x': 60325, 'z': 75000}
+2026-03-31 11:30:31,222 - INFO - Setting home location of waste_0 to 4 for safe pipetting
+2026-03-31 11:30:31,224 - INFO - Moving vial waste_0 to main_8mL_rack: 4
+2026-03-31 11:30:31,224 - DEBUG - Grabbing vial 9 with index 9
+2026-03-31 11:30:31,227 - DEBUG - Dropping off vial 9 at location main_8mL_rack with index 4
+2026-03-31 11:30:31,228 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,228 - INFO - Getting small_tip (pipet number 21) from rack: small_tip_rack_1
+2026-03-31 11:30:31,228 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 0 of type quartz
+2026-03-31 11:30:31,229 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,229 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,230 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:31,231 - INFO - Moving vial waste_0 to safe pipetting location
+2026-03-31 11:30:31,233 - INFO - Moving vial waste_0 to clamp: 0
+2026-03-31 11:30:31,233 - DEBUG - Grabbing vial 9 with index 9
+2026-03-31 11:30:31,233 - DEBUG - Dropping off vial 9 at location clamp with index 0
+2026-03-31 11:30:31,233 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:31,233 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,233 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,233 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,233 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,233 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 1 of type quartz
+2026-03-31 11:30:31,233 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,233 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,233 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,240 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,241 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,241 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,242 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 2 of type quartz
+2026-03-31 11:30:31,242 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,242 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,244 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,245 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,246 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,246 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,246 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 3 of type quartz
+2026-03-31 11:30:31,246 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,246 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,246 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,248 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,248 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,248 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,248 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 4 of type quartz
+2026-03-31 11:30:31,249 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,249 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,250 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,250 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,252 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,252 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,252 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 5 of type quartz
+2026-03-31 11:30:31,252 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,252 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,253 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,254 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,254 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,254 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,254 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 6 of type quartz
+2026-03-31 11:30:31,254 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,254 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,254 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,257 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,258 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,258 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,258 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 7 of type quartz
+2026-03-31 11:30:31,258 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,258 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,260 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,261 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,262 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,262 - INFO - Removing pipet
+2026-03-31 11:30:31,264 - INFO - Returning vial waste_0 to home location: main_8mL_rack index 31
+2026-03-31 11:30:31,265 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:31,266 - INFO - Moving vial waste_0 to main_8mL_rack: 31
+2026-03-31 11:30:31,267 - DEBUG - Grabbing vial 9 with index 9
+2026-03-31 11:30:31,268 - DEBUG - Dropping off vial 9 at location main_8mL_rack with index 31
+2026-03-31 11:30:31,268 - INFO - 
+Solvent wash completed.
+2026-03-31 11:30:31,269 - INFO - Setting home location of waste_0 to 4 for safe pipetting
+2026-03-31 11:30:31,271 - INFO - Moving vial waste_0 to main_8mL_rack: 4
+2026-03-31 11:30:31,271 - DEBUG - Grabbing vial 9 with index 9
+2026-03-31 11:30:31,272 - DEBUG - Dropping off vial 9 at location main_8mL_rack with index 4
+2026-03-31 11:30:31,274 - INFO - Setting home location of acetone to 5 for safe pipetting
+2026-03-31 11:30:31,275 - INFO - Moving vial acetone to main_8mL_rack: 5
+2026-03-31 11:30:31,275 - DEBUG - Grabbing vial 8 with index 8
+2026-03-31 11:30:31,278 - DEBUG - Dropping off vial 8 at location main_8mL_rack with index 5
+2026-03-31 11:30:31,279 - DEBUG - Selected large_tip for volume 0.760 mL
+2026-03-31 11:30:31,279 - INFO - Getting large_tip (pipet number 2) from rack: large_tip_rack_1
+2026-03-31 11:30:31,280 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:31,280 - INFO - Moving vial acetone to safe pipetting location
+2026-03-31 11:30:31,283 - INFO - Moving vial acetone to clamp: 0
+2026-03-31 11:30:31,283 - DEBUG - Grabbing vial 8 with index 8
+2026-03-31 11:30:31,284 - DEBUG - Dropping off vial 8 at location clamp with index 0
+2026-03-31 11:30:31,284 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:31,284 - INFO - Pipetting from vial acetone, amount: 0.760 mL
+2026-03-31 11:30:31,284 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-31 11:30:31,290 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,290 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,290 - DEBUG - Aspirating 0.760 mL then waiting 0.0 s
+2026-03-31 11:30:31,290 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,290 - INFO - Transferring 0.190 mL into well #0 of 96 WELL PLATE
+2026-03-31 11:30:31,290 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,290 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,290 - INFO - Transferring 0.190 mL into well #1 of 96 WELL PLATE
+2026-03-31 11:30:31,290 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,290 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,291 - INFO - Transferring 0.190 mL into well #2 of 96 WELL PLATE
+2026-03-31 11:30:31,291 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,291 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,291 - INFO - Transferring 0.190 mL into well #3 of 96 WELL PLATE
+2026-03-31 11:30:31,291 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,292 - DEBUG - Selected large_tip for volume 0.760 mL
+2026-03-31 11:30:31,294 - INFO - Pipetting from vial acetone, amount: 0.760 mL
+2026-03-31 11:30:31,294 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-03-31 11:30:31,296 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,296 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,296 - DEBUG - Aspirating 0.760 mL then waiting 0.0 s
+2026-03-31 11:30:31,296 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,296 - INFO - Transferring 0.190 mL into well #4 of 96 WELL PLATE
+2026-03-31 11:30:31,296 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,296 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,296 - INFO - Transferring 0.190 mL into well #5 of 96 WELL PLATE
+2026-03-31 11:30:31,296 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,296 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,297 - INFO - Transferring 0.190 mL into well #6 of 96 WELL PLATE
+2026-03-31 11:30:31,297 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,297 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,297 - INFO - Transferring 0.190 mL into well #7 of 96 WELL PLATE
+2026-03-31 11:30:31,297 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,297 - INFO - Mixing well 0 in well plate of type 96 WELL PLATE with volume 0.190 mL for 2 repeats
+2026-03-31 11:30:31,297 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,297 - INFO - Switching from large_tip to small_tip
+2026-03-31 11:30:31,297 - INFO - Removing pipet
+2026-03-31 11:30:31,298 - INFO - Getting small_tip (pipet number 22) from rack: small_tip_rack_1
+2026-03-31 11:30:31,298 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 0 of type 96 WELL PLATE
+2026-03-31 11:30:31,298 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,298 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,298 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,298 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 0 of type 96 WELL PLATE
+2026-03-31 11:30:31,298 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,298 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,298 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,298 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 0 of type 96 WELL PLATE
+2026-03-31 11:30:31,298 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,298 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,298 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,298 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 0 of type 96 WELL PLATE
+2026-03-31 11:30:31,300 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,300 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,300 - INFO - Mixing well 1 in well plate of type 96 WELL PLATE with volume 0.190 mL for 2 repeats
+2026-03-31 11:30:31,300 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,300 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 1 of type 96 WELL PLATE
+2026-03-31 11:30:31,300 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,300 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,300 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,300 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 1 of type 96 WELL PLATE
+2026-03-31 11:30:31,300 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,300 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,300 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,301 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 1 of type 96 WELL PLATE
+2026-03-31 11:30:31,301 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,301 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,301 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,301 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 1 of type 96 WELL PLATE
+2026-03-31 11:30:31,301 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,301 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,301 - INFO - Mixing well 2 in well plate of type 96 WELL PLATE with volume 0.190 mL for 2 repeats
+2026-03-31 11:30:31,301 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,301 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 2 of type 96 WELL PLATE
+2026-03-31 11:30:31,301 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,301 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,301 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,301 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 2 of type 96 WELL PLATE
+2026-03-31 11:30:31,301 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,301 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,301 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,301 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 2 of type 96 WELL PLATE
+2026-03-31 11:30:31,302 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,302 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,302 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,302 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 2 of type 96 WELL PLATE
+2026-03-31 11:30:31,302 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,302 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,302 - INFO - Mixing well 3 in well plate of type 96 WELL PLATE with volume 0.190 mL for 2 repeats
+2026-03-31 11:30:31,302 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,302 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 3 of type 96 WELL PLATE
+2026-03-31 11:30:31,302 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,302 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,302 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,302 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 3 of type 96 WELL PLATE
+2026-03-31 11:30:31,302 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,302 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,302 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,303 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 3 of type 96 WELL PLATE
+2026-03-31 11:30:31,303 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,303 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,303 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,303 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 3 of type 96 WELL PLATE
+2026-03-31 11:30:31,303 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,303 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,303 - INFO - Mixing well 4 in well plate of type 96 WELL PLATE with volume 0.190 mL for 2 repeats
+2026-03-31 11:30:31,303 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,303 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 4 of type 96 WELL PLATE
+2026-03-31 11:30:31,303 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,303 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,303 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,303 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 4 of type 96 WELL PLATE
+2026-03-31 11:30:31,303 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,303 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,303 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,304 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 4 of type 96 WELL PLATE
+2026-03-31 11:30:31,304 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,304 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,304 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,304 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 4 of type 96 WELL PLATE
+2026-03-31 11:30:31,304 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,304 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,304 - INFO - Mixing well 5 in well plate of type 96 WELL PLATE with volume 0.190 mL for 2 repeats
+2026-03-31 11:30:31,304 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,304 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 5 of type 96 WELL PLATE
+2026-03-31 11:30:31,304 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,304 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,304 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,304 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 5 of type 96 WELL PLATE
+2026-03-31 11:30:31,304 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,304 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,304 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,305 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 5 of type 96 WELL PLATE
+2026-03-31 11:30:31,305 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,305 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,305 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,305 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 5 of type 96 WELL PLATE
+2026-03-31 11:30:31,305 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,305 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,305 - INFO - Mixing well 6 in well plate of type 96 WELL PLATE with volume 0.190 mL for 2 repeats
+2026-03-31 11:30:31,305 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,305 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 6 of type 96 WELL PLATE
+2026-03-31 11:30:31,305 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,305 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,306 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,306 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 6 of type 96 WELL PLATE
+2026-03-31 11:30:31,306 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,306 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,306 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,306 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 6 of type 96 WELL PLATE
+2026-03-31 11:30:31,307 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,307 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,307 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,307 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 6 of type 96 WELL PLATE
+2026-03-31 11:30:31,307 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,307 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,307 - INFO - Mixing well 7 in well plate of type 96 WELL PLATE with volume 0.190 mL for 2 repeats
+2026-03-31 11:30:31,307 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,307 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 7 of type 96 WELL PLATE
+2026-03-31 11:30:31,307 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,307 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,307 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,307 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 7 of type 96 WELL PLATE
+2026-03-31 11:30:31,307 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,307 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,308 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,308 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 7 of type 96 WELL PLATE
+2026-03-31 11:30:31,308 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,308 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,308 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,308 - DEBUG - Pipetting dispensing 0.190 mL from well plate index 7 of type 96 WELL PLATE
+2026-03-31 11:30:31,308 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,308 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,308 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,308 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 0 of type 96 WELL PLATE
+2026-03-31 11:30:31,308 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,308 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,310 - DEBUG - Vial move required for pipetting
+2026-03-31 11:30:31,311 - INFO - Moving vial waste_0 to safe pipetting location
+2026-03-31 11:30:31,311 - DEBUG - Clamp occupied by vial 8, returning it home first
+2026-03-31 11:30:31,312 - INFO - Returning vial acetone to home location: main_8mL_rack index 5
+2026-03-31 11:30:31,312 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:31,315 - INFO - Moving vial acetone to main_8mL_rack: 5
+2026-03-31 11:30:31,315 - DEBUG - Grabbing vial 8 with index 8
+2026-03-31 11:30:31,317 - DEBUG - Dropping off vial 8 at location main_8mL_rack with index 5
+2026-03-31 11:30:31,318 - INFO - Moving vial waste_0 to clamp: 0
+2026-03-31 11:30:31,318 - DEBUG - Grabbing vial 9 with index 9
+2026-03-31 11:30:31,319 - DEBUG - Dropping off vial 9 at location clamp with index 0
+2026-03-31 11:30:31,319 - DEBUG - Removing cap from clamped vial
+2026-03-31 11:30:31,319 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,323 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,323 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,323 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,324 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 1 of type 96 WELL PLATE
+2026-03-31 11:30:31,324 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,324 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,325 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,327 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,327 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,328 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,328 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 2 of type 96 WELL PLATE
+2026-03-31 11:30:31,328 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,328 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,328 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,331 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,331 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,331 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,331 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 3 of type 96 WELL PLATE
+2026-03-31 11:30:31,332 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,332 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,333 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,333 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,334 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,334 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,334 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 4 of type 96 WELL PLATE
+2026-03-31 11:30:31,334 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,334 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,335 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,336 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,336 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,336 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,336 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 5 of type 96 WELL PLATE
+2026-03-31 11:30:31,336 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,336 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,336 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,340 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,340 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,340 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,341 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 6 of type 96 WELL PLATE
+2026-03-31 11:30:31,341 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,341 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,342 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,345 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,345 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,345 - DEBUG - Selected small_tip for volume 0.190 mL
+2026-03-31 11:30:31,345 - DEBUG - Pipetting aspirating 0.190 mL from well plate index 7 of type 96 WELL PLATE
+2026-03-31 11:30:31,345 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,345 - DEBUG - Aspirating 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,345 - INFO - Pipetting into vial waste_0, amount: 0.190 mL
+2026-03-31 11:30:31,345 - DEBUG - Adjusting pump 0 speed to 10
+2026-03-31 11:30:31,345 - DEBUG - Dispensing 0.190 mL then waiting 0.0 s
+2026-03-31 11:30:31,345 - INFO - Removing pipet
+2026-03-31 11:30:31,345 - DEBUG - Recapping clamped vial
+2026-03-31 11:30:31,352 - INFO - Returning vial acetone to home location: main_8mL_rack index 30
+2026-03-31 11:30:31,352 - INFO - Moving vial acetone to main_8mL_rack: 30
+2026-03-31 11:30:31,353 - DEBUG - Grabbing vial 8 with index 8
+2026-03-31 11:30:31,354 - DEBUG - Dropping off vial 8 at location main_8mL_rack with index 30
+2026-03-31 11:30:31,355 - INFO - Returning vial waste_0 to home location: main_8mL_rack index 31
+2026-03-31 11:30:31,358 - INFO - Moving vial waste_0 to main_8mL_rack: 31
+2026-03-31 11:30:31,358 - DEBUG - Grabbing vial 9 with index 9
+2026-03-31 11:30:31,361 - DEBUG - Dropping off vial 9 at location main_8mL_rack with index 31
+2026-03-31 11:30:31,361 - INFO - 
+Acetone wash completed.
+2026-03-31 11:30:31,362 - INFO - Moving robot to home position
+2026-03-31 11:30:31,362 - INFO - Final vial status:

@@ -117,7 +117,8 @@ class CalibrationExperiment:
         
     def _create_output_directory(self):
         """Create timestamped output directory."""
-        self.output_dir = Path(self.config.get_output_directory()) / f"run_{int(time.time())}"
+        liquid = self.config.get_liquid_name()
+        self.output_dir = Path(self.config.get_output_directory()) / f"run_{int(time.time())}_{liquid}"
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
     def _save_incremental_data(self):
@@ -222,10 +223,11 @@ class CalibrationExperiment:
                 
                 # Create DataFrame and save
                 df = pd.DataFrame(flattened_conditions)
-                incremental_path = self.output_dir / "optimal_conditions_incremental.csv"
+                liquid = self.config.get_liquid_name()
+                incremental_path = self.output_dir / f"optimal_conditions_{liquid}_incremental.csv"
                 df.to_csv(incremental_path, index=False)
                 
-                logger.info(f"[INCREMENTAL] Saved {len(df)} optimal conditions to optimal_conditions_incremental.csv")
+                logger.info(f"[INCREMENTAL] Saved {len(df)} optimal conditions to optimal_conditions_{liquid}_incremental.csv")
                 
         except Exception as e:
             logger.warning(f"Failed to save incremental optimal conditions (non-critical): {e}")
@@ -1727,17 +1729,17 @@ class CalibrationExperiment:
                         }
                         optimal_conditions.append(optimal_dict)
             
-            # Generate visualizations
+            # Generate analysis insights first (needed for SHAP plots)
+            logger.info("Generating analysis insights...")
+            insights = analyze_calibration_experiment(trial_results, optimal_conditions, str(self.output_dir))
+
+            # Generate visualizations (pass insights for SHAP plot)
             logger.info("Generating calibration plots...")
-            generate_calibration_plots(trial_results, optimal_conditions, raw_measurements, str(self.output_dir))
+            generate_calibration_plots(trial_results, optimal_conditions, raw_measurements, str(self.output_dir), insights=insights)
             
             # Export clean CSV files
             logger.info("Exporting clean CSV files...")
-            export_clean_csvs(trial_results, optimal_conditions, raw_measurements, str(self.output_dir))
-            
-            # Generate analysis report
-            logger.info("Generating analysis insights...")
-            insights = analyze_calibration_experiment(trial_results, optimal_conditions, str(self.output_dir))
+            export_clean_csvs(trial_results, optimal_conditions, raw_measurements, str(self.output_dir), liquid=self.config.get_liquid_name())
             
             # Log summary of enhanced outputs
             plots_dir = self.output_dir / "plots"

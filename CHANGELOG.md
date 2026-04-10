@@ -1,15 +1,154 @@
 # Changelog
 
-## [CALIBRATION FIX] - 2026-03-27
+## [CRITICAL DOUBLE CONVERSION FIX] - 2026-04-08
 
-### BUG FIX: Adaptive correction used hardcoded overaspirate baseline
-- **FIXED**: `initial_overaspirate` in 3-stage adaptive correction was `parameters.overaspirate_vol if parameters else 0.004`, always defaulting to 0.004 mL when no explicit `parameters` were passed
-- **ROOT CAUSE**: Stage 1 pipetting uses `_get_optimized_parameters()` to load the real CSV-calibrated overaspirate, but `initial_overaspirate` never consulted the CSV — causing the Slack report's `Overaspirate: X → Y` to always show `0.004` as the start, and Stage 2/3 probes to be offset from the wrong anchor
-- **SOLUTION**: Moved `_get_optimized_parameters()` call to the top of the optimization block; `initial_overaspirate` now reads from `base_params.overaspirate_vol`, matching exactly what Stage 1 used; removed the duplicate call that was redundantly re-fetching the same params for Stage 3
+### CRITICAL BUG FIX: Double Unit Conversion in Ilya Workflow V2  
+- **FIXED**: Double conversion causing 50μL to become 0.05μL instead of 0.05mL
+- **ROOT CAUSE**: Line 299 already converts CSV μL→mL, but code assumed data was still in μL
+- **SEQUENCE**: CSV(50μL) → Line299(÷1000=0.05mL) → MyCode(÷1000=0.00005mL) → Display(0.05μL)
+- **SYMPTOM**: All volumes below 10μL minimum, all wells skipped during dispensing
+- **SOLUTION**: Treat data as mL after line 299, convert mL→μL only for display/validation
+- **IMPACT**: 50, 100, 150, 200μL volumes now correctly processed as 0.05, 0.1, 0.15, 0.2mL
+- **FILES AFFECTED**: `workflows/ilya_workflow_v2.py` lines 110-112, 155-157, 163-165, 360-362
 
-### BUG FIX: Near-zero dispensing not caught by error check
-- **FIXED**: Zero-volume checks used strict `== 0` equality, which only fires when hardware returns exactly 0.0 (scale disconnected); a nearly-empty dispense like 0.1uL of a 20uL target passed through silently
-- **SOLUTION**: Replaced `== 0` with `< 10% of target volume * density` at all three stages; error message now reports the actual measured volume for diagnosis
+## [SIMULATION PERFORMANCE FIX] - 2026-04-08
+
+### BUG FIX: Simulation Mode Timing Issues
+- **FIXED**: 5-second delays in simulation mode during pipetting operations
+- **ROOT CAUSE**: Typo `self.SIMULATE` (uppercase) instead of `self.simulate` (lowercase) in post_retract_wait_time check
+- **RESULT**: AttributeError caused simulation bypass to fail, executing full hardware wait times in simulation
+- **SOLUTION**: Corrected simulation attribute reference to proper lowercase `self.simulate`  
+- **IMPACT**: Simulation now runs at proper speed without unnecessary delays
+- **FILES AFFECTED**: `North_Safe.py` line 2125 (post_retract_wait_time simulation bypass)
+
+## [CRITICAL CALIBRATION FIX] - 2026-04-08
+
+### CRITICAL BUG FIX: Embedded Calibration Corruption Prevention
+- **FIXED**: Calibration system that saved Stage 3 parameters even when accuracy got worse
+- **ENHANCED**: Now compares ALL THREE stages and picks the overall best performer  
+- **FIXED**: CSV measurement data now updated with fresh measurements from optimization process
+- **ROOT CAUSE**: Blind `_update_calibration_csv()` call with no performance validation + stale measurement data
+- **SOLUTION**: Smart stage comparison logic + fresh measurement data replacement from winning stage  
+- **PROTECTION**: System preserves good calibration AND uses only matched parameter-measurement pairs
+- **INTELLIGENCE**: Stage 2 (crossing strategy) can now be selected if it outperforms interpolation
+- **DATA INTEGRITY**: Measurement fields updated with actual measured volumes from optimization process
+- **EVIDENCE**: Previously saved 6.3µL error parameters over existing 1.4µL tolerance parameters
+- **VALIDATION**: Comprehensive stage ranking with fresh measurement data from best performing stage
+- **REPORTING**: Enhanced Slack notifications show winning stage and APPLIED/REJECTED status
+- **IMPACT**: Prevents calibration degradation AND ensures optimal parameters with fresh measurement data
+
+### FILES MODIFIED  
+- `pipetting_data/embedded_calibration_validation.py`: Added conditional update logic and enhanced validation
+
+## [VIAL GUI ENHANCEMENTS] - 2026-04-02
+
+### ENHANCEMENT: Vial GUI "Empty Vial" Feature
+- **ADDED**: "Empty Vial" button to vial editing dialog for quick volume reset
+- **FUNCTIONALITY**: Single click sets volume to 0 and closes dialog (faster than manual entry)
+- **UI STYLING**: Yellow background button placed next to "Remove Vial" for easy access
+- **WORKFLOW**: Improves efficiency when marking vials as empty during experiments
+
+### BUG FIX: Reset Locations Button Not Working
+- **FIXED**: "Return All Home" button now properly refreshes the GUI display
+- **ROOT CAUSE**: Widget refresh method wasn't properly clearing and reloading vial positions
+- **SOLUTION**: Enhanced `_reload_all_widgets()` with proper widget cleanup and grid reset
+- **DEBUGGING**: Added comprehensive logging for troubleshooting reset operations
+- **IMPACT**: Digital vial location reset now visually updates all rack grids correctly
+
+### FILES MODIFIED
+- `vial_manager_gui.py`: Added empty vial feature and fixed reset locations functionality
+
+## [CRITICAL TIP SELECTION BUG FIXES] - 2026-04-02
+
+### ENHANCEMENT: Simplified Water 200µL Calibration Script  
+- **SIMPLIFIED**: Batch calibration automation script to focus solely on water at 200 µL
+- **REMOVED**: Multi-liquid calibration loop, now runs single water calibration only
+- **UPDATED**: UI messages and titles to reflect water-specific calibration purpose
+- **MAINTAINED**: All core functionality (config modification, vial swapping, calibration + validation)
+- **STREAM-LINED**: Single calibration run instead of batch processing multiple liquids
+- **FILES CHANGED**: `calibration_modular_v2/batch_calibration_automation.py`
+
+### CRITICAL BUG FIX: XY Movement Gripper Angle Preservation 
+- **FIXED**: Gripper unwantedly rotating during XY movements in Enhanced SP program
+- **ROOT CAUSE**: IK solver choosing completely different gripper angles to reach target XY position
+- **EXAMPLE**: 0.3mm Y movement caused 905 count gripper rotation (2552→1647 counts)
+- **SOLUTION**: Preserve current gripper angle during XY movements, only adjust elbow and shoulder
+- **METHOD**: Use `current_gripper_rad` instead of IK-calculated gripper angle in target position
+- **IMPACT**: XY movements now keep gripper orientation stable, only adjusting arm joints as intended
+- **FILES FIXED**: Enhanced SP arm position program `_move_xy_delta()` method
+
+### ENHANCEMENT: Added Gripper Rotation Controls to Enhanced SP Program
+- **ADDED**: Gripper rotation controls to Enhanced SP arm position program UI
+- **NEW BUTTONS**: "🔄 CCW" and "↻ CW" for counter-clockwise and clockwise rotation
+- **METHODS**: `move_gripper_ccw()` and `move_gripper_cw()` with safety bounds checking
+- **SAFETY**: Rotation respects GRIPPER_MIN_RAD and GRIPPER_MAX_RAD limits (-6.28 to 6.28 rad)
+- **STEP SIZE**: Uses configurable `move_increment_rad` (default 0.05 rad = ~2.9°)
+- **DISPLAY**: Gripper angle shown in both radians and degrees in position display
+- **UI LAYOUT**: Added rotation row between gripper open/close and clamp controls
+
+### CRITICAL BUG FIX: Color Mixing Workflow Tip Selection Algorithm Error
+- **FIXED**: Excessive tip switching (18 switches during experiment) caused by wrong function usage
+- **ROOT CAUSE**: Color mixing workflow incorrectly used `pipet_from_wellplate(..., aspirate=False)` instead of `dispense_into_wellplate()`
+- **MECHANISM**: `aspirate_from_vial()` selects large_tip (0.221 mL total with overvolumes) → `pipet_from_wellplate()` selects small_tip (0.200 mL base only) → immediate tip switching
+- **SOLUTION**: Changed all dispensing operations from `pipet_from_wellplate(..., aspirate=False)` to `dispense_into_wellplate()`
+- **IMPACT**: Eliminated unnecessary tip selection conflicts during wells 54-65 and 84-89 processing
+
+### CRITICAL BUG FIX: Tip Selection Algorithm Overaspirate Volume Issue
+- **FIXED**: Overaspirate volume incorrectly included in tip selection causing unnecessary large_tip usage
+- **ROOT CAUSE**: Tip selection included overaspirate_vol (0.010 mL) making 200 µL → 221 µL total, exceeding small_tip capacity (200 µL)
+- **SOLUTION**: Removed overaspirate_vol from tip selection calculation: `total_tip_vol = post_asp_air_vol + amount_mL` 
+- **REASONING**: Overaspirate is for liquid handling precision, not tip capacity. Post-aspirate air gap still considered.
+- **IMPACT**: 200 µL now correctly selects small_tip (0.200 + 0.011 air = 0.211 mL < 0.20 mL threshold)
+- **FILES FIXED**: `North_Safe.py` (line 2039)
+- **FILES FIXED**: `workflows/color_mixing.py` (3 instances in main loop + mix_wells function)
+- **ARCHITECTURE ALIGNED**: Color mixing now uses same dispensing pattern as other workflows (aspirate_from_vial → dispense_into_wellplate)
+
+## [CRITICAL X-Y MOVEMENT BUG FIXES] - 2026-03-31
+
+### CRITICAL BUG FIX: Motor Fault Prevention in X-Y Movement
+- **FIXED**: Motor faults caused by massive unintended movements during small X-Y adjustments
+- **ROOT CAUSE 1**: Wrong parameter order in forward kinematics call - `n9_fk(gripper, shoulder, elbow)` instead of correct `n9_fk(gripper, elbow, shoulder)`
+- **ROOT CAUSE 2**: IK function returns radians despite documentation claiming counts, causing unit conversion errors
+- **SOLUTION 1**: Corrected FK parameter order in `update_display()` to properly calculate current X-Y position
+- **SOLUTION 2**: Added automatic unit detection and conversion for IK results (radians → counts)
+- **SAFETY ENHANCEMENT**: Added movement safety limits (2000 cts per axis, 5000 cts total) to abort unsafe movements
+- **IMPACT**: Small 2mm movements now execute safely instead of attempting 38,000+ count dangerous movements
+- **PREVENTION**: Robot aborts movements exceeding safety limits instead of triggering motor controller faults
+
+## [WORKFLOW TESTER IMPROVEMENTS] - 2026-03-30
+
+### MAJOR ENHANCEMENT: Flow-Based Operation Testing 
+- **REVAMPED**: `tests/surfactant_workflow_tester.py` - Complete redesign from predefined test cycles to flow-based button operations
+- **NEW ARCHITECTURE**: Individual operation buttons organized by workflow stage (Source → Transfer → Liquid → Analysis → Disposal)  
+- **PROPER IMPLEMENTATIONS**: Updated all functions to match actual surfactant workflow patterns and API usage
+- **ENHANCED VIAL HANDLING**: Use real vial names ("water", "SDS_stock", "TTAB_stock", "pyrene_DMSO") instead of placeholders
+- **SMART POSITIONING**: Implements idempotent track positioning with status checking (only moves if needed)
+- **PROPER LIQUID HANDLING**: Correct `aspirate_from_vial` and `dispense_into_wellplate` usage with proper liquid types
+- **TIP MANAGEMENT**: Proper pipet conditioning, removal, and volume tracking
+- **ATOMIC OPERATIONS**: Cytation operations follow proper carrier in/out patterns with error recovery
+- **WORKFLOW STATE TRACKING**: Real-time display of vial, wellplate position, and pipet status
+- **EXAMPLE FLOWS**: "Source → Pipetting → Waste" or "Analysis → Cytation → Read → Return" button sequences
+- **IMPROVED ERROR HANDLING**: Comprehensive simulation mode support and safety checks
+
+## [COMPONENT TEST GUI] - 2026-03-30
+
+### NEW FEATURE: Workflow Component Testing GUI
+- **ADDED**: `tests/surfactant_workflow_tester.py` - Comprehensive GUI for testing individual workflow components
+- **TESTING CAPABILITIES**: Wellplate movement, robot operations, Cytation protocols, and vial manipulation
+- **REPETITIVE TESTING**: Run any operation multiple times with configurable delays to test consistency
+- **REAL-TIME MONITORING**: Progress tracking, success/error counters, and detailed test logs
+- **DUAL MODE SUPPORT**: Both simulation and real hardware testing modes
+- **SAFETY FEATURES**: Emergency stop functionality and error isolation per test iteration
+- **USE CASE**: Validate equipment reliability before running critical experiments
+
+## [TRIANGLE RELIABILITY INDEXING FIX] - 2026-03-27
+
+### CRITICAL BUG FIX: Delaunay Triangle Reliability Mask Index Mismatch
+- **FIXED**: Triangle recommender filtering center triangles due to index mismatch between data and reliability mask
+- **ROOT CAUSE**: Workflow passed all 48 points to recommender but triangle scorer internally filtered to 25 experimental points, causing index misalignment
+- **SOLUTION**: Filter data to experimental points BEFORE passing to recommender, eliminating internal filtering and index confusion
+- **IMPACT**: Center triangles now properly evaluated instead of being incorrectly filtered as "unreliable"
+- **ARCHITECTURAL IMPROVEMENT**: Cleaner separation - recommender receives only the data it needs, no internal filtering required
 
 ## [VIAL POSITIONING FIX] - 2026-03-18
 

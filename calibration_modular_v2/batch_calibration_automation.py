@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Batch Calibration Automation Script
+Water 200µL Calibration Script
 
-Automates calibration of multiple liquids by:
+Simplified batch calibration for water at 200 µL only.
+Automates calibration by:
 1. Modifying config YAML files (liquid type, volumes)
-2. Swapping vial names in CSV (target -> liquid_source_0, old -> finished)
+2. Swapping vial names in CSV (water -> liquid_source_0, old -> finished)
 3. Running calibration and validation in sequence
-4. Looping through all target liquids
 
 Does NOT modify the core calibration programs.
 """
@@ -21,42 +21,14 @@ import glob
 from datetime import datetime
 import shutil
 
-# Configuration - Edit this list for your liquids to calibrateasd
+# Configuration - Edit this list for your liquids to calibrate
 LIQUIDS_TO_CALIBRATE = [
- 
-#  {
-#         'liquid_name': '2MeTHF',
-#         'target_vial': '2MeTHF',
-#         'volume_targets_ml': [0.120, 0.100, 0.080],
-#         'validation_volumes_ml': [0.120, 0.100, 0.080],
-#         # smalltip_2MeTHF_params from SERENA_CONSTANTS
-#         'fixed_parameters': {
-#             'pre_asp_air_vol': 0.5,
-#             'post_asp_air_vol': 0.05,
-#             'asp_disp_cycles': 0,
-#         }
-#     },
-#  
     {
         'liquid_name': 'water',
         'target_vial': 'water',
-        'volume_targets_ml': [0.180, 0.100, 0.050],
-        'validation_volumes_ml': [0.150, 0.100, 0.070]
-
+        'volume_targets_ml': [0.200],
+        'validation_volumes_ml': [0.200],
     },
-    {
-    'liquid_name': 'ethanol',
-    'target_vial': 'ethanol',
-    'volume_targets_ml': [ 0.180, 0.100, 0.050],
-    'validation_volumes_ml': [0.150, 0.100, 0.070]
-},
-  {
-    'liquid_name': 'ethanol',
-    'target_vial': 'ethanol',
-    'volume_targets_ml': [ 0.800, 0.500, 0.200],
-    'validation_volumes_ml': [ 0.800, 0.500, 0.200]
-},
-
 ]
 
 # File paths - assumes running from main utoronto_demo directory (like other workflows)
@@ -178,15 +150,19 @@ class BatchCalibrationAutomator:
         # latest_folder is like: "calibration_modular_v2/output/run_1770420779"
         # We want: "output/run_1770420779/optimal_conditions.csv"
         relative_folder = latest_folder.replace("calibration_modular_v2/", "").replace("calibration_modular_v2\\", "")
-        optimal_conditions_path = os.path.join(relative_folder, "optimal_conditions.csv").replace("\\", "/")
+        # Find the optimal_conditions_*.csv file (name includes liquid)
+        import glob as _glob
+        oc_matches = _glob.glob(os.path.join(latest_folder, "optimal_conditions_*.csv"))
+        oc_filename = os.path.basename(oc_matches[0]) if oc_matches else "optimal_conditions.csv"
+        optimal_conditions_path = os.path.join(relative_folder, oc_filename).replace("\\", "/")
         
-        print(f"    Checking for optimal_conditions.csv at: {latest_folder}/optimal_conditions.csv")
+        print(f"    Checking for {oc_filename} at: {latest_folder}/{oc_filename}")
         print(f"    Will write to config as: {optimal_conditions_path}")
         
         # Check if the file actually exists (using full path)
-        full_optimal_conditions_path = os.path.join(latest_folder, "optimal_conditions.csv")
+        full_optimal_conditions_path = os.path.join(latest_folder, oc_filename)
         if not os.path.exists(full_optimal_conditions_path):
-            print(f"    WARNING: optimal_conditions.csv not found at {full_optimal_conditions_path}")
+            print(f"    WARNING: {oc_filename} not found at {full_optimal_conditions_path}")
             # Try to list what files ARE in the directory
             try:
                 actual_files = os.listdir(latest_folder)
@@ -277,65 +253,60 @@ class BatchCalibrationAutomator:
             return False
     
     def run_batch_calibration(self):
-        """Main batch calibration loop."""
+        """Main water calibration at 200µL."""
         print("="*60)
-        print("BATCH CALIBRATION AUTOMATION")
+        print("WATER 200µL CALIBRATION")
         print("="*60)
-        print(f"Calibrating {len(LIQUIDS_TO_CALIBRATE)} liquids:")
-        for liquid in LIQUIDS_TO_CALIBRATE:
-            print(f"  - {liquid['liquid_name']} ({liquid['target_vial']})")
+        print("Calibrating water at 200 µL")
         print()
         
-        # Show GUI once for vial review before starting
-        self.show_vial_gui()
-
         try:
-            # Show GUI once for system setup before batch starts
+            # Show GUI once for system setup before calibration starts
             self.show_initial_gui()
             
             # Setup
             self.create_backups()
             self.load_original_files()
             
-            # Process each liquid
-            for i, liquid_config in enumerate(LIQUIDS_TO_CALIBRATE, 1):
-                print(f"\n[{i}/{len(LIQUIDS_TO_CALIBRATE)}] Processing {liquid_config['liquid_name']}...")
+            # Process water calibration
+            liquid_config = LIQUIDS_TO_CALIBRATE[0]  # Only water
+            print(f"Processing {liquid_config['liquid_name']} at {liquid_config['volume_targets_ml'][0]*1000:.0f} µL...")
+            
+            # Step 0: Restore original vials state before calibration
+            self.original_vials.to_csv(VIALS_CSV, index=False)
+            
+            # Step 1: Modify config file
+            self.modify_config_file(liquid_config)
+            
+            # Step 2: Swap vial names
+            self.modify_vials_csv(liquid_config['target_vial'])
+            
+            # Step 3: Run calibration
+            if not self.run_script(CALIBRATION_SCRIPT):
+                print(f"Calibration failed for {liquid_config['liquid_name']}")
+                return
                 
-                # Step 0: Restore original vials state before each iteration (enables vial reuse)
-                self.original_vials.to_csv(VIALS_CSV, index=False)
+            # Step 4: Update validation config (skip if optimal conditions not found)
+            if not self.update_validation_config():
+                print(f"Optimal conditions not found for {liquid_config['liquid_name']}, skipping validation...")
+                return
+            
+            # Step 5: Run validation
+            if not self.run_script(VALIDATION_SCRIPT):
+                print(f"Validation failed for {liquid_config['liquid_name']}")
                 
-                # Step 1: Modify config file
-                self.modify_config_file(liquid_config)
-                
-                # Step 2: Swap vial names
-                self.modify_vials_csv(liquid_config['target_vial'])
-                
-                # Step 3: Run calibration
-                if not self.run_script(CALIBRATION_SCRIPT):
-                    print(f"Calibration failed for {liquid_config['liquid_name']}, skipping validation...")
-                    continue
-                    
-                # Step 4: Update validation config (skip if optimal conditions not found)
-                if not self.update_validation_config():
-                    print(f"Optimal conditions not found for {liquid_config['liquid_name']}, skipping validation...")
-                    continue
-                
-                # Step 5: Run validation
-                if not self.run_script(VALIDATION_SCRIPT):
-                    print(f"Validation failed for {liquid_config['liquid_name']}")
-                    
-                print(f"  {liquid_config['liquid_name']} calibration cycle complete")
+            print(f"Water 200µL calibration cycle complete")
                 
         except KeyboardInterrupt:
-            print("\nBatch calibration interrupted by user")
+            print("\nWater calibration interrupted by user")
         except Exception as e:
-            print(f"ERROR: Batch calibration failed: {e}")
+            print(f"ERROR: Water calibration failed: {e}")
         finally:
             # Always restore original files
             self.restore_files()
             
         print("\n" + "="*60)
-        print("BATCH CALIBRATION COMPLETE")
+        print("WATER CALIBRATION COMPLETE")
         print("="*60)
 
 if __name__ == "__main__":

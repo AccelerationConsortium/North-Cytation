@@ -4775,12 +4775,18 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     else:
         raise ValueError(f"Invalid OPTIMIZE_METRIC: {OPTIMIZE_METRIC}. Must be 'turbidity', 'ratio', or 'both'")
     
-    data_for_recommender = experiment_data_df.copy()  # Don't modify original
+    # CLEAN FIX: Filter to experimental data FIRST - no more index mismatch!
+    if 'well_type' in experiment_data_df.columns:
+        data_for_recommender = experiment_data_df[experiment_data_df['well_type'] == 'experiment'].copy()
+        print(f"  Filtered to {len(data_for_recommender)} experimental points for recommender")
+    else:
+        data_for_recommender = experiment_data_df.copy()
+        print(f"  Using all {len(data_for_recommender)} data points for recommender")
     
-    # Create reliability mask for outputs (general approach for any number of outputs)
+    # Create reliability mask for outputs (now uses same experimental data)
     output_reliability = None
     if FILTER_UNRELIABLE_RATIOS and OPTIMIZE_METRIC in ['ratio', 'both']:
-        n_points = len(data_for_recommender)
+        n_points = len(data_for_recommender)  # Now this matches exactly!
         n_outputs = len(output_columns)
         output_reliability = np.ones((n_points, n_outputs), dtype=bool)  # Default: all reliable
         
@@ -4799,7 +4805,7 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
         n_unreliable_ratios = (~output_reliability[:, output_columns.index('ratio')] if 'ratio' in output_columns else 0)
         if isinstance(n_unreliable_ratios, np.ndarray):
             n_unreliable_ratios = n_unreliable_ratios.sum()
-        print(f"🔍 Created reliability mask: {n_unreliable_ratios}/{n_points} points have unreliable ratios")
+        print(f"🔍 Created reliability mask: {n_unreliable_ratios}/{n_points} experimental points have unreliable ratios")
     
     # Initialize the selected recommender algorithm
     if RECOMMENDER_TYPE == 'delaunay':
