@@ -3963,6 +3963,25 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid='SDS')
         refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid='SDS')
 
+        # Refill substocks (top up or skip based on REFILL_THRESHOLD_ML)
+        stock_solutions_needed = results['experiment_plan']['stock_solutions_needed']
+        dilution_recipes = [
+            {
+                'Vial_Name': s['vial_name'],
+                'Surfactant': s['surfactant'],
+                'Target_Conc_mM': s['target_concentration_mm'],
+                'Source_Vial': s['source_vial'],
+                'Source_Conc_mM': s['source_concentration_mm'],
+                'Source_Volume_mL': s['source_volume_ml'],
+                'Water_Volume_mL': s['water_volume_ml'],
+                'Final_Volume_mL': s['final_volume_ml']
+            }
+            for s in stock_solutions_needed if s['source_vial'] != 'Unknown'
+        ]
+        dilution_recipes.sort(key=lambda x: x['Target_Conc_mM'], reverse=True)
+        if dilution_recipes:
+            create_substocks_from_recipes(lash_e, dilution_recipes)
+
         # Calculate how many wells we can use in current wellplate
         wells_remaining_in_plate = 96 - current_wellplate_wells
         max_measurements_this_iteration = min(
