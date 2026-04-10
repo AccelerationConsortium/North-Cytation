@@ -1471,11 +1471,11 @@ def create_substocks_from_recipes(lash_e, recipes):
         except Exception:
             current_volumes[vial_name] = 0.0
 
-    # Print full status table before doing anything
-    print("\n" + "="*65)
-    print(f"  SUBSTOCK STATUS ({len(recipes)} vials, threshold={REFILL_THRESHOLD_ML} mL)")
-    print(f"  {'Vial':<22} {'Current':>8}  {'Action'}")
-    print("  " + "-"*60)
+    # Log full status table before doing anything
+    logger.info("=" * 65)
+    logger.info(f"  SUBSTOCK STATUS ({len(recipes)} vials, threshold={REFILL_THRESHOLD_ML} mL)")
+    logger.info(f"  {'Vial':<22} {'Current':>8}  {'Action'}")
+    logger.info("  " + "-" * 60)
     for recipe in recipes:
         vial_name = recipe['Vial_Name']
         vol = current_volumes[vial_name]
@@ -1494,10 +1494,10 @@ def create_substocks_from_recipes(lash_e, recipes):
             wtr_uL = recipe['Water_Volume_mL']  * 1000
             action = f"CREATE (full {FINAL_SUBSTOCK_VOLUME_ML:.1f} mL)"
             breakdown = f"       ({src_uL:.0f} uL {recipe['Source_Vial']} + {wtr_uL:.0f} uL water)"
-        print(f"  {vial_name:<22} {vol:>6.2f} mL  {action}")
+        logger.info(f"  {vial_name:<22} {vol:>6.2f} mL  {action}")
         if breakdown:
-            print(f"  {breakdown}")
-    print("="*65)
+            logger.info(f"  {breakdown}")
+    logger.info("=" * 65)
 
     created_substocks = []
     skipped_count = 0
@@ -1558,9 +1558,9 @@ def create_substocks_from_recipes(lash_e, recipes):
             skipped_count += 1
             continue
 
-        print(f"\n  >> {action_label}: {vial_name} ({target_conc:.2e} mM)")
-        print(f"     Source : {source_to_add*1000:.1f} uL from {source_vial}")
-        print(f"     Water  : {water_to_add*1000:.1f} uL")
+        logger.info(f"  >> {action_label}: {vial_name} ({target_conc:.2e} mM)")
+        logger.info(f"     Source : {source_to_add*1000:.1f} uL from {source_vial}")
+        logger.info(f"     Water  : {water_to_add*1000:.1f} uL")
 
         try:
             lash_e.nr_robot.dispense_from_vial_into_vial(
@@ -1578,7 +1578,7 @@ def create_substocks_from_recipes(lash_e, recipes):
             lash_e.nr_robot.return_vial_home(vial_name=vial_name)
 
             new_vol = current_vol + source_to_add + water_to_add
-            print(f"     Done   : {vial_name} now ~{new_vol:.2f} mL")
+            logger.info(f"     Done   : {vial_name} now ~{new_vol:.2f} mL")
             logger.info(f"  + {action_label} {vial_name}: now ~{new_vol:.2f} mL")
 
             created_substocks.append({
@@ -1598,7 +1598,6 @@ def create_substocks_from_recipes(lash_e, recipes):
 
     newly_created = len([s for s in created_substocks if s.get('action') == 'created'])
     total_available = len([s for s in created_substocks if s['created'] or s.get('existed', False)])
-    print(f"\n  Substock summary: {newly_created} created, {topup_count} topped up, {skipped_count} skipped, {total_available} total available\n")
     logger.info(f"Substock summary: {newly_created} created, {topup_count} topped up, {skipped_count} skipped, {total_available} total available")
     return created_substocks
 
@@ -3962,6 +3961,25 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         # Refill both surfactant stock vials
         refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid='SDS')
         refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid='SDS')
+
+        # Refill substocks (top up or skip based on REFILL_THRESHOLD_ML)
+        stock_solutions_needed = results['experiment_plan']['stock_solutions_needed']
+        dilution_recipes = [
+            {
+                'Vial_Name': s['vial_name'],
+                'Surfactant': s['surfactant'],
+                'Target_Conc_mM': s['target_concentration_mm'],
+                'Source_Vial': s['source_vial'],
+                'Source_Conc_mM': s['source_concentration_mm'],
+                'Source_Volume_mL': s['source_volume_ml'],
+                'Water_Volume_mL': s['water_volume_ml'],
+                'Final_Volume_mL': s['final_volume_ml']
+            }
+            for s in stock_solutions_needed if s['source_vial'] != 'Unknown'
+        ]
+        dilution_recipes.sort(key=lambda x: x['Target_Conc_mM'], reverse=True)
+        if dilution_recipes:
+            create_substocks_from_recipes(lash_e, dilution_recipes)
 
         # Calculate how many wells we can use in current wellplate
         wells_remaining_in_plate = 96 - current_wellplate_wells
