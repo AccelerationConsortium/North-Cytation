@@ -786,11 +786,12 @@ def validate_pipetting_accuracy(
                     validation_mode=True  # Use low-noise validation mode
                 )
                 print(f"    SIMULATION: Generated mass {mass_difference:.6f}g for validation")
-            elif mass_difference == 0:
-                # Real hardware returned zero - this is a problem!
+            elif mass_difference < 0.50 * volume_ml * density:
+                # Less than 50% of target dispensed - hardware/liquid problem
+                measured_ul = (mass_difference / density) * 1000
                 error_msg = (
-                    f"Hardware returned zero mass for volume {volume_ml*1000:.1f}uL. "
-                    f"Check scale connection, vial positioning, or liquid availability."
+                    f"Stage 1 dispensed only {measured_ul:.2f}uL of {volume_ml*1000:.1f}uL target (<50%). "
+                    f"Check tip attachment, liquid availability, and vial positioning."
                 )
                 lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
                 raise ValueError(error_msg)
@@ -836,11 +837,18 @@ def validate_pipetting_accuracy(
             if stage1_error_ul > tolerance_ul:
                 print(f"    Stage 1 outside tolerance - proceeding to iterative optimization")
                 
-                # Get initial overaspirate
-                initial_overaspirate = parameters.overaspirate_vol if parameters else 0.004
-                
                 try:
                     from pipetting_data.pipetting_parameters import PipettingParameters
+                    
+                    # Get the actual parameters Stage 1 used - this is the true baseline
+                    base_params = lash_e.nr_robot._get_optimized_parameters(
+                        volume=volume_ml,
+                        liquid=liquid_type,
+                        user_parameters=parameters,
+                        compensate_overvolume=compensate_overvolume,
+                        smooth_overvolume=smooth_overvolume
+                    )
+                    initial_overaspirate = base_params.overaspirate_vol
                     
                     # === STAGE 2: First Optimization ===
                     print(f"    Stage 2: Testing adjusted parameters...")
@@ -852,16 +860,6 @@ def validate_pipetting_accuracy(
                     else:  # Over-dispensing
                         stage2_overaspirate = max(0.0, initial_overaspirate - 0.003)  # Decrease by 3uL  
                         print(f"      Over-dispensing: trying lower overaspirate {stage2_overaspirate:.4f} mL")
-                    
-                    # Create Stage 2 parameters
-                    # Get the robot's current optimized parameters for this volume/liquid
-                    base_params = lash_e.nr_robot._get_optimized_parameters(
-                        volume=volume_ml, 
-                        liquid=liquid_type, 
-                        user_parameters=parameters,  # Include any user overrides
-                        compensate_overvolume=compensate_overvolume,
-                        smooth_overvolume=smooth_overvolume
-                    )
                     
                     # Create Stage 2 parameters by copying all optimized params
                     stage2_params = PipettingParameters()
@@ -913,10 +911,11 @@ def validate_pipetting_accuracy(
                                 validation_mode=True  # Use low-noise validation mode
                             )
                             print(f"        SIMULATION: Generated Stage 2 mass {stage2_mass:.6f}g")
-                        elif stage2_mass == 0:
+                        elif stage2_mass < 0.50 * volume_ml * density:
+                            measured_ul = (stage2_mass / density) * 1000
                             error_msg = (
-                                f"Stage 2 hardware returned zero mass for {volume_ml*1000:.1f}uL. "
-                                f"Check scale/hardware during optimization."
+                                f"Stage 2 dispensed only {measured_ul:.2f}uL of {volume_ml*1000:.1f}uL target (<50%). "
+                                f"Check tip attachment, liquid availability, and vial positioning."
                             )
                             lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
                             raise ValueError(error_msg)
@@ -964,16 +963,6 @@ def validate_pipetting_accuracy(
                     optimal_overaspirate = max(0.0, min(0.020, optimal_overaspirate))  # Cap at 20uL
                     
                     print(f"      Optimized overaspirate: {optimal_overaspirate:.4f} mL")
-                    
-                    # Create Stage 3 parameters
-                    # Get fresh optimized parameters for Stage 3
-                    base_params = lash_e.nr_robot._get_optimized_parameters(
-                        volume=volume_ml, 
-                        liquid=liquid_type, 
-                        user_parameters=parameters,
-                        compensate_overvolume=compensate_overvolume,
-                        smooth_overvolume=smooth_overvolume
-                    )
                     
                     # Create Stage 3 parameters preserving all calibration
                     stage3_params = PipettingParameters()
@@ -1025,10 +1014,11 @@ def validate_pipetting_accuracy(
                                 validation_mode=True  # Use low-noise validation mode
                             )
                             print(f"        SIMULATION: Generated Stage 3 mass {stage3_mass:.6f}g")
-                        elif stage3_mass == 0:
+                        elif stage3_mass < 0.50 * volume_ml * density:
+                            measured_ul = (stage3_mass / density) * 1000
                             error_msg = (
-                                f"Stage 3 hardware returned zero mass for {volume_ml*1000:.1f}uL. "
-                                f"Check scale/hardware during final optimization."
+                                f"Stage 3 dispensed only {measured_ul:.2f}uL of {volume_ml*1000:.1f}uL target (<50%). "
+                                f"Check tip attachment, liquid availability, and vial positioning."
                             )
                             lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
                             raise ValueError(error_msg)

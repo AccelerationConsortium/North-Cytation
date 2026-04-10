@@ -1,5 +1,16 @@
 # Changelog
 
+## [CALIBRATION FIX] - 2026-03-27
+
+### BUG FIX: Adaptive correction used hardcoded overaspirate baseline
+- **FIXED**: `initial_overaspirate` in 3-stage adaptive correction was `parameters.overaspirate_vol if parameters else 0.004`, always defaulting to 0.004 mL when no explicit `parameters` were passed
+- **ROOT CAUSE**: Stage 1 pipetting uses `_get_optimized_parameters()` to load the real CSV-calibrated overaspirate, but `initial_overaspirate` never consulted the CSV — causing the Slack report's `Overaspirate: X → Y` to always show `0.004` as the start, and Stage 2/3 probes to be offset from the wrong anchor
+- **SOLUTION**: Moved `_get_optimized_parameters()` call to the top of the optimization block; `initial_overaspirate` now reads from `base_params.overaspirate_vol`, matching exactly what Stage 1 used; removed the duplicate call that was redundantly re-fetching the same params for Stage 3
+
+### BUG FIX: Near-zero dispensing not caught by error check
+- **FIXED**: Zero-volume checks used strict `== 0` equality, which only fires when hardware returns exactly 0.0 (scale disconnected); a nearly-empty dispense like 0.1uL of a 20uL target passed through silently
+- **SOLUTION**: Replaced `== 0` with `< 10% of target volume * density` at all three stages; error message now reports the actual measured volume for diagnosis
+
 ## [VIAL POSITIONING FIX] - 2026-03-18
 
 ### CRITICAL BUG FIX: Invalid Vial Location
