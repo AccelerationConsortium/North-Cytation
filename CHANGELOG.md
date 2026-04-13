@@ -1,5 +1,107 @@
 # Changelog
 
+## [CALIBRATION GUI ENVIRONMENTAL MONITORING] - 2026-04-13
+
+### NEW FEATURE: Real-Time Environmental Conditions Display
+- **ADDED**: Environmental monitoring widget to right panel utilizing unused space
+- **MONITORS**: Temperature (°C), Humidity (%), Pressure (Pa) from MQTT sensor log
+- **DATA SOURCE**: Reads from `C:\Users\Imaging Controller\Desktop\m5stack\mqtt_log.csv` 
+- **AUTO-UPDATE**: Refreshes every 30 seconds to show current conditions
+- **COLOR CODING**: 
+  - 🟢 Green: Fresh data (< 10 minutes old)
+  - 🟠 Orange: Stale data (10-60 minutes old)  
+  - 🔴 Red: Very stale data (> 1 hour old)
+- **ROBUST ERROR HANDLING**: Gracefully handles missing files, empty data, or pandas unavailability
+- **TIMESTAMP DISPLAY**: Shows last reading time and age (e.g., "14:23:45 (3m ago)")
+- **BASED ON**: Environmental monitoring code from `workflows/glycerol_dispense_baseline.py`
+- **BENEFIT**: Monitor lab conditions affecting pipetting accuracy during calibration sessions
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - new environmental monitoring section
+
+## [CALIBRATION GUI PARAMETER CLEANUP] - 2026-04-13
+
+### Parameter Corrections and Removal  
+- **REMOVED**: `asp_disp_cycles` from default parameters (cleaned up unnecessary parameter)
+- **FIXED**: Speed scale warning now only appears for `aspirate_speed` and `dispense_speed` 
+- **CORRECTED**: Removed incorrect speed inversion warning from `retract_speed` (retract speed is normal scale)
+- **TECHNICAL**: Changed condition from `'speed' in name` to specific parameter names for accuracy
+- **BENEFIT**: Cleaner parameter list and correct speed guidance  
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 81, 177-179
+
+## [CALIBRATION GUI PARAMETERS SECTION FIX] - 2026-04-13
+
+### FIXED: Parameters Section Now Uses All Available Space
+- **REMOVED**: Maximum height constraint (650px) on parameters scroll area that was causing clipping
+- **REMOVED**: `addStretch()` at bottom of layout that prevented parameters section expansion  
+- **RESULT**: Parameters section now expands to fill available vertical space automatically
+- **BENEFIT**: No more scrolling needed - all parameters visible without clipping
+- **TECHNICAL**: Layout now properly distributes available space instead of forcing fixed constraints
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 831, 892
+
+## [CALIBRATION GUI UI POLISH] - 2026-04-13
+
+### UI Improvements: Cleaner Button Text and Better Parameter Visibility
+- **SIMPLIFIED**: Changed "CLEANUP & HOME" button to just "CLEANUP" for cleaner interface
+- **EXPANDED**: Increased parameters scroll area height from 400px to 650px  
+- **BENEFIT**: All default parameters now visible without scrolling for better user experience
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 831, 854
+
+## [CALIBRATION GUI BUG FIXES & CLEAN VISUALIZATION] - 2026-04-13
+
+### CRITICAL FIX: Cleanup Button Now Actually Works  
+- **FIXED**: Cleanup button was calling nonexistent `cleanup()` method instead of `wrapup()`
+- **NOW WORKS**: Robot properly removes pipet tip, returns vials home, and moves to safe position  
+- **BEHAVIOR**: Should now see actual robot movement during cleanup operation
+- **TECHNICAL**: Changed `protocol.cleanup()` → `protocol.wrapup()` to match actual method name
+
+### UX: Simplified Individual Measurements Plot  
+- **REMOVED**: Yellow accuracy/precision info box (too busy/overwhelming)
+- **REMOVED**: Individual point labels (R1, R2, etc.) that cluttered the visualization
+- **KEPT**: Color-coded dots, target line, mean line, and standard deviation shading
+- **RESULT**: Much cleaner, less busy visualization that focuses on the data patterns
+- **BENEFIT**: Easier to quickly assess measurement scatter and accuracy at a glance
+
+## [CALIBRATION GUI WORKFLOW EFFICIENCY] - 2026-04-13
+
+### MAJOR: Separated Robot Initialization and Cleanup for Efficient Testing  
+- **ADDED**: "INITIALIZE ROBOT" button for one-time homing and setup at session start
+- **ADDED**: "CLEANUP & HOME" button for explicit vial return and protocol cleanup  
+- **REMOVED**: Auto-homing on every measurement (major speed improvement)
+- **ENHANCED WORKFLOW**: Initialize once → Run multiple measurements → Cleanup when done
+- **PERSISTENT PROTOCOL**: Reuses initialized protocol state between measurements for efficiency
+- **UI STATE MANAGEMENT**:
+  - MEASURE button disabled until robot initialized 
+  - CLEANUP enabled only after successful initialization
+  - Clear tooltips and status messages for user guidance
+- **ERROR HANDLING**: Proper cleanup even if protocol cleanup fails
+- **TECHNICAL**: Modified MeasurementWorker to accept existing protocol instead of creating new instances
+- **BENEFIT**: Dramatically faster parameter testing workflow - no re-homing between measurements
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - major refactoring of measurement workflow
+
+## [CALIBRATION GUI STRIP PLOT VISUALIZATION] - 2026-04-13
+
+### UX: Replaced Histogram with Individual Measurement Strip Plot  
+- **FIXED**: Histogram showing "big blue rectangle" due to uniform bar heights with small sample sizes
+- **NEW VISUALIZATION**: Strip plot showing each replicate as individual colored dots with jitter to prevent overlap
+- **ENHANCED FEATURES**: 
+  - Individual measurement labels (R1, R2, etc.) with exact values
+  - Color-coded points using Set3 colormap for visual distinction
+  - Standard deviation shading (±1σ) around mean for precision visualization
+  - Accuracy/precision statistics box in plot corner
+  - Clean horizontal layout with only x-axis grid (y-axis hidden as meaningless)
+- **IMPROVED CLARITY**: Users can now clearly see each individual measurement value and scatter
+- **TECHNICAL**: Renamed from `volume_histogram_plot` → `volume_replicate_plot` with new methods
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - plot methods completely rewritten
+
+## [CALIBRATION GUI UX IMPROVEMENTS] - 2026-04-13
+
+### UI/UX: Enhanced Calibration Test GUI Parameter Controls
+- **FIXED**: Made Min/Max fields read-only reference displays instead of editable spinboxes  
+- **ADDED**: Visual speed scale reminder "⚠ Speed Scale: 1 = Fast, 40 = Slow" for speed parameters
+- **IMPROVED**: Changed parameter layout from horizontal to vertical to accommodate speed hints
+- **STYLING**: Added light gray background and borders to min/max display fields for visual consistency
+- **LOGIC**: Updated get_values() method to return original config min/max since fields are now read-only
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 126-180
+
 ## [SUBSTOCK REFILL IN ITERATION LOOP] - 2026-04-10
 
 ### Feature: Substock refilling before each iterative round

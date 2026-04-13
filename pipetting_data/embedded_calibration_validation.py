@@ -51,6 +51,27 @@ import json
 import uuid
 
 
+# Environmental data tracking 
+MQTT_LOG_FILE = "C:\\Users\\Imaging Controller\\Desktop\\m5stack\\mqtt_log.csv"
+
+def _get_latest_environmental_data():
+    """Get the most recent environmental data from MQTT log file."""
+    try:
+        if not os.path.exists(MQTT_LOG_FILE):
+            return None
+        df = pd.read_csv(MQTT_LOG_FILE)
+        if len(df) == 0:
+            return None
+        latest = df.iloc[-1]
+        return {
+            "temp_c": float(latest["sht_temp_c"]) if pd.notna(latest["sht_temp_c"]) else None,
+            "humidity_pct": float(latest["sht_rh"]) if pd.notna(latest["sht_rh"]) else None,
+            "pressure_pa": float(latest["bmp_pa"]) if pd.notna(latest["bmp_pa"]) else None,
+        }
+    except:
+        return None
+
+
 # Import PipettingParameters for type hints
 try:
     from pipetting_data.pipetting_parameters import PipettingParameters, ReservoirParameters
@@ -1196,6 +1217,17 @@ def validate_pipetting_accuracy(
                                 slack_message += f"Overaspirate: {initial_overaspirate:.4f} mL (UNCHANGED - best stage insufficient improvement)\n"
                             
                         slack_message += f"Session: {session_id}"
+                        
+                        # Add environmental data 
+                        env_data = _get_latest_environmental_data()
+                        if env_data and (env_data["temp_c"] is not None or env_data["humidity_pct"] is not None):
+                            env_parts = []
+                            if env_data["temp_c"] is not None:
+                                env_parts.append(f"🌡️ {env_data['temp_c']:.1f}°C")
+                            if env_data["humidity_pct"] is not None:
+                                env_parts.append(f"💧 {env_data['humidity_pct']:.1f}% RH")
+                            if env_parts:
+                                slack_message += f"\n🌍 Environment: {' | '.join(env_parts)}"
                         
                         try:
                             import slack_agent
