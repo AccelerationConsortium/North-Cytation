@@ -1,5 +1,13 @@
 # Changelog
 
+## [SUBSTOCK REFILL IN ITERATION LOOP] - 2026-04-10
+
+### Feature: Substock refilling before each iterative round
+- Added substock top-up call in `execute_iterative_workflow` loop after water and stock refills
+- Reconstructs `dilution_recipes` from `results['experiment_plan']['stock_solutions_needed']` each iteration
+- Delegates all skip/top-up/recreate logic to existing `create_substocks_from_recipes` (unchanged)
+- Files: `workflows/surfactant_grid_adaptive_concentrations.py`
+
 ## [CRITICAL DOUBLE CONVERSION FIX] - 2026-04-08
 
 ### CRITICAL BUG FIX: Double Unit Conversion in Ilya Workflow V2  
