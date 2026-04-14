@@ -329,6 +329,11 @@ def create_comparison_plots(folder_path, output_dir=None):
     plt.savefig(combined_plot_filename, dpi=300, bbox_inches='tight')
     print(f"✓ Combined comparison plot saved as: {combined_plot_filename}")
     
+    # Save as SVG
+    combined_plot_svg_filename = os.path.join(output_dir, f'{filename}_combined_comparison.svg')
+    plt.savefig(combined_plot_svg_filename, format='svg', bbox_inches='tight')
+    print(f"✓ Combined comparison plot saved as: {combined_plot_svg_filename}")
+    
     # Display the plot
     plt.show()
     
@@ -385,6 +390,11 @@ def create_comparison_plots(folder_path, output_dir=None):
     table_filename = os.path.join(output_dir, f'{filename}_statistics_table.png')
     plt.savefig(table_filename, dpi=300, bbox_inches='tight')
     print(f"✓ Statistics table saved as: {table_filename}")
+    
+    # Save table as SVG
+    table_svg_filename = os.path.join(output_dir, f'{filename}_statistics_table.svg')
+    plt.savefig(table_svg_filename, format='svg', bbox_inches='tight')
+    print(f"✓ Statistics table saved as: {table_svg_filename}")
     
     # Display the table
     plt.show()

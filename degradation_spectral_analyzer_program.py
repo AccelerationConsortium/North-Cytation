@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.ticker as ticker
 import os
 import glob
 import re
@@ -121,6 +122,8 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
     timepoints = []
     abs_595nm = []
     abs_450nm = []
+    abs_556nm = []
+    abs_428nm = []
     
     # Extract timepoints and absorbance values at specific wavelengths
     for i, filepath in enumerate(files):
@@ -136,12 +139,16 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
         # Get wavelength and absorbance data
         wavelength, absorbance = read_spectral_file(filepath)
         
-        # Extract absorbance at 595 nm and 450 nm
+        # Extract absorbance at multiple wavelengths
         abs_595 = get_absorbance_at_wavelength(wavelength, absorbance, 595)
         abs_450 = get_absorbance_at_wavelength(wavelength, absorbance, 450)
+        abs_556 = get_absorbance_at_wavelength(wavelength, absorbance, 556)
+        abs_428 = get_absorbance_at_wavelength(wavelength, absorbance, 428)
         
         abs_595nm.append(abs_595)
         abs_450nm.append(abs_450)
+        abs_556nm.append(abs_556)
+        abs_428nm.append(abs_428)
     
     # Convert timepoints from seconds to minutes (auto-detect format) - only if not using manual timepoints
     if manual_timepoints is not None:
@@ -157,8 +164,9 @@ def create_wavelength_time_plots_with_sample(processed_data_dir, combined_data, 
             print(f"Timepoints detected as minutes (max: {max(timepoints):.1f} min)")
         print(f"Timepoints detected as minutes, kept as-is (max: {max(timepoints):.1f} min)")
     
-    # Calculate 595/450 ratio (product formation)
+    # Calculate ratios (product formation)
     ratio_595_450 = np.array(abs_595nm) / np.array(abs_450nm)
+    ratio_428_556 = np.array(abs_556nm) / np.array(abs_428nm)
     
     # Create the three plots
     # Set font to Helvetica Neue

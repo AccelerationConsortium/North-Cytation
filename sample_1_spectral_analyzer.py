@@ -116,6 +116,10 @@ def analyze_sample_1(folder_path, output_dir=None):
     plot1_filename = os.path.join(output_dir, 'sample_1_full_spectral.png')
     plt.savefig(plot1_filename, dpi=300, bbox_inches='tight')
     print(f"✓ Full spectral plot saved: {plot1_filename}")
+    
+    plot1_svg_filename = os.path.join(output_dir, 'sample_1_full_spectral.svg')
+    plt.savefig(plot1_svg_filename, format='svg', bbox_inches='tight')
+    print(f"✓ Full spectral plot saved: {plot1_svg_filename}")
     plt.show()
     
     # ===== Plot 2: Wavelength-Specific Time Series =====
@@ -196,6 +200,10 @@ def analyze_sample_1(folder_path, output_dir=None):
     plot2_filename = os.path.join(output_dir, 'sample_1_wavelength_analysis.png')
     plt.savefig(plot2_filename, dpi=300, bbox_inches='tight')
     print(f"✓ Wavelength analysis plot saved: {plot2_filename}")
+    
+    plot2_svg_filename = os.path.join(output_dir, 'sample_1_wavelength_analysis.svg')
+    plt.savefig(plot2_svg_filename, format='svg', bbox_inches='tight')
+    print(f"✓ Wavelength analysis plot saved: {plot2_svg_filename}")
     plt.show()
     
     # ===== Save Data to CSV =====
