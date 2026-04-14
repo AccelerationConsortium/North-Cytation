@@ -18,9 +18,9 @@ def test_wp_transfer_and_pipetting():
 
         lash_e.grab_new_wellplate()
 
-        lash_e.nr_robot.aspirate_from_vial(source_vial_name=0, amount_mL=0.3) #gets pipet tip
-        lash_e.nr_robot.dispense_into_wellplate(dest_wp_num_array=[0,1,2], amount_mL_array=[0.1,0.1,0.1], well_plate_type=wp_type)
-        lash_e.nr_robot.remove_pipet()
+        # lash_e.nr_robot.aspirate_from_vial(source_vial_name=0, amount_mL=0.3) #gets pipet tip
+        # lash_e.nr_robot.dispense_into_wellplate(dest_wp_num_array=[0,1,2], amount_mL_array=[0.1,0.1,0.1], well_plate_type=wp_type)
+        # lash_e.nr_robot.remove_pipet()
 
         lash_e.discard_used_wellplate()
         
@@ -45,11 +45,11 @@ def test_wp_movement(well_plate_type):
 
     lash_e.nr_track.open_gripper()
 
-    lash_e.nr_track.grab_wellplate_from_location('pipetting_area', wellplate_type=well_plate_type)
+    lash_e.nr_track.grab_wellplate_from_location('waste_stack', wellplate_type=well_plate_type)
     # lash_e.nr_track.release_wellplate_in_location('lid_storage', wellplate_type=well_plate_type)
     
     # lash_e.nr_track.grab_wellplate_from_location('lid_storage', wellplate_type=well_plate_type)
-    lash_e.nr_track.release_wellplate_in_location('pipetting_area', wellplate_type=well_plate_type)
+    # lash_e.nr_track.release_wellplate_in_location('waste_stack', wellplate_type=well_plate_type)
 
 
     #lash_e.move_wellplate_to_cytation(plate_type=well_plate_type)
@@ -58,10 +58,11 @@ def test_wp_movement(well_plate_type):
 def move_back(well_plate_type):
     lash_e.move_wellplate_back_from_cytation(plate_type=well_plate_type)
 
-#test_wp_stack(3)
+# test_wp_stack(1)
+# test_wp_transfer_and_pipetting()
 
-lash_e.measure_wellplate(None, None, plate_type="quartz")
-
+# lash_e.measure_wellplate(None, None, plate_type="96 WELL PLATE")
+test_wp_movement('96 WELL PLATE')
 # #lash_e.nr_track.move_through_path(['pipetting_area'])
 # for i in range (0, 10):
 #     test_wp_movement(well_plate_type="quartz_lid")

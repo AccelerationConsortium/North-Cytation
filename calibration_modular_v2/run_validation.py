@@ -79,7 +79,8 @@ class ValidationRunner:
             # Fallback to relative path from current directory
             base_dir = Path(output_dir_name)
             
-        self.output_dir = base_dir / f"validation_run_{timestamp}"
+        liquid = config.get_liquid_name()
+        self.output_dir = base_dir / f"validation_run_{timestamp}_{liquid}"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         self.logger.info(f"Validation results will be saved to: {self.output_dir}")

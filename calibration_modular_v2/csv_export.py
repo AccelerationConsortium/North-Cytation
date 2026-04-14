@@ -28,9 +28,10 @@ logger = logging.getLogger(__name__)
 class CleanCSVExporter:
     """Hardware-agnostic clean CSV export for calibration experiments."""
     
-    def __init__(self, output_dir: str):
+    def __init__(self, output_dir: str, liquid: str = ""):
         """Initialize exporter with output directory."""
         self.output_dir = Path(output_dir)
+        self.liquid = liquid
         
     def export_all_data(self, trial_results: List[Dict], optimal_conditions: List[Dict], 
                        raw_measurements: List[Dict]) -> None:
@@ -145,8 +146,9 @@ class CleanCSVExporter:
         
         # Create DataFrame and save
         df = pd.DataFrame(rows)
-        df.to_csv(self.output_dir / "optimal_conditions.csv", index=False)
-        logger.info(f"Exported {len(df)} optimal conditions to optimal_conditions.csv")
+        filename = f"optimal_conditions_{self.liquid}.csv" if self.liquid else "optimal_conditions.csv"
+        df.to_csv(self.output_dir / filename, index=False)
+        logger.info(f"Exported {len(df)} optimal conditions to {filename}")
     
     def _export_raw_measurements(self, raw_measurements: List[Dict]) -> None:
         """Export raw measurements with unified volume naming."""
@@ -273,7 +275,7 @@ class CleanCSVExporter:
         logger.info("Exported experiment summary to experiment_summary.csv")
 
 def export_clean_csvs(trial_results: List[Dict], optimal_conditions: List[Dict], 
-                     raw_measurements: List[Dict], output_dir: str) -> None:
+                     raw_measurements: List[Dict], output_dir: str, liquid: str = "") -> None:
     """
     Convenience function to export all clean CSV files.
     
@@ -282,7 +284,8 @@ def export_clean_csvs(trial_results: List[Dict], optimal_conditions: List[Dict],
         optimal_conditions: List of optimal condition dictionaries
         raw_measurements: List of raw measurement dictionaries
         output_dir: Directory to save CSV files
+        liquid: Liquid name to include in optimal_conditions filename
     """
-    exporter = CleanCSVExporter(output_dir)
+    exporter = CleanCSVExporter(output_dir, liquid=liquid)
     exporter.export_all_data(trial_results, optimal_conditions, raw_measurements)
     exporter.create_experiment_summary(trial_results, optimal_conditions)

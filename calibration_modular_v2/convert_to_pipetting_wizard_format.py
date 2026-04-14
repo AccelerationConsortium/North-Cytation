@@ -36,8 +36,7 @@ import logging
 import sys
 
 # Default file path - edit this to point to your target file
-DEFAULT_INPUT_FILE = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1772849500_large_toluene\optimal_conditions_toluene_large.csv"
-
+DEFAULT_INPUT_FILE = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1774908149_6M_H3PO4\optimal_conditions.csv"
 # Column mapping from v2 format to original format
 COLUMN_MAPPING = {
     'hardware_parameters_aspirate_speed': 'aspirate_speed',

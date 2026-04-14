@@ -177,7 +177,12 @@ GRADIENT_SUGGESTIONS_PER_ITERATION = 14  # Number of gradient suggestions per it
 OPTIMIZE_METRIC = 'ratio'  # Options: 'turbidity', 'ratio', 'both' (for ratio + turbidity boundaries)
 
 # Recommender algorithm selection
-RECOMMENDER_TYPE = 'bayesian'  # Options: 'delaunay', 'bayesian' - choose algorithm for boundary exploration
+RECOMMENDER_TYPE = 'delaunay'  # Options: 'delaunay', 'bayesian' - choose algorithm for boundary exploration
+
+# Turbidity filtering for unreliable ratio measurements
+TURBIDITY_FILTER_THRESHOLD = 0.2  # Above this turbidity, ratio measurements become unreliable
+HIGH_RATIO_THRESHOLD = 0.95        # Above this ratio value, measurements are invalid (ratios should be < 1.0)
+FILTER_UNRELIABLE_RATIOS = True    # Set to True to exclude high-turbidity ratio data from recommender
 
 N_REPLICATES = 1
 WELL_VOLUME_UL = 200  # uL per well
@@ -1466,11 +1471,11 @@ def create_substocks_from_recipes(lash_e, recipes):
         except Exception:
             current_volumes[vial_name] = 0.0
 
-    # Print full status table before doing anything
-    print("\n" + "="*65)
-    print(f"  SUBSTOCK STATUS ({len(recipes)} vials, threshold={REFILL_THRESHOLD_ML} mL)")
-    print(f"  {'Vial':<22} {'Current':>8}  {'Action'}")
-    print("  " + "-"*60)
+    # Log full status table before doing anything
+    logger.info("=" * 65)
+    logger.info(f"  SUBSTOCK STATUS ({len(recipes)} vials, threshold={REFILL_THRESHOLD_ML} mL)")
+    logger.info(f"  {'Vial':<22} {'Current':>8}  {'Action'}")
+    logger.info("  " + "-" * 60)
     for recipe in recipes:
         vial_name = recipe['Vial_Name']
         vol = current_volumes[vial_name]
@@ -1489,10 +1494,10 @@ def create_substocks_from_recipes(lash_e, recipes):
             wtr_uL = recipe['Water_Volume_mL']  * 1000
             action = f"CREATE (full {FINAL_SUBSTOCK_VOLUME_ML:.1f} mL)"
             breakdown = f"       ({src_uL:.0f} uL {recipe['Source_Vial']} + {wtr_uL:.0f} uL water)"
-        print(f"  {vial_name:<22} {vol:>6.2f} mL  {action}")
+        logger.info(f"  {vial_name:<22} {vol:>6.2f} mL  {action}")
         if breakdown:
-            print(f"  {breakdown}")
-    print("="*65)
+            logger.info(f"  {breakdown}")
+    logger.info("=" * 65)
 
     created_substocks = []
     skipped_count = 0
@@ -1553,16 +1558,16 @@ def create_substocks_from_recipes(lash_e, recipes):
             skipped_count += 1
             continue
 
-        print(f"\n  >> {action_label}: {vial_name} ({target_conc:.2e} mM)")
-        print(f"     Source : {source_to_add*1000:.1f} uL from {source_vial}")
-        print(f"     Water  : {water_to_add*1000:.1f} uL")
+        logger.info(f"  >> {action_label}: {vial_name} ({target_conc:.2e} mM)")
+        logger.info(f"     Source : {source_to_add*1000:.1f} uL from {source_vial}")
+        logger.info(f"     Water  : {water_to_add*1000:.1f} uL")
 
         try:
             lash_e.nr_robot.dispense_from_vial_into_vial(
                 source_vial_name=source_vial,
                 dest_vial_name=vial_name,
                 volume=source_to_add,
-                liquid='water'
+                liquid='SDS'  # FIXED: Use SDS parameters for surfactant transfers
             )
             if water_to_add > 0:
                 lash_e.nr_robot.dispense_into_vial_from_reservoir(
@@ -1573,7 +1578,7 @@ def create_substocks_from_recipes(lash_e, recipes):
             lash_e.nr_robot.return_vial_home(vial_name=vial_name)
 
             new_vol = current_vol + source_to_add + water_to_add
-            print(f"     Done   : {vial_name} now ~{new_vol:.2f} mL")
+            logger.info(f"     Done   : {vial_name} now ~{new_vol:.2f} mL")
             logger.info(f"  + {action_label} {vial_name}: now ~{new_vol:.2f} mL")
 
             created_substocks.append({
@@ -1593,7 +1598,6 @@ def create_substocks_from_recipes(lash_e, recipes):
 
     newly_created = len([s for s in created_substocks if s.get('action') == 'created'])
     total_available = len([s for s in created_substocks if s['created'] or s.get('existed', False)])
-    print(f"\n  Substock summary: {newly_created} created, {topup_count} topped up, {skipped_count} skipped, {total_available} total available\n")
     logger.info(f"Substock summary: {newly_created} created, {topup_count} topped up, {skipped_count} skipped, {total_available} total available")
     return created_substocks
 
@@ -2180,7 +2184,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     if len(small_wells) > 0:
         logger.debug(f"  {component_name}: Pass 1 - {len(small_wells)} wells with small_tip (<{SMALL_TIP_SAFE_UL}uL)")
         if should_condition_tip:
-            condition_tip(lash_e, vial_name, conditioning_volume_ul=150)
+            condition_tip(lash_e, vial_name, conditioning_volume_ul=150, liquid_type=liquid_type)
         for _, row in small_wells.iterrows():
             well_idx = row['wellplate_index']
             volume_ml = row[volume_column] / 1000
@@ -2199,7 +2203,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
         if len(small_wells) > 0:
             lash_e.nr_robot.remove_pipet()
         logger.debug(f"  {component_name}: Pass 2 - {len(large_wells)} wells with large_tip (>={SMALL_TIP_SAFE_UL}uL)")
-        condition_tip(lash_e, vial_name, conditioning_volume_ul=300)
+        condition_tip(lash_e, vial_name, conditioning_volume_ul=300, liquid_type=liquid_type)
         for _, row in large_wells.iterrows():
             well_idx = row['wellplate_index']
             volume_ml = row[volume_column] / 1000
@@ -3065,13 +3069,13 @@ def execute_dispensing(lash_e, well_recipes_df):
                 # Dispense surfactant A substocks in concentration order (condition tip only for first vial)
                 for i, surf_a_vial in enumerate(sorted_surf_a_vials):
                     should_condition = (i == 0)  # Only condition for first vial in the series
-                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'water', 'surf_A_volume_ul', should_condition_tip=should_condition)
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_a_vial, 'SDS', 'surf_A_volume_ul', should_condition_tip=should_condition)
                 
                 # Return surfactant A vials to home
                 lash_e.nr_robot.remove_pipet()
                 return_surfactant_vials_home(lash_e, sorted_surf_a_vials, 'A')
             
-            # Dispense water - split between two water vials to prevent running out
+            # Dispense water and buffer together without dropping tip
             water_wells = batch_df[batch_df['water_volume_ul'] > 0]
             if len(water_wells) > 0:
                 # Sort ascending by volume so any large-tip wells (>=200uL) land in
@@ -3084,8 +3088,12 @@ def execute_dispensing(lash_e, well_recipes_df):
                 water_batch_1 = water_wells.iloc[:mid_point]
                 water_batch_2 = water_wells.iloc[mid_point:]
 
+                # Position both water and buffer vials at safe positions simultaneously
                 lash_e.nr_robot.move_vial_to_location('water', 'main_8mL_rack', 44)
                 lash_e.nr_robot.move_vial_to_location('water_2', 'main_8mL_rack', 45)
+                if ADD_BUFFER:
+                    lash_e.logger.info(f"  Positioning {SELECTED_BUFFER} buffer at safe position with water")
+                    lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, 'main_8mL_rack', 47)
 
                 # Dispense first half with water vial
                 if len(water_batch_1) > 0:
@@ -3097,17 +3105,20 @@ def execute_dispensing(lash_e, well_recipes_df):
 
                 lash_e.logger.info("    Water dispensing complete")
 
+                # Dispense buffer immediately after water without dropping tip
+                if ADD_BUFFER:
+                    lash_e.logger.info("    Dispensing buffer without tip change...")
+                    dispense_component_to_wellplate(lash_e, batch_df, SELECTED_BUFFER, 'water', 'buffer_volume_ul')
+                    lash_e.logger.info("    Buffer dispensing complete")
+
+                # Drop tip only after both water and buffer are complete
                 lash_e.nr_robot.remove_pipet()
+                
+                # Return both water and buffer vials home together
                 return_water_vial_home(lash_e, 'water')
                 return_water_vial_home(lash_e, 'water_2')
-            
-            # Dispense buffer with safe positioning
-            if ADD_BUFFER:
-                lash_e.logger.info(f"  Positioning {SELECTED_BUFFER} buffer at highest priority safe position")
-                lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, 'main_8mL_rack', 47)
-                dispense_component_to_wellplate(lash_e, batch_df, SELECTED_BUFFER, 'water', 'buffer_volume_ul')
-                lash_e.nr_robot.remove_pipet()
-                lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
+                if ADD_BUFFER:
+                    lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
             
             # Position surfactant B vials by concentration (concentrated -> dilute)
             if len(surf_b_vials) > 0:
@@ -3116,7 +3127,7 @@ def execute_dispensing(lash_e, well_recipes_df):
                 # Dispense surfactant B substocks in concentration order (condition tip only for first vial)
                 for i, surf_b_vial in enumerate(sorted_surf_b_vials):
                     should_condition = (i == 0)  # Only condition for first vial in the series
-                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'water', 'surf_B_volume_ul', should_condition_tip=should_condition)
+                    dispense_component_to_wellplate(lash_e, batch_df, surf_b_vial, 'SDS', 'surf_B_volume_ul', should_condition_tip=should_condition)
                 
                 # Return surfactant B vials to home
                 lash_e.nr_robot.remove_pipet()
@@ -3588,7 +3599,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
                 lash_e=lash_e,
                 source_vial=surfactant_stock,
                 destination_vial=surfactant_stock,
-                liquid_type='water',  # Aqueous surfactant solution
+                liquid_type='SDS',  # Surfactant solution
                 volumes_ml=small_volumes,  # Small volumes: 0.01, 0.05, 0.1 mL
                 replicates=3,
                 output_folder=experiment_output_folder,
@@ -3607,7 +3618,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
                 lash_e=lash_e,
                 source_vial=surfactant_stock,
                 destination_vial=surfactant_stock,
-                liquid_type='water',  # Aqueous surfactant solution
+                liquid_type='SDS',  # Surfactant solution
                 volumes_ml=large_volumes,  # Large volumes: 0.2, 0.5, 0.9 mL
                 replicates=1 if i > 0 else 3,  # Full validation on first surfactant, reduced on others
                 output_folder=experiment_output_folder,
@@ -3691,8 +3702,8 @@ def execute_adaptive_surfactant_screening(surfactant_a_name="SDS", surfactant_b_
     
     # Refill both surfactant stock vials before creating substocks
     lash_e.logger.info("  Refilling surfactant stock vials...")
-    refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid=surfactant_a_name)
-    refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid=surfactant_b_name)
+    refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid='SDS')
+    refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid='SDS')
     
     # Use provided experiment folder or create new one if not provided
     if experiment_output_folder is None:
@@ -3948,8 +3959,27 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         fill_water_vial(lash_e, "water_2")  # Refill second water vial as well
 
         # Refill both surfactant stock vials
-        refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid=surfactant_a_name)
-        refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid=surfactant_b_name)
+        refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid='SDS')
+        refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid='SDS')
+
+        # Refill substocks (top up or skip based on REFILL_THRESHOLD_ML)
+        stock_solutions_needed = results['experiment_plan']['stock_solutions_needed']
+        dilution_recipes = [
+            {
+                'Vial_Name': s['vial_name'],
+                'Surfactant': s['surfactant'],
+                'Target_Conc_mM': s['target_concentration_mm'],
+                'Source_Vial': s['source_vial'],
+                'Source_Conc_mM': s['source_concentration_mm'],
+                'Source_Volume_mL': s['source_volume_ml'],
+                'Water_Volume_mL': s['water_volume_ml'],
+                'Final_Volume_mL': s['final_volume_ml']
+            }
+            for s in stock_solutions_needed if s['source_vial'] != 'Unknown'
+        ]
+        dilution_recipes.sort(key=lambda x: x['Target_Conc_mM'], reverse=True)
+        if dilution_recipes:
+            create_substocks_from_recipes(lash_e, dilution_recipes)
 
         # Calculate how many wells we can use in current wellplate
         wells_remaining_in_plate = 96 - current_wellplate_wells
@@ -4732,21 +4762,30 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     elif OPTIMIZE_METRIC == 'both':
         output_columns = ['ratio', 'turbidity_600']
         
-        # ADAPTIVE: Check if turbidity is essentially flat (≤0.05) - if so, ignore it
+        # ADAPTIVE: Check if turbidity is essentially flat (≤0.08) - if so, ignore it
+        # Only check experimental wells, not controls (same as triangle recommender)
         if 'turbidity_600' in experiment_data_df.columns:
-            turbidity_values = experiment_data_df['turbidity_600'].dropna()
+            # Filter to experimental wells only (same logic as triangle recommender)
+            if 'well_type' in experiment_data_df.columns:
+                experimental_data = experiment_data_df[experiment_data_df['well_type'] == 'experiment']
+                turbidity_values = experimental_data['turbidity_600'].dropna()
+                data_description = "experimental wells"
+            else:
+                turbidity_values = experiment_data_df['turbidity_600'].dropna()
+                data_description = "all wells"
+                
             if len(turbidity_values) > 0:
                 max_turbidity = turbidity_values.max()
-                print(f"DEBUG: Turbidity analysis - max value: {max_turbidity:.4f}")
+                print(f"DEBUG: Turbidity analysis ({data_description}) - max value: {max_turbidity:.4f}")
                 
-                if max_turbidity <= 0.05:
-                    print(f"⚠️  Turbidity is flat (max={max_turbidity:.4f} ≤ 0.05) - switching to ratio-only optimization")
+                if max_turbidity <= 0.08:
+                    print(f"⚠️  Turbidity is flat in {data_description} (max={max_turbidity:.4f} ≤ 0.08) - switching to ratio-only optimization")
                     print("   (This prevents baseline noise from being treated as significant variation)")
                     output_columns = ['ratio']  # Switch to ratio-only
                 else:
-                    print(f"✅ Turbidity shows variation (max={max_turbidity:.4f} > 0.05) - using both metrics")
+                    print(f"✅ Turbidity shows variation in {data_description} (max={max_turbidity:.4f} > 0.08) - using both metrics")
             else:
-                print("⚠️  No turbidity data available - switching to ratio-only optimization") 
+                print(f"⚠️  No turbidity data available in {data_description} - switching to ratio-only optimization") 
                 output_columns = ['ratio']
         else:
             print("⚠️  No turbidity_600 column found - switching to ratio-only optimization")
@@ -4754,7 +4793,37 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     else:
         raise ValueError(f"Invalid OPTIMIZE_METRIC: {OPTIMIZE_METRIC}. Must be 'turbidity', 'ratio', or 'both'")
     
-    data_for_recommender = experiment_data_df.copy()  # Don't modify original
+    # CLEAN FIX: Filter to experimental data FIRST - no more index mismatch!
+    if 'well_type' in experiment_data_df.columns:
+        data_for_recommender = experiment_data_df[experiment_data_df['well_type'] == 'experiment'].copy()
+        print(f"  Filtered to {len(data_for_recommender)} experimental points for recommender")
+    else:
+        data_for_recommender = experiment_data_df.copy()
+        print(f"  Using all {len(data_for_recommender)} data points for recommender")
+    
+    # Create reliability mask for outputs (now uses same experimental data)
+    output_reliability = None
+    if FILTER_UNRELIABLE_RATIOS and OPTIMIZE_METRIC in ['ratio', 'both']:
+        n_points = len(data_for_recommender)  # Now this matches exactly!
+        n_outputs = len(output_columns)
+        output_reliability = np.ones((n_points, n_outputs), dtype=bool)  # Default: all reliable
+        
+        # Apply reliability criteria for each output
+        for i, output_col in enumerate(output_columns):
+            if output_col == 'ratio':
+                # Mark ratio as unreliable if turbidity > threshold or ratio > 1.0
+                unreliable_mask = (
+                    (data_for_recommender.get('turbidity_600', 0) > TURBIDITY_FILTER_THRESHOLD) |
+                    (data_for_recommender[output_col] > HIGH_RATIO_THRESHOLD)
+                )
+                output_reliability[:, i] = ~unreliable_mask
+            # Could add other reliability criteria for other outputs here
+        
+        # Report reliability statistics
+        n_unreliable_ratios = (~output_reliability[:, output_columns.index('ratio')] if 'ratio' in output_columns else 0)
+        if isinstance(n_unreliable_ratios, np.ndarray):
+            n_unreliable_ratios = n_unreliable_ratios.sum()
+        print(f"🔍 Created reliability mask: {n_unreliable_ratios}/{n_points} experimental points have unreliable ratios")
     
     # Initialize the selected recommender algorithm
     if RECOMMENDER_TYPE == 'delaunay':
@@ -4793,7 +4862,8 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
             tol_factor=0.1,         # Tolerance for duplicate detection
             triangle_score_method='max',  # Use max distance for sensitivity
             output_dir=output_dir,  # Save triangle visualizations to output folder
-            create_visualization=False  # Disable visualization to prevent popup windows
+            create_visualization=False,  # Disable visualization to prevent popup windows
+            output_reliability=output_reliability  # Pass reliability mask
         )
     elif RECOMMENDER_TYPE == 'bayesian':
         recommendations_df = recommender.get_recommendations(
@@ -5079,16 +5149,14 @@ if __name__ == "__main__":
 
     if VALIDATE_LIQUIDS:
         if experiment_output_folder is not None:
-            # For single/regular workflows, validate the current surfactant pair
-            validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names=[SURFACTANT_A, SURFACTANT_B])
+            # For single/regular workflows, validate one surfactant only
+            validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names=[SURFACTANT_A])
         elif WORKFLOW_TYPE == 'double_iterative':
-            # For double_iterative, extract all unique surfactants and create temporary validation folder
+            # For double_iterative, validate only the first surfactant A in the queue
             import time
             validation_output_folder = f"output/validation_{int(time.time())}"
             os.makedirs(validation_output_folder, exist_ok=True)
             
-            # Extract all unique surfactants from PAIRING_QUEUE
-            all_surfactants = set()
             pairing_queue = PAIRING_QUEUE if isinstance(PAIRING_QUEUE, list) else []
             if isinstance(PAIRING_QUEUE, str):
                 import ast
@@ -5097,13 +5165,10 @@ if __name__ == "__main__":
                 except:
                     pairing_queue = []
             
-            for pairing in pairing_queue:
-                all_surfactants.add(pairing.get('SURFACTANT_A', ''))
-                all_surfactants.add(pairing.get('SURFACTANT_B', ''))
-            
-            # Remove empty strings and convert to sorted list
-            surfactant_list = sorted([s for s in all_surfactants if s])
-            print(f"Running validation for all surfactants in double_iterative: {surfactant_list}")
+            # Use only the first surfactant A - one is sufficient to validate the system
+            first_surfactant = pairing_queue[0].get('SURFACTANT_A', SURFACTANT_A) if pairing_queue else SURFACTANT_A
+            surfactant_list = [first_surfactant]
+            print(f"Running validation for one surfactant in double_iterative: {surfactant_list}")
             print(f"Validation folder: {validation_output_folder}")
             
             validate_pipetting_system(lash_e, validation_output_folder, surfactant_names=surfactant_list)

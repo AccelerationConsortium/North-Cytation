@@ -15,7 +15,7 @@ def sample_workflow():
 
     HEATING_TIME = 10
 
-    #lash_e.temp_controller.set_temp(40)
+    lash_e.temp_controller.set_temp(40)
     lash_e.temp_controller.turn_on_stirring(speed=1000) #Don't know what speed is best. 
 
     time_e=0

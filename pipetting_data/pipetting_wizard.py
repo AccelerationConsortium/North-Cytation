@@ -266,6 +266,11 @@ class PipettingWizard:
             volume_measured = row['volume_measured']  # uL  
             current_overasp = row['overaspirate_vol']  # mL
             
+            # Skip rows with invalid measurement data (but allow fresh optimization data)
+            if pd.isna(volume_measured) or volume_measured is None:
+                logging.debug(f"  {volume_target}uL: skipping overvolume compensation (no measurement data)")
+                continue
+                
             # Calculate volume error in uL
             volume_error = volume_measured - volume_target  # Positive = over-target, Negative = under-target
             

@@ -1,5 +1,457 @@
 # Changelog
 
+## [CALIBRATION GUI ENVIRONMENTAL MONITORING] - 2026-04-13
+
+### NEW FEATURE: Real-Time Environmental Conditions Display
+- **ADDED**: Environmental monitoring widget to right panel utilizing unused space
+- **MONITORS**: Temperature (°C), Humidity (%), Pressure (Pa) from MQTT sensor log
+- **DATA SOURCE**: Reads from `C:\Users\Imaging Controller\Desktop\m5stack\mqtt_log.csv` 
+- **AUTO-UPDATE**: Refreshes every 30 seconds to show current conditions
+- **COLOR CODING**: 
+  - 🟢 Green: Fresh data (< 10 minutes old)
+  - 🟠 Orange: Stale data (10-60 minutes old)  
+  - 🔴 Red: Very stale data (> 1 hour old)
+- **ROBUST ERROR HANDLING**: Gracefully handles missing files, empty data, or pandas unavailability
+- **TIMESTAMP DISPLAY**: Shows last reading time and age (e.g., "14:23:45 (3m ago)")
+- **BASED ON**: Environmental monitoring code from `workflows/glycerol_dispense_baseline.py`
+- **BENEFIT**: Monitor lab conditions affecting pipetting accuracy during calibration sessions
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - new environmental monitoring section
+
+## [CALIBRATION GUI PARAMETER CLEANUP] - 2026-04-13
+
+### Parameter Corrections and Removal  
+- **REMOVED**: `asp_disp_cycles` from default parameters (cleaned up unnecessary parameter)
+- **FIXED**: Speed scale warning now only appears for `aspirate_speed` and `dispense_speed` 
+- **CORRECTED**: Removed incorrect speed inversion warning from `retract_speed` (retract speed is normal scale)
+- **TECHNICAL**: Changed condition from `'speed' in name` to specific parameter names for accuracy
+- **BENEFIT**: Cleaner parameter list and correct speed guidance  
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 81, 177-179
+
+## [CALIBRATION GUI PARAMETERS SECTION FIX] - 2026-04-13
+
+### FIXED: Parameters Section Now Uses All Available Space
+- **REMOVED**: Maximum height constraint (650px) on parameters scroll area that was causing clipping
+- **REMOVED**: `addStretch()` at bottom of layout that prevented parameters section expansion  
+- **RESULT**: Parameters section now expands to fill available vertical space automatically
+- **BENEFIT**: No more scrolling needed - all parameters visible without clipping
+- **TECHNICAL**: Layout now properly distributes available space instead of forcing fixed constraints
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 831, 892
+
+## [CALIBRATION GUI UI POLISH] - 2026-04-13
+
+### UI Improvements: Cleaner Button Text and Better Parameter Visibility
+- **SIMPLIFIED**: Changed "CLEANUP & HOME" button to just "CLEANUP" for cleaner interface
+- **EXPANDED**: Increased parameters scroll area height from 400px to 650px  
+- **BENEFIT**: All default parameters now visible without scrolling for better user experience
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 831, 854
+
+## [CALIBRATION GUI BUG FIXES & CLEAN VISUALIZATION] - 2026-04-13
+
+### CRITICAL FIX: Cleanup Button Now Actually Works  
+- **FIXED**: Cleanup button was calling nonexistent `cleanup()` method instead of `wrapup()`
+- **NOW WORKS**: Robot properly removes pipet tip, returns vials home, and moves to safe position  
+- **BEHAVIOR**: Should now see actual robot movement during cleanup operation
+- **TECHNICAL**: Changed `protocol.cleanup()` → `protocol.wrapup()` to match actual method name
+
+### UX: Simplified Individual Measurements Plot  
+- **REMOVED**: Yellow accuracy/precision info box (too busy/overwhelming)
+- **REMOVED**: Individual point labels (R1, R2, etc.) that cluttered the visualization
+- **KEPT**: Color-coded dots, target line, mean line, and standard deviation shading
+- **RESULT**: Much cleaner, less busy visualization that focuses on the data patterns
+- **BENEFIT**: Easier to quickly assess measurement scatter and accuracy at a glance
+
+## [CALIBRATION GUI WORKFLOW EFFICIENCY] - 2026-04-13
+
+### MAJOR: Separated Robot Initialization and Cleanup for Efficient Testing  
+- **ADDED**: "INITIALIZE ROBOT" button for one-time homing and setup at session start
+- **ADDED**: "CLEANUP & HOME" button for explicit vial return and protocol cleanup  
+- **REMOVED**: Auto-homing on every measurement (major speed improvement)
+- **ENHANCED WORKFLOW**: Initialize once → Run multiple measurements → Cleanup when done
+- **PERSISTENT PROTOCOL**: Reuses initialized protocol state between measurements for efficiency
+- **UI STATE MANAGEMENT**:
+  - MEASURE button disabled until robot initialized 
+  - CLEANUP enabled only after successful initialization
+  - Clear tooltips and status messages for user guidance
+- **ERROR HANDLING**: Proper cleanup even if protocol cleanup fails
+- **TECHNICAL**: Modified MeasurementWorker to accept existing protocol instead of creating new instances
+- **BENEFIT**: Dramatically faster parameter testing workflow - no re-homing between measurements
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - major refactoring of measurement workflow
+
+## [CALIBRATION GUI STRIP PLOT VISUALIZATION] - 2026-04-13
+
+### UX: Replaced Histogram with Individual Measurement Strip Plot  
+- **FIXED**: Histogram showing "big blue rectangle" due to uniform bar heights with small sample sizes
+- **NEW VISUALIZATION**: Strip plot showing each replicate as individual colored dots with jitter to prevent overlap
+- **ENHANCED FEATURES**: 
+  - Individual measurement labels (R1, R2, etc.) with exact values
+  - Color-coded points using Set3 colormap for visual distinction
+  - Standard deviation shading (±1σ) around mean for precision visualization
+  - Accuracy/precision statistics box in plot corner
+  - Clean horizontal layout with only x-axis grid (y-axis hidden as meaningless)
+- **IMPROVED CLARITY**: Users can now clearly see each individual measurement value and scatter
+- **TECHNICAL**: Renamed from `volume_histogram_plot` → `volume_replicate_plot` with new methods
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - plot methods completely rewritten
+
+## [CALIBRATION GUI UX IMPROVEMENTS] - 2026-04-13
+
+### UI/UX: Enhanced Calibration Test GUI Parameter Controls
+- **FIXED**: Made Min/Max fields read-only reference displays instead of editable spinboxes  
+- **ADDED**: Visual speed scale reminder "⚠ Speed Scale: 1 = Fast, 40 = Slow" for speed parameters
+- **IMPROVED**: Changed parameter layout from horizontal to vertical to accommodate speed hints
+- **STYLING**: Added light gray background and borders to min/max display fields for visual consistency
+- **LOGIC**: Updated get_values() method to return original config min/max since fields are now read-only
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 126-180
+
+## [SUBSTOCK REFILL IN ITERATION LOOP] - 2026-04-10
+
+### Feature: Substock refilling before each iterative round
+- Added substock top-up call in `execute_iterative_workflow` loop after water and stock refills
+- Reconstructs `dilution_recipes` from `results['experiment_plan']['stock_solutions_needed']` each iteration
+- Delegates all skip/top-up/recreate logic to existing `create_substocks_from_recipes` (unchanged)
+- Files: `workflows/surfactant_grid_adaptive_concentrations.py`
+
+## [CRITICAL DOUBLE CONVERSION FIX] - 2026-04-08
+
+### CRITICAL BUG FIX: Double Unit Conversion in Ilya Workflow V2  
+- **FIXED**: Double conversion causing 50μL to become 0.05μL instead of 0.05mL
+- **ROOT CAUSE**: Line 299 already converts CSV μL→mL, but code assumed data was still in μL
+- **SEQUENCE**: CSV(50μL) → Line299(÷1000=0.05mL) → MyCode(÷1000=0.00005mL) → Display(0.05μL)
+- **SYMPTOM**: All volumes below 10μL minimum, all wells skipped during dispensing
+- **SOLUTION**: Treat data as mL after line 299, convert mL→μL only for display/validation
+- **IMPACT**: 50, 100, 150, 200μL volumes now correctly processed as 0.05, 0.1, 0.15, 0.2mL
+- **FILES AFFECTED**: `workflows/ilya_workflow_v2.py` lines 110-112, 155-157, 163-165, 360-362
+
+## [SIMULATION PERFORMANCE FIX] - 2026-04-08
+
+### BUG FIX: Simulation Mode Timing Issues
+- **FIXED**: 5-second delays in simulation mode during pipetting operations
+- **ROOT CAUSE**: Typo `self.SIMULATE` (uppercase) instead of `self.simulate` (lowercase) in post_retract_wait_time check
+- **RESULT**: AttributeError caused simulation bypass to fail, executing full hardware wait times in simulation
+- **SOLUTION**: Corrected simulation attribute reference to proper lowercase `self.simulate`  
+- **IMPACT**: Simulation now runs at proper speed without unnecessary delays
+- **FILES AFFECTED**: `North_Safe.py` line 2125 (post_retract_wait_time simulation bypass)
+
+## [CRITICAL CALIBRATION FIX] - 2026-04-08
+
+### CRITICAL BUG FIX: Embedded Calibration Corruption Prevention
+- **FIXED**: Calibration system that saved Stage 3 parameters even when accuracy got worse
+- **ENHANCED**: Now compares ALL THREE stages and picks the overall best performer  
+- **FIXED**: CSV measurement data now updated with fresh measurements from optimization process
+- **ROOT CAUSE**: Blind `_update_calibration_csv()` call with no performance validation + stale measurement data
+- **SOLUTION**: Smart stage comparison logic + fresh measurement data replacement from winning stage  
+- **PROTECTION**: System preserves good calibration AND uses only matched parameter-measurement pairs
+- **INTELLIGENCE**: Stage 2 (crossing strategy) can now be selected if it outperforms interpolation
+- **DATA INTEGRITY**: Measurement fields updated with actual measured volumes from optimization process
+- **EVIDENCE**: Previously saved 6.3µL error parameters over existing 1.4µL tolerance parameters
+- **VALIDATION**: Comprehensive stage ranking with fresh measurement data from best performing stage
+- **REPORTING**: Enhanced Slack notifications show winning stage and APPLIED/REJECTED status
+- **IMPACT**: Prevents calibration degradation AND ensures optimal parameters with fresh measurement data
+
+### FILES MODIFIED  
+- `pipetting_data/embedded_calibration_validation.py`: Added conditional update logic and enhanced validation
+
+## [VIAL GUI ENHANCEMENTS] - 2026-04-02
+
+### ENHANCEMENT: Vial GUI "Empty Vial" Feature
+- **ADDED**: "Empty Vial" button to vial editing dialog for quick volume reset
+- **FUNCTIONALITY**: Single click sets volume to 0 and closes dialog (faster than manual entry)
+- **UI STYLING**: Yellow background button placed next to "Remove Vial" for easy access
+- **WORKFLOW**: Improves efficiency when marking vials as empty during experiments
+
+### BUG FIX: Reset Locations Button Not Working
+- **FIXED**: "Return All Home" button now properly refreshes the GUI display
+- **ROOT CAUSE**: Widget refresh method wasn't properly clearing and reloading vial positions
+- **SOLUTION**: Enhanced `_reload_all_widgets()` with proper widget cleanup and grid reset
+- **DEBUGGING**: Added comprehensive logging for troubleshooting reset operations
+- **IMPACT**: Digital vial location reset now visually updates all rack grids correctly
+
+### FILES MODIFIED
+- `vial_manager_gui.py`: Added empty vial feature and fixed reset locations functionality
+
+## [CRITICAL TIP SELECTION BUG FIXES] - 2026-04-02
+
+### ENHANCEMENT: Simplified Water 200µL Calibration Script  
+- **SIMPLIFIED**: Batch calibration automation script to focus solely on water at 200 µL
+- **REMOVED**: Multi-liquid calibration loop, now runs single water calibration only
+- **UPDATED**: UI messages and titles to reflect water-specific calibration purpose
+- **MAINTAINED**: All core functionality (config modification, vial swapping, calibration + validation)
+- **STREAM-LINED**: Single calibration run instead of batch processing multiple liquids
+- **FILES CHANGED**: `calibration_modular_v2/batch_calibration_automation.py`
+
+### CRITICAL BUG FIX: XY Movement Gripper Angle Preservation 
+- **FIXED**: Gripper unwantedly rotating during XY movements in Enhanced SP program
+- **ROOT CAUSE**: IK solver choosing completely different gripper angles to reach target XY position
+- **EXAMPLE**: 0.3mm Y movement caused 905 count gripper rotation (2552→1647 counts)
+- **SOLUTION**: Preserve current gripper angle during XY movements, only adjust elbow and shoulder
+- **METHOD**: Use `current_gripper_rad` instead of IK-calculated gripper angle in target position
+- **IMPACT**: XY movements now keep gripper orientation stable, only adjusting arm joints as intended
+- **FILES FIXED**: Enhanced SP arm position program `_move_xy_delta()` method
+
+### ENHANCEMENT: Added Gripper Rotation Controls to Enhanced SP Program
+- **ADDED**: Gripper rotation controls to Enhanced SP arm position program UI
+- **NEW BUTTONS**: "🔄 CCW" and "↻ CW" for counter-clockwise and clockwise rotation
+- **METHODS**: `move_gripper_ccw()` and `move_gripper_cw()` with safety bounds checking
+- **SAFETY**: Rotation respects GRIPPER_MIN_RAD and GRIPPER_MAX_RAD limits (-6.28 to 6.28 rad)
+- **STEP SIZE**: Uses configurable `move_increment_rad` (default 0.05 rad = ~2.9°)
+- **DISPLAY**: Gripper angle shown in both radians and degrees in position display
+- **UI LAYOUT**: Added rotation row between gripper open/close and clamp controls
+
+### CRITICAL BUG FIX: Color Mixing Workflow Tip Selection Algorithm Error
+- **FIXED**: Excessive tip switching (18 switches during experiment) caused by wrong function usage
+- **ROOT CAUSE**: Color mixing workflow incorrectly used `pipet_from_wellplate(..., aspirate=False)` instead of `dispense_into_wellplate()`
+- **MECHANISM**: `aspirate_from_vial()` selects large_tip (0.221 mL total with overvolumes) → `pipet_from_wellplate()` selects small_tip (0.200 mL base only) → immediate tip switching
+- **SOLUTION**: Changed all dispensing operations from `pipet_from_wellplate(..., aspirate=False)` to `dispense_into_wellplate()`
+- **IMPACT**: Eliminated unnecessary tip selection conflicts during wells 54-65 and 84-89 processing
+
+### CRITICAL BUG FIX: Tip Selection Algorithm Overaspirate Volume Issue
+- **FIXED**: Overaspirate volume incorrectly included in tip selection causing unnecessary large_tip usage
+- **ROOT CAUSE**: Tip selection included overaspirate_vol (0.010 mL) making 200 µL → 221 µL total, exceeding small_tip capacity (200 µL)
+- **SOLUTION**: Removed overaspirate_vol from tip selection calculation: `total_tip_vol = post_asp_air_vol + amount_mL` 
+- **REASONING**: Overaspirate is for liquid handling precision, not tip capacity. Post-aspirate air gap still considered.
+- **IMPACT**: 200 µL now correctly selects small_tip (0.200 + 0.011 air = 0.211 mL < 0.20 mL threshold)
+- **FILES FIXED**: `North_Safe.py` (line 2039)
+- **FILES FIXED**: `workflows/color_mixing.py` (3 instances in main loop + mix_wells function)
+- **ARCHITECTURE ALIGNED**: Color mixing now uses same dispensing pattern as other workflows (aspirate_from_vial → dispense_into_wellplate)
+
+## [CRITICAL X-Y MOVEMENT BUG FIXES] - 2026-03-31
+
+### CRITICAL BUG FIX: Motor Fault Prevention in X-Y Movement
+- **FIXED**: Motor faults caused by massive unintended movements during small X-Y adjustments
+- **ROOT CAUSE 1**: Wrong parameter order in forward kinematics call - `n9_fk(gripper, shoulder, elbow)` instead of correct `n9_fk(gripper, elbow, shoulder)`
+- **ROOT CAUSE 2**: IK function returns radians despite documentation claiming counts, causing unit conversion errors
+- **SOLUTION 1**: Corrected FK parameter order in `update_display()` to properly calculate current X-Y position
+- **SOLUTION 2**: Added automatic unit detection and conversion for IK results (radians → counts)
+- **SAFETY ENHANCEMENT**: Added movement safety limits (2000 cts per axis, 5000 cts total) to abort unsafe movements
+- **IMPACT**: Small 2mm movements now execute safely instead of attempting 38,000+ count dangerous movements
+- **PREVENTION**: Robot aborts movements exceeding safety limits instead of triggering motor controller faults
+
+## [WORKFLOW TESTER IMPROVEMENTS] - 2026-03-30
+
+### MAJOR ENHANCEMENT: Flow-Based Operation Testing 
+- **REVAMPED**: `tests/surfactant_workflow_tester.py` - Complete redesign from predefined test cycles to flow-based button operations
+- **NEW ARCHITECTURE**: Individual operation buttons organized by workflow stage (Source → Transfer → Liquid → Analysis → Disposal)  
+- **PROPER IMPLEMENTATIONS**: Updated all functions to match actual surfactant workflow patterns and API usage
+- **ENHANCED VIAL HANDLING**: Use real vial names ("water", "SDS_stock", "TTAB_stock", "pyrene_DMSO") instead of placeholders
+- **SMART POSITIONING**: Implements idempotent track positioning with status checking (only moves if needed)
+- **PROPER LIQUID HANDLING**: Correct `aspirate_from_vial` and `dispense_into_wellplate` usage with proper liquid types
+- **TIP MANAGEMENT**: Proper pipet conditioning, removal, and volume tracking
+- **ATOMIC OPERATIONS**: Cytation operations follow proper carrier in/out patterns with error recovery
+- **WORKFLOW STATE TRACKING**: Real-time display of vial, wellplate position, and pipet status
+- **EXAMPLE FLOWS**: "Source → Pipetting → Waste" or "Analysis → Cytation → Read → Return" button sequences
+- **IMPROVED ERROR HANDLING**: Comprehensive simulation mode support and safety checks
+
+## [COMPONENT TEST GUI] - 2026-03-30
+
+### NEW FEATURE: Workflow Component Testing GUI
+- **ADDED**: `tests/surfactant_workflow_tester.py` - Comprehensive GUI for testing individual workflow components
+- **TESTING CAPABILITIES**: Wellplate movement, robot operations, Cytation protocols, and vial manipulation
+- **REPETITIVE TESTING**: Run any operation multiple times with configurable delays to test consistency
+- **REAL-TIME MONITORING**: Progress tracking, success/error counters, and detailed test logs
+- **DUAL MODE SUPPORT**: Both simulation and real hardware testing modes
+- **SAFETY FEATURES**: Emergency stop functionality and error isolation per test iteration
+- **USE CASE**: Validate equipment reliability before running critical experiments
+
+## [TRIANGLE RELIABILITY INDEXING FIX] - 2026-03-27
+
+### CRITICAL BUG FIX: Delaunay Triangle Reliability Mask Index Mismatch
+- **FIXED**: Triangle recommender filtering center triangles due to index mismatch between data and reliability mask
+- **ROOT CAUSE**: Workflow passed all 48 points to recommender but triangle scorer internally filtered to 25 experimental points, causing index misalignment
+- **SOLUTION**: Filter data to experimental points BEFORE passing to recommender, eliminating internal filtering and index confusion
+- **IMPACT**: Center triangles now properly evaluated instead of being incorrectly filtered as "unreliable"
+- **ARCHITECTURAL IMPROVEMENT**: Cleaner separation - recommender receives only the data it needs, no internal filtering required
+
+## [VIAL POSITIONING FIX] - 2026-03-18
+
+### CRITICAL BUG FIX: Invalid Vial Location
+- **FIXED**: `glycerol_dye` vial invalid location causing workflow failures
+- **ROOT CAUSE**: Vial at `location_index: 48` but `main_8mL_rack` only supports positions 0-47
+- **SOLUTION**: Moved `glycerol_dye` from position 48 → position 5
+- **IMPACT**: Workflow now correctly consumes `glycerol_dye` in wells 8-11, 20-23
+- **SYMPTOM RESOLVED**: Vial volumes now decrease as expected during workflow execution
+
+## [X-Y COORDINATE CONTROL SYSTEM] - 2026-03-17
+
+### MAJOR ENHANCEMENT: Intuitive X-Y Coordinate Robot Control
+- **X-Y COORDINATE INTERFACE**: Converted shoulder/elbow joint controls to intuitive X-Y coordinate system
+- **NORTH API KINEMATICS**: Integrated `n9_fk()` and `n9_ik()` functions for seamless coordinate conversion
+- **UNIFIED STEP SIZE**: Single movement increment (mm) now controls both Z-axis and X-Y movement
+- **ENHANCED MOVEMENT FUNCTIONS**: 
+  - Added `move_x_left()`, `move_x_right()`, `move_y_forward()`, `move_y_back()` using inverse kinematics
+  - Implemented `_safe_move_xy()` with workspace bounds checking and fallback joint control
+- **GUI IMPROVEMENTS**:
+  - Updated position display labels: \"Shoulder\" → \"Y-Position\", \"Elbow\" → \"X-Position\"
+  - Modified control buttons: \"← SHOULDER -\" → \"← X LEFT\", \"→ SHOULDER +\" → \"→ X RIGHT\"
+  - Updated Y-axis controls: \"↓ ELBOW -\" → \"↓ Y BACK\", \"↑ ELBOW +\" → \"↑ Y FORWARD\"
+- **COORDINATE TRACKING**: Added `current_x_position` and `current_y_position` tracking variables
+- **REAL-TIME CONVERSION**: Forward kinematics automatically updates X-Y display from joint positions
+- **KEYBOARD CONTROLS MAINTAINED**: 
+  - Arrow keys (Left/Right) now control X-axis movement
+  - W/S keys control Y-axis movement (forward/back)
+  - Up/Down arrows still control Z-axis
+- **BACKWARD COMPATIBILITY**: Joint angle tracking and functions preserved for internal use
+- **TESTING FRAMEWORK**: Created comprehensive test suite for coordinate conversion validation
+- **FILES MODIFIED**: 
+  - workflows/enhanced_SP_arm_position_program.py (major X-Y coordinate system integration)
+  - workflows/test_xy_coordinates.py (new testing framework)
+
+## [SURFACTANT LIQUID_TYPE FIX] - 2026-03-16
+
+### BUG FIX: Corrected liquid_type Parameters for Surfactant Operations
+- **VALIDATION CALLS**: Fixed surfactant validation to use `liquid_type='SDS'` instead of `'water'`
+- **DISPENSING CALLS**: Fixed surfactant dispensing to use `liquid_type='SDS'` instead of `'water'`  
+- **SLACK NOTIFICATIONS**: Now correctly show "Liquid: SDS" in Slack messages for surfactant operations
+- **PIPETTING PARAMETERS**: Surfactant operations now use SDS-optimized parameters instead of water parameters
+- **DATABASE LOGGING**: Surfactant operations now logged as "SDS" for proper tracking and analysis
+- **AFFECTED FUNCTIONS**: 
+  - `dispense_component_to_wellplate()` calls for surf_A_volume_ul and surf_B_volume_ul
+  - `validate_pipetting_accuracy()` calls for surfactant stock validation (both small and large volumes)
+- **FILES MODIFIED**: workflows/surfactant_grid_adaptive_concentrations.py (4 liquid_type corrections)
+
+## [USER-DEFINED POSITION NAMES] - 2026-03-16
+
+### MAJOR FEATURE: Custom Position Saving with User-Defined Names
+- **CUSTOM POSITION NAMES**: Text input field for user-defined position names
+- **TEMP FOLDER SAVING**: Saves positions with custom names to temp/ directory 
+- **MULTIPLE EXPORT FORMATS**: 
+  - JSON format with full position data
+  - TXT format with coordinates for easy copy-paste
+  - Array format for direct code integration
+  - Python dictionary format for workflow files
+- **SAVED POSITIONS MANAGER**: GUI window to view, copy, and manage all saved positions
+- **AUTOMATED NAMING**: Auto-increments position names (my_position_1 → my_position_2)
+- **COPY COORDINATES**: Quick clipboard copy of current position coordinates
+- **TEMP FOLDER ACCESS**: Direct button to open temp folder in explorer
+- **ENHANCED EXPORT**: CSV export of all saved positions with timestamps
+- **USER WORKFLOW**: Save → Name → Export coordinates → Paste into other files
+- **FILES MODIFIED**: workflows/enhanced_SP_arm_position_program.py (added custom naming system)
+
+## [COMPLETE PIPETTE INTEGRATION] - 2026-03-16
+
+### MAJOR FEATURE: Complete Pipette Tip Rack Position System
+- **PIPETTE TIP POSITIONS**: Added 96 pipette tip positions (48 large + 48 small tips)
+- **TIP REMOVAL STATIONS**: Added 3 tip removal/disposal positions (Cap, Approach, Small)
+- **POSITION EXPANSION**: Total positions increased from ~70 to 166 
+- **YAML INTEGRATION**: Extended robot_state/vial_positions.yaml with pipette tip rack configurations
+- **WORKFLOW SUPPORT**: Enhanced position program now supports complete pipette tip pickup/disposal workflow
+- **COORDINATE MAPPING**: Proper coordinate mapping from Locator.py pgrid_low_2/pgrid_high_2 arrays
+- **CATEGORY ORGANIZATION**: Added Pipette_Tips and Tip_Removal position categories
+- **FILES MODIFIED**: 
+  - workflows/enhanced_SP_arm_position_program.py (added pipette position generation)
+  - robot_state/vial_positions.yaml (added tip rack mappings)
+
+## [CRITICAL SAFETY FIX] - 2026-03-16
+
+### CRITICAL: Safe Two-Step Movement to Prevent Vial Collisions
+- **SAFETY ISSUE**: Robot was lowering Z-axis first then moving X-Y, causing collisions with vials on rack
+- **SOLUTION**: Implemented safe two-step movement pattern:
+  1. Move to safe Z height (10,000 counts = ~100mm high) while maintaining current X-Y position
+  2. Move X-Y to target position while staying at safe height  
+  3. Finally lower Z-axis to target position
+- **COLLISION AVOIDANCE**: Prevents robot from hitting vials/obstacles during movement
+- **ERROR HANDLING**: Added try/catch for current position detection with safe defaults
+- **COORDINATE FIX**: Fixed MockRobot coordinate order to match Locator.py format [gripper, shoulder, elbow, z]
+- **CONSTANT ADDED**: SAFE_Z_HEIGHT_COUNTS = 10000 for consistent safe movement height
+- **FILES MODIFIED**: workflows/enhanced_SP_arm_position_program.py (goto_selected_position method and MockRobot class)
+
+## [PANDAS FALLBACK FIX] - 2026-03-16
+
+### CRITICAL FIX: CSV Loading Pandas Dependency Issue
+- **CSV LOADING FIX**: Added fallback CSV reader using built-in csv module when pandas fails
+- **ROOT CAUSE**: Pandas installation issue preventing dynamic position loading (pandas missing read_csv attribute)
+- **SOLUTION**: Created SimpleDataFrame class to mock pandas behavior for compatibility
+- **IMPACT**: Dynamic position loading now works reliably - loads 67 positions including 51 named vials
+- **VERIFICATION**: All coordinate mappings verified correct (water, clamp positions match Locator.py exactly)
+- **FALLBACK PATH**: System gracefully falls back from pandas -> csv module -> hardcoded positions
+- **FILES FIXED**: workflows/enhanced_SP_arm_position_program.py (CSV loading section)
+
+## [CRITICAL COORDINATE BUG FIX] - 2026-03-16
+
+### CRITICAL FIX: Robot Position Coordinate Order Bug
+- **COORDINATE ORDER BUG**: Fixed critical bug where shoulder and elbow coordinates were swapped
+- **ROOT CAUSE**: Program incorrectly treated Locator.py coordinates as [gripper, elbow, shoulder, z] instead of [gripper, shoulder, elbow, z]
+- **IMPACT**: Robot was going to wrong positions when using dynamic positioning system
+- **SOLUTION**: Corrected target_position array order in goto_selected_position() method
+- **VERIFICATION**: Coordinate mapping now matches Locator.py format: [gripper, shoulder, elbow, z_axis]
+- **FILES FIXED**: workflows/enhanced_SP_arm_position_program.py (line ~846-851)
+
+## [DYNAMIC POSITIONING SYSTEM] - 2026-03-16
+
+### MAJOR: Integrated Multi-Layer Dynamic Positioning System
+- **DYNAMIC POSITIONS**: Enhanced position controller now loads positions from multi-layer positioning system
+- **CSV INTEGRATION**: Automatically loads vial positions from CSV files (e.g., surfactant_grid_vials_expanded.csv)
+- **YAML CONFIG**: Uses vial_positions.yaml for rack configuration and Locator.py coordinates
+- **DUAL ACCESS**: Supports both gripper and pipetting positions for each vial location
+- **NAMED VIALS**: Shows actual vial names (water, SDBS_stock, etc.) instead of just coordinates
+- **LIVE RELOAD**: Configuration UI allows users to change vial files and reload positions on-demand
+- **FALLBACK SAFETY**: Maintains hardcoded positions if dynamic loading fails
+- **AUTO DETECTION**: Automatically detects and loads default vial file if available
+- **BACKUP CREATED**: enhanced_SP_arm_position_program_backup_YYYYMMDD_HHMMSS.py
+- **FILES MODIFIED**: workflows/enhanced_SP_arm_position_program.py
+
+## [POSITION SYSTEM FIX] - 2026-03-16
+
+### FIXED: Enhanced Position Controller Positioning Issues
+- **COORDINATE FIX**: Updated enhanced_SP_arm_position_program.py to use real robot coordinates from Locator.py
+- **MOVEMENT METHOD**: Changed from move_z/move_axis_rad to goto() method for precise absolute positioning
+- **REAL POSITIONS**: All 20+ positions now use actual robot count values instead of estimated mm/rad values
+- **GOTO METHOD**: Added goto() method to MockRobot simulation for testing
+- **POSITION CLEANUP**: Removed leftover old position definitions that were causing conflicts
+- **ENHANCED GUI**: Expanded window to 750x900 for better visibility
+- **COMPREHENSIVE POSITIONS**: Includes all vial racks, tip racks, processing stations with real coordinates
+- **FILES FIXED**: workflows/enhanced_SP_arm_position_program.py
+
+## [COMPREHENSIVE WORKFLOW POSITIONS] - 2026-03-16
+
+### MAJOR: Complete Workflow Position System with Real Coordinates
+- **REAL COORDINATES**: Updated all positions with actual robot counts from Locator.py
+- **COMPREHENSIVE POSITIONS**: Added 25 workflow positions including all vial racks, tip racks, and processing stations
+- **VIAL POSITIONS**: Main 8mL rack (positions 36, 43-47), Large vial rack, Small vial rack, 50mL vial rack
+- **TIP RACK POSITIONS**: Small tip rack (positions 0, 24, 47), Large tip rack (positions 0, 24, 47)
+- **PROCESSING STATIONS**: Photoreactor, Heater grid (positions 0, 5), Clamp position
+- **TIP REMOVAL**: Small and large pipet tip removal positions
+- **SAFETY POSITIONS**: Home and Safe transport height
+- **ROBOT MOVEMENT**: Uses goto() method with absolute count positioning for precise movement
+- **EXPANDED GUI**: Increased window size to 750x850, wider dropdown for longer position names
+- **ENHANCED SIMULATION**: Mock robot now supports goto() method with count-based positioning
+- **FILES MODIFIED**: workflows/SP_arm_position_program.py
+
+## [WORKFLOW POSITION DROPDOWN] - 2026-03-16
+
+### ENHANCED: SP_arm_position_program.py with Workflow Position Dropdown
+- **NEW FEATURE**: Position dropdown menu with 11 predefined surfactant workflow positions
+- **WORKFLOW POSITIONS**: Added positions from surfactant workflow (Home, Clamp, Main Rack 36/43-47, Photoreactor, Heater Grid, Safe Transport)
+- **POSITION SELECTION**: Dropdown shows position names with descriptions when selected
+- **GO TO POSITION**: One-click button to move robot arm to selected workflow position
+- **SAFETY FIRST**: Z-axis moves first for safe positioning, then rotational axes
+- **SUCCESS FEEDBACK**: Confirmation messages when position movement completes
+- **ENHANCED GUI**: Expanded window size (650x800) to accommodate new Position Selection section
+- **INTEGRATED WORKFLOW**: Positions match those used in surfactant_grid_adaptive_concentrations.py
+- **FILES MODIFIED**: workflows/SP_arm_position_program.py
+
+## [ENHANCED POSITION MANAGEMENT SYSTEM] - 2026-03-16
+
+### MAJOR: Enhanced Robot Position Control with Workflow Integration
+- **NEW FEATURE**: Position dropdown with 13 predefined surfactant workflow positions
+- **WORKFLOW INTEGRATION**: Includes positions like 'Clamp Position', 'Main Rack 36-47', 'Photoreactor', etc.
+- **POSITION MANAGEMENT**: Temporary position storage system for adjustment sessions
+- **EXPORT FUNCTIONALITY**: CSV export for position modifications, TXT export for session history, JSON export for complete data
+- **POSITION CATEGORIES**: Organized positions by function (Storage, Reagents, Processing, Manipulation, Large Volume, Small Volume, Standard)
+- **TEMPORARY MODIFICATIONS**: Save current position as temporary, reset to original, clear all temporary positions
+- **SESSION TRACKING**: Complete history of movements and position changes during session
+- **ENHANCED GUI**: New sections for Position Selection, Position Modifications, and Export controls
+- **SAFETY ENHANCED**: Proper position validation and bounds checking for all workflow positions
+- **FILES CREATED**: workflows/enhanced_SP_arm_position_program.py (extends original with position management)
+
+## [CALIBRATION CSV UPDATE] - 2026-03-17
+
+### FIXED: Adaptive Overaspirate Correction Now Persists to Calibration File
+- **Added** `_update_calibration_csv()` in `pipetting_data/embedded_calibration_validation.py`
+- After Stage 3 optimization, the winning `overaspirate_vol` is written back to `optimal_conditions_{liquid}.csv`
+- If the exact volume row already exists, only `overaspirate_vol` is updated; all other params unchanged
+- If the volume is new, a fully interpolated row is inserted (all numeric columns interpolated from surrounding volumes), then the file is re-sorted
+- Simulation mode prints what would be written without touching the file
+- **Files Modified**: `pipetting_data/embedded_calibration_validation.py`
+
 ## [MULTI-JOINT ROBOT ARM CONTROL] - 2026-03-16
 
 ### ENHANCED: Multi-Joint Robot Control System
@@ -12,6 +464,26 @@
 - **Position Tracking**: Real-time updates of current elbow angle and shoulder angle
 - **Error Handling**: Individual safety checks and error handling for each joint type
 - **Files Modified**: workflows/SP_arm_position_program.py
+
+## [USER-CONFIGURABLE MOVEMENT INCREMENTS] - 2026-03-16
+
+### NEW: Custom Movement Step Control System
+- **NEW FEATURE**: Added user-configurable movement increments for all joints
+- **INPUT VALIDATION**: Real-time validation with safety limits and error feedback
+- **Z-AXIS CONTROL**: Configurable step size (0.1-50.0mm) with live input validation
+- **ROTATIONAL CONTROL**: Configurable step size (0.01-1.0 radians) with degrees display
+- **ENHANCED SAFETY**: Improved error messages showing attempted values and limits
+- **VISUAL FEEDBACK**: Real-time degrees conversion display and status updates  
+- **PRECEDENT CHECKING**: System validates movements won't exceed joint limits before execution
+- **USER GUIDANCE**: Clear min/max limits displayed in validation messages
+- **PERSISTENT SETTINGS**: Custom increments stay active until manually changed
+- **FILES MODIFIED**: workflows/SP_arm_position_program.py
+
+### Testing Confirmed:
+- ✅ Set Z-axis from 5.0mm to 10.0mm - successful movement validation
+- ✅ Set rotational increment from 0.1rad to 1.0rad (57.3°) - full functionality
+- ✅ All safety limits and range checking working properly
+- ✅ Enhanced error messages providing clear user guidance
 
 ## [ROBOT ARM MULTI-JOINT CONTROL] - 2026-03-16
 

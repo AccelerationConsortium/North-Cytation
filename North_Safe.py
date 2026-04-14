@@ -1717,11 +1717,24 @@ class North_Robot(North_Base):
        
 
         if blowout_vol > 0: #Adjust this later into pipetting parameter
-            #blow_speed = 5
             self.logger.debug(f"Blowing out {blowout_vol:.3f} mL")
-            #self.adjust_pump_speed(0, blow_speed)
+            
+            # Get current speed - should be known from pump initialization
+            if 0 not in self.CURRENT_PUMP_SPEEDS:
+                self.pause_after_error("Pump 0 speed not initialized - load_pumps() may have failed")
+                return
+            current_speed = self.CURRENT_PUMP_SPEEDS[0]
+            
+            # Use faster speed for left valve aspirate (air intake)
+            fast_aspirate_speed = 5  # Much faster for air aspirate
+            self.adjust_pump_speed(0, fast_aspirate_speed)
+            
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_LEFT)
             self.c9.aspirate_ml(0, blowout_vol)
+            
+            # Restore original speed for dispense
+            self.adjust_pump_speed(0, current_speed)
+            
             self.c9.set_pump_valve(0, self.c9.PUMP_VALVE_RIGHT)
             self.c9.dispense_ml(0, blowout_vol)
 
@@ -2012,7 +2025,7 @@ class North_Robot(North_Base):
 
     #Aspirate from a vial using the pipet tool
     def aspirate_from_vial(self, source_vial_name, amount_mL, parameters=None, liquid=None,
-                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False):
+                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False, post_asp_shake=False):
         """
         Aspirate amount_ml from a source vial.
         
@@ -2036,7 +2049,8 @@ class North_Robot(North_Base):
         post_asp_air_vol = parameters.post_asp_air_vol
         overaspirate_vol = parameters.overaspirate_vol
         post_retract_wait_time = parameters.post_retract_wait_time
-        total_tip_vol = post_asp_air_vol + amount_mL + overaspirate_vol
+        # For tip selection, only consider aspirate volume + air gap, NOT overaspirate
+        total_tip_vol = post_asp_air_vol + amount_mL
 
         
         source_vial_num = self.normalize_vial_index(source_vial_name) #Convert to int if needed     
@@ -2112,11 +2126,20 @@ class North_Robot(North_Base):
         self.pipet_aspirate(amount_mL+overaspirate_vol, wait_time=aspirate_wait_time) #Main aspiration of liquid plus wait
         
         #Step 3: Retract and aspirate air if needed
+        if post_asp_shake:
+            None
+            # self.move_rel_xyz(z_distance=50)
+            # self.move_rel_xyz(x_distance=2)
+            # self.move_rel_xyz(x_distance=-2)
+            # self.move_rel_xyz(y_distance=2)
+            # self.move_rel_xyz(y_distance=-2)
         if move_up:
             self.c9.move_z(disp_height, vel=retract_speed) #Retract with a specific speed
-            time.sleep(post_retract_wait_time) #Wait after retracting
+            if not self.simulate:
+                time.sleep(post_retract_wait_time) #Wait after retracting
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
+
 
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)

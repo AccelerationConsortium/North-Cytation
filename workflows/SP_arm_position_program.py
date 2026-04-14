@@ -63,6 +63,215 @@ SHOULDER_MAX_RAD = (2/3) * 3.14159  # Maximum shoulder angle (radians)
 GRIPPER_MIN_RAD = -6.28              # Minimum gripper angle (radians)
 GRIPPER_MAX_RAD = 6.28               # Maximum gripper angle (radians)
 
+# Predefined positions from surfactant workflow
+WORKFLOW_POSITIONS = {
+    # Standard positions
+    "Home": {
+        "description": "Robot home position",
+        "gripper_cts": 0,
+        "shoulder_cts": 0,
+        "elbow_cts": 0,
+        "z_cts": 0
+    },
+    
+    # Clamp position (from Locator.py vial_clamp)
+    "Clamp Position": {
+        "description": "Vial clamping station for manipulation",
+        "gripper_cts": 2476,
+        "shoulder_cts": 7635,
+        "elbow_cts": 44106,
+        "z_cts": 17350
+    },
+    
+    # Main 8mL vial rack positions (key positions used in surfactant workflow)
+    "Main Rack - Position 36": {
+        "description": "8mL vial rack position 36",
+        "gripper_cts": 1708,
+        "shoulder_cts": 9251,
+        "elbow_cts": 27829,
+        "z_cts": 22200
+    },
+    "Main Rack - Position 43": {
+        "description": "8mL vial rack position 43",
+        "gripper_cts": 2021,
+        "shoulder_cts": 1163,
+        "elbow_cts": 19726,
+        "z_cts": 22200
+    },
+    "Main Rack - Position 44 (Water)": {
+        "description": "8mL vial rack position 44 (water)",
+        "gripper_cts": 1928,
+        "shoulder_cts": 2422,
+        "elbow_cts": 19859,
+        "z_cts": 22200
+    },
+    "Main Rack - Position 45 (Water_2)": {
+        "description": "8mL vial rack position 45 (water_2)",
+        "gripper_cts": 1845,
+        "shoulder_cts": 3750,
+        "elbow_cts": 20404,
+        "z_cts": 22200
+    },
+    "Main Rack - Position 46": {
+        "description": "8mL vial rack position 46",
+        "gripper_cts": 1768,
+        "shoulder_cts": 5155,
+        "elbow_cts": 21233,
+        "z_cts": 22200
+    },
+    "Main Rack - Position 47": {
+        "description": "8mL vial rack position 47",
+        "gripper_cts": 1692,
+        "shoulder_cts": 6655,
+        "elbow_cts": 22291,
+        "z_cts": 22200
+    },
+    
+    # Large vial positions
+    "Large Vial Rack - Position 0": {
+        "description": "20mL vial rack position 0",
+        "gripper_cts": 721,
+        "shoulder_cts": 9854,
+        "elbow_cts": 26732,
+        "z_cts": 13921
+    },
+    "Large Vial Rack - Position 1": {
+        "description": "20mL vial rack position 1", 
+        "gripper_cts": 405,
+        "shoulder_cts": 17735,
+        "elbow_cts": 34375,
+        "z_cts": 13921
+    },
+    
+    # Small vial positions
+    "Small Vial Rack - Position 0": {
+        "description": "1mL vial rack position 0",
+        "gripper_cts": 848,
+        "shoulder_cts": 15038,
+        "elbow_cts": 44585,
+        "z_cts": 16166
+    },
+    "Small Vial Rack - Position 1": {
+        "description": "1mL vial rack position 1",
+        "gripper_cts": 788,
+        "shoulder_cts": 16021,
+        "elbow_cts": 45013,
+        "z_cts": 16166
+    },
+    
+    # 50mL vial positions
+    "50mL Vial Rack - Position 0": {
+        "description": "50mL vial rack position 0",
+        "gripper_cts": -1378,
+        "shoulder_cts": 14164,
+        "elbow_cts": 35944,
+        "z_cts": 11100
+    },
+    "50mL Vial Rack - Position 3": {
+        "description": "50mL vial rack position 3",
+        "gripper_cts": -1518,
+        "shoulder_cts": 15521,
+        "elbow_cts": 35093,
+        "z_cts": 11100
+    },
+    
+    # Photoreactor position
+    "Photoreactor Position": {
+        "description": "Photoreactor array position",
+        "gripper_cts": 69,
+        "shoulder_cts": 33380,
+        "elbow_cts": 24059,
+        "z_cts": 20577
+    },
+    
+    # Heater grid positions
+    "Heater Grid - Position 0": {
+        "description": "Heater grid position 0",
+        "gripper_cts": -1232,
+        "shoulder_cts": 39645,
+        "elbow_cts": 13715,
+        "z_cts": 15241
+    },
+    "Heater Grid - Position 5": {
+        "description": "Heater grid position 5 (center area)",
+        "gripper_cts": -949,
+        "shoulder_cts": 39840,
+        "elbow_cts": 21249,
+        "z_cts": 15241
+    },
+    
+    # Tip rack positions - Small tips (high)
+    "Small Tip Rack - Position 0": {
+        "description": "Small pipet tip rack position 0",
+        "gripper_cts": 2668,
+        "shoulder_cts": 37357,
+        "elbow_cts": 8247,
+        "z_cts": 9150
+    },
+    "Small Tip Rack - Position 24": {
+        "description": "Small pipet tip rack position 24 (middle)",
+        "gripper_cts": 2893,
+        "shoulder_cts": 35374,
+        "elbow_cts": 9991,
+        "z_cts": 9150
+    },
+    "Small Tip Rack - Position 47": {
+        "description": "Small pipet tip rack position 47 (end)",
+        "gripper_cts": 3080,
+        "shoulder_cts": 32757,
+        "elbow_cts": 9540,
+        "z_cts": 9150
+    },
+    
+    # Tip rack positions - Large tips
+    "Large Tip Rack - Position 0": {
+        "description": "Large pipet tip rack position 0",
+        "gripper_cts": 2677,
+        "shoulder_cts": 39055,
+        "elbow_cts": 11930,
+        "z_cts": 12562
+    },
+    "Large Tip Rack - Position 24": {
+        "description": "Large pipet tip rack position 24 (middle)",
+        "gripper_cts": 2912,
+        "shoulder_cts": 36904,
+        "elbow_cts": 13611,
+        "z_cts": 12562
+    },
+    "Large Tip Rack - Position 47": {
+        "description": "Large pipet tip rack position 47 (end)",
+        "gripper_cts": 3095,
+        "shoulder_cts": 34238,
+        "elbow_cts": 12950,
+        "z_cts": 12562
+    },
+    
+    # Tip removal positions
+    "Tip Removal - Small": {
+        "description": "Small pipet tip removal position",
+        "gripper_cts": -270,
+        "shoulder_cts": 27025,
+        "elbow_cts": 6845,
+        "z_cts": 7679
+    },
+    "Tip Removal - Large": {
+        "description": "Large pipet tip removal position",
+        "gripper_cts": -97,
+        "shoulder_cts": 27004,
+        "elbow_cts": 6864,
+        "z_cts": 9160
+    },
+    
+    # Safe positions for transport
+    "Safe Transport Height": {
+        "description": "Safe height for moving between positions",
+        "gripper_cts": 0,
+        "shoulder_cts": 0,
+        "elbow_cts": 0,
+        "z_cts": 5000  # High safe position
+    }
+}
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -104,6 +313,11 @@ class RobotArmController:
         self.rad_increment_entry = None
         self.increment_status_label = None
         self.gripper_status_label = None  # Display gripper open/close status
+        
+        # Position dropdown components
+        self.position_dropdown = None
+        self.position_description_label = None
+        self.selected_position = None
         
     def connect_robot(self):
         """Initialize connection to the North robot."""
@@ -197,6 +411,23 @@ class RobotArmController:
                     if rad < GRIPPER_MIN_RAD or rad > GRIPPER_MAX_RAD:
                         raise ValueError(f"Gripper position {rad:.2f}rad is out of range [{GRIPPER_MIN_RAD:.2f}-{GRIPPER_MAX_RAD:.2f}]")
                     self.gripper_angle_rad = rad
+                    
+            def goto(self, position_list, wait=True):
+                """Move to absolute position using counts [gripper, elbow, shoulder, z]."""
+                logger.info(f"SIMULATION: Moving to position {position_list}")
+                time.sleep(0.5)  # Simulate movement time
+                
+                # Convert counts to internal values (simplified conversion)
+                self.gripper_angle_rad = position_list[0] / 1000.0  # Mock conversion
+                self.elbow_angle_rad = position_list[1] / 1000.0   # Mock conversion  
+                self.shoulder_angle_rad = position_list[2] / 1000.0 # Mock conversion
+                self.z_position_mm = position_list[3] / 100.0      # Mock conversion (100 counts = 1mm)
+                
+                # Apply limits
+                self.gripper_angle_rad = max(GRIPPER_MIN_RAD, min(GRIPPER_MAX_RAD, self.gripper_angle_rad))
+                self.elbow_angle_rad = max(ELBOW_MIN_RAD, min(ELBOW_MAX_RAD, self.elbow_angle_rad))
+                self.shoulder_angle_rad = max(SHOULDER_MIN_RAD, min(SHOULDER_MAX_RAD, self.shoulder_angle_rad))
+                self.z_position_mm = max(Z_AXIS_MIN_MM, min(Z_AXIS_MAX_MM, self.z_position_mm))
                 
             def open_gripper(self):
                 logger.info("SIMULATION: Opening gripper")
@@ -241,7 +472,7 @@ class RobotArmController:
         """Create the main GUI window."""
         self.root = tk.Tk()
         self.root.title("North Robot Arm Position Control")
-        self.root.geometry("580x700")
+        self.root.geometry("750x850")
         self.root.resizable(False, False)
         
         # Set up the GUI layout
@@ -260,9 +491,32 @@ class RobotArmController:
         self.status_label = ttk.Label(status_frame, text="Disconnected", foreground="red")
         self.status_label.grid(row=0, column=0, sticky=tk.W)
         
+        # Position Selection section
+        position_select_frame = ttk.LabelFrame(main_frame, text="Workflow Positions", padding="10")
+        position_select_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        ttk.Label(position_select_frame, text="Select Position:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        
+        # Position dropdown
+        position_names = list(WORKFLOW_POSITIONS.keys())
+        self.position_dropdown = ttk.Combobox(position_select_frame, values=position_names, 
+                                            state="readonly", width=40)
+        self.position_dropdown.grid(row=0, column=1, padx=(10, 10), pady=2)
+        self.position_dropdown.bind('<<ComboboxSelected>>', self.on_position_selected)
+        
+        # Go to position button
+        goto_button = ttk.Button(position_select_frame, text="Go To Position", 
+                                command=self.goto_selected_position)
+        goto_button.grid(row=0, column=2, padx=(0, 0), pady=2)
+        
+        # Position description
+        self.position_description_label = ttk.Label(position_select_frame, text="Select a position to see description",
+                                                   font=("Arial", 9), foreground="gray")
+        self.position_description_label.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
+        
         # Position section
         position_frame = ttk.LabelFrame(main_frame, text="Joint Positions", padding="10")
-        position_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        position_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
         
         self.z_position_label = ttk.Label(position_frame, text="Z-Axis: Unknown", 
                                          font=("Arial", 10))
@@ -287,7 +541,7 @@ class RobotArmController:
         
         # Movement increment settings
         increment_frame = ttk.LabelFrame(main_frame, text="Movement Settings", padding="10")
-        increment_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        increment_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
         
         # Z-axis increment setting
         z_inc_frame = ttk.Frame(increment_frame)
@@ -322,7 +576,7 @@ class RobotArmController:
         
         # Control buttons
         control_frame = ttk.LabelFrame(main_frame, text="Controls", padding="10")
-        control_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        control_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
         
         self.home_button = ttk.Button(control_frame, text="🏠 HOME ROBOT", 
                                      command=self.home_robot, style="Accent.TButton")
@@ -409,7 +663,7 @@ class RobotArmController:
         
         # Instructions
         instruction_frame = ttk.LabelFrame(main_frame, text="Keyboard Controls", padding="10")
-        instruction_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
+        instruction_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
         
         instructions = [
             "↑/↓ Arrows: Move Z-axis up/down (current step shown above)",
@@ -828,6 +1082,53 @@ class RobotArmController:
         except Exception as e:
             logger.error(f"Error closing gripper: {str(e)}")
             messagebox.showerror("Error", f"Failed to close gripper:\n{str(e)}")
+    
+    def on_position_selected(self, event):
+        """Handle position dropdown selection."""
+        position_name = self.position_dropdown.get()
+        if position_name in WORKFLOW_POSITIONS:
+            position_data = WORKFLOW_POSITIONS[position_name]
+            self.position_description_label.config(text=position_data['description'])
+            self.selected_position = position_name
+    
+    def goto_selected_position(self):
+        """Move robot to the selected workflow position."""
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+            
+        if not self.selected_position:
+            messagebox.showwarning("Warning", "Please select a position first")
+            return
+            
+        try:
+            position_data = WORKFLOW_POSITIONS[self.selected_position]
+            
+            logger.info(f"Moving to position: {self.selected_position}")
+            
+            # For home position, use the home command
+            if self.selected_position == "Home":
+                self.robot.home_robot(wait=True)
+                logger.info(f"Successfully homed robot to {self.selected_position}")
+                messagebox.showinfo("Success", f"Homed robot")
+            else:
+                # Move to specific position using counts (absolute positioning)
+                target_position = [
+                    position_data["gripper_cts"],
+                    position_data["elbow_cts"], 
+                    position_data["shoulder_cts"],
+                    position_data["z_cts"]
+                ]
+                
+                self.robot.goto(target_position, wait=True)
+                logger.info(f"Successfully moved to {self.selected_position}")
+                messagebox.showinfo("Success", f"Moved to {self.selected_position}")
+            
+        except Exception as e:
+            logger.error(f"Error moving to position: {str(e)}")
+            messagebox.showerror("Error", f"Failed to move to position:\n{str(e)}")
+        finally:
+            self.update_display()
     
     def on_key_press(self, event):
         """Handle keyboard input for robot control."""

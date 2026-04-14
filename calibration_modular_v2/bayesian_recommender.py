@@ -351,6 +351,12 @@ class AxBayesianOptimizer:
         # Create custom generation strategy based on SOBOL trial count
         num_sobol_trials = self.config.num_initial_trials
         
+        # Choose appropriate model based on objective type
+        if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
+            bayesian_model = Models.MOO  # Multi-objective optimization (qNEHVI)
+        else:
+            bayesian_model = Models.GPEI  # Single-objective optimization
+        
         if num_sobol_trials > 0:
             # Strategy with SOBOL followed by Bayesian (like existing working code)
             generation_strategy = GenerationStrategy(
@@ -361,7 +367,7 @@ class AxBayesianOptimizer:
                         min_trials_observed=num_sobol_trials,  # Wait for all SOBOL trials
                     ),
                     GenerationStep(
-                        model=Models.GPEI,  # Gaussian Process Expected Improvement
+                        model=bayesian_model,  # Correct model for objective type
                         num_trials=-1,  # Continue indefinitely
                     ),
                 ]
@@ -371,7 +377,7 @@ class AxBayesianOptimizer:
             generation_strategy = GenerationStrategy(
                 steps=[
                     GenerationStep(
-                        model=Models.GPEI,  # Gaussian Process Expected Improvement
+                        model=bayesian_model,  # Correct model for objective type
                         num_trials=-1,  # Continue indefinitely
                     ),
                 ]

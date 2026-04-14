@@ -42,7 +42,7 @@ class CalibrationVisualizer:
         plt.ioff()
         
     def generate_all_plots(self, trial_results: List[Dict], optimal_conditions: List[Dict], 
-                          raw_measurements: List[Dict]) -> None:
+                          raw_measurements: List[Dict], insights: Dict = None) -> None:
         """Generate all visualization plots matching original system."""
         logger.info("Generating calibration visualization plots...")
         
@@ -59,6 +59,10 @@ class CalibrationVisualizer:
             self._plot_time_vs_deviation(trials_df)
             self._plot_measured_volume_over_time(raw_df)
             self._plot_improvement_summary(trials_df)
+            
+            # SHAP importance plot if insights provided
+            if insights:
+                self._plot_shap_importance(insights)
             
             logger.info(f"[SUCCESS] All plots saved to: {self.plots_dir}")
             
@@ -278,6 +282,50 @@ class CalibrationVisualizer:
         plt.close()
         logger.info(f"[OK] Improvement summary saved")
     
+    def _plot_shap_importance(self, insights: Dict[str, Any]) -> None:
+        """Plot SHAP mean absolute importance as a grouped bar chart for accuracy/precision/time."""
+        sensitivity = insights.get('parameter_sensitivity', {})
+        shap_imp = sensitivity.get('shap_importance', {})
+        if not shap_imp:
+            logger.debug("No SHAP importance data available for plotting")
+            return
+
+        # Collect all params and target names
+        targets = list(shap_imp.keys())
+        all_params = list(dict.fromkeys(
+            p for target_dict in shap_imp.values() for p in target_dict
+        ))
+        # Rank by accuracy importance if available, else first target
+        rank_target = 'accuracy' if 'accuracy' in shap_imp else targets[0]
+        all_params_sorted = sorted(
+            all_params,
+            key=lambda p: shap_imp[rank_target].get(p, 0),
+            reverse=True
+        )[:12]  # top 12 params
+
+        x = np.arange(len(all_params_sorted))
+        width = 0.8 / len(targets)
+        colors = ['#e74c3c', '#3498db', '#2ecc71']  # red=accuracy, blue=precision, green=time
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+        for i, (target, color) in enumerate(zip(targets, colors)):
+            values = [shap_imp[target].get(p, 0.0) for p in all_params_sorted]
+            offset = (i - len(targets) / 2 + 0.5) * width
+            ax.bar(x + offset, values, width, label=target.capitalize(), color=color, alpha=0.85)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(all_params_sorted, rotation=45, ha='right', fontsize=9)
+        ax.set_ylabel('Mean |SHAP value|')
+        ax.set_title('Parameter Importance by Objective (SHAP)')
+        ax.legend(title='Target')
+        ax.grid(True, axis='y', alpha=0.3)
+        plt.tight_layout()
+
+        save_path = self.plots_dir / 'shap_parameter_importance.png'
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        logger.info(f"[OK] SHAP importance plot saved to {save_path}")
+
     def _flatten_parameters_to_row(self, parameters: Dict[str, Any], row: Dict[str, Any]) -> None:
         """Flatten nested parameters into row dictionary."""
         def _flatten_recursive(obj: Any, prefix: str = '') -> None:
@@ -299,7 +347,8 @@ class CalibrationVisualizer:
         _flatten_recursive(parameters)
 
 def generate_calibration_plots(trial_results: List[Dict], optimal_conditions: List[Dict], 
-                             raw_measurements: List[Dict], output_dir: str) -> None:
+                             raw_measurements: List[Dict], output_dir: str,
+                             insights=None) -> None:
     """
     Convenience function to generate all calibration plots matching original system.
     
@@ -308,6 +357,7 @@ def generate_calibration_plots(trial_results: List[Dict], optimal_conditions: Li
         optimal_conditions: List of optimal condition dictionaries  
         raw_measurements: List of raw measurement dictionaries
         output_dir: Directory to save plots
+        insights: Optional analysis insights dict for SHAP plot
     """
     visualizer = CalibrationVisualizer(output_dir)
-    visualizer.generate_all_plots(trial_results, optimal_conditions, raw_measurements)
+    visualizer.generate_all_plots(trial_results, optimal_conditions, raw_measurements, insights=insights)
