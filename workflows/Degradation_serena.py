@@ -75,10 +75,10 @@ def validate_key_liquids(lash_e, output_dir):
         from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
         
         validation_tests = [
-            {'vial': '6M_H3PO4', 'liquid': '6M_H3PO4', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
-            {'vial': 'polymer_stock', 'liquid': 'heptane', 'volumes': [0.100, 0.150], 'reps': 3, 'params': None},
-            {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3, 'params': None},
-            {'vial': 'heptane', 'liquid': 'heptane', 'volumes': [0.600], 'reps': 3, 'params': None},
+            # {'vial': '6M_H3PO4', 'liquid': '6M_H3PO4', 'volumes': [0.025, 0.015, 0.005], 'reps': 3, 'params': None},
+            {'vial': 'polymer_stock', 'liquid': 'toluene', 'volumes': [0.100, 0.150], 'reps': 3, 'params': None},
+            # {'vial': 'water', 'liquid': 'water', 'volumes': [0.01], 'reps': 3, 'params': None},
+            {'vial': 'toluene', 'liquid': 'toluene', 'volumes': [0.600], 'reps': 3, 'params': None},
         ]
         lash_e.logger.info("Running compact liquid validation...")
         for test in validation_tests:
@@ -548,12 +548,12 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, solvent='2MeTH
             solvent_vol = volume_lookup[sample]['solvent_volume']
             lash_e.logger.info(f"\nAdding {solvent_vol:.3f} mL solvent to {sample}")
             safe_pipet(solvent, sample, solvent_vol, lash_e, liquid=solvent) 
-        
-        for sample in sample_solutions:
-            stock_vol = volume_lookup[sample]['stock_volume']
-            lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
-            safe_pipet('polymer_stock', sample, stock_vol, lash_e, liquid=solvent, move_speed=10)
-            lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5) #move_speeddefault is 15
+    
+    for sample in sample_solutions:
+        stock_vol = volume_lookup[sample]['stock_volume']
+        lash_e.logger.info(f"\nAdding {stock_vol:.3f} mL stock solution to {sample}")
+        safe_pipet('polymer_stock', sample, stock_vol, lash_e, liquid=solvent, move_speed=10)
+        lash_e.nr_robot.vortex_vial(vial_name=sample, vortex_time=5) #move_speeddefault is 15
 
     for sample in sample_solutions:
         lash_e.logger.info(f"\nAdding {water_volume} mL water to sample: {sample}")
@@ -636,7 +636,7 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, solvent='2MeTH
     lash_e.nr_robot.move_home()
 
     # 3. Clean the well plate after all measurements are done
-    wash_wellplate(lash_e, used_wells, solvent_vial=solvent, acetone_vial='acetone', waste_state=waste_state, solvent_repeats=0, acetone_repeats=1, well_volume=0.19)
+    # wash_wellplate(lash_e, used_wells, solvent_vial=solvent, acetone_vial='acetone', waste_state=waste_state, solvent_repeats=0, acetone_repeats=1, well_volume=0.19)
 
     # 4. Home all components at the end of the workflow
     lash_e.nr_robot.move_home()
@@ -685,7 +685,7 @@ else:
 lash_e.nr_robot.home_robot_components()
 
 for i in range(1, EXPERIMENT_REPEATS+1): 
-    degradation_workflow(lash_e, i, acid_type='6M_HCl', solvent='2MeTHF', acid_molar_excess=1500, waste_state=waste_state)
+    degradation_workflow(lash_e, i, acid_type='6M_p_TSA', solvent='toluene', acid_molar_excess=1000, waste_state=waste_state)
 
 # Print final vial status
 lash_e.logger.info("Final vial status:")

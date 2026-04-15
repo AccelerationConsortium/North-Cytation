@@ -3575,7 +3575,8 @@ class North_Robot(North_Base):
         self.save_robot_status()
 
     #Recap the vial in the clamp
-    def recap_clamp_vial(self, revs=2.20, torque_thresh = 600, move_speed=None):
+    #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
+    def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None):
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)
