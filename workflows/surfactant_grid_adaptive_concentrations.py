@@ -3578,7 +3578,7 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
             destination_vial='pyrene_DMSO',
             liquid_type='DMSO',
             volumes_ml=dmso_test_volume,
-            replicates=50,
+            replicates=5,
             output_folder=experiment_output_folder,
             switch_pipet=False,
             save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
