@@ -1094,7 +1094,8 @@ class CalibrationExperiment:
                 constraint_updates=[constraint_update] if constraint_update else None,
                 num_sobol_trials=0,  # 0 SOBOL trials - go straight to Bayesian optimization
                 protocol_instance=self.protocol_module,  # Pass protocol for constraints
-                min_good_trials=min_good_trials  # Volume-dependent stopping criteria
+                min_good_trials=min_good_trials,  # Volume-dependent stopping criteria
+                is_first_volume=is_first_volume  # Pass first volume flag for backend selection
             )
             
             # Set CSV export directory for Ax trials logging

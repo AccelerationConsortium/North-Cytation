@@ -1,5 +1,35 @@
 # Changelog
 
+## [ENHANCED LLM PHYSICAL INSIGHTS] - 2026-04-22
+
+### IMPROVED: Parameter Descriptions for LLM Understanding
+- **ENHANCED**: All parameter descriptions in experiment_config.yaml with detailed physical insights
+- **PHYSICS CONTEXT**: Added explanations of parameter mechanisms and liquid handling physics
+- **TRADE-OFFS**: Documented accuracy vs speed relationships (e.g., slower aspiration = better accuracy but longer time)
+- **VISCOSITY GUIDANCE**: Specific recommendations for thin vs thick liquids
+- **PARAMETER INTERACTIONS**: Explained how parameters affect each other (e.g., slow dispense + blowout = long time)
+- **MECHANISM EXPLANATIONS**: Surface tension, pressure equilibration, dripping dynamics, air gap functions
+- **BENEFIT**: LLM can now make informed physics-based parameter recommendations instead of blind exploration
+- **EXAMPLES**: 
+  - aspirate_speed: "Slower aspiration reduces cavitation and bubble formation in viscous liquids"
+  - overaspirate_vol: "Extra volume to compensate for liquid retention due to surface tension"
+  - post_retract_wait_time: "Allows thick liquid to drip off, e.g. ~5s for glycerol-level viscosity"
+
+## [DUAL BACKEND SYSTEM] - 2026-04-21
+
+### NEW FEATURE: Configurable Ax Acquisition Function Control
+- **IMPLEMENTED**: Dual backend system supporting both direct acquisition function control and high-level abstractions
+- **BACKENDS SUPPORTED**: 
+  - Direct Control: qNEHVI, qLogEI, qEI (colleague's approach with botorch_acqf_class)
+  - High-Level: GPEI, MOO, BOTORCH_MODULAR (current simplified approach)
+- **CONFIGURATION**: Via experiment_config.yaml `backend` and `backend_subsequent` settings
+- **BACKWARD COMPATIBLE**: Supports both old configs ("qNEHVI", "qLogEI") and new configs ("GPEI", "MOO")
+- **VOLUME AWARE**: Different backends for first volume vs subsequent volumes
+- **FALLBACK SAFE**: Graceful degradation to optimizer_type mapping if config unavailable
+- **BENEFIT**: Enables colleague's precise acquisition function control while maintaining current simplicity
+- **FILES MODIFIED**: bayesian_recommender.py, experiment.py
+- **TESTING**: Backend mapping logic verified for all supported configurations
+
 ## [SDL SCORING BUG FIX] - 2026-04-21
 
 ### FIXED: SDL Implementation Returning Zero Scores

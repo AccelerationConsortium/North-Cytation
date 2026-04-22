@@ -1540,6 +1540,30 @@ def create_substocks_from_recipes(lash_e, recipes):
                 water_to_add = water_to_add * scale_factor  # Scale water proportionally
                 
                 new_total_vol = current_vol + source_to_add + water_to_add
+                
+                # CAPACITY CHECK: Prevent vial overflow (8mL max capacity)
+                max_vial_capacity = 8.0  # mL
+                if new_total_vol > max_vial_capacity:
+                    logger.warning(f"    200µL enforcement would overflow vial: {new_total_vol:.1f}mL > {max_vial_capacity}mL capacity")
+                    # Calculate maximum safe addition to stay within capacity
+                    max_safe_addition = max_vial_capacity - current_vol
+                    if max_safe_addition > 0.01:  # Only proceed if we can add at least 10µL
+                        # Recalculate proportions to stay within capacity
+                        safe_ratio = max_safe_addition / (source_to_add + water_to_add)
+                        source_to_add = source_to_add * safe_ratio
+                        water_to_add = water_to_add * safe_ratio
+                        new_total_vol = current_vol + source_to_add + water_to_add
+                        logger.info(f"    Reduced to fit capacity: +{(source_to_add + water_to_add)*1000:.0f}uL -> {new_total_vol:.1f}mL")
+                    else:
+                        # Skip this vial - too close to capacity
+                        logger.warning(f"  SKIP  {vial_name}: insufficient capacity for minimum pipetting volume")
+                        created_substocks.append({
+                            'vial_name': vial_name, 'concentration_mm': target_conc,
+                            'volume_ml': current_vol, 'created': False, 'existed': True
+                        })
+                        skipped_count += 1
+                        continue
+                
                 action_label = f"TOP-UP +{(source_to_add + water_to_add)*1000:.0f} uL (200µL min, scaled) -> {new_total_vol:.1f}mL"
                 
         else:

@@ -9,7 +9,7 @@ calibration_parameters:
     - 0.0
     - 0.02
     default: 0.004
-    description: Overaspiration volume for volume accuracy (mL)
+    description: Extra volume drawn by the syringe pump, to compensate for lack of volume aspired or dispensed for any reason. Can be used to crudely correct accuracy at minimal cost to time. May reduce precision if overused. 
     round_to_nearest: 0.0001
     type: float
     volume_dependent: true
@@ -46,7 +46,7 @@ hardware_parameters:
     - 2
     - 30
     default: 10
-    description: Aspiration speed (relative units)
+    description: Aspiration speed (relative units) - Higher values = SLOWER operation. Increasing aspirate_speed can help with thicker liquids for accuracy and precision but increases operation time. Slower aspiration reduces cavitation and bubble formation in viscous liquids.
     round_to_nearest: 1
     time_affecting: true
     type: integer
@@ -55,7 +55,7 @@ hardware_parameters:
     - 0.0
     - 15.0
     default: 10.0
-    description: Wait time after aspiration in liquid (seconds)
+    description: Wait time after aspiration in liquid (seconds) - Allows pressure equilibration and meniscus stabilization after liquid is drawn into tip. Critical for viscous liquids >1000 cP to prevent incomplete aspiration and ensure accurate volume transfer.
     round_to_nearest: 0.1
     time_affecting: true
     type: float
@@ -64,7 +64,7 @@ hardware_parameters:
     - 0.0
     - 0.5
     default: 0.0
-    description: Blowout volume after dispense (mL)
+    description: Blowout volume after dispense (mL) - A neat and simple way to push out extra liquid from the tip afterwards. If dispense_speed is high (slow) then this blowout will take a long time. More effective for viscous liquids that stick to tips.
     round_to_nearest: 0.001
     time_affecting: false
     type: float
@@ -73,7 +73,7 @@ hardware_parameters:
     - 2
     - 30
     default: 10
-    description: Dispense speed (relative units)
+    description: Dispense speed (relative units) - Higher values = SLOWER operation. Increasing dispense_speed can help with thicker liquids for accuracy, but making it low (fast) may help expel liquids quickly which can be helpful since it's simpler to push out than pull in. Fast dispense can reduce dripping time.
     round_to_nearest: 1
     time_affecting: true
     type: integer
@@ -82,7 +82,7 @@ hardware_parameters:
     - 0
     - 15.0
     default: 1.5
-    description: Wait time after dispense (seconds)
+    description: Wait time after dispense (seconds) - Allows complete liquid evacuation from tip and pressure equilibration. Longer waits help ensure all liquid is expelled, especially important for viscous liquids that flow slowly.
     round_to_nearest: 0.1
     time_affecting: true
     type: float
@@ -91,7 +91,7 @@ hardware_parameters:
     - 0.0
     - 0.1
     default: 0.0
-    description: Post-aspiration air gap volume (mL)
+    description: Post-aspiration air gap volume (mL) - Creates a gas bubble after your liquid. Seems to help more for larger volumes with large tips but can hurt with thick liquids. Provides barrier against backflow during transport.
     round_to_nearest: 0.001
     time_affecting: false
     type: float
@@ -100,7 +100,7 @@ hardware_parameters:
     - 0.0
     - 10.0
     default: 5.0
-    description: Wait time after aspiration in liquid (seconds)
+    description: Wait time after aspiration in liquid (seconds) - Allows thick liquid to drip off the outside of tip. Only relevant for quite viscous liquids that need time for external dripping, e.g. ~5s for glycerol-level viscosity.
     round_to_nearest: 0.1
     time_affecting: true
     type: float
@@ -109,7 +109,7 @@ hardware_parameters:
     - 0.0
     - 0.3
     default: 0.0
-    description: Pre-aspiration air volume (mL)
+    description: Pre-aspiration air volume (mL) - A faster way to achieve blowout and push liquid from the tip, but it is more constrained and can cause liquid to get stuck in the tip. Creates air cushion before liquid aspiration.
     round_to_nearest: 0.001
     time_affecting: false
     type: float
