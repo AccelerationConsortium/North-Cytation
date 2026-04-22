@@ -1,6 +1,7 @@
 from robot_state.Locator import * #Let's try to eliminate this in the future
 import robot_state.Locator as Locator
 import numpy as np
+import os
 import time
 import math
 import pandas as pd
