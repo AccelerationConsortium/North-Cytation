@@ -1,10 +1,10 @@
 experiment:
-  liquid: PVA_water
+  liquid: PVA_DMSO
   max_measurements_per_volume: 50
   max_total_measurements: 200
   simulate: false
   volume_targets_ml:
-  - 0.1
+  - 0.05
 hardware_parameters:
   aspirate_speed:
     bounds:
@@ -31,26 +31,6 @@ hardware_parameters:
     - 0.0
     - 0.0
     type: continuous
-  post_asp_air_vol:
-    bounds:
-    - 0.0
-    - 0.0
-    type: continuous
-  post_retract_wait_time:
-    bounds:
-    - 0.0
-    - 0.0
-    type: continuous
-  pre_asp_air_vol:
-    bounds:
-    - 0.0
-    - 0.0
-    type: continuous
-  retract_speed:
-    bounds:
-    - 2.5
-    - 7.5
-    type: discrete
 optimization:
   enabled: true
   min_good_trials: 3

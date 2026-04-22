@@ -449,15 +449,10 @@ class ExperimentConfig:
         return self._config.get('screening', {}).get('external_data', {}).get('liquid_filter')
     
     def get_external_data_required_columns(self) -> List[str]:
-        """Get required columns for external data - hardware agnostic."""
-        # Base columns that are always required
-        base_columns = ["volume_ml", "deviation_pct", "duration_s", "overaspirate_vol_ml"]
-        
-        # Add hardware-specific parameter columns from config
-        hw_param_names = self.get_hardware_parameter_names()
-        
-        # Return base + configured hardware parameters
-        return base_columns + hw_param_names
+        """Get required columns for external data - individual measurement format."""
+        # Return only YAML-configured columns - no hardcoded requirements
+        # External data now uses individual measurement format, not trial summaries
+        return self._config.get('screening', {}).get('external_data', {}).get('required_columns', [])
     
     # Advanced features
     def use_range_based_variability(self) -> bool:

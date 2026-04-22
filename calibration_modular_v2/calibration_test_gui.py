@@ -77,16 +77,26 @@ except ImportError as e:
 
 # Default pipetting parameters with common ranges
 DEFAULT_PARAMETERS = {
-    'overaspirate_vol': {'value': 0.000, 'min': 0.0, 'max': 0.050, 'unit': 'mL', 'type': 'float'},
-    'aspirate_speed': {'value': 10, 'min': 1, 'max': 40, 'unit': '', 'type': 'int'},
-    'dispense_speed': {'value': 10, 'min': 1, 'max': 40, 'unit': '', 'type': 'int'},
-    'aspirate_wait_time': {'value': 0.0, 'min': 0.0, 'max': 30.0, 'unit': 's', 'type': 'float'},
-    'dispense_wait_time': {'value': 0.0, 'min': 0.0, 'max': 30.0, 'unit': 's', 'type': 'float'},
-    'pre_asp_air_vol': {'value': 0.0, 'min': 0.0, 'max': 0.500, 'unit': 'mL', 'type': 'float'},
-    'post_asp_air_vol': {'value': 0.0, 'min': 0.0, 'max': 0.100, 'unit': 'mL', 'type': 'float'},
-    'blowout_vol': {'value': 0.0, 'min': 0.0, 'max': 1.000, 'unit': 'mL', 'type': 'float'},
-    'retract_speed': {'value': 5, 'min': 1, 'max': 50, 'unit': '', 'type': 'int'},
-    'post_retract_wait_time': {'value': 0.0, 'min': 0.0, 'max': 10.0, 'unit': 's', 'type': 'float'}
+    'overaspirate_vol': {'value': 0.000, 'min': 0.0, 'max': 0.050, 'unit': 'mL', 'type': 'float', 'description': 'Extra volume pipetted above the target'},
+    'aspirate_speed': {'value': 10, 'min': 1, 'max': 40, 'unit': '', 'type': 'int', 'description': 'How quickly the pipet aspirates'},
+    'dispense_speed': {'value': 10, 'min': 1, 'max': 40, 'unit': '', 'type': 'int', 'description': 'How quickly the pipet dispenses'},
+    'aspirate_wait_time': {'value': 0.0, 'min': 0.0, 'max': 30.0, 'unit': 's', 'type': 'float', 'description': 'Extra time after the pipet aspirates to allow the liquid to pull up'},
+    'dispense_wait_time': {'value': 0.0, 'min': 0.0, 'max': 30.0, 'unit': 's', 'type': 'float', 'description': 'Extra time after the pipet dispenses to allow the liquid to dispense and for the scale to settle'},
+    'blowout_vol': {'value': 0.0, 'min': 0.0, 'max': 1.000, 'unit': 'mL', 'type': 'float', 'description': 'Extra push from the syringe pump after dispense to eject excess liquid'},
+}
+
+# Full parameter set (for backwards compatibility and custom parameter additions)
+FULL_PARAMETERS = {
+    'overaspirate_vol': {'value': 0.000, 'min': 0.0, 'max': 0.050, 'unit': 'mL', 'type': 'float', 'description': 'Extra volume pipetted above the target'},
+    'aspirate_speed': {'value': 10, 'min': 1, 'max': 40, 'unit': '', 'type': 'int', 'description': 'How quickly the pipet aspirates'},
+    'dispense_speed': {'value': 10, 'min': 1, 'max': 40, 'unit': '', 'type': 'int', 'description': 'How quickly the pipet dispenses'},
+    'aspirate_wait_time': {'value': 0.0, 'min': 0.0, 'max': 30.0, 'unit': 's', 'type': 'float', 'description': 'Extra time after the pipet aspirates to allow the liquid to pull up'},
+    'dispense_wait_time': {'value': 0.0, 'min': 0.0, 'max': 30.0, 'unit': 's', 'type': 'float', 'description': 'Extra time after the pipet dispenses to allow the liquid to dispense and for the scale to settle'},
+    'pre_asp_air_vol': {'value': 0.0, 'min': 0.0, 'max': 0.500, 'unit': 'mL', 'type': 'float', 'description': 'Air gap volume aspirated before liquid'},
+    'post_asp_air_vol': {'value': 0.0, 'min': 0.0, 'max': 0.100, 'unit': 'mL', 'type': 'float', 'description': 'Air gap volume aspirated after liquid'},
+    'blowout_vol': {'value': 0.0, 'min': 0.0, 'max': 1.000, 'unit': 'mL', 'type': 'float', 'description': 'Extra push from the syringe pump after dispense to eject excess liquid'},
+    'retract_speed': {'value': 5, 'min': 1, 'max': 50, 'unit': '', 'type': 'int', 'description': 'Speed of pipet tip retraction'},
+    'post_retract_wait_time': {'value': 0.0, 'min': 0.0, 'max': 10.0, 'unit': 's', 'type': 'float', 'description': 'Wait time after retracting from liquid'}
 }
 
 # Available vials - loaded from status file
@@ -193,6 +203,13 @@ class ParameterWidget(QFrame):
         
         layout.addLayout(param_layout)
         
+        # Add description if available
+        if 'description' in self.config:
+            description_label = QLabel(self.config['description'])
+            description_label.setStyleSheet("QLabel { color: #666; font-size: 11px; font-style: italic; margin-left: 155px; margin-top: 2px; }")
+            description_label.setWordWrap(True)
+            layout.addWidget(description_label)
+        
         # Add speed inversion reminder only for aspirate/dispense speeds (not retract)
         if self.name.lower() in ['aspirate_speed', 'dispense_speed']:
             speed_reminder = QLabel("⚠ Speed Scale: 1 = Fast, 40 = Slow")
@@ -297,6 +314,232 @@ class AddParameterDialog(QDialog):
         
         return name, config
 
+class DeviationTimePlotWidget(QWidget):
+    """Widget for displaying deviation vs time with optimal conditions highlighted."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setup_ui()
+        self.optimization_data = []
+        self.optimal_conditions = None
+        
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        
+        # Title
+        title_label = QLabel("Deviation vs Time")
+        title_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        layout.addWidget(title_label)
+        
+        if MATPLOTLIB_AVAILABLE:
+            self.figure = Figure(figsize=(6, 4))
+            self.canvas = FigureCanvas(self.figure)
+            layout.addWidget(self.canvas)
+        else:
+            placeholder = QLabel("Matplotlib not available")
+            placeholder.setStyleSheet("color: red; text-align: center;")
+            layout.addWidget(placeholder)
+            
+        self.setLayout(layout)
+        
+    def add_measurement(self, measurement_data: dict):
+        """Add measurement data and update plot."""
+        self.optimization_data.append(measurement_data)
+        self.update_plot()
+        
+    def set_optimal_conditions(self, optimal_conditions):
+        """Set optimal conditions data for highlighting."""
+        self.optimal_conditions = optimal_conditions
+        self.update_plot()
+        
+    def update_plot(self):
+        """Update the deviation vs time plot."""
+        if not MATPLOTLIB_AVAILABLE or not self.optimization_data:
+            return
+            
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        
+        # Plot all measurements
+        times = []
+        deviations = []
+        
+        for measurement in self.optimization_data:
+            duration = measurement.get('duration_s', measurement.get('elapsed_s', 0))
+            deviation = abs(measurement.get('deviation_pct', 0))
+            
+            if duration > 0:  # Valid data
+                times.append(duration)
+                deviations.append(deviation)
+        
+        if times:
+            # Plot all points in blue
+            ax.scatter(times, deviations, c='steelblue', alpha=0.6, s=40, label='All Trials')
+            
+            # Highlight optimal conditions if available
+            if self.optimal_conditions:
+                opt_times = []
+                opt_deviations = []
+                
+                # Find all individual measurements that match optimal parameter sets
+                for opt_condition in self.optimal_conditions:
+                    # Get the optimal parameter values to match against
+                    opt_overaspirate = opt_condition.get('calibration_overaspirate_vol', 
+                                                        opt_condition.get('overaspirate_vol', None))
+                    opt_aspirate_speed = opt_condition.get('hardware_parameters_aspirate_speed',
+                                                         opt_condition.get('aspirate_speed', None))
+                    opt_dispense_speed = opt_condition.get('hardware_parameters_dispense_speed',
+                                                         opt_condition.get('dispense_speed', None))
+                    
+                    # Search through all measurements to find matches
+                    for measurement in self.optimization_data:
+                        meas_overaspirate = measurement.get('overaspirate_vol', None)
+                        meas_aspirate_speed = measurement.get('aspirate_speed', None)
+                        meas_dispense_speed = measurement.get('dispense_speed', None)
+                        
+                        # Check if this measurement matches the optimal parameter set
+                        overaspirate_match = (opt_overaspirate is None or meas_overaspirate is None or 
+                                            abs(float(opt_overaspirate) - float(meas_overaspirate)) < 0.0001)
+                        aspirate_match = (opt_aspirate_speed is None or meas_aspirate_speed is None or 
+                                        abs(float(opt_aspirate_speed) - float(meas_aspirate_speed)) < 0.1)
+                        dispense_match = (opt_dispense_speed is None or meas_dispense_speed is None or 
+                                        abs(float(opt_dispense_speed) - float(meas_dispense_speed)) < 0.1)
+                        
+                        if overaspirate_match and aspirate_match and dispense_match:
+                            # This measurement belongs to the optimal parameter set
+                            opt_time = measurement.get('duration_s', measurement.get('elapsed_s', 0))
+                            opt_dev = abs(measurement.get('deviation_pct', 0))
+                            
+                            if opt_time > 0:
+                                opt_times.append(opt_time)
+                                opt_deviations.append(opt_dev)
+                
+                if opt_times:
+                    ax.scatter(opt_times, opt_deviations, c='gold', s=100, 
+                              marker='*', edgecolors='red', linewidth=1.5,
+                              label='Optimal', zorder=10)
+            
+            ax.set_xlabel('Time (s)', fontsize=10)
+            ax.set_ylabel('Deviation (%)', fontsize=10)
+            ax.legend(fontsize=9)
+            ax.grid(True, alpha=0.3)
+            
+            # Add performance zones
+            ax.axhspan(0, 5, alpha=0.1, color='green')
+            ax.axhspan(5, 15, alpha=0.1, color='yellow')
+            
+        self.canvas.draw()
+        
+    def clear(self):
+        """Clear all data."""
+        self.optimization_data = []
+        self.optimal_conditions = None
+        if MATPLOTLIB_AVAILABLE:
+            self.figure.clear()
+            self.canvas.draw()
+
+
+class ShapImportancePlotWidget(QWidget):
+    """Widget for displaying SHAP parameter importance."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setup_ui()
+        self.shap_data = None
+        
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        
+        # Title
+        title_label = QLabel("Parameter Importance")
+        title_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        layout.addWidget(title_label)
+        
+        if MATPLOTLIB_AVAILABLE:
+            self.figure = Figure(figsize=(6, 4))
+            self.canvas = FigureCanvas(self.figure)
+            layout.addWidget(self.canvas)
+        else:
+            placeholder = QLabel("SHAP analysis unavailable")
+            placeholder.setStyleSheet("color: red; text-align: center;")
+            layout.addWidget(placeholder)
+            
+        self.setLayout(layout)
+        
+    def set_shap_data(self, insights_data):
+        """Set SHAP importance data from experiment insights."""
+        self.shap_data = insights_data
+        self.update_plot()
+        
+    def update_plot(self):
+        """Update the SHAP importance plot."""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        
+        if not self.shap_data:
+            ax.text(0.5, 0.5, 'SHAP analysis\nwill appear here\nafter optimization', 
+                   ha='center', va='center', transform=ax.transAxes,
+                   fontsize=10, style='italic', color='gray')
+            ax.set_xticks([])
+            ax.set_yticks([])
+            self.canvas.draw()
+            return
+        
+        # Extract SHAP importance data
+        sensitivity = self.shap_data.get('parameter_sensitivity', {})
+        shap_imp = sensitivity.get('shap_importance', {})
+        
+        if not shap_imp:
+            ax.text(0.5, 0.5, 'No SHAP data\navailable', 
+                   ha='center', va='center', transform=ax.transAxes,
+                   fontsize=10, style='italic', color='gray')
+            ax.set_xticks([])
+            ax.set_yticks([])
+            self.canvas.draw()
+            return
+        
+        # Use accuracy importance if available, else first target
+        if 'accuracy' in shap_imp:
+            importance_data = shap_imp['accuracy']
+            target_name = 'Accuracy'
+        else:
+            importance_data = list(shap_imp.values())[0]
+            target_name = list(shap_imp.keys())[0].title()
+        
+        # Get top 8 parameters for compact display
+        sorted_params = sorted(importance_data.items(), key=lambda x: x[1], reverse=True)[:8]
+        
+        if sorted_params:
+            params, values = zip(*sorted_params)
+            
+            # Create horizontal bar chart
+            y_pos = np.arange(len(params))
+            bars = ax.barh(y_pos, values, color='steelblue', alpha=0.7)
+            
+            ax.set_yticks(y_pos)
+            ax.set_yticklabels([p.replace('_', ' ').title()[:15] for p in params], fontsize=9)
+            ax.set_xlabel('SHAP Importance', fontsize=10)
+            ax.set_title(f'{target_name} Importance', fontsize=11, fontweight='bold')
+            
+            # Add value labels on bars
+            for i, (bar, value) in enumerate(zip(bars, values)):
+                ax.text(bar.get_width() * 0.5, bar.get_y() + bar.get_height()/2, 
+                       f'{value:.3f}', ha='center', va='center', fontsize=8, color='white')
+        
+        ax.grid(True, alpha=0.3, axis='x')
+        self.canvas.draw()
+        
+    def clear(self):
+        """Clear SHAP data."""
+        self.shap_data = None
+        if MATPLOTLIB_AVAILABLE:
+            self.figure.clear()
+            self.canvas.draw()
+
+
 class OptimizationPlotWidget(QWidget):
     """Widget for displaying optimization progress in real-time."""
     
@@ -304,11 +547,13 @@ class OptimizationPlotWidget(QWidget):
         super().__init__(parent)
         self.setup_ui()
         self.optimization_data = []  # List of measurement dictionaries
+        self.optimal_conditions = None  # Store optimal conditions for highlighting
         self.strategy_colors = {
             'screening': '#1f77b4',      # Blue
             'optimization': '#ff7f0e',   # Orange  
             'calibration': '#2ca02c',    # Green
             'validation': '#d62728',     # Red
+            'manual': '#e377c2',         # Pink - for manual GUI measurements
             'other': '#9467bd'           # Purple
         }
         
@@ -334,6 +579,7 @@ class OptimizationPlotWidget(QWidget):
     def clear(self):
         """Clear optimization data and plot."""
         self.optimization_data = []
+        self.optimal_conditions = None  # Clear optimal conditions highlighting
         if MATPLOTLIB_AVAILABLE:
             self.figure.clear()
             self.canvas.draw()
@@ -349,8 +595,18 @@ class OptimizationPlotWidget(QWidget):
         self.optimization_data.append(measurement_data)
         self.update_plot()
         
-    def update_plot(self):
-        """Update the optimization plot with current data."""
+    def set_optimal_conditions(self, optimal_conditions):
+        """Set optimal conditions data for highlighting."""
+        self.optimal_conditions = optimal_conditions
+        self.update_plot()  # Refresh plot with highlighting
+        
+    def update_plot(self, optimization_data=None, optimal_conditions=None):
+        """Update the optimization plot with current data and optional optimal conditions."""
+        if optimization_data is not None:
+            self.optimization_data = optimization_data
+        if optimal_conditions is not None:
+            self.optimal_conditions = optimal_conditions
+            
         if not MATPLOTLIB_AVAILABLE or not self.optimization_data:
             return
             
@@ -365,43 +621,83 @@ class OptimizationPlotWidget(QWidget):
         
         # Plot volume data (left Y-axis)
         volume_handles = []
-        for strategy in self.strategy_colors.keys():
-            x_values = []
-            y_values = []
-            
-            for param_set_idx, measurements in parameter_sets.items():
-                strategy_measurements = [m for m in measurements if m.get('strategy', 'other') == strategy]
-                for measurement in strategy_measurements:
-                    x_values.append(param_set_idx)
-                    y_values.append(measurement['measured_volume_ul'])
-            
-            if x_values:  # Only plot if we have data for this strategy
+        
+        # Group manual measurements (all Manual-X strategies use same color)
+        manual_x_values = []
+        manual_y_values = []
+        
+        # Group other strategies 
+        other_strategies = {}
+        
+        for param_set_idx, measurements in parameter_sets.items():
+            for measurement in measurements:
+                strategy = measurement.get('strategy', 'other')
+                
+                if strategy.startswith('Manual-'):
+                    # All manual measurements get grouped together
+                    manual_x_values.append(param_set_idx)
+                    manual_y_values.append(measurement['measured_volume_ul'])
+                else:
+                    # Other strategies remain separate
+                    if strategy not in other_strategies:
+                        other_strategies[strategy] = {'x': [], 'y': []}
+                    other_strategies[strategy]['x'].append(param_set_idx)
+                    other_strategies[strategy]['y'].append(measurement['measured_volume_ul'])
+        
+        # Plot manual measurements with single color
+        if manual_x_values:
+            color = self.strategy_colors['manual']
+            handle = ax.scatter(manual_x_values, manual_y_values, c=color, label='Manual (Volume)', 
+                              alpha=0.7, s=50, marker='o')
+            volume_handles.append(handle)
+        
+        # Plot other strategies with their assigned colors
+        for strategy, data in other_strategies.items():
+            if data['x']:  # Only plot if we have data
                 color = self.strategy_colors.get(strategy, self.strategy_colors['other'])
-                handle = ax.scatter(x_values, y_values, c=color, label=f'{strategy.title()} (Volume)', 
+                handle = ax.scatter(data['x'], data['y'], c=color, label=f'{strategy.title()} (Volume)', 
                                   alpha=0.7, s=50, marker='o')
                 volume_handles.append(handle)
         
         # Plot time data (right Y-axis) - use different markers and X-offset for visibility
         time_handles = []
-        for strategy in self.strategy_colors.keys():
-            x_values = []
-            time_values = []
-            
-            for param_set_idx, measurements in parameter_sets.items():
-                strategy_measurements = [m for m in measurements if m.get('strategy', 'other') == strategy]
-                for measurement in strategy_measurements:
-                    # Slight X-offset so time points don't overlay volume points exactly
-                    x_values.append(param_set_idx + 0.1)  # Offset time points slightly right
-                    # Get time from duration_s or elapsed_s
-                    time_s = measurement.get('duration_s', measurement.get('elapsed_s', 0))
-                    print(f"DEBUG: Processing measurement for plotting - duration_s: {measurement.get('duration_s')}, elapsed_s: {measurement.get('elapsed_s')}, final time_s: {time_s}")
-                    time_values.append(time_s)
-            
-            if x_values and time_values:  # Only plot if we have data for this strategy
-                color = self.strategy_colors.get(strategy, self.strategy_colors['other'])
-                print(f"DEBUG: Plotting time values for {strategy}: {time_values}")
-                # Use squares with different color and size to make them clearly distinct
-                handle = ax2.scatter(x_values, time_values, c='red', label=f'{strategy.title()} (Time)', 
+        
+        # Group manual time measurements
+        manual_time_x = []
+        manual_time_y = []
+        
+        # Group other strategies for time
+        other_time_strategies = {}
+        
+        for param_set_idx, measurements in parameter_sets.items():
+            for measurement in measurements:
+                strategy = measurement.get('strategy', 'other')
+                # Slight X-offset so time points don't overlay volume points exactly
+                x_offset = param_set_idx + 0.1
+                # Get time from duration_s or elapsed_s
+                time_s = measurement.get('duration_s', measurement.get('elapsed_s', 0))
+                
+                if strategy.startswith('Manual-'):
+                    # All manual measurements get grouped together
+                    manual_time_x.append(x_offset)
+                    manual_time_y.append(time_s)
+                else:
+                    # Other strategies remain separate
+                    if strategy not in other_time_strategies:
+                        other_time_strategies[strategy] = {'x': [], 'y': []}
+                    other_time_strategies[strategy]['x'].append(x_offset)
+                    other_time_strategies[strategy]['y'].append(time_s)
+        
+        # Plot manual time measurements with single color
+        if manual_time_x and manual_time_y:
+            handle = ax2.scatter(manual_time_x, manual_time_y, c='red', label='Manual (Time)', 
+                               alpha=0.8, s=60, marker='s', edgecolors='darkred', linewidth=1.5)
+            time_handles.append(handle)
+        
+        # Plot other strategies' time data
+        for strategy, data in other_time_strategies.items():
+            if data['x'] and data['y']:  # Only plot if we have data
+                handle = ax2.scatter(data['x'], data['y'], c='red', label=f'{strategy.title()} (Time)', 
                                    alpha=0.8, s=60, marker='s', edgecolors='darkred', linewidth=1.5)
                 time_handles.append(handle)
         
@@ -436,17 +732,26 @@ class OptimizationPlotWidget(QWidget):
         if parameter_sets:
             ax.set_xlim(0.5, max(parameter_sets.keys()) + 0.5)
             ax.set_xticks(list(parameter_sets.keys()))
-            
-        # Color the right Y-axis labels
+        
+        # Highlight optimal conditions if available
+        if self.optimal_conditions:
+            self._highlight_optimal_conditions(ax, ax2, parameter_sets)
+        else:
+            print("[DEBUG] No optimal conditions to highlight")
         ax2.tick_params(axis='y', labelcolor='#666666')
         
-        # Combine legends from both axes
+        # Combine legends from both axes and place outside plot area
         lines1, labels1 = ax.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left', bbox_to_anchor=(0, 1))
+        # Place legend to the right of the plot area
+        legend = ax.legend(lines1 + lines2, labels1 + labels2, 
+                          bbox_to_anchor=(1.15, 1), loc='upper left')
         
         ax.grid(True, alpha=0.3)
         
+        # Adjust layout to make room for the external legend
+        self.figure.tight_layout()
+        self.canvas.draw()  # Force redraw
         self.canvas.draw()
     
     def _group_by_parameter_combinations(self):
@@ -462,9 +767,24 @@ class OptimizationPlotWidget(QWidget):
         current_set = 1
         
         for measurement in self.optimization_data:
+            strategy = measurement.get('strategy', 'other')
+            
+            # Handle manual measurements - use the number from strategy name directly
+            if strategy.startswith('Manual-'):
+                try:
+                    manual_set_num = int(strategy.split('-')[1])
+                    if manual_set_num not in parameter_groups:
+                        parameter_groups[manual_set_num] = []
+                    parameter_groups[manual_set_num].append(measurement)
+                    continue
+                except (IndexError, ValueError):
+                    # Fallback if strategy name is malformed
+                    pass
+            
+            # Handle other strategies (optimization, screening, etc.) - group by actual parameters
             # Create parameter signature from measurement data 
             # Look for parameter columns that would be in the CSV after column 7
-            param_keys = ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'air_gap_vol', 'pre_dispense_vol']
+            param_keys = ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'blowout_vol']
             
             # Create a signature tuple from available parameters
             param_signature = tuple([
@@ -475,6 +795,9 @@ class OptimizationPlotWidget(QWidget):
             found_group = None
             for group_num, measurements in parameter_groups.items():
                 if measurements and len(measurements) > 0:
+                    # Skip manual groups when comparing optimization data
+                    if measurements[0].get('strategy', '').startswith('Manual-'):
+                        continue
                     # Compare with first measurement in this group
                     first_measurement = measurements[0]
                     first_signature = tuple([
@@ -487,10 +810,180 @@ class OptimizationPlotWidget(QWidget):
             if found_group is not None:
                 parameter_groups[found_group].append(measurement)
             else:
+                # Find next available set number (skip manual set numbers)
+                while current_set in parameter_groups:
+                    current_set += 1
                 parameter_groups[current_set] = [measurement]
                 current_set += 1
                 
         return parameter_groups
+    
+    def _highlight_optimal_conditions(self, ax, ax2, parameter_sets):
+        """Highlight optimal parameter combinations on the plot with dashed lines and stars."""
+        if not self.optimal_conditions:
+            print("[DEBUG] No optimal conditions to highlight")
+            return
+            
+        print(f"[DEBUG] Highlighting {len(self.optimal_conditions)} optimal conditions")
+        
+        for i, optimal_condition in enumerate(self.optimal_conditions):
+            try:
+                print(f"[DEBUG] Processing optimal condition {i+1}: {list(optimal_condition.keys())}")
+                
+                # Get optimal performance metrics with fallbacks
+                optimal_volume = (optimal_condition.get('volume_measured_ul') or 
+                                optimal_condition.get('measured_volume_ul') or 
+                                optimal_condition.get('volume_target_ul', 0))
+                optimal_time = optimal_condition.get('duration_s', 0)
+                
+                print(f"[DEBUG] Optimal metrics: volume={optimal_volume}uL, time={optimal_time}s")
+                
+                if optimal_volume <= 0:
+                    print(f"[DEBUG] Skipping optimal condition {i+1} - invalid volume: {optimal_volume}")
+                    continue
+                
+                # Try to find matching parameter set
+                optimal_param_set = self._find_matching_parameter_set(optimal_condition, parameter_sets)
+                print(f"[DEBUG] Matched to parameter set: {optimal_param_set}")
+                
+                if optimal_param_set is not None:
+                    print(f"[DEBUG] 🎯 HIGHLIGHTING parameter set {optimal_param_set} with volume={optimal_volume}")
+                    
+                    # HIGHLIGHT 1: Big gold star for volume (left Y-axis) - FORCE VISIBILITY
+                    star_handle = ax.scatter([optimal_param_set], [optimal_volume], 
+                              s=200, c='gold', marker='*', 
+                              edgecolors='red', linewidth=2,
+                              label='⭐ Best Condition' if i == 0 else '', zorder=100)  # Very high z-order
+                    print(f"[DEBUG] 🌟 Volume star plotted at ({optimal_param_set}, {optimal_volume})")
+                    
+                    # HIGHLIGHT 2: Dashed vertical line through the best parameter set - FORCE VISIBILITY  
+                    y_min, y_max = ax.get_ylim()
+                    line_handle = ax.axvline(x=optimal_param_set, color='red', linestyle='--', 
+                              linewidth=4, alpha=1.0, label='Best Condition' if i == 0 else '', zorder=90)
+                    print(f"[DEBUG] 📏 Vertical line plotted at x={optimal_param_set}, y_range=({y_min:.1f}, {y_max:.1f})")
+                    
+                    # HIGHLIGHT 3: Gold star for time if available (right Y-axis) - FORCE VISIBILITY
+                    if optimal_time > 0:
+                        time_star_handle = ax2.scatter([optimal_param_set + 0.1], [optimal_time], 
+                                   s=200, c='gold', marker='*', 
+                                   edgecolors='darkred', linewidth=2,
+                                   label='' if i == 0 else '', zorder=100)
+                        print(f"[DEBUG] ⏱️ Time star plotted at ({optimal_param_set + 0.1}, {optimal_time})")
+                    
+                    print(f"[DEBUG] ✅ Successfully highlighted parameter set {optimal_param_set}")
+                else:
+                    print(f"[DEBUG] ❌ Could not find matching parameter set for condition {i+1}")
+                    # FALLBACK: Find the parameter set with the closest volume to optimal
+                    if parameter_sets:
+                        best_fallback_set = None
+                        smallest_volume_diff = float('inf')
+                        
+                        for param_set_num, measurements in parameter_sets.items():
+                            if measurements:
+                                # Calculate average volume for this parameter set
+                                avg_volume = sum(m['measured_volume_ul'] for m in measurements) / len(measurements)
+                                volume_diff = abs(avg_volume - optimal_volume)
+                                if volume_diff < smallest_volume_diff:
+                                    smallest_volume_diff = volume_diff
+                                    best_fallback_set = param_set_num
+                        
+                        if best_fallback_set is not None:
+                            print(f"[DEBUG] 🔶 FALLBACK: Highlighting closest volume match at parameter set {best_fallback_set}")
+                            fallback_handle = ax.scatter([best_fallback_set], [optimal_volume], 
+                                      s=200, c='orange', marker='*', 
+                                      edgecolors='red', linewidth=2,
+                                      label='≈ Best (approx)' if i == 0 else '', zorder=100)
+                            
+                            # Also add a thick vertical line for visibility
+                            ax.axvline(x=best_fallback_set, color='orange', linestyle=':', 
+                                      linewidth=4, alpha=1.0, zorder=90)
+                            print(f"[DEBUG] 🔶 Fallback highlighting at parameter set {best_fallback_set}")
+                        else:
+                            print(f"[DEBUG] 🔶 No suitable fallback parameter set found")
+                    
+            except Exception as e:
+                print(f"[ERROR] Failed to highlight optimal condition {i+1}: {e}")
+                # Don't silently continue - log the error but keep going
+    
+    def _find_matching_parameter_set(self, optimal_condition, parameter_sets):
+        """Find which parameter set number matches the optimal condition parameters."""
+        try:
+            print(f"[DEBUG] Looking for parameter match...")
+            print(f"[DEBUG] Optimal condition keys: {list(optimal_condition.keys())}")
+            
+# Extract parameters from optimal condition using systematic name mapping
+            metadata_keys = {'volume_target_ml', 'volume_target_ul', 'volume_measured_ml', 
+                           'volume_measured_ul', 'measured_volume_ul', 'deviation_pct', 
+                           'precision_cv_pct', 'duration_s', 'trials_count', 'status', 
+                           'measurement_count', 'composite_score', 'quality_overall'}
+            
+            optimal_params = {}
+            for key, value in optimal_condition.items():
+                if key not in metadata_keys and value is not None:
+                    # SYSTEMATIC NAME MAPPING - handle any parameter
+                    if key.startswith('hardware_parameters_'):
+                        # Remove hardware_parameters_ prefix: hardware_parameters_aspirate_speed -> aspirate_speed
+                        mapped_key = key.replace('hardware_parameters_', '')
+                    elif key == 'calibration_overaspirate_vol':
+                        # Special case for overaspirate: calibration_overaspirate_vol -> overaspirate_vol
+                        mapped_key = 'overaspirate_vol'
+                    else:
+                        # Keep as-is if already in measurement format
+                        mapped_key = key
+                    
+                    optimal_params[mapped_key] = value
+            
+            print(f"[DEBUG] Mapped parameters: {optimal_params}")
+            
+            if not optimal_params:
+                print("[DEBUG] No parameters found in optimal condition to match")
+                return None
+            
+            # Check each parameter set for matches
+            best_match_set = None
+            best_match_count = 0
+            
+            print(f"[DEBUG] 📊 PARAMETER SETS: {list(parameter_sets.keys())}")
+            
+            for param_set_num, measurements in parameter_sets.items():
+                if not measurements:
+                    continue
+                
+                first_measurement = measurements[0]
+                
+                # Count matching parameters (using mapped names)
+                match_count = 0
+                total_checks = 0
+                
+                for opt_key, opt_value in optimal_params.items():
+                    # opt_key is already mapped to measurement data naming convention
+                    total_checks += 1
+                    measurement_value = first_measurement.get(opt_key)
+                    
+                    if measurement_value is not None:
+                        # Handle floating point comparison with tolerance
+                        if isinstance(opt_value, (int, float)) and isinstance(measurement_value, (int, float)):
+                            if abs(float(opt_value) - float(measurement_value)) < 1e-6:
+                                match_count += 1
+                        else:
+                            if str(opt_value) == str(measurement_value):
+                                match_count += 1
+                
+                print(f"[DEBUG] Set {param_set_num}: {match_count}/{total_checks} matches")
+                
+                # Accept if we match at least 50% of parameters (be more flexible)
+                if total_checks > 0 and match_count >= max(1, total_checks * 0.5):
+                    if match_count > best_match_count:
+                        best_match_set = param_set_num
+                        best_match_count = match_count
+            
+            print(f"[DEBUG] Best match: Set {best_match_set} ({best_match_count} matches)")
+            return best_match_set
+            
+        except Exception as e:
+            print(f"[ERROR] Parameter matching failed: {e}")
+            return None
+
 
 class OptimizationWorker(QThread):
     """Worker thread for running optimization and monitoring progress."""
@@ -555,17 +1048,80 @@ class OptimizationWorker(QThread):
                     return
                 time.sleep(timeout_check_interval)  # Check every 30 seconds instead of 2
             
-            if self.process.returncode == 0:
+            # Check for successful completion by looking for output files, not return code
+            # (Windows subprocess can crash with access violation even after successful completion)
+            success_indicators = self.check_optimization_success()
+            
+            if success_indicators['has_results']:
+                self.debug_message.emit(f"[SUCCESS] Optimization completed successfully (found {success_indicators['files_found']})")
                 self.optimization_complete.emit({"status": "success"})
             else:
-                # Since we're not capturing output, just show return code
+                # Only show error if no output files were created
                 error_msg = f"Calibration process failed with return code {self.process.returncode}\n"
-                error_msg += "Check terminal output above for error details."
+                error_msg += "No output files found. Check terminal output above for error details."
                 self.optimization_error.emit(error_msg)
                 
         except Exception as e:
             self.optimization_error.emit(f"Error during optimization: {str(e)}")
     
+    def check_optimization_success(self) -> Dict[str, Any]:
+        """Check if optimization completed successfully by looking for output files."""
+        success_info = {
+            'has_results': False,
+            'files_found': [],
+            'output_dir': None
+        }
+        
+        try:
+            self.debug_message.emit(f"[DEBUG] check_optimization_success: output_dir = {self.output_dir}")
+            
+            if not self.output_dir or not Path(self.output_dir).exists():
+                self.debug_message.emit(f"[DEBUG] Output directory missing or doesn't exist: {self.output_dir}")
+                return success_info
+                
+            output_path = Path(self.output_dir)
+            success_info['output_dir'] = str(output_path)
+            
+            self.debug_message.emit(f"[DEBUG] Checking files in: {output_path}")
+            
+            # Check for key output files that indicate successful completion
+            key_files = [
+                'trial_results.csv',
+                'optimal_conditions.csv', 
+                'optimal_conditions_*.csv',  # Pattern for liquid-specific files
+                'experiment_insights.json'
+            ]
+            
+            for file_pattern in key_files:
+                if '*' in file_pattern:
+                    # Handle glob patterns
+                    matches = list(output_path.glob(file_pattern))
+                    self.debug_message.emit(f"[DEBUG] Pattern {file_pattern} found {len(matches)} matches: {[f.name for f in matches]}")
+                    if matches:
+                        success_info['files_found'].extend([f.name for f in matches])
+                else:
+                    # Handle exact filenames
+                    file_path = output_path / file_pattern
+                    exists = file_path.exists()
+                    self.debug_message.emit(f"[DEBUG] File {file_pattern} exists: {exists}")
+                    if exists:
+                        success_info['files_found'].append(file_pattern)
+            
+            # Consider it successful if we have either trial results OR optimal conditions
+            has_trial_results = any('trial_results' in f for f in success_info['files_found'])
+            has_optimal_conditions = any('optimal_conditions' in f for f in success_info['files_found'])
+            
+            success_info['has_results'] = has_trial_results or has_optimal_conditions
+            
+            self.debug_message.emit(f"[DEBUG] Final success check: has_results={success_info['has_results']}, files_found={success_info['files_found']}")
+            
+        except Exception as e:
+            # If file checking fails, default to not successful
+            self.debug_message.emit(f"[DEBUG] Exception in check_optimization_success: {e}")
+            pass
+            
+        return success_info
+        
     def run_test_mode(self):
         """TEST MODE: Simulate optimization for debugging threading."""
         import random
@@ -757,9 +1313,17 @@ class OptimizationWorker(QThread):
                     if row.strip():  # Skip empty lines
                         measurement_data = self.parse_csv_row(row.strip())
                         if measurement_data:
+                            # CRITICAL: Skip screening/external data to prevent double plotting
+                            strategy = measurement_data.get('strategy', '').lower()
+                            if strategy in ['screening', 'external']:
+                                vol_ul = measurement_data.get('measured_volume_ul', 0)
+                                count = measurement_data.get('total_measurement_count', 0)
+                                self.debug_message.emit(f"[DEBUG] Skipping {strategy} measurement #{count}: {vol_ul:.1f}uL (already plotted)")
+                                continue
+                                
                             vol_ul = measurement_data.get('measured_volume_ul', 0)
                             count = measurement_data.get('total_measurement_count', 0)
-                            self.debug_message.emit(f"[DEBUG] Processing measurement #{count}: {vol_ul:.1f}uL")
+                            self.debug_message.emit(f"[DEBUG] Processing NEW {strategy} measurement #{count}: {vol_ul:.1f}uL")
                             self.measurement_update.emit(measurement_data)
                         else:
                             self.debug_message.emit(f"[DEBUG] Failed to parse CSV row")
@@ -784,7 +1348,7 @@ class OptimizationWorker(QThread):
                 'measured_volume_ml': float(parts[2]),
                 'measured_volume_ul': float(parts[3]),
                 'deviation_pct': float(parts[4]),
-                'duration_s': float(parts[5]),
+                'duration_s': float(parts[8]) if len(parts) > 8 else 0,  # measurement_time_s is at index 8
                 'strategy': parts[6],
                 'total_measurement_count': int(parts[7])
             }
@@ -902,7 +1466,8 @@ class MeasurementWorker(QThread):
                 'cv_pct': cv_pct,
                 'target_volume_ml': self.volume_ml,
                 'volumes_ml': volumes_ml,
-                'times_s': times_s
+                'times_s': times_s,
+                'original_parameters': self.parameters  # Include original parameters from measurement start
             }
             
             self.measurement_complete.emit(summary)
@@ -1004,6 +1569,190 @@ class PlotWidget(QFrame):
         ax.grid(True, alpha=0.3, axis='x')  # Only x-axis grid
         
         self.canvas.draw()
+    
+    def clear(self):
+        """Clear the plot."""
+        if MATPLOTLIB_AVAILABLE:
+            self.figure.clear()
+            self.canvas.draw()
+    
+    def plot_deviation_vs_time(self, optimization_data, optimal_conditions=None):
+        """Plot deviation vs time with optimal conditions highlighted."""
+        if not MATPLOTLIB_AVAILABLE or not optimization_data:
+            return
+            
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        
+        # Plot all measurements
+        times = []
+        deviations = []
+        
+        for measurement in optimization_data:
+            duration = measurement.get('duration_s', measurement.get('elapsed_s', 0))
+            deviation = abs(measurement.get('deviation_pct', 0))
+            
+            if duration > 0:  # Valid data
+                times.append(duration)
+                deviations.append(deviation)
+        
+        if times:
+            # Plot all points in blue
+            ax.scatter(times, deviations, c='steelblue', alpha=0.6, s=40, label='All Trials')
+            
+            # Highlight optimal conditions if available
+            if optimal_conditions:
+                opt_times = []
+                opt_deviations = []
+                
+                for opt_condition in optimal_conditions:
+                    opt_time = opt_condition.get('duration_s', 0)
+                    opt_dev = opt_condition.get('deviation_pct', 0)
+                    
+                    if opt_time > 0:
+                        opt_times.append(opt_time)
+                        opt_deviations.append(abs(opt_dev))
+                
+                if opt_times:
+                    ax.scatter(opt_times, opt_deviations, c='gold', s=100, 
+                              marker='*', edgecolors='red', linewidth=1.5,
+                              label='⭐ Optimal', zorder=10)
+            
+            ax.set_xlabel('Time (s)', fontsize=10)
+            ax.set_ylabel('Deviation (%)', fontsize=10)
+            ax.set_title('Deviation vs Time - Optimization Results', fontsize=12, fontweight='bold')
+            ax.legend(fontsize=9)
+            ax.grid(True, alpha=0.3)
+            
+            # Add performance zones
+            ax.axhspan(0, 5, alpha=0.1, color='green')
+            ax.axhspan(5, 15, alpha=0.1, color='yellow')
+            
+        self.canvas.draw()
+    
+    def plot_shap_importance(self, insights_data):
+        """Plot SHAP parameter importance for actually varying parameters only."""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        
+        if not insights_data:
+            ax.text(0.5, 0.5, 'SHAP analysis\\nwill appear here\\nafter optimization', 
+                   ha='center', va='center', transform=ax.transAxes,
+                   fontsize=10, style='italic', color='gray')
+            ax.set_xticks([])
+            ax.set_yticks([])
+            self.canvas.draw()
+            return
+        
+        # Extract SHAP importance data
+        sensitivity = insights_data.get('parameter_sensitivity', {})
+        shap_imp = sensitivity.get('shap_importance', {})
+        
+        if not shap_imp:
+            ax.text(0.5, 0.5, 'No SHAP data\\navailable', 
+                   ha='center', va='center', transform=ax.transAxes,
+                   fontsize=10, style='italic', color='gray')
+            ax.set_xticks([])
+            ax.set_yticks([])
+            self.canvas.draw()
+            return
+        
+        # Use accuracy importance if available, else first target
+        if 'accuracy' in shap_imp:
+            importance_data = shap_imp['accuracy']
+            target_name = 'Accuracy'
+        else:
+            importance_data = list(shap_imp.values())[0]
+            target_name = list(shap_imp.keys())[0].title()
+        
+        # FILTER: Only include parameters that are actually varying (have meaningful ranges)
+        filtered_params = self._filter_varying_parameters(importance_data)
+        
+        # Get top parameters from filtered list
+        sorted_params = sorted(filtered_params.items(), key=lambda x: x[1], reverse=True)[:6]  # Reduced to 6 for better spacing
+        
+        if sorted_params:
+            params, values = zip(*sorted_params)
+            
+            # Create horizontal bar chart with better spacing
+            y_pos = np.arange(len(params))
+            bars = ax.barh(y_pos, values, color='steelblue', alpha=0.8, height=0.6)
+            
+            ax.set_yticks(y_pos)
+            # Better parameter name formatting - no truncation, better spacing
+            param_labels = [self._format_parameter_name(p) for p in params]
+            ax.set_yticklabels(param_labels, fontsize=10)
+            
+            ax.set_xlabel('SHAP Importance (Impact on Accuracy)', fontsize=10)
+            ax.set_title(f'{target_name} Parameter Importance\n(Only Varying Parameters)', fontsize=11, fontweight='bold')
+            
+            # Add value labels on bars - better positioning
+            for i, (bar, value) in enumerate(zip(bars, values)):
+                # Position text at end of bar for better visibility
+                ax.text(bar.get_width() + max(values) * 0.01, bar.get_y() + bar.get_height()/2, 
+                       f'{value:.3f}', ha='left', va='center', fontsize=9, fontweight='bold')
+        else:
+            # No varying parameters found
+            ax.text(0.5, 0.5, 'No varying parameters\\ndetected for analysis', 
+                   ha='center', va='center', transform=ax.transAxes,
+                   fontsize=10, style='italic', color='orange')
+        
+        ax.grid(True, alpha=0.3, axis='x')
+        # Adjust layout to prevent text cutoff
+        self.figure.tight_layout()
+        self.canvas.draw()
+    
+    def _filter_varying_parameters(self, importance_data):
+        """Filter parameters to only include those that are actually being varied."""
+        # Get access to main window to check parameter ranges
+        main_window = None
+        parent = self.parent()
+        while parent:
+            if hasattr(parent, 'parameter_widgets'):
+                main_window = parent
+                break
+            parent = parent.parent()
+        
+        if not main_window:
+            # Fallback: filter by importance threshold
+            threshold = max(importance_data.values()) * 0.1 if importance_data else 0
+            return {k: v for k, v in importance_data.items() if v > threshold}
+        
+        # Filter based on actual parameter ranges from GUI
+        varying_params = {}
+        for param_name, importance in importance_data.items():
+            if param_name in main_window.parameter_widgets:
+                widget = main_window.parameter_widgets[param_name]
+                min_val, max_val = widget.config['min'], widget.config['max']
+                # Only include if parameter has meaningful range
+                if abs(max_val - min_val) > 1e-6:  # Not effectively fixed
+                    varying_params[param_name] = importance
+            elif importance > 0.01:  # Include unknown params with decent importance
+                varying_params[param_name] = importance
+        
+        return varying_params
+    
+    def _format_parameter_name(self, param_name):
+        """Format parameter names for better display."""
+        # Convert snake_case to proper names
+        name_mapping = {
+            'overaspirate_vol': 'Overaspirate Vol',
+            'aspirate_speed': 'Aspirate Speed', 
+            'dispense_speed': 'Dispense Speed',
+            'aspirate_wait_time': 'Aspirate Wait',
+            'dispense_wait_time': 'Dispense Wait',
+            'pre_asp_air_vol': 'Pre-Asp Air',
+            'post_asp_air_vol': 'Post-Asp Air', 
+            'blowout_vol': 'Blowout Vol',
+            'retract_speed': 'Retract Speed',
+            'post_retract_wait_time': 'Post-Retract Wait'
+        }
+        
+        return name_mapping.get(param_name, param_name.replace('_', ' ').title())
+
 
 class CalibrationTestMainWindow(QMainWindow):
     """Main window for calibration testing GUI."""
@@ -1040,6 +1789,9 @@ class CalibrationTestMainWindow(QMainWindow):
         self.mass_data_replicates = []  # List of DataFrames, one per replicate
         self.volume_data_replicates = []  # List of volumes as they come in
         self.current_target_volume = 0.1  # mL
+        
+        # Manual measurement tracking
+        self.manual_measurement_counter = 0  # Track manual measurements for optimization plot
         
         # Progressive data for optimization tracking
         self.optimization_measurements = []     # All measurements from optimization
@@ -1172,7 +1924,12 @@ class CalibrationTestMainWindow(QMainWindow):
             return
             
         try:
-            current_params = self.get_current_parameters()
+            # Use original parameters from measurement start, not current GUI state
+            current_params = results.get('original_parameters', {})
+            # Add liquid type if missing
+            if 'liquid_type' not in current_params:
+                current_params['liquid_type'] = self.liquid_type_combo.currentText()
+            
             env_data = self.get_current_environmental_data()
             timestamp = datetime.now().isoformat()
             
@@ -1313,7 +2070,7 @@ class CalibrationTestMainWindow(QMainWindow):
         liquid_types = ["water", "ethanol", "toluene", "heptane", "2MeTHF", "isopropanol", 
                        "DMSO", "acetone", "glycerol", "PEG_Water", "4%_hyaluronic_acid_water", 
                        "agar_water", "agar_water_refill", "TFA", "6M_HCl", "6M_TFA", 
-                       "6M_p_TSA", "6M_Citric_Acid", "6M_H2SO4", "6M_H3PO4", "PVA_water"]
+                       "6M_p_TSA", "6M_Citric_Acid", "6M_H2SO4", "6M_H3PO4", "PVA_water", "PVA_DMSO"]
         self.liquid_type_combo.addItems(liquid_types)
         self.liquid_type_combo.setCurrentText("water")  # Default to water
         settings_layout.addRow("Liquid Type:", self.liquid_type_combo)
@@ -1323,7 +2080,7 @@ class CalibrationTestMainWindow(QMainWindow):
         self.volume_spinbox.setDecimals(3)
         self.volume_spinbox.setMinimum(0.001)
         self.volume_spinbox.setMaximum(1.000)
-        self.volume_spinbox.setValue(0.100)
+        self.volume_spinbox.setValue(0.050)
         self.volume_spinbox.setSuffix(" mL")
         settings_layout.addRow("Target Volume:", self.volume_spinbox)
         
@@ -1331,7 +2088,7 @@ class CalibrationTestMainWindow(QMainWindow):
         self.replicates_spinbox = QSpinBox()
         self.replicates_spinbox.setMinimum(1)
         self.replicates_spinbox.setMaximum(10)
-        self.replicates_spinbox.setValue(3)
+        self.replicates_spinbox.setValue(2)
         settings_layout.addRow("Replicates:", self.replicates_spinbox)
         
         # Simulation mode checkbox
@@ -1399,20 +2156,17 @@ class CalibrationTestMainWindow(QMainWindow):
         self.optimize_btn.setToolTip("Run Bayesian optimization to find optimal pipetting parameters")
         self.optimize_btn.clicked.connect(self.run_optimization)
         
-        # STATUS CHECK button for debugging
-        self.status_check_btn = QPushButton("STATUS CHECK")
-        self.status_check_btn.setStyleSheet("QPushButton { background-color: #9E9E9E; color: white; font-weight: bold; padding: 10px; }")
-        self.status_check_btn.clicked.connect(self.check_system_status)
-        
-        # TEST THREADING button for simple threading debug
-        self.test_thread_btn = QPushButton("TEST THREADING")
-        self.test_thread_btn.setStyleSheet("QPushButton { background-color: #FF9800; color: white; font-weight: bold; padding: 10px; }")
-        self.test_thread_btn.clicked.connect(self.test_threading)
+        # Convert to External Data button - creates external data file from GUI measurements
+        self.convert_external_btn = QPushButton("Convert to External Data")
+        self.convert_external_btn.setStyleSheet("QPushButton { background-color: #FF5722; color: white; font-weight: bold; padding: 10px; }")
+        self.convert_external_btn.clicked.connect(self.convert_to_external_data)
+        self.convert_external_btn.setToolTip("Convert your manual measurements to external data format for optimizer kickstart")
+
         
         button_layout.addWidget(self.measure_btn)
-        button_layout.addWidget(self.optimize_btn) 
-        button_layout.addWidget(self.status_check_btn)
-        button_layout.addWidget(self.test_thread_btn)
+        button_layout.addWidget(self.optimize_btn)
+        button_layout.addWidget(self.convert_external_btn) 
+
         layout.addLayout(button_layout)
         
         # Progress bar
@@ -1434,7 +2188,7 @@ class CalibrationTestMainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
-        # Row 1 - Plots
+        # Row 1 - Plots (will change content based on workflow stage)
         plots_layout = QHBoxLayout()
         
         self.mass_time_plot = PlotWidget("Mass vs Time")
@@ -1452,7 +2206,7 @@ class CalibrationTestMainWindow(QMainWindow):
         summary_layout = QHBoxLayout()
         
         # Results Summary (left side)
-        stats_group = QGroupBox("Results Summary")
+        self.stats_group = QGroupBox("Results Summary")
         stats_layout = QFormLayout()
         
         self.time_label = QLabel("--")
@@ -1463,8 +2217,8 @@ class CalibrationTestMainWindow(QMainWindow):
         stats_layout.addRow("Accuracy (% dev):", self.accuracy_label)
         stats_layout.addRow("Precision (CV%):", self.cv_label)
         
-        stats_group.setLayout(stats_layout)
-        summary_layout.addWidget(stats_group)
+        self.stats_group.setLayout(stats_layout)
+        summary_layout.addWidget(self.stats_group)
         
         # Environmental Monitoring Group (right side)
         env_group = QGroupBox("Environmental Conditions")
@@ -1544,6 +2298,11 @@ class CalibrationTestMainWindow(QMainWindow):
     def run_measurement(self):
         """Run measurement with current parameters."""
         try:
+            # Reset measurement set ID for new measurement session
+            # This ensures each MEASURE click gets a new parameter set number
+            if hasattr(self, 'current_measurement_set_id'):
+                delattr(self, 'current_measurement_set_id')
+            
             # Check if protocol is initialized
             if not self.protocol_initialized or not self.protocol or not self.protocol_state:
                 self.add_status_message("ERROR: Robot not initialized. Click 'INITIALIZE ROBOT' first.")
@@ -1592,6 +2351,30 @@ class CalibrationTestMainWindow(QMainWindow):
             self.add_status_message("Initializing robot protocol...")
             self.initialize_btn.setEnabled(False)
             
+            # UPDATE HARDWARE CONFIG WITH GUI SELECTIONS BEFORE INITIALIZATION
+            self.add_status_message("[INIT] Updating hardware config with GUI selections...")
+            hardware_config_path = Path("calibration_modular_v2/north_robot_hardware.yaml")
+            if hardware_config_path.exists():
+                import yaml
+                with open(hardware_config_path, 'r') as f:
+                    hardware_config = yaml.safe_load(f)
+                
+                # Add vials section if it doesn't exist
+                if 'vials' not in hardware_config:
+                    hardware_config['vials'] = {}
+                
+                hardware_config['vials']['liquid'] = self.liquid_type_combo.currentText()
+                hardware_config['vials']['source_vial'] = self.liquid_combo.currentText()  
+                hardware_config['vials']['measurement_vial'] = self.liquid_combo.currentText()
+                
+                # Save hardware config
+                with open(hardware_config_path, 'w') as f:
+                    yaml.dump(hardware_config, f, default_flow_style=False)
+                
+                self.add_status_message(f"[INIT] Updated hardware config: liquid={self.liquid_type_combo.currentText()}, vials={self.liquid_combo.currentText()}")
+            else:
+                self.add_status_message("[INIT ERROR] Hardware config file not found!")
+            
             # Create config for protocol initialization
             vial_name = self.liquid_combo.currentText()
             simulate = self.simulate_checkbox.isChecked()
@@ -1626,19 +2409,54 @@ class CalibrationTestMainWindow(QMainWindow):
             self.add_status_message(f"ERROR initializing robot: {str(e)}")
             self.initialize_btn.setEnabled(True)  # Re-enable on error
     
-    def cleanup_protocol(self):
-        """Clean up robot protocol and return vials home."""
+    def cleanup_protocol(self, skip_physical_cleanup: bool = False):
+        """Clean up robot protocol and return vials home.
+        
+        Args:
+            skip_physical_cleanup: If True, skip robot movements (for optimization handoff)
+        """
         try:
             if not self.protocol_initialized or not self.protocol:
                 self.add_status_message("No protocol to clean up")
                 return
             
-            self.add_status_message("Cleaning up robot protocol...")
+            if skip_physical_cleanup:
+                self.add_status_message("Releasing hardware connection for optimization handoff...")
+            else:
+                self.add_status_message("Cleaning up robot protocol...")
+                
             self.cleanup_btn.setEnabled(False)
             
             # Call cleanup method if available
             if hasattr(self.protocol, 'wrapup') and self.protocol_state:
-                self.protocol.wrapup(self.protocol_state)
+                self.protocol.wrapup(self.protocol_state, skip_physical_cleanup=skip_physical_cleanup)
+            
+            # CRITICAL: Close North Robot serial connection using correct API
+            if self.protocol_state and 'lash_e' in self.protocol_state:
+                lash_e = self.protocol_state['lash_e']
+                try:
+                    # Use the correct API method from North documentation
+                    if hasattr(lash_e, 'nr_robot') and hasattr(lash_e.nr_robot, 'c9') and hasattr(lash_e.nr_robot.c9, 'network'):
+                        lash_e.nr_robot.c9.network.disconnect()
+                        self.add_status_message("✓ North Robot serial connection closed via network.disconnect()")
+                    else:
+                        self.add_status_message("WARNING: Cannot find network object to disconnect")
+                except Exception as e:
+                    self.add_status_message(f"WARNING: Network disconnect failed: {e}")
+                    # Fallback to object release
+                    try:
+                        del self.protocol_state['lash_e']
+                        self.add_status_message("✓ Fallback - Lash_E object released for garbage collection")
+                    except Exception as e2:
+                        self.add_status_message(f"WARNING: All cleanup methods failed: {e2}")
+            
+            # Legacy fallback - just clear the reference
+            elif hasattr(self.protocol, 'robot') and self.protocol.robot:
+                try:
+                    self.protocol.robot = None
+                    self.add_status_message("✓ Legacy robot object cleared")
+                except:
+                    pass
             
             # Reset protocol state
             self.protocol = None
@@ -1651,7 +2469,10 @@ class CalibrationTestMainWindow(QMainWindow):
             self.initialize_btn.setEnabled(True)
             self.cleanup_btn.setEnabled(False)
             
-            self.add_status_message("✓ Robot cleanup completed - vials returned home")
+            if skip_physical_cleanup:
+                self.add_status_message("✓ Hardware connection released - ready for optimization")
+            else:
+                self.add_status_message("✓ Robot cleanup completed - vials returned home")
             
         except Exception as e:
             self.add_status_message(f"ERROR during cleanup: {str(e)}")
@@ -1665,6 +2486,18 @@ class CalibrationTestMainWindow(QMainWindow):
     def run_optimization(self):
         """Run Bayesian optimization with real-time progress monitoring."""
         try:
+            # CRITICAL: Clean up existing protocol connection to release serial port
+            # This prevents "Timeout while connecting to device" errors
+            if self.protocol_initialized and self.protocol:
+                self.add_status_message("[CLEANUP] Releasing hardware connection before optimization...")
+                self.cleanup_protocol(skip_physical_cleanup=True)  # Skip robot movements for optimization handoff
+                self.add_status_message("[CLEANUP] Hardware connection released - optimization can now initialize")
+                
+                # Give serial port time to fully release (Windows/FTDI needs this)
+                import time
+                time.sleep(2.0)  # Increased delay for reliable FTDI serial port release
+                self.add_status_message("[CLEANUP] Serial port release delay completed")
+            
             # SAFETY: Kill any existing calibration processes first
             self.add_status_message("[DEBUG] Checking for zombie calibration processes...")
             self.kill_existing_calibration_processes()
@@ -1678,6 +2511,52 @@ class CalibrationTestMainWindow(QMainWindow):
             target_volume_ml = self.volume_spinbox.value()
             simulate = self.simulate_checkbox.isChecked()
             
+            # UPDATE EXPERIMENT CONFIG FILE WITH GUI SELECTIONS
+            self.add_status_message("[CONFIG] Updating experiment config with GUI selections...")
+            config_path = Path("calibration_modular_v2/experiment_config.yaml")
+            if config_path.exists():
+                import yaml
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f)
+                
+                # Update experiment settings from GUI
+                if 'experiment' not in config:
+                    config['experiment'] = {}
+                
+                config['experiment']['liquid'] = self.liquid_type_combo.currentText()
+                config['experiment']['simulate'] = simulate
+                
+                # Update hardware config with vial selections
+                hardware_config_path = Path("calibration_modular_v2/north_robot_hardware.yaml")
+                if hardware_config_path.exists():
+                    with open(hardware_config_path, 'r') as f:
+                        hardware_config = yaml.safe_load(f)
+                    
+                    # Add vials section if it doesn't exist
+                    if 'vials' not in hardware_config:
+                        hardware_config['vials'] = {}
+                    
+                    hardware_config['vials']['liquid'] = self.liquid_type_combo.currentText()
+                    hardware_config['vials']['source_vial'] = self.liquid_combo.currentText()  
+                    hardware_config['vials']['measurement_vial'] = self.liquid_combo.currentText()
+                    
+                    # Save hardware config
+                    with open(hardware_config_path, 'w') as f:
+                        yaml.dump(hardware_config, f, default_flow_style=False)
+                
+                # Update target volume
+                if 'volumes' not in config:
+                    config['volumes'] = {}
+                config['volumes']['volume_targets_ml'] = [target_volume_ml]
+                
+                # Save updated config
+                with open(config_path, 'w') as f:
+                    yaml.dump(config, f, default_flow_style=False)
+                
+                self.add_status_message(f"[CONFIG] Updated: liquid={self.liquid_type_combo.currentText()}, vial={self.liquid_combo.currentText()}, volume={target_volume_ml}mL")
+            else:
+                self.add_status_message(f"[CONFIG ERROR] Config file not found: {config_path}")
+            
             # Create configuration for optimization
             config_dict = {
                 'liquid': liquid,
@@ -1686,8 +2565,9 @@ class CalibrationTestMainWindow(QMainWindow):
                 'simulate': simulate
             }
             
-            # Clear previous optimization data
-            self.optimization_plot.clear()
+            # *** KEEP manual measurements - do NOT clear optimization plot ***
+            # Manual measurements should persist when starting optimization
+            # self.optimization_plot.clear()  # REMOVED - preserve manual measurements
             
             # Disable UI during optimization
             self.optimize_btn.setEnabled(False)
@@ -1749,7 +2629,7 @@ class CalibrationTestMainWindow(QMainWindow):
             # Setup file monitoring in MAIN GUI THREAD (not worker thread)  
             self.output_dir_path = Path(output_dir)
             self.emergency_file_path = self.output_dir_path / "emergency_raw_measurements.csv"
-            self.last_row_count = 0
+            self.last_row_count = 0  # Always start from 0 - screening filter will prevent double plotting
             
             self.add_status_message(f"[DEBUG] Main thread will monitor: {self.emergency_file_path.name}")
             self.add_status_message(f"[DEBUG] File path set to: {str(self.emergency_file_path)}")
@@ -1808,6 +2688,16 @@ class CalibrationTestMainWindow(QMainWindow):
                 new_count = current_row_count - self.last_row_count
                 self.add_status_message(f"[MAIN] Found {new_count} new measurements!")
                 
+                # Parse header if not already done
+                if not hasattr(self, 'emergency_csv_header') or not self.emergency_csv_header:
+                    if len(lines) > 0:
+                        header_line = lines[0].strip()
+                        self.emergency_csv_header = [col.strip() for col in header_line.split(',')]
+                        self.add_status_message(f"[MAIN] Parsed CSV header: {self.emergency_csv_header}")
+                    else:
+                        self.add_status_message(f"[MAIN] ERROR: No header found in CSV file")
+                        return
+                
                 # UPDATE row count BEFORE processing to prevent infinite retry on errors
                 self.last_row_count = current_row_count
                 
@@ -1816,38 +2706,78 @@ class CalibrationTestMainWindow(QMainWindow):
                     if row.strip():
                         parts = row.strip().split(',')
                         self.add_status_message(f"[MAIN] Processing row {i}: {len(parts)} parts")
-                        if len(parts) >= 8:
-                            # Use GUI target volume instead of CSV value for consistency
-                            gui_target_volume = self.volume_spinbox.value() if hasattr(self, 'volume_spinbox') else 0.1
+                        
+                        # Parse using column names - more robust than hardcoded indices
+                        if not hasattr(self, 'emergency_csv_header') or not self.emergency_csv_header:
+                            self.add_status_message(f"[MAIN] ERROR: No CSV header found for parsing")
+                            continue
+                            
+                        # Create dict from header and values
+                        if len(parts) != len(self.emergency_csv_header):
+                            self.add_status_message(f"[MAIN] WARNING: Column count mismatch - header has {len(self.emergency_csv_header)} columns, data has {len(parts)}")
+                            # Try to pad with empty strings or truncate as needed
+                            if len(parts) < len(self.emergency_csv_header):
+                                parts.extend([''] * (len(self.emergency_csv_header) - len(parts)))
+                            else:
+                                parts = parts[:len(self.emergency_csv_header)]
+                        
+                        row_data = dict(zip(self.emergency_csv_header, parts))
+                        self.add_status_message(f"[MAIN] Parsed row data keys: {list(row_data.keys())}")
+                        
+                        # Use GUI target volume instead of CSV value for consistency
+                        gui_target_volume = self.volume_spinbox.value() if hasattr(self, 'volume_spinbox') else 0.1
+                        
+                        # Extract values by column name with fallbacks
+                        try:
+                            measured_volume_ml = float(row_data.get('measured_volume_ml', row_data.get('volume', row_data.get('measured_volume_ul', '0'))))
+                            if 'measured_volume_ul' in row_data and measured_volume_ml == 0:
+                                measured_volume_ml = float(row_data['measured_volume_ul']) / 1000  # Convert uL to mL
+                            measured_volume_ul = measured_volume_ml * 1000
+                            
+                            measurement_time_s = float(row_data.get('measurement_time_s', row_data.get('duration_s', '2.5')))
+                            replicate_num = int(float(row_data.get('replicate_number', row_data.get('measurement_id', '1'))))
+                            liquid_type = row_data.get('liquid_type', row_data.get('vial_name', 'water'))
+                            
+                            # CRITICAL: Read actual strategy from CSV, not default to 'calibration'
+                            strategy = row_data.get('strategy', 'calibration')
+                            
+                            # CRITICAL: Skip screening/external data to prevent double plotting
+                            if strategy.lower() in ['screening', 'external']:
+                                self.add_status_message(f"[MAIN] Skipping {strategy} measurement #{replicate_num}: {measured_volume_ul:.1f}uL (already plotted)")
+                                continue
+                            
+                            deviation_pct = ((measured_volume_ul - gui_target_volume * 1000) / (gui_target_volume * 1000)) * 100
                             
                             measurement_data = {
-                                'liquid_type': parts[1],  # Extract vial name from CSV 
+                                'liquid_type': liquid_type,
                                 'target_volume_ml': gui_target_volume,  # Use GUI value, not CSV
-                                'measured_volume_ul': float(parts[3]),
-                                'deviation_pct': float(parts[4]),
-                                'duration_s': float(parts[5]) if len(parts) > 5 else 2.5,  # Real elapsed time from CSV
-                                'strategy': parts[6],
-                                'total_measurement_count': int(parts[7]),
+                                'measured_volume_ul': measured_volume_ul,
+                                'deviation_pct': deviation_pct,
+                                'duration_s': measurement_time_s,
+                                'strategy': strategy,  # Use actual strategy from CSV
+                                'total_measurement_count': replicate_num,
                                 # ADD missing fields expected by plots
-                                'volume': float(parts[3]) / 1000,  # Convert uL to mL for plots
-                                'elapsed_s': float(parts[5]) if len(parts) > 5 else 2.5  # Real elapsed time for plots
+                                'volume': measured_volume_ml,
+                                'elapsed_s': measurement_time_s
                             }
                             
                             # Extract parameter values for parameter grouping (if available)
-                            if len(parts) >= 18:  # Full parameter set available
+                            if 'aspirate_speed' in row_data:
                                 measurement_data.update({
-                                    'aspirate_speed': float(parts[9]) if len(parts) > 9 else 0,
-                                    'dispense_speed': float(parts[12]) if len(parts) > 12 else 0,  
-                                    'overaspirate_vol': float(parts[14]) if len(parts) > 14 else 0,
-                                    'air_gap_vol': float(parts[15]) if len(parts) > 15 else 0,  # post_asp_air_vol
-                                    'pre_dispense_vol': float(parts[17]) if len(parts) > 17 else 0  # pre_asp_air_vol as proxy
+                                    'aspirate_speed': float(row_data.get('aspirate_speed', '0')),
+                                    'dispense_speed': float(row_data.get('dispense_speed', '0')),
+                                    'overaspirate_vol': float(row_data.get('overaspirate_vol', '0')),
+                                    'pre_asp_air_vol': float(row_data.get('pre_asp_air_vol', '0')),
+                                    'post_asp_air_vol': float(row_data.get('post_asp_air_vol', '0'))
                                 })
+                            
                             self.add_status_message(f"[MAIN] Calling on_optimization_measurement with: {measurement_data}")
                             # Direct main thread call with proper test data
                             self.on_optimization_measurement(measurement_data)
-                                
-                        else:
-                            self.add_status_message(f"[MAIN] Row too short: {parts}")
+                        except (ValueError, KeyError) as e:
+                            self.add_status_message(f"[MAIN] Error parsing row data: {e}")
+                            self.add_status_message(f"[MAIN] Row data: {row_data}")
+                            continue
             else:
                 self.add_status_message("[MAIN] No new data to process")
         
@@ -1882,6 +2812,8 @@ class CalibrationTestMainWindow(QMainWindow):
             self.replicates_per_set = 3  # Default fallback
         if not hasattr(self, 'current_measurement_times'):
             self.current_measurement_times = []  # Track elapsed times for average calculation
+        if not hasattr(self, 'emergency_csv_header'):
+            self.emergency_csv_header = []  # Track CSV header for column-name parsing
         
         self.current_replicate_count += 1
         
@@ -2012,19 +2944,248 @@ class CalibrationTestMainWindow(QMainWindow):
             
         # Re-enable UI
         self.optimize_btn.setEnabled(True)
-        self.measure_btn.setEnabled(True)
         self.progress_bar.setVisible(False)
+        
+        # Load and display optimization results
+        self.load_optimization_results()
+        
+        # Simply re-enable measurement button - let user decide if they want to initialize robot
+        self.measure_btn.setEnabled(False)  # Keep disabled until user manually initializes
+        self.measure_btn.setToolTip("Click 'INITIALIZE ROBOT' if you want to take more measurements")
         
         self.add_status_message("Optimization completed successfully!")
         QMessageBox.information(self, "Optimization Complete", 
-                              "Bayesian optimization finished. Check the optimization plot for results.")
+                              "Bayesian optimization finished. Check the plots for optimal conditions!\n" +
+                              "Click 'INITIALIZE ROBOT' if you want to take more measurements.")
+    
+
+    def load_optimization_results(self):
+        """Load optimal conditions and SHAP data from optimization output."""
+        if not hasattr(self.optimization_worker, 'output_dir') or not self.optimization_worker.output_dir:
+            self.add_status_message("[WARNING] No output directory found for loading results")
+            return
+            
+        output_dir = Path(self.optimization_worker.output_dir)
+        self.add_status_message(f"[RESULTS] Loading optimization results from: {output_dir.name}")
+        
+        try:
+            # Load optimal conditions and transform the plots
+            optimal_conditions = self.load_optimal_conditions_file(output_dir)
+            if optimal_conditions:
+                # Transform left plot to deviation vs time
+                self.mass_time_plot.plot_deviation_vs_time(
+                    self.optimization_plot.optimization_data, 
+                    optimal_conditions
+                )
+                self.optimization_plot.update_plot(self.optimization_plot.optimization_data, optimal_conditions)
+                self.update_current_display_with_optimal(optimal_conditions[0])  # Show best condition
+                self.add_status_message(f"[RESULTS] Loaded {len(optimal_conditions)} optimal conditions")
+            
+            # Load SHAP insights and transform right plot
+            insights_data = self.load_insights_file(output_dir) 
+            if insights_data:
+                # SHAP plots are saved to output folder - embedded GUI plot disabled due to reliability issues
+                # self.volume_replicate_plot.plot_shap_importance(insights_data)  # DISABLED 
+                self.add_status_message("[SHAP] Analysis plots saved to output folder (embedded plot disabled)")
+            else:
+                self.add_status_message("[SHAP] No SHAP analysis data available")
+            
+            # If we have either results, update the GUI to show this is now showing optimization results
+            if optimal_conditions or insights_data:
+                self.add_status_message("[TRANSFORM] Plots now showing optimization results")
+            
+        except Exception as e:
+            self.add_status_message(f"[ERROR] Failed to load optimization results: {e}")
+    
+    def load_optimal_conditions_file(self, output_dir: Path):
+        """Load optimal conditions CSV file."""
+        # Try different naming patterns
+        potential_files = [
+            output_dir / "optimal_conditions.csv",
+            *list(output_dir.glob("optimal_conditions_*.csv"))
+        ]
+        
+        for file_path in potential_files:
+            if file_path.exists():
+                import pandas as pd
+                df = pd.read_csv(file_path)
+                return df.to_dict('records')
+        
+        return None
+    
+    def generate_shap_analysis(self, output_dir: Path):
+        """
+        Generate SHAP analysis using subprocess to isolated environment.
+        Returns insights data if successful, None otherwise.
+        """
+        try:
+            # Look for trial_results.csv specifically (has individual parameter data)
+            trial_results_file = output_dir / "trial_results.csv"
+            if trial_results_file.exists():
+                data_file = trial_results_file
+            else:
+                # Fallback to any CSV file  
+                csv_files = list(output_dir.glob("*.csv"))
+                if not csv_files:
+                    self.add_status_message("[SHAP] No CSV data found for analysis")
+                    return None
+                data_file = csv_files[0]
+            
+            shap_output = output_dir / "shap_results.json"
+            plots_dir = output_dir / "plots"
+            shap_script = Path(__file__).parent / "shap_analyzer.py"
+            
+            # Ensure plots directory exists
+            plots_dir.mkdir(exist_ok=True)
+            
+            if not shap_script.exists():
+                self.add_status_message("[SHAP] shap_analyzer.py not found")
+                return None
+            
+            self.add_status_message(f"[SHAP] Generating analysis from {data_file.name}...")
+            
+            # Run SHAP analysis in isolated environment
+            result = subprocess.run([
+                'conda', 'run', '-n', 'shap_analysis', 
+                'python', str(shap_script), 
+                str(data_file), str(shap_output), str(plots_dir)
+            ], capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0 and shap_output.exists():
+                # Load generated results
+                import json
+                with open(shap_output, 'r') as f:
+                    shap_results = json.load(f)
+                
+                if shap_results.get('status') == 'success':
+                    # Handle new format with multiple targets
+                    all_targets = shap_results.get('all_targets', {})
+                    model_scores = shap_results.get('model_scores', {})
+                    
+                    # Create comprehensive insights format
+                    shap_importance = {}
+                    
+                    # Include all target results
+                    for target_name, importance_data in all_targets.items():
+                        shap_importance[target_name] = importance_data
+                    
+                    # Fallback to primary result for compatibility  
+                    if not shap_importance and 'parameter_importance' in shap_results:
+                        primary_target = shap_results.get('primary_target', 'accuracy')
+                        shap_importance[primary_target] = shap_results['parameter_importance']
+                    
+                    insights_data = {
+                        'parameter_sensitivity': {
+                            'shap_importance': shap_importance
+                        },
+                        'model_performance': {
+                            'all_targets': model_scores,
+                            'r2_score': shap_results.get('model_score', model_scores.get('accuracy', 0.0)),
+                            'n_samples': shap_results.get('n_samples', 0),
+                            'targets_analyzed': shap_results.get('targets_analyzed', list(all_targets.keys()))
+                        }
+                    }
+                    
+                    # Save as insights file for future use
+                    insights_path = output_dir / "experiment_insights.json"
+                    with open(insights_path, 'w') as f:
+                        json.dump(insights_data, f, indent=2)
+                    
+                    self.add_status_message(f"[SHAP] Analysis complete! Found {len(shap_results['parameter_importance'])} important parameters")
+                    self.add_status_message(f"[SHAP] Plots saved to {plots_dir.name}/")
+                    return insights_data
+                else:
+                    self.add_status_message(f"[SHAP] Analysis failed: {shap_results.get('message', 'Unknown error')}")
+            else:
+                self.add_status_message(f"[SHAP] Subprocess failed: {result.stderr}")
+                
+        except FileNotFoundError:
+            self.add_status_message("[SHAP] shap_analysis conda environment not found")
+        except subprocess.TimeoutExpired:
+            self.add_status_message("[SHAP] Analysis timed out")  
+        except Exception as e:
+            self.add_status_message(f"[SHAP] Error: {str(e)}")
+            
+        return None
+
+    def load_insights_file(self, output_dir: Path):
+        """Load experiment insights JSON file."""
+        # Try primary insights file first
+        insights_path = output_dir / "experiment_insights.json"
+        if insights_path.exists():
+            import json
+            with open(insights_path, 'r') as f:
+                return json.load(f)
+        
+        # Try to generate SHAP analysis if insights don't exist but we have data
+        generated_insights = self.generate_shap_analysis(output_dir)
+        if generated_insights:
+            return generated_insights
+                
+        # Fallback to available JSON files for basic parameter info
+        fallback_files = [
+            output_dir / "optimal_conditions.json",
+            output_dir / "experiment_summary.json"
+        ]
+        
+        for fallback_path in fallback_files:
+            if fallback_path.exists():
+                self.add_status_message(f"[INSIGHTS] Found {fallback_path.name} but no SHAP analysis available")
+                # Don't create fake SHAP data - return None to show "No SHAP data available" message
+                return None
+                        
+        return None
+    
+    def update_current_display_with_optimal(self, best_condition):
+        """Update Current parameter displays with optimal conditions."""
+        # Update all parameter widgets with optimal values
+        for param_name, widget in self.parameter_widgets.items():
+            if hasattr(widget, 'current_display'):
+                optimal_value = best_condition.get(param_name)
+                if optimal_value is not None:
+                    widget.update_current_value(optimal_value)
+        
+        # Update Results Summary with optimal condition performance
+        deviation = best_condition.get('deviation_pct', 0)
+        precision = best_condition.get('precision_cv_pct', 0) 
+        duration = best_condition.get('duration_s', 0)
+        
+        # Update the summary labels
+        self.time_label.setText(f"{duration:.1f}s")
+        self.time_label.setStyleSheet("color: green; font-weight: bold;")
+        
+        self.accuracy_label.setText(f"{deviation:.2f}%")
+        self.accuracy_label.setStyleSheet("color: green; font-weight: bold;")
+        
+        self.cv_label.setText(f"{precision:.2f}%") 
+        self.cv_label.setStyleSheet("color: green; font-weight: bold;")
+        
+        # Update the group box title to show it's optimal data
+        self.stats_group.setTitle("Results Summary - ⭐ OPTIMAL CONDITIONS")
+        self.stats_group.setStyleSheet("QGroupBox::title { color: green; font-weight: bold; }")
+        
+        # Show performance summary in status
+        self.add_status_message(f"[OPTIMAL] Deviation: {deviation:.2f}%, Precision: {precision:.2f}% CV, Time: {duration:.1f}s")
         
     def on_optimization_error(self, error_msg: str):
         """Handle optimization error."""
         # Re-enable UI
         self.optimize_btn.setEnabled(True)
-        self.measure_btn.setEnabled(True)
         self.progress_bar.setVisible(False)
+        
+        # Try to reinitialize protocol if we're in hardware mode
+        if not self.simulate_checkbox.isChecked():
+            self.add_status_message("[REINIT] Attempting to reinitialize robot after optimization error...")
+            try:
+                self.initialize_protocol()
+                self.add_status_message("[REINIT] Robot reinitialized successfully")
+            except Exception as e:
+                self.add_status_message(f"[REINIT] Failed to reinitialize: {e}")
+                self.measure_btn.setEnabled(False)
+                self.measure_btn.setToolTip("Initialization failed - click 'INITIALIZE ROBOT' manually")
+        else:
+            # In simulation mode, just re-enable measurements
+            self.measure_btn.setEnabled(True)
         
         self.add_status_message(f"Optimization error: {error_msg}")
         QMessageBox.critical(self, "Optimization Error", f"Optimization failed:\n{error_msg}")
@@ -2094,63 +3255,6 @@ class CalibrationTestMainWindow(QMainWindow):
         
         self.add_status_message("=== END STATUS CHECK ===")
     
-    def test_threading(self):
-        """Test threading and signal connections without subprocess."""
-        try:
-            self.add_status_message("=== THREADING TEST STARTED ===")
-            
-            # Disable buttons during test
-            self.test_thread_btn.setEnabled(False)
-            self.optimize_btn.setEnabled(False)
-            
-            # Clear any existing worker
-            if hasattr(self, 'optimization_worker') and self.optimization_worker:
-                if self.optimization_worker.isRunning():
-                    self.optimization_worker.terminate()
-                    self.optimization_worker.wait()
-            
-            # Create test worker with test_mode=True
-            dummy_config = {'liquid': 'PVA_water', 'target_volume_ml': 0.200, 'parameters': {}}
-            self.optimization_worker = OptimizationWorker(dummy_config, test_mode=True)
-            
-            # Connect signals with explicit queued connections for thread safety
-            self.optimization_worker.optimization_started.connect(
-                self.on_optimization_started, 
-                type=Qt.ConnectionType.QueuedConnection
-            )
-            self.optimization_worker.optimization_complete.connect(
-                self.on_optimization_complete,
-                type=Qt.ConnectionType.QueuedConnection  
-            )
-            self.optimization_worker.debug_message.connect(
-                self.on_debug_message,
-                type=Qt.ConnectionType.QueuedConnection
-            )
-            
-            self.add_status_message("[TEST] Worker created, signals connected with QueuedConnection")
-            self.add_status_message("[TEST] Starting test worker thread...")
-            
-            # Start the test worker
-            self.optimization_worker.start()
-            
-        except Exception as e:
-            self.add_status_message(f"[TEST ERROR] {str(e)}")
-            self.test_thread_btn.setEnabled(True)
-            self.optimize_btn.setEnabled(True)
-    
-    def on_optimization_complete(self, results):
-        """Handle test completion."""
-        self.add_status_message(f"[TEST] Optimization complete: {results}")
-        
-        # Re-enable buttons
-        self.test_thread_btn.setEnabled(True)
-        self.optimize_btn.setEnabled(True)
-        
-        if results.get('status') == 'test_success':
-            self.add_status_message("=== THREADING TEST PASSED! ===")
-        else:
-            self.add_status_message("=== THREADING TEST COMPLETED ===")
-    
     def on_measurement_complete(self, results: Dict[str, Any]):
         """Handle completed measurement (all replicates done)."""
         self.current_results = results
@@ -2163,6 +3267,9 @@ class CalibrationTestMainWindow(QMainWindow):
         
         # Update final statistics with complete timing info
         self.time_label.setText(f"{results['mean_time_s']:.2f} seconds")
+        
+        # Individual replicates have already been added to optimization plot via on_replicate_complete()
+        # No need to add summary measurement here to avoid duplication
         
         # Re-enable UI
         self.measure_btn.setEnabled(True)
@@ -2351,31 +3458,11 @@ class CalibrationTestMainWindow(QMainWindow):
         self.accuracy_label.setText("Not available")
         self.cv_label.setText("Not available")
         
-        # Clear plots
+        # Clear all plots
         self.mass_time_plot.clear()
         self.volume_replicate_plot.clear()
         
-    def on_optimization_complete(self, results: dict):
-        """Handle optimization completion."""
-        # Re-enable UI
-        self.optimize_btn.setEnabled(True)
-        self.measure_btn.setEnabled(True)
-        self.progress_bar.setVisible(False)
-        
-        self.add_status_message("Optimization completed successfully!")
-        QMessageBox.information(self, "Optimization Complete", 
-                              "Bayesian optimization finished. Check the optimization plot for results.")
-        
-    def on_optimization_error(self, error_msg: str):
-        """Handle optimization error."""
-        # Re-enable UI
-        self.optimize_btn.setEnabled(True)
-        self.measure_btn.setEnabled(True)
-        self.progress_bar.setVisible(False)
-        
-        self.add_status_message(f"Optimization error: {error_msg}")
-        QMessageBox.critical(self, "Optimization Error", f"Optimization failed:\n{error_msg}")
-    
+
     def clear_measurement_data(self):
         """Clear all progressive measurement data when starting new measurement set."""
         self.mass_data_replicates = []
@@ -2444,6 +3531,52 @@ class CalibrationTestMainWindow(QMainWindow):
         # Store volume data immediately
         measured_volume_ml = measurement_data['volume']
         self.volume_data_replicates.append(measured_volume_ml)
+        
+        # *** NEW: Add individual replicate to optimization plot immediately ***
+        # Simple approach: increment parameter set on each MEASURE click
+        if not hasattr(self, 'manual_set_counter'):
+            self.manual_set_counter = 0
+        
+        # Check if this is the first replicate of a new measurement session
+        if not hasattr(self, 'current_measurement_set_id'):
+            # First measurement or new measurement session - increment counter
+            self.manual_set_counter += 1
+            self.current_measurement_set_id = self.manual_set_counter
+            self.add_status_message(f"[MANUAL] Starting new parameter set: Manual-{self.current_measurement_set_id}")
+        
+        # Use the current measurement set ID for all replicates in this session
+        parameter_set_name = f"Manual-{self.current_measurement_set_id}"
+        
+        # Calculate accuracy for this individual replicate
+        target_volume_ml = self.volume_spinbox.value()
+        accuracy_pct = ((measured_volume_ml - target_volume_ml) / target_volume_ml) * 100
+        
+        # 🔧 GET CURRENT PARAMETER SETTINGS - This was missing!
+        current_params = self.get_current_parameters()
+        
+        # Format data for optimization plot (individual replicate, not average)
+        measurement_data_for_plot = {
+            'liquid_type': self.liquid_combo.currentText(),
+            'target_volume_ml': target_volume_ml,
+            'measured_volume_ul': measured_volume_ml * 1000,  # Convert to uL
+            'deviation_pct': accuracy_pct,
+            'duration_s': measurement_data.get('elapsed_s', 0),
+            'strategy': parameter_set_name,  # Use simple parameter set name
+            'total_measurement_count': replicate_num,  # Use replicate number within this session
+            # Fields expected by plots
+            'volume': measured_volume_ml,
+            'elapsed_s': measurement_data.get('elapsed_s', 0)
+        }
+        
+        # 🎯 ADD PARAMETER SETTINGS TO MANUAL MEASUREMENTS
+        # Extract parameter values (excluding liquid_type which is already added above)
+        for param_name, param_value in current_params.items():
+            if param_name != 'liquid_type':  # Already handled above
+                measurement_data_for_plot[param_name] = param_value
+        
+        # Add individual replicate to optimization plot immediately
+        self.optimization_plot.add_measurement(measurement_data_for_plot)
+        self.add_status_message(f"[MANUAL] Added replicate {replicate_num} to {parameter_set_name}")
         
         # Try to find and load real mass data (only if not simulating)
         if not self.simulate_checkbox.isChecked():
@@ -2591,6 +3724,10 @@ class CalibrationTestMainWindow(QMainWindow):
         volumes_ml = np.array(self.volume_data_replicates)
         target_ml = self.current_target_volume
         
+        # Reset Results Summary title for manual measurements
+        self.stats_group.setTitle("Results Summary")
+        self.stats_group.setStyleSheet("")  # Clear any special styling
+        
         # Calculate current statistics
         mean_volume = np.mean(volumes_ml)
         accuracy_pct = ((mean_volume - target_ml) / target_ml) * 100
@@ -2602,14 +3739,19 @@ class CalibrationTestMainWindow(QMainWindow):
         
         # Update labels
         self.accuracy_label.setText(f"{accuracy_pct:+.1f}% ({len(volumes_ml)} reps)")
+        self.accuracy_label.setStyleSheet("")  # Clear optimal condition styling
+        
         self.cv_label.setText(f"{cv_pct:.1f}%")
+        self.cv_label.setStyleSheet("")  # Clear optimal condition styling
         
         # Calculate average elapsed time from stored measurement data
         if hasattr(self, 'current_measurement_times') and self.current_measurement_times:
             mean_time = np.mean(self.current_measurement_times)
             self.time_label.setText(f"{mean_time:.1f} seconds")
+            self.time_label.setStyleSheet("")  # Clear optimal condition styling
         else:
             self.time_label.setText("In progress...")
+            self.time_label.setStyleSheet("")  # Clear optimal condition styling
 
     def update_plots_from_optimization_data(self, trial_measurements: List[dict]):
         """Update mass-time plot, histogram, and stats from optimization measurements."""
@@ -2671,6 +3813,161 @@ class CalibrationTestMainWindow(QMainWindow):
             self.accuracy_label.setText(f"{accuracy_pct:+.1f}%")
         if hasattr(self, 'cv_label'):
             self.cv_label.setText(f"{cv_pct:.1f}%")
+
+    def convert_to_external_data(self):
+        """Convert GUI measurements to external data format and enable external data in config."""
+        try:
+            # Check if we have measurement data
+            if not hasattr(self, 'session_folder') or not self.session_folder:
+                QMessageBox.warning(self, "No Data", "No measurement session found. Please run some measurements first.")
+                return
+                
+            raw_data_path = Path(self.session_folder) / "raw_measurements.csv"
+            if not raw_data_path.exists():
+                QMessageBox.warning(self, "No Data", "No raw measurements found. Please run some measurements first.")
+                return
+                
+            self.add_status_message("[CONVERT] Converting GUI measurements to external data format...")
+            
+            # Read the raw measurements CSV
+            import pandas as pd
+            import numpy as np
+            df = pd.read_csv(raw_data_path)
+            
+            if len(df) == 0:
+                QMessageBox.warning(self, "No Data", "Raw measurements file is empty.")
+                return
+                
+            self.add_status_message(f"[CONVERT] Found {len(df)} measurement records")
+            
+            # Group measurements by parameter combinations (same logic as optimization plot)
+            self.add_status_message("[CONVERT] Grouping measurements by parameter sets...")
+            
+            # Group by parameter fingerprint
+            param_columns = ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 
+                           'dispense_wait_time', 'pre_asp_air_vol', 'post_asp_air_vol', 'blowout_vol', 'retract_speed']
+            
+            parameter_groups = {}
+            
+            for _, row in df.iterrows():
+                # Create parameter signature
+                param_signature = tuple([row.get(col, 0) for col in param_columns])
+                
+                if param_signature not in parameter_groups:
+                    parameter_groups[param_signature] = []
+                parameter_groups[param_signature].append(row)
+            
+            self.add_status_message(f"[CONVERT] Found {len(parameter_groups)} unique parameter sets")
+            
+            # SAVE INDIVIDUAL RAW MEASUREMENTS (not trial summaries)
+            external_data = []
+            
+            for _, row in df.iterrows():
+                # Save each individual measurement as external data
+                external_row = {
+                    # Raw measurement data
+                    'timestamp': row['timestamp'],
+                    'measurement_id': row['measurement_id'], 
+                    'replicate_number': row['replicate_number'],
+                    'target_volume_ml': row['target_volume_ml'],
+                    'measured_volume_ml': row['measured_volume_ml'],
+                    'measurement_time_s': row['measurement_time_s'],
+                    'liquid_type': row.get('liquid_type', 'water'),
+                    # Hardware parameters (keep exact column names from raw_measurements.csv)
+                    'overaspirate_vol': row['overaspirate_vol'],
+                    'aspirate_speed': row['aspirate_speed'],
+                    'dispense_speed': row['dispense_speed'], 
+                    'retract_speed': row['retract_speed'],
+                    'aspirate_wait_time': row['aspirate_wait_time'],
+                    'dispense_wait_time': row['dispense_wait_time'],
+                    'pre_asp_air_vol': row['pre_asp_air_vol'],
+                    'post_asp_air_vol': row['post_asp_air_vol'],
+                    'blowout_vol': row['blowout_vol'],
+                    'post_retract_wait_time': row['post_retract_wait_time'],
+                    # Environmental data (if available)
+                    'temperature_c': row.get('temperature_c', 25.0),
+                    'humidity_pct': row.get('humidity_pct', 50.0),
+                    'pressure_pa': row.get('pressure_pa', 101325.0)
+                }
+                external_data.append(external_row)
+                
+            self.add_status_message(f"[CONVERT] Saved {len(external_data)} individual measurements as external data")
+            
+            # Save external data CSV
+            external_df = pd.DataFrame(external_data)
+            external_file_path = Path("calibration_modular_v2/external_calibration_data.csv")
+            external_df.to_csv(external_file_path, index=False)
+            
+            self.add_status_message(f"[CONVERT] Saved external data to: {external_file_path}")
+            self.add_status_message(f"[CONVERT] External data will be loaded as individual measurements -> grouped into trials -> sent to optimizer")
+            
+            # Update config file to enable external data
+            config_path = Path("calibration_modular_v2/experiment_config.yaml")
+            if config_path.exists():
+                import yaml
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f)
+                
+                # Enable external data and set path
+                if 'screening' not in config:
+                    config['screening'] = {}
+                if 'external_data' not in config['screening']:
+                    config['screening']['external_data'] = {}
+                    
+                config['screening']['external_data']['enabled'] = True
+                config['screening']['external_data']['data_path'] = str(external_file_path)
+                config['screening']['external_data']['volume_filter_ml'] = None  # Use all volumes
+                config['screening']['external_data']['liquid_filter'] = None      # Use all liquids
+                
+                # UPDATE EXPERIMENT SETTINGS FROM GUI SELECTIONS
+                if 'experiment' not in config:
+                    config['experiment'] = {}
+                
+                # Update only liquid type in experiment config (hardware-agnostic)
+                config['experiment']['liquid'] = self.liquid_type_combo.currentText()
+                
+                # Update hardware config with vial selections
+                hardware_config_path = Path("calibration_modular_v2/north_robot_hardware.yaml")
+                if hardware_config_path.exists():
+                    with open(hardware_config_path, 'r') as f:
+                        hardware_config = yaml.safe_load(f)
+                    
+                    # Add vials section if it doesn't exist
+                    if 'vials' not in hardware_config:
+                        hardware_config['vials'] = {}
+                    
+                    hardware_config['vials']['liquid'] = self.liquid_type_combo.currentText()
+                    hardware_config['vials']['source_vial'] = self.liquid_combo.currentText()  
+                    hardware_config['vials']['measurement_vial'] = self.liquid_combo.currentText()
+                    
+                    # Save hardware config
+                    with open(hardware_config_path, 'w') as f:
+                        yaml.dump(hardware_config, f, default_flow_style=False)
+                
+                self.add_status_message(f"[CONVERT] Updated experiment settings:")
+                self.add_status_message(f"[CONVERT]   liquid: {self.liquid_type_combo.currentText()}")
+                self.add_status_message(f"[CONVERT]   source_vial: {self.liquid_combo.currentText()}")
+                self.add_status_message(f"[CONVERT]   measurement_vial: {self.liquid_combo.currentText()}")
+                
+                # Save updated config
+                with open(config_path, 'w') as f:
+                    yaml.dump(config, f, default_flow_style=False)
+                
+                self.add_status_message(f"[CONVERT] Updated config file: {config_path}")
+                self.add_status_message("[CONVERT] External data enabled - next optimization will use your measurements instead of SOBOL!")
+                
+                QMessageBox.information(self, "Conversion Complete", 
+                                      f"Successfully saved {len(external_data)} individual measurements to external data format.\n\n"
+                                      f"File: {external_file_path}\n"
+                                      f"Config updated to enable external data.\n\n"
+                                      f"Your next optimization will load these individual measurements, group them into trials, and send trial results to optimizer!")
+            else:
+                QMessageBox.warning(self, "Config Not Found", f"Could not find config file: {config_path}")
+                
+        except Exception as e:
+            error_msg = f"Failed to convert to external data: {str(e)}"
+            self.add_status_message(f"[CONVERT ERROR] {error_msg}")
+            QMessageBox.critical(self, "Conversion Error", error_msg)
 
 def main():
     """Main entry point."""

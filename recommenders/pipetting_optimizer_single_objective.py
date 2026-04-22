@@ -130,7 +130,7 @@ def create_model(seed, num_initial_recs, bayesian_batch_size, volume, tip_volume
                     model_gen_kwargs=model_gen_kwargs,
                 )])
 
-    ax_client = AxClient(generation_strategy=gs, verbose_logging=False)
+    ax_client = AxClient(generation_strategy=gs, verbose_logging=True)  # 🔍 ENABLE AX DECISION LOGGING
 
     # Build parameters list - only include parameters we're optimizing
     parameters = []

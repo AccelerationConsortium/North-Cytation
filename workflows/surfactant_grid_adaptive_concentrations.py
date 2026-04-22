@@ -3962,6 +3962,8 @@ def execute_iterative_workflow(surfactant_a_name="SDS", surfactant_b_name="DTAB"
         refill_surfactant_vial(lash_e, f"{surfactant_a_name}_stock", liquid='SDS')
         refill_surfactant_vial(lash_e, f"{surfactant_b_name}_stock", liquid='SDS')
 
+        lash_e.nr_robot.home_robot_components()  # Home at start of each iteration for consistency
+
         # Refill substocks (top up or skip based on REFILL_THRESHOLD_ML)
         stock_solutions_needed = results['experiment_plan']['stock_solutions_needed']
         dilution_recipes = [

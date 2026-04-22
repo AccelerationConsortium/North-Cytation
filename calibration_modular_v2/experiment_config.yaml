@@ -1,186 +1,193 @@
-experiment:
-  name: multi_volume_calibration_test
-  liquid: PVA_water
-  description: Testing calibration across 4 volumes
-  volume_targets_ml:
-  - 0.100
-  - 0.050
-  - 0.025
-  max_total_measurements: 100
-  max_measurements_first_volume: 70
-  num_screening_trials: 6
-  max_replicates_per_trial: 3
-  two_point_calibration_replicates: 3
-  simulate: false
-  random_seed: 7
-  fixed_parameters:
-    post_asp_air_vol: 0.0
-    asp_disp_cycles: 0
-    post_retract_wait_time: 0.0
-    retract_speed: 5.0
-    dispense_wait_time: 1.5
-  hardware_protocol: calibration_protocol_northrobot
-  simulation_protocol: calibration_protocol_simulated
+adaptive_measurement:
+  base_replicates: 1
+  deviation_threshold_pct: 100.0
+  enabled: true
+  penalty_variability_pct: 100.0
 calibration_parameters:
   overaspirate_vol:
     bounds:
     - 0.0
-    - 0.010
+    - 0.02
     default: 0.004
-    type: float
     description: Overaspiration volume for volume accuracy (mL)
-    volume_dependent: true
     round_to_nearest: 0.0001
-hardware_parameters:
-  aspirate_speed:
-    bounds:
-    - 5
-    - 30
-    default: 10
-    type: integer
-    time_affecting: true
-    description: Aspiration speed (relative units)
-    round_to_nearest: 1
-  dispense_speed:
-    bounds:
-    - 2
-    - 20
-    default: 10
-    type: integer
-    time_affecting: true
-    description: Dispense speed (relative units)
-    round_to_nearest: 1
-  aspirate_wait_time:
-    bounds:
-    - 0.0
-    - 5.0
-    default: 10.0
     type: float
-    time_affecting: true
-    description: Wait time after aspiration in liquid (seconds)
-    round_to_nearest: 0.1
-  pre_asp_air_vol:
-    bounds:
-    - 0.0
-    - 0.3
-    default: 0.0
-    type: float
-    time_affecting: false
-    description: Pre-aspiration air volume (mL)
     volume_dependent: true
-    round_to_nearest: 0.001
-  post_asp_air_vol:
-    bounds:
-    - 0.0
-    - 0.1
-    default: 0.0
-    type: float
-    time_affecting: false
-    description: Post-aspiration air gap volume (mL)
-    round_to_nearest: 0.001
-  dispense_wait_time:
-    bounds:
-    - 1.5
-    - 15.0
-    default: 1.5
-    type: float
-    time_affecting: true
-    description: Wait time after dispense (seconds)
-    round_to_nearest: 0.1
-  blowout_vol:
-    bounds:
-    - 0.0
-    - 1.0
-    default: 0.0
-    type: float
-    time_affecting: false
-    description: Blowout volume after dispense (mL)
-    round_to_nearest: 0.001
-output:
-  base_directory: output/
-  save_raw_measurements: true
-  generate_plots: true
-  export_optimal_conditions: true
+experiment:
+  description: Testing calibration across 4 volumes
+  fixed_parameters:
+    asp_disp_cycles: 0
+    post_asp_air_vol: 0.0
+    post_retract_wait_time: 0.0
+    pre_asp_air_vol: 0.0
+    retract_speed: 5.0
+  hardware_protocol: calibration_protocol_northrobot
+  liquid: PVA_DMSO
+  max_measurements_first_volume: 70
+  max_replicates_per_trial: 2
+  max_total_measurements: 100
+  name: multi_volume_calibration_test
+  num_screening_trials: 5
+  random_seed: 7
+  simulate: false
+  simulation_protocol: calibration_protocol_simulated
+  two_point_calibration_replicates: 0
+  volume_targets_ml:
+  - 0.05
 hardware:
   parameter_warnings:
   - 'IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter
     scaling)'
   - 'NOTE: Speeds are relative units, not absolute velocities'
   - 'CAUTION: Retract speed behaves differently - higher = faster'
-tolerances:
-  volume_ranges:
-  - volume_min_ul: 200
-    volume_max_ul: 1000
-    tolerance_pct: 1.0
-  - volume_min_ul: 60
-    volume_max_ul: 199
-    tolerance_pct: 2.0
-  - volume_min_ul: 20
-    volume_max_ul: 59
-    tolerance_pct: 3.0
-  - volume_min_ul: 2.5
-    volume_max_ul: 19
-    tolerance_pct: 10.0
-  - volume_min_ul: 0
-    volume_max_ul: 2.499
-    tolerance_pct: 10.0
-  simulation:
-    deviation_multiplier: 1.5
-    variability_multiplier: 1.5
-adaptive_measurement:
-  enabled: true
-  deviation_threshold_pct: 50.0
-  base_replicates: 1
-  penalty_variability_pct: 100.0
+hardware_parameters:
+  aspirate_speed:
+    bounds:
+    - 2
+    - 30
+    default: 10
+    description: Aspiration speed (relative units)
+    round_to_nearest: 1
+    time_affecting: true
+    type: integer
+  aspirate_wait_time:
+    bounds:
+    - 0.0
+    - 15.0
+    default: 10.0
+    description: Wait time after aspiration in liquid (seconds)
+    round_to_nearest: 0.1
+    time_affecting: true
+    type: float
+  blowout_vol:
+    bounds:
+    - 0.0
+    - 0.5
+    default: 0.0
+    description: Blowout volume after dispense (mL)
+    round_to_nearest: 0.001
+    time_affecting: false
+    type: float
+  dispense_speed:
+    bounds:
+    - 2
+    - 30
+    default: 10
+    description: Dispense speed (relative units)
+    round_to_nearest: 1
+    time_affecting: true
+    type: integer
+  dispense_wait_time:
+    bounds:
+    - 0
+    - 15.0
+    default: 1.5
+    description: Wait time after dispense (seconds)
+    round_to_nearest: 0.1
+    time_affecting: true
+    type: float
+  post_asp_air_vol:
+    bounds:
+    - 0.0
+    - 0.1
+    default: 0.0
+    description: Post-aspiration air gap volume (mL)
+    round_to_nearest: 0.001
+    time_affecting: false
+    type: float
+  post_retract_wait_time:
+    bounds:
+    - 0.0
+    - 10.0
+    default: 5.0
+    description: Wait time after aspiration in liquid (seconds)
+    round_to_nearest: 0.1
+    time_affecting: true
+    type: float
+  pre_asp_air_vol:
+    bounds:
+    - 0.0
+    - 0.3
+    default: 0.0
+    description: Pre-aspiration air volume (mL)
+    round_to_nearest: 0.001
+    time_affecting: false
+    type: float
+    volume_dependent: true
 optimization:
+  first_volume_final_calibration:
+    description: Performs final 2-point overaspirate calibration on first volume before
+      proceeding to next volume
+    enabled: false
+    skip_if_good_trial: true
+  llm_optimization:
+    config_path: null
+    enabled: false
+  objective_thresholds:
+    deviation_threshold_pct: 50.0
+    time_threshold_s: 120.0
+    variability_threshold_pct: 25.0
   objectives:
     accuracy_weight: 0.4
     precision_weight: 0.5
     time_weight: 0.1
-  objective_thresholds:
-    deviation_threshold_pct: 50.0
-    variability_threshold_pct: 25.0
-    time_threshold_s: 120.0
   optimizer:
+    backend: GPEI
+    backend_subsequent: GPEI
     type: multi_objective
-    backend: qNEHVI
-    backend_subsequent: qLogEI
   parameter_inheritance:
-    enabled: true
     carry_optimizer_state: false
-  first_volume_final_calibration:
     enabled: true
-    skip_if_good_trial: false
-    description: Performs final 2-point overaspirate calibration on first volume before
-      proceeding to next volume
-  llm_optimization:
-    enabled: false
-    config_path: null
   stopping_criteria:
     min_good_trials: 3
   use_range_based_variability: false
+output:
+  base_directory: output/
+  export_optimal_conditions: true
+  generate_plots: true
+  save_raw_measurements: true
 screening:
-  use_llm_suggestions: false
-  llm_config_path: calibration_screening_llm_template.json
   external_data:
-    enabled: false
-    data_path: null
-    volume_filter_ml: null
+    data_path: calibration_modular_v2\external_calibration_data.csv
+    enabled: true
     liquid_filter: null
-    required_columns:
-    - volume_ml
-    - deviation_pct
-    - duration_s
+    required_columns: []
+    volume_filter_ml: null
+  llm_config_path: calibration_screening_llm_template.json
+  use_llm_suggestions: false
+tolerances:
+  simulation:
+    deviation_multiplier: 1.5
+    variability_multiplier: 1.5
+  volume_ranges:
+  - tolerance_pct: 1.0
+    volume_max_ul: 1000
+    volume_min_ul: 200
+  - tolerance_pct: 2.0
+    volume_max_ul: 199
+    volume_min_ul: 60
+  - tolerance_pct: 3.0
+    volume_max_ul: 59
+    volume_min_ul: 20
+  - tolerance_pct: 10.0
+    volume_max_ul: 19
+    volume_min_ul: 2.5
+  - tolerance_pct: 10.0
+    volume_max_ul: 2.499
+    volume_min_ul: 0
 validation:
+  generate_plots: true
   optimal_conditions_file: output/run_1774908149/optimal_conditions.csv
+  output_directory: validation/
+  replicates_per_volume: 5
+  save_raw_data: true
+  success_criteria:
+    use_volume_tolerances: true
   volumes_ml:
   - 0.05
   - 0.025
   - 0.01
   - 0.005
-  replicates_per_volume: 5
-  output_directory: validation/
-  generate_plots: true
-  save_raw_data: true
-  success_criteria:
-    use_volume_tolerances: true
+volumes:
+  volume_targets_ml:
+  - 0.05

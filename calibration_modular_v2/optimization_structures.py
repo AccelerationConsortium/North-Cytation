@@ -37,6 +37,8 @@ class OptimizerType(Enum):
     SOBOL = "sobol"           # Random exploration
     SINGLE_OBJECTIVE = "qLogEI"  # Single objective (accuracy only)  
     MULTI_OBJECTIVE = "qNEHVI"   # Multi-objective (accuracy + precision + time)
+    GPEI = "GPEI"             # Gaussian Process Expected Improvement
+    MOO = "MOO"               # Multi-Objective Optimization
 
 
 @dataclass

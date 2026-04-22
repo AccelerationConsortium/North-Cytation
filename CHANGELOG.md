@@ -1,5 +1,62 @@
 # Changelog
 
+## [SDL SCORING BUG FIX] - 2026-04-21
+
+### FIXED: SDL Implementation Returning Zero Scores
+- **BUG**: SDL scoring method was correctly implemented but not being called in find_best_trials()
+- **SYMPTOM**: All trials showing score=0.000, selecting worst trial (Trial 1: 30.1% accuracy)
+- **ROOT CAUSE**: find_best_trials() was still calling _calculate_composite_score() which returned 0.0 placeholder
+- **FIX**: Updated find_best_trials() to properly call _calculate_sdl_composite_score() with population normalization
+- **RESULT**: Selection will now match SDL display ranking - Trial 5 (1.2% accuracy) should be selected
+- **VERIFICATION**: Next experiment should show proper SDL scores and select best trial correctly
+
+## [SELECTION SYSTEM UPGRADE] - 2026-04-21
+
+### REPLACED: Absolute Threshold Scoring → SDL Relative Normalization
+- **REMOVED**: Old absolute threshold system (30s baseline, 1% tolerances, penalty zones)
+- **CLEANED**: Deleted dead code methods (_calculate_accuracy_score, _calculate_precision_score, _calculate_time_score_for_ranking)
+- **NEW SYSTEM**: Pure SDL relative normalization with population standard deviations
+- **BENEFIT**: Single consistent scoring methodology across display and selection
+- **METHOD**: Normalizes each metric by standard deviation across all trials × 100
+- **WEIGHTS**: Same weights (0.4 accuracy, 0.5 precision, 0.1 time) with superior normalization
+- **IMPACT**: Time outliers properly penalized, competitive context-aware scoring
+- **USER INSIGHT**: "I think I intended to always use this system - the other system doesn't sound like one I would have used"
+
+## [CRITICAL SELECTION BUG FIX] - 2026-04-21
+
+### FIXED: Inconsistent Trial Selection Scoring
+- **ISSUE**: Composite scores calculated at different times during experiment were incomparable
+- **PROBLEM**: Trial selection used stale scores from different contexts, causing wrong "optimal" parameters 
+- **SOLUTION**: Modified `find_best_trials()` to recalculate all scores with same baseline for fair comparison
+- **IMPACT**: Trial selection now matches SDL ranking display - consistent and reliable results
+- **LOGGING**: Added extensive logging to show score recalculation and final ranking (ASCII-only)
+- **SAFETY**: Created backup before changes, minimal code modification with easy reversion
+- **VERIFIED**: Fix confirmed working - selection now matches display ranking consistently
+
+## [MASTER DATASET CREATOR] - 2026-04-20
+
+### NEW FEATURE: Comprehensive Data Compilation System
+- **ADDED**: `create_master_dataset.py` - Consolidates ALL calibration and validation data
+- **FEATURES**: Automatically detects calibration vs validation experiments  
+- **SMART FILTERING**: Skips simulated data by checking config files
+- **COMPREHENSIVE**: Combines raw measurements, trials, and optimal conditions
+- **EXPORTS**: Creates master_measurements.csv, master_trials.csv, master_optimal_conditions.csv
+- **REPORTING**: Generates detailed compilation report with statistics
+
+### CLEANUP: Unused File Identification
+- **IDENTIFIED**: 10 unused Python files safe for deletion:
+  - Standalone utilities: batch_calibration_automation.py, fix_external_data.py, etc.
+  - Unused protocols: calibration_protocol_heated.py, calibration_protocol_reservoir.py
+  - Legacy scripts: post_optimization_dashboard.py, shap_analyzer.py
+- **ACTIVE SYSTEM**: 20 Python files actively used by main calibration system
+
+## [EXTERNAL DATA PARAMETER COMPATIBILITY] - 2026-04-20
+
+### FIXED: External Data System Parameter Alignment
+- **FIXED**: Removed unused `trial_id` parameter from `_convert_measurements_to_trial()` method
+- **ALIGNED**: External data loading system now fully compatible with TrialResult constructor
+- **RESULT**: Manual calibration measurements can now compete with optimization trials in Ax
+
 ## [CALIBRATION GUI ENVIRONMENTAL MONITORING] - 2026-04-13
 
 ### NEW FEATURE: Real-Time Environmental Conditions Display

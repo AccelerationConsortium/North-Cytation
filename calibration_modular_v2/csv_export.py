@@ -188,11 +188,13 @@ class CleanCSVExporter:
             flattened_params = self._flatten_parameters(parameters)
             row.update(flattened_params)
             
-            # Add metadata if available
+            # Add essential metadata only (avoid duplicating parameter data)
             metadata = measurement.get('metadata', {})
             if isinstance(metadata, dict):
+                # Only include essential metadata, not parameter duplicates
+                essential_metadata = ['source', 'original_index', 'replicate', 'start_time', 'end_time'] 
                 for key, value in metadata.items():
-                    if isinstance(value, (str, int, float, bool)):
+                    if key in essential_metadata and isinstance(value, (str, int, float, bool)):
                         row[f'metadata_{key}'] = value
             
             rows.append(row)
