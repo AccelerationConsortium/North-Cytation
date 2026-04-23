@@ -3381,6 +3381,20 @@ class North_Robot(North_Base):
         measured_mass = None
         stability_info = None
 
+
+        dest_vial_clamped = self.get_vial_info(vial_index,'location')=='clamp' #Is the destination vial clamped?
+        dest_vial_volume = self.get_vial_info(vial_index,'vial_volume') #What is the current vial volume?
+
+        # Check if dispensing would exceed vial capacity
+        dest_vial_location = self.get_vial_info(vial_index, 'location')
+        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
+        if max_vial_volume is not None:
+            post_dispense_volume = dest_vial_volume + volume
+            if post_dispense_volume > max_vial_volume:
+                self.pause_after_error(f"Cannot dispense {volume:.3f} mL into vial {self.get_vial_info(vial_index, 'vial_name')}: from reservoir {reservoir_index} - current volume {dest_vial_volume:.3f} mL + dispense volume {volume:.3f} mL = {post_dispense_volume:.3f} mL, which "
+                                     f"would exceed capacity ({post_dispense_volume:.3f} mL > {max_vial_volume:.3f} mL max)")
+                return
+
         #Step 1: move the vial to the clamp
         if not self.get_vial_info(vial_index,'location')=='clamp':
             # Safety is now handled in move_vial_to_location method

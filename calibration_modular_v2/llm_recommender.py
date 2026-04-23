@@ -16,7 +16,7 @@ import numpy as np
 from pathlib import Path
 
 from data_structures import PipettingParameters, VolumeCalibrationResult, CalibrationParameters, HardwareParameters
-from .config_manager import ExperimentConfig
+from config_manager import ExperimentConfig
 from llm_config_generator import LLMConfigGenerator
 
 
@@ -62,8 +62,9 @@ class LLMRecommender:
             raise ValueError(f"Failed to load LLM template from {template_path}: {e}")
         
         # Get hardware-specific parameters and substitutions
-        time_affecting_params = self.config.get_time_affecting_parameters()
-        hardware_warnings = self.config.get_hardware_specific_warnings()
+        # TODO: These features are deprecated but kept for template compatibility
+        time_affecting_params = []  # No longer used
+        hardware_warnings = "General hardware warnings apply"  # Placeholder
         
         # Build parameters section from config
         parameters = {}
@@ -86,8 +87,8 @@ class LLMRecommender:
             "TIME_AFFECTING_PARAMS": ", ".join(time_affecting_params),
             "HARDWARE_SPECIFIC_WARNINGS": hardware_warnings,
             "PARAMETERS_SECTION": parameters,
-            "TARGET_VOLUME_UL": int(self.config.experiment.target_volume_ml * 1000),
-            "DEVICE_SERIAL": getattr(self.config.experiment, 'device_serial', 'UNKNOWN'),
+            "TARGET_VOLUME_UL": int(self.config.get_target_volumes_ml()[0] * 1000),
+            "DEVICE_SERIAL": 'UNKNOWN',  # Device serial not used
             "BATCH_SIZE": 5
         })
         
@@ -222,8 +223,8 @@ class LLMRecommender:
             return {
                 "phase": self.phase,
                 "has_previous_data": False,
-                "liquid": self.config.experiment.liquid,  # Use experiment.liquid directly
-                "target_volume": self.config.experiment.target_volume_ml  # Use configured target volume
+                "liquid": self.config.get_liquid_name(),
+                "target_volume": self.config.get_target_volumes_ml()[0]
             }
         
         # Analyze previous results
@@ -235,8 +236,8 @@ class LLMRecommender:
             return {
                 "phase": self.phase,
                 "has_previous_data": False,
-                "liquid": self.config.experiment.liquid,
-                "target_volume": previous_results[0].target_volume_ml if previous_results else self.config.experiment.target_volume_ml
+                "liquid": self.config.get_liquid_name(),
+                "target_volume": previous_results[0].target_volume_ml if previous_results else self.config.get_target_volumes_ml()[0]
             }
         
         # Find overall best trial
@@ -257,7 +258,7 @@ class LLMRecommender:
         return {
             "phase": self.phase,
             "has_previous_data": True,
-            "liquid": self.config.experiment.liquid,
+            "liquid": self.config.get_liquid_name(),
             "target_volume": previous_results[-1].target_volume_ml,  # Most recent volume
             "results_summary": results_summary,
             "best_parameters": best_trial.parameters.to_protocol_dict()  # Hardware-agnostic parameter access

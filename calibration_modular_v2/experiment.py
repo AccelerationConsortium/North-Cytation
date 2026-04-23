@@ -980,6 +980,43 @@ class CalibrationExperiment:
         
         return constrained_params
     
+    def _generate_optimization_parameters(self, target_volume_ml: float, iteration: int, optimizer, 
+                                        previous_trials: List[TrialResult] = None) -> PipettingParameters:
+        """Generate optimization parameters using LLM suggestions or Bayesian optimizer."""
+        
+        # Check if LLM optimization is enabled
+        if self.config.is_llm_optimization_enabled():
+            llm_config_path = self.config.get_llm_config_path()
+            if llm_config_path:
+                try:
+                    from llm_recommender import LLMRecommender
+                    llm_recommender = LLMRecommender(self.config, llm_config_path, phase="optimization")
+                    
+                    # For optimization phase, pass previous trial results for context using new API
+                    parameters = llm_recommender.suggest_parameters(
+                        n_suggestions=1, 
+                        previous_results=previous_trials or []
+                    )
+                    # New API returns list, so get first element
+                    if isinstance(parameters, list):
+                        parameters = parameters[0] if parameters else None
+                    
+                    if parameters is None:
+                        raise RuntimeError("LLM failed to generate optimization parameters")
+                    logger.info(f"Using LLM-generated parameters for optimization trial {iteration}")
+                    return self.config.apply_volume_constraints(parameters, target_volume_ml)
+                except ImportError:
+                    logger.warning("LLM recommender not available, falling back to Bayesian optimizer")
+                except Exception as e:
+                    logger.warning(f"LLM optimization failed, falling back to Bayesian optimizer: {e}")
+        
+        # Fallback to Bayesian optimizer (existing behavior)
+        try:
+            return optimizer.suggest_parameters()
+        except Exception as e:
+            logger.error(f"Bayesian optimizer failed: {e}")
+            raise
+    
     def _generate_parameters_from_config(self, target_volume_ml: float) -> PipettingParameters:
         """Generate parameters using config-driven names - hardware agnostic."""
         # Get mandatory calibration parameters
@@ -1163,13 +1200,19 @@ class CalibrationExperiment:
                 logger.info(f"Insufficient volume budget remaining ({remaining_budget}) - stopping optimization")
                 break
             
-            # Get parameter suggestion from optimizer
+            # Get parameter suggestion from optimizer or LLM
             try:
-                logger.info("[OPTIMIZER] GETTING OPTIMIZER SUGGESTION...")
-                suggested_params = optimizer.suggest_parameters()
+                logger.info("[OPTIMIZER] GETTING PARAMETER SUGGESTION...")
+                # Use new method that handles both LLM and Bayesian optimization
+                suggested_params = self._generate_optimization_parameters(
+                    target_volume_ml=target_volume_ml,
+                    iteration=iteration,
+                    optimizer=optimizer,
+                    previous_trials=optimization_trials  # Pass previous trials for LLM context
+                )
                 logger.info("[SUCCESS] GOT PARAMETER SUGGESTION:")
             except Exception as e:
-                logger.error(f"Failed to get suggestion from optimizer: {e}")
+                logger.error(f"Failed to get suggestion from parameter generator: {e}")
                 break
             
             # Run adaptive measurement

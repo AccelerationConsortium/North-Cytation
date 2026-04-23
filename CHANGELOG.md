@@ -1,5 +1,18 @@
 # Changelog
 
+## [LLM OPTIMIZATION INTEGRATION] - 2026-04-22
+
+### IMPLEMENTED: Complete LLM Optimization Support
+- **ADDED**: `_generate_optimization_parameters()` method in experiment.py for LLM-guided optimization
+- **INTEGRATION**: Optimization loop now checks `llm_optimization.enabled` config before using Bayesian optimizer
+- **CONTEXT-AWARE**: LLM receives previous trial results for informed parameter suggestions during optimization phase
+- **ROBUST FALLBACK**: Multiple fallback layers - ImportError → Configuration Error → Runtime Error → Bayesian optimizer
+- **BACKWARD COMPATIBLE**: Existing Bayesian optimization remains default - no breaking changes
+- **SAFE IMPORTS**: LLM imports wrapped in try/catch to prevent crashes when llm_recommender unavailable
+- **ENHANCED LOGGING**: Clear indication whether using "LLM-generated" or Bayesian parameters for each trial
+- **DUAL PHASE SUPPORT**: Both screening and optimization phases now support LLM parameter generation
+- **FILES MODIFIED**: experiment.py (added optimization parameter generation method and integrated into workflow)
+
 ## [ENHANCED LLM PHYSICAL INSIGHTS] - 2026-04-22
 
 ### IMPROVED: Parameter Descriptions for LLM Understanding
