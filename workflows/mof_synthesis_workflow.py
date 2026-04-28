@@ -36,6 +36,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
+import slack_agent
 from master_usdl_coordinator import Lash_E
 
 # ================================================================================
@@ -93,6 +94,15 @@ def mof_synthesis_workflow(
     # STEP 1: SETUP WORKSTATION
     # ============================================================================
     
+    # Send startup Slack notification
+    if not lash_e.simulate:
+        startup_message = f"🧪 MOF Synthesis Workflow Started\n" \
+                         f"Reaction: Cu(NO3)2 + DiVA ({LINKER_TO_METAL_RATIO}:1)\n" \
+                         f"Vial: {reaction_vial}\n" \
+                         f"Replicates: {replicates} per time point\n" \
+                         f"Duration: {TOTAL_SAMPLING_TIME_MINUTES} min"
+        slack_agent.send_slack_message(startup_message)
+    
     lash_e.temp_controller.set_temp(REACTION_TEMP)
     #lash_e.grab_new_wellplate()
     
@@ -136,6 +146,13 @@ def mof_synthesis_workflow(
         if uv_vis_data is not None:
             measurements = transpose_well_data(uv_vis_data, wells, time_point, reaction_vial)
             all_measurements.extend(measurements)
+        
+        # Send Slack update for time point completion
+        if not lash_e.simulate:
+            progress_msg = f"⏱️ MOF Time Point {time_point} min completed\n" \
+                          f"Wells measured: {wells}\n" \
+                          f"Progress: {time_point}/{TOTAL_SAMPLING_TIME_MINUTES} min"
+            slack_agent.send_slack_message(progress_msg)
         
         # Return to heater and wait (except last time point)
         if time_point < sampling_times[-1]:
@@ -182,6 +199,16 @@ def mof_synthesis_workflow(
     
     lash_e.logger.info("MOF synthesis workflow completed")
     lash_e.logger.info(f"Results saved with timestamp: {timestamp}")
+    
+    # Send completion Slack notification
+    if not lash_e.simulate:
+        completion_msg = f"✅ MOF Synthesis Workflow Completed\n" \
+                        f"Reaction: {reaction_vial}\n" \
+                        f"Total wells: {well_index}\n" \
+                        f"Time points: {len(sampling_times)}\n" \
+                        f"Output: {output_dir.name}\n" \
+                        f"Files: CSV + Spectral Plot"
+        slack_agent.send_slack_message(completion_msg)
     
     return results
 
