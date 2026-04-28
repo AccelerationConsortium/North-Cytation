@@ -58,6 +58,17 @@ except ImportError as e:
     GenerationStep, GenerationStrategy, Models = None, None, None
     AX_AVAILABLE = False
 
+# Import BoTorch acquisition functions for direct control (restored old system)
+try:
+    from botorch.acquisition.logei import qLogExpectedImprovement
+    from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
+    from botorch.acquisition.monte_carlo import qExpectedImprovement
+    BOTORCH_ACQF_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"BoTorch acquisition functions not available: {e}")
+    qLogExpectedImprovement, qNoisyExpectedHypervolumeImprovement, qExpectedImprovement = None, None, None
+    BOTORCH_ACQF_AVAILABLE = False
+
 
 class AxBayesianOptimizer:
     """
@@ -65,11 +76,15 @@ class AxBayesianOptimizer:
     
     Handles both multi-objective (first volume) and single-objective (subsequent volumes)
     optimization with proper parameter constraints and transfer learning.
+    
+    Supports both direct acquisition function control (qNEHVI, qLogEI, qEI) and 
+    high-level abstractions (GPEI, MOO) via backend configuration.
     """
     
-    def __init__(self, config: OptimizationConfig):
+    def __init__(self, config: OptimizationConfig, is_first_volume: bool = True):
         """Initialize optimizer with configuration."""
         self.config = config
+        self.is_first_volume = is_first_volume
         self.state = OptimizationState()
         self.csv_export_dir = None  # Set during optimization to export Ax trials
         self.optimizer_insights = {}  # Store acquisition values and model predictions per trial
@@ -350,21 +365,81 @@ class AxBayesianOptimizer:
         # If we can't simplify, return as-is
         return constraint
     
+    def _get_model_and_kwargs(self, backend: str) -> Tuple[Any, Dict]:
+        """Map backend config to Ax model and generation kwargs.
+        
+        Supports both systems:
+        - Direct acquisition function control (old system): qNEHVI, qLogEI, qEI
+        - High-level abstractions (current system): GPEI, MOO
+        """
+        if not BOTORCH_ACQF_AVAILABLE and backend in ["qNEHVI", "qLogEI", "qEI"]:
+            logger.warning(f"Backend '{backend}' requires BoTorch acquisition functions but they're not available. Falling back to GPEI.")
+            backend = "GPEI"
+        
+        # Direct acquisition function control (restored old system)
+        if backend == "qNEHVI":
+            return Models.BOTORCH_MODULAR, {
+                "botorch_acqf_class": qNoisyExpectedHypervolumeImprovement,
+                "deduplicate": True,
+            }
+        elif backend == "qLogEI":
+            return Models.BOTORCH_MODULAR, {
+                "botorch_acqf_class": qLogExpectedImprovement,
+                "deduplicate": True,
+            }
+        elif backend == "qEI":
+            return Models.BOTORCH_MODULAR, {
+                "botorch_acqf_class": qExpectedImprovement,
+                "deduplicate": True,
+            }
+        # High-level abstractions (current system)
+        elif backend == "GPEI":
+            return Models.GPEI, {}
+        elif backend == "MOO":
+            return Models.MOO, {}
+        else:
+            logger.warning(f"Unknown backend '{backend}', falling back to GPEI")
+            return Models.GPEI, {}
+    
     def _create_ax_client(self) -> None:
-        """Create Ax client with custom generation strategy (Ax 0.4.0 API pattern)."""
+        """Create Ax client with custom generation strategy supporting both old and new backend systems."""
         # Create custom generation strategy based on SOBOL trial count
         num_sobol_trials = self.config.num_initial_trials
         
-        # Choose appropriate model based on optimizer type
-        if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
-            bayesian_model = Models.MOO  # Multi-objective optimization (qNEHVI)
-        elif self.config.optimizer_type == OptimizerType.MOO:
-            bayesian_model = Models.MOO  # Multi-objective optimization (qNEHVI)
-        elif self.config.optimizer_type == OptimizerType.GPEI:
-            bayesian_model = Models.GPEI  # Single-objective optimization (Expected Improvement)
-        else:
-            # Default fallback
-            bayesian_model = Models.GPEI
+        # Get backend configuration from config
+        try:
+            if self.config.experiment_config:
+                backend = (self.config.experiment_config.get_optimizer_backend() if self.is_first_volume 
+                          else self.config.experiment_config.get_optimizer_backend_subsequent())
+                logger.info(f"Using configured backend: '{backend}' (first_volume: {self.is_first_volume})")
+            else:
+                # Fallback to optimizer_type if no experiment_config
+                logger.warning("No experiment_config available, falling back to optimizer_type mapping")
+                if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
+                    backend = "MOO"
+                elif self.config.optimizer_type == OptimizerType.MOO:
+                    backend = "MOO"
+                elif self.config.optimizer_type == OptimizerType.GPEI:
+                    backend = "GPEI"
+                else:
+                    backend = "GPEI"
+        except Exception as e:
+            logger.warning(f"Failed to get backend from config ({e}), falling back to optimizer_type mapping")
+            if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
+                backend = "MOO"
+            elif self.config.optimizer_type == OptimizerType.MOO:
+                backend = "MOO"
+            elif self.config.optimizer_type == OptimizerType.GPEI:
+                backend = "GPEI"
+            else:
+                backend = "GPEI"
+        
+        # Get model and generation kwargs from backend configuration
+        bayesian_model, model_gen_kwargs = self._get_model_and_kwargs(backend)
+        logger.info(f"Mapped backend '{backend}' to model: {bayesian_model.__name__ if hasattr(bayesian_model, '__name__') else bayesian_model}")
+        if model_gen_kwargs:
+            acqf_name = model_gen_kwargs.get('botorch_acqf_class').__name__ if 'botorch_acqf_class' in model_gen_kwargs else 'default'
+            logger.info(f"Using acquisition function: {acqf_name}")
         
         if num_sobol_trials > 0:
             # Strategy with SOBOL followed by Bayesian (like existing working code)
@@ -376,8 +451,9 @@ class AxBayesianOptimizer:
                         min_trials_observed=num_sobol_trials,  # Wait for all SOBOL trials
                     ),
                     GenerationStep(
-                        model=bayesian_model,  # Correct model for objective type
+                        model=bayesian_model,  # Backend-determined model
                         num_trials=-1,  # Continue indefinitely
+                        model_gen_kwargs=model_gen_kwargs,  # Include acquisition function if specified
                     ),
                 ]
             )
@@ -386,8 +462,9 @@ class AxBayesianOptimizer:
             generation_strategy = GenerationStrategy(
                 steps=[
                     GenerationStep(
-                        model=bayesian_model,  # Correct model for objective type
+                        model=bayesian_model,  # Backend-determined model
                         num_trials=-1,  # Continue indefinitely
+                        model_gen_kwargs=model_gen_kwargs,  # Include acquisition function if specified
                     ),
                 ]
             )
@@ -399,8 +476,10 @@ class AxBayesianOptimizer:
         )
         
         # Create experiment
-        # Check if this should be multi-objective based on optimizer type
-        is_multi_objective = self.config.optimizer_type in [OptimizerType.MULTI_OBJECTIVE, OptimizerType.MOO]
+        # Determine if this should be multi-objective based on backend
+        # qNEHVI is always multi-objective, MOO is multi-objective, others are single-objective unless configured otherwise
+        is_multi_objective = (backend in ["qNEHVI", "MOO"] or 
+                             self.config.optimizer_type in [OptimizerType.MULTI_OBJECTIVE, OptimizerType.MOO])
         
         if is_multi_objective:
             objectives = {
@@ -834,19 +913,22 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
                     constraint_updates: Optional[List['ConstraintBoundsUpdate']] = None,
                     num_sobol_trials: Optional[int] = None,
                     protocol_instance=None,
-                    min_good_trials: Optional[int] = None) -> AxBayesianOptimizer:
+                    min_good_trials: Optional[int] = None,
+                    is_first_volume: bool = True) -> AxBayesianOptimizer:
     """
     Create Bayesian optimizer with proper constraints.
     
     Args:
         config: Experiment configuration
         target_volume_ml: Target volume for optimization
-        optimizer_type: Type of optimizer to create
+        optimizer_type: Type of optimizer to create (fallback if backend not available)
         fixed_params: Parameters to keep fixed
         volume_dependent_only: If True, only optimize volume-dependent parameters
         constraint_updates: Optional constraint bounds updates from two-point calibration
         num_sobol_trials: Number of SOBOL trials (5 for screening, 0 for subsequent volumes)
         protocol_instance: Protocol instance for getting hardware constraints
+        min_good_trials: Minimum good trials required
+        is_first_volume: Whether this is for first volume (affects backend selection)
     """
     # Get default overaspirate bounds from config (not calculated)
     cal_bounds = config.get_calibration_parameter_bounds()
@@ -910,7 +992,7 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         time_threshold_s=objective_thresholds.get('time_threshold_s', 60.0)
     )
     
-    return AxBayesianOptimizer(optimization_config)
+    return AxBayesianOptimizer(optimization_config, is_first_volume=is_first_volume)
 
 
 if __name__ == "__main__":

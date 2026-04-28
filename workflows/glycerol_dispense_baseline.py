@@ -15,6 +15,7 @@ import glob
 import shutil
 from datetime import datetime, timedelta
 import pandas as pd
+from sympy import false
 import yaml
 from pathlib import Path
 
@@ -32,7 +33,7 @@ import slack_agent
 
 
 # ===== WORKFLOW CONFIG (auto-exported to workflow_configs on first run) =====
-SIMULATE = False
+SIMULATE = False  
 # EXPERIMENT_NUMBER removed - now auto-detects progress and resumes
 
 TIPS_PER_BATCH = 96  # Tips to process per batch
@@ -203,6 +204,9 @@ def _check_and_swap_vials(lash_e, current_vial_number, current_vial_name):
         
         if current_volume is not None and current_volume <= VIAL_LOW_THRESHOLD:
             print(f"\n🔄 VIAL SWAP: {current_vial_name} low at {current_volume:.2f}mL (≤ {VIAL_LOW_THRESHOLD}mL)")
+
+            slack_agent.send_slack_message("GLYCEROL VIAL NEEDS TO BE REPLACED!")
+            input("Waiting...")
             
             # Return old vial home
             lash_e.nr_robot.return_vial_home(current_vial_name)

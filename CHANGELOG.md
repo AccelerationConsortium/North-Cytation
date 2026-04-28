@@ -1,5 +1,66 @@
 # Changelog
 
+## [LLM CONTEXT FIX] - 2026-04-24
+
+### CRITICAL FIX: LLM Now Receives Complete Experimental Context
+- **FIXED**: LLM optimization was previously blind - only received empty optimization_trials[] for first trial
+- **ENHANCED**: LLM now receives ALL available trial data: screening + inherited + two-point + optimization trials  
+- **DATA COMPLETENESS**: LLM gets same experimental context as Bayesian optimizer for informed decisions
+- **CONTEXT LOGGING**: Added detailed logging showing exactly what trial data LLM receives for transparency
+- **PERFORMANCE**: LLM suggestions now based on complete experimental history instead of making blind guesses
+
+### SAFETY: Eliminated Silent LLM Fallbacks (No Silent Defaults)
+- **CRITICAL SAFETY**: Removed silent fallback from LLM to Bayesian optimization
+- **EXPLICIT FAILURE**: When LLM optimization is enabled but fails, system now pauses with clear error message
+- **USER CHOICE**: Added `input()` pause letting user decide whether to continue with Bayesian or stop and fix LLM
+- **FAIL LOUDLY**: Follows "No Silent Defaults" principle - no more invisible mode switches that mask problems
+- **TRANSPARENT**: Clear console alerts show exactly why LLM failed (import error vs runtime error)
+- **FILES MODIFIED**: experiment.py (lines 1005-1018) - replaced silent warnings with explicit user interaction
+- **IMPACT**: Users now know immediately when LLM optimization isn't working as requested
+
+## [LLM OPTIMIZATION INTEGRATION] - 2026-04-22
+
+### IMPLEMENTED: Complete LLM Optimization Support
+- **ADDED**: `_generate_optimization_parameters()` method in experiment.py for LLM-guided optimization
+- **INTEGRATION**: Optimization loop now checks `llm_optimization.enabled` config before using Bayesian optimizer
+- **CONTEXT-AWARE**: LLM receives previous trial results for informed parameter suggestions during optimization phase
+- **ROBUST FALLBACK**: Multiple fallback layers - ImportError → Configuration Error → Runtime Error → Bayesian optimizer
+- **BACKWARD COMPATIBLE**: Existing Bayesian optimization remains default - no breaking changes
+- **SAFE IMPORTS**: LLM imports wrapped in try/catch to prevent crashes when llm_recommender unavailable
+- **ENHANCED LOGGING**: Clear indication whether using "LLM-generated" or Bayesian parameters for each trial
+- **DUAL PHASE SUPPORT**: Both screening and optimization phases now support LLM parameter generation
+- **FILES MODIFIED**: experiment.py (added optimization parameter generation method and integrated into workflow)
+
+## [ENHANCED LLM PHYSICAL INSIGHTS] - 2026-04-22
+
+### IMPROVED: Parameter Descriptions for LLM Understanding
+- **ENHANCED**: All parameter descriptions in experiment_config.yaml with detailed physical insights
+- **PHYSICS CONTEXT**: Added explanations of parameter mechanisms and liquid handling physics
+- **TRADE-OFFS**: Documented accuracy vs speed relationships (e.g., slower aspiration = better accuracy but longer time)
+- **VISCOSITY GUIDANCE**: Specific recommendations for thin vs thick liquids
+- **PARAMETER INTERACTIONS**: Explained how parameters affect each other (e.g., slow dispense + blowout = long time)
+- **MECHANISM EXPLANATIONS**: Surface tension, pressure equilibration, dripping dynamics, air gap functions
+- **BENEFIT**: LLM can now make informed physics-based parameter recommendations instead of blind exploration
+- **EXAMPLES**: 
+  - aspirate_speed: "Slower aspiration reduces cavitation and bubble formation in viscous liquids"
+  - overaspirate_vol: "Extra volume to compensate for liquid retention due to surface tension"
+  - post_retract_wait_time: "Allows thick liquid to drip off, e.g. ~5s for glycerol-level viscosity"
+
+## [DUAL BACKEND SYSTEM] - 2026-04-21
+
+### NEW FEATURE: Configurable Ax Acquisition Function Control
+- **IMPLEMENTED**: Dual backend system supporting both direct acquisition function control and high-level abstractions
+- **BACKENDS SUPPORTED**: 
+  - Direct Control: qNEHVI, qLogEI, qEI (colleague's approach with botorch_acqf_class)
+  - High-Level: GPEI, MOO, BOTORCH_MODULAR (current simplified approach)
+- **CONFIGURATION**: Via experiment_config.yaml `backend` and `backend_subsequent` settings
+- **BACKWARD COMPATIBLE**: Supports both old configs ("qNEHVI", "qLogEI") and new configs ("GPEI", "MOO")
+- **VOLUME AWARE**: Different backends for first volume vs subsequent volumes
+- **FALLBACK SAFE**: Graceful degradation to optimizer_type mapping if config unavailable
+- **BENEFIT**: Enables colleague's precise acquisition function control while maintaining current simplicity
+- **FILES MODIFIED**: bayesian_recommender.py, experiment.py
+- **TESTING**: Backend mapping logic verified for all supported configurations
+
 ## [SDL SCORING BUG FIX] - 2026-04-21
 
 ### FIXED: SDL Implementation Returning Zero Scores

@@ -199,12 +199,21 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     lash_e.nr_robot.aspirate_from_vial(source_vial, self.conditioning_volume,  move_to_aspirate=False, parameters=conditioning_params)
                     lash_e.nr_robot.dispense_into_vial(source_vial, self.conditioning_volume, initial_move=False, parameters=conditioning_params)
                 
-                # Move robot to clamp position (for measurement vial) without moving any vials
-                clamp_location = lash_e.nr_robot.get_location(use_pipet=True, location_name='clamp', location_index=0)
-                lash_e.nr_robot.c9.goto(clamp_location)
-                print("Robot positioned at clamp for consistent measurement timing")
+            # Pre-uncap source vial if capped to avoid first-measurement delay
+            source_vial_num = lash_e.nr_robot.normalize_vial_index(source_vial)
+            if not lash_e.nr_robot.is_vial_pipetable(source_vial_num):
+                print(f"Pre-uncapping source vial {source_vial} to eliminate first-measurement delay...")
+                lash_e.nr_robot._ensure_vial_accessible_for_pipetting(source_vial, use_safe_location=False)
+                print(f"Source vial {source_vial} is now uncapped and ready for fast measurements")
+            else:
+                print(f"Source vial {source_vial} already pipetable (uncapped or open cap)")
                 
-                #lash_e.nr_robot.move_home()
+            # Move robot to clamp position (for measurement vial) without moving any vials
+            clamp_location = lash_e.nr_robot.get_location(use_pipet=True, location_name='clamp', location_index=0)
+            lash_e.nr_robot.c9.goto(clamp_location)
+            print("Robot positioned at clamp for consistent measurement timing")
+                
+            #lash_e.nr_robot.move_home()
             
             print("READY: Hardware initialized successfully")
             
