@@ -22,8 +22,8 @@ class FakeParameters:
         return self.param_dict
 
 class FakeTrialResult:
-    """Minimal fake trial result with just what LLM needs."""
-    def __init__(self, param_dict, score, duration_s):
+    """Minimal fake trial result with detailed metrics for LLM analysis."""
+    def __init__(self, param_dict, score, duration_s, deviation_pct=None, cv_pct=None, measured_vol=None, target_vol=None):
         # Convert numpy types to Python types for JSON compatibility
         clean_params = {}
         for key, value in param_dict.items():
@@ -35,6 +35,12 @@ class FakeTrialResult:
         self.parameters = FakeParameters(clean_params)
         self.score = float(score)  # Ensure Python float
         self.duration_s = float(duration_s)  # Ensure Python float
+        
+        # Store individual metrics for detailed LLM analysis
+        self.deviation_pct = float(deviation_pct) if deviation_pct is not None else None
+        self.cv_pct = float(cv_pct) if cv_pct is not None else None  
+        self.measured_vol_ml = float(measured_vol) if measured_vol is not None else None
+        self.target_vol_ml = float(target_vol) if target_vol is not None else None
 
 class FakeVolumeCalibrationResult:
     """Minimal fake volume result with just what LLM needs."""
@@ -48,7 +54,11 @@ class FakeVolumeCalibrationResult:
             fake_trial = FakeTrialResult(
                 trial['parameters'], 
                 score, 
-                trial['mean_time_s']
+                trial['mean_time_s'],
+                deviation_pct=trial['deviation_pct'],
+                cv_pct=trial['cv_pct'], 
+                measured_vol=trial['measured_volume_ml'],
+                target_vol=trial['target_volume_ml']
             )
             self.best_trials.append(fake_trial)
 

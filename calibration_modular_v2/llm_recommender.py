@@ -42,9 +42,9 @@ class LLMRecommender:
         # Extract parameter information
         self._setup_parameters()
         
-        # Initialize LLM connection info (using your remote Ollama setup)
-        self.ollama_url = None
-        self.ollama_model = None
+        # Initialize LM Studio connection info
+        self.llm_server_config = {}
+        self.available_models = []
         
         # Initialize conversation history
         self.conversation_history = []
@@ -227,12 +227,17 @@ class LLMRecommender:
                 "target_volume": self.config.get_target_volumes_ml()[0]
             }
         
-        # Analyze previous results
-        best_trials = []
+        # Pass ALL trial results to LLM - just use what we get
+        all_trials = []
         for result in previous_results:
-            best_trials.extend(result.best_trials)
-        
-        if not best_trials:
+            # If it's a wrapped object with best_trials, extract them
+            if hasattr(result, 'best_trials'):
+                all_trials.extend(result.best_trials)
+            # If it's a direct TrialResult, just use it
+            else:
+                all_trials.append(result)
+
+        if not all_trials:
             return {
                 "phase": self.phase,
                 "has_previous_data": False,
@@ -240,18 +245,18 @@ class LLMRecommender:
                 "target_volume": previous_results[0].target_volume_ml if previous_results else self.config.get_target_volumes_ml()[0]
             }
         
-        # Find overall best trial
-        best_trial = min(best_trials, key=lambda t: t.score)
+        # Find overall best trial by composite score (real field)
+        best_trial = min(all_trials, key=lambda t: t.composite_score)
         
-        # Calculate summary statistics
-        all_scores = [t.score for t in best_trials]
-        all_durations = [t.duration_s for t in best_trials]
+        # Calculate summary statistics using real fields
+        all_scores = [t.composite_score for t in all_trials]
+        all_durations = [t.analysis.mean_duration_s for t in all_trials]
         
         results_summary = {
             "best_score": min(all_scores),
             "avg_score": np.mean(all_scores),
             "avg_duration": np.mean(all_durations),
-            "num_trials": len(best_trials),
+            "num_trials": len(all_trials),
             "num_volumes": len(previous_results)
         }
         
@@ -259,9 +264,19 @@ class LLMRecommender:
             "phase": self.phase,
             "has_previous_data": True,
             "liquid": self.config.get_liquid_name(),
-            "target_volume": previous_results[-1].target_volume_ml,  # Most recent volume
+            "target_volume": best_trial.target_volume_ml,  # Use real field
             "results_summary": results_summary,
-            "best_parameters": best_trial.parameters.to_protocol_dict()  # Hardware-agnostic parameter access
+            "best_parameters": best_trial.parameters.to_protocol_dict(),
+            "all_trials": [
+                {
+                    "parameters": trial.parameters.to_protocol_dict(),
+                    "deviation_pct": trial.analysis.absolute_deviation_pct,
+                    "cv_pct": trial.analysis.cv_volume_pct, 
+                    "duration_s": trial.analysis.mean_duration_s,
+                    "measured_vol_ml": trial.analysis.mean_volume_ml,
+                    "target_vol_ml": trial.target_volume_ml
+                } for trial in all_trials
+            ]
         }
     
     def _generate_prompt(self, n_suggestions: int, context: Dict[str, Any]) -> str:
@@ -283,6 +298,8 @@ class LLMRecommender:
             # Optimization phase with previous experimental results
             user_prompt = f"""Please suggest {n_suggestions} parameter set(s) for {context['liquid']} calibration based on previous experimental results.
 
+IMPORTANT: Carefully evaluate the experimental inputs and outputs below to make informed decisions about where to go next. Don't guess blindly - analyze what worked well and what didn't, then suggest targeted improvements.
+
 Previous results summary:
 - Best score: {context['results_summary']['best_score']:.3f}
 - Average score: {context['results_summary']['avg_score']:.3f}
@@ -292,10 +309,13 @@ Previous results summary:
 
 Current target volume: {context['target_volume']:.3f} mL
 
-Best performing parameters so far:
+INDIVIDUAL TRIAL RESULTS (analyze all data to identify patterns):
+{json.dumps(context['all_trials'], indent=2)}
+
+Best performing parameters (for reference):
 {json.dumps(context['best_parameters'], indent=2)}
 
-Please suggest improvements or variations that might achieve better performance.
+Please analyze ALL the trial data above. Identify what parameters led to better vs worse performance, and suggest improvements or variations that might achieve better performance.
 
 PARAMETERS TO OPTIMIZE:
 {json.dumps(parameters, indent=2)}
@@ -323,62 +343,41 @@ Generate {n_suggestions} diverse parameter combinations that explore different r
         return f"{system_message}\n\n{user_prompt}"
     
     def _call_llm_api(self, prompt: str, n_suggestions: int, context: Dict[str, Any]) -> List[PipettingParameters]:
-        """Call the actual LLM API using your remote Ollama setup."""
+        """Call the actual LLM API using LM Studio OpenAI-compatible endpoint."""
         
-        # Set up connection (matches your existing pattern from llm_optimizer.py)
+        # Get configuration from template
         api_settings = self.llm_config.get("api_settings", {})
-        model = api_settings.get("model", "online_server")
+        model = api_settings.get("model", "openai/gpt-oss-20b")
         temperature = api_settings.get("temperature", 1.0)
         max_tokens = api_settings.get("max_tokens", 8000)
+        base_url = api_settings.get("base_url", "http://100.77.238.68:1234/v1")
+        api_key = api_settings.get("api_key", "lm-studio")
         
-        # Use remote server (matches your existing setup)
-        if model == "online_server":
-            self.ollama_url = "https://mac-llm.tail2a00e9.ts.net/ollama"
-        else:
-            self.ollama_url = "http://localhost:11434"
+        self.logger.info(f"Using LM Studio server at {base_url} with model: {model}")
         
-        # Auto-select model from remote server (matches your existing logic)
-        if model == "online_server":
-            try:
-                response = requests.get(f"{self.ollama_url}/api/tags", timeout=10)
-                if response.status_code == 200:
-                    available_models = [m["name"] for m in response.json().get("models", [])]
-                    
-                    # Prefer certain models (matches your existing logic)
-                    preferred_models = ["gpt-oss:20b", "llama2", "mistral"]
-                    selected_model = None
-                    for pref in preferred_models:
-                        if pref in available_models:
-                            selected_model = pref
-                            break
-                    
-                    if not selected_model and available_models:
-                        selected_model = available_models[0]
-                    
-                    model = selected_model or "gpt-oss:20b"
-                    self.logger.info(f"Auto-selected model: {model}")
-                else:
-                    model = "gpt-oss:20b"
-            except Exception as e:
-                self.logger.warning(f"Failed to auto-select model: {e}")
-                model = "gpt-oss:20b"
-        
-        # Make API call (matches your existing format from llm_optimizer.py)
+        # Make OpenAI-compatible API call
         payload = {
             "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "temperature": temperature,
-                "num_predict": max_tokens
-            }
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": False
         }
         
-        self.logger.info(f"Calling LLM API with model: {model}")
+        self.logger.info(f"Calling LM Studio API with model: {model}")
+        
+        # Use OpenAI-compatible endpoint
+        base_url = self.llm_config.get('api_settings', {}).get('base_url', 'http://100.77.238.68:1234/v1')
+        api_key = self.llm_config.get('api_settings', {}).get('api_key', 'lm-studio')
+        
+        headers = {'Authorization': f'Bearer {api_key}'} if api_key != 'lm-studio' else {}
         
         response = requests.post(
-            f"{self.ollama_url}/api/generate",
+            f"{base_url}/chat/completions",
             json=payload,
+            headers=headers,
             timeout=300
         )
         
@@ -386,12 +385,12 @@ Generate {n_suggestions} diverse parameter combinations that explore different r
             raise Exception(f"LLM API error (status {response.status_code}): {response.text}")
         
         result = response.json()
-        response_content = result.get("response", "")
+        response_content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
         
         if not response_content:
             raise Exception("Empty response from LLM API")
         
-        self.logger.info(f"LLM API response received ({len(response_content)} chars)")
+        self.logger.info(f"LM Studio API response received ({len(response_content)} chars)")
         
         # Save prompt and response (matches your existing system)
         self._save_prompt_and_response(prompt, response_content, model)
@@ -459,68 +458,132 @@ Generate {n_suggestions} diverse parameter combinations that explore different r
             
             if json_match:
                 json_str = json_match.group()
+                # Safely encode for Windows logging - remove Unicode characters
+                safe_json_str = json_str.encode('ascii', 'replace').decode('ascii')
+                self.logger.info(f"LLM Response JSON candidate: {safe_json_str}")
+                
                 try:
                     parsed_response = json.loads(json_str)
+                    self.logger.info("PRIMARY JSON parsing succeeded")
                     
                     # Log the overall explanation
                     if "explanation" in parsed_response:
-                        self.logger.info(f"LLM Explanation: {parsed_response['explanation']}")
+                        safe_explanation = parsed_response['explanation'].encode('ascii', 'replace').decode('ascii')
+                        self.logger.info(f"LLM Explanation: {safe_explanation}")
                     
                     # Extract suggestions with individual reasoning
                     suggestions_data = parsed_response.get("suggestions", [])
+                    
                     if not suggestions_data:
+                        self.logger.warning("No 'suggestions' key found, treating entire response as single parameter set")
                         # Fallback: try to use as simple array
                         suggestions_data = [{"parameters": parsed_response, "reasoning": "No specific reasoning provided"}]
                     
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
+                    self.logger.error(f"PRIMARY JSON parsing FAILED: {e}")
+                    safe_failed_content = repr(json_str).encode('ascii', 'replace').decode('ascii')
+                    self.logger.error(f"Failed JSON content: {safe_failed_content}")
+                    
                     # Fallback to simple JSON array parsing
+                    self.logger.info("Attempting fallback: JSON array parsing...")
                     json_array_match = re.search(r'\[\s*\{.*?\}\s*(?:,\s*\{.*?\}\s*)*\]', response_content, re.DOTALL)
                     if json_array_match:
                         json_str = json_array_match.group()
-                        suggestions_data = [{"parameters": params, "reasoning": "No reasoning provided"} 
-                                          for params in json.loads(json_str)]
+                        safe_array_str = json_str.encode('ascii', 'replace').decode('ascii')
+                        self.logger.info(f"Array JSON candidate: {safe_array_str}")
+                        try:
+                            array_data = json.loads(json_str)
+                            suggestions_data = [{"parameters": params, "reasoning": "No reasoning provided"} 
+                                              for params in array_data]
+                            self.logger.info("JSON array parsing succeeded")
+                        except json.JSONDecodeError as e2:
+                            self.logger.error(f"JSON array parsing ALSO FAILED: {e2}")
+                            safe_array_content = repr(json_str).encode('ascii', 'replace').decode('ascii')
+                            self.logger.error(f"Failed array content: {safe_array_content}")
+                            
+                            # Last resort: look for individual objects
+                            self.logger.info("Attempting final fallback: individual object extraction...")
+                            json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_content)
+                            suggestions_data = []
+                            for i, json_str in enumerate(json_matches):
+                                try:
+                                    params = json.loads(json_str)
+                                    suggestions_data.append({"parameters": params, "reasoning": "No reasoning provided"})
+                                    self.logger.info(f"Individual object {i+1} parsed successfully")
+                                except json.JSONDecodeError as e3:
+                                    self.logger.error(f"Individual object {i+1} parsing failed: {e3}")
+                                    safe_obj_content = repr(json_str).encode('ascii', 'replace').decode('ascii')
+                                    self.logger.error(f"Failed object content: {safe_obj_content}")
+                                    continue
+                            
+                            if not suggestions_data:
+                                self.logger.error("ALL JSON parsing methods failed!")
                     else:
-                        # Last resort: look for individual objects
-                        json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_content)
+                        self.logger.error("No JSON array pattern found in response")
                         suggestions_data = []
-                        for json_str in json_matches:
-                            try:
-                                params = json.loads(json_str)
-                                suggestions_data.append({"parameters": params, "reasoning": "No reasoning provided"})
-                            except json.JSONDecodeError:
-                                continue
             else:
                 raise Exception("No valid JSON structure found")
             
             # Convert to PipettingParameters objects
             suggestions = []
-            all_params = {}
-            all_params.update(self.config._config.get('calibration_parameters', {}))
-            all_params.update(self.config._config.get('hardware_parameters', {}))
+            
+            # ONLY load parameters that are being optimized (not all config parameters)
+            optimization_params = {}
+            calibration_config = self.config._config.get('calibration_parameters', {})
+            hardware_config = self.config._config.get('hardware_parameters', {})
+            
+            # Get the optimization parameter space (parameters with ranges defined)
+            for param_name, param_config in calibration_config.items():
+                if 'range' in param_config or 'bounds' in param_config:
+                    optimization_params[param_name] = param_config
+            
+            for param_name, param_config in hardware_config.items():
+                if 'range' in param_config or 'bounds' in param_config:
+                    optimization_params[param_name] = param_config
+            
+            self.logger.info(f"Optimization parameter space: {list(optimization_params.keys())}")
             
             for suggestion_data in suggestions_data:
                 if len(suggestions) >= n_suggestions:
                     break
                     
                 try:
-                    params = suggestion_data.get("parameters", suggestion_data)  # Handle both formats
+                    # Extract parameters from suggestion structure  
+                    if "parameters" in suggestion_data:
+                        params = suggestion_data["parameters"]  # Get the actual parameters dict
+                        
+                        # Handle double nesting (params might contain another 'parameters' key)
+                        if isinstance(params, dict) and "parameters" in params:
+                            params = params["parameters"]  # Extract the inner parameters
+                            
+                    else:
+                        params = suggestion_data  # Fallback for simple format
                     reasoning = suggestion_data.get("reasoning", "No reasoning provided")
                     
                     # Log the individual reasoning
                     self.logger.info(f"Parameter set {len(suggestions)+1} reasoning: {reasoning}")
                     
-                    # Validate and process parameters
+                    # Validate and process parameters - ONLY optimization parameters
                     param_values = {}
-                    for param_name, param_config in all_params.items():
+                    
+                    for param_name, param_config in optimization_params.items():
                         if param_name in params:
                             value = float(params[param_name])
-                            bounds = param_config['bounds']
+                            bounds = param_config.get('bounds', param_config.get('range', [0, 1]))
                             # Clamp to bounds
                             value = max(bounds[0], min(bounds[1], value))
                             param_values[param_name] = value
+                            self.logger.info(f"  {param_name}: {params[param_name]} -> {value} (clamped to bounds)")
                         else:
-                            # Use default if missing
-                            param_values[param_name] = param_config['default']
+                            # Only use defaults for parameters being optimized that LLM didn't suggest
+                            default_val = param_config.get('default', bounds[0] if 'bounds' in param_config else param_config.get('range', [0, 1])[0])
+                            param_values[param_name] = default_val
+                            self.logger.warning(f"  {param_name}: Missing from LLM, using default {default_val}")
+                    
+                    # Log what we're NOT including (non-optimization parameters)
+                    llm_extra_params = [k for k in params.keys() if k not in optimization_params]
+                    if llm_extra_params:
+                        self.logger.warning(f"LLM suggested non-optimization parameters (ignored): {llm_extra_params}")
                     
                     # Create parameter objects
                     calibration_params = CalibrationParameters(

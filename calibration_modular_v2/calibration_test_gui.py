@@ -77,12 +77,12 @@ except ImportError as e:
 
 # Default pipetting parameters with common ranges
 DEFAULT_PARAMETERS = {
-    'overaspirate_vol': {'value': 0.000, 'min': 0.0, 'max': 0.050, 'unit': 'mL', 'type': 'float', 'description': 'Extra volume pipetted above the target'},
-    'aspirate_speed': {'value': 10, 'min': 1, 'max': 40, 'unit': '', 'type': 'int', 'description': 'How quickly the pipet aspirates'},
-    'dispense_speed': {'value': 10, 'min': 1, 'max': 40, 'unit': '', 'type': 'int', 'description': 'How quickly the pipet dispenses'},
-    'aspirate_wait_time': {'value': 0.0, 'min': 0.0, 'max': 30.0, 'unit': 's', 'type': 'float', 'description': 'Extra time after the pipet aspirates to allow the liquid to pull up'},
-    'dispense_wait_time': {'value': 0.0, 'min': 0.0, 'max': 30.0, 'unit': 's', 'type': 'float', 'description': 'Extra time after the pipet dispenses to allow the liquid to dispense and for the scale to settle'},
-    'blowout_vol': {'value': 0.0, 'min': 0.0, 'max': 1.000, 'unit': 'mL', 'type': 'float', 'description': 'Extra push from the syringe pump after dispense to eject excess liquid'},
+    'overaspirate_vol': {'value': 0.000, 'min': 0.0, 'max': 0.025, 'unit': 'mL', 'type': 'float', 'description': 'Extra volume pipetted above the target'},
+    'aspirate_speed': {'value': 10, 'min': 2, 'max': 35, 'unit': '', 'type': 'int', 'description': 'How quickly the pipet aspirates'},
+    'dispense_speed': {'value': 10, 'min': 2, 'max': 30, 'unit': '', 'type': 'int', 'description': 'How quickly the pipet dispenses'},
+    'aspirate_wait_time': {'value': 0.0, 'min': 0.0, 'max': 15.0, 'unit': 's', 'type': 'float', 'description': 'Extra time after the pipet aspirates to allow the liquid to pull up'},
+    'dispense_wait_time': {'value': 0.0, 'min': 0.0, 'max': 15.0, 'unit': 's', 'type': 'float', 'description': 'Extra time after the pipet dispenses to allow the liquid to dispense and for the scale to settle'},
+    'blowout_vol': {'value': 0.0, 'min': 0.0, 'max': 0.5, 'unit': 'mL', 'type': 'float', 'description': 'Extra push from the syringe pump after dispense to eject excess liquid'},
 }
 
 # Full parameter set (for backwards compatibility and custom parameter additions)
@@ -763,10 +763,13 @@ class OptimizationPlotWidget(QWidget):
         if not self.optimization_data:
             return {}
             
+        print(f"[DEBUG] 🔍 GROUPING {len(self.optimization_data)} measurements by parameter combinations...")
+        
         parameter_groups = {}
         current_set = 1
         
-        for measurement in self.optimization_data:
+        for i, measurement in enumerate(self.optimization_data):
+            print(f"[DEBUG] Processing measurement {i+1}/{len(self.optimization_data)}")
             strategy = measurement.get('strategy', 'other')
             
             # Handle manual measurements - use the number from strategy name directly
@@ -784,12 +787,30 @@ class OptimizationPlotWidget(QWidget):
             # Handle other strategies (optimization, screening, etc.) - group by actual parameters
             # Create parameter signature from measurement data 
             # Look for parameter columns that would be in the CSV after column 7
-            param_keys = ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 'dispense_wait_time', 'blowout_vol']
+            param_keys = ['overaspirate_vol', 'aspirate_speed', 'dispense_speed', 'aspirate_wait_time', 
+                         'dispense_wait_time', 'blowout_vol']
             
-            # Create a signature tuple from available parameters
-            param_signature = tuple([
-                measurement.get(key, 0) for key in param_keys
-            ])
+            # Create a signature tuple from available parameters - NO DEFAULTS!
+            param_values = {}
+            param_signature_parts = []
+            missing_params = []
+            
+            for key in param_keys:
+                if key in measurement:
+                    value = measurement[key]
+                    param_values[key] = value
+                    param_signature_parts.append(value)
+                else:
+                    missing_params.append(key)
+                    param_signature_parts.append(None)  # Use None instead of 0 for missing
+            
+            param_signature = tuple(param_signature_parts)
+            
+            print(f"[DEBUG] Measurement strategy='{strategy}' param_signature: {param_signature}")
+            if missing_params:
+                print(f"[DEBUG]   MISSING PARAMS: {missing_params}")
+            if param_values:
+                print(f"[DEBUG]   FOUND PARAMS: {param_values}")
             
             # Find existing group with same parameters or create new one
             found_group = None
@@ -800,12 +821,22 @@ class OptimizationPlotWidget(QWidget):
                         continue
                     # Compare with first measurement in this group
                     first_measurement = measurements[0]
-                    first_signature = tuple([
-                        first_measurement.get(key, 0) for key in param_keys  
-                    ])
+                    first_signature_parts = []
+                    for key in param_keys:
+                        if key in first_measurement:
+                            first_signature_parts.append(first_measurement[key])
+                        else:
+                            first_signature_parts.append(None)
+                    
+                    first_signature = tuple(first_signature_parts)
+                    print(f"[DEBUG]   Comparing to group {group_num}: {first_signature}")
+                    
                     if param_signature == first_signature:
                         found_group = group_num
+                        print(f"[DEBUG]   ✅ MATCH! Adding to group {group_num}")
                         break
+                    else:
+                        print(f"[DEBUG]   ❌ No match with group {group_num}")
             
             if found_group is not None:
                 parameter_groups[found_group].append(measurement)
@@ -813,8 +844,24 @@ class OptimizationPlotWidget(QWidget):
                 # Find next available set number (skip manual set numbers)
                 while current_set in parameter_groups:
                     current_set += 1
+                print(f"[DEBUG]   🆕 Creating NEW group {current_set}")
                 parameter_groups[current_set] = [measurement]
                 current_set += 1
+                
+        # Summary of final groups
+        print(f"[DEBUG] 📊 FINAL PARAMETER GROUPS:")
+        for group_num, measurements in parameter_groups.items():
+            if measurements:
+                first_meas = measurements[0]
+                strategy = first_meas.get('strategy', 'unknown')
+                param_summary = {}
+                param_keys = ['overaspirate_vol', 'aspirate_speed', 'dispense_speed']
+                for key in param_keys:
+                    if key in first_meas:
+                        param_summary[key] = first_meas[key]
+                print(f"[DEBUG]   Group {group_num}: {len(measurements)} measurements, strategy='{strategy}', params={param_summary}")
+            else:
+                print(f"[DEBUG]   Group {group_num}: EMPTY GROUP!")
                 
         return parameter_groups
     
@@ -2887,53 +2934,41 @@ class CalibrationTestMainWindow(QMainWindow):
             if not hasattr(self, 'emergency_file_path') or not self.emergency_file_path.exists():
                 return
                 
-            # Read CSV file as lines and extract latest row
+            # Simple CSV reading without pandas
             with open(self.emergency_file_path, 'r') as f:
-                lines = f.readlines()
-            
-            if len(lines) <= 1:  # Only header or empty
+                reader = csv.DictReader(f)
+                rows = list(reader)
+                
+            if not rows:
                 return
                 
             # Get the latest row (most recent optimization parameters)
-            latest_line = lines[-1].strip()
-            if not latest_line:
-                return
-                
-            parts = latest_line.split(',')
-            if len(parts) < 18:  # Not enough columns
-                self.add_status_message(f"[PARAM] CSV row too short: {len(parts)} columns")
-                return
+            latest_row = rows[-1]
             
-            # Map CSV column indices to parameter names
-            # Based on CSV header: timestamp,target_volume_ml,measured_volume_ml,measured_volume_ul,deviation_pct,duration_s,strategy,total_measurement_count,asp_disp_cycles,aspirate_speed,aspirate_wait_time,blowout_vol,dispense_speed,dispense_wait_time,overaspirate_vol,post_asp_air_vol,post_retract_wait_time,pre_asp_air_vol,retract_speed
-            csv_column_mapping = {
-                'overaspirate_vol': 14,
-                'aspirate_speed': 9, 
-                'dispense_speed': 12,
-                'aspirate_wait_time': 10,
-                'dispense_wait_time': 13,
-                'pre_asp_air_vol': 17,
-                'post_asp_air_vol': 15,
-                'blowout_vol': 11,
-                'retract_speed': 18 if len(parts) > 18 else None
-            }
+            # Parameters we want to update in the GUI
+            param_columns = [
+                'overaspirate_vol', 'aspirate_speed', 'dispense_speed', 
+                'retract_speed', 'aspirate_wait_time', 'dispense_wait_time',
+                'pre_asp_air_vol', 'post_asp_air_vol', 'blowout_vol', 
+                'post_retract_wait_time'
+            ]
             
-            # Extract values from latest row and update widgets
+            # Extract values and update widgets
             updated_params = []
-            for param_name, column_idx in csv_column_mapping.items():
-                if column_idx is not None and column_idx < len(parts) and param_name in self.parameter_widgets:
+            for param_name in param_columns:
+                if param_name in latest_row and param_name in self.parameter_widgets:
                     try:
-                        value = float(parts[column_idx])
+                        value = float(latest_row[param_name])
                         widget = self.parameter_widgets[param_name]
                         widget.update_current_value(value)
                         updated_params.append(param_name)
-                    except (ValueError, IndexError) as e:
-                        self.add_status_message(f"[PARAM] Error extracting {param_name}: {e}")
+                    except (ValueError, KeyError):
+                        pass
                         
-            self.add_status_message(f"[PARAM] Updated {len(updated_params)} parameters: {updated_params}")
+            self.add_status_message(f"[PARAM] Updated {len(updated_params)} parameters from CSV")
             
         except Exception as e:
-            self.add_status_message(f"[PARAM] Error updating parameters: {e}")
+            self.add_status_message(f"[PARAM] Error reading CSV: {e}")
     
     def on_optimization_complete(self, results: dict):
         """Handle optimization completion."""

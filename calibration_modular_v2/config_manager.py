@@ -360,11 +360,25 @@ class ExperimentConfig:
     # LLM optimization
     def is_llm_optimization_enabled(self) -> bool:
         """Check if LLM-based optimization is enabled."""
-        return self._config.get('optimization', {}).get('llm_optimization', {}).get('enabled', False)
+        optimization_section = self._config.get('optimization', {})
+        llm_section = optimization_section.get('llm_optimization', {})
+        enabled = llm_section.get('enabled', False)
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[CONFIG DEBUG] optimization section keys: {list(optimization_section.keys())}")
+        logger.info(f"[CONFIG DEBUG] llm_optimization section: {llm_section}")
+        logger.info(f"[CONFIG DEBUG] LLM enabled result: {enabled}")
+        return enabled
     
     def get_llm_config_path(self) -> Optional[str]:
         """Get LLM configuration file path."""
-        return self._config.get('optimization', {}).get('llm_optimization', {}).get('config_path')
+        config_path = self._config.get('optimization', {}).get('llm_optimization', {}).get('config_path')
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[CONFIG DEBUG] LLM config path result: {config_path}")
+        return config_path
     
     # Adaptive measurement
     def is_adaptive_measurement_enabled(self) -> bool:

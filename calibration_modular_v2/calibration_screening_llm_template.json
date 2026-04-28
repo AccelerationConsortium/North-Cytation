@@ -39,7 +39,9 @@
   ],
   
   "api_settings": {
-    "model": "llama3:8b",
+    "base_url": "http://100.77.238.68:1234/v1",
+    "model": "openai/gpt-oss-20b",
+    "api_key": "lm-studio",
     "temperature": 1.0,
     "max_tokens": 8000
   },
@@ -88,6 +90,15 @@
       "description": "Operation time efficiency",
       "priority": "secondary"
     }
+  },
+
+  "data_explanation": {
+    "measured_vol_ml": "Actual volume delivered by pipette (measured result from scale/reader)",
+    "target_vol_ml": "Desired volume to pipette (experimental goal)", 
+    "deviation_pct": "Accuracy metric: (measured - target)/target * 100. Negative = under-delivery, positive = over-delivery",
+    "cv_pct": "Precision metric: coefficient of variation between replicate measurements. Lower = more consistent",
+    "duration_s": "Time taken to complete the pipetting operation. Includes aspirate, wait, dispense, and blowout phases",
+    "optimization_goal": "Find parameters that minimize both deviation_pct (close to 0%) and cv_pct (as low as possible) while keeping duration_s reasonable"
   },
   
   "material_properties": {

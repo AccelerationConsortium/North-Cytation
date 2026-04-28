@@ -1,5 +1,23 @@
 # Changelog
 
+## [LLM CONTEXT FIX] - 2026-04-24
+
+### CRITICAL FIX: LLM Now Receives Complete Experimental Context
+- **FIXED**: LLM optimization was previously blind - only received empty optimization_trials[] for first trial
+- **ENHANCED**: LLM now receives ALL available trial data: screening + inherited + two-point + optimization trials  
+- **DATA COMPLETENESS**: LLM gets same experimental context as Bayesian optimizer for informed decisions
+- **CONTEXT LOGGING**: Added detailed logging showing exactly what trial data LLM receives for transparency
+- **PERFORMANCE**: LLM suggestions now based on complete experimental history instead of making blind guesses
+
+### SAFETY: Eliminated Silent LLM Fallbacks (No Silent Defaults)
+- **CRITICAL SAFETY**: Removed silent fallback from LLM to Bayesian optimization
+- **EXPLICIT FAILURE**: When LLM optimization is enabled but fails, system now pauses with clear error message
+- **USER CHOICE**: Added `input()` pause letting user decide whether to continue with Bayesian or stop and fix LLM
+- **FAIL LOUDLY**: Follows "No Silent Defaults" principle - no more invisible mode switches that mask problems
+- **TRANSPARENT**: Clear console alerts show exactly why LLM failed (import error vs runtime error)
+- **FILES MODIFIED**: experiment.py (lines 1005-1018) - replaced silent warnings with explicit user interaction
+- **IMPACT**: Users now know immediately when LLM optimization isn't working as requested
+
 ## [LLM OPTIMIZATION INTEGRATION] - 2026-04-22
 
 ### IMPLEMENTED: Complete LLM Optimization Support
