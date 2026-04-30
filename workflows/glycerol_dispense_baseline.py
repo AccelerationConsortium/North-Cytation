@@ -523,7 +523,7 @@ def run_baseline():
             
             # Volume adjustment tracking - get initial state before pipetting
             source_volume_before = None
-            before_mass_g = 0.0
+            before_mass_g = None
             if ADJUST_VOLUME and not SIMULATE:
                 try:
                     # Get initial source volume from robot tracking
@@ -552,7 +552,7 @@ def run_baseline():
             elapsed_s = end_time - start_time
             
             # Volume adjustment tracking - correct robot tracking with actual consumption
-            if ADJUST_VOLUME and not SIMULATE and before_mass_g > 0 and source_volume_before is not None:
+            if ADJUST_VOLUME and not SIMULATE and before_mass_g is not None and source_volume_before is not None:
                 try:
                     # Read mass (vial still at clamp)
                     after_mass_g = lash_e.nr_robot.c9.read_steady_scale()
