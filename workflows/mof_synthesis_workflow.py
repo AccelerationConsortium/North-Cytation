@@ -64,7 +64,7 @@ SAMPLING_INTERVAL_MINUTES = 10  # Sample every 10 minutes
 TOTAL_SAMPLING_TIME_MINUTES = 60  # 1 hour total sampling time
 
 # Volume parameters (mL)
-TOTAL_REACTION_VOLUME = 4.0  # Total reaction volume
+TOTAL_REACTION_VOLUME = 6.0  # Total reaction volume
 WELLPLATE_DISPENSE_VOLUME = 0.200  # Volume per well for analysis
 
 SIMULATE = True  # Set to False for hardware execution
@@ -177,9 +177,12 @@ def mof_synthesis_workflow(
         # Return to heater and wait (except last time point)
         if time_point < sampling_times[-1]:
             lash_e.nr_robot.move_vial_to_location(reaction_vial, "heater", 0)
-            wait_time = SAMPLING_INTERVAL_MINUTES * 60
-            lash_e.logger.info(f"  Waiting {SAMPLING_INTERVAL_MINUTES} minutes until next sample...")
-            time.sleep(wait_time)
+            if lash_e.simulate:
+                lash_e.logger.info(f"  [SIMULATE] Skipping {SAMPLING_INTERVAL_MINUTES} min wait")
+            else:
+                wait_time = SAMPLING_INTERVAL_MINUTES * 60
+                lash_e.logger.info(f"  Waiting {SAMPLING_INTERVAL_MINUTES} minutes until next sample...")
+                time.sleep(wait_time)
     
     lash_e.logger.info(f"Completed periodic sampling for {reaction_vial}")
     
@@ -262,12 +265,13 @@ def dispense_samples_to_wells(lash_e, reaction_vial: str, start_well: int, num_r
         wells.append(well_idx)
         lash_e.nr_robot.aspirate_from_vial(reaction_vial, volume, liquid="ethanol")
         lash_e.nr_robot.dispense_into_wellplate([well_idx], [volume], liquid="ethanol")
-    
+
+    lash_e.nr_robot.remove_pipet()
     return wells
 
 def collect_timepoint_data(lash_e, protocol_file: str, wells: list, time_point: int, output_dir: Path, simulate: bool):
     """Measure wellplate and save raw data file."""
-    uv_vis_data = lash_e.measure_wellplate(protocol_file, wells=wells)
+    uv_vis_data = lash_e.measure_wellplate(protocol_file, wells_to_measure=wells)
     lash_e.logger.info(f"  Measured wells {wells} at {time_point} min")
     
     if uv_vis_data is not None:
@@ -305,7 +309,7 @@ def combine_and_save_data(all_measurements: list, output_dir: Path, simulate: bo
 
 def cleanup_synthesis(lash_e, reaction_vial: str):
     """Return vial and turn off heater/stirring."""
-    lash_e.nr_robot.return_vial_to_home(reaction_vial)
+    lash_e.nr_robot.return_vial_home(reaction_vial)
     lash_e.temp_controller.turn_off_stirring()
     lash_e.temp_controller.turn_off_heating()
     lash_e.logger.info("Heater and stirring turned off")
@@ -437,6 +441,17 @@ if __name__ == "__main__":
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, initialize_t8=True, simulate=SIMULATE)
     
     # Run MOF synthesis workflow
-    results = mof_synthesis_workflow(lash_e)
+    results = mof_synthesis_workflow(
+        lash_e,
+        prepare_substock={
+            'vial': 'diva_stock',
+            'target_volume_mL': 6.0,
+            'molecular_weight_g_per_mol': 274.27,  # DiVA MW
+            'target_concentration_mM': LINKER_STOCK_CONC,
+            'ethanol_vial': 'ethanol',
+            'powder_channel': 0,
+            'vortex_time': 10
+        }
+    )
     
     print(f"MOF synthesis workflow completed. Results: {results}")
