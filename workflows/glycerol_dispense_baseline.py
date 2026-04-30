@@ -37,7 +37,7 @@ SIMULATE = False
 # EXPERIMENT_NUMBER removed - now auto-detects progress and resumes
 
 TIPS_PER_BATCH = 96  # Tips to process per batch
-TOTAL_TIPS_PER_CAMPAIGN = 96  # Target completion per campaign (200uL and 1000uL)
+TOTAL_TIPS_PER_CAMPAIGN = 5120  # Target completion per campaign (200uL and 1000uL), SP changed from 96 to 500 to see if it contiues
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials.csv"
 
 # Fixed output folder - no more timestamps or experiment numbers
