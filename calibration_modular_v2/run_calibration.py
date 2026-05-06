@@ -54,8 +54,14 @@ def main():
     logger.info("Starting Universal Calibration System")
     
     try:
-        # Load configuration
-        config_path = Path(__file__).parent / "experiment_config.yaml"
+        # Load configuration - accept config file path as command line argument
+        if len(sys.argv) > 1:
+            config_path = Path(sys.argv[1])  # Use provided config file
+            logger.info(f"Using GUI-provided config file: {config_path}")
+        else:
+            config_path = Path(__file__).parent / "experiment_config.yaml"  # Default
+            logger.info(f"Using default config file: {config_path}")
+        
         logger.info(f"Loading configuration from {config_path}")
         
         config = ExperimentConfig.from_yaml(str(config_path))

@@ -1,6 +1,7 @@
 from robot_state.Locator import * #Let's try to eliminate this in the future
 import robot_state.Locator as Locator
 import numpy as np
+import os
 import time
 import math
 import pandas as pd
@@ -1764,7 +1765,7 @@ class North_Robot(North_Base):
             min_volume = tip_config.get('min_suggested_volume', 0)
             
             # Check if volume fits within this tip's range
-            if min_volume <= volume <= max_volume:
+            if min_volume <= volume < max_volume:
                 available_tips.append((tip_name, min_volume, max_volume))
         
         if not available_tips:
@@ -2025,7 +2026,8 @@ class North_Robot(North_Base):
 
     #Aspirate from a vial using the pipet tool
     def aspirate_from_vial(self, source_vial_name, amount_mL, parameters=None, liquid=None,
-                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False, post_asp_shake=False):
+                          move_to_aspirate=True, track_height=True, move_up=True, specified_tip=None, use_safe_location=False, post_asp_shake=False, 
+                          continuous_mass_monitoring=False, save_mass_data=False):
         """
         Aspirate amount_ml from a source vial.
         
@@ -2038,6 +2040,13 @@ class North_Robot(North_Base):
             track_height (bool): Whether to track liquid height during aspiration (default: True)
             move_up (bool): Whether to retract after aspiration (default: True)
             specified_tip (str, optional): Force specific tip type ("small_tip" or "large_tip")
+            use_safe_location (bool): Use safe location for vial access (default: False)  
+            post_asp_shake (bool): Apply post-aspiration shaking (default: False)
+            continuous_mass_monitoring (bool): Whether to continuously monitor mass during aspiration (default: False)
+            save_mass_data (bool): Whether to save continuous mass data to file (default: False)
+        
+        Returns:
+            tuple: (measured_mass, stability_info) if continuous_mass_monitoring=True, otherwise None
         """
         # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
         parameters = self._get_optimized_parameters(amount_mL, liquid, parameters)
@@ -2090,6 +2099,20 @@ class North_Robot(North_Base):
         if source_vial_volume < amount_mL:
             self.pause_after_error("Cannot aspirate more volume than in vial")
 
+        # Initialize mass monitoring if requested
+        measured_mass = None
+        continuous_mass_data = []
+        stability_info = {
+            'pre_stable_count': 0,
+            'pre_total_count': 0, 
+            'post_stable_count': 0,
+            'post_total_count': 0,
+            'pre_baseline_std': 0.0,
+            'post_baseline_std': 0.0
+        }
+        
+        source_vial_clamped = self.get_vial_info(source_vial_num,'location')=='clamp' #Is the source vial clamped?
+
         self.logger.info(f"Pipetting from vial {self.get_vial_info(source_vial_num, 'vial_name')}, amount: {amount_mL:.3f} mL")
         self.logger.info(f"Additional volume from calibration, amount: {overaspirate_vol:.3f} mL")
 
@@ -2106,9 +2129,62 @@ class North_Robot(North_Base):
 
         self.adjust_pump_speed(0,10)
 
+        # Setup continuous mass monitoring if requested
+        monitoring_active = threading.Event()
+        aspiration_start_time = None 
+        aspiration_end_time = None
+        
+        def read_scale_continuous():
+            """Continuously read scale at maximum rate (5 Hz) during aspiration"""
+            while monitoring_active.is_set():
+                if not self.simulate and source_vial_clamped:
+                    try:
+                        current_time = time.time()
+                        steady_status, weight = self.c9.read_scale()  # Get BOTH stability and weight
+                        
+                        # Determine phase based on timing
+                        time_relative = current_time - start_time
+                        if time_relative < 1.0:
+                            phase = 'baseline_pre'
+                        elif aspiration_start_time is None or current_time < aspiration_start_time:
+                            phase = 'baseline_pre'  # Still in pre-baseline
+                        elif aspiration_end_time is None or current_time < aspiration_end_time:
+                            phase = 'aspiration'
+                        else:
+                            phase = 'baseline_post'
+                        
+                        continuous_mass_data.append({
+                            'timestamp': current_time,
+                            'time_relative': time_relative,
+                            'mass_g': weight,
+                            'phase': phase,
+                            'steady_status': steady_status  # Track if scale says reading is stable
+                        })
+                        self.logger.debug(f'Mass: {weight:.4f}g at {time_relative:.3f}s ({phase}) steady={steady_status}')
+                    except Exception as e:
+                        self.logger.warning(f"Scale reading failed: {e}")
+                if not self.simulate:
+                    time.sleep(0.2)  # 5 Hz maximum rate (0.2 second intervals)
+
         #Move to the correct location in xy
         if move_to_aspirate:
             self.c9.goto_xy_safe(location, vel=self.get_speed('standard_xy'))
+            
+        # Start continuous monitoring if requested (includes pre-aspiration baseline)
+        if continuous_mass_monitoring and source_vial_clamped:
+            self.logger.info(f"Short wait time, allowing scale to settle after robot positioning...")
+            if not self.simulate:
+                time.sleep(1.0)  # 1 second settling delay
+            
+            start_time = time.time()
+            monitoring_active.set()
+            monitor_thread = threading.Thread(target=read_scale_continuous, daemon=True)
+            monitor_thread.start()
+            self.logger.info("Started continuous mass monitoring with pre-aspiration baseline")
+            
+            # Wait for 2.0s baseline before aspiration for better stability
+            if not self.simulate:
+                time.sleep(2.0)
 
         
         #Step 1: Move to above the site and aspirate air if needed
@@ -2118,12 +2194,22 @@ class North_Robot(North_Base):
         
         self.adjust_pump_speed(0,aspirate_speed) #Adjust the pump speed if needed
 
+        # Record when actual aspiration starts
+        if continuous_mass_monitoring and source_vial_clamped:
+            aspiration_start_time = time.time()
+
         #Step 2: Move to inside the site and aspirate liquid
         self.c9.move_z(asp_height)
         for i in range (0, asp_disp_cycles):
             self.pipet_aspirate(amount_mL+overaspirate_vol, wait_time=0)
             self.pipet_dispense(amount_mL+overaspirate_vol, wait_time=0)
         self.pipet_aspirate(amount_mL+overaspirate_vol, wait_time=aspirate_wait_time) #Main aspiration of liquid plus wait
+        
+        # Record when aspiration ends
+        if continuous_mass_monitoring and source_vial_clamped:
+            aspiration_end_time = time.time()
+            aspiration_duration = aspiration_end_time - aspiration_start_time
+            self.logger.info(f"Aspiration took {aspiration_duration:.3f}s, collecting post-aspiration baseline")
         
         #Step 3: Retract and aspirate air if needed
         if post_asp_shake:
@@ -2140,6 +2226,17 @@ class North_Robot(North_Base):
         if post_asp_air_vol > 0:
             self.pipet_aspirate(post_asp_air_vol, wait_time=0) 
 
+        # Stop continuous monitoring and analyze data if requested
+        if continuous_mass_monitoring and source_vial_clamped:
+            # Let monitoring thread continue for post-baseline period
+            if not self.simulate:
+                time.sleep(2.0)  # 2.0s post-aspiration baseline for better data
+            
+            # Stop continuous monitoring after collecting post-baseline data
+            monitoring_active.clear()
+            monitor_thread.join(timeout=2.0)  # Wait up to 2 seconds for thread to finish
+            self.logger.info(f"Stopped continuous mass monitoring. Collected {len(continuous_mass_data)} data points")
+
 
         #Record the volume change
         self.VIAL_DF.at[source_vial_num,'vial_volume']=(source_vial_volume-amount_mL)
@@ -2148,6 +2245,106 @@ class North_Robot(North_Base):
         self.PIPET_FLUID_VIAL_INDEX = int(source_vial_num)
         self.PIPET_FLUID_VOLUME += amount_mL
         self.save_robot_status()
+
+        # Analyze continuous mass data after monitoring is stopped
+        if continuous_mass_monitoring and source_vial_clamped and continuous_mass_data:
+            if len(continuous_mass_data) >= 4:
+                mass_df = pd.DataFrame(continuous_mass_data)
+                
+                # Calculate baselines using STABILITY instead of time phases
+                pre_stable_readings = mass_df[(mass_df['phase'] == 'baseline_pre') & 
+                                             (mass_df['steady_status'] == True)]
+                post_stable_readings = mass_df[(mass_df['phase'] == 'baseline_post') & 
+                                              (mass_df['steady_status'] == True)]
+                
+                # Pre-baseline calculation
+                if len(pre_stable_readings) > 0:
+                    pre_baseline = pre_stable_readings['mass_g'].mean()
+                    pre_method = "STABLE"
+                    self.logger.info(f"Pre-baseline: {len(pre_stable_readings)} stable readings, avg={pre_baseline:.6f}g")
+                else:
+                    pre_baseline = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g'].mean()
+                    pre_method = "TIME-BASED"
+                    self.logger.info(f"Pre-baseline: No stable readings, using time-based avg={pre_baseline:.6f}g")
+                
+                # Post-baseline calculation  
+                if len(post_stable_readings) > 0:
+                    post_baseline = post_stable_readings['mass_g'].mean()
+                    post_method = "STABLE"
+                    self.logger.info(f"Post-baseline: {len(post_stable_readings)} stable readings, avg={post_baseline:.6f}g")
+                else:
+                    post_baseline = mass_df[mass_df['phase'] == 'baseline_post']['mass_g'].mean()
+                    post_method = "TIME-BASED"
+                    self.logger.info(f"Post-baseline: No stable readings, using time-based avg={post_baseline:.6f}g")
+                
+                # Calculate final result (NOTE: For aspiration, mass should DECREASE, so we reverse the sign)
+                measured_mass = pre_baseline - post_baseline  # Reversed for aspiration
+                self.logger.info(f"ASPIRATION MASS calculation:")
+                self.logger.info(f"Pre: {pre_method}, Post: {post_method}, Mass difference: {measured_mass:.6f}g")
+                
+                # Update stability info
+                pre_baseline_readings = mass_df[mass_df['phase'] == 'baseline_pre']['mass_g']
+                post_baseline_readings = mass_df[mass_df['phase'] == 'baseline_post']['mass_g']
+                
+                pre_count = len(mass_df[mass_df['phase'] == 'baseline_pre'])
+                post_count = len(mass_df[mass_df['phase'] == 'baseline_post'])
+                pre_stable_count = len(pre_stable_readings) if len(pre_stable_readings) > 0 else 0
+                post_stable_count = len(post_stable_readings) if len(post_stable_readings) > 0 else 0
+                
+                stability_info.update({
+                    'pre_stable_count': pre_stable_count,
+                    'pre_total_count': pre_count,
+                    'post_stable_count': post_stable_count, 
+                    'post_total_count': post_count,
+                    'pre_baseline_std': pre_baseline_readings.std() if len(pre_baseline_readings) > 1 else 0.0,
+                    'post_baseline_std': post_baseline_readings.std() if len(post_baseline_readings) > 1 else 0.0
+                })
+                
+                self.logger.info(f"Reading summary: {pre_count} pre-readings ({pre_stable_count} stable), "
+                               f"{post_count} post-readings ({post_stable_count} stable)")
+                self.logger.info(f"Baseline variability: pre_std={stability_info['pre_baseline_std']:.6f}g, "
+                               f"post_std={stability_info['post_baseline_std']:.6f}g")
+                self.logger.info(f"Target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water")
+            else:
+                self.logger.warning("Insufficient continuous data for baseline calculation")
+                measured_mass = 0.0
+            
+            # Save mass data if requested
+            if save_mass_data and continuous_mass_data:
+                import os
+                timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+                
+                # Use log filename for folder organization instead of date
+                if hasattr(self, 'log_filename') and self.log_filename:
+                    # Remove .log extension and use as folder name
+                    log_folder = self.log_filename.replace('.log', '')
+                else:
+                    # Fallback to date if log filename not available
+                    log_folder = time.strftime("%Y-%m-%d")
+                
+                filename = f"aspiration_mass_data_{self.get_vial_info(source_vial_num, 'vial_name')}_{timestamp_str}.csv"
+                filepath = os.path.join("output", "mass_measurements", log_folder, filename)
+                
+                # Ensure log-specific directory exists
+                os.makedirs(os.path.join("output", "mass_measurements", log_folder), exist_ok=True)
+                
+                # Convert to DataFrame and save
+                mass_df = pd.DataFrame(continuous_mass_data)
+                mass_df.to_csv(filepath, index=False)
+                self.logger.info(f"Saved {len(continuous_mass_data)} aspiration mass measurements to {filepath}")
+                
+                # Create and save mass vs time plot using helper method
+                self._create_mass_vs_time_plot(
+                    continuous_mass_data, pre_baseline, post_baseline,
+                    self.get_vial_info(source_vial_num, 'vial_name'), amount_mL, measured_mass, "aspiration",
+                    log_folder, timestamp_str
+                )
+        
+        # Return mass monitoring results if enabled, otherwise return None for backwards compatibility
+        if continuous_mass_monitoring and source_vial_clamped:
+            return measured_mass, stability_info
+        else:
+            return None
     
     #Adjust height based on the currently held pipet tip - now extensible to all tip types
     def adjust_height_based_on_pipet_held(self, height):
@@ -2660,59 +2857,12 @@ class North_Robot(North_Base):
                 mass_df.to_csv(filepath, index=False)
                 self.logger.info(f"Saved {len(continuous_mass_data)} mass measurements to {filepath}")
                 
-                # Create and save matplotlib graph with continuous line and phase backgrounds
-                plt.figure(figsize=(12, 6))
-                
-                # Plot one continuous line
-                plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'k-', linewidth=2, label='Mass readings', zorder=3)
-                
-                # Add scatter overlay to show stable vs unstable readings
-                stable_data = mass_df[mass_df['steady_status'] == True]
-                unstable_data = mass_df[mass_df['steady_status'] == False]
-                
-                if len(stable_data) > 0:
-                    plt.scatter(stable_data['time_relative'], stable_data['mass_g'], 
-                              c='green', s=20, alpha=0.7, label='Stable readings', zorder=4)
-                if len(unstable_data) > 0:
-                    plt.scatter(unstable_data['time_relative'], unstable_data['mass_g'], 
-                              c='red', s=20, alpha=0.7, label='Unstable readings', zorder=4)
-                
-                # Add phase background shading
-                if len(mass_df) > 0:
-                    # Get phase transition points
-                    pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
-                    dispense_data = mass_df[mass_df['phase'] == 'dispensing'] 
-                    post_data = mass_df[mass_df['phase'] == 'baseline_post']
-                    
-                    y_min, y_max = plt.ylim()
-                    
-                    # Shade background regions
-                    if len(pre_data) > 0:
-                        plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
-                                   alpha=0.2, color='green', label='Pre-baseline', zorder=1)
-                    if len(dispense_data) > 0:
-                        plt.axvspan(dispense_data['time_relative'].min(), dispense_data['time_relative'].max(), 
-                                   alpha=0.2, color='blue', label='Dispensing', zorder=1)
-                    if len(post_data) > 0:
-                        plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
-                                   alpha=0.2, color='red', label='Post-baseline', zorder=1)
-                
-                # Add horizontal lines for averaged baselines
-                plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
-                plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
-                
-                plt.xlabel('Time (seconds)')
-                plt.ylabel('Mass (g)')
-                plt.title(f'Mass vs Time During Dispense\nVial: {dest_vial_name}, Target: {amount_mL:.3f} mL, Measured: {measured_mass:.4f} g')
-                plt.legend()
-                plt.grid(True, alpha=0.3)
-                
-                # Save the plot
-                plot_filename = f"mass_plot_{dest_vial_name}_{timestamp_str}.png"
-                plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
-                plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
-                plt.close()  # Close the figure to free memory
-                self.logger.info(f"Saved mass vs time plot to {plot_filepath}")  
+                # Create and save mass vs time plot using helper method
+                self._create_mass_vs_time_plot(
+                    continuous_mass_data, pre_baseline, post_baseline,
+                    dest_vial_name, amount_mL, measured_mass, "dispense",
+                    log_folder, timestamp_str
+                )  
 
         # Traditional before/after measurement (only when continuous monitoring is NOT enabled)
         elif measure_weight and not continuous_mass_monitoring and dest_vial_clamped:
@@ -2726,6 +2876,96 @@ class North_Robot(North_Base):
             self.logger.info(f"Mass difference: {measured_mass:.6f} g (target: {amount_mL:.3f} mL = ~{amount_mL*1.0:.6f} g for water)")
 
         return measured_mass, stability_info
+
+    def _create_mass_vs_time_plot(self, continuous_mass_data, pre_baseline, post_baseline, 
+                                 vial_name, target_volume, measured_mass, operation_type, 
+                                 log_folder, timestamp_str, additional_info=""):
+        """
+        Create and save a mass vs time plot for continuous monitoring data.
+        
+        Args:
+            continuous_mass_data: List of mass measurement dictionaries
+            pre_baseline: Pre-operation baseline mass
+            post_baseline: Post-operation baseline mass  
+            vial_name: Name of the vial being monitored
+            target_volume: Target volume for the operation (mL)
+            measured_mass: Measured mass difference (g)
+            operation_type: "dispense", "aspiration", or "reservoir"
+            log_folder: Folder name for saving files
+            timestamp_str: Timestamp string for unique filenames
+            additional_info: Additional info for filename (e.g., "_res1")
+        """
+        import matplotlib.pyplot as plt
+        
+        mass_df = pd.DataFrame(continuous_mass_data)
+        plt.figure(figsize=(12, 6))
+        
+        # Plot one continuous line
+        plt.plot(mass_df['time_relative'], mass_df['mass_g'], 'k-', linewidth=2, label='Mass readings', zorder=3)
+        
+        # Add scatter overlay to show stable vs unstable readings
+        stable_data = mass_df[mass_df['steady_status'] == True]
+        unstable_data = mass_df[mass_df['steady_status'] == False]
+        
+        if len(stable_data) > 0:
+            plt.scatter(stable_data['time_relative'], stable_data['mass_g'], 
+                      c='green', s=20, alpha=0.7, label='Stable readings', zorder=4)
+        if len(unstable_data) > 0:
+            plt.scatter(unstable_data['time_relative'], unstable_data['mass_g'], 
+                      c='red', s=20, alpha=0.7, label='Unstable readings', zorder=4)
+        
+        # Add phase background shading
+        if len(mass_df) > 0:
+            # Get phase transition points
+            pre_data = mass_df[mass_df['phase'] == 'baseline_pre']
+            if operation_type == "aspiration":
+                operation_data = mass_df[mass_df['phase'] == 'aspiration']
+                operation_color = 'orange'
+                operation_label = 'Aspiration'
+            else:  # dispense or reservoir
+                operation_data = mass_df[mass_df['phase'] == 'dispensing']
+                operation_color = 'blue'
+                operation_label = 'Dispensing'
+            post_data = mass_df[mass_df['phase'] == 'baseline_post']
+            
+            # Shade background regions
+            if len(pre_data) > 0:
+                plt.axvspan(pre_data['time_relative'].min(), pre_data['time_relative'].max(), 
+                           alpha=0.2, color='green', label='Pre-baseline', zorder=1)
+            if len(operation_data) > 0:
+                plt.axvspan(operation_data['time_relative'].min(), operation_data['time_relative'].max(), 
+                           alpha=0.2, color=operation_color, label=operation_label, zorder=1)
+            if len(post_data) > 0:
+                plt.axvspan(post_data['time_relative'].min(), post_data['time_relative'].max(), 
+                           alpha=0.2, color='red', label='Post-baseline', zorder=1)
+        
+        # Add horizontal lines for averaged baselines
+        plt.axhline(y=pre_baseline, color='g', linestyle='--', alpha=0.7, label=f'Pre-avg: {pre_baseline:.3f}g')
+        plt.axhline(y=post_baseline, color='r', linestyle='--', alpha=0.7, label=f'Post-avg: {post_baseline:.3f}g')
+        
+        plt.xlabel('Time (seconds)')
+        plt.ylabel('Mass (g)')
+        
+        # Create appropriate title based on operation type
+        if operation_type == "reservoir":
+            title = f'Reservoir Mass vs Time During Dispense\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
+            plot_filename = f"reservoir_mass_plot_{vial_name}{additional_info}_{timestamp_str}.png"
+        elif operation_type == "aspiration":
+            title = f'Mass vs Time During Aspiration\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
+            plot_filename = f"aspiration_mass_plot_{vial_name}_{timestamp_str}.png"
+        else:  # dispense
+            title = f'Mass vs Time During Dispense\\nVial: {vial_name}, Target: {target_volume:.3f} mL, Measured: {measured_mass:.4f} g'
+            plot_filename = f"mass_plot_{vial_name}_{timestamp_str}.png"
+            
+        plt.title(title)
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # Save the plot
+        plot_filepath = os.path.join("output", "mass_measurements", log_folder, plot_filename)
+        plt.savefig(plot_filepath, dpi=300, bbox_inches='tight')
+        plt.close()  # Close the figure to free memory
+        self.logger.info(f"Saved {operation_type} mass vs time plot to {plot_filepath}")
 
     def monitor_weight_over_time(self, time_s):
         """
@@ -3140,6 +3380,20 @@ class North_Robot(North_Base):
         self.logger.debug(f"Reservoir parameters: aspirate_speed={reservoir_params.aspirate_speed}, dispense_speed={reservoir_params.dispense_speed}, overaspirate={reservoir_params.overaspirate_vol:.3f} mL")
         measured_mass = None
         stability_info = None
+
+
+        dest_vial_clamped = self.get_vial_info(vial_index,'location')=='clamp' #Is the destination vial clamped?
+        dest_vial_volume = self.get_vial_info(vial_index,'vial_volume') #What is the current vial volume?
+
+        # Check if dispensing would exceed vial capacity
+        dest_vial_location = self.get_vial_info(vial_index, 'location')
+        max_vial_volume = self.get_config_parameter('vial_positions', dest_vial_location, 'vial_volume', error_on_missing=False)
+        if max_vial_volume is not None:
+            post_dispense_volume = dest_vial_volume + volume
+            if post_dispense_volume > max_vial_volume:
+                self.pause_after_error(f"Cannot dispense {volume:.3f} mL into vial {self.get_vial_info(vial_index, 'vial_name')}: from reservoir {reservoir_index} - current volume {dest_vial_volume:.3f} mL + dispense volume {volume:.3f} mL = {post_dispense_volume:.3f} mL, which "
+                                     f"would exceed capacity ({post_dispense_volume:.3f} mL > {max_vial_volume:.3f} mL max)")
+                return
 
         #Step 1: move the vial to the clamp
         if not self.get_vial_info(vial_index,'location')=='clamp':
@@ -3575,7 +3829,8 @@ class North_Robot(North_Base):
         self.save_robot_status()
 
     #Recap the vial in the clamp
-    def recap_clamp_vial(self, revs=2.20, torque_thresh = 600, move_speed=None):
+    #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
+    def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None):
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)

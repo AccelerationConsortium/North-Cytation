@@ -177,10 +177,12 @@ class CalibrationAnalyzer:
             absolute_deviation_pct = 0.0
         
         # Apply precision penalty for high deviation (like calibration_sdl_simplified)
-        deviation_threshold_pct = getattr(self.config, 'deviation_threshold_pct', 10.0)
+        adaptive_config = self.config.get_adaptive_measurement_config()
+        deviation_threshold_pct = adaptive_config.get('deviation_threshold_pct', 10.0)
+        penalty_variability_pct = adaptive_config.get('penalty_variability_pct', 100.0)
+        
         if absolute_deviation_pct > deviation_threshold_pct:
             # Set precision to penalty value for poor accuracy trials
-            penalty_variability_pct = getattr(self.config, 'penalty_variability_pct', 100.0)
             cv_volume_pct = penalty_variability_pct
             logger.info(f"High deviation ({absolute_deviation_pct:.1f}% > {deviation_threshold_pct}%) - applying precision penalty: {penalty_variability_pct}%")
         
@@ -240,72 +242,49 @@ class CalibrationAnalyzer:
     
     def _calculate_composite_score(self, analysis: AdaptiveMeasurementResult,
                                  tolerances: VolumeTolerances) -> float:
-        """Calculate multi-objective composite score."""
+        """Legacy method - real SDL scoring happens in find_best_trials."""
+        # Placeholder - SDL scoring requires all trials for proper normalization
+        return 0.0  # Actual calculation in _calculate_sdl_composite_score
+    
+    def _calculate_sdl_composite_score(self, analysis: AdaptiveMeasurementResult, 
+                                     all_analyses: List[AdaptiveMeasurementResult]) -> float:
+        """Calculate SDL-style composite score using relative standard deviation normalization."""
+        import statistics
         
-        # Individual objective scores (lower is better, 0 = perfect)
-        accuracy_score = self._calculate_accuracy_score(analysis, tolerances)
-        precision_score = self._calculate_precision_score(analysis, tolerances)
-        time_score = self._calculate_time_score_for_ranking(analysis)
+        # Extract metrics from all trials (excluding penalty trials)
+        valid_analyses = [a for a in all_analyses if a.cv_volume_pct < 99.9]
+        if not valid_analyses:
+            valid_analyses = all_analyses  # Fallback if all have penalties
+            
+        raw_accuracies = [a.absolute_deviation_pct for a in valid_analyses]
+        raw_precisions = [a.cv_volume_pct for a in valid_analyses] 
+        raw_times = [a.mean_duration_s for a in valid_analyses]
         
-        # Weighted combination (time used for ranking, not success criteria)
+        # Calculate standard deviations (SDL method)
+        acc_std = max(statistics.stdev(raw_accuracies) if len(raw_accuracies) > 1 else 0.1, 0.1)
+        prec_std = max(statistics.stdev(raw_precisions) if len(raw_precisions) > 1 else 0.1, 0.1) 
+        time_std = max(statistics.stdev(raw_times) if len(raw_times) > 1 else 1.0, 1.0)
+        
+        # Normalize scores (SDL method)
+        acc_score = analysis.absolute_deviation_pct / acc_std * 100
+        prec_score = analysis.cv_volume_pct / prec_std * 100
+        time_score = analysis.mean_duration_s / time_std * 100
+        
+        # Weighted composite score (SDL method)
         composite_score = (
-            self.objective_weights.accuracy_weight * accuracy_score +
-            self.objective_weights.precision_weight * precision_score +
+            self.objective_weights.accuracy_weight * acc_score +
+            self.objective_weights.precision_weight * prec_score +
             self.objective_weights.time_weight * time_score
         )
         
-        logger.debug(f"Score breakdown: accuracy={accuracy_score:.3f}, "
-                    f"precision={precision_score:.3f}, time={time_score:.3f}, "
+        logger.debug(f"SDL Score breakdown: accuracy={acc_score:.3f}, "
+                    f"precision={prec_score:.3f}, time={time_score:.3f}, "
                     f"composite={composite_score:.3f}")
         
         return composite_score
     
-    def _calculate_accuracy_score(self, analysis: AdaptiveMeasurementResult,
-                                tolerances: VolumeTolerances) -> float:
-        """Calculate accuracy objective score (0 = perfect, higher = worse)."""
-        deviation_ul = abs(analysis.deviation_ml * 1000)
-        tolerance_ul = tolerances.accuracy_tolerance_ul
-        threshold_ul = self.objective_thresholds['deviation_threshold_pct'] / 100 * analysis.target_volume_ml * 1000
-        
-        if deviation_ul <= tolerance_ul:
-            # Within tolerance: score between 0 and 1
-            return deviation_ul / tolerance_ul
-        elif deviation_ul <= threshold_ul:
-            # Outside tolerance but not catastrophic: score between 1 and 2
-            return 1.0 + (deviation_ul - tolerance_ul) / (threshold_ul - tolerance_ul)
-        else:
-            # Catastrophic: flat penalty
-            return 2.0
-    
-    def _calculate_precision_score(self, analysis: AdaptiveMeasurementResult,
-                                 tolerances: VolumeTolerances) -> float:
-        """Calculate precision objective score (0 = perfect, higher = worse)."""
-        cv_pct = analysis.cv_volume_pct
-        tolerance_pct = tolerances.precision_tolerance_pct
-        threshold_pct = self.objective_thresholds['variability_threshold_pct']
-        
-        if cv_pct <= tolerance_pct:
-            # Within tolerance: score between 0 and 1
-            return cv_pct / tolerance_pct
-        elif cv_pct <= threshold_pct:
-            # Outside tolerance but not catastrophic: score between 1 and 2
-            return 1.0 + (cv_pct - tolerance_pct) / (threshold_pct - tolerance_pct)
-        else:
-            # Catastrophic: flat penalty
-            return 2.0
-    
-    def _calculate_time_score_for_ranking(self, analysis: AdaptiveMeasurementResult) -> float:
-        """Calculate time score for ranking purposes only (not tolerance-based)."""
-        duration_s = analysis.mean_duration_s
-        
-        # Simple time scoring: normalize around reasonable baseline (30s)
-        baseline_time = 30.0
-        if duration_s <= baseline_time:
-            # Good time: score between 0 and 1
-            return duration_s / baseline_time
-        else:
-            # Slower than baseline: linear penalty 
-            return 1.0 + (duration_s - baseline_time) / baseline_time
+    # NOTE: Old absolute threshold scoring methods removed - now using SDL scoring
+    # Tolerances are still used for success/failure criteria, not ranking
     
     def _should_run_additional_replicates(self, analysis: AdaptiveMeasurementResult,
                                         measurements: List[RawMeasurement],
@@ -347,6 +326,9 @@ class CalibrationAnalyzer:
         """
         Find best trials with optional quality filtering.
         
+        CRITICAL FIX: Recalculates all composite scores using the same baseline
+        for fair comparison instead of using stale scores calculated at different times.
+        
         Args:
             trials: List of trial results
             quality_filter: Optional quality filter ("within_tolerance", "partial_tolerance")
@@ -355,15 +337,49 @@ class CalibrationAnalyzer:
         Returns:
             List[TrialResult]: Best trials matching criteria
         """
+        logger.info("[SELECTION] Starting best trials selection with SDL scoring...")
+        
         filtered_trials = trials
         
         if quality_filter:
             filtered_trials = [t for t in trials if t.quality.overall_quality == quality_filter]
+            logger.info(f"   Applied quality filter '{quality_filter}': {len(filtered_trials)}/{len(trials)} trials")
         
         # Filter out trials with fewer than 2 measurements (can't calculate valid precision)
+        original_count = len(filtered_trials)
         filtered_trials = [t for t in filtered_trials if len(t.measurements) >= 2]
+        logger.info(f"   Filtered measurement count: {len(filtered_trials)}/{original_count} trials (>=2 measurements)")
+        
+        if not filtered_trials:
+            logger.warning("   No valid trials found for selection!")
+            return []
+        
+        # CRITICAL FIX: Recalculate all composite scores using SDL normalization
+        # This ensures fair comparison using relative population normalization
+        logger.info("    [RECALC] Recalculating composite scores with SDL normalization:")
+        
+        # Collect all analyses for proper SDL normalization
+        all_analyses = [trial.analysis for trial in filtered_trials]
+        
+        for i, trial in enumerate(filtered_trials):
+            old_score = trial.composite_score
+            # Recalculate using SDL method with population normalization
+            trial.composite_score = self._calculate_sdl_composite_score(trial.analysis, all_analyses)
+            trial_number = i + 1  # Use position as trial number since trial_id might not be set
+            logger.info(f"      Trial {trial_number}: "
+                       f"old_score={old_score:.3f} -> new_score={trial.composite_score:.3f} "
+                       f"(acc={trial.analysis.absolute_deviation_pct:.1f}%, "
+                       f"prec={trial.analysis.cv_volume_pct:.1f}%, "
+                       f"time={trial.analysis.mean_duration_s:.1f}s)")
         
         ranked_trials = self.rank_trials(filtered_trials)
+        
+        logger.info(f"   [RANKING] Final ranking (best {min(max_results, len(ranked_trials))} trials):")
+        for i, trial in enumerate(ranked_trials[:max_results]):
+            trial_number = filtered_trials.index(trial) + 1
+            logger.info(f"     Rank {i+1}: Trial {trial_number} "
+                       f"(score={trial.composite_score:.3f})")
+        
         return ranked_trials[:max_results]
     
     def calculate_trial_statistics(self, trials: List[TrialResult]) -> Dict[str, float]:

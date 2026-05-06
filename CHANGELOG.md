@@ -1,5 +1,225 @@
 # Changelog
 
+## [LLM CONTEXT FIX] - 2026-04-24
+
+### CRITICAL FIX: LLM Now Receives Complete Experimental Context
+- **FIXED**: LLM optimization was previously blind - only received empty optimization_trials[] for first trial
+- **ENHANCED**: LLM now receives ALL available trial data: screening + inherited + two-point + optimization trials  
+- **DATA COMPLETENESS**: LLM gets same experimental context as Bayesian optimizer for informed decisions
+- **CONTEXT LOGGING**: Added detailed logging showing exactly what trial data LLM receives for transparency
+- **PERFORMANCE**: LLM suggestions now based on complete experimental history instead of making blind guesses
+
+### SAFETY: Eliminated Silent LLM Fallbacks (No Silent Defaults)
+- **CRITICAL SAFETY**: Removed silent fallback from LLM to Bayesian optimization
+- **EXPLICIT FAILURE**: When LLM optimization is enabled but fails, system now pauses with clear error message
+- **USER CHOICE**: Added `input()` pause letting user decide whether to continue with Bayesian or stop and fix LLM
+- **FAIL LOUDLY**: Follows "No Silent Defaults" principle - no more invisible mode switches that mask problems
+- **TRANSPARENT**: Clear console alerts show exactly why LLM failed (import error vs runtime error)
+- **FILES MODIFIED**: experiment.py (lines 1005-1018) - replaced silent warnings with explicit user interaction
+- **IMPACT**: Users now know immediately when LLM optimization isn't working as requested
+
+## [LLM OPTIMIZATION INTEGRATION] - 2026-04-22
+
+### IMPLEMENTED: Complete LLM Optimization Support
+- **ADDED**: `_generate_optimization_parameters()` method in experiment.py for LLM-guided optimization
+- **INTEGRATION**: Optimization loop now checks `llm_optimization.enabled` config before using Bayesian optimizer
+- **CONTEXT-AWARE**: LLM receives previous trial results for informed parameter suggestions during optimization phase
+- **ROBUST FALLBACK**: Multiple fallback layers - ImportError → Configuration Error → Runtime Error → Bayesian optimizer
+- **BACKWARD COMPATIBLE**: Existing Bayesian optimization remains default - no breaking changes
+- **SAFE IMPORTS**: LLM imports wrapped in try/catch to prevent crashes when llm_recommender unavailable
+- **ENHANCED LOGGING**: Clear indication whether using "LLM-generated" or Bayesian parameters for each trial
+- **DUAL PHASE SUPPORT**: Both screening and optimization phases now support LLM parameter generation
+- **FILES MODIFIED**: experiment.py (added optimization parameter generation method and integrated into workflow)
+
+## [ENHANCED LLM PHYSICAL INSIGHTS] - 2026-04-22
+
+### IMPROVED: Parameter Descriptions for LLM Understanding
+- **ENHANCED**: All parameter descriptions in experiment_config.yaml with detailed physical insights
+- **PHYSICS CONTEXT**: Added explanations of parameter mechanisms and liquid handling physics
+- **TRADE-OFFS**: Documented accuracy vs speed relationships (e.g., slower aspiration = better accuracy but longer time)
+- **VISCOSITY GUIDANCE**: Specific recommendations for thin vs thick liquids
+- **PARAMETER INTERACTIONS**: Explained how parameters affect each other (e.g., slow dispense + blowout = long time)
+- **MECHANISM EXPLANATIONS**: Surface tension, pressure equilibration, dripping dynamics, air gap functions
+- **BENEFIT**: LLM can now make informed physics-based parameter recommendations instead of blind exploration
+- **EXAMPLES**: 
+  - aspirate_speed: "Slower aspiration reduces cavitation and bubble formation in viscous liquids"
+  - overaspirate_vol: "Extra volume to compensate for liquid retention due to surface tension"
+  - post_retract_wait_time: "Allows thick liquid to drip off, e.g. ~5s for glycerol-level viscosity"
+
+## [DUAL BACKEND SYSTEM] - 2026-04-21
+
+### NEW FEATURE: Configurable Ax Acquisition Function Control
+- **IMPLEMENTED**: Dual backend system supporting both direct acquisition function control and high-level abstractions
+- **BACKENDS SUPPORTED**: 
+  - Direct Control: qNEHVI, qLogEI, qEI (colleague's approach with botorch_acqf_class)
+  - High-Level: GPEI, MOO, BOTORCH_MODULAR (current simplified approach)
+- **CONFIGURATION**: Via experiment_config.yaml `backend` and `backend_subsequent` settings
+- **BACKWARD COMPATIBLE**: Supports both old configs ("qNEHVI", "qLogEI") and new configs ("GPEI", "MOO")
+- **VOLUME AWARE**: Different backends for first volume vs subsequent volumes
+- **FALLBACK SAFE**: Graceful degradation to optimizer_type mapping if config unavailable
+- **BENEFIT**: Enables colleague's precise acquisition function control while maintaining current simplicity
+- **FILES MODIFIED**: bayesian_recommender.py, experiment.py
+- **TESTING**: Backend mapping logic verified for all supported configurations
+
+## [SDL SCORING BUG FIX] - 2026-04-21
+
+### FIXED: SDL Implementation Returning Zero Scores
+- **BUG**: SDL scoring method was correctly implemented but not being called in find_best_trials()
+- **SYMPTOM**: All trials showing score=0.000, selecting worst trial (Trial 1: 30.1% accuracy)
+- **ROOT CAUSE**: find_best_trials() was still calling _calculate_composite_score() which returned 0.0 placeholder
+- **FIX**: Updated find_best_trials() to properly call _calculate_sdl_composite_score() with population normalization
+- **RESULT**: Selection will now match SDL display ranking - Trial 5 (1.2% accuracy) should be selected
+- **VERIFICATION**: Next experiment should show proper SDL scores and select best trial correctly
+
+## [SELECTION SYSTEM UPGRADE] - 2026-04-21
+
+### REPLACED: Absolute Threshold Scoring → SDL Relative Normalization
+- **REMOVED**: Old absolute threshold system (30s baseline, 1% tolerances, penalty zones)
+- **CLEANED**: Deleted dead code methods (_calculate_accuracy_score, _calculate_precision_score, _calculate_time_score_for_ranking)
+- **NEW SYSTEM**: Pure SDL relative normalization with population standard deviations
+- **BENEFIT**: Single consistent scoring methodology across display and selection
+- **METHOD**: Normalizes each metric by standard deviation across all trials × 100
+- **WEIGHTS**: Same weights (0.4 accuracy, 0.5 precision, 0.1 time) with superior normalization
+- **IMPACT**: Time outliers properly penalized, competitive context-aware scoring
+- **USER INSIGHT**: "I think I intended to always use this system - the other system doesn't sound like one I would have used"
+
+## [CRITICAL SELECTION BUG FIX] - 2026-04-21
+
+### FIXED: Inconsistent Trial Selection Scoring
+- **ISSUE**: Composite scores calculated at different times during experiment were incomparable
+- **PROBLEM**: Trial selection used stale scores from different contexts, causing wrong "optimal" parameters 
+- **SOLUTION**: Modified `find_best_trials()` to recalculate all scores with same baseline for fair comparison
+- **IMPACT**: Trial selection now matches SDL ranking display - consistent and reliable results
+- **LOGGING**: Added extensive logging to show score recalculation and final ranking (ASCII-only)
+- **SAFETY**: Created backup before changes, minimal code modification with easy reversion
+- **VERIFIED**: Fix confirmed working - selection now matches display ranking consistently
+
+## [MASTER DATASET CREATOR] - 2026-04-20
+
+### NEW FEATURE: Comprehensive Data Compilation System
+- **ADDED**: `create_master_dataset.py` - Consolidates ALL calibration and validation data
+- **FEATURES**: Automatically detects calibration vs validation experiments  
+- **SMART FILTERING**: Skips simulated data by checking config files
+- **COMPREHENSIVE**: Combines raw measurements, trials, and optimal conditions
+- **EXPORTS**: Creates master_measurements.csv, master_trials.csv, master_optimal_conditions.csv
+- **REPORTING**: Generates detailed compilation report with statistics
+
+### CLEANUP: Unused File Identification
+- **IDENTIFIED**: 10 unused Python files safe for deletion:
+  - Standalone utilities: batch_calibration_automation.py, fix_external_data.py, etc.
+  - Unused protocols: calibration_protocol_heated.py, calibration_protocol_reservoir.py
+  - Legacy scripts: post_optimization_dashboard.py, shap_analyzer.py
+- **ACTIVE SYSTEM**: 20 Python files actively used by main calibration system
+
+## [EXTERNAL DATA PARAMETER COMPATIBILITY] - 2026-04-20
+
+### FIXED: External Data System Parameter Alignment
+- **FIXED**: Removed unused `trial_id` parameter from `_convert_measurements_to_trial()` method
+- **ALIGNED**: External data loading system now fully compatible with TrialResult constructor
+- **RESULT**: Manual calibration measurements can now compete with optimization trials in Ax
+
+## [CALIBRATION GUI ENVIRONMENTAL MONITORING] - 2026-04-13
+
+### NEW FEATURE: Real-Time Environmental Conditions Display
+- **ADDED**: Environmental monitoring widget to right panel utilizing unused space
+- **MONITORS**: Temperature (°C), Humidity (%), Pressure (Pa) from MQTT sensor log
+- **DATA SOURCE**: Reads from `C:\Users\Imaging Controller\Desktop\m5stack\mqtt_log.csv` 
+- **AUTO-UPDATE**: Refreshes every 30 seconds to show current conditions
+- **COLOR CODING**: 
+  - 🟢 Green: Fresh data (< 10 minutes old)
+  - 🟠 Orange: Stale data (10-60 minutes old)  
+  - 🔴 Red: Very stale data (> 1 hour old)
+- **ROBUST ERROR HANDLING**: Gracefully handles missing files, empty data, or pandas unavailability
+- **TIMESTAMP DISPLAY**: Shows last reading time and age (e.g., "14:23:45 (3m ago)")
+- **BASED ON**: Environmental monitoring code from `workflows/glycerol_dispense_baseline.py`
+- **BENEFIT**: Monitor lab conditions affecting pipetting accuracy during calibration sessions
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - new environmental monitoring section
+
+## [CALIBRATION GUI PARAMETER CLEANUP] - 2026-04-13
+
+### Parameter Corrections and Removal  
+- **REMOVED**: `asp_disp_cycles` from default parameters (cleaned up unnecessary parameter)
+- **FIXED**: Speed scale warning now only appears for `aspirate_speed` and `dispense_speed` 
+- **CORRECTED**: Removed incorrect speed inversion warning from `retract_speed` (retract speed is normal scale)
+- **TECHNICAL**: Changed condition from `'speed' in name` to specific parameter names for accuracy
+- **BENEFIT**: Cleaner parameter list and correct speed guidance  
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 81, 177-179
+
+## [CALIBRATION GUI PARAMETERS SECTION FIX] - 2026-04-13
+
+### FIXED: Parameters Section Now Uses All Available Space
+- **REMOVED**: Maximum height constraint (650px) on parameters scroll area that was causing clipping
+- **REMOVED**: `addStretch()` at bottom of layout that prevented parameters section expansion  
+- **RESULT**: Parameters section now expands to fill available vertical space automatically
+- **BENEFIT**: No more scrolling needed - all parameters visible without clipping
+- **TECHNICAL**: Layout now properly distributes available space instead of forcing fixed constraints
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 831, 892
+
+## [CALIBRATION GUI UI POLISH] - 2026-04-13
+
+### UI Improvements: Cleaner Button Text and Better Parameter Visibility
+- **SIMPLIFIED**: Changed "CLEANUP & HOME" button to just "CLEANUP" for cleaner interface
+- **EXPANDED**: Increased parameters scroll area height from 400px to 650px  
+- **BENEFIT**: All default parameters now visible without scrolling for better user experience
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 831, 854
+
+## [CALIBRATION GUI BUG FIXES & CLEAN VISUALIZATION] - 2026-04-13
+
+### CRITICAL FIX: Cleanup Button Now Actually Works  
+- **FIXED**: Cleanup button was calling nonexistent `cleanup()` method instead of `wrapup()`
+- **NOW WORKS**: Robot properly removes pipet tip, returns vials home, and moves to safe position  
+- **BEHAVIOR**: Should now see actual robot movement during cleanup operation
+- **TECHNICAL**: Changed `protocol.cleanup()` → `protocol.wrapup()` to match actual method name
+
+### UX: Simplified Individual Measurements Plot  
+- **REMOVED**: Yellow accuracy/precision info box (too busy/overwhelming)
+- **REMOVED**: Individual point labels (R1, R2, etc.) that cluttered the visualization
+- **KEPT**: Color-coded dots, target line, mean line, and standard deviation shading
+- **RESULT**: Much cleaner, less busy visualization that focuses on the data patterns
+- **BENEFIT**: Easier to quickly assess measurement scatter and accuracy at a glance
+
+## [CALIBRATION GUI WORKFLOW EFFICIENCY] - 2026-04-13
+
+### MAJOR: Separated Robot Initialization and Cleanup for Efficient Testing  
+- **ADDED**: "INITIALIZE ROBOT" button for one-time homing and setup at session start
+- **ADDED**: "CLEANUP & HOME" button for explicit vial return and protocol cleanup  
+- **REMOVED**: Auto-homing on every measurement (major speed improvement)
+- **ENHANCED WORKFLOW**: Initialize once → Run multiple measurements → Cleanup when done
+- **PERSISTENT PROTOCOL**: Reuses initialized protocol state between measurements for efficiency
+- **UI STATE MANAGEMENT**:
+  - MEASURE button disabled until robot initialized 
+  - CLEANUP enabled only after successful initialization
+  - Clear tooltips and status messages for user guidance
+- **ERROR HANDLING**: Proper cleanup even if protocol cleanup fails
+- **TECHNICAL**: Modified MeasurementWorker to accept existing protocol instead of creating new instances
+- **BENEFIT**: Dramatically faster parameter testing workflow - no re-homing between measurements
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - major refactoring of measurement workflow
+
+## [CALIBRATION GUI STRIP PLOT VISUALIZATION] - 2026-04-13
+
+### UX: Replaced Histogram with Individual Measurement Strip Plot  
+- **FIXED**: Histogram showing "big blue rectangle" due to uniform bar heights with small sample sizes
+- **NEW VISUALIZATION**: Strip plot showing each replicate as individual colored dots with jitter to prevent overlap
+- **ENHANCED FEATURES**: 
+  - Individual measurement labels (R1, R2, etc.) with exact values
+  - Color-coded points using Set3 colormap for visual distinction
+  - Standard deviation shading (±1σ) around mean for precision visualization
+  - Accuracy/precision statistics box in plot corner
+  - Clean horizontal layout with only x-axis grid (y-axis hidden as meaningless)
+- **IMPROVED CLARITY**: Users can now clearly see each individual measurement value and scatter
+- **TECHNICAL**: Renamed from `volume_histogram_plot` → `volume_replicate_plot` with new methods
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` - plot methods completely rewritten
+
+## [CALIBRATION GUI UX IMPROVEMENTS] - 2026-04-13
+
+### UI/UX: Enhanced Calibration Test GUI Parameter Controls
+- **FIXED**: Made Min/Max fields read-only reference displays instead of editable spinboxes  
+- **ADDED**: Visual speed scale reminder "⚠ Speed Scale: 1 = Fast, 40 = Slow" for speed parameters
+- **IMPROVED**: Changed parameter layout from horizontal to vertical to accommodate speed hints
+- **STYLING**: Added light gray background and borders to min/max display fields for visual consistency
+- **LOGIC**: Updated get_values() method to return original config min/max since fields are now read-only
+- **FILES AFFECTED**: `calibration_modular_v2/calibration_test_gui.py` lines 126-180
+
 ## [SUBSTOCK REFILL IN ITERATION LOOP] - 2026-04-10
 
 ### Feature: Substock refilling before each iterative round

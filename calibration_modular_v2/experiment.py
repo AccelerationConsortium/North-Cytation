@@ -260,8 +260,16 @@ class CalibrationExperiment:
                 param_fieldnames = sorted(protocol_params.keys())  # Sort for consistent column order
                 param_dict = protocol_params
             
-            # Combine all fieldnames
-            fieldnames = base_fieldnames + param_fieldnames
+            # CRITICAL FIX: Always include ALL possible parameter columns in header
+            # This prevents column mismatch when different trials have different parameter sets
+            all_possible_params = [
+                'aspirate_speed', 'aspirate_wait_time', 'blowout_vol', 'dispense_speed', 
+                'dispense_wait_time', 'overaspirate_vol', 'post_asp_air_vol', 
+                'post_retract_wait_time', 'pre_asp_air_vol', 'retract_speed'
+            ]
+            
+            # Use all possible params for fieldnames, actual params for data
+            fieldnames = base_fieldnames + all_possible_params
             
             with open(emergency_file, 'a', newline='') as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -273,7 +281,7 @@ class CalibrationExperiment:
                 measured_ml = measurement.measured_volume_ml
                 deviation_pct = abs((measured_ml - target_volume_ml) / target_volume_ml) * 100
                 
-                # Build row data
+                # Build row data - ensure all parameter columns have values
                 row_data = {
                     'timestamp': measurement.timestamp,
                     'target_volume_ml': target_volume_ml,
@@ -283,8 +291,11 @@ class CalibrationExperiment:
                     'duration_s': measurement.duration_s,
                     'strategy': strategy,
                     'total_measurement_count': self.total_measurements,
-                    **param_dict  # Spread parameter values dynamically
                 }
+                
+                # Add parameter values (use 0.0 for missing params)
+                for param_name in all_possible_params:
+                    row_data[param_name] = param_dict.get(param_name, 0.0)
                 
                 writer.writerow(row_data)
                 
@@ -300,12 +311,18 @@ class CalibrationExperiment:
         
         # Create status indicator
         status = "PASS" if quality.overall_quality == "within_tolerance" else "FAIL"
+        status_icon = "[PASS]" if status == "PASS" else "[FAIL]"
         
-        logger.info(f"=== TRIAL {trial_id} RESULT: {status} ===")
-        logger.info(f"  Accuracy: {analysis.absolute_deviation_pct:.1f}% dev (limit: {quality.accuracy_tolerance_ul:.1f}uL)")
-        logger.info(f"  Precision: {analysis.cv_volume_pct:.1f}% CV (limit: <={quality.precision_tolerance_pct:.1f}%)")
-        logger.info(f"  Quality: {quality.overall_quality} | Score: {trial_result.composite_score:.1f}")
-        logger.info(f"===============================")
+        logger.info("")
+        logger.info(f"{'='*60}")
+        logger.info(f"  {status_icon} TRIAL {trial_id} RESULT: {status}")
+        logger.info(f"{'='*60}")
+        logger.info(f"  [ACCURACY] Accuracy: {analysis.absolute_deviation_pct:.1f}% dev (limit: {quality.accuracy_tolerance_ul:.1f}uL)")
+        logger.info(f"  [PRECISION] Precision: {analysis.cv_volume_pct:.1f}% CV (limit: <={quality.precision_tolerance_pct:.1f}%)")
+        logger.info(f"  [TIME] Time: {analysis.mean_duration_s:.1f}s avg")
+        logger.info(f"  [QUALITY] Quality: {quality.overall_quality} | Score: {trial_result.composite_score:.1f}")
+        logger.info(f"{'='*60}")
+        logger.info("")
 
     def _run_optimization_loop(self, target_volume_ml: float, max_measurements: int, 
                               strategy_name: str, param_generation_func) -> List[TrialResult]:
@@ -373,18 +390,20 @@ class CalibrationExperiment:
         avg_time_s = trial_result.analysis.mean_duration_s
         min_good_trials = self.config.get_min_good_trials()
         
-        # Calculate measurement breakdowns
+        # Progress toward goal
+        progress_pct = (good_trials_count / min_good_trials) * 100
+        logger.info(f"[PROGRESS] Progress: {good_trials_count}/{min_good_trials} good trials ({progress_pct:.0f}% complete)")
+        
+        # Detailed breakdown (moved to debug level to reduce verbosity)
         trial_replicates = len(trial_result.measurements)
         volume_measurements_used = sum(len(trial.measurements) for trial in self.all_trials 
                                      if hasattr(trial, 'measurements'))
         total_experiment_budget = self.config.get_max_total_measurements()
         
-        # Progress toward goal
-        progress_pct = (good_trials_count / min_good_trials) * 100
-        logger.info(f"Trial {iteration + 1}: deviation={deviation_pct:.1f}%, good_trials={good_trials_count}/{min_good_trials} ({progress_pct:.0f}%)")
-        logger.info(f"{strategy_name} trial {iteration + 1}: "
+        logger.debug(f"Trial {iteration + 1}: deviation={deviation_pct:.1f}%, good_trials={good_trials_count}/{min_good_trials}")
+        logger.debug(f"{strategy_name} trial {iteration + 1}: "
                    f"{avg_volume_ul:.1f}uL measured ({deviation_pct:.1f}% dev, {avg_time_s:.1f}s)")
-        logger.info(f"Measurements: {trial_replicates} replicates this trial, "
+        logger.debug(f"Measurements: {trial_replicates} replicates this trial, "
                    f"volume: {volume_measurements_used}/{max_measurements}, "
                    f"experiment: {self.total_measurements}/{total_experiment_budget}")
 
@@ -797,6 +816,7 @@ class CalibrationExperiment:
                                f"{optimization_best[0].analysis.cv_volume_pct:.1f}% CV")
         else:
             # Standard analysis for failed inherited trial or when no inherited trial
+            logger.info("[SELECTION] Finding best trials using SDL scoring methodology...")
             best_trials = self.analyzer.find_best_trials(all_volume_trials, max_results=5)
             
             # Fallback: if no trials meet the >=2 measurement criteria, rank by accuracy
@@ -865,9 +885,21 @@ class CalibrationExperiment:
             
             if external_trials:
                 logger.info(f"Generated {len(external_trials)} trials from external data")
-                # Add measurement count for budget tracking
+                
+                # CRITICAL: Save external measurements to raw_measurements.csv (like SOBOL does)
+                total_external_measurements = 0
                 for trial in external_trials:
+                    for measurement in trial.measurements:
+                        # Save each measurement immediately to CSV (same as SOBOL trials)
+                        self._save_measurement_immediately(
+                            measurement, target_volume_ml, "screening", measurement.parameters
+                        )
+                        total_external_measurements += 1
+                    
+                    # Add measurement count for budget tracking
                     self.total_measurements += len(trial.measurements)
+                
+                logger.info(f"Saved {total_external_measurements} external measurements to raw_measurements.csv")
                 return external_trials
             else:
                 logger.warning("External data available but no suitable trials generated, falling back to normal screening")
@@ -927,10 +959,18 @@ class CalibrationExperiment:
             screening_trials = self.config.get_screening_trials()
             # Use fixed parameters from config during screening phase
             fixed_params = dict(self.config.get_fixed_parameters())
+            
+            # Use config backend for screening optimizer too
+            try:
+                backend = self.config.get_optimizer_backend()
+                screening_optimizer_type = OptimizerType.GPEI if backend == "GPEI" else OptimizerType.MOO if backend == "MOO" else OptimizerType.MULTI_OBJECTIVE
+            except:
+                screening_optimizer_type = OptimizerType.MULTI_OBJECTIVE
+                
             self._screening_optimizer = create_optimizer(
                 self.config, 
                 target_volume_ml, 
-                optimizer_type=OptimizerType.MULTI_OBJECTIVE,
+                optimizer_type=screening_optimizer_type,
                 fixed_params=fixed_params,  # Use config fixed parameters instead of None
                 volume_dependent_only=False,
                 num_sobol_trials=screening_trials,  # 5 SOBOL trials for screening
@@ -938,6 +978,9 @@ class CalibrationExperiment:
             )
             logger.info(f"Created SOBOL optimizer for screening phase ({screening_trials} trials)")
             logger.info(f"Applied fixed parameters during screening: {fixed_params}")
+            
+            # Set CSV export directory for Ax trials logging
+            self._screening_optimizer.set_csv_export_directory(self.output_dir)
         
         # Get SOBOL parameter suggestion
         parameters = self._screening_optimizer.suggest_parameters()
@@ -947,6 +990,65 @@ class CalibrationExperiment:
         constrained_params = self.config.apply_volume_constraints(parameters, target_volume_ml)
         
         return constrained_params
+    
+    def _generate_optimization_parameters(self, target_volume_ml: float, iteration: int, optimizer, 
+                                        previous_trials: List[TrialResult] = None) -> PipettingParameters:
+        """Generate optimization parameters using LLM suggestions or Bayesian optimizer."""
+        
+        # Check if LLM optimization is enabled
+        llm_enabled = self.config.is_llm_optimization_enabled()
+        logger.info(f"[DEBUG] LLM optimization enabled check: {llm_enabled}")
+        if llm_enabled:
+            llm_config_path = self.config.get_llm_config_path()
+            logger.info(f"[DEBUG] LLM config path: {llm_config_path}")
+            if llm_config_path:
+                try:
+                    from llm_recommender import LLMRecommender
+                    llm_recommender = LLMRecommender(self.config, llm_config_path, phase="optimization")
+                    
+                    # For optimization phase, pass previous trial results for context using new API
+                    parameters = llm_recommender.suggest_parameters(
+                        1,  # n_suggestions_or_volume
+                        previous_trials or []  # previous_results_or_trial
+                    )
+                    # New API returns list, so get first element
+                    if isinstance(parameters, list):
+                        parameters = parameters[0] if parameters else None
+                    
+                    if parameters is None:
+                        raise RuntimeError("LLM failed to generate optimization parameters")
+                    logger.info(f"Using LLM-generated parameters for optimization trial {iteration}")
+                    return self.config.apply_volume_constraints(parameters, target_volume_ml)
+                except ImportError:
+                    logger.error("ERROR: LLM OPTIMIZATION FAILURE: LLM recommender module not available")
+                    logger.error("   You requested LLM optimization but llm_recommender.py cannot be imported")
+                    logger.error("   This means LLM optimization is NOT working as requested")
+                    print("\n" + "="*80)
+                    print("CRITICAL: LLM OPTIMIZATION FAILED - IMPORT ERROR")
+                    print("You enabled LLM optimization but the LLM module is not available.")
+                    print("Either fix the LLM setup or disable LLM optimization in config.")
+                    print("="*80)
+                    input("Press Enter to continue with Bayesian optimization (or Ctrl+C to stop)...")
+                    logger.warning("User chose to continue - falling back to Bayesian optimizer")
+                except Exception as e:
+                    logger.error(f"ERROR: LLM OPTIMIZATION FAILURE: {e}")
+                    logger.error("   You requested LLM optimization but it failed to generate parameters")
+                    logger.error("   This means LLM optimization is NOT working as requested")
+                    print("\n" + "="*80)
+                    print("CRITICAL: LLM OPTIMIZATION FAILED - RUNTIME ERROR")
+                    print(f"Error: {e}")
+                    print("You enabled LLM optimization but it failed to work properly.")
+                    print("Either fix the LLM issue or disable LLM optimization in config.")
+                    print("="*80)
+                    input("Press Enter to continue with Bayesian optimization (or Ctrl+C to stop)...")
+                    logger.warning("User chose to continue - falling back to Bayesian optimizer")
+        
+        # Fallback to Bayesian optimizer (existing behavior)
+        try:
+            return optimizer.suggest_parameters()
+        except Exception as e:
+            logger.error(f"Bayesian optimizer failed: {e}")
+            raise
     
     def _generate_parameters_from_config(self, target_volume_ml: float) -> PipettingParameters:
         """Generate parameters using config-driven names - hardware agnostic."""
@@ -1036,8 +1138,20 @@ class CalibrationExperiment:
                 else:
                     logger.info("GOOD: overaspirate_vol correctly NOT being fixed by transfer learning")
         
-        # Create optimizer with volume-dependent stopping criteria
-        optimizer_type = OptimizerType.MULTI_OBJECTIVE if is_first_volume else OptimizerType.SINGLE_OBJECTIVE
+        # Create optimizer type based on config backends
+        try:
+            backend = self.config.get_optimizer_backend() if is_first_volume else self.config.get_optimizer_backend_subsequent()
+            if backend == "GPEI":
+                optimizer_type = OptimizerType.GPEI
+            elif backend == "MOO":
+                optimizer_type = OptimizerType.MOO
+            else:
+                # Fallback to old behavior
+                optimizer_type = OptimizerType.MULTI_OBJECTIVE if is_first_volume else OptimizerType.SINGLE_OBJECTIVE
+        except:
+            # Fallback to old behavior if config methods don't exist
+            optimizer_type = OptimizerType.MULTI_OBJECTIVE if is_first_volume else OptimizerType.SINGLE_OBJECTIVE
+        
         min_good_trials = self.config.get_min_good_trials() if is_first_volume else 1
         
         try:
@@ -1050,8 +1164,12 @@ class CalibrationExperiment:
                 constraint_updates=[constraint_update] if constraint_update else None,
                 num_sobol_trials=0,  # 0 SOBOL trials - go straight to Bayesian optimization
                 protocol_instance=self.protocol_module,  # Pass protocol for constraints
-                min_good_trials=min_good_trials  # Volume-dependent stopping criteria
+                min_good_trials=min_good_trials,  # Volume-dependent stopping criteria
+                is_first_volume=is_first_volume  # Pass first volume flag for backend selection
             )
+            
+            # Set CSV export directory for Ax trials logging
+            optimizer.set_csv_export_directory(self.output_dir)
             
             logger.info(f"Created {optimizer_type.value} optimizer for volume {target_volume_ml*1000:.0f}uL")
             logger.info(f"Stopping criteria: {min_good_trials} good trial(s) for {'first' if is_first_volume else 'subsequent'} volume")
@@ -1102,7 +1220,12 @@ class CalibrationExperiment:
         iteration = 0
         while not optimizer.is_converged() and current_volume_measurements < volume_budget:
             iteration += 1
-            logger.info(f"Optimization iteration {iteration}")
+            
+            # === TRIAL SEPARATOR ===
+            logger.info("")
+            logger.info(f"{'='*60}")
+            logger.info(f"  OPTIMIZATION TRIAL {iteration} - Volume {target_volume_ml*1000:.0f}uL")
+            logger.info(f"{'='*60}")
             
             # Check volume budget
             remaining_budget = volume_budget - current_volume_measurements
@@ -1110,35 +1233,77 @@ class CalibrationExperiment:
                 logger.info(f"Insufficient volume budget remaining ({remaining_budget}) - stopping optimization")
                 break
             
-            # Get parameter suggestion from optimizer
+            # Get parameter suggestion from optimizer or LLM
             try:
-                suggested_params = optimizer.suggest_parameters()
-                logger.info(f"Generated parameter suggestion from Ax optimizer")
+                logger.info("[OPTIMIZER] GETTING PARAMETER SUGGESTION...")
+                
+                # Collect ALL available trial data for LLM context
+                all_available_trials = []
+                all_available_trials.extend(screening_trials)  # External data trials
+                if inherited_trial:
+                    all_available_trials.append(inherited_trial)  # Previous volume trial
+                if hasattr(self, '_current_two_point_trials') and self._current_two_point_trials:
+                    all_available_trials.extend(self._current_two_point_trials)  # Two-point calibration trials  
+                all_available_trials.extend(optimization_trials)  # Current optimization trials
+                
+                logger.info(f"[LLM CONTEXT] Providing {len(all_available_trials)} total trials:")
+                logger.info(f"  - Screening trials: {len(screening_trials)}")
+                logger.info(f"  - Inherited trial: {1 if inherited_trial else 0}")
+                logger.info(f"  - Two-point trials: {len(getattr(self, '_current_two_point_trials', []))}")
+                logger.info(f"  - Optimization trials: {len(optimization_trials)}")
+                
+                # Use new method that handles both LLM and Bayesian optimization
+                suggested_params = self._generate_optimization_parameters(
+                    target_volume_ml=target_volume_ml,
+                    iteration=iteration,
+                    optimizer=optimizer,
+                    previous_trials=all_available_trials  # Just pass the trials directly
+                )
+                logger.info("[SUCCESS] GOT PARAMETER SUGGESTION:")
             except Exception as e:
-                logger.error(f"Failed to get suggestion from optimizer: {e}")
+                logger.error(f"Failed to get suggestion from parameter generator: {e}")
                 break
             
             # Run adaptive measurement
             try:
+                # Determine if this was LLM-generated or Bayesian-generated
+                if self.config.is_llm_optimization_enabled():
+                    trial_source = "LLM_OPT"
+                    strategy_label = "llm_optimization"
+                else:
+                    trial_source = "BAYESIAN_OPT"
+                    strategy_label = "optimization"
+                
                 trial = self._execute_trial(
                     parameters=suggested_params,
                     target_volume_ml=target_volume_ml,
-                    trial_id=f"BAYESIAN_OPT_{iteration}",
-                    strategy="optimization",
+                    trial_id=f"{trial_source}_{iteration}",
+                    strategy=strategy_label,  # This goes into CSV files
                     liquid=self.config.get_liquid_name()
                 )
                 
                 optimization_trials.append(trial)
                 current_volume_measurements += len(trial.measurements)
                 
-                # Update optimizer with result
-                objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
-                
                 # Check if trial is successful using the standard method
                 is_successful = self._is_trial_successful(trial, target_volume_ml)
                 
-                optimizer.update_with_result(trial.parameters, objectives, len(trial.measurements), 
-                                           is_successful=is_successful)
+                # Only update Bayesian optimizer if it generated the parameters
+                # LLM-generated parameters should not be fed back to Bayesian optimizer
+                if not self.config.is_llm_optimization_enabled():
+                    # Update optimizer with result
+                    objectives = OptimizationObjectives.from_adaptive_result(trial.analysis)
+                    
+                    logger.info("")
+                    logger.info("[UPDATE] UPDATING OPTIMIZER WITH RESULTS...")
+                    optimizer.update_with_result(trial.parameters, objectives, len(trial.measurements), 
+                                               is_successful=is_successful)
+                    logger.info(f"[COMPLETE] TRIAL {iteration} COMPLETE - {'SUCCESS' if is_successful else 'FAILED'}")
+                else:
+                    logger.info("")
+                    logger.info("[LLM MODE] SKIPPING OPTIMIZER UPDATE (LLM-generated parameters)")
+                    logger.info(f"[COMPLETE] LLM TRIAL {iteration} COMPLETE - {'SUCCESS' if is_successful else 'FAILED'}")
+                logger.info("")
                 
                 # Log progress
                 summary = optimizer.get_summary()
@@ -1484,10 +1649,20 @@ class CalibrationExperiment:
         if not trial or not trial.analysis:
             return False
         
-        # Exclude single-measurement trials (0.0% CV is meaningless for precision assessment)
-        if len(trial.measurements) < 2:  # Need at least 2 measurements for meaningful precision
-            logger.info(f"[EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)")
-            return False
+        # Exclude single-measurement trials UNLESS they're external data with real precision values
+        if len(trial.measurements) < 2:
+            # Check if this is external data with meaningful precision from original experiment
+            is_external_data = (trial.measurements and 
+                              trial.measurements[0].metadata and 
+                              trial.measurements[0].metadata.get('source') == 'external_data')
+            
+            has_real_precision = trial.analysis.cv_volume_pct > 0.01  # Has non-zero precision
+            
+            if not (is_external_data and has_real_precision):
+                logger.info(f"[EXCLUDED] Single-measurement trial cannot be considered successful (meaningless precision)")
+                return False
+            else:
+                logger.info(f"[INCLUDED] External data trial with real precision: {trial.analysis.cv_volume_pct:.3f}% CV")
             
         # Get tolerance for this volume
         tolerances = self.config.calculate_tolerances_for_volume(target_volume_ml)
@@ -1551,12 +1726,16 @@ class CalibrationExperiment:
             # Analyze current measurements
             trial_result = self.analyzer.analyze_trial(measurements, target_volume_ml, strategy, liquid)
             
+            # Get the actual configured threshold for accurate logging
+            adaptive_config = self.config.get_adaptive_measurement_config()
+            deviation_threshold_pct = adaptive_config.get('deviation_threshold_pct', 10.0)
+            
             if not trial_result.needs_additional_replicates:
-                logger.info(f"No more replicates needed - deviation {trial_result.analysis.absolute_deviation_pct:.1f}% > 10% threshold or max replicates reached")
+                logger.info(f"No more replicates needed - deviation {trial_result.analysis.absolute_deviation_pct:.1f}% > {deviation_threshold_pct}% threshold or max replicates reached")
                 break
             
             # Log why we're adding another replicate
-            logger.info(f"Adding replicate {len(measurements)+1} - deviation {trial_result.analysis.absolute_deviation_pct:.1f}% <= 10% threshold (good accuracy, worth optimizing)")
+            logger.info(f"Adding replicate {len(measurements)+1} - deviation {trial_result.analysis.absolute_deviation_pct:.1f}% <= {deviation_threshold_pct}% threshold (good accuracy, worth optimizing)")
             
             # Check budget
             if self.total_measurements >= self.config.get_max_total_measurements():
@@ -1702,9 +1881,17 @@ class CalibrationExperiment:
                 }
                 trial_results.append(trial_dict)
                 
-                # Add raw measurements
+                # Add raw measurements (include external data with clean IDs)
                 for measurement in trial.measurements:
                     measurement_dict = asdict(measurement)
+                    
+                    # Clean up external data measurement IDs 
+                    if (measurement.metadata and 
+                        measurement.metadata.get('source') == 'external_data' and
+                        '|' in measurement.measurement_id):
+                        # Replace complex parameter signature with simple external ID
+                        measurement_dict['measurement_id'] = f"external_{trial_counter}_{measurement.replicate_id}"
+                        
                     measurement_dict['trial_id'] = f"trial_{trial_counter}"
                     measurement_dict['strategy'] = trial.strategy
                     measurement_dict['liquid'] = trial.liquid

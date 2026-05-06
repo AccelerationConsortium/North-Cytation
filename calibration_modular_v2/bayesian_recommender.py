@@ -14,6 +14,8 @@ Key Features:
 
 import numpy as np
 import logging
+import os
+import pandas as pd
 from typing import Dict, List, Optional, Tuple, Any
 
 # Handle both relative and absolute imports
@@ -56,6 +58,17 @@ except ImportError as e:
     GenerationStep, GenerationStrategy, Models = None, None, None
     AX_AVAILABLE = False
 
+# Import BoTorch acquisition functions for direct control (restored old system)
+try:
+    from botorch.acquisition.logei import qLogExpectedImprovement
+    from botorch.acquisition.multi_objective.monte_carlo import qNoisyExpectedHypervolumeImprovement
+    from botorch.acquisition.monte_carlo import qExpectedImprovement
+    BOTORCH_ACQF_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"BoTorch acquisition functions not available: {e}")
+    qLogExpectedImprovement, qNoisyExpectedHypervolumeImprovement, qExpectedImprovement = None, None, None
+    BOTORCH_ACQF_AVAILABLE = False
+
 
 class AxBayesianOptimizer:
     """
@@ -63,12 +76,18 @@ class AxBayesianOptimizer:
     
     Handles both multi-objective (first volume) and single-objective (subsequent volumes)
     optimization with proper parameter constraints and transfer learning.
+    
+    Supports both direct acquisition function control (qNEHVI, qLogEI, qEI) and 
+    high-level abstractions (GPEI, MOO) via backend configuration.
     """
     
-    def __init__(self, config: OptimizationConfig):
+    def __init__(self, config: OptimizationConfig, is_first_volume: bool = True):
         """Initialize optimizer with configuration."""
         self.config = config
+        self.is_first_volume = is_first_volume
         self.state = OptimizationState()
+        self.csv_export_dir = None  # Set during optimization to export Ax trials
+        self.optimizer_insights = {}  # Store acquisition values and model predictions per trial
         
         if not AX_AVAILABLE:
             raise RuntimeError("Ax not available - cannot initialize Bayesian optimizer")
@@ -76,9 +95,9 @@ class AxBayesianOptimizer:
         # Create Ax client
         self._create_ax_client()
         
-        logger.info(f"Initialized {config.optimizer_type.value} optimizer")
-        logger.info(f"Optimizing: {self._get_optimize_params()}")
-        logger.info(f"Fixed: {config.constraints.fixed_parameters}")
+        logger.info(f"[OPTIMIZER] Initialized {config.optimizer_type.value} optimizer")
+        logger.debug(f"Optimizing: {self._get_optimize_params()}")
+        logger.debug(f"Fixed: {config.constraints.fixed_parameters}")
     
     def _get_optimize_params(self) -> List[str]:
         """Get list of parameters to optimize."""
@@ -208,11 +227,11 @@ class AxBayesianOptimizer:
             # No config constraints defined, that's fine
             pass
         
-        # Summary logging
+        # Summary logging (reduced verbosity)
         if constraint_list:
-            logger.info(f"TOTAL CONSTRAINTS TO PASS TO AX: {len(constraint_list)}")
+            logger.debug(f"TOTAL CONSTRAINTS TO PASS TO AX: {len(constraint_list)}")
             for i, constraint in enumerate(constraint_list, 1):
-                logger.info(f"    {i}. {constraint}")
+                logger.debug(f"    {i}. {constraint}")
         else:
             logger.warning(f"⚠️  NO CONSTRAINTS FOUND - Ax will use unconstrained optimization!")
         
@@ -346,16 +365,81 @@ class AxBayesianOptimizer:
         # If we can't simplify, return as-is
         return constraint
     
+    def _get_model_and_kwargs(self, backend: str) -> Tuple[Any, Dict]:
+        """Map backend config to Ax model and generation kwargs.
+        
+        Supports both systems:
+        - Direct acquisition function control (old system): qNEHVI, qLogEI, qEI
+        - High-level abstractions (current system): GPEI, MOO
+        """
+        if not BOTORCH_ACQF_AVAILABLE and backend in ["qNEHVI", "qLogEI", "qEI"]:
+            logger.warning(f"Backend '{backend}' requires BoTorch acquisition functions but they're not available. Falling back to GPEI.")
+            backend = "GPEI"
+        
+        # Direct acquisition function control (restored old system)
+        if backend == "qNEHVI":
+            return Models.BOTORCH_MODULAR, {
+                "botorch_acqf_class": qNoisyExpectedHypervolumeImprovement,
+                "deduplicate": True,
+            }
+        elif backend == "qLogEI":
+            return Models.BOTORCH_MODULAR, {
+                "botorch_acqf_class": qLogExpectedImprovement,
+                "deduplicate": True,
+            }
+        elif backend == "qEI":
+            return Models.BOTORCH_MODULAR, {
+                "botorch_acqf_class": qExpectedImprovement,
+                "deduplicate": True,
+            }
+        # High-level abstractions (current system)
+        elif backend == "GPEI":
+            return Models.GPEI, {}
+        elif backend == "MOO":
+            return Models.MOO, {}
+        else:
+            logger.warning(f"Unknown backend '{backend}', falling back to GPEI")
+            return Models.GPEI, {}
+    
     def _create_ax_client(self) -> None:
-        """Create Ax client with custom generation strategy (Ax 0.4.0 API pattern)."""
+        """Create Ax client with custom generation strategy supporting both old and new backend systems."""
         # Create custom generation strategy based on SOBOL trial count
         num_sobol_trials = self.config.num_initial_trials
         
-        # Choose appropriate model based on objective type
-        if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
-            bayesian_model = Models.MOO  # Multi-objective optimization (qNEHVI)
-        else:
-            bayesian_model = Models.GPEI  # Single-objective optimization
+        # Get backend configuration from config
+        try:
+            if self.config.experiment_config:
+                backend = (self.config.experiment_config.get_optimizer_backend() if self.is_first_volume 
+                          else self.config.experiment_config.get_optimizer_backend_subsequent())
+                logger.info(f"Using configured backend: '{backend}' (first_volume: {self.is_first_volume})")
+            else:
+                # Fallback to optimizer_type if no experiment_config
+                logger.warning("No experiment_config available, falling back to optimizer_type mapping")
+                if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
+                    backend = "MOO"
+                elif self.config.optimizer_type == OptimizerType.MOO:
+                    backend = "MOO"
+                elif self.config.optimizer_type == OptimizerType.GPEI:
+                    backend = "GPEI"
+                else:
+                    backend = "GPEI"
+        except Exception as e:
+            logger.warning(f"Failed to get backend from config ({e}), falling back to optimizer_type mapping")
+            if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
+                backend = "MOO"
+            elif self.config.optimizer_type == OptimizerType.MOO:
+                backend = "MOO"
+            elif self.config.optimizer_type == OptimizerType.GPEI:
+                backend = "GPEI"
+            else:
+                backend = "GPEI"
+        
+        # Get model and generation kwargs from backend configuration
+        bayesian_model, model_gen_kwargs = self._get_model_and_kwargs(backend)
+        logger.info(f"Mapped backend '{backend}' to model: {bayesian_model.__name__ if hasattr(bayesian_model, '__name__') else bayesian_model}")
+        if model_gen_kwargs:
+            acqf_name = model_gen_kwargs.get('botorch_acqf_class').__name__ if 'botorch_acqf_class' in model_gen_kwargs else 'default'
+            logger.info(f"Using acquisition function: {acqf_name}")
         
         if num_sobol_trials > 0:
             # Strategy with SOBOL followed by Bayesian (like existing working code)
@@ -367,8 +451,9 @@ class AxBayesianOptimizer:
                         min_trials_observed=num_sobol_trials,  # Wait for all SOBOL trials
                     ),
                     GenerationStep(
-                        model=bayesian_model,  # Correct model for objective type
+                        model=bayesian_model,  # Backend-determined model
                         num_trials=-1,  # Continue indefinitely
+                        model_gen_kwargs=model_gen_kwargs,  # Include acquisition function if specified
                     ),
                 ]
             )
@@ -377,8 +462,9 @@ class AxBayesianOptimizer:
             generation_strategy = GenerationStrategy(
                 steps=[
                     GenerationStep(
-                        model=bayesian_model,  # Correct model for objective type
+                        model=bayesian_model,  # Backend-determined model
                         num_trials=-1,  # Continue indefinitely
+                        model_gen_kwargs=model_gen_kwargs,  # Include acquisition function if specified
                     ),
                 ]
             )
@@ -386,14 +472,19 @@ class AxBayesianOptimizer:
         # Create Ax client with custom strategy
         ax_client = AxClient(
             generation_strategy=generation_strategy,
-            verbose_logging=False
+            verbose_logging=True  # 🔍 ENABLE AX DECISION LOGGING
         )
         
         # Create experiment
-        if self.config.optimizer_type == OptimizerType.MULTI_OBJECTIVE:
+        # Determine if this should be multi-objective based on backend
+        # qNEHVI is always multi-objective, MOO is multi-objective, others are single-objective unless configured otherwise
+        is_multi_objective = (backend in ["qNEHVI", "MOO"] or 
+                             self.config.optimizer_type in [OptimizerType.MULTI_OBJECTIVE, OptimizerType.MOO])
+        
+        if is_multi_objective:
             objectives = {
                 "deviation": ObjectiveProperties(minimize=True, threshold=50.0),
-                "variability": ObjectiveProperties(minimize=True, threshold=10.0), 
+                "variability": ObjectiveProperties(minimize=True, threshold=20.0), 
                 "time": ObjectiveProperties(minimize=True, threshold=90.0),
             }
         else:  # Single objective (accuracy only)
@@ -405,6 +496,7 @@ class AxBayesianOptimizer:
             parameters=self._get_parameter_bounds(),
             objectives=objectives,
             parameter_constraints=self._get_parameter_constraints(),
+            tracking_metric_names=["variability", "time"] if not is_multi_objective else [],
         )
         
         # DEBUG: Check what constraints Ax actually received
@@ -427,13 +519,13 @@ class AxBayesianOptimizer:
         params, trial_index = self.state.ax_client.get_next_trial()
         
         # DEBUG: Log raw Ax parameters before any processing
-        logger.info(f"RAW AX PARAMETERS: {params}")
+        logger.debug(f"RAW AX PARAMETERS: {params}")
 
         # Apply parameter rounding IMMEDIATELY to prevent floating-point precision issues
         params = self._apply_parameter_rounding(params)
         
         # DEBUG: Log parameters after rounding
-        logger.info(f"AFTER ROUNDING: {params}")
+        logger.debug(f"AFTER ROUNDING: {params}")
 
         # Check which generation method is being used (Ax 0.4.0 API)
         method = "Unknown"
@@ -461,16 +553,65 @@ class AxBayesianOptimizer:
                     else:
                         method = "Bayesian"
 
-        logger.info(f"Generated suggestion (trial {trial_index}) using {method}")
+        logger.debug(f"Generated suggestion (trial {trial_index}) using {method}")
+
+        # === OPTIMIZER INSIGHTS LOGGING ===
+        insights = {'trial_index': trial_index, 'generation_method': method}
+        
+        logger.info("")
+        logger.info(f"[INSIGHTS] OPTIMIZER DECISION INSIGHTS (Trial {trial_index}):")  
+        logger.info(f"  [METHOD] Method: {method}")
+        
+        try:
+            # Get the current trial object to extract decision insights
+            current_trial = self.state.ax_client.experiment.trials[trial_index]
+            
+            # Log acquisition function value (how "promising" Ax thinks this point is)
+            if hasattr(current_trial, 'generator_run') and current_trial.generator_run:
+                gr = current_trial.generator_run
+                if hasattr(gr, 'acquisition_function_values') and gr.acquisition_function_values:
+                    acq_val = gr.acquisition_function_values.get(0, "Unknown")
+                    logger.info(f"  [ACQ] Acquisition Value: {acq_val:.6f} (higher = more promising)")
+                    insights['acquisition_value'] = acq_val
+                else:
+                    logger.info(f"  [ACQ] Acquisition Value: Not available ({method} generation)")
+                
+            # Get model predictions for this point (what does the model think will happen?)
+            try:
+                predictions = self.state.ax_client.get_model_predictions_for_parameterizations([params])
+                if predictions and len(predictions) > 0:
+                    pred = predictions[0]
+                    logger.info("  [PRED] Model Predictions:")
+                    for metric, (mean, sem) in pred.items():
+                        uncertainty_pct = (sem / abs(mean) * 100) if mean != 0 else float('inf')
+                        logger.info(f"    - {metric}: {mean:.3f} +/- {sem:.3f} (uncertainty: {uncertainty_pct:.1f}%)")
+                        # Store for CSV
+                        insights[f'predicted_{metric}_mean'] = mean
+                        insights[f'predicted_{metric}_sem'] = sem
+                        insights[f'predicted_{metric}_uncertainty_pct'] = uncertainty_pct
+                else:
+                    logger.info("  [PRED] Model Predictions: Not available")
+                        
+            except Exception as e:
+                logger.debug(f"Could not get model predictions: {e}")
+                logger.info("  [PRED] Model Predictions: Error retrieving predictions")
+                
+        except Exception as e:
+            logger.debug(f"Could not extract optimizer insights: {e}")
+            
+        # Store insights for CSV export
+        self.optimizer_insights[trial_index] = insights
+        logger.info("") 
+        # === END OPTIMIZER INSIGHTS ===
 
         # Apply fixed parameters (now using clean rounded values)
         for param_name, fixed_value in self.config.constraints.fixed_parameters.items():
             if param_name in params:
-                logger.info(f"FIXING PARAMETER: {param_name} = {fixed_value} (was {params[param_name]})")
+                logger.debug(f"FIXING PARAMETER: {param_name} = {fixed_value} (was {params[param_name]})")
                 params[param_name] = fixed_value
                 
         # DEBUG: Log final parameters before creating PipettingParameters
-        logger.info(f"FINAL PARAMETERS: {params}")
+        logger.debug(f"FINAL PARAMETERS: {params}")
 
         # Create PipettingParameters from Ax suggestion
         pipetting_params = self._ax_params_to_pipetting_parameters(params)
@@ -506,7 +647,7 @@ class AxBayesianOptimizer:
         # Update state - use the success flag from experiment instead of _is_good_trial
         self.state.add_trial(trial, self.config, is_successful=is_successful)
         
-        logger.info(f"Updated with result: deviation={objectives.accuracy:.1f}%, trial={trial_index}")
+        logger.debug(f"Updated with result: deviation={objectives.accuracy:.1f}%, trial={trial_index}")
     
     def seed_with_historical_data(self, parameters: PipettingParameters, 
                                  objectives: OptimizationObjectives,
@@ -554,6 +695,12 @@ class AxBayesianOptimizer:
             trial_index=trial_index,
             raw_data=ax_objectives
         )
+        
+        # Export Ax trials to CSV if directory is set
+        self._export_ax_trials_if_enabled()
+        
+        # Export Ax trials to CSV if directory is set
+        self._export_ax_trials_if_enabled()
         
         # IMPORTANT: Also add to state for ranking (not just Ax training)
         # Create an optimization trial for the historical data
@@ -698,6 +845,65 @@ class AxBayesianOptimizer:
         except Exception as e:
             logger.error(f"   ❌ Error checking Ax constraints: {e}")
 
+    def set_csv_export_directory(self, output_dir: str):
+        """Set directory for exporting Ax trials CSV."""
+        self.csv_export_dir = output_dir
+        logger.info(f"Ax trials will be exported to: {output_dir}")
+    
+    def _export_ax_trials_if_enabled(self):
+        """Export enhanced Ax trials data with optimizer insights to CSV."""
+        if not self.csv_export_dir:
+            return
+            
+        try:
+            # Get basic trials data from Ax client
+            trials_df = self.state.ax_client.get_trials_data_frame()
+            
+            if trials_df.empty:
+                logger.debug("No Ax trials data to export yet")
+                return
+                
+            # Enhance with optimizer insights (acquisition values, model predictions)
+            if self.optimizer_insights:
+                # Convert insights dict to DataFrame
+                insights_rows = []
+                for trial_idx, insights in self.optimizer_insights.items():
+                    insights_rows.append(insights)
+                    
+                if insights_rows:
+                    insights_df = pd.DataFrame(insights_rows)
+                    
+                    # Merge with trials data on trial_index
+                    if 'trial_index' in trials_df.columns:
+                        enhanced_df = trials_df.merge(insights_df, on='trial_index', how='left')
+                    else:
+                        # If no trial_index column, add insights by position
+                        enhanced_df = trials_df.copy()
+                        for col in insights_df.columns:
+                            if col != 'trial_index':
+                                enhanced_df[col] = insights_df[col].reindex(enhanced_df.index)
+                    
+                    trials_df = enhanced_df
+                
+            # Ensure output directory exists
+            os.makedirs(self.csv_export_dir, exist_ok=True)
+            
+            # Export to CSV
+            csv_path = os.path.join(self.csv_export_dir, "ax_trials_data.csv")
+            trials_df.to_csv(csv_path, index=False)
+            
+            # Log what's being exported
+            insight_cols = [col for col in trials_df.columns if any(x in col for x in ['acquisition', 'predicted', 'generation_method', 'uncertainty'])]
+            if insight_cols:
+                logger.info(f"Exported {len(trials_df)} Ax trials to: ax_trials_data.csv (including insights: {', '.join(insight_cols[:5])}{'...' if len(insight_cols) > 5 else ''})")
+            else:
+                logger.info(f"Exported {len(trials_df)} Ax trials to: ax_trials_data.csv")
+            
+        except Exception as e:
+            logger.warning(f"Failed to export Ax trials CSV: {e}")
+            import traceback
+            logger.debug(f"CSV export traceback: {traceback.format_exc()}")
+
 
 # Factory function for creating optimizers
 def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
@@ -707,19 +913,22 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
                     constraint_updates: Optional[List['ConstraintBoundsUpdate']] = None,
                     num_sobol_trials: Optional[int] = None,
                     protocol_instance=None,
-                    min_good_trials: Optional[int] = None) -> AxBayesianOptimizer:
+                    min_good_trials: Optional[int] = None,
+                    is_first_volume: bool = True) -> AxBayesianOptimizer:
     """
     Create Bayesian optimizer with proper constraints.
     
     Args:
         config: Experiment configuration
         target_volume_ml: Target volume for optimization
-        optimizer_type: Type of optimizer to create
+        optimizer_type: Type of optimizer to create (fallback if backend not available)
         fixed_params: Parameters to keep fixed
         volume_dependent_only: If True, only optimize volume-dependent parameters
         constraint_updates: Optional constraint bounds updates from two-point calibration
         num_sobol_trials: Number of SOBOL trials (5 for screening, 0 for subsequent volumes)
         protocol_instance: Protocol instance for getting hardware constraints
+        min_good_trials: Minimum good trials required
+        is_first_volume: Whether this is for first volume (affects backend selection)
     """
     # Get default overaspirate bounds from config (not calculated)
     cal_bounds = config.get_calibration_parameter_bounds()
@@ -764,6 +973,9 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         # Default fallback (shouldn't happen in normal operation)
         sobol_count = 5 if not volume_dependent_only else 0
     
+    # Get objective thresholds from config
+    objective_thresholds = config.get_objective_thresholds()
+    
     # Create config
     optimization_config = OptimizationConfig(
         optimizer_type=optimizer_type,
@@ -773,10 +985,14 @@ def create_optimizer(config: ExperimentConfig, target_volume_ml: float,
         target_volume_ml=target_volume_ml,
         experiment_config=config,
         protocol=protocol_instance,  # Pass protocol for constraints
-        min_good_trials=min_good_trials if min_good_trials is not None else config.get_min_good_trials()  # Use volume-specific value
+        min_good_trials=min_good_trials if min_good_trials is not None else config.get_min_good_trials(),  # Use volume-specific value
+        # Load objective thresholds from YAML config
+        accuracy_threshold_pct=objective_thresholds.get('deviation_threshold_pct', 10.0),
+        precision_threshold_pct=objective_thresholds.get('variability_threshold_pct', 5.0),
+        time_threshold_s=objective_thresholds.get('time_threshold_s', 60.0)
     )
     
-    return AxBayesianOptimizer(optimization_config)
+    return AxBayesianOptimizer(optimization_config, is_first_volume=is_first_volume)
 
 
 if __name__ == "__main__":

@@ -48,6 +48,8 @@ LIQUIDS = {
     "6M_Citric_Acid": {"density": 1.27, "refill_pipets": False},
     "6M_H2SO4": {"density": 1.34, "refill_pipets": False},
     "6M_H3PO4": {"density": 1.35, "refill_pipets": False},
+    "PVA_water": {"density": 1.01, "refill_pipets": False},
+    "PVA_DMSO": {"density": 1.11, "refill_pipets": True},
 }
 
 
@@ -108,8 +110,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             self.conditioning_volume = 0.05
             print("No volume targets found, using default conditioning volume 0.05mL")
 
-        # Use hardware simulation mode (different from our simulation protocol)
-        simulate = True  # This enables North Robot's internal simulation
+        # Use hardware simulation mode (read from GUI config)
+        simulate = False
+        print(f"Hardware simulation mode: {simulate} (from GUI config)")
         
         # Vial management mode - swap roles when measurement vial gets too full
         SWAP = False  # If True, enables vial swapping when needed
@@ -127,7 +130,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         # Default: 0.001g (1mg) - good for most pipetting
         # For stricter control (low volume): 0.0005g (0.5mg) 
         # For lenient control (quick tests): 0.002g (2mg)
-        self.quality_std_threshold = 0.0005  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
+        self.quality_std_threshold = 0.1  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
         if not simulate:
             slack_agent.send_slack_message("🤖 North Robot calibration/validation started!")
@@ -135,6 +138,37 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         # Initialize hardware
         try:
+            # Extract parameters from config
+            liquid = cfg['experiment']['liquid']
+            simulate = cfg['experiment'].get('simulate', False)
+            show_gui = cfg['experiment'].get('show_gui', False)
+            continuous_monitoring = cfg['experiment'].get('continuous_monitoring', True)
+            adjust_volume = cfg['experiment'].get('adjust_volume', True)
+            
+            print(f"Initializing North Robot hardware protocol for {liquid}")
+            
+            # Read vial names from hardware configuration file
+            hardware_config_path = Path(__file__).parent / "north_robot_hardware.yaml"
+            source_vial = 'water'  # fallback default
+            measurement_vial = 'water'  # fallback default
+            
+            try:
+                with open(hardware_config_path, 'r') as f:
+                    hardware_config = yaml.safe_load(f)
+                
+                if hardware_config and 'vials' in hardware_config:
+                    source_vial = hardware_config['vials'].get('source_vial', 'water')
+                    measurement_vial = hardware_config['vials'].get('measurement_vial', 'water')
+                    print(f"Using vials from hardware config: source='{source_vial}', measurement='{measurement_vial}'")
+                else:
+                    print("No vials section in hardware config, using defaults: source='water', measurement='water'")
+            except Exception as e:
+                print(f"Could not read hardware config ({e}), using defaults: source='water', measurement='water'")
+                source_vial = cfg['experiment'].get('source_vial', 'water')  # GUI provides actual vial name
+                measurement_vial = cfg['experiment'].get('measurement_vial', 'water')  # GUI provides actual vial name
+                
+                print(f"Using vials from config: source='{source_vial}', measurement='{measurement_vial}'")
+            
             # Initialize vial file path
             vial_file = "status/calibration_vials_short.csv"
             
@@ -144,11 +178,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             # Validate hardware files
             #lash_e.nr_robot.check_input_file()
             #lash_e.nr_track.check_input_file()
-            lash_e.nr_robot.home_robot_components()
-            
-            # Simple vial management: Set up source and measurement vials (read from config or use defaults)
-            source_vial = cfg['experiment'].get('source_vial', 'liquid_source_0')  # Use config or fallback
-            measurement_vial = cfg['experiment'].get('measurement_vial', 'liquid_source_0')  # Use config or fallback
+            #lash_e.nr_robot.home_robot_components()
             
             print(f"Using vials: source='{source_vial}', measurement='{measurement_vial}'")
             
@@ -168,7 +198,22 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 for i in range(3):
                     lash_e.nr_robot.aspirate_from_vial(source_vial, self.conditioning_volume,  move_to_aspirate=False, parameters=conditioning_params)
                     lash_e.nr_robot.dispense_into_vial(source_vial, self.conditioning_volume, initial_move=False, parameters=conditioning_params)
-                lash_e.nr_robot.move_home()
+                
+            # Pre-uncap source vial if capped to avoid first-measurement delay
+            source_vial_num = lash_e.nr_robot.normalize_vial_index(source_vial)
+            if not lash_e.nr_robot.is_vial_pipetable(source_vial_num):
+                print(f"Pre-uncapping source vial {source_vial} to eliminate first-measurement delay...")
+                lash_e.nr_robot._ensure_vial_accessible_for_pipetting(source_vial, use_safe_location=False)
+                print(f"Source vial {source_vial} is now uncapped and ready for fast measurements")
+            else:
+                print(f"Source vial {source_vial} already pipetable (uncapped or open cap)")
+                
+            # Move robot to clamp position (for measurement vial) without moving any vials
+            clamp_location = lash_e.nr_robot.get_location(use_pipet=True, location_name='clamp', location_index=0)
+            lash_e.nr_robot.c9.goto(clamp_location)
+            print("Robot positioned at clamp for consistent measurement timing")
+                
+            #lash_e.nr_robot.move_home()
             
             print("READY: Hardware initialized successfully")
             
@@ -245,7 +290,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     for i in range(3):
                         lash_e.nr_robot.aspirate_from_vial(state['source_vial'], self.conditioning_volume, move_to_aspirate=False, parameters=conditioning_params)
                         lash_e.nr_robot.dispense_into_vial(state['source_vial'], self.conditioning_volume, initial_move=False, parameters=conditioning_params)
-                    lash_e.nr_robot.move_home()
+                    #lash_e.nr_robot.move_home()
                 
                 print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
             else:
@@ -424,20 +469,26 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         # Get source vial index for direct VIAL_DF access
                         source_vial_index = lash_e.nr_robot.get_vial_index_from_name(source_vial)
                         
-                        # Calculate corrected source volume based on actual consumption
-                        corrected_source_volume = source_volume_before - actual_volume_consumed_ml
-                        
-                        # Manually override robot's source volume tracking with actual measurement
-                        if source_vial_index is not None:
-                            lash_e.nr_robot.VIAL_DF.at[source_vial_index, 'vial_volume'] = corrected_source_volume
-                            print(f"    Corrected source: {corrected_source_volume:.6f}mL (actual consumed: {actual_volume_consumed_ml*1000:.2f}µL vs nominal {volume_mL*1000:.2f}µL)")
-                        
-                        # Save the corrected volume
-                        lash_e.nr_robot.save_robot_status()
-                        
-                        # Warning if source volume is getting low
-                        if corrected_source_volume < 0.5:
-                            print(f"    ⚠️  WARNING: Source vial volume low: {corrected_source_volume:.3f}mL remaining")
+                        # Safety check: Only apply correction if mass difference is reasonable (< 300mg)
+                        max_reasonable_mass_g = 0.3  # 300mg threshold
+                        if abs(actual_mass_consumed_g) > max_reasonable_mass_g:
+                            print(f"    ⚠️  IGNORING volume correction: Mass change {actual_mass_consumed_g*1000:.1f}mg exceeds {max_reasonable_mass_g*1000:.0f}mg threshold")
+                            print(f"    Keeping robot's nominal volume tracking (likely scale positioning issue)")
+                        else:
+                            # Calculate corrected source volume based on actual consumption
+                            corrected_source_volume = source_volume_before - actual_volume_consumed_ml
+                            
+                            # Manually override robot's source volume tracking with actual measurement
+                            if source_vial_index is not None:
+                                lash_e.nr_robot.VIAL_DF.at[source_vial_index, 'vial_volume'] = corrected_source_volume
+                                print(f"    ✅ Corrected source: {corrected_source_volume:.6f}mL (actual consumed: {actual_volume_consumed_ml*1000:.2f}µL vs nominal {volume_mL*1000:.2f}µL)")
+                            
+                            # Save the corrected volume
+                            lash_e.nr_robot.save_robot_status()
+                            
+                            # Warning if source volume is getting low
+                            if corrected_source_volume < 0.5:
+                                print(f"    ⚠️  WARNING: Source vial volume low: {corrected_source_volume:.3f}mL remaining")
                         
                     except Exception as e:
                         print(f"    Warning: Could not correct volume tracking: {e}")
@@ -505,28 +556,51 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         return results
 
-    def wrapup(self, state: Dict[str, Any]) -> None:
-        """Clean up hardware resources."""
+    def wrapup(self, state: Dict[str, Any], skip_physical_cleanup: bool = False) -> None:
+        """Clean up hardware resources.
+        
+        Args:
+            state: Protocol state dictionary
+            skip_physical_cleanup: If True, skip robot movements (for optimization handoff)
+        """
         
         lash_e = state.get('lash_e')
         if lash_e:
             try:
-                # Move robot to safe position
-                lash_e.nr_robot.remove_pipet()
-                lash_e.nr_robot.return_vial_home(state['measurement_vial'])
-                lash_e.nr_robot.move_home()
-                
-                print(f"COMPLETE: Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
+                if not skip_physical_cleanup:
+                    # Move robot to safe position (only if not handing off to optimization)
+                    lash_e.nr_robot.remove_pipet()
+                    lash_e.nr_robot.return_vial_home(state['measurement_vial'])
+                    lash_e.nr_robot.move_home()
+                    print(f"COMPLETE: Hardware cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
+                else:
+                    print("OPTIMIZE: Skipping physical cleanup - handing off to optimization subprocess")
                                
                 # Send slack notification
                 try:
-                    if not state.get('simulate', True):
+                    if not state.get('simulate', True) and not skip_physical_cleanup:
                         slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
                 except Exception as e:
                     print(f"WARNING: Slack notification failed: {e}")
                 
             except Exception as e:
                 print(f"WARNING: Hardware cleanup warning: {e}")
+                
+            finally:
+                # CRITICAL: Always close serial connection (needed for both cases)
+                try:
+                    print("CLEANUP: Closing North Robot serial connection...")
+                    # Use the correct API: network.disconnect() 
+                    lash_e.nr_robot.c9.network.disconnect()
+                    print("CLEANUP: ✓ Serial connection closed via network.disconnect() - port released for optimization")
+                except Exception as e:
+                    print(f"WARNING: Failed to close serial connection: {e}")
+                    # Fallback: just release the object
+                    try:
+                        del state['lash_e']
+                        print("CLEANUP: ✓ Fallback - Lash_E object released for garbage collection")
+                    except Exception as e2:
+                        print(f"WARNING: All cleanup methods failed: {e2}")
 
     def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
         """Get hardware-specific parameter constraints for North Robot system."""

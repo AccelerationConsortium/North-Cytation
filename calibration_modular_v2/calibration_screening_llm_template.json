@@ -6,19 +6,17 @@
     "- Primary: Minimize deviation and variability (accuracy/precision)",
     "- Secondary: Vary timing (operation speed) while maintaining reliability",
     "",
-    "STRATEGY:",
-    "- Provide distinct parameter combinations with different approaches to accuracy",
-    "- CRITICAL: Match your parameter exploration to the liquid's viscosity level",
-    "- For low viscosity liquids (~1-10 cP): CENTER exploration toward the FASTER end of speed ranges and SHORTER end of wait ranges",
-    "- For medium viscosity liquids (~100-2000 cP): CENTER exploration in the MIDDLE of speed and wait ranges", 
-    "- For high viscosity liquids (>5000 cP): CENTER exploration toward the SLOWER end of speed ranges and LONGER end of wait ranges",
-    "",
-    "PARAMETER DIVERSITY REQUIREMENTS:",
-    "- Ensure parameter values are varied and independent across recommendations",
-    "- Create orthogonal parameter combinations to enable clear effect identification", 
+      "PARAMETER DIVERSITY REQUIREMENTS:",
+    "- Ensure parameter values are varied, independent amd orthogonal across recommendations",
     "- Each recommendation should explore different parameter space regions",
-    "- CRITICAL: Avoid setting multiple parameters to identical values within a single recommendation",
-    "- CRITICAL: Vary {TIME_AFFECTING_PARAMS} independently - don't pair them identically",
+    "- AVOID CLUSTERING: Don't suggest parameters too close to each other or previous points unless you are fine tuning around a known good point",
+    "",
+    "OPTIMIZATION STRATEGY GUIDANCE:",
+    "- Match your parameter exploration to the liquid's viscosity leve - more viscosity will require slower speeds and longer waits",
+    "- If precision or accuracy are LOW: Focus on speeds, wait times, and air volumes including blowout to improve repeatability first",
+    "- If accuracy is high and precision is low, overaspirate_vol is unlikely to help - focus on other parameters that may increase time or blowout",
+    "- When close to target volume with good precision: Fine-tune accuracy using overaspirate_vol increments to exactly compensate for the difference from the target",
+    "- If you think you can reduce time without sacrificing accuracy or precision, please suggest faster parameters",
     "",
     "RESPONSE FORMAT:",
     "Please provide both parameter suggestions and explanations in the following JSON structure:",
@@ -41,7 +39,9 @@
   ],
   
   "api_settings": {
-    "model": "online_server",
+    "base_url": "http://100.77.238.68:1234/v1",
+    "model": "openai/gpt-oss-20b",
+    "api_key": "lm-studio",
     "temperature": 1.0,
     "max_tokens": 8000
   },
@@ -90,6 +90,15 @@
       "description": "Operation time efficiency",
       "priority": "secondary"
     }
+  },
+
+  "data_explanation": {
+    "measured_vol_ml": "Actual volume delivered by pipette (measured result from scale/reader)",
+    "target_vol_ml": "Desired volume to pipette (experimental goal)", 
+    "deviation_pct": "Accuracy metric: (measured - target)/target * 100. Negative = under-delivery, positive = over-delivery",
+    "cv_pct": "Precision metric: coefficient of variation between replicate measurements. Lower = more consistent",
+    "duration_s": "Time taken to complete the pipetting operation. Includes aspirate, wait, dispense, and blowout phases",
+    "optimization_goal": "Find parameters that minimize both deviation_pct (close to 0%) and cv_pct (as low as possible) while keeping duration_s reasonable"
   },
   
   "material_properties": {
