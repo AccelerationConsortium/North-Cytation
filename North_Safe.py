@@ -1765,7 +1765,7 @@ class North_Robot(North_Base):
             min_volume = tip_config.get('min_suggested_volume', 0)
             
             # Check if volume fits within this tip's range
-            if min_volume <= volume <= max_volume:
+            if min_volume <= volume < max_volume:
                 available_tips.append((tip_name, min_volume, max_volume))
         
         if not available_tips:

@@ -574,7 +574,7 @@ def run_baseline():
             
             # Volume adjustment tracking - get initial state before pipetting
             source_volume_before = None
-            before_mass_g = 0.0
+            before_mass_g = None
             if ADJUST_VOLUME and not SIMULATE:
                 try:
                     # Get initial source volume from robot tracking

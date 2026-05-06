@@ -64,7 +64,7 @@ SAMPLING_INTERVAL_MINUTES = 10  # Sample every 10 minutes
 TOTAL_SAMPLING_TIME_MINUTES = 60  # 1 hour total sampling time
 
 # Volume parameters (mL)
-TOTAL_REACTION_VOLUME = 4.0  # Total reaction volume
+TOTAL_REACTION_VOLUME = 6.0  # Total reaction volume
 WELLPLATE_DISPENSE_VOLUME = 0.200  # Volume per well for analysis
 
 SIMULATE = True  # Set to False for hardware execution
@@ -76,7 +76,8 @@ SIMULATE = True  # Set to False for hardware execution
 def mof_synthesis_workflow(
     lash_e,
     reaction_vial: str = "reaction_vial_1",
-    replicates: int = 3
+    replicates: int = 3,
+    prepare_substock: dict = None
 ):
     """
     Automated MOF synthesis workflow for Cu(NO3)2.2.5H2O + DiVA system.
@@ -85,6 +86,10 @@ def mof_synthesis_workflow(
         lash_e: Initialized Lash_E coordinator object
         reaction_vial (str): Name of vial to use for reaction (default: "reaction_vial_1")
         replicates (int): Number of replicate wells per time point (default: 3)
+        prepare_substock (dict or None): If provided, calls prepare_substock_from_solid() before mixing.
+            Required keys: 'vial', 'target_volume_mL', 'molecular_weight_g_per_mol',
+                           'target_concentration_mM', 'ethanol_vial'.
+            Optional keys: 'powder_channel' (default 0).
     
     Returns:
         dict: Analysis results with UV-Vis data and MOF formation indicators
@@ -106,6 +111,21 @@ def mof_synthesis_workflow(
     lash_e.temp_controller.set_temp(REACTION_TEMP)
     #lash_e.grab_new_wellplate()
     
+    # ============================================================================
+    # STEP 1b: PREPARE SUBSTOCK FROM SOLID (OPTIONAL)
+    # ============================================================================
+
+    if prepare_substock is not None:
+        prepare_substock_from_solid(
+            lash_e,
+            vial=prepare_substock['vial'],
+            target_volume_mL=prepare_substock['target_volume_mL'],
+            molecular_weight_g_per_mol=prepare_substock['molecular_weight_g_per_mol'],
+            target_concentration_mM=prepare_substock['target_concentration_mM'],
+            ethanol_vial=prepare_substock['ethanol_vial'],
+            powder_channel=prepare_substock.get('powder_channel', 0)
+        )
+
     # ============================================================================
     # STEP 2: PREPARE REACTION MIXTURE
     # ============================================================================
@@ -157,9 +177,12 @@ def mof_synthesis_workflow(
         # Return to heater and wait (except last time point)
         if time_point < sampling_times[-1]:
             lash_e.nr_robot.move_vial_to_location(reaction_vial, "heater", 0)
-            wait_time = SAMPLING_INTERVAL_MINUTES * 60
-            lash_e.logger.info(f"  Waiting {SAMPLING_INTERVAL_MINUTES} minutes until next sample...")
-            time.sleep(wait_time)
+            if lash_e.simulate:
+                lash_e.logger.info(f"  [SIMULATE] Skipping {SAMPLING_INTERVAL_MINUTES} min wait")
+            else:
+                wait_time = SAMPLING_INTERVAL_MINUTES * 60
+                lash_e.logger.info(f"  Waiting {SAMPLING_INTERVAL_MINUTES} minutes until next sample...")
+                time.sleep(wait_time)
     
     lash_e.logger.info(f"Completed periodic sampling for {reaction_vial}")
     
@@ -242,12 +265,13 @@ def dispense_samples_to_wells(lash_e, reaction_vial: str, start_well: int, num_r
         wells.append(well_idx)
         lash_e.nr_robot.aspirate_from_vial(reaction_vial, volume, liquid="ethanol")
         lash_e.nr_robot.dispense_into_wellplate([well_idx], [volume], liquid="ethanol")
-    
+
+    lash_e.nr_robot.remove_pipet()
     return wells
 
 def collect_timepoint_data(lash_e, protocol_file: str, wells: list, time_point: int, output_dir: Path, simulate: bool):
     """Measure wellplate and save raw data file."""
-    uv_vis_data = lash_e.measure_wellplate(protocol_file, wells=wells)
+    uv_vis_data = lash_e.measure_wellplate(protocol_file, wells_to_measure=wells)
     lash_e.logger.info(f"  Measured wells {wells} at {time_point} min")
     
     if uv_vis_data is not None:
@@ -285,7 +309,7 @@ def combine_and_save_data(all_measurements: list, output_dir: Path, simulate: bo
 
 def cleanup_synthesis(lash_e, reaction_vial: str):
     """Return vial and turn off heater/stirring."""
-    lash_e.nr_robot.return_vial_to_home(reaction_vial)
+    lash_e.nr_robot.return_vial_home(reaction_vial)
     lash_e.temp_controller.turn_off_stirring()
     lash_e.temp_controller.turn_off_heating()
     lash_e.logger.info("Heater and stirring turned off")
@@ -327,6 +351,86 @@ def plot_mof_spectra(combined_data: pd.DataFrame, output_dir: Path, simulate: bo
         return None
 
 
+def prepare_substock_from_solid(
+    lash_e,
+    vial: str,
+    target_volume_mL: float,
+    molecular_weight_g_per_mol: float,
+    target_concentration_mM: float,
+    ethanol_vial: str,
+    powder_channel: int = 0,
+    vortex_time: int = 10
+):
+    """
+    Prepare a stock solution by depositing solid into a vial and dissolving in ethanol.
+
+    Uses target_volume_mL and target_concentration_mM to derive how much solid to aim for,
+    then reads the actual dispensed mass and adjusts the ethanol volume accordingly so the
+    concentration stays as close as possible to target_concentration_mM.
+
+    Arguments:
+        lash_e: Initialized Lash_E coordinator object
+        vial (str): Destination vial for the substock
+        target_volume_mL (float): Desired final solution volume (mL)
+        molecular_weight_g_per_mol (float): Molecular weight of the solid (g/mol)
+        target_concentration_mM (float): Desired final concentration (mM)
+        ethanol_vial (str): Name of the ethanol source vial
+        powder_channel (int): Powder dispenser channel (default 0)
+        vortex_time (int): Seconds to vortex after ethanol addition (default 10)
+
+    Returns:
+        dict: {'actual_mass_mg': float, 'ethanol_volume_mL': float,
+               'actual_concentration_mM': float}
+    """
+    # Derive target mass from desired volume and concentration
+    # mmol = conc_mM * volume_mL / 1000  ->  mass_mg = mmol * MW  [g/mol == mg/mmol]
+    target_mass_mg = target_concentration_mM * target_volume_mL / 1000.0 * molecular_weight_g_per_mol
+
+    lash_e.logger.info(f"Preparing substock in {vial}: target {target_volume_mL:.3f} mL at "
+                       f"{target_concentration_mM:.2f} mM -> need {target_mass_mg:.2f} mg "
+                       f"(MW {molecular_weight_g_per_mol:.2f} g/mol)")
+
+    # --- Step 1: Deposit solid ---
+    lash_e.nr_robot.move_vial_to_location(vial, 'clamp', 0)
+    lash_e.nr_robot.move_home()
+
+    if lash_e.simulate:
+        actual_mass_mg = target_mass_mg
+        lash_e.logger.info(f"[SIMULATE] Would dispense {target_mass_mg:.2f} mg solid on channel {powder_channel}")
+    else:
+        actual_mass_mg = lash_e.powder_dispenser.dispense_powder_mg(
+            mass_mg=target_mass_mg, channel=powder_channel
+        )
+
+    lash_e.logger.info(f"Solid dispensed: {actual_mass_mg:.3f} mg (target was {target_mass_mg:.2f} mg)")
+
+    # --- Step 2: Recalculate ethanol volume from actual mass ---
+    # mmol_dispensed = actual_mass_mg / MW  ->  volume_mL = mmol * 1000 / conc_mM
+    mmol_dispensed = actual_mass_mg / molecular_weight_g_per_mol
+    ethanol_volume_mL = mmol_dispensed * 1000.0 / target_concentration_mM
+    actual_concentration_mM = target_concentration_mM  # by construction
+
+    lash_e.logger.info(f"Adjusted ethanol volume: {ethanol_volume_mL:.3f} mL "
+                       f"(target was {target_volume_mL:.3f} mL) -> concentration: {actual_concentration_mM:.3f} mM")
+
+    # --- Step 3: Return vial home, then add ethanol ---
+    lash_e.nr_robot.return_vial_home(vial)
+    lash_e.nr_robot.dispense_from_vial_into_vial(ethanol_vial, vial, ethanol_volume_mL, liquid="ethanol")
+
+    # --- Step 4: Vortex to dissolve solid ---
+    lash_e.logger.info(f"Vortexing {vial} for {vortex_time} s to dissolve solid")
+    lash_e.nr_robot.vortex_vial(vial_name=vial, vortex_time=vortex_time)
+
+    lash_e.logger.info(f"Substock ready in {vial}: {actual_mass_mg:.3f} mg dissolved in "
+                       f"{ethanol_volume_mL:.3f} mL ethanol at {actual_concentration_mM:.3f} mM")
+
+    return {
+        'actual_mass_mg': actual_mass_mg,
+        'ethanol_volume_mL': ethanol_volume_mL,
+        'actual_concentration_mM': actual_concentration_mM
+    }
+
+
 # ================================================================================
 # WORKFLOW EXECUTION
 # ================================================================================
@@ -337,6 +441,17 @@ if __name__ == "__main__":
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, initialize_t8=True, simulate=SIMULATE)
     
     # Run MOF synthesis workflow
-    results = mof_synthesis_workflow(lash_e)
+    results = mof_synthesis_workflow(
+        lash_e,
+        prepare_substock={
+            'vial': 'diva_stock',
+            'target_volume_mL': 6.0,
+            'molecular_weight_g_per_mol': 274.27,  # DiVA MW
+            'target_concentration_mM': LINKER_STOCK_CONC,
+            'ethanol_vial': 'ethanol',
+            'powder_channel': 0,
+            'vortex_time': 10
+        }
+    )
     
     print(f"MOF synthesis workflow completed. Results: {results}")
