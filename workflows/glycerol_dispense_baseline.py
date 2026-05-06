@@ -8,6 +8,16 @@ Focus:
 - Dispense into a clamped vial on scale (no plate handling)
 """
 
+#
+# no clean up when workflow ends: 
+#remove of tip
+#move vial back to rack position
+#record left over residual volume inside the vial
+#close the vial cap
+# when we resume the workflow, GUI for the vial rack is not appearing
+# close the 8ml vial cap
+
+
 import os
 import sys
 import time
@@ -36,7 +46,7 @@ import slack_agent
 SIMULATE = False  
 # EXPERIMENT_NUMBER removed - now auto-detects progress and resumes
 
-TIPS_PER_BATCH = 96  # Tips to process per batch
+TIPS_PER_BATCH = 96  # Fallback only - actual batch size is read from robot_status.yaml at runtime
 TOTAL_TIPS_PER_CAMPAIGN = 5120  # Target completion per campaign (200uL and 1000uL), SP changed from 96 to 500 to see if it contiues
 INPUT_VIAL_STATUS_FILE = "status/calibration_vials.csv"
 
@@ -71,6 +81,40 @@ MQTT_LOG_FILE = "C:\\Users\\Imaging Controller\\Desktop\\m5stack\\mqtt_log.csv"
 # Simulation-first safety controls
 # Simulation mode processes fewer rows for faster testing
 MAX_ROWS_FOR_SIMULATION = 20
+
+def _get_remaining_tips(campaign_type):
+    """Read robot_status.yaml and pipet_racks.yaml to compute remaining tips for this campaign.
+    200uL uses small_tip racks, 1000uL uses large_tip racks.
+    Returns total remaining tips across both racks of the relevant type.
+    """
+    tip_type = "small_tip" if campaign_type == "200uL" else "large_tip"
+
+    status_path = os.path.join("..", "utoronto_demo", "robot_state", "robot_status.yaml")
+    racks_path = os.path.join("..", "utoronto_demo", "robot_state", "pipet_racks.yaml")
+
+    # Resolve paths relative to workflow file location
+    workflow_dir = os.path.dirname(os.path.abspath(__file__))
+    status_path = os.path.join(workflow_dir, "..", "robot_state", "robot_status.yaml")
+    racks_path = os.path.join(workflow_dir, "..", "robot_state", "pipet_racks.yaml")
+
+    with open(status_path, "r") as f:
+        status = yaml.safe_load(f)
+    with open(racks_path, "r") as f:
+        racks = yaml.safe_load(f)
+
+    pipets_used = status["pipets_used"]
+    total_remaining = 0
+    for rack_name, rack_cfg in racks.items():
+        if rack_cfg.get("tip_type") == tip_type:
+            used = pipets_used.get(rack_name, 0)
+            capacity = rack_cfg["num_tips"]
+            remaining = max(0, capacity - used)
+            total_remaining += remaining
+            print(f"  {rack_name}: {used}/{capacity} used, {remaining} remaining")
+
+    print(f"Total remaining {tip_type} tips for {campaign_type} campaign: {total_remaining}")
+    return total_remaining
+
 
 def _check_campaign_progress(campaign_folder):
     """Check how many rows have been completed in a campaign folder."""
@@ -450,7 +494,14 @@ def run_baseline():
         raise ValueError(f"Unknown campaign: {next_campaign}")
     
     print(f"\nLoading {next_campaign} Sobol CSV starting from row {start_row}...")
-    campaign_df = _load_sobol_dataframe(csv_path, start_row, TIPS_PER_BATCH)
+    if SIMULATE:
+        batch_size = TIPS_PER_BATCH
+    else:
+        batch_size = _get_remaining_tips(next_campaign)
+        if batch_size == 0:
+            print(f"No remaining tips for {next_campaign} campaign. Refill tips and try again.")
+            return None
+    campaign_df = _load_sobol_dataframe(csv_path, start_row, batch_size)
     
     if len(campaign_df) == 0:
         print(f"No more rows to process in {next_campaign} campaign!")
