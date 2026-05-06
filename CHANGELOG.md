@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026-05-04]
+
+### workflows/surfactant_grid_adaptive_concentrations.py
+- Added `adaptive_correction=True` to large-volume water validation call (200-900 uL)
+- Added `adaptive_correction=True` to large-volume surfactant validation calls (200-900 uL)
+- Large tip validation now runs the same 3-stage parameter optimization as small tip
+
 ## [LLM CONTEXT FIX] - 2026-04-24
 
 ### CRITICAL FIX: LLM Now Receives Complete Experimental Context
