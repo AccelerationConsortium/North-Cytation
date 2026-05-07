@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026-05-07]
+
+### recommenders/systematic_compare_nd.py
+- ADDED: `--q-batch` CLI option (default 8) so benchmark batch size is configurable without code edits.
+- ADDED: `--near-r` CLI option (default 0.04) to control `surf_precision` / `surf_recall` distance threshold for sensitivity checks across dimensions.
+- ADDED: `--candidate-pool` CLI option (default 50000) passed into `BayesianTransitionRecommender` for runtime-quality tradeoff control in long ND sweeps.
+- CHANGED: Iteration budget calculation now uses `args.q_batch` instead of hardcoded `Q_BATCH`, enabling exact runs like `96x4`.
+
 ## [2026-05-06]
 
 ### recommenders/ - Gradient-based transition recommender (Phase 1-4)

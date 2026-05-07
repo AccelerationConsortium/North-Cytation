@@ -30,8 +30,8 @@ from recommenders.metrics import TOP_FRAC, MIN_RANGE
 from recommenders.synthetic_nd import build_landscape
 
 
-Q_BATCH = 8
-NEAR_R = 0.04
+DEFAULT_Q_BATCH = 8
+DEFAULT_NEAR_R = 0.04
 OUTPUT_COLS = ["turbidity_600", "ratio"]
 OUT_BASE = os.path.join(os.path.dirname(__file__), "test_outputs")
 
@@ -85,6 +85,9 @@ def initial_design(init_mode, seed, d, landscape):
         from scipy.stats.qmc import Sobol
         n = int(init_mode[5:])
         X = Sobol(d=d, scramble=True, seed=seed).random(n)
+    elif init_mode.startswith("random"):
+        n = int(init_mode[6:])
+        X = np.random.default_rng(seed).uniform(0, 1, (n, d))
     else:
         raise ValueError(init_mode)
     Y = landscape.evaluate(X)
@@ -96,7 +99,7 @@ def initial_design(init_mode, seed, d, landscape):
     return pd.DataFrame(cols)
 
 
-def metrics_at_step(picks, cache, d):
+def metrics_at_step(picks, cache, d, near_r):
     out = {}
     for name, c in cache.items():
         ng = c["ng"]
@@ -104,43 +107,78 @@ def metrics_at_step(picks, cache, d):
                             0, ng - 1) for i in range(d))
         hit = float(c["mask"][idx].mean())
         d_pick, _ = c["tree"].query(picks, k=1)
-        prec = float((d_pick <= NEAR_R).mean())
+        prec = float((d_pick <= near_r).mean())
         d_bnd, _ = cKDTree(picks).query(c["bnd_pts"], k=1)
-        recall = float((d_bnd <= NEAR_R).mean())
+        recall = float((d_bnd <= near_r).mean())
         out[name] = {"hit_rate": hit, "surf_precision": prec,
                      "surf_recall": recall}
     return out
 
 
-def make_rec(label, input_cols, explore_beta=0.0):
+class _NonAdaptiveRec:
+    """Baseline that ignores observed data: each call returns fresh
+    space-filling/random points. Mimics the recommender API just enough.
+    """
+    def __init__(self, input_cols, mode, d, seed):
+        self.input_cols = input_cols
+        self.mode = mode  # 'random' or 'sobol'
+        self.d = d
+        if mode == "sobol":
+            from scipy.stats.qmc import Sobol
+            self._sobol = Sobol(d=d, scramble=True, seed=seed)
+        else:
+            self._rng = np.random.default_rng(seed)
+
+    def get_recommendations(self, data_df, n_points, iteration=None):
+        if self.mode == "sobol":
+            X = self._sobol.random(n_points)
+        else:
+            X = self._rng.uniform(0, 1, (n_points, self.d))
+        return pd.DataFrame({c: X[:, i] for i, c in enumerate(self.input_cols)})
+
+
+def make_rec(label, input_cols, explore_beta=0.0, candidate_pool=None,
+             d=None, seed=0):
     if label == "BayesianContrast":
+        kwargs = {}
+        if candidate_pool is not None:
+            kwargs["candidate_pool"] = candidate_pool
         return BayesianTransitionRecommender(
             input_columns=input_cols, output_columns=OUTPUT_COLS,
             log_transform_inputs=False, explore_beta=explore_beta,
+            **kwargs,
         )
     if label == "Simplex":
         return DelaunaySimplexTransitionRecommender(
             input_columns=input_cols, output_columns=OUTPUT_COLS,
             log_transform_inputs=False,
         )
+    if label == "Random":
+        return _NonAdaptiveRec(input_cols, "random", d, seed)
+    if label == "Sobol":
+        return _NonAdaptiveRec(input_cols, "sobol", d, seed)
     raise ValueError(label)
 
 
 def run_one(label, init_mode, seed, n_iters, cache, d, landscape,
+            q_batch=DEFAULT_Q_BATCH, near_r=DEFAULT_NEAR_R,
+            candidate_pool=None,
             explore_beta=0.0):
     input_cols = [f"x{i+1}" for i in range(d)]
     torch.manual_seed(seed); np.random.seed(seed)
-    rec = make_rec(label, input_cols, explore_beta=explore_beta)
+    rec = make_rec(label, input_cols, explore_beta=explore_beta,
+                   candidate_pool=candidate_pool,
+                   d=d, seed=seed)
     torch.manual_seed(seed); np.random.seed(seed)
     data = initial_design(init_mode, seed, d, landscape)
 
     history = []
     picks0 = data[input_cols].values
-    snap = metrics_at_step(picks0, cache, d)
+    snap = metrics_at_step(picks0, cache, d, near_r)
     history.append({"iteration": 0, "n_picks": len(picks0), **snap})
 
     for it in range(1, n_iters + 1):
-        recs = rec.get_recommendations(data, n_points=Q_BATCH, iteration=it)
+        recs = rec.get_recommendations(data, n_points=q_batch, iteration=it)
         X_new = recs[input_cols].values
         Y_new = landscape.evaluate(X_new)
         new = recs.copy()
@@ -151,7 +189,7 @@ def run_one(label, init_mode, seed, n_iters, cache, d, landscape,
         data = pd.concat([data, new], ignore_index=True)
 
         picks = data[input_cols].values
-        snap = metrics_at_step(picks, cache, d)
+        snap = metrics_at_step(picks, cache, d, near_r)
         history.append({"iteration": it, "n_picks": len(picks), **snap})
 
     rows = []
@@ -180,7 +218,10 @@ def plot_trajectories(df_all, out_path):
     metrics = ["hit_rate", "surf_recall", "surf_precision"]
     inits = sorted(df_all["init"].unique())
     recs = sorted(df_all["recommender"].unique())
-    cmap = {"BayesianContrast": "tab:blue", "Simplex": "tab:orange"}
+    _default_colors = ["tab:blue", "tab:orange", "tab:green", "tab:red",
+                       "tab:purple", "tab:brown", "tab:pink", "tab:gray"]
+    cmap = {r: _default_colors[i % len(_default_colors)]
+            for i, r in enumerate(sorted(df_all["recommender"].unique()))}
     style_for_family = {"grid": "-", "sobol": "--"}
     size_marker = {27: "o", 64: "s", 125: "^", 81: "D", 16: "v"}
 
@@ -236,6 +277,12 @@ def main():
     p.add_argument("--recs", nargs="+",
                    default=["BayesianContrast", "Simplex"])
     p.add_argument("--out", type=str, default="compare_nd")
+    p.add_argument("--q-batch", type=int, default=DEFAULT_Q_BATCH,
+                   help="Points proposed per recommender iteration.")
+    p.add_argument("--near-r", type=float, default=DEFAULT_NEAR_R,
+                   help="Distance threshold for surf_precision/surf_recall.")
+    p.add_argument("--candidate-pool", type=int, default=50000,
+                   help="Bayesian candidate pool size per iteration.")
     p.add_argument("--explore-beta", type=float, default=0.0,
                    help="Bayesian only: UCB exploration weight.")
     args = p.parse_args()
@@ -254,17 +301,22 @@ def main():
             n_init = int(init[4:]) ** args.d
         elif init.startswith("sobol"):
             n_init = int(init[5:])
+        elif init.startswith("random"):
+            n_init = int(init[6:])
         else:
             raise ValueError(init)
-        n_iters = max(0, (args.n_points - n_init) // Q_BATCH)
-        actual = n_init + n_iters * Q_BATCH
+        n_iters = max(0, (args.n_points - n_init) // args.q_batch)
+        actual = n_init + n_iters * args.q_batch
         print(f"\n[{init}] budget {args.n_points} -> "
-              f"{n_init} + {n_iters}x{Q_BATCH} = {actual} pts")
+              f"{n_init} + {n_iters}x{args.q_batch} = {actual} pts"
+              f" (near_r={args.near_r})")
         for seed in range(args.seeds):
             for rec in args.recs:
                 print(f"  rec={rec} seed={seed} ...")
                 df_iter, data = run_one(
                     rec, init, seed, n_iters, cache, args.d, landscape,
+                                        q_batch=args.q_batch, near_r=args.near_r,
+                    candidate_pool=args.candidate_pool,
                     explore_beta=args.explore_beta)
                 all_iter_dfs.append(df_iter)
                 fname = f"data_{rec}_{init}_seed{seed}.csv"
