@@ -4869,7 +4869,6 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
             log_transform_inputs=True,    # Work in log concentration space
             delta=0.03,      # Step size for directional gradients
             K=24,            # Number of random directions
-            lam=0.05,        # Exploration weight (lower = focus on boundaries)
             candidate_pool=50000  # Sobol candidate pool size
         )
         algorithm_name = "Bayesian optimization"

@@ -1,0 +1,73 @@
+Metrics in sweep_metrics_summary.csv
+====================================
+
+Each row is one (dataset, recommender, output) combination. "output" is one
+of:
+  ratio           - per-output boundary metrics for the ratio field
+  turbidity_600   - per-output boundary metrics for the turbidity field
+  _all            - boundary-AGNOSTIC clumping metrics over all picks
+
+Coordinate convention
+---------------------
+All distances below are in NORMALIZED [0, 1]^2 coordinates: the (log10 mM)
+input domain is mapped to the unit square first. Values are scale-free and
+comparable across datasets.
+
+Boundary definition
+-------------------
+For each output, the "boundary" on the fine ground-truth grid is the set of
+cells in the top X% of |grad y|:
+  ratio:         top 30% (broader transitions, smoother gradients)
+  turbidity_600: top 10% (sharp narrow transitions)
+A per-output presence check skips the output entirely (has_boundary=False)
+when max(y) - min(y) < 0.10.
+
+Boundary metrics (per output, where output != _all)
+---------------------------------------------------
+y_range
+  max(y) - min(y) for this output across the grid. Sanity check.
+has_boundary
+  True if y_range >= 0.10. False rows have all metric columns as NaN.
+n_boundary_cells
+  Number of grid cells in the boundary mask. Reference value.
+n_picks_total
+  Total picks across all iterations (includes initial grid).
+hit_rate
+  PICK-CENTRIC: of my picks, what fraction touched the boundary?
+  Higher = better. Caveat: high hit_rate can be achieved by clumping all
+  picks on one part of the boundary; pair with coverage_auc.
+coverage_auc
+  BOUNDARY-CENTRIC: for r in [0, 1], plot
+  frac{boundary cells with nearest-pick distance <= r} versus r and
+  integrate. Higher = better. Hard to game by clumping. Single best
+  metric for ranking recommenders on boundary tracing.
+
+Clumping metrics (per recommender, where output == _all)
+--------------------------------------------------------
+n_picks_total
+  Same as above; included for self-contained rows.
+cv_nn
+  std(nn_dist) / mean(nn_dist). Coefficient of variation of NN distances.
+  Reference values:
+    perfect grid          ~ 0.00
+    uniform random in 2D  ~ 0.52
+    clumpy distributions  > 0.52
+  Lower = more uniform spread.
+clumping_ratio
+  median(nn_dist) / d_uniform, where d_uniform = (1/N)^(1/d) is the
+  expected NN spacing for N points on a perfect grid in d dimensions.
+  ~ 1.0 means roughly grid-like spacing; values further from 1 mean less
+  uniform. (Strongly correlated with cv_nn but with a clearer absolute
+  scale, hence kept alongside.)
+min_pairwise
+  Minimum nearest-neighbor distance over all picks. Worst single clump
+  in the set. Largely independent of cv_nn / clumping_ratio (which
+  describe the bulk distribution).
+
+Rule of thumb
+-------------
+- coverage_auc        primary boundary-quality metric
+- hit_rate            secondary, complementary view (pick-centric)
+- cv_nn               primary spread-uniformity metric
+- min_pairwise        secondary, worst-case clumping
+- clumping_ratio      absolute scale check

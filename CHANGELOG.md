@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026-05-06]
+
+### recommenders/ - Gradient-based transition recommender (Phase 1-4)
+- NEW: `recommenders/_transition_base.py` - shared `TransitionRecommenderBase` (data pipeline, metrics, plotting)
+- NEW: `recommenders/gradient_transition_recommender.py` - per-dim gradient UCB acquisition with anisotropic ellipse exclusion (Vadhavkar et al., MSDE 2026, d5me00233h). Implements analytical RBF derivative-posterior variance (paper eqns 9-10), autograd posterior-mean gradient, and axis-aligned ellipse exclusion generalized to d-D.
+- REFACTORED: `recommenders/bayesian_transition_recommender.py` - inherits from `TransitionRecommenderBase`; removed duplicated plumbing. Stripped Unicode characters that crashed Windows cp1252 console.
+- NEW: `recommenders/test_gradient_transition_recommender.py` - head-to-head test harness for `step2d`, `circle2d`, `surfactant2d` (real `simulate_surfactant_measurements` simulator inlined). Generates 2D scatter plots, gradient-magnitude heatmaps, and HD-vs-iteration comparison plots. Includes `--unit` mode for Phase-3 sanity checks (1D `_grad_mu` vs `cos(x)`, `_grad_var` near-zero at training points, anisotropic exclusion mask shape).
+- Phase 3 unit checks pass: `_grad_mu` max-err = 0.005 vs `cos(x)`; `_grad_var` median ~7e-5 at training pts, max ~7e-2 off-training (~1000x growth as expected); anisotropic exclusion mask matches expected pattern.
+- Phase 4 2D tests pass: `step2d` correctly identifies x[0]=0.5 transition (lengthscale = 0.17 in x[0], 91 in x[1] = uninformative dim correctly identified); `circle2d` traces curved boundary; `surfactant2d` clusters picks in the upper-right transition region.
+
 ## [2026-05-04]
 
 ### workflows/surfactant_grid_adaptive_concentrations.py
