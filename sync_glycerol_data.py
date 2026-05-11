@@ -17,7 +17,7 @@ from datetime import datetime
 SOURCE_DIR = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\output\glycerol_sobol_campaign"
 DEST_REPO  = r"C:\Users\Imaging Controller\Desktop\glycerin-decision"
 DEST_DATA  = os.path.join(DEST_REPO, "data")
-BRANCH     = "initial-csv-provisioning"
+BRANCH     = "main"
 
 # File extensions to SKIP (plots - too large for git)
 SKIP_EXTENSIONS = {".png"}

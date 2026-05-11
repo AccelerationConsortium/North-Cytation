@@ -115,7 +115,6 @@ def _get_remaining_tips(campaign_type):
     print(f"Total remaining {tip_type} tips for {campaign_type} campaign: {total_remaining}")
     return total_remaining
 
-
 def _check_campaign_progress(campaign_folder):
     """Check how many rows have been completed in a campaign folder."""
     incremental_csv_path = os.path.join(campaign_folder, "incremental_results.csv")
@@ -261,6 +260,9 @@ def _check_and_swap_vials(lash_e, current_vial_number, current_vial_name):
             
             # Move new vial to clamp position
             lash_e.nr_robot.move_vial_to_location(new_vial_name, "clamp", 0)
+            
+            if not lash_e.nr_robot.is_vial_pipetable(new_vial_name):
+                lash_e.nr_robot.uncap_clamp_vial()
             
             print(f"SWAP complete: {current_vial_name} → {new_vial_name}")
             return new_vial_number, new_vial_name
@@ -448,14 +450,6 @@ def run_baseline():
         print("Stopping workflow due to environmental data issues.")
         return None
 
-    # Determine which campaign to run next
-    next_campaign, reason = _determine_next_campaign()
-    if next_campaign is None:
-        print(reason)
-        return None
-        
-    print(f"Campaign selection: {reason}")
-
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=SIMULATE,initialize_biotek=False)
 
     if not hasattr(lash_e, "nr_robot") or lash_e.nr_robot is None:
@@ -472,252 +466,289 @@ def run_baseline():
     lash_e.nr_robot.move_vial_to_location(current_vial_name, "clamp", 0)
     print(f"Moved {current_vial_name} to clamp position")
 
+    if not lash_e.nr_robot.is_vial_pipetable(current_vial_name):
+        lash_e.nr_robot.uncap_clamp_vial()
+
     # Use fixed campaign output folder with simulate suffix if needed
     base_campaign_folder = CAMPAIGN_OUTPUT_FOLDER
     if SIMULATE:
         base_campaign_folder = CAMPAIGN_OUTPUT_FOLDER + "_simulate"
-    
+
     os.makedirs(base_campaign_folder, exist_ok=True)
-    campaign_folder = os.path.join(base_campaign_folder, next_campaign)
-    os.makedirs(campaign_folder, exist_ok=True)
-    
-    print(f"\nOutput folder: {campaign_folder}")
-    
-    # Determine starting row and load appropriate CSV
-    start_row = _check_campaign_progress(campaign_folder)
-    
-    if next_campaign == "200uL":
-        csv_path = SOBOL_200UL_CSV
-    elif next_campaign == "1000uL":
-        csv_path = SOBOL_1000UL_CSV
-    else:
-        raise ValueError(f"Unknown campaign: {next_campaign}")
-    
-    print(f"\nLoading {next_campaign} Sobol CSV starting from row {start_row}...")
-    if SIMULATE:
-        batch_size = TIPS_PER_BATCH
-    else:
-        batch_size = _get_remaining_tips(next_campaign)
-        if batch_size == 0:
-            print(f"No remaining tips for {next_campaign} campaign. Refill tips and try again.")
-            return None
-    campaign_df = _load_sobol_dataframe(csv_path, start_row, batch_size)
-    
-    if len(campaign_df) == 0:
-        print(f"No more rows to process in {next_campaign} campaign!")
-        return None
-        
-    print(f"  Loaded {len(campaign_df)} rows for processing")
 
-    # Create incremental results CSV with headers if it doesn't exist
-    incremental_csv_path = os.path.join(campaign_folder, "incremental_results.csv")
-    if not os.path.exists(incremental_csv_path):
-        _create_incremental_csv_headers(incremental_csv_path)
-    
-    total_tips_to_process = len(campaign_df)
-    total_tips_processed = 0  # Counter for this batch
+    chunks_run = []
 
-    # Send startup slack notification
-    if not SIMULATE:
-        try:
-            startup_message = f"🚀 Starting Glycerol Campaign: {next_campaign}!\n"
-            startup_message += f"📊 Tips to process this batch: {total_tips_to_process}\n"
-            startup_message += f"🏁 Starting from row: {start_row}\n"
-            startup_message += f"⚗️ Mode: {'Simulation' if SIMULATE else 'Hardware'}\n"
-            startup_message += f"📁 Output: {next_campaign} campaign"
-            slack_agent.send_slack_message(startup_message)
-            print(f"📱 Slack startup notification sent for {next_campaign} campaign")
-        except Exception as slack_error:
-            print(f"⚠ Could not send Slack startup notification: {slack_error}")
-    else:
-        print("ℹ️ Simulation mode: Slack notifications disabled")
+    while True:
+        # Determine which campaign chunk to run next
+        next_campaign, reason = _determine_next_campaign()
+        if next_campaign is None:
+            print(reason)
+            break
 
-    print(f"\n=== Running {next_campaign} campaign ===\n")
-    
-    per_row_summaries = []
-    for row_idx, row in campaign_df.iterrows():
-        total_tips_processed += 1
-        params, volume_ml = _row_to_parameters(row)
-        volume_ul = volume_ml * 1000.0
-        actual_row_num = start_row + (row_idx - campaign_df.index[0])  # Calculate actual row number
-        print(f"[{next_campaign}] Processing actual row {actual_row_num + 1} | vol={volume_ul:.2f}uL | Batch progress: {total_tips_processed}/{total_tips_to_process}")
-            
-        # LOG ALL PARAMETERS TO VERIFY NO SILENT OVERRIDES
-        print(f"    CSV Parameters:")
-        print(f"      aspirate_speed={params.aspirate_speed}, dispense_speed={params.dispense_speed}")
-        print(f"      aspirate_wait_time={params.aspirate_wait_time:.3f}s, dispense_wait_time={params.dispense_wait_time:.3f}s")  
-        print(f"      pre_asp_air_vol={params.pre_asp_air_vol*1000:.1f}uL, post_asp_air_vol={params.post_asp_air_vol*1000:.1f}uL")
-        print(f"      overaspirate_vol={params.overaspirate_vol*1000:.1f}uL, blowout_vol={params.blowout_vol*1000:.1f}uL")
-        print(f"      retract_speed={params.retract_speed}, post_retract_wait_time={params.post_retract_wait_time:.1f}s")
-            
-        # Send slack progress update every UPDATE_EVERY_NUM_PIPS tips
-        if total_tips_processed % UPDATE_EVERY_NUM_PIPS == 0:
-            if not SIMULATE:
-                progress_pct = (total_tips_processed / total_tips_to_process) * 100
-                try:
-                    slack_message = f"🧪 Glycerol {next_campaign} Campaign Progress Update\n"
-                    slack_message += f"📊 Tips completed this batch: {total_tips_processed}/{total_tips_to_process} ({progress_pct:.1f}%)\n"
-                    slack_message += f"🏁 Processing from row: {start_row}\n"
-                    slack_message += f"⚗️ Mode: {'Simulation' if SIMULATE else 'Hardware'}"
-                    slack_agent.send_slack_message(slack_message)
-                    print(f"    📱 Slack progress notification sent ({total_tips_processed} tips completed)")
-                except Exception as slack_error:
-                    print(f"    ⚠ Could not send Slack progress notification: {slack_error}")
-            else:
-                print(f"    ℹ️ Simulation mode: Would send progress update ({total_tips_processed} tips completed)")
-            
-        # Check if vial needs swapping before pipetting
-        current_vial_number, current_vial_name = _check_and_swap_vials(lash_e, current_vial_number, current_vial_name)
+        print(f"Campaign selection: {reason}")
 
-        try:
-            # Simple aspirate/dispense with timing
-            
-            # Volume adjustment tracking - get initial state before pipetting
-            source_volume_before = None
-            before_mass_g = None
-            if ADJUST_VOLUME and not SIMULATE:
-                try:
-                    # Get initial source volume from robot tracking
-                    source_volume_before = lash_e.nr_robot.get_vial_info(current_vial_name, 'vial_volume')
-                    
-                    # Read mass (vial already at clamp)
-                    before_mass_g = lash_e.nr_robot.c9.read_steady_scale()
-                    print(f"    Before: {current_vial_name}={source_volume_before:.3f}mL, mass={before_mass_g:.6f}g")
-                except Exception as e:
-                    print(f"    Warning: Could not get initial state for volume adjustment: {e}")
-            
-            start_time = time.perf_counter()
-            
-            # Aspirate from vial - CRITICAL: Pass liquid=None to prevent calibrated parameter override
-            lash_e.nr_robot.aspirate_from_vial(current_vial_name, volume_ml, parameters=params, liquid=None)
-            
-            # Dispense into same vial and measure weight
-            dispense_result = lash_e.nr_robot.dispense_into_vial(
-                current_vial_name, volume_ml, parameters=params, liquid=None, measure_weight=True,continuous_mass_monitoring=True,save_mass_data=True
-            )
-            
-            # Extract mass and stability info
-            measured_mass_g, stability_info = dispense_result
-            
-            end_time = time.perf_counter()
-            elapsed_s = end_time - start_time
-            
-            # Volume adjustment tracking - correct robot tracking with actual consumption
-            if ADJUST_VOLUME and not SIMULATE and before_mass_g is not None and source_volume_before is not None:
-                try:
-                    # Read mass (vial still at clamp)
-                    after_mass_g = lash_e.nr_robot.c9.read_steady_scale()
-                    actual_mass_consumed_g = before_mass_g - after_mass_g
-                    actual_volume_consumed_ml = actual_mass_consumed_g / GLYCEROL_DENSITY
-                    
-                    # Get source vial index for direct VIAL_DF access
-                    source_vial_index = lash_e.nr_robot.get_vial_index_from_name(current_vial_name)
-                    
-                    # Calculate corrected source volume based on actual consumption
-                    corrected_source_volume = source_volume_before - actual_volume_consumed_ml
-                    
-                    # Manually override robot's source volume tracking with actual measurement
-                    if source_vial_index is not None:
-                        lash_e.nr_robot.VIAL_DF.at[source_vial_index, 'vial_volume'] = corrected_source_volume
-                        print(f"    Corrected {current_vial_name}: {corrected_source_volume:.3f}mL (actual consumed: {actual_volume_consumed_ml*1000:.1f}uL vs nominal {volume_ml*1000:.1f}uL)")
-                    
-                    # Save the corrected volume
-                    lash_e.nr_robot.save_robot_status()
-                    
-                    # Warning if source volume is getting low
-                    if corrected_source_volume < 0.5:
-                        print(f"    ⚠️  WARNING: {current_vial_name} volume low: {corrected_source_volume:.3f}mL remaining")
-                    
-                except Exception as e:
-                    print(f"    Warning: Could not correct volume tracking: {e}")
-            
-            # Convert mass to volume (glycerol density = 1.26 g/mL)
-            measured_volume_ml = measured_mass_g / GLYCEROL_DENSITY if not SIMULATE else volume_ml * 0.9
-            accuracy_pct = (measured_volume_ml / volume_ml) * 100.0
-            
-            # LOG MEASUREMENT RESULTS IMMEDIATELY
-            print(f"    📏 MEASUREMENT RESULTS:")
-            print(f"      Target volume: {volume_ml*1000:.1f}uL")
-            print(f"      Measured mass: {measured_mass_g:.6f}g")
-            print(f"      Measured volume: {measured_volume_ml*1000:.1f}uL")
-            print(f"      Accuracy: {accuracy_pct:.1f}% ({measured_volume_ml/volume_ml:.3f}x)")
-            print(f"      Elapsed time: {elapsed_s:.2f}s")
-            
-            # Get environmental data
-            env_data = _get_latest_environmental_data()
-            if env_data is None:
-                env_data = {"temp_c": None, "humidity_pct": None, "pressure_pa": None}
-            else:
-                env_parts = []
-                if env_data["temp_c"] is not None:
-                    env_parts.append(f"{env_data['temp_c']:.1f}°C")
-                if env_data["humidity_pct"] is not None:
-                    env_parts.append(f"{env_data['humidity_pct']:.1f}% RH")
-                if env_data["pressure_pa"] is not None:
-                    env_parts.append(f"{env_data['pressure_pa']:.0f}Pa")
-                if env_parts:
-                    print(f"      Environment: {' | '.join(env_parts)}")
-            
-            row_result = {
-                "measured_volume_ml": measured_volume_ml,
-                "accuracy_pct": accuracy_pct,
-                "elapsed_s": elapsed_s,
-                "measured_mass_g": measured_mass_g if not SIMULATE else 0.0,
-                "temp_c": env_data["temp_c"],
-                "humidity_pct": env_data["humidity_pct"],
-                "pressure_pa": env_data["pressure_pa"]
-            }
-            
-            # Add stability metrics
-            row_result.update({
-                "pre_baseline_std": stability_info.get("pre_baseline_std"),
-                "post_baseline_std": stability_info.get("post_baseline_std"),
-                "pre_stable_pct": (stability_info.get("pre_stable_count", 0) / max(stability_info.get("pre_total_count", 1), 1)) * 100,
-                "post_stable_pct": (stability_info.get("post_stable_count", 0) / max(stability_info.get("post_total_count", 1), 1)) * 100,
+        campaign_folder = os.path.join(base_campaign_folder, next_campaign)
+        os.makedirs(campaign_folder, exist_ok=True)
+
+        print(f"\nOutput folder: {campaign_folder}")
+
+        # Determine starting row and load appropriate CSV
+        start_row = _check_campaign_progress(campaign_folder)
+
+        if next_campaign == "200uL":
+            csv_path = SOBOL_200UL_CSV
+        elif next_campaign == "1000uL":
+            csv_path = SOBOL_1000UL_CSV
+        else:
+            raise ValueError(f"Unknown campaign: {next_campaign}")
+
+        print(f"\nLoading {next_campaign} Sobol CSV starting from row {start_row}...")
+        if SIMULATE:
+            batch_size = TIPS_PER_BATCH
+        else:
+            batch_size = _get_remaining_tips(next_campaign)
+            if batch_size == 0:
+                print(f"No remaining tips for {next_campaign} campaign. Stopping.")
+                break
+        campaign_df = _load_sobol_dataframe(csv_path, start_row, batch_size)
+
+        if len(campaign_df) == 0:
+            print(f"No more rows to process in {next_campaign} campaign!")
+            break
+
+        print(f"  Loaded {len(campaign_df)} rows for processing")
+
+        # Create incremental results CSV with headers if it doesn't exist
+        incremental_csv_path = os.path.join(campaign_folder, "incremental_results.csv")
+        if not os.path.exists(incremental_csv_path):
+            _create_incremental_csv_headers(incremental_csv_path)
+
+        total_tips_to_process = len(campaign_df)
+        total_tips_processed = 0  # Counter for this chunk
+
+        # Send startup slack notification
+        if not SIMULATE:
+            try:
+                startup_message = f"🚀 Starting Glycerol Campaign: {next_campaign}!\n"
+                startup_message += f"📊 Tips to process this chunk: {total_tips_to_process}\n"
+                startup_message += f"🏁 Starting from row: {start_row}\n"
+                startup_message += f"⚗️ Mode: {'Simulation' if SIMULATE else 'Hardware'}\n"
+                startup_message += f"📁 Output: {next_campaign} campaign"
+                slack_agent.send_slack_message(startup_message)
+                print(f"📱 Slack startup notification sent for {next_campaign} campaign")
+            except Exception as slack_error:
+                print(f"⚠ Could not send Slack startup notification: {slack_error}")
+        else:
+            print("ℹ️ Simulation mode: Slack notifications disabled")
+
+        print(f"\n=== Running {next_campaign} campaign ===\n")
+
+        per_row_summaries = []
+        for row_idx, row in campaign_df.iterrows():
+            total_tips_processed += 1
+            params, volume_ml = _row_to_parameters(row)
+            volume_ul = volume_ml * 1000.0
+            actual_row_num = start_row + (row_idx - campaign_df.index[0])  # Calculate actual row number
+            print(f"[{next_campaign}] Processing actual row {actual_row_num + 1} | vol={volume_ul:.2f}uL | Batch progress: {total_tips_processed}/{total_tips_to_process}")
+
+            # LOG ALL PARAMETERS TO VERIFY NO SILENT OVERRIDES
+            print(f"    CSV Parameters:")
+            print(f"      aspirate_speed={params.aspirate_speed}, dispense_speed={params.dispense_speed}")
+            print(f"      aspirate_wait_time={params.aspirate_wait_time:.3f}s, dispense_wait_time={params.dispense_wait_time:.3f}s")  
+            print(f"      pre_asp_air_vol={params.pre_asp_air_vol*1000:.1f}uL, post_asp_air_vol={params.post_asp_air_vol*1000:.1f}uL")
+            print(f"      overaspirate_vol={params.overaspirate_vol*1000:.1f}uL, blowout_vol={params.blowout_vol*1000:.1f}uL")
+            print(f"      retract_speed={params.retract_speed}, post_retract_wait_time={params.post_retract_wait_time:.1f}s")
+
+            # Send slack progress update every UPDATE_EVERY_NUM_PIPS tips
+            if total_tips_processed % UPDATE_EVERY_NUM_PIPS == 0:
+                if not SIMULATE:
+                    progress_pct = (total_tips_processed / total_tips_to_process) * 100
+                    try:
+                        slack_message = f"🧪 Glycerol {next_campaign} Campaign Progress Update\n"
+                        slack_message += f"📊 Tips completed this chunk: {total_tips_processed}/{total_tips_to_process} ({progress_pct:.1f}%)\n"
+                        slack_message += f"🏁 Processing from row: {start_row}\n"
+                        slack_message += f"⚗️ Mode: {'Simulation' if SIMULATE else 'Hardware'}"
+                        slack_agent.send_slack_message(slack_message)
+                        print(f"    📱 Slack progress notification sent ({total_tips_processed} tips completed)")
+                    except Exception as slack_error:
+                        print(f"    ⚠ Could not send Slack progress notification: {slack_error}")
+                else:
+                    print(f"    ℹ️ Simulation mode: Would send progress update ({total_tips_processed} tips completed)")
+
+            # Check if vial needs swapping before pipetting
+            current_vial_number, current_vial_name = _check_and_swap_vials(lash_e, current_vial_number, current_vial_name)
+
+            try:
+                # Simple aspirate/dispense with timing
+
+                # Volume adjustment tracking - get initial state before pipetting
+                source_volume_before = None
+                before_mass_g = None
+                if ADJUST_VOLUME and not SIMULATE:
+                    try:
+                        # Get initial source volume from robot tracking
+                        source_volume_before = lash_e.nr_robot.get_vial_info(current_vial_name, 'vial_volume')
+
+                        # Read mass (vial already at clamp)
+                        before_mass_g = lash_e.nr_robot.c9.read_steady_scale()
+                        print(f"    Before: {current_vial_name}={source_volume_before:.3f}mL, mass={before_mass_g:.6f}g")
+                    except Exception as e:
+                        print(f"    Warning: Could not get initial state for volume adjustment: {e}")
+
+                start_time = time.perf_counter()
+
+                # Aspirate from vial - CRITICAL: Pass liquid=None to prevent calibrated parameter override
+                lash_e.nr_robot.aspirate_from_vial(current_vial_name, volume_ml, parameters=params, liquid=None)
+
+                # Dispense into same vial and measure weight
+                dispense_result = lash_e.nr_robot.dispense_into_vial(
+                    current_vial_name, volume_ml, parameters=params, liquid=None, measure_weight=True,continuous_mass_monitoring=True,save_mass_data=True
+                )
+
+                # Extract mass and stability info
+                measured_mass_g, stability_info = dispense_result
+
+                end_time = time.perf_counter()
+                elapsed_s = end_time - start_time
+
+                # Volume adjustment tracking - correct robot tracking with actual consumption
+                if ADJUST_VOLUME and not SIMULATE and before_mass_g is not None and source_volume_before is not None:
+                    try:
+                        # Read mass (vial still at clamp)
+                        after_mass_g = lash_e.nr_robot.c9.read_steady_scale()
+                        actual_mass_consumed_g = before_mass_g - after_mass_g
+                        actual_volume_consumed_ml = actual_mass_consumed_g / GLYCEROL_DENSITY
+
+                        # Get source vial index for direct VIAL_DF access
+                        source_vial_index = lash_e.nr_robot.get_vial_index_from_name(current_vial_name)
+
+                        # Calculate corrected source volume based on actual consumption
+                        corrected_source_volume = source_volume_before - actual_volume_consumed_ml
+
+                        # Manually override robot's source volume tracking with actual measurement
+                        if source_vial_index is not None:
+                            lash_e.nr_robot.VIAL_DF.at[source_vial_index, 'vial_volume'] = corrected_source_volume
+                            print(f"    Corrected {current_vial_name}: {corrected_source_volume:.3f}mL (actual consumed: {actual_volume_consumed_ml*1000:.1f}uL vs nominal {volume_ml*1000:.1f}uL)")
+
+                        # Save the corrected volume
+                        lash_e.nr_robot.save_robot_status()
+
+                        # Warning if source volume is getting low
+                        if corrected_source_volume < 0.5:
+                            print(f"    ⚠️  WARNING: {current_vial_name} volume low: {corrected_source_volume:.3f}mL remaining")
+
+                    except Exception as e:
+                        print(f"    Warning: Could not correct volume tracking: {e}")
+
+                # Convert mass to volume (glycerol density = 1.26 g/mL)
+                measured_volume_ml = measured_mass_g / GLYCEROL_DENSITY if not SIMULATE else volume_ml * 0.9
+                accuracy_pct = (measured_volume_ml / volume_ml) * 100.0
+
+                # LOG MEASUREMENT RESULTS IMMEDIATELY
+                print(f"    📏 MEASUREMENT RESULTS:")
+                print(f"      Target volume: {volume_ml*1000:.1f}uL")
+                print(f"      Measured mass: {measured_mass_g:.6f}g")
+                print(f"      Measured volume: {measured_volume_ml*1000:.1f}uL")
+                print(f"      Accuracy: {accuracy_pct:.1f}% ({measured_volume_ml/volume_ml:.3f}x)")
+                print(f"      Elapsed time: {elapsed_s:.2f}s")
+
+                # Get environmental data
+                env_data = _get_latest_environmental_data()
+                if env_data is None:
+                    env_data = {"temp_c": None, "humidity_pct": None, "pressure_pa": None}
+                else:
+                    env_parts = []
+                    if env_data["temp_c"] is not None:
+                        env_parts.append(f"{env_data['temp_c']:.1f}°C")
+                    if env_data["humidity_pct"] is not None:
+                        env_parts.append(f"{env_data['humidity_pct']:.1f}% RH")
+                    if env_data["pressure_pa"] is not None:
+                        env_parts.append(f"{env_data['pressure_pa']:.0f}Pa")
+                    if env_parts:
+                        print(f"      Environment: {' | '.join(env_parts)}")
+
+                row_result = {
+                    "measured_volume_ml": measured_volume_ml,
+                    "accuracy_pct": accuracy_pct,
+                    "elapsed_s": elapsed_s,
+                    "measured_mass_g": measured_mass_g if not SIMULATE else 0.0,
+                    "temp_c": env_data["temp_c"],
+                    "humidity_pct": env_data["humidity_pct"],
+                    "pressure_pa": env_data["pressure_pa"]
+                }
+
+                # Add stability metrics
+                row_result.update({
+                    "pre_baseline_std": stability_info.get("pre_baseline_std"),
+                    "post_baseline_std": stability_info.get("post_baseline_std"),
+                    "pre_stable_pct": (stability_info.get("pre_stable_count", 0) / max(stability_info.get("pre_total_count", 1), 1)) * 100,
+                    "post_stable_pct": (stability_info.get("post_stable_count", 0) / max(stability_info.get("post_total_count", 1), 1)) * 100,
+                })
+
+                # Copy mass data files to organized location
+                if not SIMULATE:
+                    mass_filename = _copy_latest_mass_data(campaign_folder, actual_row_num + 1)
+                    row_result["mass_data_file"] = mass_filename
+                else:
+                    row_result["mass_data_file"] = None
+
+                # SAVE RESULTS IMMEDIATELY - Critical for data safety!
+                _save_row_result_immediately(campaign_folder, actual_row_num, row, volume_ul, row_result, params)
+
+            except Exception as exc:
+                print(f"[{next_campaign}] Row {actual_row_num + 1} failed: {exc}")
+                if not SIMULATE:
+                    raise
+                row_result = {}
+
+            per_row_summaries.append({
+                "row_index": int(actual_row_num),
+                "volume_ul": float(volume_ul),
+                "measured_volume_ml": row_result.get("measured_volume_ml"),
+                "accuracy_pct": row_result.get("accuracy_pct"),
+                "elapsed_s": row_result.get("elapsed_s"),
+                "temp_c": row_result.get("temp_c"),
+                "humidity_pct": row_result.get("humidity_pct"),
+                "pressure_pa": row_result.get("pressure_pa"),
+                "pre_baseline_std": row_result.get("pre_baseline_std"),
+                "post_baseline_std": row_result.get("post_baseline_std"),
+                "pre_stable_pct": row_result.get("pre_stable_pct"),
+                "post_stable_pct": row_result.get("post_stable_pct"),
+                "mass_data_file": row_result.get("mass_data_file"),
+                "status": "ok" if row_result else "failed",
             })
-            
-            # Copy mass data files to organized location
-            if not SIMULATE:
-                mass_filename = _copy_latest_mass_data(campaign_folder, actual_row_num + 1)
-                row_result["mass_data_file"] = mass_filename
-            else:
-                row_result["mass_data_file"] = None
-            
-            # SAVE RESULTS IMMEDIATELY - Critical for data safety!
-            _save_row_result_immediately(campaign_folder, actual_row_num, row, volume_ul, row_result, params)
-            
-        except Exception as exc:
-            print(f"[{next_campaign}] Row {actual_row_num + 1} failed: {exc}")
-            if not SIMULATE:
-                raise
-            row_result = {}
 
-        per_row_summaries.append({
-            "row_index": int(actual_row_num),
-            "volume_ul": float(volume_ul),
-            "measured_volume_ml": row_result.get("measured_volume_ml"),
-            "accuracy_pct": row_result.get("accuracy_pct"),
-            "elapsed_s": row_result.get("elapsed_s"),
-            "temp_c": row_result.get("temp_c"),
-            "humidity_pct": row_result.get("humidity_pct"),
-            "pressure_pa": row_result.get("pressure_pa"),
-            "pre_baseline_std": row_result.get("pre_baseline_std"),
-            "post_baseline_std": row_result.get("post_baseline_std"), 
-            "pre_stable_pct": row_result.get("pre_stable_pct"),
-            "post_stable_pct": row_result.get("post_stable_pct"),
-            "mass_data_file": row_result.get("mass_data_file"),
-            "status": "ok" if row_result else "failed",
+            lash_e.nr_robot.remove_pipet()
+
+        summary_df = pd.DataFrame(per_row_summaries)
+        summary_path = os.path.join(campaign_folder, "campaign_summary.csv")
+        summary_df.to_csv(summary_path, index=False)
+
+        print(f"[{next_campaign}] chunk complete. Processed {len(campaign_df)} rows.")
+        print(f"Summary: {summary_path}")
+
+        chunks_run.append({
+            "campaign": next_campaign,
+            "rows_processed": len(campaign_df),
+            "campaign_folder": campaign_folder,
         })
 
-        lash_e.nr_robot.remove_pipet()
+        # Send per-chunk completion slack
+        if not SIMULATE:
+            try:
+                completion_message = f"✅ Glycerol {next_campaign} Chunk COMPLETED!\n"
+                completion_message += f"📊 Tips processed this chunk: {total_tips_processed}\n"
+                completion_message += f"🏁 Started from row: {start_row}\n"
+                completion_message += f"📁 Campaign folder: {next_campaign}\n"
+                completion_message += f"⚗️ Mode: {'Simulation' if SIMULATE else 'Hardware'}"
+                slack_agent.send_slack_message(completion_message)
+                print(f"📱 Slack chunk completion notification sent")
+            except Exception as slack_error:
+                print(f"⚠ Could not send Slack completion notification: {slack_error}")
+        else:
+            print("ℹ️ Simulation mode: Slack completion notification disabled")
 
-    summary_df = pd.DataFrame(per_row_summaries)
-    summary_path = os.path.join(campaign_folder, "campaign_summary.csv")
-    summary_df.to_csv(summary_path, index=False)
-    
-    print(f"[{next_campaign}] batch complete. Processed {len(campaign_df)} rows.")
-    print(f"Summary: {summary_path}")
-
+    # Final cleanup (runs once after all chunks)
     lash_e.nr_robot.move_home()
 
     # Return active vial home
@@ -727,54 +758,45 @@ def run_baseline():
     except Exception as exc:
         print(f"Vial return warning: {exc}")
 
-    print("\nBatch workflow complete")
-    print(f"Campaign folder: {campaign_folder}")
-    print(f"Rows processed: {len(campaign_df)}")
-    
-    # Check if more work remains (use appropriate base folder)
-    final_base_folder = CAMPAIGN_OUTPUT_FOLDER
-    if SIMULATE:
-        final_base_folder = CAMPAIGN_OUTPUT_FOLDER + "_simulate"
-        
-    final_progress_200 = _check_campaign_progress(os.path.join(final_base_folder, "200uL"))
-    final_progress_1000 = _check_campaign_progress(os.path.join(final_base_folder, "1000uL"))
-    
+    print("\nAll chunks complete")
+    print(f"Chunks run: {len(chunks_run)}")
+
+    # Final progress summary
+    final_progress_200 = _check_campaign_progress(os.path.join(base_campaign_folder, "200uL"))
+    final_progress_1000 = _check_campaign_progress(os.path.join(base_campaign_folder, "1000uL"))
+
     remaining_message = f"\n📊 Campaign Progress Summary:\n"
     remaining_message += f"  200uL: {final_progress_200}/{TOTAL_TIPS_PER_CAMPAIGN} complete\n"
     remaining_message += f"  1000uL: {final_progress_1000}/{TOTAL_TIPS_PER_CAMPAIGN} complete\n"
-    
+
     if final_progress_200 < TOTAL_TIPS_PER_CAMPAIGN or final_progress_1000 < TOTAL_TIPS_PER_CAMPAIGN:
         remaining_message += "\n🔄 More work remains. Run the workflow again to continue."
     else:
         remaining_message += "\n✅ Both campaigns completed!"
-        
+
     print(remaining_message)
-    
-    # Send final completion slack message
+
+    # Send final overall slack message
     if not SIMULATE:
         try:
-            completion_message = f"✅ Glycerol {next_campaign} Batch COMPLETED!\n"
-            completion_message += f"📊 Tips processed this batch: {total_tips_processed}\n"
-            completion_message += f"🏁 Started from row: {start_row}\n"
-            completion_message += f"📁 Campaign folder: {next_campaign}\n"
-            completion_message += f"⚗️ Mode: {'Simulation' if SIMULATE else 'Hardware'}\n"
-            completion_message += f"📈 Overall Progress: 200uL={final_progress_200}/{TOTAL_TIPS_PER_CAMPAIGN}, 1000uL={final_progress_1000}/{TOTAL_TIPS_PER_CAMPAIGN}"
-            
+            overall_message = f"🏁 Glycerol Workflow Run FINISHED\n"
+            overall_message += f"📊 Chunks run: {len(chunks_run)}\n"
+            for chunk in chunks_run:
+                overall_message += f"  {chunk['campaign']}: {chunk['rows_processed']} rows\n"
+            overall_message += f"📈 Overall: 200uL={final_progress_200}/{TOTAL_TIPS_PER_CAMPAIGN}, 1000uL={final_progress_1000}/{TOTAL_TIPS_PER_CAMPAIGN}"
             if final_progress_200 < TOTAL_TIPS_PER_CAMPAIGN or final_progress_1000 < TOTAL_TIPS_PER_CAMPAIGN:
-                completion_message += "\n🔄 Run again to continue remaining work."
+                overall_message += "\n🔄 Run again to continue remaining work."
             else:
-                completion_message += "\n🎉 All campaigns completed!"
-                
-            slack_agent.send_slack_message(completion_message)
-            print(f"📱 Slack completion notification sent")
+                overall_message += "\n🎉 All campaigns completed!"
+            slack_agent.send_slack_message(overall_message)
+            print(f"📱 Slack final notification sent")
         except Exception as slack_error:
-            print(f"⚠ Could not send Slack completion notification: {slack_error}")
+            print(f"⚠ Could not send Slack final notification: {slack_error}")
     else:
-        print("ℹ️ Simulation mode: Slack completion notification disabled")
+        print("ℹ️ Simulation mode: Slack final notification disabled")
 
     return {
-        "campaign_folder": campaign_folder,
-        "rows_processed": len(campaign_df),
+        "chunks_run": chunks_run,
         "workflow_complete": True,
     }
 

@@ -1,5 +1,43 @@
 # Changelog
 
+## [2026-05-08]
+
+### pipetting_data/embedded_calibration_validation.py (patch)
+- Tightened error-pause threshold from 50% to `5% + 5 uL` (additive, bidirectional) for Stages 1, 2, and 3
+- Example: 10 uL pauses if off by >5.5 uL; 100 uL pauses if off by >10 uL; 800 uL pauses if off by >45 uL
+- Error message now shows signed error and threshold instead of "<50%"
+
+
+### workflows/surfactant_grid_replay.py (new, minor)
+- New thin workflow that replays a prior 192-row surfactant grid run from `iterative_experiment_results.csv` + `experiment_plan_stock_solutions.csv` in one pass, no optimization
+- Imports all dispensing/measurement/plotting helpers from `surfactant_grid_adaptive_concentrations.py` — no duplication
+- Adds `ensure_vial_above_threshold` (refill if vial < `REFILL_THRESHOLD_ML` = 4 mL) called between sub-chunks of `REFILL_CHECK_CHUNK_SIZE` = 24 wells inside each component dispense; routes to `fill_water_vial` / `refill_surfactant_vial` / `create_substocks_from_recipes` depending on vial kind, raises if buffer runs low (no auto source)
+- Splits the 192-row CSV into per-plate DataFrames by detecting `wellplate_index` resets and runs the full dispense -> DMSO -> turbidity -> fluorescence cycle per plate
+
+### workflows/REFACTORING.md (new)
+- Documented an 11-step refactor plan for `surfactant_grid_adaptive_concentrations.py` ordered easiest-first (dead-code strip -> module splits), with size estimates and stable-import guarantees so the replay workflow keeps working
+
+### workflows/surfactant_grid_adaptive_concentrations.py
+- Removed ~30 DEBUG log/print lines (function-tracing noise, pairing_queue type/structure prints, two `VIAL_DF` dumps, redundant recommender prints); kept useful diagnostic messages (CMC target concentration values, "no CMC target" warnings, turbidity max value, optimization target) with `DEBUG:` prefix stripped
+- Replaced `'ADD_BUFFER': bool` in `PAIRING_QUEUE` with `'BUFFER': str | None` — `None` means no buffer, a string like `'MES'`/`'HEPES'`/`'CAPS'` selects that buffer
+- Double_iterative loop now sets `ADD_BUFFER` and `SELECTED_BUFFER` globals from `pairing_config['BUFFER']` before each pairing runs, so all downstream functions pick up the correct per-pairing buffer
+- `setup_experiment_environment` appends `_{SELECTED_BUFFER}` to the folder name when `ADD_BUFFER` is True (e.g. `SDS_CTAB_CAPS_20260508_143022`)
+- Experiment output folders now go to `output/simulated/` or `output/experimental/` depending on simulate mode, and the `surfactant_grid_` prefix is removed from the folder name
+
+
+
+### North_Safe.py + robot_state/pipet_racks.yaml
+- Added piggyback tip shake in `_perform_pipet_pickup`: when `pickup_shake` is present in rack config, the extraction is split at `z_fraction` (default 0.5), a lateral shake is applied (opposite of pickup direction to push secondary tip back toward rack), then the second half of the extraction completes
+- Added `pickup_shake: {amplitude_mm: 2.0, repeats: 2, z_fraction: 0.5}` to `large_tip_rack_1` and `large_tip_rack_2` in `pipet_racks.yaml`; small tip racks are unaffected
+- Shake direction auto-computed from pickup_movement signs: x=-2.2 -> shake_x=+2.0, y=+2.2 -> shake_y=-2.0
+
+### workflows/glycerol_dispense_baseline.py
+- Fixed cap artifact in baseline mass: vial is now uncapped immediately after moving to clamp (before `read_steady_scale`), using `is_vial_pipetable` to skip open-cap vials
+- Fixed early termination: `run_baseline()` now runs a `while True` loop that processes chunks from both campaigns (200uL and 1000uL) in a single invocation, using all available tips of each type before exiting
+- Hardware init (home, move vial, uncap) moved outside the loop; final cleanup (move home, return vial) also runs once after all chunks
+- Per-chunk Slack notifications replace single per-run notification; final summary Slack message covers all chunks run
+- Return value changed from `{"campaign_folder", "rows_processed"}` to `{"chunks_run", "workflow_complete"}`
+
 ## [2026-05-04]
 
 ### workflows/surfactant_grid_adaptive_concentrations.py

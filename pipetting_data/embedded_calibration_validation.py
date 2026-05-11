@@ -861,15 +861,18 @@ def validate_pipetting_accuracy(
                     validation_mode=True  # Use low-noise validation mode
                 )
                 print(f"    SIMULATION: Generated mass {mass_difference:.6f}g for validation")
-            elif mass_difference < 0.50 * volume_ml * density:
-                # Less than 50% of target dispensed - hardware/liquid problem
+            else:
                 measured_ul = (mass_difference / density) * 1000
-                error_msg = (
-                    f"Stage 1 dispensed only {measured_ul:.2f}uL of {volume_ml*1000:.1f}uL target (<50%). "
-                    f"Check tip attachment, liquid availability, and vial positioning."
-                )
-                lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
-                raise ValueError(error_msg)
+                target_ul = volume_ml * 1000
+                error_threshold_ul = 0.05 * target_ul + 5.0  # 5% + 5 uL
+                if abs(measured_ul - target_ul) > error_threshold_ul:
+                    error_msg = (
+                        f"Stage 1 dispensed {measured_ul:.2f}uL vs {target_ul:.1f}uL target "
+                        f"(error {measured_ul - target_ul:+.1f}uL, threshold +/-{error_threshold_ul:.1f}uL). "
+                        f"Check tip attachment, liquid availability, and vial positioning."
+                    )
+                    lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
+                    raise ValueError(error_msg)
 
             measured_volume_ml = mass_difference / density  # mass(g) / density(g/mL) = volume(mL)
             
@@ -1016,14 +1019,18 @@ def validate_pipetting_accuracy(
                                 validation_mode=True  # Use low-noise validation mode
                             )
                             print(f"        SIMULATION: Generated Stage 2 mass {stage2_mass:.6f}g")
-                        elif stage2_mass < 0.50 * volume_ml * density:
+                        else:
                             measured_ul = (stage2_mass / density) * 1000
-                            error_msg = (
-                                f"Stage 2 dispensed only {measured_ul:.2f}uL of {volume_ml*1000:.1f}uL target (<50%). "
-                                f"Check tip attachment, liquid availability, and vial positioning."
-                            )
-                            lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
-                            raise ValueError(error_msg)
+                            target_ul = volume_ml * 1000
+                            error_threshold_ul = 0.05 * target_ul + 5.0  # 5% + 5 uL
+                            if abs(measured_ul - target_ul) > error_threshold_ul:
+                                error_msg = (
+                                    f"Stage 2 dispensed {measured_ul:.2f}uL vs {target_ul:.1f}uL target "
+                                    f"(error {measured_ul - target_ul:+.1f}uL, threshold +/-{error_threshold_ul:.1f}uL). "
+                                    f"Check tip attachment, liquid availability, and vial positioning."
+                                )
+                                lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
+                                raise ValueError(error_msg)
                         
                         stage2_volume = stage2_mass / density
                         stage2_volumes.append(stage2_volume)
@@ -1120,14 +1127,18 @@ def validate_pipetting_accuracy(
                                 validation_mode=True  # Use low-noise validation mode
                             )
                             print(f"        SIMULATION: Generated Stage 3 mass {stage3_mass:.6f}g")
-                        elif stage3_mass < 0.50 * volume_ml * density:
+                        else:
                             measured_ul = (stage3_mass / density) * 1000
-                            error_msg = (
-                                f"Stage 3 dispensed only {measured_ul:.2f}uL of {volume_ml*1000:.1f}uL target (<50%). "
-                                f"Check tip attachment, liquid availability, and vial positioning."
-                            )
-                            lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
-                            raise ValueError(error_msg)
+                            target_ul = volume_ml * 1000
+                            error_threshold_ul = 0.05 * target_ul + 5.0  # 5% + 5 uL
+                            if abs(measured_ul - target_ul) > error_threshold_ul:
+                                error_msg = (
+                                    f"Stage 3 dispensed {measured_ul:.2f}uL vs {target_ul:.1f}uL target "
+                                    f"(error {measured_ul - target_ul:+.1f}uL, threshold +/-{error_threshold_ul:.1f}uL). "
+                                    f"Check tip attachment, liquid availability, and vial positioning."
+                                )
+                                lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
+                                raise ValueError(error_msg)
                         
                         stage3_volume = stage3_mass / density
                         stage3_volumes.append(stage3_volume)

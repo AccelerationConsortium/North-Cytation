@@ -200,12 +200,12 @@ PAIRING_QUEUE = [
     {
         'SURFACTANT_A': 'SDS',
         'SURFACTANT_B': 'CTAB',
-        'ADD_BUFFER': False
+        'BUFFER': 'CAPS'  # Set to None for no buffer, or a string like 'MES', 'HEPES', 'CAPS'
     },
     {
         'SURFACTANT_A': 'SDS',
         'SURFACTANT_B': 'BDDAC',
-        'ADD_BUFFER': False
+        'BUFFER': None  # No buffer for this pairing
     }
 ]
 
@@ -338,8 +338,6 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
     # Run contour analysis (always)
     logger.info("1. Generating contour plots...")
     try:
-        import sys
-        import os
         sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'analysis'))
         
         # Force matplotlib backend for analysis imports
@@ -416,8 +414,6 @@ def run_post_experiment_analysis(experiment_results_csv, output_dir, surfactant_
     if ADD_CMC_CONTROLS:
         logger.info("2. Running CMC control analysis...")
         try:
-            import sys
-            import os
             # Add analysis folder to path
             analysis_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'analysis')
             if analysis_path not in sys.path:
@@ -788,102 +784,97 @@ def calculate_adaptive_concentration_bounds(experiment_df, surfactant_a_name, su
         logger.info(f"      {surfactant_b_name} range: {best_rectangle['surf_B_min']:.6f} - {best_rectangle['surf_B_max']:.6f} mM")
         
         # Step 3: Create and save visualization
-        threshold_dir = Path(output_dir) / "concentration_thresholds"
-        threshold_dir.mkdir(exist_ok=True)
+        if output_dir is not None:
+            threshold_dir = Path(output_dir) / "concentration_thresholds"
+            threshold_dir.mkdir(exist_ok=True)
         
-        # Create classification grid for visualization
-        classification_grid = df.pivot_table(
-            index='surf_B_conc_mm', columns='surf_A_conc_mm', 
-            values='is_baseline', aggfunc='mean'
-        ).reindex(sorted(surf_B_concs, reverse=True))
-        classification_grid = classification_grid.reindex(sorted(surf_A_concs), axis=1)
-        
-        # Invert for display (1=non-baseline=red)
-        classification_display = 1 - classification_grid
-        
-        # Create visualization
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 8))
-        
-        # Plot 1: Classification with baseline rectangle
-        sns.heatmap(classification_display, ax=ax1, cmap='RdBu_r', vmin=0, vmax=1,
-                   annot=True, fmt='.0f', cbar_kws={'label': 'Non-baseline (1) vs Baseline (0)'},
-                   xticklabels=[f'{x:.4f}' if x < 1 else f'{x:.1f}' for x in surf_A_concs],
-                   yticklabels=[f'{y:.4f}' if y < 1 else f'{y:.1f}' for y in sorted(surf_B_concs, reverse=True)])
-        
-        # Draw baseline rectangle
-        left_col = best_rectangle['left_col']
-        right_col = best_rectangle['right_col'] + 1
-        bottom_row_display = len(surf_B_concs) - 1 - best_rectangle['top_row']
-        top_row_display = len(surf_B_concs) - best_rectangle['bottom_row']
-        
-        from matplotlib.patches import Rectangle
-        rect_patch = Rectangle((left_col, bottom_row_display), 
-                              right_col - left_col, 
-                              top_row_display - bottom_row_display,
-                              linewidth=3, edgecolor='green', facecolor='none', 
-                              linestyle='-', label='Largest baseline rectangle')
-        ax1.add_patch(rect_patch)
-        
-        # Draw new threshold lines
+        # Calculate new bounds from rectangle (always needed)
         new_surf_A_min = best_rectangle['surf_A_max']
         new_surf_B_min = best_rectangle['surf_B_max']
-        
-        try:
-            surf_A_idx = surf_A_concs.index(new_surf_A_min) + 0.5
-            surf_B_idx = sorted(surf_B_concs, reverse=True).index(new_surf_B_min) + 0.5
-        except ValueError:
-            surf_A_idx = min(range(len(surf_A_concs)), key=lambda x: abs(surf_A_concs[x] - new_surf_A_min)) + 0.5
-            surf_B_idx = min(range(len(surf_B_concs)), key=lambda x: abs(sorted(surf_B_concs, reverse=True)[x] - new_surf_B_min)) + 0.5
-        
-        ax1.axvline(x=surf_A_idx, color='red', linewidth=2, linestyle='--', label=f'New {surfactant_a_name} min: {new_surf_A_min:.4f}')
-        ax1.axhline(y=surf_B_idx, color='red', linewidth=2, linestyle='--', label=f'New {surfactant_b_name} min: {new_surf_B_min:.4f}')
-        
-        ax1.set_xlabel(f'{surfactant_a_name} Concentration (mM)')
-        ax1.set_ylabel(f'{surfactant_b_name} Concentration (mM)')
-        ax1.set_title(f'Baseline Classification with Largest Baseline Rectangle\\n(Green box = all baseline, Red lines = new thresholds)', fontweight='bold', fontsize=14)
-        ax1.legend()
-        
-        # Plot 2: Excluded vs Included wells
-        excluded_wells = df[
-            (df['surf_A_conc_mm'] <= new_surf_A_min) & 
-            (df['surf_B_conc_mm'] <= new_surf_B_min)
-        ]
-        
-        included_wells = df[
-            (df['surf_A_conc_mm'] > new_surf_A_min) | 
-            (df['surf_B_conc_mm'] > new_surf_B_min)
-        ]
-        
-        ax2.scatter(excluded_wells['surf_A_conc_mm'], excluded_wells['surf_B_conc_mm'], 
-                   c='lightgray', s=100, alpha=0.7, label=f'Excluded (n={len(excluded_wells)})')
-        
-        included_baseline = included_wells[included_wells['is_baseline'] == True]
-        included_non_baseline = included_wells[included_wells['is_baseline'] == False]
-        
-        ax2.scatter(included_baseline['surf_A_conc_mm'], included_baseline['surf_B_conc_mm'],
-                   c='blue', s=100, alpha=0.7, label=f'Included Baseline (n={len(included_baseline)})')
-        ax2.scatter(included_non_baseline['surf_A_conc_mm'], included_non_baseline['surf_B_conc_mm'],
-                   c='red', s=100, alpha=0.7, label=f'Included Non-baseline (n={len(included_non_baseline)})')
-        
-        ax2.axvline(x=new_surf_A_min, color='green', linewidth=2, linestyle='--')
-        ax2.axhline(y=new_surf_B_min, color='green', linewidth=2, linestyle='--')
-        
-        ax2.set_xlabel(f'{surfactant_a_name} Concentration (mM)')
-        ax2.set_ylabel(f'{surfactant_b_name} Concentration (mM)')
-        ax2.set_title(f'Wells: Excluded vs Included\\n(Baseline Rectangle Strategy)', fontweight='bold', fontsize=14)
-        ax2.set_xscale('log')
-        ax2.set_yscale('log')
-        ax2.grid(True, alpha=0.3)
-        ax2.legend()
-        
-        plt.tight_layout(pad=2.0)
-        
-        # Save visualization
-        vis_path = threshold_dir / 'adaptive_concentration_bounds.png'
-        plt.savefig(vis_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        logger.info(f"      Threshold visualization saved: {vis_path.name}")
+
+        # Create and save visualization only when output_dir is provided
+        if output_dir is not None:
+            # Create classification grid for visualization
+            classification_grid = df.pivot_table(
+                index='surf_B_conc_mm', columns='surf_A_conc_mm', 
+                values='is_baseline', aggfunc='mean'
+            ).reindex(sorted(surf_B_concs, reverse=True))
+            classification_grid = classification_grid.reindex(sorted(surf_A_concs), axis=1)
+            
+            # Invert for display (1=non-baseline=red)
+            classification_display = 1 - classification_grid
+            
+            # Create visualization
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 8))
+            
+            # Plot 1: Classification with baseline rectangle
+            sns.heatmap(classification_display, ax=ax1, cmap='RdBu_r', vmin=0, vmax=1,
+                       annot=True, fmt='.0f', cbar_kws={'label': 'Non-baseline (1) vs Baseline (0)'},
+                       xticklabels=[f'{x:.4f}' if x < 1 else f'{x:.1f}' for x in surf_A_concs],
+                       yticklabels=[f'{y:.4f}' if y < 1 else f'{y:.1f}' for y in sorted(surf_B_concs, reverse=True)])
+            
+            # Draw baseline rectangle
+            left_col = best_rectangle['left_col']
+            right_col = best_rectangle['right_col'] + 1
+            bottom_row_display = len(surf_B_concs) - 1 - best_rectangle['top_row']
+            top_row_display = len(surf_B_concs) - best_rectangle['bottom_row']
+            
+            from matplotlib.patches import Rectangle
+            rect_patch = Rectangle((left_col, bottom_row_display), 
+                                  right_col - left_col, 
+                                  top_row_display - bottom_row_display,
+                                  linewidth=3, edgecolor='green', facecolor='none', 
+                                  linestyle='-', label='Largest baseline rectangle')
+            ax1.add_patch(rect_patch)
+            
+            try:
+                surf_A_idx = surf_A_concs.index(new_surf_A_min) + 0.5
+                surf_B_idx = sorted(surf_B_concs, reverse=True).index(new_surf_B_min) + 0.5
+            except ValueError:
+                surf_A_idx = min(range(len(surf_A_concs)), key=lambda x: abs(surf_A_concs[x] - new_surf_A_min)) + 0.5
+                surf_B_idx = min(range(len(surf_B_concs)), key=lambda x: abs(sorted(surf_B_concs, reverse=True)[x] - new_surf_B_min)) + 0.5
+            
+            ax1.axvline(x=surf_A_idx, color='red', linewidth=2, linestyle='--', label=f'New {surfactant_a_name} min: {new_surf_A_min:.4f}')
+            ax1.axhline(y=surf_B_idx, color='red', linewidth=2, linestyle='--', label=f'New {surfactant_b_name} min: {new_surf_B_min:.4f}')
+            
+            ax1.set_xlabel(f'{surfactant_a_name} Concentration (mM)')
+            ax1.set_ylabel(f'{surfactant_b_name} Concentration (mM)')
+            ax1.set_title(f'Baseline Classification with Largest Baseline Rectangle\n(Green box = all baseline, Red lines = new thresholds)', fontweight='bold', fontsize=14)
+            ax1.legend()
+            
+            # Plot 2: Excluded vs Included wells
+            excluded_wells = df[
+                (df['surf_A_conc_mm'] <= new_surf_A_min) & 
+                (df['surf_B_conc_mm'] <= new_surf_B_min)
+            ]
+            included_wells = df[
+                (df['surf_A_conc_mm'] > new_surf_A_min) | 
+                (df['surf_B_conc_mm'] > new_surf_B_min)
+            ]
+            included_baseline = included_wells[included_wells['is_baseline'] == True]
+            included_non_baseline = included_wells[included_wells['is_baseline'] == False]
+            
+            ax2.scatter(excluded_wells['surf_A_conc_mm'], excluded_wells['surf_B_conc_mm'], 
+                       c='lightgray', s=100, alpha=0.7, label=f'Excluded (n={len(excluded_wells)})')
+            ax2.scatter(included_baseline['surf_A_conc_mm'], included_baseline['surf_B_conc_mm'],
+                       c='blue', s=100, alpha=0.7, label=f'Included Baseline (n={len(included_baseline)})')
+            ax2.scatter(included_non_baseline['surf_A_conc_mm'], included_non_baseline['surf_B_conc_mm'],
+                       c='red', s=100, alpha=0.7, label=f'Included Non-baseline (n={len(included_non_baseline)})')
+            ax2.axvline(x=new_surf_A_min, color='green', linewidth=2, linestyle='--')
+            ax2.axhline(y=new_surf_B_min, color='green', linewidth=2, linestyle='--')
+            ax2.set_xlabel(f'{surfactant_a_name} Concentration (mM)')
+            ax2.set_ylabel(f'{surfactant_b_name} Concentration (mM)')
+            ax2.set_title(f'Wells: Excluded vs Included\n(Baseline Rectangle Strategy)', fontweight='bold', fontsize=14)
+            ax2.set_xscale('log')
+            ax2.set_yscale('log')
+            ax2.grid(True, alpha=0.3)
+            ax2.legend()
+            
+            plt.tight_layout(pad=2.0)
+            vis_path = threshold_dir / 'adaptive_concentration_bounds.png'
+            plt.savefig(vis_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            logger.info(f"      Threshold visualization saved: {vis_path.name}")
         
         # Return new bounds
         new_bounds = {
@@ -923,7 +914,8 @@ def backup_measurement_data(lash_e, measurement_entry, plate_number, wells_measu
     try:
         # Create backup directory within experiment folder
         if experiment_name:
-            backup_dir = os.path.join("output", experiment_name, "measurement_backups")
+            sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+            backup_dir = os.path.join("output", sim_folder, experiment_name, "measurement_backups")
         else:
             backup_dir = os.path.join("output", "measurement_backups")  # Fallback
         os.makedirs(backup_dir, exist_ok=True)
@@ -2650,7 +2642,7 @@ def create_experiment_folder_structure(experiment_name):
     Returns:
         dict: Paths to all created subdirectories
     """
-    base_folder = os.path.join("output", experiment_name)
+    base_folder = os.path.join("output", "simulated_surfactant_grid" if SIMULATE else "experimental_surfactant_grid", experiment_name)
     
     subfolders = {
         'base': base_folder,
@@ -2895,44 +2887,32 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     
     if ADD_CMC_CONTROLS:
         lash_e.logger.info("  Creating CMC-specific vial selection plans...")
-        lash_e.logger.info(f"  DEBUG: CMC_CONTROL_POINTS = {CMC_CONTROL_POINTS}")
-        lash_e.logger.info(f"  DEBUG: surfactant_a_name = {surfactant_a_name}")
-        lash_e.logger.info(f"  DEBUG: surfactant_b_name = {surfactant_b_name}")
         
         # Get CMC concentrations for each surfactant
-        lash_e.logger.info(f"  DEBUG: Calling create_cmc_control_series for {surfactant_a_name}...")
         cmc_controls_a_preview = create_cmc_control_series(surfactant_a_name, surfactant_a_name, surfactant_b_name, lash_e, CMC_CONTROL_POINTS)
-        lash_e.logger.info(f"  DEBUG: {surfactant_a_name} preview controls: {len(cmc_controls_a_preview)}")
-        
-        lash_e.logger.info(f"  DEBUG: Calling create_cmc_control_series for {surfactant_b_name}...")
         cmc_controls_b_preview = create_cmc_control_series(surfactant_b_name, surfactant_a_name, surfactant_b_name, lash_e, CMC_CONTROL_POINTS)
-        lash_e.logger.info(f"  DEBUG: {surfactant_b_name} preview controls: {len(cmc_controls_b_preview)}")
         
-        lash_e.logger.info(f"  DEBUG: Extracting concentrations for {surfactant_a_name}...")
         cmc_target_concs_a = get_cmc_concentrations_from_controls(cmc_controls_a_preview, surfactant_a_name)
-        lash_e.logger.info(f"  DEBUG: {surfactant_a_name} target concentrations: {len(cmc_target_concs_a)} - {cmc_target_concs_a}")
+        lash_e.logger.info(f"  {surfactant_a_name} CMC target concentrations ({len(cmc_target_concs_a)}): {cmc_target_concs_a}")
         
-        lash_e.logger.info(f"  DEBUG: Extracting concentrations for {surfactant_b_name}...")
         cmc_target_concs_b = get_cmc_concentrations_from_controls(cmc_controls_b_preview, surfactant_b_name)
-        lash_e.logger.info(f"  DEBUG: {surfactant_b_name} target concentrations: {len(cmc_target_concs_b)} - {cmc_target_concs_b}")
+        lash_e.logger.info(f"  {surfactant_b_name} CMC target concentrations ({len(cmc_target_concs_b)}): {cmc_target_concs_b}")
         
         # Use existing stock matching pattern (same as iterative workflow)
         # Available volume for CMC controls depends on buffer setting
         cmc_max_volume_ul = WELL_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0) - 10  # 190µL (no buffer) or 170µL (with buffer)
         
         if cmc_target_concs_a:
-            lash_e.logger.info(f"  DEBUG: Creating plan from existing stocks for {surfactant_a_name}...")
             cmc_plan_a = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_a_name, cmc_target_concs_a, lash_e, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_a_name}: {len(cmc_target_concs_a)} concentrations")
         else:
-            lash_e.logger.info(f"  DEBUG: No CMC target concentrations for {surfactant_a_name} - skipping plan creation")
+            lash_e.logger.info(f"  No CMC target concentrations for {surfactant_a_name} - skipping plan creation")
             
         if cmc_target_concs_b:
-            lash_e.logger.info(f"  DEBUG: Creating plan from existing stocks for {surfactant_b_name}...")
             cmc_plan_b = create_plan_from_existing_stocks(stock_solutions_needed, surfactant_b_name, cmc_target_concs_b, lash_e, max_volume_ul=cmc_max_volume_ul)
             lash_e.logger.info(f"    CMC plan for {surfactant_b_name}: {len(cmc_target_concs_b)} concentrations")
         else:
-            lash_e.logger.info(f"  DEBUG: No CMC target concentrations for {surfactant_b_name} - skipping plan creation")
+            lash_e.logger.info(f"  No CMC target concentrations for {surfactant_b_name} - skipping plan creation")
     
     # Step 5: Create complete well-by-well recipes DataFrame
     lash_e.logger.info("  Creating complete well recipes...")
@@ -2951,21 +2931,15 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
         lash_e.logger.info(f"  Adding CMC control series ({CMC_CONTROL_POINTS} points each)...")
         
         # CMC controls for surfactant A
-        lash_e.logger.info(f"  DEBUG: Creating actual CMC controls for {surfactant_a_name}...")
         cmc_controls_a = create_cmc_control_series(surfactant_a_name, surfactant_a_name, surfactant_b_name, lash_e, CMC_CONTROL_POINTS)
-        lash_e.logger.info(f"  DEBUG: Created {len(cmc_controls_a)} controls for {surfactant_a_name}")
         for i, control in enumerate(cmc_controls_a):
-            lash_e.logger.info(f"  DEBUG: Processing {surfactant_a_name} control {i+1}: {control.get('description', 'no description')}")
             well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, cmc_plan_a, cmc_plan_b)
             well_recipes.append(well_recipe)
             well_index += 1
             
         # CMC controls for surfactant B  
-        lash_e.logger.info(f"  DEBUG: Creating actual CMC controls for {surfactant_b_name}...")
         cmc_controls_b = create_cmc_control_series(surfactant_b_name, surfactant_a_name, surfactant_b_name, lash_e, CMC_CONTROL_POINTS)
-        lash_e.logger.info(f"  DEBUG: Created {len(cmc_controls_b)} controls for {surfactant_b_name}")
         for i, control in enumerate(cmc_controls_b):
-            lash_e.logger.info(f"  DEBUG: Processing {surfactant_b_name} control {i+1}: {control.get('description', 'no description')}")
             well_recipe = create_well_recipe_from_control(control, well_index, surfactant_a_name, surfactant_b_name, lash_e, cmc_plan_a, cmc_plan_b)
             well_recipes.append(well_recipe)
             well_index += 1
@@ -2986,7 +2960,6 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     # End controls disabled - not needed for most experiments
     
     # Convert to DataFrame
-    import pandas as pd
     well_recipes_df = pd.DataFrame(well_recipes)
     
     # Step 6: Create experiment plan structure
@@ -3000,7 +2973,7 @@ def create_complete_experiment_plan(lash_e, surfactant_a_name, surfactant_b_name
     }
     
     # Step 7: Export to experiment folder (always save planning CSVs, even in simulation)
-    experiment_output_folder = os.path.join("output", experiment_name)
+    experiment_output_folder = os.path.join("output", "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid", experiment_name)
     os.makedirs(experiment_output_folder, exist_ok=True)
     
     # Save well recipes to CSV - directly in experiment folder  
@@ -3035,7 +3008,8 @@ def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, s
     # Create experiment name with timestamp
     experiment_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     tag_suffix = f"_{EXPERIMENT_TAG}" if EXPERIMENT_TAG else ""
-    experiment_name = f"surfactant_grid_{surfactant_a_name}_{surfactant_b_name}{tag_suffix}_{experiment_timestamp}"
+    buffer_suffix = f"_{SELECTED_BUFFER}" if ADD_BUFFER else ""
+    experiment_name = f"{surfactant_a_name}_{surfactant_b_name}{buffer_suffix}{tag_suffix}_{experiment_timestamp}"
     lash_e.current_experiment_name = experiment_name  # Store for access by other functions
     
     # Create organized experiment folder structure
@@ -3207,12 +3181,11 @@ def measure_and_process_turbidity(lash_e, well_recipes_df, shake_and_wait=True):
             # Save raw turbidity data to CSV immediately (always save, even in simulation)
             turbidity_filename = None  # Initialize to avoid undefined variable
             try:
-                from datetime import datetime
-                import os
                 experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
                 turbidity_filename = f"turbidity_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-                turbidity_path = os.path.join("output", experiment_name, "measurement_backups", turbidity_filename)
+                sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+                turbidity_path = os.path.join("output", sim_folder, experiment_name, "measurement_backups", turbidity_filename)
                 
                 # Ensure directory exists
                 os.makedirs(os.path.dirname(turbidity_path), exist_ok=True)
@@ -3332,12 +3305,11 @@ def measure_and_process_fluorescence(lash_e, well_recipes_df, shake_and_wait=Tru
             # Save raw fluorescence data to CSV immediately (always save, even in simulation)
             fluorescence_filename = None  # Initialize to avoid undefined variable
             try:
-                from datetime import datetime
-                import os
                 experiment_name = getattr(lash_e, 'current_experiment_name', 'unknown_experiment')
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
                 fluorescence_filename = f"fluorescence_plate{wellplate_data['current_plate']}_wells{wells_in_batch[0]}-{wells_in_batch[-1]}_{timestamp}.csv"
-                fluorescence_path = os.path.join("output", experiment_name, "measurement_backups", fluorescence_filename)
+                sim_folder = "simulated_surfactant_grid" if lash_e.simulate else "experimental_surfactant_grid"
+                fluorescence_path = os.path.join("output", sim_folder, experiment_name, "measurement_backups", fluorescence_filename)
                 
                 # Ensure directory exists
                 os.makedirs(os.path.dirname(fluorescence_path), exist_ok=True)
@@ -4543,7 +4515,6 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
     
     # Start kinetics timer right before post-shake measurements
     import time
-    from datetime import datetime
     start_time = time.time()
     
     # Post-shake measurement based on sequence type
@@ -4715,7 +4686,6 @@ def execute_single_kinetics_sequence(sequence, dispensing_results, surfactant_a_
     # Save time-series and results using helper functions 
     if time_series_data:
         try:
-            import pandas as pd
             time_series_df = pd.DataFrame(time_series_data)
             time_series_path = os.path.join(experiment_output_folder, "time_series.csv")
             time_series_df.to_csv(time_series_path, index=False)
@@ -4766,8 +4736,6 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     
     # Import the selected recommender algorithm
     try:
-        import sys
-        import os
         recommender_path = os.path.join(os.path.dirname(__file__), '..', 'recommenders')
         if recommender_path not in sys.path:
             sys.path.append(recommender_path)
@@ -4804,7 +4772,7 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
                 
             if len(turbidity_values) > 0:
                 max_turbidity = turbidity_values.max()
-                print(f"DEBUG: Turbidity analysis ({data_description}) - max value: {max_turbidity:.4f}")
+                print(f"  Turbidity analysis ({data_description}) - max value: {max_turbidity:.4f}")
                 
                 if max_turbidity <= 0.08:
                     print(f"⚠️  Turbidity is flat in {data_description} (max={max_turbidity:.4f} ≤ 0.08) - switching to ratio-only optimization")
@@ -4876,10 +4844,7 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
     
     # Get recommendations from selected algorithm
     print(f"Running {algorithm_name} analysis for {n_suggestions} boundary suggestions...")
-    print(f"DEBUG: Algorithm: {RECOMMENDER_TYPE} ({algorithm_name})")
-    print(f"DEBUG: Optimization target: {OPTIMIZE_METRIC} -> output columns: {output_columns}")
-    print(f"DEBUG: Input data shape: {experiment_data_df.shape}")
-    print(f"DEBUG: Available columns: {list(data_for_recommender.columns)}")
+    print(f"  Optimization target: {OPTIMIZE_METRIC} -> output columns: {output_columns}")
     
     # Get recommendations with algorithm-specific parameters
     if RECOMMENDER_TYPE == 'delaunay':
@@ -4889,7 +4854,7 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
             min_spacing_factor=0.5,  # Minimum spacing between triangle centroids
             tol_factor=0.1,         # Tolerance for duplicate detection
             triangle_score_method='max',  # Use max distance for sensitivity
-            output_dir=output_dir,  # Save triangle visualizations to output folder
+            output_dir=None if SIMULATE else output_dir,  # Skip saving figures in simulate mode
             create_visualization=False,  # Disable visualization to prevent popup windows
             output_reliability=output_reliability  # Pass reliability mask
         )
@@ -4909,16 +4874,12 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
                 step_id = f"iter_{iteration_number:02d}"  # Format as iter_01, iter_02, etc.
             else:
                 step_id = "iter_00"  # Fallback for initial/single runs
-            _create_bayesian_visualization(
+            if not SIMULATE:
+                _create_bayesian_visualization(
                 experiment_data_df, recommendations_df,  # Use original data for visualization (not log-transformed)
                 surfactant_a_name, surfactant_b_name, output_dir, 
                 step_id=step_id
             )
-    
-    print(f"DEBUG: {algorithm_name} recommender returned {len(recommendations_df)} suggestions")
-    if len(recommendations_df) > 0:
-        print(f"DEBUG: First few suggestions:")
-        print(recommendations_df[['surf_A_conc_mm', 'surf_B_conc_mm']].head())
     
     if len(recommendations_df) == 0:
         raise RuntimeError(f"CRITICAL: {algorithm_name} returned 0 recommendations! Algorithm is broken. Input data shape: {experiment_data_df.shape}, columns: {list(experiment_data_df.columns)}, output columns: {recommender.output_columns}")
@@ -4952,8 +4913,6 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
 def _create_bayesian_visualization(experiment_data_df, recommendations_df, surfactant_a_name, surfactant_b_name, output_dir, step_id="step1"):
     """Create simple Bayesian recommendation visualization - similar to Delaunay style."""
     import matplotlib.pyplot as plt
-    import numpy as np
-    import os
     
     # Create subfolder for Bayesian recommendations (like Delaunay does)
     bayesian_viz_dir = os.path.join(output_dir, "bayesian_recommendations")
@@ -5315,7 +5274,6 @@ if __name__ == "__main__":
                         logger=lash_e.logger
                     )
 
-                print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
             else:
                 print("Iterative workflow failed!")
         
@@ -5336,11 +5294,6 @@ if __name__ == "__main__":
             else:
                 pairing_queue = PAIRING_QUEUE
             
-            # Debug PAIRING_QUEUE structure
-            print(f"DEBUG: pairing_queue type: {type(pairing_queue)}")
-            print(f"DEBUG: pairing_queue length: {len(pairing_queue)}")
-            print(f"DEBUG: pairing_queue structure: {pairing_queue}")
-            
             print(f"Pairings planned: {len(pairing_queue)}")
             if not SIMULATE:
                 import slack_agent
@@ -5354,6 +5307,11 @@ if __name__ == "__main__":
                 print(f"PAIRING {i+1}/{len(pairing_queue)}: {pairing_config['SURFACTANT_A']} + {pairing_config['SURFACTANT_B']}")
                 print(f"{'='*80}")
                 
+                # Apply per-pairing buffer settings before creating folder / running workflow
+                pairing_buffer = pairing_config.get('BUFFER')
+                ADD_BUFFER = pairing_buffer is not None
+                SELECTED_BUFFER = pairing_buffer if pairing_buffer is not None else SELECTED_BUFFER
+
                 # Create separate experiment folder for this pairing
                 pairing_experiment_folder, pairing_experiment_name = setup_experiment_environment(
                     lash_e, pairing_config['SURFACTANT_A'], pairing_config['SURFACTANT_B'], SIMULATE
@@ -5407,8 +5365,6 @@ if __name__ == "__main__":
             print(f"+ Total wells measured: {total_wells}")
             print(f"+ Mode: {'SIMULATION' if SIMULATE else 'HARDWARE'}")
 
-            print(lash_e.nr_robot.VIAL_DF)  # Debug: Show final vial status after workflow
-            
             # List successful pairings and their folders
             if successful_pairings:
                 print("\n📁 Experiment folders created:")

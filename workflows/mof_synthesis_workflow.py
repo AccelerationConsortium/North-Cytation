@@ -57,7 +57,7 @@ STIRRING_SPEED = 1500  # RPM for mixing
 
 # Analysis parameters
 ANALYSIS_WELLS_PER_REACTION = 3  # Triplicate measurements
-CYTATION_PROTOCOL_FILE = r"C:\Protocols\MOF_Analysis_UV_Vis.prt"  # UV-Vis protocol for MOF detection
+CYTATION_PROTOCOL_FILE = r"C:\Protocols\mof_absorbance.prt"  # UV-Vis protocol for MOF detection
 
 # Sampling parameters
 SAMPLING_INTERVAL_MINUTES = 10  # Sample every 10 minutes
@@ -67,7 +67,7 @@ TOTAL_SAMPLING_TIME_MINUTES = 60  # 1 hour total sampling time
 TOTAL_REACTION_VOLUME = 6.0  # Total reaction volume
 WELLPLATE_DISPENSE_VOLUME = 0.200  # Volume per well for analysis
 
-SIMULATE = True  # Set to False for hardware execution
+SIMULATE = False  # Set to False for hardware execution
 
 # ================================================================================
 # MOF SYNTHESIS WORKFLOW FUNCTION
@@ -136,7 +136,7 @@ def mof_synthesis_workflow(
     metal_volume = TOTAL_REACTION_VOLUME * metal_volume_ratio
     
     lash_e.logger.info("Starting MOF synthesis reaction preparation")
-    prepare_reaction_mixture(lash_e, reaction_vial, linker_volume, metal_volume)
+    #prepare_reaction_mixture(lash_e, reaction_vial, linker_volume, metal_volume)
     
     # ============================================================================
     # STEP 3: REACTION MIXING WITH PERIODIC SAMPLING
@@ -443,15 +443,16 @@ if __name__ == "__main__":
     # Run MOF synthesis workflow
     results = mof_synthesis_workflow(
         lash_e,
-        prepare_substock={
-            'vial': 'diva_stock',
-            'target_volume_mL': 6.0,
-            'molecular_weight_g_per_mol': 274.27,  # DiVA MW
-            'target_concentration_mM': LINKER_STOCK_CONC,
-            'ethanol_vial': 'ethanol',
-            'powder_channel': 0,
-            'vortex_time': 10
-        }
+        # prepare_substock={
+        #     'vial': 'diva_stock',
+        #     'target_volume_mL': 6.0,
+        #     'molecular_weight_g_per_mol': 274.27,  # DiVA MW
+        #     'target_concentration_mM': LINKER_STOCK_CONC,
+        #     'ethanol_vial': 'ethanol',
+        #     'powder_channel': 0,
+        #     'vortex_time': 10
+        # }
+        prepare_substock=None  # Set to None to skip substock preparation and use existing stocks
     )
     
     print(f"MOF synthesis workflow completed. Results: {results}")

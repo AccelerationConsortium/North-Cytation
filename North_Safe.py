@@ -1633,12 +1633,28 @@ class North_Robot(North_Base):
         # Check for relative movement configuration
         pickup_movement = self.get_config_parameter('pipet_racks', rack_name, 'pickup_movement', error_on_missing=True)
         if pickup_movement:
-            self.move_rel_xyz(
-                x_distance=pickup_movement.get('x', 0),
-                y_distance=pickup_movement.get('y', 0), 
-                z_distance=pickup_movement.get('z', 0),
-                vel=self.get_speed('precise_movement')
-            )
+            x_total = pickup_movement.get('x', 0)
+            y_total = pickup_movement.get('y', 0)
+            z_total = pickup_movement.get('z', 0)
+            shake_config = self.get_config_parameter('pipet_racks', rack_name, 'pickup_shake', error_on_missing=False)
+            if shake_config:
+                z_fraction = shake_config.get('z_fraction', 0.5)
+                amplitude = shake_config.get('amplitude_mm', 2.0)
+                repeats = shake_config.get('repeats', 2)
+                vel = self.get_speed('fast_approach')
+                # First half of extraction
+                self.move_rel_xyz(x_distance=x_total * z_fraction, y_distance=y_total * z_fraction, z_distance=z_total * z_fraction, vel=vel)
+                # Shake: push back toward rack (opposite of pickup direction), then return
+                shake_x = amplitude if x_total < 0 else (-amplitude if x_total > 0 else 0)
+                shake_y = amplitude if y_total < 0 else (-amplitude if y_total > 0 else 0)
+                self.logger.info(f"Piggyback shake: {repeats} cycles, amplitude={amplitude}mm, direction=({shake_x:.1f}, {shake_y:.1f})")
+                for _ in range(repeats):
+                    self.move_rel_xyz(x_distance=shake_x, y_distance=shake_y, vel=vel)
+                    self.move_rel_xyz(x_distance=-shake_x, y_distance=-shake_y, vel=vel)
+                # Second half of extraction
+                self.move_rel_xyz(x_distance=x_total * (1 - z_fraction), y_distance=y_total * (1 - z_fraction), z_distance=z_total * (1 - z_fraction), vel=vel)
+            else:
+                self.move_rel_xyz(x_distance=x_total, y_distance=y_total, z_distance=z_total, vel=self.get_speed('precise_movement'))
             return
         
         # Check for safe height movement

@@ -407,6 +407,8 @@ class DelaunayTriangleRecommender:
     
     def _create_early_visualization(self, U, tri, experiment_data, output_dir=None):
         """Create simple triangulation visualization for debugging."""
+        if not output_dir:
+            return
         
         try:
             import matplotlib.pyplot as plt
@@ -539,6 +541,8 @@ class DelaunayTriangleRecommender:
     
     def _create_scored_visualization(self, U, tri, triangle_scores, experiment_data, output_dir=None):
         """Create triangulation visualization with triangle scores displayed on each triangle."""
+        if not output_dir:
+            return
         
         try:
             import matplotlib.pyplot as plt
