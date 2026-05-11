@@ -3588,7 +3588,8 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
             switch_pipet=False,
             save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
             condition_tip_enabled=True,
-            conditioning_volume_ul=900
+            conditioning_volume_ul=900,
+            adaptive_correction=True
         )
         validation_results['water_large'] = large_water_results
         lash_e.logger.info(f"        Large water: R^2={large_water_results['r_squared']:.3f}, Accuracy={large_water_results['mean_accuracy_pct']:.1f}%")
@@ -3649,7 +3650,8 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
                 switch_pipet=False,
                 save_raw_data=not (hasattr(lash_e, 'simulate') and lash_e.simulate),
                 condition_tip_enabled=True,
-                conditioning_volume_ul=800
+                conditioning_volume_ul=800,
+                adaptive_correction=True
             )
             validation_results[f'{surfactant_name}_large'] = surf_large_results
             lash_e.logger.info(f"        Large {surfactant_stock}: R^2={surf_large_results['r_squared']:.3f}, Accuracy={surf_large_results['mean_accuracy_pct']:.1f}%")
@@ -4867,7 +4869,6 @@ def get_suggested_concentrations(experiment_data_df, surfactant_a_name, surfacta
             log_transform_inputs=True,    # Work in log concentration space
             delta=0.03,      # Step size for directional gradients
             K=24,            # Number of random directions
-            lam=0.05,        # Exploration weight (lower = focus on boundaries)
             candidate_pool=50000  # Sobol candidate pool size
         )
         algorithm_name = "Bayesian optimization"

@@ -2,7 +2,6 @@ import sys
 
 from matplotlib.pylab import False_
 sys.path.append("../utoronto_demo")
-from backups.surfactant_grid_adaptive_concentrations_backup_consolidated_data_organization_20260203_172735 import VALIDATE_LIQUIDS
 from master_usdl_coordinator import Lash_E
 import pandas as pd
 import numpy as np
@@ -96,8 +95,8 @@ def mix_wells(lash_e, wells, wash_vial='wash', wash_volume=0.150, repeats=1, rep
 def sample_workflow(number_samples=6,replicates=6,colors=4,resolution_vol=10,well_volume=240):
   
 
-    SIMULATE = False
-    VALIDATE_LIQUIDS = True
+    SIMULATE = True
+    VALIDATE_LIQUIDS = False
 
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,simulate=SIMULATE)

@@ -14,7 +14,7 @@ Analyzes log files to calculate equipment utilization metrics and create visuali
 # ANALYZE_START_DATE = "March 2026"    # Whole month
 # ANALYZE_START_DATE = None            # From beginning
 
-ANALYZE_START_DATE = None # Edit this line to change start date
+ANALYZE_START_DATE = "April 2026" # Edit this line to change start date
 ANALYZE_END_DATE = None           # Edit this line to change end date (None = auto-detect end of month/period)
 
 #=============================================================================
