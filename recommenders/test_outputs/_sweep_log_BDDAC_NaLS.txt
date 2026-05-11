@@ -1,0 +1,3897 @@
+C:\Users\Owen\AppData\Local\Programs\Python\Python313\Lib\site-packages\botorch\models\utils\assorted.py:271: InputDataWarning: Data (input features) is not contained to the unit cube. Please consider min-max scaling the input data.
+  check_min_max_scaling(
+C:\Users\Owen\AppData\Local\Programs\Python\Python313\Lib\site-packages\botorch\models\utils\assorted.py:271: InputDataWarning: Data (input features) is not contained to the unit cube. Please consider min-max scaling the input data.
+  check_min_max_scaling(
+
+### Ground-truth surface: BDDAC_NaLS
+Wrote C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\test_outputs\real_BDDAC_NaLS\ground_truth.png
+Initialized BayesianTransitionRecommender (local-contrast):
+  Inputs (2D): ['surf_A_mm', 'surf_B_mm']
+  Outputs (2): ['ratio', 'turbidity_600']
+  log_transform_inputs=True
+  contrast: delta=0.030, K=24
+  spacing: alpha=0.70 * (1/n_total)^(1/d), sigmoid_scale=0.40 * target
+  candidate_pool=50,000, device=cpu
+
+=== BayesianContrast iter 1/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 25 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0384 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([25, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.344, 1.264]
+  turbidity_600: [0.0384, 0.5656] -> standardized: [-0.276, 4.761]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.5984e-02, 7.7197e-01], median 1.2576e-01
+    spacing: n_total=33, d=2, target=0.1219 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=6.2218e-01, weight=0.588, min_d=0.1392
+    pick 2/8: contrast=6.6037e-01, weight=0.535, min_d=0.1286
+    pick 3/8: contrast=6.1489e-01, weight=0.517, min_d=0.1251
+    pick 4/8: contrast=5.9302e-01, weight=0.524, min_d=0.1265
+    pick 5/8: contrast=4.5435e-01, weight=0.538, min_d=0.1292
+    pick 6/8: contrast=5.9562e-01, weight=0.332, min_d=0.0878
+    pick 7/8: contrast=7.4117e-01, weight=0.260, min_d=0.0710
+    pick 8/8: contrast=6.9841e-01, weight=0.274, min_d=0.0744
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 25 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.2625e+00 - 8.3511e+00
+  surf_B_mm: 1.2436e+00 - 8.5233e+00
+
+=== BayesianContrast iter 2/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 33 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([33, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.178, 1.550]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.216, 4.909]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.1881e-02, 2.7877e-01], median 8.2577e-02
+    spacing: n_total=41, d=2, target=0.1093 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=2.5818e-01, weight=0.821, min_d=0.1761
+    pick 2/8: contrast=2.0799e-01, weight=0.804, min_d=0.1710
+    pick 3/8: contrast=1.9123e-01, weight=0.790, min_d=0.1673
+    pick 4/8: contrast=2.5055e-01, weight=0.550, min_d=0.1181
+    pick 5/8: contrast=2.2477e-01, weight=0.582, min_d=0.1238
+    pick 6/8: contrast=1.4937e-01, weight=0.801, min_d=0.1704
+    pick 7/8: contrast=2.6513e-01, weight=0.449, min_d=0.1004
+    pick 8/8: contrast=1.4500e-01, weight=0.811, min_d=0.1729
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 33 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 2.6480e-02 - 1.8149e+01
+  surf_B_mm: 1.0069e-02 - 9.0567e+00
+
+=== BayesianContrast iter 3/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 41 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([41, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.332, 1.625]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.322, 5.485]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [8.2091e-03, 2.8872e-01], median 9.0190e-02
+    spacing: n_total=49, d=2, target=0.1000 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=2.1956e-01, weight=0.643, min_d=0.1235
+    pick 2/8: contrast=2.8490e-01, weight=0.470, min_d=0.0952
+    pick 3/8: contrast=2.1377e-01, weight=0.611, min_d=0.1180
+    pick 4/8: contrast=1.4604e-01, weight=0.870, min_d=0.1761
+    pick 5/8: contrast=1.7344e-01, weight=0.648, min_d=0.1245
+    pick 6/8: contrast=2.7325e-01, weight=0.410, min_d=0.0855
+    pick 7/8: contrast=2.6891e-01, weight=0.415, min_d=0.0862
+    pick 8/8: contrast=1.5109e-01, weight=0.629, min_d=0.1211
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 41 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.0185e-02 - 1.3898e+01
+  surf_B_mm: 1.6605e-02 - 1.7922e+01
+
+=== BayesianContrast iter 4/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 49 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([49, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.434, 1.700]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.418, 6.005]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.3060e-02, 3.5607e-01], median 9.0016e-02
+    spacing: n_total=57, d=2, target=0.0927 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=2.2417e-01, weight=0.527, min_d=0.0968
+    pick 2/8: contrast=3.4779e-01, weight=0.329, min_d=0.0663
+    pick 3/8: contrast=2.4355e-01, weight=0.464, min_d=0.0874
+    pick 4/8: contrast=2.4673e-01, weight=0.455, min_d=0.0861
+    pick 5/8: contrast=2.9240e-01, weight=0.338, min_d=0.0677
+    pick 6/8: contrast=3.2331e-01, weight=0.300, min_d=0.0612
+    pick 7/8: contrast=1.3850e-01, weight=0.694, min_d=0.1230
+    pick 8/8: contrast=1.3104e-01, weight=0.705, min_d=0.1250
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 49 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.7961e-01 - 1.7847e+01
+  surf_B_mm: 1.6086e-02 - 5.0236e-01
+
+=== BayesianContrast iter 5/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 57 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([57, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.499, 1.671]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.514, 6.482]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.1607e-02, 3.4925e-01], median 8.7368e-02
+    spacing: n_total=65, d=2, target=0.0868 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=3.2997e-01, weight=0.365, min_d=0.0675
+    pick 2/8: contrast=2.0086e-01, weight=0.579, min_d=0.0979
+    pick 3/8: contrast=1.4951e-01, weight=0.748, min_d=0.1247
+    pick 4/8: contrast=2.1698e-01, weight=0.468, min_d=0.0823
+    pick 5/8: contrast=1.8919e-01, weight=0.526, min_d=0.0905
+    pick 6/8: contrast=1.8499e-01, weight=0.529, min_d=0.0909
+    pick 7/8: contrast=2.9064e-01, weight=0.328, min_d=0.0619
+    pick 8/8: contrast=1.2378e-01, weight=0.747, min_d=0.1244
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 57 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.2527e-02 - 5.4435e+00
+  surf_B_mm: 6.8054e-02 - 1.8042e+01
+
+=== BayesianContrast iter 6/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 65 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([65, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.578, 1.596]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.610, 6.918]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [9.8281e-03, 3.3626e-01], median 9.1209e-02
+    spacing: n_total=73, d=2, target=0.0819 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.8652e-01, weight=0.517, min_d=0.0841
+    pick 2/8: contrast=1.2410e-01, weight=0.774, min_d=0.1223
+    pick 3/8: contrast=3.2948e-01, weight=0.289, min_d=0.0525
+    pick 4/8: contrast=2.9541e-01, weight=0.320, min_d=0.0572
+    pick 5/8: contrast=2.6529e-01, weight=0.355, min_d=0.0623
+    pick 6/8: contrast=1.2159e-01, weight=0.762, min_d=0.1201
+    pick 7/8: contrast=1.8551e-01, weight=0.500, min_d=0.0819
+    pick 8/8: contrast=1.1247e-01, weight=0.804, min_d=0.1281
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 65 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.0163e-01 - 1.6069e+01
+  surf_B_mm: 1.0070e-02 - 8.5063e+00
+
+=== BayesianContrast iter 7/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 73 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8661
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([73, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8661] -> standardized: [-1.608, 1.776]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.700, 7.329]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.0918e-02, 3.6035e-01], median 8.2553e-02
+    spacing: n_total=81, d=2, target=0.0778 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=2.6289e-01, weight=0.423, min_d=0.0681
+    pick 2/8: contrast=3.0154e-01, weight=0.356, min_d=0.0594
+    pick 3/8: contrast=1.8611e-01, weight=0.570, min_d=0.0866
+    pick 4/8: contrast=3.5287e-01, weight=0.297, min_d=0.0510
+    pick 5/8: contrast=3.0498e-01, weight=0.313, min_d=0.0534
+    pick 6/8: contrast=1.5609e-01, weight=0.583, min_d=0.0882
+    pick 7/8: contrast=3.5027e-01, weight=0.256, min_d=0.0446
+    pick 8/8: contrast=1.4968e-01, weight=0.578, min_d=0.0876
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 73 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.8658e-02 - 2.0091e+00
+  surf_B_mm: 1.1118e-01 - 1.4429e+01
+
+=== BayesianContrast iter 8/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 81 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8661
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([81, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8661] -> standardized: [-1.640, 1.846]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.769, 7.722]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [9.8938e-03, 3.4387e-01], median 9.5216e-02
+    spacing: n_total=89, d=2, target=0.0742 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.7466e-01, weight=0.618, min_d=0.0885
+    pick 2/8: contrast=2.8221e-01, weight=0.359, min_d=0.0570
+    pick 3/8: contrast=1.5900e-01, weight=0.620, min_d=0.0888
+    pick 4/8: contrast=1.7366e-01, weight=0.565, min_d=0.0820
+    pick 5/8: contrast=1.6095e-01, weight=0.587, min_d=0.0847
+    pick 6/8: contrast=1.0893e-01, weight=0.857, min_d=0.1274
+    pick 7/8: contrast=2.4050e-01, weight=0.387, min_d=0.0606
+    pick 8/8: contrast=1.3253e-01, weight=0.692, min_d=0.0983
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 81 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.2460e-02 - 1.4053e+01
+  surf_B_mm: 2.5926e-02 - 2.0640e+00
+
+=== BayesianContrast iter 9/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 89 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8661
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([89, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8661] -> standardized: [-1.700, 1.807]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.824, 7.903]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [9.2425e-03, 3.4638e-01], median 9.1728e-02
+    spacing: n_total=97, d=2, target=0.0711 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=3.2138e-01, weight=0.303, min_d=0.0474
+    pick 2/8: contrast=2.5158e-01, weight=0.378, min_d=0.0569
+    pick 3/8: contrast=1.5074e-01, weight=0.618, min_d=0.0848
+    pick 4/8: contrast=2.3119e-01, weight=0.393, min_d=0.0587
+    pick 5/8: contrast=2.6064e-01, weight=0.341, min_d=0.0523
+    pick 6/8: contrast=1.4529e-01, weight=0.607, min_d=0.0834
+    pick 7/8: contrast=2.7421e-01, weight=0.322, min_d=0.0498
+    pick 8/8: contrast=2.9173e-01, weight=0.299, min_d=0.0468
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 89 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.4179e-02 - 1.8970e+01
+  surf_B_mm: 1.0224e-02 - 2.0058e+01
+
+=== BayesianContrast iter 10/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 97 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8661
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([97, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8661] -> standardized: [-1.690, 1.818]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.899, 8.246]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.0093e-02, 3.9481e-01], median 9.3472e-02
+    spacing: n_total=105, d=2, target=0.0683 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.3699e-01, weight=0.754, min_d=0.0989
+    pick 2/8: contrast=3.6873e-01, weight=0.276, min_d=0.0419
+    pick 3/8: contrast=3.5443e-01, weight=0.282, min_d=0.0427
+    pick 4/8: contrast=3.8469e-01, weight=0.259, min_d=0.0395
+    pick 5/8: contrast=2.9062e-01, weight=0.328, min_d=0.0487
+    pick 6/8: contrast=3.3694e-01, weight=0.281, min_d=0.0426
+    pick 7/8: contrast=3.3232e-01, weight=0.280, min_d=0.0424
+    pick 8/8: contrast=3.0709e-01, weight=0.299, min_d=0.0450
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 97 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 8.8730e-02 - 1.8090e+01
+  surf_B_mm: 1.2804e-02 - 9.8393e-01
+
+=== BayesianContrast iter 11/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 105 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8661
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([105, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8661] -> standardized: [-1.729, 1.835]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-1.953, 8.575]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.1112e-02, 3.8450e-01], median 9.5186e-02
+    spacing: n_total=113, d=2, target=0.0659 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.4997e-01, weight=0.700, min_d=0.0882
+    pick 2/8: contrast=2.2825e-01, weight=0.442, min_d=0.0597
+    pick 3/8: contrast=2.1893e-01, weight=0.454, min_d=0.0610
+    pick 4/8: contrast=2.2602e-01, weight=0.439, min_d=0.0594
+    pick 5/8: contrast=2.0382e-01, weight=0.462, min_d=0.0618
+    pick 6/8: contrast=1.6076e-01, weight=0.557, min_d=0.0719
+    pick 7/8: contrast=3.1450e-01, weight=0.283, min_d=0.0413
+    pick 8/8: contrast=2.1130e-01, weight=0.420, min_d=0.0574
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 105 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 2.6619e-02 - 5.2412e+00
+  surf_B_mm: 1.1224e-01 - 1.8950e+01
+
+=== BayesianContrast iter 12/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 113 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8661
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([113, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8661] -> standardized: [-1.775, 1.818]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-2.023, 8.871]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [9.9694e-03, 3.7957e-01], median 1.0111e-01
+    spacing: n_total=121, d=2, target=0.0636 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.9997e-01, weight=0.467, min_d=0.0603
+    pick 2/8: contrast=1.0950e-01, weight=0.842, min_d=0.1062
+    pick 3/8: contrast=1.2235e-01, weight=0.753, min_d=0.0920
+    pick 4/8: contrast=1.0454e-01, weight=0.880, min_d=0.1144
+    pick 5/8: contrast=2.7697e-01, weight=0.327, min_d=0.0452
+    pick 6/8: contrast=3.4518e-01, weight=0.258, min_d=0.0368
+    pick 7/8: contrast=1.8967e-01, weight=0.470, min_d=0.0606
+    pick 8/8: contrast=3.7685e-01, weight=0.234, min_d=0.0335
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 113 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.6000e-02 - 1.4731e+01
+  surf_B_mm: 2.9155e-02 - 1.5715e+01
+
+=== BayesianContrast iter 13/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 121 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([121, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.770, 1.856]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-2.015, 8.697]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [5.7399e-03, 3.8330e-01], median 1.0068e-01
+    spacing: n_total=129, d=2, target=0.0616 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.9101e-01, weight=0.506, min_d=0.0622
+    pick 2/8: contrast=3.5214e-01, weight=0.268, min_d=0.0369
+    pick 3/8: contrast=1.2441e-01, weight=0.756, min_d=0.0896
+    pick 4/8: contrast=3.4778e-01, weight=0.260, min_d=0.0358
+    pick 5/8: contrast=1.8214e-01, weight=0.488, min_d=0.0605
+    pick 6/8: contrast=1.0726e-01, weight=0.829, min_d=0.1005
+    pick 7/8: contrast=2.3761e-01, weight=0.373, min_d=0.0489
+    pick 8/8: contrast=1.8111e-01, weight=0.489, min_d=0.0605
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 121 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.0186e-02 - 8.5554e+00
+  surf_B_mm: 1.1361e-01 - 1.7078e+01
+
+=== BayesianContrast iter 14/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 129 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([129, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.782, 1.883]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-2.073, 8.924]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [7.6381e-03, 3.7778e-01], median 1.4782e-01
+    spacing: n_total=137, d=2, target=0.0598 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.9876e-01, weight=0.765, min_d=0.0880
+    pick 2/8: contrast=2.2500e-01, weight=0.662, min_d=0.0759
+    pick 3/8: contrast=1.7257e-01, weight=0.834, min_d=0.0984
+    pick 4/8: contrast=2.5434e-01, weight=0.500, min_d=0.0598
+    pick 5/8: contrast=1.7437e-01, weight=0.700, min_d=0.0800
+    pick 6/8: contrast=1.4284e-01, weight=0.853, min_d=0.1018
+    pick 7/8: contrast=1.8195e-01, weight=0.667, min_d=0.0764
+    pick 8/8: contrast=2.2326e-01, weight=0.527, min_d=0.0624
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 129 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 4.8333e-01 - 1.5593e+01
+  surf_B_mm: 2.9308e-01 - 1.3132e+01
+
+=== BayesianContrast iter 15/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 137 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([137, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.732, 1.929]
+  turbidity_600: [-0.0578, 0.5656] -> standardized: [-2.140, 9.182]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [7.3115e-03, 3.0478e+00], median 2.1897e-01
+    spacing: n_total=145, d=2, target=0.0581 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=2.4753e+00, weight=0.554, min_d=0.0632
+    pick 2/8: contrast=2.3681e+00, weight=0.565, min_d=0.0642
+    pick 3/8: contrast=2.6352e+00, weight=0.384, min_d=0.0472
+    pick 4/8: contrast=2.8264e+00, weight=0.352, min_d=0.0439
+    pick 5/8: contrast=2.1753e+00, weight=0.428, min_d=0.0514
+    pick 6/8: contrast=2.5915e+00, weight=0.308, min_d=0.0393
+    pick 7/8: contrast=2.8409e+00, weight=0.264, min_d=0.0343
+    pick 8/8: contrast=1.0518e+00, weight=0.699, min_d=0.0778
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 137 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.0639e+00 - 4.6667e+00
+  surf_B_mm: 1.3006e+00 - 5.1074e+00
+
+=== BayesianContrast iter 16/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 145 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5870
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([145, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.664, 1.980]
+  turbidity_600: [-0.0578, 0.5870] -> standardized: [-1.610, 6.627]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [4.8945e-03, 3.9790e-01], median 1.4594e-01
+    spacing: n_total=153, d=2, target=0.0566 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.3519e-01, weight=0.958, min_d=0.1275
+    pick 2/8: contrast=2.1217e-01, weight=0.606, min_d=0.0663
+    pick 3/8: contrast=1.6036e-01, weight=0.775, min_d=0.0846
+    pick 4/8: contrast=2.1856e-01, weight=0.563, min_d=0.0623
+    pick 5/8: contrast=2.2744e-01, weight=0.533, min_d=0.0596
+    pick 6/8: contrast=1.9378e-01, weight=0.616, min_d=0.0673
+    pick 7/8: contrast=1.9326e-01, weight=0.609, min_d=0.0667
+    pick 8/8: contrast=1.4062e-01, weight=0.831, min_d=0.0927
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 145 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.4428e-01 - 1.7621e+01
+  surf_B_mm: 4.7396e-01 - 2.2228e+01
+
+=== BayesianContrast iter 17/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 153 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5870
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([153, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.623, 1.994]
+  turbidity_600: [-0.0578, 0.5870] -> standardized: [-1.649, 6.802]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [7.6657e-03, 3.8670e-01], median 1.4840e-01
+    spacing: n_total=161, d=2, target=0.0552 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=1.8543e-01, weight=0.692, min_d=0.0730
+    pick 2/8: contrast=2.2189e-01, weight=0.554, min_d=0.0600
+    pick 3/8: contrast=1.9608e-01, weight=0.602, min_d=0.0643
+    pick 4/8: contrast=2.2694e-01, weight=0.500, min_d=0.0551
+    pick 5/8: contrast=1.9450e-01, weight=0.583, min_d=0.0626
+    pick 6/8: contrast=1.1735e-01, weight=0.962, min_d=0.1266
+    pick 7/8: contrast=2.0958e-01, weight=0.537, min_d=0.0584
+    pick 8/8: contrast=2.2773e-01, weight=0.485, min_d=0.0539
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 153 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 9.5043e-01 - 8.7112e+00
+  surf_B_mm: 6.8661e-02 - 1.7791e+01
+
+=== BayesianContrast iter 18/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 161 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5870
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([161, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.578, 2.000]
+  turbidity_600: [-0.0578, 0.5870] -> standardized: [-1.676, 6.962]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.4288e-03, 3.3276e+00], median 1.6420e-01
+    spacing: n_total=169, d=2, target=0.0538 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=2.3045e+00, weight=0.314, min_d=0.0370
+    pick 2/8: contrast=3.0586e+00, weight=0.190, min_d=0.0226
+    pick 3/8: contrast=2.1916e+00, weight=0.258, min_d=0.0311
+    pick 4/8: contrast=3.0320e+00, weight=0.170, min_d=0.0197
+    pick 5/8: contrast=1.3162e+00, weight=0.388, min_d=0.0441
+    pick 6/8: contrast=2.0892e+00, weight=0.240, min_d=0.0291
+    pick 7/8: contrast=2.1121e+00, weight=0.234, min_d=0.0283
+    pick 8/8: contrast=2.7456e+00, weight=0.177, min_d=0.0207
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 161 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.6514e+00 - 4.9313e+00
+  surf_B_mm: 1.9565e+00 - 4.4862e+00
+
+=== BayesianContrast iter 19/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 169 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5984
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([169, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.529, 2.048]
+  turbidity_600: [-0.0578, 0.5984] -> standardized: [-1.332, 4.852]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.7221e-03, 2.0723e+00], median 1.5299e-01
+    spacing: n_total=177, d=2, target=0.0526 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=8.7974e-01, weight=0.439, min_d=0.0475
+    pick 2/8: contrast=1.8198e+00, weight=0.200, min_d=0.0235
+    pick 3/8: contrast=1.5057e+00, weight=0.240, min_d=0.0284
+    pick 4/8: contrast=1.8887e+00, weight=0.189, min_d=0.0220
+    pick 5/8: contrast=9.2779e-01, weight=0.371, min_d=0.0415
+    pick 6/8: contrast=5.4496e-01, weight=0.624, min_d=0.0633
+    pick 7/8: contrast=2.0221e+00, weight=0.159, min_d=0.0176
+    pick 8/8: contrast=1.3395e+00, weight=0.226, min_d=0.0267
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 169 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.2268e+00 - 5.3114e+00
+  surf_B_mm: 1.1534e+00 - 6.8041e+00
+
+=== BayesianContrast iter 20/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 177 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5984
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([177, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.495, 2.097]
+  turbidity_600: [-0.0578, 0.5984] -> standardized: [-1.349, 4.759]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.7832e-03, 2.5132e+00], median 1.4464e-01
+    spacing: n_total=185, d=2, target=0.0515 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=9.5465e-01, weight=0.468, min_d=0.0488
+    pick 2/8: contrast=2.4406e+00, weight=0.164, min_d=0.0180
+    pick 3/8: contrast=1.3891e+00, weight=0.280, min_d=0.0320
+    pick 4/8: contrast=2.4369e+00, weight=0.151, min_d=0.0159
+    pick 5/8: contrast=8.8365e-01, weight=0.393, min_d=0.0425
+    pick 6/8: contrast=1.5086e+00, weight=0.229, min_d=0.0265
+    pick 7/8: contrast=2.3377e+00, weight=0.145, min_d=0.0149
+    pick 8/8: contrast=1.2204e+00, weight=0.275, min_d=0.0315
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 177 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.6178e+00 - 6.5316e+00
+  surf_B_mm: 1.1709e+00 - 5.8321e+00
+
+=== BayesianContrast iter 21/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (BayesianTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 185 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8673
+  turbidity_600: -0.0578 - 0.5984
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([185, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8673] -> standardized: [-1.458, 2.142]
+  turbidity_600: [-0.0578, 0.5984] -> standardized: [-1.304, 4.340]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+  Fitting GP for turbidity_600...
+
+5. Selecting batch via BayesianTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing local contrast on 50,000 candidates...
+    contrast: range [1.8646e-03, 2.2603e+00], median 1.4201e-01
+    spacing: n_total=193, d=2, target=0.0504 (clamped to [0.02, 0.25])
+    pick 1/8: contrast=2.2603e+00, weight=0.150, min_d=0.0154
+    pick 2/8: contrast=5.5708e-01, weight=0.599, min_d=0.0584
+    pick 3/8: contrast=1.2238e+00, weight=0.272, min_d=0.0305
+    pick 4/8: contrast=1.7048e+00, weight=0.189, min_d=0.0211
+    pick 5/8: contrast=2.1561e+00, weight=0.149, min_d=0.0152
+    pick 6/8: contrast=1.1631e+00, weight=0.267, min_d=0.0300
+    pick 7/8: contrast=2.0601e+00, weight=0.148, min_d=0.0151
+    pick 8/8: contrast=1.9385e+00, weight=0.155, min_d=0.0163
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (BayesianTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 185 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.2518e+00 - 4.3199e+00
+  surf_B_mm: 8.3506e-01 - 6.5686e+00
+Wrote C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\test_outputs\real_BDDAC_NaLS\2d_exploration_BayesianContrast.png
+Initialized GradientTransitionRecommender (gradient-UCB):
+  Inputs (2D): ['surf_A_mm', 'surf_B_mm']
+  Outputs (2): ['ratio', 'turbidity_600']
+  log_transform_inputs=True
+  acq: max_j standardized_sum_k(|grad mu_kj| + beta*sqrt(Sigma_grad,jj_k))
+  beta=1.0
+  spacing: alpha=0.70 * (1/n_total)^(1/d), sigmoid_scale=0.40 * target
+  candidate_pool=50,000, device=cpu
+
+=== GradientUCB iter 1/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 25 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0384 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([25, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.344, 1.264]
+  turbidity_600: [0.0384, 0.5656] -> standardized: [-0.276, 4.761]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.25995385 0.26799597], outputscale=1.0000, noise=5.6633e-03
+  Fitting GP for turbidity_600...
+    lengthscale=[0.08951382 0.08954222], outputscale=1.0000, noise=6.7208e-03
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [3.3198e-01, 1.3435e+00], median 7.1740e-01
+    spacing: n_total=33, d=2, target=0.1219 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.2381e+00, weight=0.742, min_d=0.1734
+    pick 2/8: acq=1.1458e+00, weight=0.741, min_d=0.1732
+    pick 3/8: acq=8.8301e-01, weight=0.746, min_d=0.1745
+    pick 4/8: acq=8.6346e-01, weight=0.755, min_d=0.1767
+    pick 5/8: acq=1.2914e+00, weight=0.494, min_d=0.1208
+    pick 6/8: acq=8.4053e-01, weight=0.752, min_d=0.1760
+    pick 7/8: acq=1.1516e+00, weight=0.548, min_d=0.1313
+    pick 8/8: acq=9.9305e-01, weight=0.620, min_d=0.1456
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 25 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 2.5705e-02 - 2.2358e+01
+  surf_B_mm: 2.5962e-02 - 8.7338e+00
+
+=== GradientUCB iter 2/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 33 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0384 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([33, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.397, 1.409]
+  turbidity_600: [0.0384, 0.5656] -> standardized: [-0.303, 5.435]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.25852418 0.26960584], outputscale=1.0000, noise=3.4287e-03
+  Fitting GP for turbidity_600...
+    lengthscale=[0.09377435 0.06252691], outputscale=1.0000, noise=6.7145e-03
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.2667e-01, 1.9817e+00], median 7.5034e-01
+    spacing: n_total=41, d=2, target=0.1093 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.3994e+00, weight=0.570, min_d=0.1217
+    pick 2/8: acq=1.2676e+00, weight=0.628, min_d=0.1321
+    pick 3/8: acq=1.3631e+00, weight=0.583, min_d=0.1239
+    pick 4/8: acq=9.2481e-01, weight=0.811, min_d=0.1730
+    pick 5/8: acq=1.2533e+00, weight=0.588, min_d=0.1249
+    pick 6/8: acq=1.2200e+00, weight=0.568, min_d=0.1214
+    pick 7/8: acq=1.8552e+00, weight=0.357, min_d=0.0835
+    pick 8/8: acq=1.1480e+00, weight=0.576, min_d=0.1228
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 33 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.0075e-02 - 6.5586e+00
+  surf_B_mm: 1.5512e+00 - 2.2337e+01
+
+=== GradientUCB iter 3/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 41 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([41, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8607] -> standardized: [-1.315, 1.575]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.631, 5.610]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.25669516 0.25485   ], outputscale=1.0000, noise=1.0113e-03
+  Fitting GP for turbidity_600...
+    lengthscale=[0.96943263 0.89766813], outputscale=1.0000, noise=7.6807e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.9809e-01, 1.5426e+00], median 8.0796e-01
+    spacing: n_total=49, d=2, target=0.1000 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.3008e+00, weight=0.639, min_d=0.1229
+    pick 2/8: acq=1.2578e+00, weight=0.637, min_d=0.1224
+    pick 3/8: acq=1.1692e+00, weight=0.640, min_d=0.1230
+    pick 4/8: acq=1.1699e+00, weight=0.635, min_d=0.1221
+    pick 5/8: acq=1.1175e+00, weight=0.649, min_d=0.1246
+    pick 6/8: acq=1.0560e+00, weight=0.637, min_d=0.1225
+    pick 7/8: acq=1.0036e+00, weight=0.650, min_d=0.1248
+    pick 8/8: acq=1.0004e+00, weight=0.639, min_d=0.1228
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 41 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.7772e-01 - 2.2187e+01
+  surf_B_mm: 1.0047e-02 - 2.2055e+01
+
+=== GradientUCB iter 4/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 49 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8618
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([49, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8618] -> standardized: [-1.378, 1.542]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.673, 6.136]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.23776812 0.27069216], outputscale=1.0000, noise=2.6755e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.92475592 0.90254533], outputscale=1.0000, noise=7.9063e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.9222e-01, 1.5802e+00], median 8.0647e-01
+    spacing: n_total=57, d=2, target=0.0927 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.0174e+00, weight=0.704, min_d=0.1249
+    pick 2/8: acq=9.7243e-01, weight=0.702, min_d=0.1245
+    pick 3/8: acq=7.5292e-01, weight=0.905, min_d=0.1763
+    pick 4/8: acq=1.5032e+00, weight=0.446, min_d=0.0847
+    pick 5/8: acq=7.5918e-01, weight=0.878, min_d=0.1660
+    pick 6/8: acq=1.4744e+00, weight=0.446, min_d=0.0847
+    pick 7/8: acq=1.4367e+00, weight=0.451, min_d=0.0854
+    pick 8/8: acq=1.4161e+00, weight=0.452, min_d=0.0855
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 49 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.0536e-02 - 1.3951e+01
+  surf_B_mm: 1.5727e-02 - 1.4269e+01
+
+=== GradientUCB iter 5/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 57 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8618
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([57, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8618] -> standardized: [-1.456, 1.500]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.713, 6.617]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24103091 0.26369077], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.91784471 0.84108718], outputscale=1.0000, noise=8.0697e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.7206e-01, 1.6136e+00], median 7.8954e-01
+    spacing: n_total=65, d=2, target=0.0868 (clamped to [0.02, 0.25])
+    pick 1/8: acq=9.3026e-01, weight=0.707, min_d=0.1174
+    pick 2/8: acq=8.6881e-01, weight=0.750, min_d=0.1250
+    pick 3/8: acq=8.7870e-01, weight=0.738, min_d=0.1228
+    pick 4/8: acq=8.8251e-01, weight=0.735, min_d=0.1222
+    pick 5/8: acq=8.6529e-01, weight=0.744, min_d=0.1239
+    pick 6/8: acq=8.5446e-01, weight=0.753, min_d=0.1256
+    pick 7/8: acq=6.8898e-01, weight=0.925, min_d=0.1740
+    pick 8/8: acq=1.2235e+00, weight=0.499, min_d=0.0867
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 57 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.8380e-01 - 8.4844e+00
+  surf_B_mm: 2.6601e-02 - 8.5768e+00
+
+=== GradientUCB iter 6/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 65 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8618
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([65, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8618] -> standardized: [-1.525, 1.506]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.764, 6.913]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24194752 0.26466083], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.86511149 0.80988366], outputscale=1.0000, noise=8.1876e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.4247e-01, 1.6437e+00], median 7.7963e-01
+    spacing: n_total=73, d=2, target=0.0819 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.1928e+00, weight=0.545, min_d=0.0879
+    pick 2/8: acq=1.1496e+00, weight=0.539, min_d=0.0871
+    pick 3/8: acq=7.7439e-01, weight=0.787, min_d=0.1248
+    pick 4/8: acq=1.1448e+00, weight=0.530, min_d=0.0859
+    pick 5/8: acq=1.1387e+00, weight=0.532, min_d=0.0861
+    pick 6/8: acq=1.0847e+00, weight=0.551, min_d=0.0887
+    pick 7/8: acq=7.1602e-01, weight=0.833, min_d=0.1347
+    pick 8/8: acq=7.4153e-01, weight=0.800, min_d=0.1274
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 65 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 2.6018e-02 - 1.3846e+01
+  surf_B_mm: 1.6569e-02 - 1.3815e+01
+
+=== GradientUCB iter 7/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 73 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([73, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.580, 1.793]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.789, 7.322]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24362482 0.2665033 ], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.8532962  0.70467712], outputscale=1.0000, noise=8.2651e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.0828e-01, 1.7132e+00], median 7.4962e-01
+    spacing: n_total=81, d=2, target=0.0778 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.6895e+00, weight=0.366, min_d=0.0607
+    pick 2/8: acq=1.0715e+00, weight=0.575, min_d=0.0871
+    pick 3/8: acq=1.0658e+00, weight=0.568, min_d=0.0863
+    pick 4/8: acq=1.6612e+00, weight=0.359, min_d=0.0597
+    pick 5/8: acq=7.2517e-01, weight=0.813, min_d=0.1235
+    pick 6/8: acq=1.0412e+00, weight=0.564, min_d=0.0858
+    pick 7/8: acq=1.0259e+00, weight=0.556, min_d=0.0848
+    pick 8/8: acq=9.9928e-01, weight=0.569, min_d=0.0864
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 73 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.5971e-02 - 5.2013e+00
+  surf_B_mm: 1.0074e-02 - 2.2429e+01
+
+=== GradientUCB iter 8/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 81 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([81, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.622, 1.824]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.811, 7.708]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24358667 0.2642723 ], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.83130939 0.75672495], outputscale=1.0000, noise=8.4135e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.1329e-01, 1.6590e+00], median 7.5775e-01
+    spacing: n_total=89, d=2, target=0.0742 (clamped to [0.02, 0.25])
+    pick 1/8: acq=9.7397e-01, weight=0.620, min_d=0.0887
+    pick 2/8: acq=9.9550e-01, weight=0.603, min_d=0.0866
+    pick 3/8: acq=1.5518e+00, weight=0.380, min_d=0.0597
+    pick 4/8: acq=9.7361e-01, weight=0.596, min_d=0.0857
+    pick 5/8: acq=1.5327e+00, weight=0.377, min_d=0.0593
+    pick 6/8: acq=6.8850e-01, weight=0.839, min_d=0.1232
+    pick 7/8: acq=6.6661e-01, weight=0.863, min_d=0.1288
+    pick 8/8: acq=1.5436e+00, weight=0.372, min_d=0.0586
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 81 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.0141e-02 - 1.7605e+01
+  surf_B_mm: 2.5127e-02 - 2.2436e+01
+
+=== GradientUCB iter 9/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 89 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([89, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.566, 1.884]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.848, 8.075]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24408927 0.2644839 ], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.86236976 0.80576296], outputscale=1.0000, noise=8.5252e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.3324e-01, 1.6436e+00], median 7.6718e-01
+    spacing: n_total=97, d=2, target=0.0711 (clamped to [0.02, 0.25])
+    pick 1/8: acq=7.0489e-01, weight=0.853, min_d=0.1210
+    pick 2/8: acq=9.1286e-01, weight=0.643, min_d=0.0878
+    pick 3/8: acq=1.4371e+00, weight=0.407, min_d=0.0603
+    pick 4/8: acq=1.4621e+00, weight=0.397, min_d=0.0592
+    pick 5/8: acq=9.0221e-01, weight=0.638, min_d=0.0872
+    pick 6/8: acq=9.6098e-01, weight=0.596, min_d=0.0822
+    pick 7/8: acq=6.7861e-01, weight=0.843, min_d=0.1188
+    pick 8/8: acq=9.0769e-01, weight=0.628, min_d=0.0860
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 89 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.0087e-02 - 8.6406e+00
+  surf_B_mm: 1.6442e-02 - 5.3181e+00
+
+=== GradientUCB iter 10/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 97 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([97, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.649, 1.860]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.875, 8.411]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24328486 0.26375726], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.84662995 0.75196099], outputscale=1.0000, noise=8.5639e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [3.9836e-01, 1.6661e+00], median 7.5227e-01
+    spacing: n_total=105, d=2, target=0.0683 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.3791e+00, weight=0.429, min_d=0.0605
+    pick 2/8: acq=1.3757e+00, weight=0.422, min_d=0.0598
+    pick 3/8: acq=8.3637e-01, weight=0.687, min_d=0.0898
+    pick 4/8: acq=1.3169e+00, weight=0.432, min_d=0.0609
+    pick 5/8: acq=8.0709e-01, weight=0.696, min_d=0.0910
+    pick 6/8: acq=1.4011e+00, weight=0.397, min_d=0.0569
+    pick 7/8: acq=8.6064e-01, weight=0.646, min_d=0.0847
+    pick 8/8: acq=1.3468e+00, weight=0.405, min_d=0.0578
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 97 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.6245e-02 - 1.4230e+01
+  surf_B_mm: 1.0074e-02 - 1.3993e+01
+
+=== GradientUCB iter 11/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 105 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([105, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.641, 1.940]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.895, 8.743]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24275886 0.26295836], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.19742993 0.22151553], outputscale=1.0000, noise=7.4493e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [1.9560e-01, 1.5037e+00], median 6.7381e-01
+    spacing: n_total=113, d=2, target=0.0659 (clamped to [0.02, 0.25])
+    pick 1/8: acq=9.0393e-01, weight=0.903, min_d=0.1246
+    pick 2/8: acq=7.7544e-01, weight=0.904, min_d=0.1249
+    pick 3/8: acq=8.4801e-01, weight=0.807, min_d=0.1036
+    pick 4/8: acq=8.6302e-01, weight=0.709, min_d=0.0894
+    pick 5/8: acq=8.1265e-01, weight=0.731, min_d=0.0922
+    pick 6/8: acq=8.4707e-01, weight=0.693, min_d=0.0873
+    pick 7/8: acq=8.3749e-01, weight=0.661, min_d=0.0834
+    pick 8/8: acq=1.2252e+00, weight=0.446, min_d=0.0601
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 105 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 7.6174e-01 - 2.2145e+01
+  surf_B_mm: 4.3205e-02 - 2.1856e+01
+
+=== GradientUCB iter 12/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 113 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([113, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.519, 1.988]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.911, 9.046]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24428998 0.26499119], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[1.07276937 0.98061635], outputscale=1.0000, noise=8.9695e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.1188e-01, 1.6869e+00], median 7.5613e-01
+    spacing: n_total=121, d=2, target=0.0636 (clamped to [0.02, 0.25])
+    pick 1/8: acq=9.3219e-01, weight=0.676, min_d=0.0823
+    pick 2/8: acq=7.9166e-01, weight=0.769, min_d=0.0943
+    pick 3/8: acq=6.5872e-01, weight=0.916, min_d=0.1245
+    pick 4/8: acq=8.4662e-01, weight=0.698, min_d=0.0849
+    pick 5/8: acq=1.2293e+00, weight=0.475, min_d=0.0611
+    pick 6/8: acq=6.3507e-01, weight=0.914, min_d=0.1238
+    pick 7/8: acq=7.3743e-01, weight=0.785, min_d=0.0966
+    pick 8/8: acq=1.2339e+00, weight=0.460, min_d=0.0596
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 113 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.9816e-02 - 2.2261e+01
+  surf_B_mm: 1.0158e-02 - 2.2432e+01
+
+=== GradientUCB iter 13/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 121 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([121, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.527, 1.898]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.948, 9.349]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24592161 0.26593647], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[1.02152041 1.05756073], outputscale=1.0000, noise=9.0494e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [4.2328e-01, 1.6591e+00], median 7.4147e-01
+    spacing: n_total=129, d=2, target=0.0616 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.1688e+00, weight=0.504, min_d=0.0620
+    pick 2/8: acq=1.2259e+00, weight=0.469, min_d=0.0585
+    pick 3/8: acq=8.2520e-01, weight=0.692, min_d=0.0816
+    pick 4/8: acq=6.1243e-01, weight=0.919, min_d=0.1217
+    pick 5/8: acq=6.9338e-01, weight=0.803, min_d=0.0963
+    pick 6/8: acq=9.1491e-01, weight=0.607, min_d=0.0724
+    pick 7/8: acq=8.6851e-01, weight=0.637, min_d=0.0755
+    pick 8/8: acq=1.1122e+00, weight=0.488, min_d=0.0605
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 121 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.4193e-02 - 8.4247e+00
+  surf_B_mm: 1.0232e-02 - 1.4854e+00
+
+=== GradientUCB iter 14/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 129 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([129, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.580, 1.819]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.977, 9.640]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24626705 0.2664471 ], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[1.02999954 0.98665755], outputscale=1.0000, noise=9.0896e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [3.9087e-01, 1.7015e+00], median 7.1640e-01
+    spacing: n_total=137, d=2, target=0.0598 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.0193e+00, weight=0.535, min_d=0.0632
+    pick 2/8: acq=1.1312e+00, weight=0.482, min_d=0.0581
+    pick 3/8: acq=1.0427e+00, weight=0.522, min_d=0.0619
+    pick 4/8: acq=1.7007e+00, weight=0.319, min_d=0.0417
+    pick 5/8: acq=7.0917e-01, weight=0.760, min_d=0.0874
+    pick 6/8: acq=1.0900e+00, weight=0.494, min_d=0.0592
+    pick 7/8: acq=1.0385e+00, weight=0.517, min_d=0.0615
+    pick 8/8: acq=1.6766e+00, weight=0.319, min_d=0.0417
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 129 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.2950e-02 - 2.1863e+01
+  surf_B_mm: 4.2674e-02 - 1.7501e+01
+
+=== GradientUCB iter 15/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 137 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([137, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.579, 1.815]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-0.993, 9.922]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24629    0.26656117], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.9902369  0.96163994], outputscale=1.0000, noise=9.1076e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [3.7423e-01, 1.7009e+00], median 7.0794e-01
+    spacing: n_total=145, d=2, target=0.0581 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.0815e+00, weight=0.509, min_d=0.0590
+    pick 2/8: acq=1.0487e+00, weight=0.523, min_d=0.0602
+    pick 3/8: acq=1.0269e+00, weight=0.525, min_d=0.0604
+    pick 4/8: acq=1.6074e+00, weight=0.333, min_d=0.0420
+    pick 5/8: acq=9.7218e-01, weight=0.551, min_d=0.0629
+    pick 6/8: acq=1.0511e+00, weight=0.508, min_d=0.0588
+    pick 7/8: acq=1.5236e+00, weight=0.350, min_d=0.0437
+    pick 8/8: acq=1.6435e+00, weight=0.322, min_d=0.0408
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 137 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 2.5468e-02 - 1.1140e+01
+  surf_B_mm: 3.2714e-02 - 1.8172e+01
+
+=== GradientUCB iter 16/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 145 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: 0.0109 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([145, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.613, 1.844]
+  turbidity_600: [0.0109, 0.5656] -> standardized: [-1.013, 10.200]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24558192 0.26558002], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.06101861 0.05115137], outputscale=1.0000, noise=4.7636e-03
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [2.4318e-01, 3.3454e+00], median 6.2609e-01
+    spacing: n_total=153, d=2, target=0.0566 (clamped to [0.02, 0.25])
+    pick 1/8: acq=2.2729e+00, weight=0.697, min_d=0.0754
+    pick 2/8: acq=2.2275e+00, weight=0.691, min_d=0.0748
+    pick 3/8: acq=2.5330e+00, weight=0.586, min_d=0.0645
+    pick 4/8: acq=2.2093e+00, weight=0.647, min_d=0.0703
+    pick 5/8: acq=2.5713e+00, weight=0.459, min_d=0.0529
+    pick 6/8: acq=3.3415e+00, weight=0.312, min_d=0.0387
+    pick 7/8: acq=2.4010e+00, weight=0.360, min_d=0.0436
+    pick 8/8: acq=2.2768e+00, weight=0.369, min_d=0.0444
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 145 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.8261e+00 - 5.7308e+00
+  surf_B_mm: 1.8565e+00 - 4.6755e+00
+
+=== GradientUCB iter 17/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 153 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: -0.0308 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([153, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.549, 1.894]
+  turbidity_600: [-0.0308, 0.5656] -> standardized: [-1.403, 7.161]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24584756 0.26588821], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.22532381 0.28112885], outputscale=1.0000, noise=7.9682e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [1.9166e-01, 1.5333e+00], median 6.8655e-01
+    spacing: n_total=161, d=2, target=0.0552 (clamped to [0.02, 0.25])
+    pick 1/8: acq=9.5479e-01, weight=0.670, min_d=0.0708
+    pick 2/8: acq=8.2872e-01, weight=0.769, min_d=0.0818
+    pick 3/8: acq=8.4576e-01, weight=0.729, min_d=0.0770
+    pick 4/8: acq=7.8088e-01, weight=0.763, min_d=0.0810
+    pick 5/8: acq=7.6501e-01, weight=0.779, min_d=0.0830
+    pick 6/8: acq=9.0810e-01, weight=0.635, min_d=0.0674
+    pick 7/8: acq=7.0792e-01, weight=0.814, min_d=0.0878
+    pick 8/8: acq=7.9395e-01, weight=0.723, min_d=0.0763
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 153 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 7.5611e-01 - 1.4537e+01
+  surf_B_mm: 6.7297e-01 - 1.5276e+01
+
+=== GradientUCB iter 18/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 161 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: -0.0308 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([161, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.491, 1.936]
+  turbidity_600: [-0.0308, 0.5656] -> standardized: [-1.407, 6.984]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24629203 0.26630257], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.22446094 0.26719567], outputscale=1.0000, noise=7.9103e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [1.8871e-01, 1.5374e+00], median 6.8008e-01
+    spacing: n_total=169, d=2, target=0.0538 (clamped to [0.02, 0.25])
+    pick 1/8: acq=9.8300e-01, weight=0.568, min_d=0.0597
+    pick 2/8: acq=9.2063e-01, weight=0.588, min_d=0.0615
+    pick 3/8: acq=1.4924e+00, weight=0.357, min_d=0.0412
+    pick 4/8: acq=9.1474e-01, weight=0.582, min_d=0.0609
+    pick 5/8: acq=9.4629e-01, weight=0.558, min_d=0.0589
+    pick 6/8: acq=8.3574e-01, weight=0.619, min_d=0.0643
+    pick 7/8: acq=1.3729e+00, weight=0.376, min_d=0.0430
+    pick 8/8: acq=1.4279e+00, weight=0.359, min_d=0.0413
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 161 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 2.8847e-01 - 1.8061e+01
+  surf_B_mm: 1.2499e-02 - 2.0326e+00
+
+=== GradientUCB iter 19/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 169 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: -0.0308 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([169, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.506, 1.983]
+  turbidity_600: [-0.0308, 0.5656] -> standardized: [-1.435, 7.152]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24568713 0.26561455], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.21119328 0.25353812], outputscale=1.0000, noise=7.8371e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [1.9699e-01, 1.5352e+00], median 6.7387e-01
+    spacing: n_total=177, d=2, target=0.0526 (clamped to [0.02, 0.25])
+    pick 1/8: acq=8.8373e-01, weight=0.595, min_d=0.0607
+    pick 2/8: acq=8.7249e-01, weight=0.597, min_d=0.0609
+    pick 3/8: acq=8.2209e-01, weight=0.631, min_d=0.0639
+    pick 4/8: acq=1.3875e+00, weight=0.368, min_d=0.0413
+    pick 5/8: acq=8.0151e-01, weight=0.637, min_d=0.0645
+    pick 6/8: acq=8.0682e-01, weight=0.631, min_d=0.0639
+    pick 7/8: acq=1.4248e+00, weight=0.355, min_d=0.0400
+    pick 8/8: acq=1.2932e+00, weight=0.390, min_d=0.0432
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 169 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 3.2672e-02 - 1.8990e+01
+  surf_B_mm: 1.9999e-02 - 1.1260e+01
+
+=== GradientUCB iter 20/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 177 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: -0.0308 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([177, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.491, 2.023]
+  turbidity_600: [-0.0308, 0.5656] -> standardized: [-1.466, 7.311]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.2455632  0.26545346], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.2053903  0.23225035], outputscale=1.0000, noise=7.8501e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [2.0000e-01, 1.5193e+00], median 6.6640e-01
+    spacing: n_total=185, d=2, target=0.0515 (clamped to [0.02, 0.25])
+    pick 1/8: acq=1.3245e+00, weight=0.392, min_d=0.0424
+    pick 2/8: acq=1.3395e+00, weight=0.388, min_d=0.0421
+    pick 3/8: acq=8.4548e-01, weight=0.606, min_d=0.0603
+    pick 4/8: acq=8.3328e-01, weight=0.607, min_d=0.0604
+    pick 5/8: acq=8.3098e-01, weight=0.608, min_d=0.0605
+    pick 6/8: acq=1.3579e+00, weight=0.371, min_d=0.0406
+    pick 7/8: acq=7.9476e-01, weight=0.628, min_d=0.0622
+    pick 8/8: acq=1.2866e+00, weight=0.382, min_d=0.0415
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 177 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.2546e-02 - 1.1160e+01
+  surf_B_mm: 8.4323e-02 - 1.7872e+01
+
+=== GradientUCB iter 21/21 ===
+
+======================================================================
+TRANSITION RECOMMENDER (GradientTransitionRecommender)
+======================================================================
+
+1. Preparing experimental data...
+  Filtered to 185 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8793
+  turbidity_600: -0.0308 - 0.5656
+
+2. Processing input variables...
+  Applied log10 transform:
+    surf_A_mm: [-2.000, 1.352]
+    surf_B_mm: [-2.000, 1.352]
+  Normalized to [0,1]^2: torch.Size([185, 2])
+
+3. Processing output variables...
+  ratio: [0.7338, 0.8793] -> standardized: [-1.505, 2.070]
+  turbidity_600: [-0.0308, 0.5656] -> standardized: [-1.483, 7.471]
+
+4. Fitting Gaussian Process models...
+  Fitting GP for ratio...
+    lengthscale=[0.24500579 0.26478155], outputscale=1.0000, noise=1.0000e-04
+  Fitting GP for turbidity_600...
+    lengthscale=[0.19449158 0.2177675 ], outputscale=1.0000, noise=7.7434e-01
+
+5. Selecting batch via GradientTransitionRecommender._propose_batch...
+  Generating 50,000 Sobol candidates...
+  Computing posterior gradient mean (autograd)...
+  Computing posterior gradient variance (analytical)...
+    acq: range [2.0774e-01, 1.5021e+00], median 6.6354e-01
+    spacing: n_total=193, d=2, target=0.0504 (clamped to [0.02, 0.25])
+    pick 1/8: acq=8.1586e-01, weight=0.617, min_d=0.0600
+    pick 2/8: acq=8.2893e-01, weight=0.606, min_d=0.0591
+    pick 3/8: acq=1.2892e+00, weight=0.387, min_d=0.0412
+    pick 4/8: acq=8.3256e-01, weight=0.596, min_d=0.0583
+    pick 5/8: acq=8.3588e-01, weight=0.593, min_d=0.0580
+    pick 6/8: acq=7.7520e-01, weight=0.632, min_d=0.0613
+    pick 7/8: acq=7.7605e-01, weight=0.629, min_d=0.0610
+    pick 8/8: acq=9.0964e-01, weight=0.532, min_d=0.0529
+
+6. Converting to original space...
+
+==================================================
+RECOMMENDATIONS SUMMARY (GradientTransitionRecommender)
+==================================================
+Generated 8 recommendations
+Based on 185 experimental points
+Input space: 2D, Output space: 2D
+
+Recommended ranges:
+  surf_A_mm: 1.7791e-01 - 2.1612e+01
+  surf_B_mm: 8.5805e-02 - 2.2496e+01
+Wrote C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\test_outputs\real_BDDAC_NaLS\2d_exploration_GradientUCB.png
+Initialized DelaunayTriangleRecommender:
+  Input variables (2D): ['surf_A_mm', 'surf_B_mm']
+  Output variables (2): ['ratio', 'turbidity_600']
+  Log transform inputs: True
+  Normalization method: log_zscore
+
+=== Triangle iter 1/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 25 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0384 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.366-1.243
+  turbidity_600: 0.0384-0.5656 → log → z-score: -0.370-4.149
+\n4. Building Delaunay triangulation...
+  Built triangulation: 25 points → 32 triangles
+  Triangle areas: min=0.3512, max=0.3512, median=0.3512
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.3512, max=0.3512, median=0.3512
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0429, max=4.5451, median=1.4940
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(13), np.int32(17), np.int32(18)) 4.545    0.351    1.000    4.545                   
+  2    (np.int32(17), np.int32(23), np.int32(18)) 4.545    0.351    1.000    4.545                   
+  3    (np.int32(19), np.int32(13), np.int32(18)) 4.507    0.351    1.000    4.507                   
+  4    (np.int32(23), np.int32(19), np.int32(18)) 4.503    0.351    1.000    4.503                   
+  5    (np.int32(7), np.int32(11), np.int32(12)) 2.473    0.351    1.000    2.473                   
+  6    (np.int32(13), np.int32(7), np.int32(12)) 2.473    0.351    1.000    2.473                   
+  7    (np.int32(21), np.int32(15), np.int32(20)) 2.414    0.351    1.000    2.414                   
+  8    (np.int32(15), np.int32(21), np.int32(16)) 2.414    0.351    1.000    2.414                   
+  9    (np.int32(11), np.int32(17), np.int32(12)) 2.381    0.351    1.000    2.381                   
+  10   (np.int32(21), np.int32(17), np.int32(16)) 2.374    0.351    1.000    2.374                   
+
+  Normalized output ranges for reference:
+    ratio: -1.366 to 1.243
+    turbidity_600: -0.370 to 4.149
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.8380
+  Minimum spacing constraint: 0.4190
+  Duplicate tolerance: 0.0838
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 1 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 32
+Triangle score range: 0.0429 to 4.5451
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(13), np.int32(17), np.int32(18)), Score: 4.5451, Area: 0.3512
+  2. Vertices (np.int32(17), np.int32(23), np.int32(18)), Score: 4.5451, Area: 0.3512
+  3. Vertices (np.int32(19), np.int32(13), np.int32(18)), Score: 4.5067, Area: 0.3512
+  4. Vertices (np.int32(23), np.int32(19), np.int32(18)), Score: 4.5026, Area: 0.3512
+  5. Vertices (np.int32(7), np.int32(11), np.int32(12)), Score: 2.4731, Area: 0.3512
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=1.717e+00, surf_B_mm=1.717e+00 (score: 4.5451)
+  2. surf_A_mm=6.216e+00, surf_B_mm=1.717e+00 (score: 4.5451)
+  3. surf_A_mm=1.717e+00, surf_B_mm=6.216e+00 (score: 4.5067)
+  4. surf_A_mm=6.216e+00, surf_B_mm=6.216e+00 (score: 4.5026)
+  5. surf_A_mm=2.493e-01, surf_B_mm=2.493e-01 (score: 2.4731)
+  6. surf_A_mm=2.493e-01, surf_B_mm=9.025e-01 (score: 2.4731)
+  7. surf_A_mm=1.183e+01, surf_B_mm=1.903e-02 (score: 2.4136)
+  8. surf_A_mm=9.025e-01, surf_B_mm=2.493e-01 (score: 2.3812)
+======================================================================
+
+=== Triangle iter 2/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 33 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0384 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.372-1.400
+  turbidity_600: 0.0384-0.5656 → log → z-score: -0.475-3.298
+\n4. Building Delaunay triangulation...
+  Built triangulation: 33 points → 48 triangles
+  Triangle areas: min=0.0780, max=0.3512, median=0.2341
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0780, max=0.3512, median=0.2341
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0441, max=3.3557, median=1.3598
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(12), np.int32(17), np.int32(25)) 3.356    0.234    1.000    3.356                   
+  2    (np.int32(13), np.int32(12), np.int32(25)) 3.324    0.234    1.000    3.324                   
+  3    (np.int32(21), np.int32(17), np.int32(16)) 2.522    0.351    1.225    3.089                   
+  4    (np.int32(3), np.int32(8), np.int32(4)) 2.350    0.351    1.225    2.878                   
+  5    (np.int32(17), np.int32(26), np.int32(25)) 3.356    0.156    0.816    2.740                   
+  6    (np.int32(27), np.int32(13), np.int32(25)) 3.342    0.156    0.816    2.728                   
+  7    (np.int32(9), np.int32(8), np.int32(14)) 2.183    0.351    1.225    2.673                   
+  8    (np.int32(8), np.int32(9), np.int32(4)) 2.183    0.351    1.225    2.673                   
+  9    (np.int32(19), np.int32(28), np.int32(24)) 2.652    0.234    1.000    2.652                   
+  10   (np.int32(28), np.int32(23), np.int32(24)) 2.649    0.234    1.000    2.649                   
+
+  Normalized output ranges for reference:
+    ratio: -1.372 to 1.400
+    turbidity_600: -0.475 to 3.298
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.6246
+  Minimum spacing constraint: 0.3123
+  Duplicate tolerance: 0.0625
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 48
+Triangle score range: 0.0441 to 3.3557
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(12), np.int32(17), np.int32(25)), Score: 3.3557, Area: 0.2341
+  2. Vertices (np.int32(13), np.int32(12), np.int32(25)), Score: 3.3238, Area: 0.2341
+  3. Vertices (np.int32(21), np.int32(17), np.int32(16)), Score: 3.0891, Area: 0.3512
+  4. Vertices (np.int32(3), np.int32(8), np.int32(4)), Score: 2.8781, Area: 0.3512
+  5. Vertices (np.int32(17), np.int32(26), np.int32(25)), Score: 2.7399, Area: 0.1561
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=1.386e+00, surf_B_mm=7.283e-01 (score: 3.3557)
+  2. surf_A_mm=7.283e-01, surf_B_mm=1.386e+00 (score: 3.3238)
+  3. surf_A_mm=6.216e+00, surf_B_mm=1.310e-01 (score: 3.0891)
+  4. surf_A_mm=1.903e-02, surf_B_mm=6.216e+00 (score: 2.8781)
+  5. surf_A_mm=3.267e+00, surf_B_mm=1.118e+00 (score: 2.7399)
+  6. surf_A_mm=1.118e+00, surf_B_mm=3.267e+00 (score: 2.7284)
+  7. surf_A_mm=1.310e-01, surf_B_mm=1.183e+01 (score: 2.6731)
+  8. surf_A_mm=3.620e-02, surf_B_mm=1.183e+01 (score: 2.6731)
+======================================================================
+
+=== Triangle iter 3/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 41 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0384 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.453-1.539
+  turbidity_600: 0.0384-0.5656 → log → z-score: -0.498-3.340
+\n4. Building Delaunay triangulation...
+  Built triangulation: 41 points → 64 triangles
+  Triangle areas: min=0.0520, max=0.3512, median=0.1561
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0520, max=0.3512, median=0.1561
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0550, max=3.3043, median=1.4064
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(19), np.int32(28), np.int32(24)) 2.698    0.234    1.225    3.304                   
+  2    (np.int32(28), np.int32(23), np.int32(24)) 2.694    0.234    1.225    3.300                   
+  3    (np.int32(28), np.int32(26), np.int32(23)) 2.743    0.156    1.000    2.743                   
+  4    (np.int32(18), np.int32(26), np.int32(28)) 3.834    0.078    0.707    2.711                   
+  5    (np.int32(28), np.int32(19), np.int32(27)) 2.710    0.156    1.000    2.710                   
+  6    (np.int32(18), np.int32(28), np.int32(27)) 3.813    0.078    0.707    2.696                   
+  7    (np.int32(38), np.int32(25), np.int32(18)) 3.841    0.065    0.645    2.479                   
+  8    (np.int32(38), np.int32(18), np.int32(27)) 3.841    0.065    0.645    2.479                   
+  9    (np.int32(18), np.int32(25), np.int32(37)) 3.838    0.065    0.645    2.477                   
+  10   (np.int32(18), np.int32(37), np.int32(26)) 3.838    0.065    0.645    2.477                   
+
+  Normalized output ranges for reference:
+    ratio: -1.453 to 1.539
+    turbidity_600: -0.498 to 3.340
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.3951
+  Minimum spacing constraint: 0.1975
+  Duplicate tolerance: 0.0395
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 1 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 64
+Triangle score range: 0.0550 to 3.3043
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(19), np.int32(28), np.int32(24)), Score: 3.3043, Area: 0.2341
+  2. Vertices (np.int32(28), np.int32(23), np.int32(24)), Score: 3.3001, Area: 0.2341
+  3. Vertices (np.int32(28), np.int32(26), np.int32(23)), Score: 2.7429, Area: 0.1561
+  4. Vertices (np.int32(18), np.int32(26), np.int32(28)), Score: 2.7108, Area: 0.0780
+  5. Vertices (np.int32(28), np.int32(19), np.int32(27)), Score: 2.7095, Area: 0.1561
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=7.702e+00, surf_B_mm=1.465e+01 (score: 3.3043)
+  2. surf_A_mm=1.465e+01, surf_B_mm=7.702e+00 (score: 3.3001)
+  3. surf_A_mm=9.544e+00, surf_B_mm=3.267e+00 (score: 2.7429)
+  4. surf_A_mm=5.016e+00, surf_B_mm=3.267e+00 (score: 2.7108)
+  5. surf_A_mm=3.267e+00, surf_B_mm=9.544e+00 (score: 2.7095)
+  6. surf_A_mm=3.267e+00, surf_B_mm=5.016e+00 (score: 2.6960)
+  7. surf_A_mm=1.844e+00, surf_B_mm=2.636e+00 (score: 2.4791)
+  8. surf_A_mm=2.636e+00, surf_B_mm=1.844e+00 (score: 2.4774)
+======================================================================
+
+=== Triangle iter 4/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 49 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0384 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.269-1.710
+  turbidity_600: 0.0384-0.5656 → log → z-score: -0.541-3.246
+\n4. Building Delaunay triangulation...
+  Built triangulation: 49 points → 80 triangles
+  Triangle areas: min=0.0169, max=0.3512, median=0.1040
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0169, max=0.3512, median=0.1040
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0665, max=2.8494, median=1.3362
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(32), np.int32(17), np.int32(33)) 2.849    0.104    1.000    2.849                   
+  2    (np.int32(31), np.int32(15), np.int32(20)) 2.593    0.117    1.061    2.750                   
+  3    (np.int32(3), np.int32(36), np.int32(4)) 2.525    0.117    1.061    2.678                   
+  4    (np.int32(32), np.int32(11), np.int32(16)) 1.785    0.234    1.500    2.678                   
+  5    (np.int32(34), np.int32(12), np.int32(33)) 2.832    0.091    0.935    2.650                   
+  6    (np.int32(25), np.int32(34), np.int32(33)) 3.337    0.065    0.791    2.638                   
+  7    (np.int32(35), np.int32(21), np.int32(22)) 1.717    0.234    1.500    2.575                   
+  8    (np.int32(25), np.int32(38), np.int32(34)) 3.357    0.061    0.764    2.564                   
+  9    (np.int32(37), np.int32(25), np.int32(33)) 3.345    0.061    0.764    2.555                   
+  10   (np.int32(17), np.int32(35), np.int32(22)) 1.662    0.234    1.500    2.493                   
+
+  Normalized output ranges for reference:
+    ratio: -1.269 to 1.710
+    turbidity_600: -0.541 to 3.246
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.3951
+  Minimum spacing constraint: 0.1975
+  Duplicate tolerance: 0.0395
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 80
+Triangle score range: 0.0665 to 2.8494
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(32), np.int32(17), np.int32(33)), Score: 2.8494, Area: 0.1040
+  2. Vertices (np.int32(31), np.int32(15), np.int32(20)), Score: 2.7501, Area: 0.1171
+  3. Vertices (np.int32(3), np.int32(36), np.int32(4)), Score: 2.6782, Area: 0.1171
+  4. Vertices (np.int32(32), np.int32(11), np.int32(16)), Score: 2.6781, Area: 0.2341
+  5. Vertices (np.int32(34), np.int32(12), np.int32(33)), Score: 2.6495, Area: 0.0910
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=1.599e+00, surf_B_mm=4.416e-01 (score: 2.8494)
+  2. surf_A_mm=9.544e+00, surf_B_mm=1.239e-02 (score: 2.7501)
+  3. surf_A_mm=1.239e-02, surf_B_mm=7.702e+00 (score: 2.6782)
+  4. surf_A_mm=1.118e+00, surf_B_mm=1.057e-01 (score: 2.6781)
+  5. surf_A_mm=7.823e-01, surf_B_mm=7.823e-01 (score: 2.6495)
+  6. surf_A_mm=1.201e+00, surf_B_mm=1.201e+00 (score: 2.6381)
+  7. surf_A_mm=1.465e+01, surf_B_mm=1.624e-01 (score: 2.5752)
+  8. surf_A_mm=1.118e+00, surf_B_mm=1.981e+00 (score: 2.5641)
+======================================================================
+
+=== Triangle iter 5/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 57 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0384 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.354-1.755
+  turbidity_600: 0.0384-0.5656 → log → z-score: -0.583-3.035
+\n4. Building Delaunay triangulation...
+  Built triangulation: 57 points → 96 triangles
+  Triangle areas: min=0.0169, max=0.3512, median=0.0737
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0169, max=0.3512, median=0.0737
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0757, max=2.9538, median=1.4396
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(15), np.int32(31), np.int32(16)) 1.657    0.234    1.782    2.954                   
+  2    (np.int32(35), np.int32(31), np.int32(21)) 1.792    0.195    1.627    2.916                   
+  3    (np.int32(37), np.int32(25), np.int32(33)) 3.196    0.061    0.907    2.900                   
+  4    (np.int32(52), np.int32(35), np.int32(49)) 1.626    0.224    1.743    2.835                   
+  5    (np.int32(13), np.int32(39), np.int32(8)) 1.518    0.234    1.782    2.706                   
+  6    (np.int32(30), np.int32(13), np.int32(8)) 1.501    0.234    1.782    2.676                   
+  7    (np.int32(17), np.int32(37), np.int32(33)) 2.738    0.069    0.970    2.656                   
+  8    (np.int32(51), np.int32(40), np.int32(4)) 1.992    0.117    1.260    2.510                   
+  9    (np.int32(41), np.int32(28), np.int32(42)) 2.539    0.065    0.939    2.385                   
+  10   (np.int32(53), np.int32(30), np.int32(12)) 2.617    0.061    0.907    2.375                   
+
+  Normalized output ranges for reference:
+    ratio: -1.354 to 1.755
+    turbidity_600: -0.583 to 3.035
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.3725
+  Minimum spacing constraint: 0.1862
+  Duplicate tolerance: 0.0372
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 96
+Triangle score range: 0.0757 to 2.9538
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(15), np.int32(31), np.int32(16)), Score: 2.9538, Area: 0.2341
+  2. Vertices (np.int32(35), np.int32(31), np.int32(21)), Score: 2.9155, Area: 0.1951
+  3. Vertices (np.int32(37), np.int32(25), np.int32(33)), Score: 2.9003, Area: 0.0607
+  4. Vertices (np.int32(52), np.int32(35), np.int32(49)), Score: 2.8351, Area: 0.2240
+  5. Vertices (np.int32(13), np.int32(39), np.int32(8)), Score: 2.7058, Area: 0.2341
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=5.016e+00, surf_B_mm=2.358e-02 (score: 2.9538)
+  2. surf_A_mm=1.183e+01, surf_B_mm=5.558e-02 (score: 2.9155)
+  3. surf_A_mm=1.981e+00, surf_B_mm=1.118e+00 (score: 2.9003)
+  4. surf_A_mm=2.232e+00, surf_B_mm=1.829e-01 (score: 2.8351)
+  5. surf_A_mm=1.624e-01, surf_B_mm=5.016e+00 (score: 2.7058)
+  6. surf_A_mm=2.012e-01, surf_B_mm=2.128e+00 (score: 2.6757)
+  7. surf_A_mm=2.455e+00, surf_B_mm=7.283e-01 (score: 2.6558)
+  8. surf_A_mm=1.649e-02, surf_B_mm=1.270e+01 (score: 2.5103)
+======================================================================
+
+=== Triangle iter 6/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 65 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0382 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.445-1.765
+  turbidity_600: 0.0382-0.5656 → log → z-score: -0.592-3.073
+\n4. Building Delaunay triangulation...
+  Built triangulation: 65 points → 112 triangles
+  Triangle areas: min=0.0169, max=0.3512, median=0.0682
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0169, max=0.3512, median=0.0682
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0797, max=2.8358, median=1.3106
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(61), np.int32(13), np.int32(14)) 1.676    0.195    1.692    2.836                   
+  2    (np.int32(41), np.int32(28), np.int32(42)) 2.569    0.065    0.977    2.509                   
+  3    (np.int32(53), np.int32(30), np.int32(12)) 2.652    0.061    0.944    2.503                   
+  4    (np.int32(30), np.int32(53), np.int32(34)) 2.652    0.061    0.944    2.503                   
+  5    (np.int32(32), np.int32(29), np.int32(11)) 1.620    0.156    1.513    2.451                   
+  6    (np.int32(45), np.int32(28), np.int32(41)) 2.584    0.061    0.944    2.439                   
+  7    (np.int32(42), np.int32(28), np.int32(43)) 2.569    0.061    0.944    2.424                   
+  8    (np.int32(39), np.int32(40), np.int32(8)) 1.567    0.156    1.513    2.370                   
+  9    (np.int32(57), np.int32(58), np.int32(16)) 1.716    0.121    1.335    2.290                   
+  10   (np.int32(27), np.int32(47), np.int32(46)) 2.560    0.051    0.861    2.205                   
+
+  Normalized output ranges for reference:
+    ratio: -1.445 to 1.765
+    turbidity_600: -0.592 to 3.073
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.3512
+  Minimum spacing constraint: 0.1756
+  Duplicate tolerance: 0.0351
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 1 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 112
+Triangle score range: 0.0797 to 2.8358
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(61), np.int32(13), np.int32(14)), Score: 2.8358, Area: 0.1951
+  2. Vertices (np.int32(41), np.int32(28), np.int32(42)), Score: 2.5094, Area: 0.0650
+  3. Vertices (np.int32(53), np.int32(30), np.int32(12)), Score: 2.5026, Area: 0.0607
+  4. Vertices (np.int32(30), np.int32(53), np.int32(34)), Score: 2.5026, Area: 0.0607
+  5. Vertices (np.int32(32), np.int32(29), np.int32(11)), Score: 2.4514, Area: 0.1561
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=3.318e-01, surf_B_mm=7.171e+00 (score: 2.8358)
+  2. surf_A_mm=8.885e+00, surf_B_mm=8.885e+00 (score: 2.5094)
+  3. surf_A_mm=4.523e-01, surf_B_mm=6.944e-01 (score: 2.5026)
+  4. surf_A_mm=4.743e-01, surf_B_mm=1.624e-01 (score: 2.4514)
+  5. surf_A_mm=5.388e+00, surf_B_mm=9.544e+00 (score: 2.4386)
+  6. surf_A_mm=9.544e+00, surf_B_mm=5.388e+00 (score: 2.4243)
+  7. surf_A_mm=6.887e-02, surf_B_mm=7.702e+00 (score: 2.3705)
+  8. surf_A_mm=5.787e+00, surf_B_mm=4.486e-02 (score: 2.2897)
+======================================================================
+
+=== Triangle iter 7/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 73 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0382 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.425-1.771
+  turbidity_600: 0.0382-0.5656 → log → z-score: -0.616-3.077
+\n4. Building Delaunay triangulation...
+  Built triangulation: 73 points → 128 triangles
+  Triangle areas: min=0.0169, max=0.3512, median=0.0607
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0169, max=0.3512, median=0.0607
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0613, max=2.3546, median=1.2807
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(27), np.int32(47), np.int32(46)) 2.579    0.051    0.913    2.355                   
+  2    (np.int32(7), np.int32(62), np.int32(8)) 1.258    0.195    1.793    2.256                   
+  3    (np.int32(50), np.int32(15), np.int32(20)) 2.782    0.039    0.802    2.230                   
+  4    (np.int32(44), np.int32(18), np.int32(48)) 3.605    0.023    0.617    2.225                   
+  5    (np.int32(3), np.int32(51), np.int32(4)) 2.709    0.039    0.802    2.172                   
+  6    (np.int32(26), np.int32(17), np.int32(22)) 1.068    0.234    1.964    2.098                   
+  7    (np.int32(30), np.int32(29), np.int32(12)) 1.836    0.078    1.134    2.081                   
+  8    (np.int32(34), np.int32(53), np.int32(54)) 3.170    0.026    0.655    2.075                   
+  9    (np.int32(47), np.int32(27), np.int32(38)) 2.586    0.039    0.802    2.074                   
+  10   (np.int32(71), np.int32(39), np.int32(9)) 1.911    0.065    1.035    1.979                   
+
+  Normalized output ranges for reference:
+    ratio: -1.425 to 1.771
+    turbidity_600: -0.616 to 3.077
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.2945
+  Minimum spacing constraint: 0.1472
+  Duplicate tolerance: 0.0294
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 128
+Triangle score range: 0.0613 to 2.3546
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(27), np.int32(47), np.int32(46)), Score: 2.3546, Area: 0.0506
+  2. Vertices (np.int32(7), np.int32(62), np.int32(8)), Score: 2.2556, Area: 0.1951
+  3. Vertices (np.int32(50), np.int32(15), np.int32(20)), Score: 2.2302, Area: 0.0390
+  4. Vertices (np.int32(44), np.int32(18), np.int32(48)), Score: 2.2253, Area: 0.0231
+  5. Vertices (np.int32(3), np.int32(51), np.int32(4)), Score: 2.1719, Area: 0.0390
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=2.179e+00, surf_B_mm=4.348e+00 (score: 2.3546)
+  2. surf_A_mm=9.846e-02, surf_B_mm=1.488e+00 (score: 2.2556)
+  3. surf_A_mm=8.885e+00, surf_B_mm=1.074e-02 (score: 2.2302)
+  4. surf_A_mm=3.509e+00, surf_B_mm=2.700e+00 (score: 2.2253)
+  5. surf_A_mm=1.074e-02, surf_B_mm=8.273e+00 (score: 2.1719)
+  6. surf_A_mm=7.702e+00, surf_B_mm=7.283e-01 (score: 2.0983)
+  7. surf_A_mm=3.089e-01, surf_B_mm=4.743e-01 (score: 2.0814)
+  8. surf_A_mm=8.812e-01, surf_B_mm=1.092e+00 (score: 2.0752)
+======================================================================
+
+=== Triangle iter 8/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 81 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: 0.0235 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.462-1.793
+  turbidity_600: 0.0235-0.5656 → log → z-score: -1.285-2.983
+\n4. Building Delaunay triangulation...
+  Built triangulation: 81 points → 144 triangles
+  Triangle areas: min=0.0077, max=0.4162, median=0.0535
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0077, max=0.4162, median=0.0535
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0665, max=2.8361, median=1.3088
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(47), np.int32(18), np.int32(73)) 4.269    0.024    0.664    2.836                   
+  2    (np.int32(26), np.int32(76), np.int32(48)) 3.180    0.033    0.783    2.489                   
+  3    (np.int32(18), np.int32(46), np.int32(73)) 4.269    0.016    0.553    2.362                   
+  4    (np.int32(35), np.int32(55), np.int32(78)) 1.462    0.134    1.585    2.319                   
+  5    (np.int32(35), np.int32(78), np.int32(17)) 1.462    0.130    1.560    2.281                   C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+
+  6    (np.int32(47), np.int32(73), np.int32(38)) 3.199    0.027    0.710    2.272                   
+  7    (np.int32(44), np.int32(76), np.int32(26)) 3.180    0.026    0.691    2.197                   
+  8    (np.int32(46), np.int32(28), np.int32(45)) 2.548    0.039    0.854    2.177                   
+  9    (np.int32(28), np.int32(44), np.int32(43)) 2.522    0.039    0.854    2.154                   
+  10   (np.int32(71), np.int32(39), np.int32(9)) 1.937    0.065    1.103    2.136                   
+
+  Normalized output ranges for reference:
+    ratio: -1.462 to 1.793
+    turbidity_600: -1.285 to 2.983
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.2862
+  Minimum spacing constraint: 0.1431
+  Duplicate tolerance: 0.0286
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 2 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 144
+Triangle score range: 0.0665 to 2.8361
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(47), np.int32(18), np.int32(73)), Score: 2.8361, Area: 0.0236
+  2. Vertices (np.int32(26), np.int32(76), np.int32(48)), Score: 2.4888, Area: 0.0328
+  3. Vertices (np.int32(18), np.int32(46), np.int32(73)), Score: 2.3624, Area: 0.0164
+  4. Vertices (np.int32(35), np.int32(55), np.int32(78)), Score: 2.3187, Area: 0.1344
+  5. Vertices (np.int32(35), np.int32(78), np.int32(17)), Score: 2.2810, Area: 0.1301
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=2.359e+00, surf_B_mm=3.346e+00 (score: 2.8361)
+  2. surf_A_mm=3.860e+00, surf_B_mm=2.045e+00 (score: 2.4888)
+  3. surf_A_mm=8.885e+00, surf_B_mm=2.493e-01 (score: 2.3187)
+  4. surf_A_mm=5.388e+00, surf_B_mm=3.564e-01 (score: 2.2810)
+  5. surf_A_mm=1.650e+00, surf_B_mm=3.346e+00 (score: 2.2719)
+  6. surf_A_mm=4.048e+00, surf_B_mm=6.676e+00 (score: 2.1767)
+  7. surf_A_mm=6.676e+00, surf_B_mm=4.048e+00 (score: 2.1544)
+  8. surf_A_mm=8.534e-02, surf_B_mm=1.270e+01 (score: 2.1361)
+======================================================================
+
+=== Triangle iter 9/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 89 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0151 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.433-1.891
+  turbidity_600: -0.0151-0.5656 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 89 points → 160 triangles
+  Triangle areas: min=0.0057, max=0.4162, median=0.0467
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0057, max=0.4162, median=0.0467
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0726, max=2.5438, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(76), np.int32(81), np.int32(48)) 3.883    0.020    0.655    2.544                   
+  2    (np.int32(54), np.int32(56), np.int32(34)) 3.178    0.023    0.696    2.212                   
+  3    (np.int32(59), np.int32(37), np.int32(48)) 2.906    0.024    0.711    2.065                   
+  4    (np.int32(63), np.int32(59), np.int32(33)) 2.927    0.023    0.703    2.059                   
+  5    (np.int32(41), np.int32(69), np.int32(66)) 2.790    0.023    0.696    1.942                   
+  6    (np.int32(37), np.int32(59), np.int32(63)) 2.927    0.020    0.658    1.926                   
+  7    (np.int32(81), np.int32(47), np.int32(48)) 3.219    0.016    0.591    1.903                   
+  8    (np.int32(56), np.int32(47), np.int32(38)) 2.592    0.024    0.711    1.843                   
+  9    (np.int32(35), np.int32(72), np.int32(58)) 1.432    0.071    1.231    1.763                   
+  10   (np.int32(55), np.int32(35), np.int32(58)) 1.321    0.082    1.328    1.754                   
+
+  Normalized output ranges for reference:
+    ratio: -1.433 to 1.891
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.2260
+  Minimum spacing constraint: 0.1130
+  Duplicate tolerance: 0.0226
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 1 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 160
+Triangle score range: 0.0726 to 2.5438
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(76), np.int32(81), np.int32(48)), Score: 2.5438, Area: 0.0201
+  2. Vertices (np.int32(54), np.int32(56), np.int32(34)), Score: 2.2118, Area: 0.0226
+  3. Vertices (np.int32(59), np.int32(37), np.int32(48)), Score: 2.0653, Area: 0.0236
+  4. Vertices (np.int32(63), np.int32(59), np.int32(33)), Score: 2.0591, Area: 0.0231
+  5. Vertices (np.int32(41), np.int32(69), np.int32(66)), Score: 1.9423, Area: 0.0226
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=2.795e+00, surf_B_mm=2.554e+00 (score: 2.5438)
+  2. surf_A_mm=9.927e-01, surf_B_mm=1.488e+00 (score: 2.2118)
+  3. surf_A_mm=2.574e+00, surf_B_mm=1.321e+00 (score: 2.0653)
+  4. surf_A_mm=1.889e+00, surf_B_mm=8.402e-01 (score: 2.0591)
+  5. surf_A_mm=7.171e+00, surf_B_mm=1.075e+01 (score: 1.9423)
+  6. surf_A_mm=2.514e+00, surf_B_mm=9.693e-01 (score: 1.9261)
+  7. surf_A_mm=1.321e+00, surf_B_mm=2.574e+00 (score: 1.8426)
+  8. surf_A_mm=7.521e+00, surf_B_mm=6.887e-02 (score: 1.7631)
+======================================================================
+
+=== Triangle iter 10/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 97 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.429-1.966
+  turbidity_600: -0.0778-0.5656 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 97 points → 176 triangles
+  Triangle areas: min=0.0045, max=0.4162, median=0.0405
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0045, max=0.4162, median=0.0405
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0371, max=2.4199, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(21), np.int32(31), np.int32(20)) 1.331    0.117    1.701    2.265                   
+  2    (np.int32(74), np.int32(3), np.int32(2)) 0.701    0.416    3.207    2.247    High area factor
+  3    (np.int32(67), np.int32(53), np.int32(34)) 2.564    0.030    0.866    2.220                   
+  4    (np.int32(29), np.int32(79), np.int32(7)) 1.445    0.091    1.500    2.167                   
+  5    (np.int32(79), np.int32(30), np.int32(7)) 1.445    0.091    1.500    2.167                   
+  6    (np.int32(29), np.int32(68), np.int32(12)) 1.684    0.065    1.268    2.134                   C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+
+  7    (np.int32(64), np.int32(9), np.int32(4)) 1.327    0.104    1.604    2.127                   
+  8    (np.int32(77), np.int32(64), np.int32(4)) 2.027    0.043    1.035    2.098                   
+  9    (np.int32(66), np.int32(42), np.int32(41)) 2.756    0.022    0.732    2.017                   
+  10   (np.int32(65), np.int32(27), np.int32(14)) 0.944    0.182    2.121    2.002    High area factor
+
+  Normalized output ranges for reference:
+    ratio: -1.429 to 1.966
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.2082
+  Minimum spacing constraint: 0.1041
+  Duplicate tolerance: 0.0208
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 176
+Triangle score range: 0.0371 to 2.4199
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(21), np.int32(31), np.int32(20)), Score: 2.2647, Area: 0.1171
+  2. Vertices (np.int32(74), np.int32(3), np.int32(2)), Score: 2.2469, Area: 0.4162
+  3. Vertices (np.int32(67), np.int32(53), np.int32(34)), Score: 2.2202, Area: 0.0303
+  4. Vertices (np.int32(29), np.int32(79), np.int32(7)), Score: 2.1669, Area: 0.0910
+  5. Vertices (np.int32(79), np.int32(30), np.int32(7)), Score: 2.1669, Area: 0.0910
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=1.816e+01, surf_B_mm=2.358e-02 (score: 2.2647)
+  2. surf_A_mm=2.143e-02, surf_B_mm=1.321e+00 (score: 2.2469)
+  3. surf_A_mm=6.363e-01, surf_B_mm=9.097e-01 (score: 2.2202)
+  4. surf_A_mm=1.744e-01, surf_B_mm=3.828e-01 (score: 2.1669)
+  5. surf_A_mm=1.744e-01, surf_B_mm=5.878e-01 (score: 2.1669)
+  6. surf_A_mm=3.828e-01, surf_B_mm=2.678e-01 (score: 2.1343)
+  7. surf_A_mm=2.248e-02, surf_B_mm=1.860e+01 (score: 2.1272)
+  8. surf_A_mm=1.210e-02, surf_B_mm=1.332e+01 (score: 2.0981)
+======================================================================
+
+=== Triangle iter 11/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 105 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.457-1.911
+  turbidity_600: -0.0778-0.5656 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 105 points → 192 triangles
+  Triangle areas: min=0.0045, max=0.3512, median=0.0383
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0045, max=0.3512, median=0.0383
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0390, max=2.5533, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(7), np.int32(98), np.int32(2)) 0.989    0.186    2.206    2.182    High area factor
+  2    (np.int32(66), np.int32(42), np.int32(41)) 2.829    0.022    0.752    2.129                   
+  3    (np.int32(41), np.int32(42), np.int32(24)) 1.345    0.091    1.542    2.074                   
+  4    (np.int32(65), np.int32(27), np.int32(14)) 0.937    0.182    2.181    2.043    High area factor
+  5    (np.int32(72), np.int32(57), np.int32(31)) 1.683    0.055    1.197    2.015                   
+  6    (np.int32(36), np.int32(98), np.int32(8)) 0.927    0.181    2.172    2.014    High area factor
+  7    (np.int32(23), np.int32(78), np.int32(22)) 0.890    0.195    2.257    2.010    High area factor
+  8    (np.int32(58), np.int32(72), np.int32(31)) 1.451    0.072    1.374    1.994                   
+  9    (np.int32(19), np.int32(41), np.int32(24)) 1.379    0.078    1.427    1.969                   
+  10   (np.int32(42), np.int32(23), np.int32(24)) 1.341    0.078    1.427    1.914                   
+
+  Normalized output ranges for reference:
+    ratio: -1.457 to 1.911
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1888
+  Minimum spacing constraint: 0.0944
+  Duplicate tolerance: 0.0189
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 192
+Triangle score range: 0.0390 to 2.5533
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(7), np.int32(98), np.int32(2)), Score: 2.1818, Area: 0.1864
+  2. Vertices (np.int32(66), np.int32(42), np.int32(41)), Score: 2.1286, Area: 0.0217
+  3. Vertices (np.int32(41), np.int32(42), np.int32(24)), Score: 2.0737, Area: 0.0910
+  4. Vertices (np.int32(65), np.int32(27), np.int32(14)), Score: 2.0429, Area: 0.1821
+  5. Vertices (np.int32(72), np.int32(57), np.int32(31)), Score: 2.0148, Area: 0.0549
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=2.453e-02, surf_B_mm=6.674e-01 (score: 2.1818)
+  2. surf_A_mm=1.001e+01, surf_B_mm=1.001e+01 (score: 2.1286)
+  3. surf_A_mm=1.364e+01, surf_B_mm=1.364e+01 (score: 2.0737)
+  4. surf_A_mm=6.465e-01, surf_B_mm=1.001e+01 (score: 2.0429)
+  5. surf_A_mm=7.002e+00, surf_B_mm=2.720e-02 (score: 2.0148)
+  6. surf_A_mm=3.040e-02, surf_B_mm=2.994e+00 (score: 2.0139)
+  7. surf_A_mm=1.574e+01, surf_B_mm=1.041e+00 (score: 2.0099)
+  8. surf_A_mm=9.319e+00, surf_B_mm=3.620e-02 (score: 1.9937)
+======================================================================
+
+=== Triangle iter 12/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 113 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.5656
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.429-1.857
+  turbidity_600: -0.0778-0.5656 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 113 points → 208 triangles
+  Triangle areas: min=0.0045, max=0.4133, median=0.0342
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0045, max=0.4133, median=0.0342
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0414, max=3.0881, median=1.2221
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(1), np.int32(6), np.int32(105)) 0.888    0.413    3.476    3.088    High area factor
+  2    (np.int32(18), np.int32(46), np.int32(81)) 4.370    0.013    0.620    2.712                   
+  3    (np.int32(107), np.int32(42), np.int32(24)) 2.870    0.030    0.942    2.704                   
+  4    (np.int32(41), np.int32(107), np.int32(24)) 2.855    0.030    0.942    2.689                   
+  5    (np.int32(44), np.int32(46), np.int32(18)) 3.656    0.017    0.712    2.603                   
+  6    (np.int32(56), np.int32(54), np.int32(25)) 3.257    0.019    0.751    2.444                   
+  7    (np.int32(66), np.int32(70), np.int32(42)) 2.866    0.023    0.814    2.332                   C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+
+  8    (np.int32(46), np.int32(45), np.int32(27)) 2.157    0.039    1.068    2.304                   
+  9    (np.int32(47), np.int32(89), np.int32(81)) 4.218    0.010    0.543    2.289                   
+  10   (np.int32(66), np.int32(28), np.int32(70)) 2.866    0.019    0.751    2.151                   
+
+  Normalized output ranges for reference:
+    ratio: -1.429 to 1.857
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1888
+  Minimum spacing constraint: 0.0944
+  Duplicate tolerance: 0.0189
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 208
+Triangle score range: 0.0414 to 3.0881
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(1), np.int32(6), np.int32(105)), Score: 3.0881, Area: 0.4133
+  2. Vertices (np.int32(18), np.int32(46), np.int32(81)), Score: 2.7116, Area: 0.0132
+  3. Vertices (np.int32(107), np.int32(42), np.int32(24)), Score: 2.7037, Area: 0.0303
+  4. Vertices (np.int32(41), np.int32(107), np.int32(24)), Score: 2.6889, Area: 0.0303
+  5. Vertices (np.int32(44), np.int32(46), np.int32(18)), Score: 2.6033, Area: 0.0173
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=2.566e-02, surf_B_mm=1.468e-01 (score: 3.0881)
+  2. surf_A_mm=2.931e+00, surf_B_mm=3.799e+00 (score: 2.7116)
+  3. surf_A_mm=1.651e+01, surf_B_mm=1.332e+01 (score: 2.7037)
+  4. surf_A_mm=1.332e+01, surf_B_mm=1.651e+01 (score: 2.6889)
+  5. surf_A_mm=3.769e+00, surf_B_mm=3.769e+00 (score: 2.6033)
+  6. surf_A_mm=1.321e+00, surf_B_mm=1.599e+00 (score: 2.4445)
+  7. surf_A_mm=1.075e+01, surf_B_mm=7.171e+00 (score: 2.3318)
+  8. surf_A_mm=2.636e+00, surf_B_mm=6.676e+00 (score: 2.3044)
+======================================================================
+
+=== Triangle iter 13/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 121 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.373-1.889
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 121 points → 224 triangles
+  Triangle areas: min=0.0034, max=0.3512, median=0.0303
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0034, max=0.3512, median=0.0303
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0356, max=3.2448, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(19), np.int32(116), np.int32(24)) 2.381    0.056    1.363    3.245                   
+  2    (np.int32(41), np.int32(116), np.int32(19)) 2.381    0.032    1.024    2.437                   
+  3    (np.int32(36), np.int32(110), np.int32(71)) 1.199    0.098    1.798    2.156                   
+  4    (np.int32(49), np.int32(53), np.int32(32)) 1.355    0.069    1.512    2.048                   
+  5    (np.int32(98), np.int32(3), np.int32(2)) 0.946    0.139    2.138    2.023    High area factor
+  6    (np.int32(9), np.int32(39), np.int32(14)) 1.018    0.117    1.964    1.999                   
+  7    (np.int32(75), np.int32(57), np.int32(15)) 1.237    0.078    1.604    1.984                   
+  8    (np.int32(52), np.int32(60), np.int32(32)) 1.329    0.067    1.485    1.975                   
+  9    (np.int32(53), np.int32(12), np.int32(32)) 1.355    0.061    1.414    1.916                   
+  10   (np.int32(7), np.int32(113), np.int32(6)) 0.786    0.180    2.433    1.912    High area factor
+
+  Normalized output ranges for reference:
+    ratio: -1.373 to 1.889
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1862
+  Minimum spacing constraint: 0.0931
+  Duplicate tolerance: 0.0186
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 224
+Triangle score range: 0.0356 to 3.2448
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(19), np.int32(116), np.int32(24)), Score: 3.2448, Area: 0.0564
+  2. Vertices (np.int32(41), np.int32(116), np.int32(19)), Score: 2.4371, Area: 0.0318
+  3. Vertices (np.int32(36), np.int32(110), np.int32(71)), Score: 2.1561, Area: 0.0981
+  4. Vertices (np.int32(49), np.int32(53), np.int32(32)), Score: 2.0482, Area: 0.0694
+  5. Vertices (np.int32(98), np.int32(3), np.int32(2)), Score: 2.0231, Area: 0.1387
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=9.930e+00, surf_B_mm=2.029e+01 (score: 3.2448)
+  2. surf_A_mm=6.947e+00, surf_B_mm=1.759e+01 (score: 2.4371)
+  3. surf_A_mm=3.415e-02, surf_B_mm=5.233e+00 (score: 2.1561)
+  4. surf_A_mm=1.041e+00, surf_B_mm=4.416e-01 (score: 2.0482)
+  5. surf_A_mm=1.289e-02, surf_B_mm=1.270e+00 (score: 2.0231)
+  6. surf_A_mm=1.624e-01, surf_B_mm=1.816e+01 (score: 1.9993)
+  7. surf_A_mm=5.261e+00, surf_B_mm=1.363e-02 (score: 1.9837)
+  8. surf_A_mm=1.311e+00, surf_B_mm=1.689e-01 (score: 1.9748)
+======================================================================
+
+=== Triangle iter 14/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 129 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.370-1.839
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 129 points → 240 triangles
+  Triangle areas: min=0.0034, max=0.3512, median=0.0287
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0034, max=0.3512, median=0.0287
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0359, max=3.9503, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(121), np.int32(116), np.int32(24)) 4.879    0.019    0.810    3.950                   
+  2    (np.int32(41), np.int32(116), np.int32(121)) 4.879    0.014    0.698    3.406                   
+  3    (np.int32(28), np.int32(117), np.int32(87)) 3.529    0.024    0.907    3.202                   
+  4    (np.int32(19), np.int32(121), np.int32(24)) 3.786    0.019    0.810    3.066                   
+  5    (np.int32(122), np.int32(121), np.int32(19)) 3.442    0.018    0.803    2.763                   
+  6    (np.int32(81), np.int32(47), np.int32(89)) 3.904    0.010    0.593    2.315                   
+  7    (np.int32(66), np.int32(28), np.int32(70)) 2.653    0.019    0.820    2.175                   
+  8    (np.int32(42), np.int32(107), np.int32(106)) 2.656    0.019    0.810    2.151                   C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+
+  9    (np.int32(107), np.int32(41), np.int32(106)) 2.642    0.019    0.810    2.139                   
+  10   (np.int32(28), np.int32(66), np.int32(69)) 2.580    0.019    0.820    2.116                   
+
+  Normalized output ranges for reference:
+    ratio: -1.370 to 1.839
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1862
+  Minimum spacing constraint: 0.0931
+  Duplicate tolerance: 0.0186
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 240
+Triangle score range: 0.0359 to 3.9503
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(121), np.int32(116), np.int32(24)), Score: 3.9503, Area: 0.0188
+  2. Vertices (np.int32(41), np.int32(116), np.int32(121)), Score: 3.4064, Area: 0.0140
+  3. Vertices (np.int32(28), np.int32(117), np.int32(87)), Score: 3.2023, Area: 0.0236
+  4. Vertices (np.int32(19), np.int32(121), np.int32(24)), Score: 3.0655, Area: 0.0188
+  5. Vertices (np.int32(122), np.int32(121), np.int32(19)), Score: 2.7628, Area: 0.0185
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=1.438e+01, surf_B_mm=1.961e+01 (score: 3.9503)
+  2. surf_A_mm=1.006e+01, surf_B_mm=1.700e+01 (score: 3.4064)
+  3. surf_A_mm=5.388e+00, surf_B_mm=4.560e+00 (score: 3.2023)
+  4. surf_A_mm=9.004e+00, surf_B_mm=2.174e+01 (score: 3.0655)
+  5. surf_A_mm=6.085e+00, surf_B_mm=2.003e+01 (score: 2.7628)
+  6. surf_A_mm=2.299e+00, surf_B_mm=2.824e+00 (score: 2.3146)
+  7. surf_A_mm=8.078e+00, surf_B_mm=6.676e+00 (score: 2.1749)
+  8. surf_A_mm=1.260e+01, surf_B_mm=1.017e+01 (score: 2.1506)
+======================================================================
+
+=== Triangle iter 15/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 137 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.293-1.890
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 137 points → 256 triangles
+  Triangle areas: min=0.0016, max=0.3512, median=0.0237
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0016, max=0.3512, median=0.0237
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0393, max=2.3298, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(7), np.int32(113), np.int32(6)) 0.766    0.180    2.754    2.109    High area factor
+  2    (np.int32(78), np.int32(83), np.int32(22)) 0.998    0.103    2.081    2.078    High area factor
+  3    (np.int32(1), np.int32(113), np.int32(2)) 0.770    0.171    2.691    2.072    High area factor
+  4    (np.int32(36), np.int32(40), np.int32(64)) 1.386    0.052    1.482    2.054                   
+  5    (np.int32(58), np.int32(55), np.int32(96)) 1.412    0.050    1.454    2.054                   
+  6    (np.int32(75), np.int32(15), np.int32(20)) 2.771    0.013    0.741    2.053                   
+  7    (np.int32(49), np.int32(60), np.int32(17)) 1.270    0.062    1.614    2.049                   
+  8    (np.int32(103), np.int32(40), np.int32(9)) 1.305    0.056    1.543    2.013                   
+  9    (np.int32(3), np.int32(77), np.int32(4)) 2.698    0.013    0.741    1.999                   
+  10   (np.int32(2), np.int32(113), np.int32(105)) 0.841    0.130    2.339    1.966    High area factor
+
+  Normalized output ranges for reference:
+    ratio: -1.293 to 1.890
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1810
+  Minimum spacing constraint: 0.0905
+  Duplicate tolerance: 0.0181
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 256
+Triangle score range: 0.0393 to 2.3298
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(7), np.int32(113), np.int32(6)), Score: 2.1093, Area: 0.1797
+  2. Vertices (np.int32(78), np.int32(83), np.int32(22)), Score: 2.0778, Area: 0.1026
+  3. Vertices (np.int32(1), np.int32(113), np.int32(2)), Score: 2.0722, Area: 0.1715
+  4. Vertices (np.int32(36), np.int32(40), np.int32(64)), Score: 2.0541, Area: 0.0520
+  5. Vertices (np.int32(58), np.int32(55), np.int32(96)), Score: 2.0540, Area: 0.0501
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=4.956e-02, surf_B_mm=1.687e-01 (score: 2.1093)
+  2. surf_A_mm=1.155e+01, surf_B_mm=4.416e-01 (score: 2.0778)
+  3. surf_A_mm=1.369e-02, surf_B_mm=1.687e-01 (score: 2.0722)
+  4. surf_A_mm=2.248e-02, surf_B_mm=9.774e+00 (score: 2.0541)
+  5. surf_A_mm=1.092e+01, surf_B_mm=8.534e-02 (score: 2.0540)
+  6. surf_A_mm=8.676e+00, surf_B_mm=1.024e-02 (score: 2.0531)
+  7. surf_A_mm=2.267e+00, surf_B_mm=3.371e-01 (score: 2.0495)
+  8. surf_A_mm=3.827e-02, surf_B_mm=1.704e+01 (score: 2.0133)
+======================================================================
+
+=== Triangle iter 16/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 145 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.326-1.874
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 145 points → 272 triangles
+  Triangle areas: min=0.0016, max=0.3512, median=0.0234
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0016, max=0.3512, median=0.0234
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0402, max=2.4075, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(3), np.int32(77), np.int32(4)) 2.712    0.013    0.746    2.024                   
+  2    (np.int32(58), np.int32(97), np.int32(21)) 1.201    0.061    1.612    1.935                   
+  3    (np.int32(113), np.int32(1), np.int32(6)) 0.790    0.138    2.428    1.917    High area factor
+  4    (np.int32(126), np.int32(65), np.int32(14)) 0.890    0.108    2.154    1.917    High area factor
+  5    (np.int32(62), np.int32(61), np.int32(8)) 1.043    0.078    1.828    1.905                   
+  6    (np.int32(29), np.int32(137), np.int32(6)) 0.754    0.149    2.522    1.901    High area factor
+  7    (np.int32(8), np.int32(61), np.int32(71)) 1.043    0.069    1.723    1.796                   
+  8    (np.int32(60), np.int32(52), np.int32(16)) 0.951    0.083    1.889    1.796                   
+  9    (np.int32(61), np.int32(62), np.int32(13)) 0.981    0.078    1.828    1.794                   C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+
+  10   (np.int32(2), np.int32(139), np.int32(105)) 0.859    0.098    2.044    1.755    High area factor
+
+  Normalized output ranges for reference:
+    ratio: -1.326 to 1.874
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1810
+  Minimum spacing constraint: 0.0905
+  Duplicate tolerance: 0.0181
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 272
+Triangle score range: 0.0402 to 2.4075
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(3), np.int32(77), np.int32(4)), Score: 2.0236, Area: 0.0130
+  2. Vertices (np.int32(58), np.int32(97), np.int32(21)), Score: 1.9351, Area: 0.0607
+  3. Vertices (np.int32(113), np.int32(1), np.int32(6)), Score: 1.9175, Area: 0.1378
+  4. Vertices (np.int32(126), np.int32(65), np.int32(14)), Score: 1.9170, Area: 0.1084
+  5. Vertices (np.int32(62), np.int32(61), np.int32(8)), Score: 1.9055, Area: 0.0780
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=1.024e-02, surf_B_mm=8.472e+00 (score: 2.0236)
+  2. surf_A_mm=1.691e+01, surf_B_mm=4.486e-02 (score: 1.9351)
+  3. surf_A_mm=2.605e-02, surf_B_mm=8.864e-02 (score: 1.9175)
+  4. surf_A_mm=2.946e-01, surf_B_mm=1.431e+01 (score: 1.9170)
+  5. surf_A_mm=1.310e-01, surf_B_mm=3.267e+00 (score: 1.9055)
+  6. surf_A_mm=9.476e-02, surf_B_mm=1.425e-01 (score: 1.9011)
+  7. surf_A_mm=9.166e-02, surf_B_mm=5.016e+00 (score: 1.7965)
+  8. surf_A_mm=2.013e+00, surf_B_mm=1.100e-01 (score: 1.7962)
+======================================================================
+
+=== Triangle iter 17/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 153 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.355-1.818
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 153 points → 288 triangles
+  Triangle areas: min=0.0016, max=0.3971, median=0.0242
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0016, max=0.3971, median=0.0242
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0398, max=3.2022, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(5), np.int32(147), np.int32(0)) 0.790    0.397    4.054    3.202    High area factor
+  2    (np.int32(99), np.int32(34), np.int32(30)) 1.932    0.037    1.239    2.394                   
+  3    (np.int32(147), np.int32(1), np.int32(0)) 0.806    0.174    2.685    2.163    High area factor
+  4    (np.int32(147), np.int32(5), np.int32(6)) 0.787    0.177    2.706    2.129    High area factor
+  5    (np.int32(32), np.int32(68), np.int32(52)) 1.341    0.061    1.585    2.125                   
+  6    (np.int32(115), np.int32(23), np.int32(24)) 1.296    0.056    1.527    1.979                   
+  7    (np.int32(40), np.int32(123), np.int32(71)) 1.316    0.052    1.464    1.927                   
+  8    (np.int32(29), np.int32(150), np.int32(11)) 0.753    0.151    2.502    1.885    High area factor
+  9    (np.int32(11), np.int32(150), np.int32(6)) 0.780    0.132    2.340    1.825    High area factor
+  10   (np.int32(61), np.int32(62), np.int32(13)) 0.985    0.078    1.797    1.771                   
+
+  Normalized output ranges for reference:
+    ratio: -1.355 to 1.818
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1862
+  Minimum spacing constraint: 0.0931
+  Duplicate tolerance: 0.0186
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 288
+Triangle score range: 0.0398 to 3.2022
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(5), np.int32(147), np.int32(0)), Score: 3.2022, Area: 0.3971
+  2. Vertices (np.int32(99), np.int32(34), np.int32(30)), Score: 2.3940, Area: 0.0371
+  3. Vertices (np.int32(147), np.int32(1), np.int32(0)), Score: 2.1628, Area: 0.1742
+  4. Vertices (np.int32(147), np.int32(5), np.int32(6)), Score: 2.1289, Area: 0.1769
+  5. Vertices (np.int32(32), np.int32(68), np.int32(52)), Score: 2.1246, Area: 0.0607
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=2.618e-02, surf_B_mm=2.070e-02 (score: 3.2022)
+  2. surf_A_mm=4.871e-01, surf_B_mm=1.044e+00 (score: 2.3940)
+  3. surf_A_mm=1.376e-02, surf_B_mm=3.938e-02 (score: 2.1628)
+  4. surf_A_mm=4.981e-02, surf_B_mm=3.938e-02 (score: 2.1289)
+  5. surf_A_mm=7.823e-01, surf_B_mm=1.624e-01 (score: 2.1246)
+  6. surf_A_mm=2.029e+01, surf_B_mm=9.930e+00 (score: 1.9786)
+  7. surf_A_mm=4.399e-02, surf_B_mm=7.811e+00 (score: 1.9270)
+  8. surf_A_mm=2.238e-01, surf_B_mm=1.348e-01 (score: 1.8847)
+======================================================================
+
+=== Triangle iter 18/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 161 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.383-1.762
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 161 points → 304 triangles
+  Triangle areas: min=0.0016, max=0.4101, median=0.0234
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0016, max=0.4101, median=0.0234
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0407, max=2.7548, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(11), np.int32(156), np.int32(10)) 0.659    0.410    4.183    2.755    High area factor
+  2    (np.int32(156), np.int32(5), np.int32(10)) 0.659    0.249    3.262    2.148    High area factor
+  3    (np.int32(13), np.int32(62), np.int32(154)) 0.987    0.093    1.995    1.970                   
+  4    (np.int32(5), np.int32(153), np.int32(0)) 0.792    0.132    2.376    1.883    High area factor
+  5    (np.int32(54), np.int32(90), np.int32(80)) 3.127    0.008    0.583    1.824                   
+  6    (np.int32(7), np.int32(74), np.int32(105)) 0.796    0.123    2.289    1.823    High area factor
+  7    (np.int32(2), np.int32(139), np.int32(105)) 0.886    0.098    2.041    1.808    High area factor
+  8    (np.int32(11), np.int32(160), np.int32(6)) 0.786    0.122    2.283    1.795    High area factor
+  9    (np.int32(30), np.int32(67), np.int32(154)) 1.747    0.025    1.027    1.795                   
+  10   (np.int32(137), np.int32(7), np.int32(105)) 0.796    0.111    2.179    1.735    High area factorC:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+
+
+  Normalized output ranges for reference:
+    ratio: -1.383 to 1.762
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1862
+  Minimum spacing constraint: 0.0931
+  Duplicate tolerance: 0.0186
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 304
+Triangle score range: 0.0407 to 2.7548
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(11), np.int32(156), np.int32(10)), Score: 2.7548, Area: 0.4101
+  2. Vertices (np.int32(156), np.int32(5), np.int32(10)), Score: 2.1482, Area: 0.2494
+  3. Vertices (np.int32(13), np.int32(62), np.int32(154)), Score: 1.9702, Area: 0.0933
+  4. Vertices (np.int32(5), np.int32(153), np.int32(0)), Score: 1.8825, Area: 0.1324
+  5. Vertices (np.int32(54), np.int32(90), np.int32(80)), Score: 1.8239, Area: 0.0080
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=2.238e-01, surf_B_mm=3.004e-02 (score: 2.7548)
+  2. surf_A_mm=1.176e-01, surf_B_mm=1.579e-02 (score: 2.1482)
+  3. surf_A_mm=3.596e-01, surf_B_mm=1.936e+00 (score: 1.9702)
+  4. surf_A_mm=2.622e-02, surf_B_mm=1.274e-02 (score: 1.8825)
+  5. surf_A_mm=1.017e+00, surf_B_mm=1.250e+00 (score: 1.8239)
+  6. surf_A_mm=5.500e-02, surf_B_mm=7.781e-01 (score: 1.8232)
+  7. surf_A_mm=1.498e-02, surf_B_mm=3.765e-01 (score: 1.8078)
+  8. surf_A_mm=1.941e-01, surf_B_mm=8.614e-02 (score: 1.7947)
+======================================================================
+
+=== Triangle iter 19/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 169 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.415-1.692
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 169 points → 320 triangles
+  Triangle areas: min=0.0016, max=0.3512, median=0.0254
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0016, max=0.3512, median=0.0254
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0392, max=2.6347, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(11), np.int32(161), np.int32(10)) 0.806    0.137    2.321    1.870    High area factor
+  2    (np.int32(55), np.int32(141), np.int32(21)) 1.274    0.050    1.401    1.784                   
+  3    (np.int32(31), np.int32(50), np.int32(20)) 1.426    0.039    1.240    1.768                   
+  4    (np.int32(61), np.int32(62), np.int32(13)) 0.986    0.078    1.754    1.730                   
+  5    (np.int32(161), np.int32(162), np.int32(10)) 0.806    0.112    2.104    1.696    High area factor
+  6    (np.int32(105), np.int32(137), np.int32(7)) 0.809    0.111    2.094    1.695    High area factor
+  7    (np.int32(161), np.int32(168), np.int32(6)) 0.798    0.106    2.043    1.631    High area factor
+  8    (np.int32(153), np.int32(155), np.int32(0)) 0.805    0.102    2.010    1.617    High area factor
+  9    (np.int32(150), np.int32(100), np.int32(7)) 0.810    0.099    1.974    1.600                   
+  10   (np.int32(156), np.int32(153), np.int32(5)) 0.788    0.103    2.013    1.586    High area factor
+
+  Normalized output ranges for reference:
+    ratio: -1.415 to 1.692
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1865
+  Minimum spacing constraint: 0.0933
+  Duplicate tolerance: 0.0187
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 320
+Triangle score range: 0.0392 to 2.6347
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(11), np.int32(161), np.int32(10)), Score: 1.8701, Area: 0.1367
+  2. Vertices (np.int32(55), np.int32(141), np.int32(21)), Score: 1.7844, Area: 0.0498
+  3. Vertices (np.int32(31), np.int32(50), np.int32(20)), Score: 1.7685, Area: 0.0390
+  4. Vertices (np.int32(61), np.int32(62), np.int32(13)), Score: 1.7297, Area: 0.0780
+  5. Vertices (np.int32(161), np.int32(162), np.int32(10)), Score: 1.6963, Area: 0.1123
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=3.693e-01, surf_B_mm=2.745e-02 (score: 1.8701)
+  2. surf_A_mm=1.533e+01, surf_B_mm=9.846e-02 (score: 1.7844)
+  3. surf_A_mm=1.364e+01, surf_B_mm=1.331e-02 (score: 1.7685)
+  4. surf_A_mm=2.493e-01, surf_B_mm=3.267e+00 (score: 1.7297)
+  5. surf_A_mm=2.320e-01, surf_B_mm=1.680e-02 (score: 1.6963)
+  6. surf_A_mm=4.375e-02, surf_B_mm=3.765e-01 (score: 1.6946)
+  7. surf_A_mm=1.441e-01, surf_B_mm=5.628e-02 (score: 1.6315)
+  8. surf_A_mm=1.533e-02, surf_B_mm=2.012e-02 (score: 1.6172)
+======================================================================
+
+=== Triangle iter 20/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 177 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8607
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8607 → log → z-score: -1.442-1.644
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 177 points → 336 triangles
+  Triangle areas: min=0.0014, max=0.3967, median=0.0254
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0014, max=0.3967, median=0.0254
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0032, max=3.4158, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(15), np.int32(16), np.int32(169)) 0.864    0.397    3.954    3.416    High area factor
+  2    (np.int32(10), np.int32(15), np.int32(169)) 0.864    0.184    2.691    2.325    High area factor
+  3    (np.int32(16), np.int32(52), np.int32(169)) 0.850    0.181    2.672    2.272    High area factor
+  4    (np.int32(146), np.int32(112), np.int32(97)) 1.488    0.038    1.217    1.810                   
+  5    (np.int32(32), np.int32(128), np.int32(143)) 1.355    0.044    1.323    1.792                   
+  6    (np.int32(55), np.int32(35), np.int32(141)) 1.227    0.046    1.348    1.653                   
+  7    (np.int32(35), np.int32(84), np.int32(60)) 0.867    0.092    1.906    1.653                   
+  8    (np.int32(97), np.int32(112), np.int32(31)) 1.488    0.031    1.102    1.640                   
+  9    (np.int32(100), np.int32(7), np.int32(150)) 0.829    0.099    1.974    1.637                   
+  10   (np.int32(35), np.int32(55), np.int32(83)) 1.227    0.045    1.329    1.630                   
+
+  Normalized output ranges for reference:C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\delaunay_triangle_recommender.py:242: RuntimeWarning: invalid value encountered in log10
+  log_values = np.log10(values_with_epsilon)
+
+    ratio: -1.442 to 1.644
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1865
+  Minimum spacing constraint: 0.0933
+  Duplicate tolerance: 0.0187
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 336
+Triangle score range: 0.0032 to 3.4158
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(15), np.int32(16), np.int32(169)), Score: 3.4158, Area: 0.3967
+  2. Vertices (np.int32(10), np.int32(15), np.int32(169)), Score: 2.3248, Area: 0.1838
+  3. Vertices (np.int32(16), np.int32(52), np.int32(169)), Score: 2.2715, Area: 0.1811
+  4. Vertices (np.int32(146), np.int32(112), np.int32(97)), Score: 1.8104, Area: 0.0376
+  5. Vertices (np.int32(32), np.int32(128), np.int32(143)), Score: 1.7923, Area: 0.0444
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=1.580e+00, surf_B_mm=2.664e-02 (score: 3.4158)
+  2. surf_A_mm=8.302e-01, surf_B_mm=1.400e-02 (score: 2.3248)
+  3. surf_A_mm=1.105e+00, surf_B_mm=5.848e-02 (score: 2.2715)
+  4. surf_A_mm=1.420e+01, surf_B_mm=3.370e-02 (score: 1.8104)
+  5. surf_A_mm=1.389e+00, surf_B_mm=2.422e-01 (score: 1.7923)
+  6. surf_A_mm=9.983e+00, surf_B_mm=1.220e-01 (score: 1.6529)
+  7. surf_A_mm=4.212e+00, surf_B_mm=2.044e-01 (score: 1.6528)
+  8. surf_A_mm=1.260e+01, surf_B_mm=2.532e-02 (score: 1.6399)
+======================================================================
+
+=== Triangle iter 21/21 ===
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT
+======================================================================
+\n1. Preparing experimental data...
+  Filtered to 185 experimental points
+  surf_A_mm: 1.0000e-02 - 2.2500e+01
+  surf_B_mm: 1.0000e-02 - 2.2500e+01
+  ratio: 0.7338 - 0.8774
+  turbidity_600: -0.0778 - 0.6223
+\n2. Transforming inputs to log space...
+  surf_A_mm: log range -2.000 to 1.352
+  surf_B_mm: log range -2.000 to 1.352
+\n3. Normalizing output variables...
+  ratio: 0.7338-0.8774 → log → z-score: -1.466-1.974
+  turbidity_600: -0.0778-0.6223 → log → z-score: nan-nan
+\n4. Building Delaunay triangulation...
+  Built triangulation: 185 points → 352 triangles
+  Triangle areas: min=0.0014, max=0.1474, median=0.0246
+\n5. Scoring triangles by output disagreement...
+  Area statistics: min=0.0014, max=0.1474, median=0.0246
+  Applying power-based area scaling with beta: 0.50
+  Triangle scores (with area scaling): min=0.0033, max=2.7942, median=nan
+
+  DETAILED TRIANGLE SCORING DEBUG:
+  Top 10 triangles with detailed scoring:
+  Rank Vertices     Base     Area     Factor   Final    Issue?         
+  ---------------------------------------------------------------------------
+  1    (np.int32(177), np.int32(57), np.int32(16)) 0.980    0.112    2.131    2.089    High area factor
+  2    (np.int32(15), np.int32(57), np.int32(177)) 0.980    0.098    1.998    1.959                   
+  3    (np.int32(15), np.int32(177), np.int32(178)) 0.931    0.104    2.049    1.908    High area factor
+  4    (np.int32(100), np.int32(7), np.int32(150)) 0.847    0.099    2.003    1.696    High area factor
+  5    (np.int32(110), np.int32(3), np.int32(98)) 0.837    0.089    1.896    1.587                   
+  6    (np.int32(171), np.int32(142), np.int32(20)) 1.540    0.025    0.998    1.538                   
+  7    (np.int32(140), np.int32(40), np.int32(103)) 1.406    0.029    1.083    1.523                   
+  8    (np.int32(12), np.int32(32), np.int32(124)) 1.133    0.043    1.326    1.503                   
+  9    (np.int32(11), np.int32(168), np.int32(161)) 0.798    0.086    1.865    1.488                   
+  10   (np.int32(110), np.int32(74), np.int32(8)) 0.924    0.064    1.606    1.484                   
+
+  Normalized output ranges for reference:
+    ratio: -1.466 to 1.974
+    turbidity_600: nan to nan
+\n6. Selecting triangle centroids with spacing...
+  Median nearest-neighbor distance: 0.1862
+  Minimum spacing constraint: 0.0931
+  Duplicate tolerance: 0.0186
+  Selected 8 centroids (requested 8)
+  Rejected 0 duplicates, 0 for spacing
+\n7. Formatting recommendations...
+\n======================================================================
+DELAUNAY TRIANGLE REFINEMENT SUMMARY
+======================================================================
+Total triangles evaluated: 352
+Triangle score range: 0.0033 to 2.7942
+\nTop 5 triangles by disagreement score:
+  1. Vertices (np.int32(177), np.int32(57), np.int32(16)), Score: 2.0885, Area: 0.1119
+  2. Vertices (np.int32(15), np.int32(57), np.int32(177)), Score: 1.9587, Area: 0.0984
+  3. Vertices (np.int32(15), np.int32(177), np.int32(178)), Score: 1.9082, Area: 0.1035
+  4. Vertices (np.int32(100), np.int32(7), np.int32(150)), Score: 1.6961, Area: 0.0989
+  5. Vertices (np.int32(110), np.int32(3), np.int32(98)), Score: 1.5873, Area: 0.0886
+\nSelected 8 triangle centroids:
+  1. surf_A_mm=2.958e+00, surf_B_mm=3.510e-02 (score: 2.0885)
+  2. surf_A_mm=2.958e+00, surf_B_mm=1.845e-02 (score: 1.9587)
+  3. surf_A_mm=1.624e+00, surf_B_mm=1.551e-02 (score: 1.9082)
+  4. surf_A_mm=1.044e-01, surf_B_mm=2.958e-01 (score: 1.6961)
+  5. surf_A_mm=1.868e-02, surf_B_mm=2.347e+00 (score: 1.5873)
+  6. surf_A_mm=1.386e+01, surf_B_mm=1.109e-02 (score: 1.5376)
+  7. surf_A_mm=2.635e-02, surf_B_mm=1.291e+01 (score: 1.5230)
+  8. surf_A_mm=7.639e-01, surf_B_mm=3.738e-01 (score: 1.5033)
+======================================================================
+Wrote C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\test_outputs\real_BDDAC_NaLS\2d_exploration_Triangle.png
+
+Metrics summary:
+  Per-output boundary metrics + boundary-agnostic clumping ('_all').
+  hit_rate          frac of picks landing on the boundary mask
+  coverage_p95/max  worst gap on boundary in normalized coords
+  coverage_auc      area under recall-vs-radius curve (higher better)
+  cv_nn             clumpiness of NN distances (uniform~0.52)
+  clumping_ratio    median NN / (1/N)^(1/d). <1 = tighter than uniform
+     recommender        output  n_picks_total  has_boundary  y_range  hit_rate  coverage_p95  coverage_max  coverage_median  coverage_auc  n_picks_on_boundary  n_boundary_cells    cv_nn  clumping_ratio  median_nn  min_pairwise  n_picks
+BayesianContrast         ratio            193          True 0.145904  0.476684      0.043721      0.061949         0.023881      0.975627                 92.0            4320.0      NaN             NaN        NaN           NaN      NaN
+BayesianContrast turbidity_600            193          True 0.698147  0.243523      0.062537      0.081360         0.024487      0.972208                 47.0            1440.0      NaN             NaN        NaN           NaN      NaN
+BayesianContrast          _all            193          True      NaN       NaN           NaN           NaN              NaN           NaN                  NaN               NaN 0.661453        0.726962   0.052328      0.014926    193.0
+     GradientUCB         ratio            193          True 0.145904  0.497409      0.042994      0.062173         0.023675      0.975940                 96.0            4320.0      NaN             NaN        NaN           NaN      NaN
+     GradientUCB turbidity_600            193          True 0.698147  0.093264      0.064195      0.084598         0.030937      0.967104                 18.0            1440.0      NaN             NaN        NaN           NaN      NaN
+     GradientUCB          _all            193          True      NaN       NaN           NaN           NaN              NaN           NaN                  NaN               NaN 0.314014        0.843334   0.060705      0.038692    193.0
+        Triangle         ratio            193          True 0.145904  0.341969      0.052563      0.070939         0.028959      0.970502                 66.0            4320.0      NaN             NaN        NaN           NaN      NaN
+        Triangle turbidity_600            193          True 0.698147  0.264249      0.036160      0.050456         0.018262      0.980944                 51.0            1440.0      NaN             NaN        NaN           NaN      NaN
+        Triangle          _all            193          True      NaN       NaN           NaN           NaN              NaN           NaN                  NaN               NaN 0.417536        0.771802   0.055556      0.006901    193.0
+Wrote C:\Users\Owen\Documents\GitHub\utoronto_demo\recommenders\test_outputs\real_BDDAC_NaLS\side_by_side.png

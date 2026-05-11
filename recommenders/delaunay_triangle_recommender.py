@@ -147,16 +147,18 @@ class DelaunayTriangleRecommender:
         tri, triangles = self._build_triangulation(U)
         
         # Step 4.5: Debug triangulation (early visualization)
-        print("\\n4.5. Debugging triangulation structure...")
-        self._debug_triangulation(U, tri, triangles, experiment_data, output_dir)
+        if create_visualization:
+            print("\\n4.5. Debugging triangulation structure...")
+            self._debug_triangulation(U, tri, triangles, experiment_data, output_dir)
         
         # Step 5: Score triangles
         print("\\n5. Scoring triangles by output disagreement...")
         triangle_scores = self._score_triangles(triangles, Y_norm, U, triangle_score_method, beta, output_reliability)
         
         # Step 5.5: Create visualization with scores overlaid
-        print("\\n5.5. Creating scored triangulation visualization...")
-        self._create_scored_visualization(U, tri, triangle_scores, experiment_data, output_dir)
+        if create_visualization:
+            print("\\n5.5. Creating scored triangulation visualization...")
+            self._create_scored_visualization(U, tri, triangle_scores, experiment_data, output_dir)
         
         # Step 6: Select top triangle centroids with spacing
         print("\\n6. Selecting triangle centroids with spacing...")
