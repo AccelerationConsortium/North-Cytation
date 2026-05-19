@@ -311,16 +311,10 @@ def create_contour_maps(csv_file_path, surfactant_a_name="SurfA", surfactant_b_n
     plt.subplots_adjust(bottom=0.20)  # Make room for control blocks
     
     # Save the plot with error handling
-    try:
-        output_path = csv_file_path.replace('iterative_experiment_results.csv', 'contour_maps_with_fluorescence.png')
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        print(f"Contour plots saved to: {output_path}")
-    except Exception as e:
-        print(f"Error saving plot: {e}")
-        # Try saving to current directory as backup
-        backup_path = "surfactant_contour_maps.png"
-        plt.savefig(backup_path, dpi=300, bbox_inches='tight')
-        print(f"Plot saved to backup location: {backup_path}")
+    import os as _os
+    output_path = _os.path.join(_os.path.dirname(_os.path.abspath(csv_file_path)), 'contour_maps_with_fluorescence.png')
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"Contour plots saved to: {output_path}")
     
     # Close the figure to prevent display and free memory
     plt.close(fig)

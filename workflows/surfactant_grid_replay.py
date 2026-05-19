@@ -70,18 +70,33 @@ from workflows.surfactant_grid_adaptive_concentrations import (
 
 # Source CSVs (override at __main__ entry point if desired)
 SOURCE_EXPERIMENT_FOLDER = (
-    "output/surfactant_grid_DSS_BZT_May_06_Experiment_20260506_160331"
+    "output/surfactant_grid_DTAB_TTAB_Apr_22_Experiment_20260423_033959"
 )
 RECIPES_CSV = "iterative_experiment_results.csv"
 STOCKS_CSV = "experiment_plan_stock_solutions.csv"
 
-SIMULATE = True
+SIMULATE = False
+
+# Set to 0 to run all wells. Set to e.g. 96 to run only the first plate,
+# or any other number to stop after that many wells.
+MAX_WELLS = 96
 
 # Refill cadence within each component dispense.
 REFILL_CHECK_CHUNK_SIZE = 24
 
+# Water vials are topped up before every chunk. Setting the threshold to 8.0
+# ensures the check always triggers (vial can never be at 8.0 after dispensing).
+# fill_water_vial skips internally if already within 100uL of full, so no wasted
+# movement if a chunk used very little water.
+# Substocks/stocks continue using REFILL_THRESHOLD_ML = 4.0 mL.
+WATER_REFILL_THRESHOLD_ML = 8.0
+
 # Tag appended to the new experiment folder name.
 REPLAY_TAG = "replay"
+
+# Safe rack positions assigned by position_surfactant_vials_by_concentration,
+# in the same order that function uses (concentrated -> dilute).
+_SURF_SAFE_POSITIONS = [47, 46, 45, 44, "clamp", 43, 36]
 
 
 # ============================================================================
@@ -160,20 +175,26 @@ def _classify_vial(vial_name, dilution_recipes):
 
 
 def ensure_vial_above_threshold(lash_e, vial_name, dilution_recipes):
-    """Check current volume; refill to max if < REFILL_THRESHOLD_ML.
+    """Check current volume; refill if below the kind-specific threshold.
+
+    Water vials use WATER_REFILL_THRESHOLD_ML = 8.0, so they are topped up
+    before every chunk. fill_water_vial skips if already within 100uL of full.
+    All other vials use REFILL_THRESHOLD_ML (4.0 mL).
 
     Returns True if a refill was performed (caller should re-condition tip).
     Raises if a buffer vial is below threshold (no auto-refill source).
     """
+    kind, recipe = _classify_vial(vial_name, dilution_recipes)
+    threshold = WATER_REFILL_THRESHOLD_ML if kind == "water" else REFILL_THRESHOLD_ML
+
     current_ml = lash_e.nr_robot.get_vial_info(vial_name, "vial_volume")
     if current_ml is None:
         raise ValueError(f"No volume tracked for vial '{vial_name}'")
-    if current_ml >= REFILL_THRESHOLD_ML:
+    if current_ml >= threshold:
         return False
 
-    kind, recipe = _classify_vial(vial_name, dilution_recipes)
     lash_e.logger.info(
-        f"  REFILL: {vial_name} at {current_ml:.2f} mL < {REFILL_THRESHOLD_ML} mL "
+        f"  REFILL: {vial_name} at {current_ml:.2f} mL < {threshold} mL "
         f"(kind={kind})"
     )
 
@@ -202,11 +223,18 @@ def _dispense_vial_in_chunks(
     volume_column,
     dilution_recipes,
     should_condition_first,
+    reposition_after_refill=None,
 ):
     """Dispense one vial's wells in REFILL_CHECK_CHUNK_SIZE-row sub-chunks.
 
     A volume check + optional refill runs before each chunk. If a refill
     happens, the next chunk re-conditions the tip.
+
+    Args:
+        reposition_after_refill: Optional tuple of (location, index) to move
+            the vial back to its safe dispensing position after a refill.
+            Required for water vials because fill_water_vial returns the vial
+            to its home position, leaving it out of the arm's working zone.
     """
     # Pre-filter to only the wells this vial serves, mirroring the filter
     # logic inside dispense_component_to_wellplate.
@@ -230,6 +258,12 @@ def _dispense_vial_in_chunks(
         refilled = ensure_vial_above_threshold(lash_e, vial_name, dilution_recipes)
         if refilled:
             should_condition = True
+            if reposition_after_refill is not None:
+                location, index = reposition_after_refill
+                lash_e.logger.info(
+                    f"  Repositioning {vial_name} to {location}[{index}] after refill"
+                )
+                lash_e.nr_robot.move_vial_to_location(vial_name, location, index)
         dispense_component_to_wellplate(
             lash_e,
             chunk_df,
@@ -268,8 +302,12 @@ def execute_dispensing_with_refills(lash_e, plate_df, dilution_recipes):
         sorted_a = position_surfactant_vials_by_concentration(
             lash_e, surf_a_vials, plate_df, "A"
         )
+        # Build position map: sorted_a is dilute->concentrated (reversed from
+        # placement order), so sorted_a[j] was placed at safe_positions[n-1-j].
+        n_a = len(sorted_a)
         for i, vial in enumerate(sorted_a):
-            should_condition_first = i == 0
+            raw_pos = _SURF_SAFE_POSITIONS[n_a - 1 - i]
+            reposition = ("clamp", 0) if raw_pos == "clamp" else ("main_8mL_rack", raw_pos)
             _dispense_vial_in_chunks(
                 lash_e,
                 plate_df,
@@ -277,7 +315,8 @@ def execute_dispensing_with_refills(lash_e, plate_df, dilution_recipes):
                 "SDS",
                 "surf_A_volume_ul",
                 dilution_recipes,
-                should_condition_first=should_condition_first,
+                should_condition_first=(i == 0),
+                reposition_after_refill=reposition,
             )
         lash_e.nr_robot.remove_pipet()
         return_surfactant_vials_home(lash_e, sorted_a, "A")
@@ -308,6 +347,7 @@ def execute_dispensing_with_refills(lash_e, plate_df, dilution_recipes):
                 "water_volume_ul",
                 dilution_recipes,
                 should_condition_first=True,
+                reposition_after_refill=("main_8mL_rack", 44),
             )
         if len(water_2_df) > 0:
             _dispense_vial_in_chunks(
@@ -318,6 +358,7 @@ def execute_dispensing_with_refills(lash_e, plate_df, dilution_recipes):
                 "water_volume_ul",
                 dilution_recipes,
                 should_condition_first=True,
+                reposition_after_refill=("main_8mL_rack", 45),
             )
 
         if ADD_BUFFER:
@@ -329,6 +370,7 @@ def execute_dispensing_with_refills(lash_e, plate_df, dilution_recipes):
                 "buffer_volume_ul",
                 dilution_recipes,
                 should_condition_first=False,
+                reposition_after_refill=("main_8mL_rack", 47),
             )
 
         lash_e.nr_robot.remove_pipet()
@@ -342,8 +384,10 @@ def execute_dispensing_with_refills(lash_e, plate_df, dilution_recipes):
         sorted_b = position_surfactant_vials_by_concentration(
             lash_e, surf_b_vials, plate_df, "B"
         )
+        n_b = len(sorted_b)
         for i, vial in enumerate(sorted_b):
-            should_condition_first = i == 0
+            raw_pos = _SURF_SAFE_POSITIONS[n_b - 1 - i]
+            reposition = ("clamp", 0) if raw_pos == "clamp" else ("main_8mL_rack", raw_pos)
             _dispense_vial_in_chunks(
                 lash_e,
                 plate_df,
@@ -351,7 +395,8 @@ def execute_dispensing_with_refills(lash_e, plate_df, dilution_recipes):
                 "SDS",
                 "surf_B_volume_ul",
                 dilution_recipes,
-                should_condition_first=should_condition_first,
+                should_condition_first=(i == 0),
+                reposition_after_refill=reposition,
             )
         lash_e.nr_robot.remove_pipet()
         return_surfactant_vials_home(lash_e, sorted_b, "B")
@@ -366,6 +411,7 @@ def execute_replay_workflow(
     stocks_path,
     lash_e,
     simulate=True,
+    max_wells=0,
 ):
     """Replay a 192-row grid CSV in one pass with refill checks."""
     lash_e.logger.info("=" * 80)
@@ -398,6 +444,11 @@ def execute_replay_workflow(
     # Build / top up substocks from the source CSV recipes.
     lash_e.logger.info("Pre-run: creating/refilling substocks from source recipes")
     create_substocks_from_recipes(lash_e, dilution_recipes)
+
+    # Optionally truncate to a subset of wells.
+    if max_wells > 0:
+        well_recipes_df = well_recipes_df.iloc[:max_wells].reset_index(drop=True)
+        lash_e.logger.info(f"MAX_WELLS={max_wells}: running first {len(well_recipes_df)} wells only")
 
     # Split into plates and run each plate end-to-end.
     plate_dfs = split_into_plates(well_recipes_df)
@@ -474,4 +525,4 @@ if __name__ == "__main__":
     stocks_path = os.path.join(SOURCE_EXPERIMENT_FOLDER, STOCKS_CSV)
 
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
-    execute_replay_workflow(recipes_path, stocks_path, lash_e, simulate=SIMULATE)
+    execute_replay_workflow(recipes_path, stocks_path, lash_e, simulate=SIMULATE, max_wells=MAX_WELLS)

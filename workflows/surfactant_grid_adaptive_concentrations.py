@@ -2624,7 +2624,7 @@ def measure_fluorescence(lash_e, well_indices, batch_recipes=None, shake_and_wai
 # SECTION 6: FULL WORKFLOW EXECUTION WITH LASH_E INTEGRATION
 # ================================================================================
 
-def create_experiment_folder_structure(experiment_name):
+def create_experiment_folder_structure(experiment_name, simulate=None):
     """
     Create organized folder structure for experiment data.
     
@@ -2638,11 +2638,13 @@ def create_experiment_folder_structure(experiment_name):
     
     Args:
         experiment_name: Name of the experiment (e.g., surfactant_grid_SDS_DTAB_20240203_143022)
+        simulate: Override the global SIMULATE constant. Pass lash_e.simulate for correct hardware/sim routing.
         
     Returns:
         dict: Paths to all created subdirectories
     """
-    base_folder = os.path.join("output", "simulated_surfactant_grid" if SIMULATE else "experimental_surfactant_grid", experiment_name)
+    is_simulated = SIMULATE if simulate is None else simulate
+    base_folder = os.path.join("output", "simulated_surfactant_grid" if is_simulated else "experimental_surfactant_grid", experiment_name)
     
     subfolders = {
         'base': base_folder,
@@ -3013,7 +3015,7 @@ def setup_experiment_environment(lash_e, surfactant_a_name, surfactant_b_name, s
     lash_e.current_experiment_name = experiment_name  # Store for access by other functions
     
     # Create organized experiment folder structure
-    experiment_folders = create_experiment_folder_structure(experiment_name)
+    experiment_folders = create_experiment_folder_structure(experiment_name, simulate=lash_e.simulate)
     experiment_output_folder = experiment_folders['base']
     
     # Log experiment details

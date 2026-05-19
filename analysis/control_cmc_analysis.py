@@ -208,14 +208,10 @@ def analyze_cmc_controls(csv_file_path, surfactant_a_name="SurfA", surfactant_b_
     plt.tight_layout()
     
     # Save the plot
-    try:
-        output_path = csv_file_path.replace('iterative_experiment_results.csv', 'cmc_control_analysis.png')
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        print(f"CMC control analysis saved to: {output_path}")
-    except Exception as e:
-        backup_path = "cmc_control_analysis.png"
-        plt.savefig(backup_path, dpi=300, bbox_inches='tight')
-        print(f"Saved to backup location: {backup_path}")
+    import os as _os
+    output_path = _os.path.join(_os.path.dirname(_os.path.abspath(csv_file_path)), 'cmc_control_analysis.png')
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"CMC control analysis saved to: {output_path}")
     
     # Close the figure to prevent display and free memory
     plt.close(fig)
