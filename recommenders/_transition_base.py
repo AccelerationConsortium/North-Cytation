@@ -76,12 +76,26 @@ class TransitionRecommenderBase:
 
     def get_recommendations(self, data_df: pd.DataFrame, n_points: int,
                             iteration: int = None,
-                            boundary_func: callable = None) -> pd.DataFrame:
-        """Run the full data -> GP -> acquisition -> recommendations pipeline."""
+                            boundary_func: callable = None,
+                            feasibility_fn: callable = None) -> pd.DataFrame:
+        """Run the full data -> GP -> acquisition -> recommendations pipeline.
+
+        Parameters
+        ----------
+        feasibility_fn : callable or None
+            Optional vectorized feasibility filter applied to the Sobol
+            candidate pool inside _propose_batch.  Must accept an ndarray of
+            shape (N_candidates, n_inputs) of concentrations in original units
+            (mM) and return a boolean ndarray of shape (N_candidates,).
+            Infeasible candidates are removed before acquisition scoring.
+        """
 
         print(f"\n{'='*70}")
         print(f"TRANSITION RECOMMENDER ({self.__class__.__name__})")
         print(f"{'='*70}")
+
+        # Store feasibility function so _propose_batch can access it via self.
+        self._feasibility_fn = feasibility_fn
 
         print(f"\n1. Preparing experimental data...")
         experiment_data = self._prepare_data(data_df)
@@ -114,6 +128,19 @@ class TransitionRecommenderBase:
     # ------------------------------------------------------------------ #
     # Data pipeline (copied verbatim from BayesianTransitionRecommender)
     # ------------------------------------------------------------------ #
+
+    def _to_concentration_space(self, X_normalized: torch.Tensor) -> np.ndarray:
+        """Back-transform from normalized [0,1]^N to original concentration
+        space (mM).  Uses self.input_bounds set by _process_inputs.
+        Returns a numpy array of shape (N_candidates, n_inputs)."""
+        X_denorm = (X_normalized
+                    * (self.input_bounds[1] - self.input_bounds[0])
+                    + self.input_bounds[0])
+        if self.log_transform_inputs:
+            X_conc = torch.pow(10, X_denorm)
+        else:
+            X_conc = X_denorm
+        return X_conc.detach().cpu().numpy()
 
     def _prepare_data(self, data_df: pd.DataFrame) -> pd.DataFrame:
         if 'well_type' in data_df.columns:
