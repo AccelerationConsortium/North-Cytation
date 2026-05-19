@@ -21,16 +21,16 @@ experiment:
     asp_disp_cycles: 0
     post_asp_air_vol: 0.0
     post_retract_wait_time: 0.0
-    pre_asp_air_vol: 0.0
     retract_speed: 5.0
+    dispense_wait_time: 3.0
   hardware_protocol: calibration_protocol_northrobot
   liquid: PVA_DMSO
-  max_measurements_first_volume: 30
-  max_replicates_per_trial: 2
-  max_total_measurements: 100
+  max_measurements_first_volume: 96
+  max_replicates_per_trial: 3
+  max_total_measurements: 96
   name: multi_volume_calibration_test
-  num_screening_trials: 5
-  random_seed: 7
+  num_screening_trials: 8
+  random_seed: 30
   simulate: false
   simulation_protocol: calibration_protocol_simulated
   two_point_calibration_replicates: 0
@@ -46,7 +46,7 @@ hardware_parameters:
   aspirate_speed:
     bounds:
     - 2
-    - 35
+    - 30
     default: 10
     description: Aspiration speed (relative units) - Higher values = SLOWER operation.
       Increasing aspirate_speed can help with thicker liquids for accuracy and precision
@@ -58,7 +58,7 @@ hardware_parameters:
   aspirate_wait_time:
     bounds:
     - 0.0
-    - 15.0
+    - 30.0
     default: 10.0
     description: Wait time after aspiration in liquid (seconds) - Allows pressure
       equilibration and meniscus stabilization after liquid is drawn into tip. Critical
@@ -127,7 +127,7 @@ hardware_parameters:
   pre_asp_air_vol:
     bounds:
     - 0.0
-    - 0.3
+    - 0.5
     default: 0.0
     description: Pre-aspiration air volume (mL) - A faster way to achieve blowout
       and push liquid from the tip, but it is more constrained and can cause liquid
@@ -161,7 +161,7 @@ optimization:
     carry_optimizer_state: false
     enabled: true
   stopping_criteria:
-    min_good_trials: 6
+    min_good_trials: 96
   use_range_based_variability: false
 output:
   base_directory: output/
@@ -207,9 +207,6 @@ validation:
     use_volume_tolerances: true
   volumes_ml:
   - 0.05
-  - 0.025
-  - 0.01
-  - 0.005
 volumes:
   volume_targets_ml:
   - 0.05
