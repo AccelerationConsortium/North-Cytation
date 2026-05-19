@@ -206,7 +206,24 @@ class BayesianTransitionRecommender(TransitionRecommenderBase):
         X_pool = draw_sobol_samples(
             bounds=bounds, n=self.candidate_pool, q=1).squeeze(1)
 
-        print(f"  Computing local contrast on {self.candidate_pool:,} "
+        # Feasibility filter: remove candidates that violate the physical
+        # dispensing constraint (e.g. simplex budget).  Applied before
+        # acquisition scoring so the GP never proposes infeasible points.
+        feasibility_fn = getattr(self, '_feasibility_fn', None)
+        if feasibility_fn is not None:
+            X_conc = self._to_concentration_space(X_pool)
+            feasible = torch.tensor(
+                feasibility_fn(X_conc),
+                dtype=torch.bool, device=self.device)
+            n_total = X_pool.shape[0]
+            X_pool = X_pool[feasible]
+            print(f"  Simplex feasibility filter: {X_pool.shape[0]:,}/{n_total:,} "
+                  f"candidates kept")
+            if X_pool.shape[0] < n_points * 5:
+                print(f"  WARNING: Only {X_pool.shape[0]} feasible candidates remain. "
+                      f"Consider increasing candidate_pool.")
+
+        print(f"  Computing local contrast on {X_pool.shape[0]:,} "
               f"candidates...")
         contrast = self._compute_contrast(models, X_pool)
         print(f"    contrast: range [{contrast.min():.4e}, "

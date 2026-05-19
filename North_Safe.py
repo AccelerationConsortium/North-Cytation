@@ -2084,6 +2084,25 @@ class North_Robot(North_Base):
         source_vial_needs_uncapping = not self.is_vial_pipetable(source_vial_num)
 
         required_tip_type = self.select_pipet_tip(total_tip_vol, specified_tip)
+
+        # Small tip position/volume safety warnings
+        if required_tip_type == 'small_tip':
+            _vial_loc = self.get_vial_info(source_vial_num, 'location')
+            _vial_loc_idx = int(self.get_vial_info(source_vial_num, 'location_index'))
+            # Safe positions for small-tip aspiration (sufficient vial stability/access)
+            # TODO: add confirmed safe heater indices to the 'heater' entry below
+            _SAFE_SMALL_TIP = {
+                'main_8mL_rack': range(43, 48),
+                'clamp': [0],
+                'photoreactor_array': [0],
+                'heater': [],  # fill in once confirmed
+            }
+            _safe_indices = _SAFE_SMALL_TIP.get(_vial_loc)
+            if _safe_indices is None or _vial_loc_idx not in _safe_indices:
+                self.logger.warning(f"WARNING: Aspirating from {_vial_loc}[{_vial_loc_idx}] with a small tip may cause an automation issue")
+            elif amount_mL < 2.0:
+                self.logger.warning(f"WARNING: Small tip aspiration of {amount_mL:.3f} mL from {_vial_loc}[{_vial_loc_idx}] - volume under 2 mL")
+
         if source_vial_needs_uncapping:
             # Get pipet tip FIRST to avoid cap-rack interference when uncapping
             

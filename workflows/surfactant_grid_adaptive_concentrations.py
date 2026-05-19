@@ -1301,10 +1301,16 @@ def calculate_systematic_dilution_series(surfactant_name, target_concentrations_
     
     return sorted(rounded_concentrations, reverse=True)
 
-def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations_mm, num_substocks=None):
+def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations_mm, num_substocks=None, max_surfactant_volume_ul=None):
     """
     Calculate optimal dilution strategy for a surfactant across all target concentrations.
     Uses systematic dilution series for better coverage.
+
+    Args:
+        max_surfactant_volume_ul: Override the per-well volume cap for this surfactant.
+            Defaults to MAX_SURFACTANT_VOLUME_UL (90 uL for 2D workflows).
+            Set to SURFACTANT_BUDGET_UL (225 uL) for N-D simplex workflows where
+            a single surfactant may occupy the entire dispensing budget.
     """
     if num_substocks is None:
         num_substocks = NUM_SUBSTOCKS
@@ -1315,7 +1321,7 @@ def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations
     lash_e.logger.info(f"\n=== Analyzing dilution strategy for {surfactant_name} ===")
     lash_e.logger.info(f"Target concentrations: {[f'{c:.2e}' for c in target_concentrations_mm]} mM")
     
-    # Pre-calculate systematic dilution series optimized for 30-40 ╬╝L volumes
+    # Pre-calculate systematic dilution series optimized for 30-40 uL volumes
     systematic_series = calculate_systematic_dilution_series(surfactant_name, target_concentrations_mm, num_substocks=num_substocks, target_volume_ul=35)
     lash_e.logger.info(f"Systematic dilution series: {[f'{c:.2g}' for c in systematic_series]} mM")
     
@@ -1330,7 +1336,10 @@ def calculate_smart_dilution_plan(lash_e, surfactant_name, target_concentrations
     
     # Now map each target to best available solution
     for target_conc in target_concentrations_mm:
-        solution = tracker.find_best_solution_for_concentration(surfactant_name, target_conc, lash_e)
+        solution = tracker.find_best_solution_for_concentration(
+            surfactant_name, target_conc, lash_e,
+            max_surfactant_volume_ul=max_surfactant_volume_ul,
+        )
         
         if solution:
             plan['concentration_map'][target_conc] = solution

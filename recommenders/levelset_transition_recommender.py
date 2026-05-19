@@ -165,6 +165,22 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
         X_pool = draw_sobol_samples(
             bounds=bounds, n=self.candidate_pool, q=1).squeeze(1)
 
+        # Feasibility filter: remove candidates that violate the physical
+        # dispensing constraint (e.g. simplex budget).
+        feasibility_fn = getattr(self, '_feasibility_fn', None)
+        if feasibility_fn is not None:
+            X_conc = self._to_concentration_space(X_pool)
+            feasible = torch.tensor(
+                feasibility_fn(X_conc),
+                dtype=torch.bool, device=self.device)
+            n_total = X_pool.shape[0]
+            X_pool = X_pool[feasible]
+            print(f"  Simplex feasibility filter: {X_pool.shape[0]:,}/{n_total:,} "
+                  f"candidates kept")
+            if X_pool.shape[0] < n_points * 5:
+                print(f"  WARNING: Only {X_pool.shape[0]} feasible candidates remain. "
+                      f"Consider increasing candidate_pool.")
+
         # Build level bank from training Y stored on the model
         # (BoTorch standardizes internally only via Outcome transforms; here
         # the GPs see standardized Y because TransitionRecommenderBase
