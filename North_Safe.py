@@ -2100,8 +2100,10 @@ class North_Robot(North_Base):
             _safe_indices = _SAFE_SMALL_TIP.get(_vial_loc)
             if _safe_indices is None or _vial_loc_idx not in _safe_indices:
                 self.logger.warning(f"WARNING: Aspirating from {_vial_loc}[{_vial_loc_idx}] with a small tip may cause an automation issue")
-            elif amount_mL < 2.0:
-                self.logger.warning(f"WARNING: Small tip aspiration of {amount_mL:.3f} mL from {_vial_loc}[{_vial_loc_idx}] - volume under 2 mL")
+            else:
+                _remaining_vol = self.get_vial_info(source_vial_num, 'vial_volume')
+                if _remaining_vol is not None and float(_remaining_vol) < 2.0:
+                    self.logger.warning(f"WARNING: Small tip aspiration of {amount_mL:.3f} mL from {_vial_loc}[{_vial_loc_idx}] - remaining volume low ({float(_remaining_vol)*1000:.0f}uL)")
 
         if source_vial_needs_uncapping:
             # Get pipet tip FIRST to avoid cap-rack interference when uncapping
