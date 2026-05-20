@@ -98,6 +98,11 @@ TURBIDITY_PENALTY_THRESHOLD = 0.2
 TURBIDITY_PENALTY_DECAY = 0.15
 TURBIDITY_PENALTY_ENABLED = False  # Set False to disable penalty for all recommenders
 
+# Bayesian recommender spacing control
+# alpha_spacing scales the soft repulsion target: target = alpha * (1/n_total)^(1/d)
+# Lower values allow more clustering; 0.7 is the default (uniform-fill heuristic).
+BAYESIAN_ALPHA_SPACING = 0.7
+
 # Volume budget.
 # WATER_RESERVE_UL is always held back so that even at max concentration for
 # every surfactant there is still water to fill the well.
@@ -558,6 +563,69 @@ def build_well_recipe(target_concs, plans, well_index, replicate=1):
     recipe["buffer_volume_ul"] = 0.0
     recipe["buffer_used"] = None
     return recipe
+
+
+def plot_1d_cmc_controls(well_recipes_df, output_folder, logger=None):
+    """Plot ratio and turbidity vs concentration for each surfactant's 1D CMC controls.
+
+    One column per surfactant, two rows (ratio top, turbidity bottom).
+    The known CMC value is marked with a vertical dashed line.
+    Saved as 'cmc_1d_controls.png' in output_folder.
+
+    Returns the path to the saved file, or None if no control data is found.
+    """
+    import logging as _log
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    _logger = logger or _log.getLogger(__name__)
+
+    ctrl = well_recipes_df[
+        (well_recipes_df['well_type'] == 'control') &
+        (well_recipes_df['control_type'].str.startswith('cmc_1d_'))
+    ].copy()
+
+    if ctrl.empty:
+        _logger.info("No 1D CMC controls found — skipping CMC plot.")
+        return None
+
+    n_surfs = len(SURFACTANTS)
+    fig, axes = plt.subplots(2, n_surfs, figsize=(4.5 * n_surfs, 7), squeeze=False)
+    fig.suptitle("1D CMC Control Series", fontsize=13, y=1.01)
+
+    for col_idx, s in enumerate(SURFACTANTS):
+        s_ctrl = ctrl[ctrl['control_type'].str.startswith(f'cmc_1d_{s}_')].copy()
+        conc_col = f'{s}_conc_mm'
+        if s_ctrl.empty or conc_col not in s_ctrl.columns:
+            for row in range(2):
+                axes[row][col_idx].set_visible(False)
+            continue
+
+        s_ctrl = s_ctrl.sort_values(conc_col)
+        concs = s_ctrl[conc_col].values.astype(float)
+        cmc_val = SURFACTANT_LIBRARY[s]['cmc_mm']
+
+        for row_idx, (metric, ylabel, color) in enumerate([
+            ('ratio', 'I1/I3 Ratio', '#2166ac'),
+            ('turbidity_600', 'Turbidity (600 nm)', '#d6604d'),
+        ]):
+            ax = axes[row_idx][col_idx]
+            if metric in s_ctrl.columns:
+                vals = s_ctrl[metric].values.astype(float)
+                ax.semilogx(concs, vals, 'o-', color=color, lw=1.8, ms=6)
+            ax.axvline(cmc_val, color='gray', linestyle='--', lw=1.2, label=f'CMC={cmc_val:.2f} mM')
+            ax.set_xlabel(f'{s} (mM)', fontsize=9)
+            ax.set_ylabel(ylabel, fontsize=9)
+            ax.set_title(s if row_idx == 0 else '', fontsize=10)
+            ax.legend(fontsize=7)
+            ax.grid(True, alpha=0.25, linestyle='--')
+
+    fig.tight_layout()
+    out_path = os.path.join(output_folder, 'cmc_1d_controls.png')
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    return out_path
 
 
 def _select_source_for_1d_control(surf_name, target_conc_mm, plans):
@@ -1597,6 +1665,7 @@ def get_next_batch(experiment_data_df, n_points=GRADIENT_SUGGESTIONS_PER_ITERATI
             delta=0.03,
             K=24,
             candidate_pool=_candidate_pool,
+            alpha_spacing=BAYESIAN_ALPHA_SPACING,
         )
         recommender.turbidity_penalty_threshold = TURBIDITY_PENALTY_THRESHOLD if TURBIDITY_PENALTY_ENABLED else 999.0
         recommender.turbidity_penalty_decay = TURBIDITY_PENALTY_DECAY
@@ -1885,6 +1954,14 @@ def run_multidim_workflow(lash_e):
         f"Initial grid complete: {measured_count} experiment wells + {n_controls} controls "
         f"({current_wellplate_wells}/{MAX_WELLS_PER_PLATE} on current plate)."
     )
+
+    # Plot 1D CMC controls immediately after first measurement round.
+    try:
+        cmc_plot_path = plot_1d_cmc_controls(well_recipes_df, output_folder, lash_e.logger)
+        if cmc_plot_path:
+            lash_e.logger.info(f"  1D CMC control plot saved: {cmc_plot_path}")
+    except Exception as e:
+        lash_e.logger.warning(f"1D CMC control plot failed (non-fatal): {e}")
 
     # 5. Bayesian iterations
     iteration = 1

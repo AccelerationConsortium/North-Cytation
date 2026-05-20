@@ -48,6 +48,8 @@ def compute_gp_grids(csv_path, surfactants=None, grid_n=GRID_N):
                      (log10_bounds[:, 1] - log10_bounds[:, 0])
     """
     df = pd.read_csv(csv_path)
+    if 'well_type' in df.columns:
+        df = df[df['well_type'] == 'experiment'].copy()
     if surfactants is None:
         conc_cols = [c for c in df.columns
                      if c.endswith("_conc_mm") and "substock" not in c
@@ -100,6 +102,8 @@ def compute_gp_grids(csv_path, surfactants=None, grid_n=GRID_N):
 
 def plot_3d_interactive(csv_path, output_dir=None):
     df = pd.read_csv(csv_path)
+    if 'well_type' in df.columns:
+        df = df[df['well_type'] == 'experiment'].copy()
 
     # Detect surfactant concentration columns (exclude substock columns)
     conc_cols = [c for c in df.columns if c.endswith("_conc_mm") and "substock" not in c and not c.startswith("water")]
@@ -199,6 +203,8 @@ def plot_isosurface(csv_path, threshold=TURBIDITY_THRESHOLD, output_dir=None):
     points are shown underneath, colored by their measured turbidity value.
     """
     df = pd.read_csv(csv_path)
+    if 'well_type' in df.columns:
+        df = df[df['well_type'] == 'experiment'].copy()
 
     conc_cols = [c for c in df.columns if c.endswith("_conc_mm") and "substock" not in c and not c.startswith("water")]
     surfactants = [c.replace("_conc_mm", "") for c in conc_cols]
@@ -324,6 +330,8 @@ def plot_ratio_phases(csv_path, output_dir=None):
     transition sheet are visible simultaneously.
     """
     df = pd.read_csv(csv_path)
+    if 'well_type' in df.columns:
+        df = df[df['well_type'] == 'experiment'].copy()
 
     conc_cols = [c for c in df.columns if c.endswith("_conc_mm")
                  and "substock" not in c and not c.startswith("water")]

@@ -2095,7 +2095,7 @@ class North_Robot(North_Base):
                 'main_8mL_rack': range(43, 48),
                 'clamp': [0],
                 'photoreactor_array': [0],
-                'heater': [],  # fill in once confirmed
+                'heater': [2],  # fill in once confirmed
             }
             _safe_indices = _SAFE_SMALL_TIP.get(_vial_loc)
             if _safe_indices is None or _vial_loc_idx not in _safe_indices:
