@@ -43,6 +43,7 @@ N_LEVELS = 5                # # contour levels per output
 LEVEL_LOW_Q = 0.10          # don't put levels in the saturated tails
 LEVEL_HIGH_Q = 0.90
 BETA = 1.96                 # straddle confidence multiplier
+BOUNDARY_FOCUS = 1.0        # 0=pure straddle (exploration), 1=pure proximity (always on boundary)
 ALPHA_SPACING = 0.7
 DISTANCE_SCALE = 0.4
 MIN_TARGET = 0.02
@@ -58,6 +59,7 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
                  n_levels: int = N_LEVELS, beta: float = BETA,
                  level_low_q: float = LEVEL_LOW_Q,
                  level_high_q: float = LEVEL_HIGH_Q,
+                 boundary_focus: float = BOUNDARY_FOCUS,
                  alpha_spacing: float = ALPHA_SPACING,
                  distance_scale: float = DISTANCE_SCALE,
                  candidate_pool: int = CANDIDATE_POOL,
@@ -74,25 +76,79 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
         self.beta = float(beta)
         self.level_low_q = float(level_low_q)
         self.level_high_q = float(level_high_q)
+        self.boundary_focus = float(boundary_focus)
         self.alpha_spacing = float(alpha_spacing)
         self.distance_scale = float(distance_scale)
+        self.output_normalization = 'log_zscore'
 
         print(f"Initialized LevelSetTransitionRecommender (straddle):")
         print(f"  Inputs ({self.n_inputs}D): {input_columns}")
         print(f"  Outputs ({self.n_outputs}): {output_columns}")
-        print(f"  log_transform_inputs={log_transform_inputs}")
-        print(f"  n_levels={n_levels}, beta={beta}, "
+        print(f"  log_transform_inputs={log_transform_inputs}, output_normalization=log_zscore")
+        print(f"  n_levels={n_levels}, beta={beta}, boundary_focus={boundary_focus:.2f}, "
               f"level quantiles=[{level_low_q}, {level_high_q}]")
         print(f"  spacing: alpha={alpha_spacing:.2f} * (1/n_total)^(1/d), "
               f"sigmoid_scale={distance_scale:.2f} * target")
         print(f"  candidate_pool={candidate_pool:,}, device={self.device}")
 
     # -------------------------------------------------------------- #
+    def _prepare_data(self, data_df):
+        import pandas as pd
+        if 'well_type' in data_df.columns:
+            experiment_data = data_df[data_df['well_type'] == 'experiment'].copy()
+        else:
+            experiment_data = data_df.copy()
+        missing_inputs = [c for c in self.input_columns if c not in experiment_data.columns]
+        missing_outputs = [c for c in self.output_columns if c not in experiment_data.columns]
+        if missing_inputs:
+            raise ValueError(f"Missing input columns: {missing_inputs}")
+        if missing_outputs:
+            raise ValueError(f"Missing output columns: {missing_outputs}")
+        experiment_data = experiment_data.dropna(subset=self.input_columns)
+        output_all_nan = experiment_data[self.output_columns].isna().all(axis=1)
+        experiment_data = experiment_data[~output_all_nan]
+        n_partial = int(experiment_data[self.output_columns].isna().any(axis=1).sum())
+        if n_partial:
+            print(f"  {n_partial} rows have partial NaN outputs (GP fit per output on valid rows only)")
+        return experiment_data
+
+    def _process_outputs(self, experiment_data):
+        """log+zscore normalisation — prevents wide-range outputs from dominating."""
+        Y_raw = experiment_data[self.output_columns].values.astype(np.float64)
+        Y_standardized = np.full_like(Y_raw, np.nan)
+        for i, col in enumerate(self.output_columns):
+            col_vals = Y_raw[:, i]
+            valid = ~np.isnan(col_vals)
+            log_vals = np.full_like(col_vals, np.nan)
+            log_vals[valid] = np.log10(col_vals[valid] + 1e-6)
+            mean_val = float(np.nanmean(log_vals))
+            std_val = float(np.nanstd(log_vals))
+            if std_val == 0:
+                std_val = 1.0
+            Y_standardized[valid, i] = (log_vals[valid] - mean_val) / std_val
+            self.output_scalers[col] = (mean_val, std_val)
+            n_valid = int(valid.sum())
+            print(f"  {col}: [{np.nanmin(col_vals):.4f}, {np.nanmax(col_vals):.4f}] "
+                  f"-> log+zscore ({n_valid}/{len(col_vals)} valid): "
+                  f"[{np.nanmin(Y_standardized[:, i]):.3f}, {np.nanmax(Y_standardized[:, i]):.3f}]")
+        return (torch.tensor(Y_raw, dtype=self.dtype, device=self.device),
+                torch.tensor(Y_standardized, dtype=self.dtype, device=self.device))
+
+    # -------------------------------------------------------------- #
     def _fit_models(self, X: torch.Tensor, Y: torch.Tensor) -> ModelListGP:
         models = []
         for i, col in enumerate(self.output_columns):
             print(f"  Fitting GP for {col}...")
-            model = SingleTaskGP(X, Y[:, i:i + 1])
+            valid_mask = ~torch.isnan(Y[:, i])
+            X_fit = X[valid_mask]
+            Y_fit = Y[valid_mask, i:i + 1]
+            n_valid = int(valid_mask.sum())
+            if n_valid < X_fit.shape[1] + 2:
+                print(f"    Warning: only {n_valid} valid rows for {col} — using dummy fit")
+                model = SingleTaskGP(X_fit[:1], Y_fit[:1])
+                models.append(model)
+                continue
+            model = SingleTaskGP(X_fit, Y_fit)
             mll = gpytorch.mlls.ExactMarginalLogLikelihood(
                 model.likelihood, model)
             try:
@@ -100,6 +156,10 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
             except Exception as e:
                 print(f"    Warning: fit issue for {col}: {e}")
             models.append(model)
+        # Store full Y so _propose_batch can build level bank without
+        # reading per-output train_targets (which differ in length when
+        # rows have partial NaN outputs).
+        self._Y_train = Y
         return ModelListGP(*models)
 
     # -------------------------------------------------------------- #
@@ -128,7 +188,7 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
         for j in range(n_out):
             yj = Y[:, j]
             vals = torch.tensor(
-                np.quantile(yj.detach().cpu().numpy(), qs.numpy()),
+                np.nanquantile(yj.detach().cpu().numpy(), qs.numpy()),
                 dtype=self.dtype, device=self.device)
             levels[j] = vals
         return levels
@@ -136,7 +196,19 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
     # -------------------------------------------------------------- #
     def _straddle_score(self, models: ModelListGP, X: torch.Tensor,
                         levels: torch.Tensor) -> torch.Tensor:
-        """Compute sum_j max_l (beta * std_j(x) - |mu_j(x) - level_jl|).
+        """Blended acquisition: straddle (exploration) + level proximity (boundary focus).
+
+        boundary_focus controls the blend:
+          0.0 = pure straddle (original behavior: picks uncertain regions)
+          1.0 = pure proximity (always picks near the boundary contour)
+          0.5 = equal blend (recommended default)
+
+        Level proximity = exp(-|mu - c_nearest| / sigma) where sigma is the
+        inter-level spacing.  This is always high at the transition boundary
+        regardless of GP confidence, so the algorithm keeps picking there
+        even after the boundary is well-characterised.
+
+        Both components are p95-normalised per output before summing.
         Returns (N,) tensor.
         """
         with torch.no_grad():
@@ -144,15 +216,42 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
             mu = post.mean                          # (N, n_out)
             std = post.variance.clamp_min(1e-12).sqrt()
         N = X.shape[0]
-        total = torch.zeros(N, dtype=self.dtype, device=self.device)
+        straddle_part = torch.zeros(N, self.n_outputs,
+                                    dtype=self.dtype, device=self.device)
+        proximity_part = torch.zeros(N, self.n_outputs,
+                                     dtype=self.dtype, device=self.device)
         for j in range(self.n_outputs):
             mu_j = mu[:, j:j + 1]                   # (N, 1)
             std_j = std[:, j:j + 1]                 # (N, 1)
             lv = levels[j].view(1, -1)              # (1, n_levels)
-            straddle_jl = self.beta * std_j - torch.abs(mu_j - lv)
-            best = straddle_jl.max(dim=1).values    # (N,)
-            total = total + best
-        return total
+            dist_to_levels = torch.abs(mu_j - lv)   # (N, n_levels)
+            # Straddle: positive where GP straddles a level (uncertain + close)
+            straddle_jl = self.beta * std_j - dist_to_levels
+            straddle_part[:, j] = straddle_jl.max(dim=1).values
+            # Proximity: always high near the closest level contour
+            # sigma = median gap between adjacent levels
+            lv_sorted = levels[j].sort().values
+            if self.n_levels > 1:
+                sigma = (lv_sorted[1:] - lv_sorted[:-1]).mean().clamp(min=1e-6)
+            else:
+                sigma = torch.tensor(0.5, dtype=self.dtype, device=self.device)
+            proximity_part[:, j] = torch.exp(-dist_to_levels.min(dim=1).values / sigma)
+
+        # p95-normalise each component per output before blending
+        alpha = self.boundary_focus
+        if alpha < 1.0:
+            p95_s = torch.quantile(straddle_part, 0.95, dim=0, keepdim=True).clamp(min=1e-12)
+            straddle_norm = straddle_part / p95_s
+        else:
+            straddle_norm = torch.zeros_like(straddle_part)
+        if alpha > 0.0:
+            p95_p = torch.quantile(proximity_part, 0.95, dim=0, keepdim=True).clamp(min=1e-12)
+            proximity_norm = proximity_part / p95_p
+        else:
+            proximity_norm = torch.zeros_like(proximity_part)
+
+        per_output_blended = (1.0 - alpha) * straddle_norm + alpha * proximity_norm
+        return per_output_blended.sum(dim=1)
 
     # -------------------------------------------------------------- #
     def _propose_batch(self, models: ModelListGP, X_existing: torch.Tensor,
@@ -181,13 +280,11 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
                 print(f"  WARNING: Only {X_pool.shape[0]} feasible candidates remain. "
                       f"Consider increasing candidate_pool.")
 
-        # Build level bank from training Y stored on the model
-        # (BoTorch standardizes internally only via Outcome transforms; here
-        # the GPs see standardized Y because TransitionRecommenderBase
-        # standardizes before calling _fit_models, and the same standardized
-        # values are stored on each model's train_targets.)
-        Y_train = torch.stack(
-            [m.train_targets for m in models.models], dim=1)
+        # Build level bank from Y stored during _fit_models.
+        # Cannot use model.train_targets here: with partial NaN outputs,
+        # each GP is fit on a different number of rows so the tensors have
+        # different lengths and cannot be stacked.
+        Y_train = self._Y_train
         levels = self._level_bank(Y_train)
         print(f"  Levels per output (standardized):")
         for j, col in enumerate(self.output_columns):
@@ -210,9 +307,14 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
                                dtype=self.dtype, device=self.device)
 
         weights = torch.sigmoid((min_d - target) / scale)
-        # Straddle can be negative; shift so weighting is meaningful.
-        acq_shift = acq - acq.min() + 1e-12
-        score = acq_shift * weights
+        turb_penalty = self._turbidity_penalty(
+            models, X_pool,
+            threshold=getattr(self, 'turbidity_penalty_threshold', 0.2),
+            decay=getattr(self, 'turbidity_penalty_decay', 0.15),
+        )
+        # Invert: blue (minimum straddle = GP mean on the boundary) is what we want.
+        acq_shift = acq.max() - acq + 1e-12
+        score = acq_shift * weights * turb_penalty
 
         selected = []
         chosen_X = []
@@ -231,4 +333,47 @@ class LevelSetTransitionRecommender(TransitionRecommenderBase):
             score = acq_shift * weights
             score[selected] = float('-inf')
 
-        return torch.stack(chosen_X)
+        X_selected = torch.stack(chosen_X)
+
+        # viz_state for workflow-side plotting (any dimensionality)
+        b_min = self.input_bounds[0].cpu().numpy()
+        b_max = self.input_bounds[1].cpu().numpy()
+        with torch.no_grad():
+            post = models.posterior(X_pool)
+            mu = post.mean
+            std = post.variance.clamp_min(1e-12).sqrt()
+        levels_viz = self._level_bank(self._Y_train)
+        # Show the BLENDED acquisition per output (same as what drives selection),
+        # not the raw straddle — so yellow = ON boundary, blue = away from boundary.
+        per_output_viz = torch.zeros(X_pool.shape[0], self.n_outputs,
+                                     dtype=self.dtype, device=self.device)
+        for j in range(self.n_outputs):
+            mu_j = mu[:, j:j+1]
+            std_j = std[:, j:j+1]
+            lv = levels_viz[j].view(1, -1)
+            dist = torch.abs(mu_j - lv)               # (N, n_levels)
+            # Proximity component: high exactly at the boundary contour
+            lv_sorted = levels_viz[j].sort().values
+            sigma = ((lv_sorted[1:] - lv_sorted[:-1]).mean().clamp(min=1e-6)
+                     if self.n_levels > 1
+                     else torch.tensor(0.5, dtype=self.dtype, device=self.device))
+            proximity = torch.exp(-dist.min(dim=1).values / sigma)
+            # Straddle component: high where GP straddles the level
+            straddle = (self.beta * std_j - dist).max(dim=1).values
+            alpha = self.boundary_focus
+            per_output_viz[:, j] = (1.0 - alpha) * straddle + alpha * proximity
+
+        self._viz_state = dict(
+            X_pool=X_pool.detach().cpu().numpy(),
+            acq_per_output=(per_output_viz.max(dim=0).values - per_output_viz).detach().cpu().numpy(),
+            acq_total=(acq.max() - acq).detach().cpu().numpy(),
+            mean_at_pool=mu.detach().cpu().numpy(),
+            X_existing=X_existing.detach().cpu().numpy(),
+            X_selected=X_selected.detach().cpu().numpy(),
+            b_min=b_min, b_max=b_max,
+            input_columns=self.input_columns,
+            output_columns=self.output_columns,
+            acq_label='boundary proximity',
+        )
+
+        return X_selected

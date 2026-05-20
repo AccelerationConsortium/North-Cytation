@@ -25,6 +25,9 @@ from typing import Optional
 import numpy as np
 from scipy.spatial import cKDTree
 
+# np.trapezoid was added in NumPy 2.0; fall back to np.trapz for older installs
+_trapz = getattr(np, 'trapezoid', np.trapz)
+
 
 TOP_FRAC = {"ratio": 0.30, "turbidity_600": 0.10}
 MIN_RANGE = 0.10
@@ -94,7 +97,7 @@ def boundary_metrics(picks_norm, mask, X_norm, Y_norm):
     # Coverage AUC: integrate frac{cells covered within r} over r in [0, 1].
     rs = np.linspace(0.0, 1.0, 101)
     covered = np.array([(nn_dist <= r).mean() for r in rs])
-    coverage_auc = float(np.trapezoid(covered, rs))
+    coverage_auc = float(_trapz(covered, rs))
 
     return {
         "hit_rate": hit_rate,
@@ -128,6 +131,30 @@ def define_boundary_3d(F, axes, top_frac, min_range=MIN_RANGE):
     return G >= thresh, True
 
 
+def define_boundary_levelset_3d(F, threshold, shell_frac=0.12):
+    """Return a boolean mask for the level-set shell at F == threshold.
+
+    Cells within the shell are those where |F - threshold| is in the
+    smallest shell_frac fraction of |F - threshold| values across the
+    whole grid.  This gives a thin surface of consistent fractional
+    thickness regardless of the gradient steepness.
+
+    shell_frac=0.12 means ~12% of grid cells form the shell — wide
+    enough that picks can realistically land on it, narrow enough to
+    be physically meaningful.
+
+    Returns (mask, has_boundary):
+      mask           boolean (n,n,n), True on the shell
+      has_boundary   False if the threshold is outside the data range
+    """
+    fmin, fmax = float(F.min()), float(F.max())
+    if threshold <= fmin or threshold >= fmax:
+        return None, False
+    dist = np.abs(F - threshold)
+    cutoff = np.percentile(dist, 100.0 * shell_frac)
+    return dist <= cutoff, True
+
+
 def boundary_metrics_3d(picks_norm, mask, axes):
     """3D version. picks_norm (N,3), mask (n,n,n), axes len-3 of (n,)."""
     n_picks = picks_norm.shape[0]
@@ -150,7 +177,7 @@ def boundary_metrics_3d(picks_norm, mask, axes):
     nn_dist, _ = pick_tree.query(bnd_pts, k=1)
     rs = np.linspace(0.0, 1.0, 101)
     covered = np.array([(nn_dist <= r).mean() for r in rs])
-    coverage_auc = float(np.trapezoid(covered, rs))
+    coverage_auc = float(_trapz(covered, rs))
     return {
         "hit_rate": hit_rate,
         "coverage_auc": coverage_auc,
