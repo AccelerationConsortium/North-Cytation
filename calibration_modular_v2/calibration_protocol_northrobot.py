@@ -178,7 +178,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             # Validate hardware files
             #lash_e.nr_robot.check_input_file()
             #lash_e.nr_track.check_input_file()
-            #lash_e.nr_robot.home_robot_components()
+            lash_e.nr_robot.home_robot_components()
             
             print(f"Using vials: source='{source_vial}', measurement='{measurement_vial}'")
             

@@ -1,5 +1,44 @@
 # Changelog
 
+## [2026-05-19]
+
+### data_tracker/ (new) — Windows restic backup system
+- Rewrote all files for Windows/PowerShell (original Linux versions replaced).
+- `data_tracker/.env` — PowerShell credentials file (gitignored); holds MinIO keys, restic password, repo URL, backup source path.
+- `data_tracker/backup.ps1` — backup script deployed to `C:\restic\`; incremental encrypted backup of `output\` to MinIO over Tailscale; retention cleanup (--keep-daily 14 --keep-weekly 8 --keep-monthly 6); logs to `C:\restic\backup.log`.
+- `data_tracker/setup.ps1` — one-time deploy script: installs restic via winget, deploys credentials to `C:\restic\`, initialises encrypted repo in MinIO, registers Windows Task Scheduler task (daily 2 AM).
+- `data_tracker/README.md` — full operations guide: credentials setup, restore examples, troubleshooting, retention policy, security notes.
+- `.gitignore` — appended `data_tracker/`.
+- Verified: 6.9 GiB initial backup, incremental backup 1.6 MiB, 2 snapshots in MinIO, Task Scheduler task active.
+
+### calibration_modular_v2/reprocess_interrupted_run.py (deleted after use)
+- One-shot script to reconstruct analysis outputs from an interrupted run clipped to 96 measurements (32 trials x 3).
+- Wrote `trial_results.csv`, `raw_measurements.csv`, `ax_trials_data.csv`, `optimal_conditions_DMSO.csv`, `experiment_summary.json/csv`, `analysis_report.txt`, and 3 plots to `run_1779212375_DMSO/`.
+- Script self-deleted on successful completion.
+
+
+- `.gitignore` — appended `data_tracker/` to prevent any backup credentials or scripts from being pushed to GitHub.
+
+
+
+### calibration_modular_v2/batch_calibration_automation.py
+- FIXED: `restore_files()` was overwriting `calibration_vials_short.csv` (live robot state)
+  and `north_robot_hardware.yaml` on every interrupt/completion. Now only `experiment_config.yaml`
+  is restored. The CSV must never be reset — it tracks real vial positions and tip counts.
+  The hardware config vial names are written fresh before each run anyway.
+- FIXED: The per-run "Step 0: Restore original vials state" CSV reset also removed.
+- FIXED: `overaspirate_vol` was silently clamped to `target_volume * max_fraction_of_target`
+  (default 0.2), limiting 50uL runs to 10uL max overaspirate instead of the configured 25uL.
+  Added `max_fraction_of_target: 1.0` to `experiment_config.yaml` so the absolute bounds
+  always govern.
+  crashing all 8 runs with a KeyError. Changed to only write `validation.volumes_ml` when the key
+  is present in the liquid config, allowing validation-free runs to proceed normally.
+- FIXED: Batch calibration was renaming vials to `liquid_source_0` in the CSV, but the protocol
+  now reads vial names from `north_robot_hardware.yaml`. Replaced `modify_vials_csv()` call with
+  `modify_hardware_config()` which writes the correct vial name into `north_robot_hardware.yaml`
+  before each run. Added backup/restore of `north_robot_hardware.yaml`.
+- FIXED: DMSO `target_vial` corrected from `'dmso'` (not in CSV) to `'liquid_source_0'` (actual name).
+
 ## [2026-05-12]
 
 ### workflows/surfactant_grid_replay.py

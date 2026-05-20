@@ -28,58 +28,36 @@ import shutil
 # vial is reused for both runs of the same liquid.
 # No validation is run - results are compared retrospectively at n=24/48/72/96 checkpoints.
 LIQUIDS_TO_CALIBRATE = [
-    # --- POLYMER_DMSO ---
+
+    #     # --- POLYMER_DMSO ---
     {
-        'liquid_name': 'polymer_dmso',
+        'liquid_name': 'PVA_DMSO',
         'target_vial': 'polymer_dmso',
         'volume_targets_ml': [0.050],
     },
-    {
-        'liquid_name': 'polymer_dmso',
-        'target_vial': 'polymer_dmso',
-        'volume_targets_ml': [0.050],
-        'num_screening_trials': 96,  # SOBOL-only: fills entire budget
-    },
-    # --- GLYCEROL ---
-    {
-        'liquid_name': 'glycerol',
-        'target_vial': 'glycerol',
-        'volume_targets_ml': [0.050],
-    },
-    {
-        'liquid_name': 'glycerol',
-        'target_vial': 'glycerol',
-        'volume_targets_ml': [0.050],
-        'num_screening_trials': 96,  # SOBOL-only: fills entire budget
-    },
-    # --- DMSO ---
-    {
-        'liquid_name': 'dmso',
-        'target_vial': 'dmso',
-        'volume_targets_ml': [0.050],
-    },
-    {
-        'liquid_name': 'dmso',
-        'target_vial': 'dmso',
-        'volume_targets_ml': [0.050],
-        'num_screening_trials': 96,  # SOBOL-only: fills entire budget
-    },
-    # --- WATER ---
-    {
-        'liquid_name': 'water',
-        'target_vial': 'water',
-        'volume_targets_ml': [0.050],
-    },
-    {
-        'liquid_name': 'water',
-        'target_vial': 'water',
-        'volume_targets_ml': [0.050],
-        'num_screening_trials': 96,  # SOBOL-only: fills entire budget
-    },
+    # {
+    #     'liquid_name': 'PVA_DMSO',
+    #     'target_vial': 'polymer_dmso',
+    #     'volume_targets_ml': [0.050],
+    #     'num_screening_trials': 32,  # SOBOL-only: fills entire budget
+    # },
+        # --- GLYCEROL ---
+    #{
+    #    'liquid_name': 'glycerol',
+    #    'target_vial': 'glycerol',
+    #    'volume_targets_ml': [0.050],
+    #},
+    #  {
+    #      'liquid_name': 'glycerol',
+    #      'target_vial': 'glycerol',
+    #      'volume_targets_ml': [0.050],
+    #      'num_screening_trials': 32,  # SOBOL-only: fills entire budget
+    #  },
 ]
 
 # File paths - assumes running from main utoronto_demo directory (like other workflows)
 CONFIG_FILE = "calibration_modular_v2/experiment_config.yaml"
+HARDWARE_CONFIG_FILE = "calibration_modular_v2/north_robot_hardware.yaml"
 VIALS_CSV = "status/calibration_vials_short.csv"
 CALIBRATION_SCRIPT = "calibration_modular_v2/run_calibration.py"
 VALIDATION_SCRIPT = "calibration_modular_v2/run_validation.py"
@@ -88,9 +66,20 @@ OUTPUT_DIR = "calibration_modular_v2/output"  # Base path where run folders are 
 class BatchCalibrationAutomator:
     def __init__(self):
         self.original_config = None
+        self.original_hw_config = None
         self.original_vials = None
         self.backup_created = False
         
+    def modify_hardware_config(self, target_vial):
+        """Update north_robot_hardware.yaml with the vial name for the current run."""
+        with open(HARDWARE_CONFIG_FILE, 'r') as f:
+            hw_config = yaml.safe_load(f)
+        hw_config['vials']['source_vial'] = target_vial
+        hw_config['vials']['measurement_vial'] = target_vial
+        with open(HARDWARE_CONFIG_FILE, 'w') as f:
+            yaml.dump(hw_config, f, default_flow_style=False, sort_keys=False)
+        print(f"  Updated hardware config: source_vial='{target_vial}', measurement_vial='{target_vial}'")
+
     def create_backups(self):
         """Create single backup files in calibration_modular_v2 folder (overwrite previous ones to prevent accumulation)."""
         
@@ -100,6 +89,10 @@ class BatchCalibrationAutomator:
         # Backup config file - store in calibration_modular_v2 folder
         config_backup = os.path.join(script_dir, "experiment_config_backup.yaml")
         shutil.copy2(CONFIG_FILE, config_backup)
+
+        # Backup hardware config - store in calibration_modular_v2 folder
+        hw_backup = os.path.join(script_dir, "north_robot_hardware_backup.yaml")
+        shutil.copy2(HARDWARE_CONFIG_FILE, hw_backup)
         
         # Backup vials CSV - store in calibration_modular_v2 folder
         vials_backup = os.path.join(script_dir, "calibration_vials_short_backup.csv")
@@ -107,6 +100,7 @@ class BatchCalibrationAutomator:
         
         print(f"Created backups in {script_dir}:")
         print(f"  - experiment_config_backup.yaml")
+        print(f"  - north_robot_hardware_backup.yaml")
         print(f"  - calibration_vials_short_backup.csv")
         self.backup_created = True
         
@@ -114,6 +108,9 @@ class BatchCalibrationAutomator:
         """Load original file contents for restoration."""
         with open(CONFIG_FILE, 'r') as f:
             self.original_config = yaml.safe_load(f)
+
+        with open(HARDWARE_CONFIG_FILE, 'r') as f:
+            self.original_hw_config = yaml.safe_load(f)
         
         self.original_vials = pd.read_csv(VIALS_CSV)
         
@@ -127,7 +124,8 @@ class BatchCalibrationAutomator:
         # Update liquid type and volumes
         config['experiment']['liquid'] = liquid_config['liquid_name']
         config['experiment']['volume_targets_ml'] = liquid_config['volume_targets_ml']
-        config['validation']['volumes_ml'] = liquid_config['validation_volumes_ml']
+        if 'validation_volumes_ml' in liquid_config:
+            config['validation']['volumes_ml'] = liquid_config['validation_volumes_ml']
         
         # Update hardware parameters if specified
         if 'hardware_parameters' in liquid_config:
@@ -276,16 +274,20 @@ class BatchCalibrationAutomator:
             raise  # Re-raise to stop the batch process
             
     def restore_files(self):
-        """Restore original file contents."""
+        """Restore experiment config only - by copying the backup file on disk.
+        This preserves any edits made to the backup during the run.
+        CSV and hardware config are NOT restored - the CSV is live robot state
+        (vial positions, tip counts) and must not be overwritten."""
         print("Restoring original files...")
-        
-        if self.original_config:
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        config_backup = os.path.join(script_dir, "experiment_config_backup.yaml")
+        if os.path.exists(config_backup):
+            shutil.copy2(config_backup, CONFIG_FILE)
+        elif self.original_config:
             with open(CONFIG_FILE, 'w') as f:
                 yaml.dump(self.original_config, f, default_flow_style=False, sort_keys=False)
-                
-        if self.original_vials is not None:
-            self.original_vials.to_csv(VIALS_CSV, index=False)
-            
+
         print("Files restored to original state")
         
     def show_initial_gui(self):
@@ -350,14 +352,11 @@ class BatchCalibrationAutomator:
                 print("="*60)
 
                 try:
-                    # Step 0: Restore original vials state before each run
-                    self.original_vials.to_csv(VIALS_CSV, index=False)
-
                     # Step 1: Modify config file
                     self.modify_config_file(liquid_config)
 
-                    # Step 2: Swap vial names
-                    self.modify_vials_csv(liquid_config['target_vial'])
+                    # Step 2: Update hardware config with correct vial name
+                    self.modify_hardware_config(liquid_config['target_vial'])
 
                     # Step 3: Run calibration
                     if not self.run_script(CALIBRATION_SCRIPT):
