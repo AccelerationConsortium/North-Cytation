@@ -1948,11 +1948,11 @@ def run_multidim_workflow(lash_e):
         lash_e.logger.warning(f"Initial grid plotting failed (non-fatal): {e}")
 
     current_wellplate_wells = len(well_recipes_df)
-    # measured_count tracks experiment wells only (controls excluded from AL budget).
-    measured_count = len(init_exp_df)
+    n_exp_wells = len(init_exp_df)
     lash_e.logger.info(
-        f"Initial grid complete: {measured_count} experiment wells + {n_controls} controls "
-        f"({current_wellplate_wells}/{MAX_WELLS_PER_PLATE} on current plate)."
+        f"Initial grid complete: {n_exp_wells} experiment wells + {n_controls} controls "
+        f"({current_wellplate_wells}/{MAX_WELLS_PER_PLATE} on current plate, "
+        f"{current_wellplate_wells}/{TARGET_TOTAL_WELLS} total budget used)."
     )
 
     # Plot 1D CMC controls immediately after first measurement round.
@@ -1965,9 +1965,9 @@ def run_multidim_workflow(lash_e):
 
     # 5. Bayesian iterations
     iteration = 1
-    while measured_count < TARGET_TOTAL_WELLS and iteration <= MAX_ITERATIONS:
+    while len(well_recipes_df) < TARGET_TOTAL_WELLS and iteration <= MAX_ITERATIONS:
         lash_e.logger.info("-" * 80)
-        lash_e.logger.info(f"Iteration {iteration} ({measured_count}/{TARGET_TOTAL_WELLS} wells)")
+        lash_e.logger.info(f"Iteration {iteration} ({len(well_recipes_df)}/{TARGET_TOTAL_WELLS} wells)")
 
         # Refill consumables between iterations
         fill_water_vial(lash_e, "water")
@@ -1981,7 +1981,7 @@ def run_multidim_workflow(lash_e):
             create_substocks_from_recipes(lash_e, dilution_recipes)
 
         wells_remaining_in_plate = MAX_WELLS_PER_PLATE - current_wellplate_wells
-        wells_remaining_to_target = TARGET_TOTAL_WELLS - measured_count
+        wells_remaining_to_target = TARGET_TOTAL_WELLS - len(well_recipes_df)
         max_this_iter = min(GRADIENT_SUGGESTIONS_PER_ITERATION,
                             wells_remaining_in_plate, wells_remaining_to_target)
         if max_this_iter <= 0:
@@ -2076,14 +2076,10 @@ def run_multidim_workflow(lash_e):
 
         next_recipes_df['iteration'] = iteration
         well_recipes_df = pd.concat([well_recipes_df, next_recipes_df], ignore_index=True)
-        # measured_count tracks experiment wells only (controls remain on plate but
-        # were not counted toward the initial measured_count, so new AL wells are
-        # pure increments here).
-        measured_count += len(next_recipes_df)
         current_wellplate_wells += len(next_recipes_df)
         save_results(well_recipes_df, output_folder, "results_iterative")
 
-        if current_wellplate_wells >= MAX_WELLS_PER_PLATE and measured_count < TARGET_TOTAL_WELLS:
+        if current_wellplate_wells >= MAX_WELLS_PER_PLATE and len(well_recipes_df) < TARGET_TOTAL_WELLS:
             lash_e.logger.info("Plate full; rotating to a new plate.")
             lash_e.discard_used_wellplate()
             lash_e.grab_new_wellplate()
@@ -2135,7 +2131,9 @@ def run_multidim_workflow(lash_e):
 
     lash_e.logger.info("=" * 80)
     lash_e.logger.info("N-D WORKFLOW COMPLETE")
-    lash_e.logger.info(f"  Total wells: {len(well_recipes_df)}")
+    n_exp_final = len(well_recipes_df[well_recipes_df['well_type'] == 'experiment'])
+    n_ctrl_final = len(well_recipes_df[well_recipes_df['well_type'] == 'control'])
+    lash_e.logger.info(f"  Total wells: {len(well_recipes_df)} ({n_exp_final} experiment + {n_ctrl_final} control)")
     lash_e.logger.info(f"  Iterations: {iteration - 1}")
     lash_e.logger.info(f"  Output: {final_path}")
     lash_e.logger.info("=" * 80)
