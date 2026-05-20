@@ -1,5 +1,37 @@
 # Changelog
 
+## [2026-05-12]
+
+### workflows/surfactant_grid_replay.py
+- FIXED: Water vials were never refilled mid-run because REFILL_THRESHOLD_ML (4.0 mL) was too low.
+  From the CSV: chunk 1 consumed 2.824 mL leaving 5.176 mL, which was above the 4.0 threshold,
+  so no refill. Chunk 2 then consumed ~3.78 mL uninterrupted, leaving water_2 at ~1.4 mL.
+  Added separate WATER_REFILL_THRESHOLD_ML = 6.0 mL used only for water/water_2 vials.
+  Substocks/stocks continue using REFILL_THRESHOLD_ML = 4.0 mL unchanged.
+
+### workflows/surfactant_grid_replay.py
+- FIXED: `REFILL_CHECK_CHUNK_SIZE` reduced from 24 to 12. With 24, water_2 consumed ~3.2 mL across
+  chunk 2 (23 wells) after passing the pre-chunk threshold check at 4.64 mL, leaving the vial at
+  ~1.4 mL — causing the tip to scrape the bottom. Halving chunk size doubles the check frequency.
+
+### workflows/surfactant_grid_adaptive_concentrations.py
+- FIXED: `REFILL_THRESHOLD_ML` raised from 4.0 to 5.5 mL. At 4.0 mL, the pre-chunk check passed
+  at 4.64 mL (above threshold), then chunk 2 consumed another 3.2 mL undetected. At 5.5 mL, the
+  check at 4.64 mL triggers a refill before chunk 2 begins.
+
+### workflows/surfactant_grid_adaptive_concentrations.py
+- FIXED: `create_experiment_folder_structure` was using the module-level `SIMULATE = True` constant instead of the actual runtime simulate state. All hardware runs were creating the main output folder under `simulated_surfactant_grid/` while raw measurement CSVs (which use `lash_e.simulate`) went to `experimental_surfactant_grid/` — splitting the same experiment across two folders. Now passes `lash_e.simulate` explicitly.
+
+### analysis/surfactant_contour_simple.py
+- FIXED: Save path used `.replace('iterative_experiment_results.csv', ...)` which silently failed when passed `complete_experiment_results.csv`, causing matplotlib to try saving a `.csv` file and falling back to the root directory. Now uses `os.path.dirname(os.path.abspath(csv_file_path))`.
+
+### analysis/control_cmc_analysis.py
+- FIXED: Same `.replace()` save path bug as above. Now saves to the input file's directory.
+
+### workflows/surfactant_grid_replay.py
+- FIXED: Water/surfactant vials left in home position after mid-dispense refill. Refill functions (`fill_water_vial`, `create_substocks_from_recipes`) always return vials home, but vials had already been moved to safe dispensing positions. `_dispense_vial_in_chunks` now repositions any vial back to its assigned safe position after a refill via new `reposition_after_refill` parameter. Applied to water (44/45), buffer (47), and surfactant A/B (positions derived from `_SURF_SAFE_POSITIONS`).
+- ADDED: `START_PLATE` config constant and `start_plate` parameter on `execute_replay_workflow` to skip already-completed plates when resuming a crashed run.
+
 ## [2026-05-07]
 
 ### recommenders/systematic_compare_nd.py

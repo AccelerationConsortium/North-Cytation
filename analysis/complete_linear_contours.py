@@ -2,6 +2,7 @@
 Complete Linear Contour Map Generator  
 Full-featured version with regular linear interpolation styling (subdued, clean)
 """
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -252,8 +253,8 @@ def create_complete_linear_contours(csv_file_path, surfactant_a_name="SurfA", su
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.20)  # Make room for control blocks
     
-    # Save the plot
-    output_path = csv_file_path.replace('iterative_experiment_results.csv', 'COMPLETE_LINEAR_CONTOURS.png')
+    # Save the plot (handle both iterative and complete results CSV names)
+    output_path = os.path.join(os.path.dirname(csv_file_path), 'COMPLETE_LINEAR_CONTOURS.png')
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"Complete linear contour plots saved to: {output_path}")
     
