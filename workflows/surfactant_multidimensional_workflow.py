@@ -2284,7 +2284,7 @@ def run_multidim_workflow(lash_e):
         max_this_iter = min(GRADIENT_SUGGESTIONS_PER_ITERATION,
                             wells_remaining_in_plate, wells_remaining_to_target)
         if max_this_iter <= 0:
-            lash_e.logger.warning("No room to dispense this iteration; rotating plate.")
+            lash_e.logger.info("No room to dispense this iteration; rotating plate.")
             lash_e.discard_used_wellplate()
             lash_e.grab_new_wellplate()
             current_wellplate_wells = 0
