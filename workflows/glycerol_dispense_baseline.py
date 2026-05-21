@@ -23,6 +23,7 @@ import sys
 import time
 import glob
 import shutil
+import signal
 from datetime import datetime, timedelta
 import pandas as pd
 from sympy import false
@@ -78,6 +79,41 @@ UPDATE_EVERY_NUM_PIPS = 12
 # Environmental data tracking
 MQTT_LOG_FILE = "C:\\Users\\Imaging Controller\\Desktop\\m5stack\\mqtt_log.csv"
 
+# Global state for graceful interrupt handling
+_interrupt_state = {
+    "lash_e": None,
+    "current_vial_name": None,
+    "interrupted": False
+}
+
+def _interrupt_handler(signum, frame):
+    """Handle interrupt signal by capping vial and returning home."""
+    _interrupt_state["interrupted"] = True
+    print("\n\n⚠️  INTERRUPT DETECTED - Shutting down gracefully...")
+    
+    lash_e = _interrupt_state.get("lash_e")
+    current_vial_name = _interrupt_state.get("current_vial_name")
+    
+    if lash_e and current_vial_name:
+        try:
+            print(f"🔒 Capping {current_vial_name}...")
+            lash_e.nr_robot.cap_clamp_vial()
+            
+            print(f"🏠 Returning {current_vial_name} to home position...")
+            lash_e.nr_robot.return_vial_home(current_vial_name)
+            
+            print(f"🏠 Moving robot to home...")
+            lash_e.nr_robot.move_home()
+            
+            print("✓ Cleanup complete - vial capped and home")
+        except Exception as e:
+            print(f"❌ Error during interrupt cleanup: {e}")
+    
+    print("Exiting workflow...")
+    sys.exit(0)
+
+# Register interrupt handler
+signal.signal(signal.SIGINT, _interrupt_handler)
 # Simulation-first safety controls
 # Simulation mode processes fewer rows for faster testing
 MAX_ROWS_FOR_SIMULATION = 20
@@ -462,6 +498,10 @@ def run_baseline():
     current_vial_number = 0
     current_vial_name = f"vial_{current_vial_number}"
     
+    # Store in global interrupt handler state
+    _interrupt_state["lash_e"] = lash_e
+    _interrupt_state["current_vial_name"] = current_vial_name
+    
     # Move initial vial to clamp position once
     lash_e.nr_robot.move_vial_to_location(current_vial_name, "clamp", 0)
     print(f"Moved {current_vial_name} to clamp position")
@@ -577,6 +617,7 @@ def run_baseline():
 
             # Check if vial needs swapping before pipetting
             current_vial_number, current_vial_name = _check_and_swap_vials(lash_e, current_vial_number, current_vial_name)
+            _interrupt_state["current_vial_name"] = current_vial_name  # Update global state
 
             try:
                 # Simple aspirate/dispense with timing
