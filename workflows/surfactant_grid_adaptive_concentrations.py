@@ -3560,8 +3560,8 @@ def validate_pipetting_system(lash_e, experiment_output_folder, surfactant_names
         lash_e.logger.info(f"        Small water: R^2={small_water_results['r_squared']:.3f}, Accuracy={small_water_results['mean_accuracy_pct']:.1f}%")
         
         # Test 1b: Large water volumes with conditioning
-        large_volumes = [0.2, 0.5, 0.9]
-        lash_e.logger.info("      Testing large water volumes (200-900 uL) with conditioning...")
+        large_volumes = [0.2, 0.5, 0.8]
+        lash_e.logger.info("      Testing large water volumes (200-800 uL) with conditioning...")
         
         large_water_results = validate_pipetting_accuracy(
             lash_e=lash_e,
