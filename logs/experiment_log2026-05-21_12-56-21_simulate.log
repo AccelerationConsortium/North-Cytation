@@ -1,0 +1,110 @@
+2026-05-21 12:56:21,307 - INFO - Workflow config loaded: surfactant_multidimensional_workflow
+2026-05-21 12:56:21,307 - INFO - Config keys updated: 37 (SURFACTANT_LIBRARY, NUM_SUBSTOCKS, MIN_WELL_PIPETTE_VOLUME_UL, SURFACTANTS, EXPERIMENT_TAG, SIMULATE, VALIDATE_LIQUIDS, RECOMMENDER_TYPE, FILTER_UNRELIABLE_RATIOS, TURBIDITY_FILTER_THRESHOLD, FLAT_TURBIDITY_MAX, TURBIDITY_PENALTY_THRESHOLD, TURBIDITY_PLOT_THRESHOLD, TURBIDITY_PENALTY_DECAY, TURBIDITY_PENALTY_ENABLED, BAYESIAN_ALPHA_SPACING, WELL_VOLUME_UL, PYRENE_VOLUME_UL, WATER_RESERVE_UL, SURFACTANT_BUDGET_UL, INIT_STRATEGY, GRID_POINTS_PER_AXIS, INIT_BOUNDARY_LEVELS, INIT_INTERIOR_PTS, MIN_CONC_MM, FEASIBLE_MAX_CONC_MULTIPLIER, FEASIBLE_DIAGNOSTIC_GRID_N, GRADIENT_SUGGESTIONS_PER_ITERATION, RECOMMEND_OVERSAMPLE_FACTOR, TARGET_TOTAL_WELLS, MAX_ITERATIONS, MAX_WELLS_PER_PLATE, ADD_REGULAR_CONTROLS, ADD_1D_CONTROLS, CMC_CONTROL_POINTS, STOCK_CONTROL_VOL_UL, INPUT_VIAL_STATUS_FILE)
+2026-05-21 12:56:21,308 - INFO - SIMULATE mode: True
+2026-05-21 12:56:21,308 - INFO - Launching status review GUI...
+2026-05-21 12:56:21,387 - INFO - Detected workflow name: surfactant_multidimensional_workflow
+2026-05-21 12:56:21,523 - INFO - Config editor loaded for workflow: surfactant_multidimensional_workflow
+2026-05-21 12:56:24,090 - INFO - User selected: Run Workflow
+2026-05-21 12:56:24,095 - INFO - Status review completed - proceeding with hardware initialization
+2026-05-21 12:56:24,102 - DEBUG - Reloading config after status check to get updated values
+2026-05-21 12:56:24,112 - INFO - Config Manager: Updated 37 workflow constants from surfactant_multidimensional_workflow.yaml
+2026-05-21 12:56:24,113 - INFO - Initializing North Robot...
+2026-05-21 12:56:24,113 - DEBUG - Loading robot configuration files...
+2026-05-21 12:56:24,119 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-05-21 12:56:24,120 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-05-21 12:56:24,122 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-05-21 12:56:24,122 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-05-21 12:56:24,123 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-05-21 12:56:24,125 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-05-21 12:56:24,125 - DEBUG - Loading robot state files...
+2026-05-21 12:56:24,130 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_multidim_vials.csv
+2026-05-21 12:56:24,131 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-05-21 12:56:24,132 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-05-21 12:56:24,132 - DEBUG - Robot status loaded successfully
+2026-05-21 12:56:24,132 - INFO - Physical initialization of North Robot...
+2026-05-21 12:56:24,132 - DEBUG - Loading pumps from YAML configuration...
+2026-05-21 12:56:24,133 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-05-21 12:56:24,133 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-05-21 12:56:24,133 - INFO - Moving robot to home position
+2026-05-21 12:56:24,133 - DEBUG - Initializing centrifuge controller...
+2026-05-21 12:56:24,135 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='1501773549584'>
+2026-05-21 12:56:24,135 - INFO - Initializing North Track...
+2026-05-21 12:56:24,135 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-05-21 12:56:24,135 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-05-21 12:56:24,137 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-05-21 12:56:24,137 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-05-21 12:56:24,139 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-05-21 12:56:24,139 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-05-21 12:56:24,140 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-05-21 12:56:24,141 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-05-21 12:56:24,141 - DEBUG - Moving North Track to home position
+2026-05-21 12:56:24,141 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-21 12:56:24,141 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-21 12:56:24,143 - INFO -     Filling water vial 'water': 0.00mL -> 8.00mL (adding 8.00mL)
+2026-05-21 12:56:24,143 - INFO - Dispensing into vial 3 from reservoir 1: 8.000 mL
+2026-05-21 12:56:24,143 - DEBUG - Reservoir parameters: aspirate_speed=11, dispense_speed=11, overaspirate=0.000 mL
+2026-05-21 12:56:24,144 - INFO - Moving vial water to clamp: 0
+2026-05-21 12:56:24,144 - DEBUG - Grabbing vial 3 with index 3
+2026-05-21 12:56:24,145 - DEBUG - Dropping off vial 3 at location clamp with index 0
+2026-05-21 12:56:24,145 - INFO - Moving robot to home position
+2026-05-21 12:56:24,145 - INFO - DISPENSING DEBUG: simulate=True, volume=8.000mL, overaspirate=0.000mL
+2026-05-21 12:56:24,145 - INFO - DISPENSING DEBUG: total_vol=8.000mL, num_dispenses=4, dispense_vol=2.000mL, actual_dispense=2.000mL
+2026-05-21 12:56:24,146 - DEBUG - Dispensing 2.000 mL (with 0.000 mL overaspirate) 4 times
+2026-05-21 12:56:24,146 - INFO - DISPENSING LOOP 1/4: simulate=True
+2026-05-21 12:56:24,146 - INFO - ASPIRATING: 2.000mL from reservoir 1
+2026-05-21 12:56:24,146 - INFO - DISPENSING: 2.000mL into vial 3
+2026-05-21 12:56:24,146 - INFO - DISPENSING LOOP 2/4: simulate=True
+2026-05-21 12:56:24,146 - INFO - ASPIRATING: 2.000mL from reservoir 1
+2026-05-21 12:56:24,147 - INFO - DISPENSING: 2.000mL into vial 3
+2026-05-21 12:56:24,147 - INFO - DISPENSING LOOP 3/4: simulate=True
+2026-05-21 12:56:24,147 - INFO - ASPIRATING: 2.000mL from reservoir 1
+2026-05-21 12:56:24,147 - INFO - DISPENSING: 2.000mL into vial 3
+2026-05-21 12:56:24,147 - INFO - DISPENSING LOOP 4/4: simulate=True
+2026-05-21 12:56:24,147 - INFO - ASPIRATING: 2.000mL from reservoir 1
+2026-05-21 12:56:24,147 - INFO - DISPENSING: 2.000mL into vial 3
+2026-05-21 12:56:24,148 - INFO - Returning vial water to home location: main_8mL_rack index 3
+2026-05-21 12:56:24,149 - INFO - Moving vial water to main_8mL_rack: 3
+2026-05-21 12:56:24,149 - DEBUG - Grabbing vial 3 with index 3
+2026-05-21 12:56:24,150 - DEBUG - Dropping off vial 3 at location main_8mL_rack with index 3
+2026-05-21 12:56:24,150 - INFO -     Water vial 'water' filled successfully to 8.00mL
+2026-05-21 12:56:24,150 - INFO -     Filling water vial 'water_2': 0.00mL -> 8.00mL (adding 8.00mL)
+2026-05-21 12:56:24,151 - INFO - Dispensing into vial 4 from reservoir 1: 8.000 mL
+2026-05-21 12:56:24,151 - DEBUG - Reservoir parameters: aspirate_speed=11, dispense_speed=11, overaspirate=0.000 mL
+2026-05-21 12:56:24,152 - INFO - Moving vial water_2 to clamp: 0
+2026-05-21 12:56:24,152 - DEBUG - Grabbing vial 4 with index 4
+2026-05-21 12:56:24,152 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2026-05-21 12:56:24,153 - INFO - Moving robot to home position
+2026-05-21 12:56:24,153 - INFO - DISPENSING DEBUG: simulate=True, volume=8.000mL, overaspirate=0.000mL
+2026-05-21 12:56:24,153 - INFO - DISPENSING DEBUG: total_vol=8.000mL, num_dispenses=4, dispense_vol=2.000mL, actual_dispense=2.000mL
+2026-05-21 12:56:24,153 - DEBUG - Dispensing 2.000 mL (with 0.000 mL overaspirate) 4 times
+2026-05-21 12:56:24,153 - INFO - DISPENSING LOOP 1/4: simulate=True
+2026-05-21 12:56:24,153 - INFO - ASPIRATING: 2.000mL from reservoir 1
+2026-05-21 12:56:24,153 - INFO - DISPENSING: 2.000mL into vial 4
+2026-05-21 12:56:24,153 - INFO - DISPENSING LOOP 2/4: simulate=True
+2026-05-21 12:56:24,154 - INFO - ASPIRATING: 2.000mL from reservoir 1
+2026-05-21 12:56:24,154 - INFO - DISPENSING: 2.000mL into vial 4
+2026-05-21 12:56:24,154 - INFO - DISPENSING LOOP 3/4: simulate=True
+2026-05-21 12:56:24,154 - INFO - ASPIRATING: 2.000mL from reservoir 1
+2026-05-21 12:56:24,154 - INFO - DISPENSING: 2.000mL into vial 4
+2026-05-21 12:56:24,154 - INFO - DISPENSING LOOP 4/4: simulate=True
+2026-05-21 12:56:24,154 - INFO - ASPIRATING: 2.000mL from reservoir 1
+2026-05-21 12:56:24,154 - INFO - DISPENSING: 2.000mL into vial 4
+2026-05-21 12:56:24,155 - INFO - Returning vial water_2 to home location: main_8mL_rack index 4
+2026-05-21 12:56:24,155 - INFO - Moving vial water_2 to main_8mL_rack: 4
+2026-05-21 12:56:24,156 - DEBUG - Grabbing vial 4 with index 4
+2026-05-21 12:56:24,156 - DEBUG - Dropping off vial 4 at location main_8mL_rack with index 4
+2026-05-21 12:56:24,156 - INFO -     Water vial 'water_2' filled successfully to 8.00mL
+2026-05-21 12:56:24,157 - INFO - ================================================================================
+2026-05-21 12:56:24,157 - INFO - N-D SURFACTANT WORKFLOW: 2 surfactants ['DSS', 'BZT']
+2026-05-21 12:56:24,157 - INFO -   init strategy: simplex
+2026-05-21 12:56:24,157 - INFO -   simplex vertex maxima: DSS=20.00 mM, BZT=40.00 mM
+2026-05-21 12:56:24,157 - INFO -   cube maxima (grid mode): DSS=11.25 mM, BZT=22.50 mM
+2026-05-21 12:56:24,157 - INFO -   recommender: bayesian
+2026-05-21 12:56:24,157 - INFO -   simulate: True
+2026-05-21 12:56:24,157 - INFO - ================================================================================
+2026-05-21 12:56:24,159 - INFO - Experiment folder: output\simulated_surfactant_grid\multidim_2D_DSS_BZT_bayesian_simplex_multidim_v1_20260521_125624
+2026-05-21 12:56:24,159 - DEBUG - Simulating robot component homing...
+2026-05-21 12:56:24,159 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-05-21 12:56:24,159 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-05-21 12:56:24,160 - INFO -     Surfactant vial 'DSS_stock' already full (8.00mL), skipping fill
+2026-05-21 12:56:24,160 - INFO -     Surfactant vial 'BZT_stock' already full (8.00mL), skipping fill

@@ -1,5 +1,127 @@
 # Changelog
 
+## [2026-05-21] — Unified Feasibility Authority to Source-Achievable
+
+### workflows/surfactant_multidimensional_workflow.py
+- CHANGED: `generate_achievable_boundary_samples()` now accepts `plans` parameter and uses `joint_select_sources()` for source-achievable feasibility checks instead of `is_feasible()` (budget-only).
+- CHANGED: `generate_simplex_init()` now accepts `plans` and `logger` parameters. Adds nested `_is_achievable()` helper that uses source-achievable checks. Passes plans to both boundary and Sobol interior filtering.
+- CHANGED: `run_multidim_workflow()` now builds bootstrap plans (covering MIN_CONC_MM and per-surfactant max) BEFORE calling `generate_simplex_init()`. Bootstrap plans enable source-achievable checks at boundary/interior selection time, preventing later dropped boundary points.
+- REMOVED: Dependency on `is_feasible()` in boundary/interior decision paths. `is_feasible()` function definition retained for legacy code compatibility but no longer used by core workflow.
+
+**Rationale:** Two inconsistent feasibility systems (Layer A: budget-only vs Layer B: source-achievable) created architectural mismatch. Boundary/interior points selected with Layer A were later rejected by Layer B filtering, causing unexpected dropped points in 3D overlays. Unified on Layer B (source-achievable) as single authoritative feasibility check. Sequencing fix (bootstrap plans before simplex init) ensures plans available for source-achievable evaluation.
+
+## [2026-05-21] — Dropped Init Candidate Diagnostics (No Algorithm Change)
+
+### workflows/surfactant_multidimensional_workflow.py
+- ADDED: Captures initial simplex/grid candidates before plan-based filtering and computes dropped candidates after `filter_points_by_actual_volumes()`.
+- ADDED: Logs dropped candidate counts split by `_init_source_type` (`boundary`, `sobol`).
+- ADDED: Exports dropped candidates to `dropped_init_candidates.csv` in each experiment output folder.
+- CHANGED: Passes dropped candidate list into initial 2D/3D overlay plotting for visual diagnostics.
+
+### analysis/multidim_visualizer.py
+- ADDED: Optional `dropped_points` overlay in `plot_pairwise_feasible_overlay()`.
+- ADDED: Dropped init candidates rendered as black `x` markers in pairwise overlays.
+- ADDED: Pairwise overlay title/legend now includes dropped-candidate count when provided.
+
+### analysis/plot_3d_interactive.py
+- ADDED: Optional `dropped_points` overlay in `plot_init_feasible_overlay_3d()`.
+- ADDED: Dropped init candidates rendered as black `x` markers in 3D overlay.
+- ADDED: 3D overlay subtitle now includes dropped-candidate count when provided.
+
+## [2026-05-21] — 3D Init Pick Source Visibility
+
+### analysis/plot_3d_interactive.py
+- CHANGED: `plot_init_feasible_overlay_3d()` now separates initialization picks by `_init_source_type` in 3D overlays.
+- ADDED: Distinct marker styles/colors for boundary vs sobol init picks in 3D (boundary as blue open diamonds, sobol as red triangles).
+- ADDED: 3D overlay title now reports init counts (`total`, `boundary`, `sobol`) for quick sanity checks of point distribution.
+- FIXED: Replaced unsupported Plotly `Scatter3d` marker symbol (`triangle-up`) with supported symbol (`square`) to prevent non-fatal plotting failure and ensure `init_feasible_overlay_3d.html` is generated.
+
+## [2026-05-21] — 3D Feasible Overlay Consistency Update
+
+### analysis/plot_3d_interactive.py
+- CHANGED: `plot_init_feasible_overlay_3d()` now supports a grid-based budget-feasibility isosurface when `feasible_config` is provided.
+- CHANGED: 3D init overlay now renders a true budget-feasible envelope (mask/isosurface) instead of only a convex-hull mesh of sampled boundary points.
+- KEPT: Convex-hull boundary mesh path as fallback when `feasible_config` is not provided.
+
+### workflows/surfactant_multidimensional_workflow.py
+- CHANGED: 3D init overlay call now passes `feasible_config` (stock concentrations, well volume, budget, min concentration, max multiplier), aligning 3D feasible visualization logic with 2D mask-based plotting.
+
+## [2026-05-21] — SDS Vial Inventory Expansion
+
+### status/surfactant_multidim_vials.csv
+- ADDED: `SDS_stock` in `main_8mL_rack` slot 24.
+- ADDED: `SDS_dilution_0` through `SDS_dilution_5` in `main_8mL_rack` slots 25-30.
+- ADDED: `SDS_refill` in `large_vial_rack` slot 3.
+
+## [2026-05-21] — 3D Overlay Readiness + Boundary Visualization Cleanup
+
+### workflows/surfactant_multidimensional_workflow.py
+- FIXED: In simplex mode, 2D overlay now suppresses extra boundary artifact series while still passing true boundary points to the 3D overlay renderer.
+- CHANGED: 3D overlay call now uses `feasible_boundary_points_3d` to ensure envelope rendering still works after 2D cleanup.
+
+### analysis/plot_3d_interactive.py
+- CHANGED: Removed redundant gray "All experiment picks" scatter from `plot_init_feasible_overlay_3d()` so the init overlay reflects only the envelope + init picks.
+
+## [2026-05-21] — White Dot Artifact Diagnostic & Tolerance Fix
+
+### workflows/surfactant_multidimensional_workflow.py
+- ADDED: `FEASIBLE_DIAGNOSTIC_GRID_N` config parameter (default 140) for tunable feasibility grid resolution.
+- ADDED: `diagnose_white_dot()` function to explain infeasibility: shows per-surfactant source options and reports joint selection failure reason.
+- ADDED: Verbose `achievable_with_diagnostics()` wrapper in plotting call that logs first 5 white dot diagnostics per panel to help debug feasibility edges.
+- FIXED: **Critical tolerance mismatch bug** in `filter_points_by_actual_volumes()`: now uses `<= SURFACTANT_BUDGET_UL + 1.0` to match tolerance in `joint_select_sources()`, eliminating false-negative white dots caused by overly strict <= constraint.
+
+### analysis/multidim_visualizer.py
+- ADDED: `grid_n` parameter to `plot_pairwise_feasible_overlay()` for grid resolution control in diagnostics.
+- ADDED: `logger` parameter to pass diagnostics to workflow logger instead of stdout.
+- ADDED: Feasibility diagnostic logging: reports per-pair grid statistics (feasible count, achievable count, white dot %, grid resolution).
+- ADDED: White dot sampling: logs coordinates and diagnostics of up to 3 sampled white dots per pairwise panel.
+
+### KEY FINDING: White Dots Were Tolerance Artifacts ✓ RESOLVED
+- **Diagnosis**: Grid resolution test (140 → 300) showed white dots at same density (~1.2%), confirming origin was not rendering artifacts.
+- **Root cause identified**: Tolerance mismatch between feasibility prediction (uses stock conc) and actual dispensing (uses more-dilute substocks).
+- **The problem**: Substocks require MORE volume than stock to hit same target concentration, pushing total to 225.1-225.8 µL.
+- **The bug**: Filter was checking `<= 225.000001 µL` while `joint_select_sources()` allowed `<= 226 µL`.
+- **Fix validation**: Aligning both checks to use same +1.0 µL tolerance **completely eliminated interior white dots**.
+- **Spatial analysis**: 57% of sampled white dots were pseudo-interior (on simplex vertex boundaries), not truly interior—expected infeasibility when one surfactant is maxed.
+- **Conclusion**: Your substocks are adequate. Interior achievable region is now correctly displayed as fully connected.
+
+## [2026-05-21] (Earlier)
+
+### workflows/surfactant_multidimensional_workflow.py
+- CHANGED: Added `TURBIDITY_PLOT_THRESHOLD` (post-processing only) and wired the 3D turbidity cloud plot to use it, decoupling visualization thresholding from active-learning penalty settings.
+- REFACTORED: Replaced simplex initialization axis-ray + pairwise-face projection with direct boundary-simplex lattice sampling in excess-volume coordinates (`INIT_BOUNDARY_LEVELS`).
+- CHANGED: Simplex boundary points are now generated on the true outer simplex facet (`sum(volumes)=budget`) by construction, preserving extreme vertices/edges without projection artifacts.
+
+### workflow_configs/surfactant_multidimensional_workflow.yaml
+- ADDED: `TURBIDITY_PLOT_THRESHOLD: 0.08` for 3D turbidity cloud visualization.
+- CHANGED: Replaced `INIT_AXIS_PTS` and `INIT_FACE_PTS` with `INIT_BOUNDARY_LEVELS` for n-D simplex boundary lattice density control.
+
+### analysis/plot_3d_interactive.py
+- FIXED: Removed redundant `go.Volume` colorbar (`showscale=False`) in `plot_isosurface` to prevent overlapping dual colorbars with the measured-point turbidity colorbar.
+- ADDED: `plot_init_feasible_overlay_3d()` to render geometric feasible-envelope mesh overlays with initialization picks (`iteration == 0`) highlighted in interactive 3D HTML.
+
+### analysis/multidim_visualizer.py
+- FIXED: Replaced dual-layer feasibility visualization (budget + achievable) with **single achievable layer only** — now shows only what can actually be pipetted with current substocks and volume constraints.
+- CHANGED: Switched from `contourf` (solid fills) to `contourf` with `levels=[0.5, 1.5]` (clean filled regions only, no boundary artifacts) for visualization of achievable regions.
+- FIXED: `_tick_labels()` now uses scientific notation (1e-06, 1e-05, etc.) for concentrations < 0.1 mM, properly displaying very low MIN_CONC_MM values on axis labels.
+- ADDED: Support for `max_conc_multiplier` in `feasible_config` dict to smooth high-end jagged boundaries (multiplier applied to x_max, y_max before grid generation).
+
+### workflow_configs/surfactant_multidimensional_workflow.yaml
+- ADDED: `FEASIBLE_MAX_CONC_MULTIPLIER: 1.0` — controls boundary smoothness in feasibility plots (1.0 = true max, <1.0 = reduced for smoother appearance).
+
+### workflows/surfactant_multidimensional_workflow.py
+- ADDED: `FEASIBLE_MAX_CONC_MULTIPLIER = 1.0` config parameter (default: no smoothing) passed to `plot_pairwise_feasible_overlay()`.
+- CHANGED: `plot_pairwise_feasible_overlay()` call now includes `max_conc_multiplier` in `feasible_config` dict.
+- ADDED: `generate_simplex_boundary_points()` helper for reusable geometric boundary lattice generation on the simplex outer facet.
+- CHANGED: `generate_simplex_init()` now embeds source-type metadata (`_init_source_type: "boundary"|"sobol"`) in each point dict for downstream visualization
+- CHANGED: `build_well_recipe()` preserves `_init_source_type` metadata from target concentration dicts through the recipe building pipeline, enabling source-aware plotting in post-init overlays.
+- CHANGED: Post-initialization plotting hook now saves feasible-boundary overlays immediately after initial measurements (before active learning):
+  - `pairwise_feasible_init_overlay.png` for all dimensions (pairwise projections)
+  - `init_feasible_overlay_3d.html` when exactly 3 surfactants are active.
+- FIXED: Boundary-lattice parameterization now uses concentration-simplex coordinates (`MIN_CONC_MM -> simplex_max_conc_mm`) before `is_feasible()` filtering, restoring low-concentration corners in 2D overlays that were previously collapsed toward high-concentration regions.
+- CHANGED: 2D feasible overlay call now passes physical feasibility settings and an operational achievability checker based on the existing joint source-selection filter.
+- CHANGED: `filter_points_by_actual_volumes()` now logs filtering diagnostics at info level: reports total filtered count and surviving point count, enabling diagnostics of boundary-point survival rates
+
 ## [2026-05-19]
 
 ### data_tracker/ (new) — Windows restic backup system
@@ -71,6 +193,19 @@
 - FIXED: Water/surfactant vials left in home position after mid-dispense refill. Refill functions (`fill_water_vial`, `create_substocks_from_recipes`) always return vials home, but vials had already been moved to safe dispensing positions. `_dispense_vial_in_chunks` now repositions any vial back to its assigned safe position after a refill via new `reposition_after_refill` parameter. Applied to water (44/45), buffer (47), and surfactant A/B (positions derived from `_SURF_SAFE_POSITIONS`).
 - ADDED: `START_PLATE` config constant and `start_plate` parameter on `execute_replay_workflow` to skip already-completed plates when resuming a crashed run.
 
+## [2026-05-14]
+
+### docs/bayesian_optimization_guide.md
+- ADDED: Student's guide to Bayesian optimization with Ax, covering AxClient vs. new Client API comparison, parameter types (range, choice, fixed), multi-objective setup with qNEHVI, parameter and outcome constraints, Sobol seeding and warm-starting, acquisition function options, and a section on categorical solvents/acids — treating them as choice parameters vs. featurizing with physicochemical descriptors.
+- ADDED: New Option D section covering mixture composition vectors (solvent/acid fractions with sum-to-1 constraints), including Ax linear-constraint encoding and practical modeling tradeoffs.
+- ADDED: Decision-rule note for current problem scale clarifying when to keep categorical identity parameters vs. when to switch to composition vectors for solvent/acid mixtures.
+- ADDED: New section on campaign stopping criteria, including budget-based stopping, target-threshold early exit, plateau detection, and Pareto-stability guidance for multi-objective optimization.
+
+### docs PDF handout export
+- NEW: `docs/build_student_pdf.py` script to render the guide into styled HTML with improved spacing, a workflow figure, and student-facing callout formatting.
+- NEW: `docs/bayesian_optimization_guide_student.html` generated styled handout source.
+- NEW: `docs/bayesian_optimization_guide_student.pdf` generated student-friendly PDF export.
+
 ## [2026-05-07]
 
 ### recommenders/systematic_compare_nd.py
@@ -78,6 +213,10 @@
 - ADDED: `--near-r` CLI option (default 0.04) to control `surf_precision` / `surf_recall` distance threshold for sensitivity checks across dimensions.
 - ADDED: `--candidate-pool` CLI option (default 50000) passed into `BayesianTransitionRecommender` for runtime-quality tradeoff control in long ND sweeps.
 - CHANGED: Iteration budget calculation now uses `args.q_batch` instead of hardcoded `Q_BATCH`, enabling exact runs like `96x4`.
+
+### recommenders/_boundary_pct_sensitivity.py
+- CHANGED: Recall panels now use adaptive y-axis limits (instead of fixed 0-1) to make low-recall differences visible, especially in 4D.
+- ADDED: Extra reporting figure `recommenders/test_outputs/boundary_percentile_sensitivity_recall_zoom.png` focused on recall-only panels with zoomed axes.
 
 ## [2026-05-06]
 
