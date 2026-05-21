@@ -66,7 +66,7 @@ from workflows.surfactant_grid_adaptive_concentrations import (
 
 # Pick any 2-5 surfactants present in SURFACTANT_LIBRARY. The whole workflow
 # is parameterized over this list.
-SURFACTANTS = ["DSS", "BZT", "CHAPS"]
+SURFACTANTS = ["TTAB", "DTAB", "SDS"]
 
 EXPERIMENT_TAG = "multidim_v1"
 SIMULATE = True
@@ -82,12 +82,15 @@ RECOMMENDER_TYPE = "bayesian"  # 'triangle' | 'bayesian' | 'gradient' | 'levelse
 # - FLAT_TURBIDITY_MAX: if max(turbidity_600) across ALL data is below this value,
 #   the turbidity landscape is considered flat/uninformative and is dropped from
 #   output_columns so the recommender only sees ratio.
+# - TURBIDITY_PLOT_THRESHOLD: threshold used only for the final 3D turbidity
+#   cloud visualization (does not affect active-learning decisions).
 # - OUTPUT_COLUMNS_OVERRIDE: when set to a list (e.g. ['turbidity_600'] or ['ratio']),
 #   bypasses all automatic output selection logic and forces these columns.
 #   Set to None to use the automatic turbidity/ratio logic.
 FILTER_UNRELIABLE_RATIOS = True
 TURBIDITY_FILTER_THRESHOLD = 0.2   # Wells above this turbidity have unreliable ratio
 FLAT_TURBIDITY_MAX = 0.08          # Whole-dataset gate: drop turbidity if max <= this
+TURBIDITY_PLOT_THRESHOLD = 0.08    # 3D cloud threshold for post-run visualization only
 OUTPUT_COLUMNS_OVERRIDE = None     # e.g. ['turbidity_600'] to test turbidity-only
 # Turbidity acquisition penalty — discourages recommenders from picking deep inside
 # the turbid (precipitated) zone where the boundary is already clear.
@@ -113,19 +116,18 @@ SURFACTANT_BUDGET_UL = WELL_VOLUME_UL - PYRENE_VOLUME_UL - WATER_RESERVE_UL  # 2
 
 # Initialization strategy
 # 'simplex' (recommended): stratified design that covers the true physical
-#   simplex (sum of volumes <= budget).  Allows each surfactant to reach its
-#   individual CMC even when used with others.  Three layers:
-#     - axis rays  : one surfactant varies, others at MIN_CONC_MM
-#     - pair faces : log-grid on every (s_i, s_j) pair, others at MIN_CONC_MM
-#     - interior   : Sobol points mapped into simplex via stick-breaking
+#   simplex (sum of volumes <= budget).  Initialization uses:
+#     - boundary simplex samples (sum of surf volumes = budget exactly)
+#     - interior Sobol samples (sum of surf volumes < budget)
 # 'grid' (legacy): hypercube with equal per-surf cap (BUDGET/N).  Safe for
 #   2D; may not reach CMC for low-CMC surfactants in 4D.
 INIT_STRATEGY = 'grid'  # 'simplex' | 'grid'
 GRID_POINTS_PER_AXIS = 3   # Used only when INIT_STRATEGY='grid': 3^N grid
-INIT_AXIS_PTS = 5           # Simplex: points on each 1D axis ray
-INIT_FACE_PTS = 3           # Simplex: points per axis on each 2D pairwise face (3x3=9)
+INIT_BOUNDARY_LEVELS = 3    # Simplex: boundary lattice density on the outer simplex facet
 INIT_INTERIOR_PTS = 20      # Simplex: Sobol-in-simplex interior points
 MIN_CONC_MM = 1e-2          # Lower bound for all concentration axes
+FEASIBLE_MAX_CONC_MULTIPLIER = 1.0  # Multiplier for max concentration in feasibility grid (1.0 = no smoothing; <1.0 = smooth)
+FEASIBLE_DIAGNOSTIC_GRID_N = 140  # Grid resolution for feasibility mask (140=default, 300/500 for artifact diagnostic)
 
 # Active-learning loop
 GRADIENT_SUGGESTIONS_PER_ITERATION = 16
@@ -260,81 +262,195 @@ def generate_log_grid(n_per_axis=GRID_POINTS_PER_AXIS):
     return points
 
 
-def generate_simplex_init():
-    """Stratified initialization that covers the physical volume simplex.
-
-    Three layers (all using log-spaced concentrations along each active axis):
-
-    1. Axis rays  (N * INIT_AXIS_PTS points)
-       Vary one surfactant from MIN_CONC_MM to its simplex vertex; all others
-       at MIN_CONC_MM.  Covers each surf's individual CMC crossing and ensures
-       the recommender has data near every simplex edge.
-
-    2. Pairwise faces  (C(N,2) * INIT_FACE_PTS^2 points)
-       Log-grid on each (s_i, s_j) pair; remaining surfs at MIN_CONC_MM.
-       Points at the far corner are projected onto the simplex face.
-       Covers catanionic pair interactions across the full concentration range.
-
-    3. Sobol interior  (INIT_INTERIOR_PTS points)
-       Quasi-random volume fractions mapped into the simplex via stick-breaking:
-       draw Sobol in (N-1) dimensions, convert to N volume fractions (sum=1),
-       scale by budget, convert to concentrations.  Uniform coverage of interior.
-
-    Duplicate points (axis-face overlaps at corners) are removed.
-    All returned points satisfy is_feasible() to within float tolerance.
-    Returns a list of dicts {surfactant_name: target_conc_mm}.
+def generate_achievable_boundary_samples(n_boundary_points, plans=None, logger=None):
+    """Sample uniformly spaced points along the source-achievable boundary.
+    
+    Algorithm (dimension-agnostic):
+    1. Generate log-space grid across full concentration range
+    2. Evaluate source-achievable feasibility (via joint_select_sources) at every grid point
+    3. Boundary = achievable points with at least one unachievable axis-aligned neighbor or at grid edge
+    4. Greedy max-spacing in log-space to select final points
+    
+    Args:
+        n_boundary_points: Target number of boundary points to select
+        plans: List of source plans (required for source-achievable checking)
+        logger: Optional logger instance
     """
-    from itertools import combinations as _comb
+    import logging as _log
+    _logger = logger or _log.getLogger(__name__)
+
+    levels = max(15, int(n_boundary_points * 3))
+    _logger.info(f"Boundary sampling: {levels}^{n_surfactants} grid...")
+
+    axes = [
+        np.logspace(np.log10(MIN_CONC_MM), np.log10(simplex_max_conc_mm[s]), levels)
+        for s in SURFACTANTS
+    ]
+
+    # Helper: check if point is source-achievable
+    def _is_achievable(pt):
+        if plans is None:
+            return True  # No plans available, assume achievable
+        try:
+            result = joint_select_sources(pt, plans)
+            return result is not None  # None = not achievable
+        except:
+            return False
+
+    # Evaluate achievability on entire grid (dimension-agnostic via np.ndindex)
+    grid_shape = tuple(levels for _ in SURFACTANTS)
+    feasible_grid = np.zeros(grid_shape, dtype=bool)
+
+    for idx in np.ndindex(grid_shape):
+        pt = {s: float(axes[i][idx[i]]) for i, s in enumerate(SURFACTANTS)}
+        try:
+            feasible_grid[idx] = _is_achievable(pt)
+        except:
+            feasible_grid[idx] = False
+
+    _logger.info(f"  Feasible: {int(feasible_grid.sum())}/{feasible_grid.size} grid points")
+
+    # Boundary = feasible points with any infeasible axis-aligned neighbor or at grid edge
+    boundary_points = []
+    for idx in np.ndindex(grid_shape):
+        if not feasible_grid[idx]:
+            continue
+
+        on_boundary = False
+        for dim in range(n_surfactants):
+            for delta in [-1, 1]:
+                neighbor = list(idx)
+                neighbor[dim] += delta
+                if neighbor[dim] < 0 or neighbor[dim] >= grid_shape[dim]:
+                    on_boundary = True  # Grid edge = min/max conc wall
+                    break
+                if not feasible_grid[tuple(neighbor)]:
+                    on_boundary = True  # Infeasible neighbor = feasibility boundary
+                    break
+            if on_boundary:
+                break
+
+        if on_boundary:
+            pt = {s: float(axes[i][idx[i]]) for i, s in enumerate(SURFACTANTS)}
+            boundary_points.append(pt)
+
+    _logger.info(f"  Boundary: {len(boundary_points)} points")
+
+    if len(boundary_points) == 0:
+        _logger.warning("  No boundary points found!")
+        return []
+
+    if len(boundary_points) <= n_boundary_points:
+        result = [pt.copy() for pt in boundary_points]
+        for pt in result:
+            pt["_init_source_type"] = "boundary"
+        return result
+
+    # Greedy max-spacing in log-space (dimension-agnostic)
+    def log_distance(pt1, pt2):
+        return np.sqrt(sum((np.log10(pt1[s]) - np.log10(pt2[s]))**2 for s in SURFACTANTS))
+
+    # Force-select corners first: 2^n candidates (min/max per dimension)
+    # For each corner, pick the nearest feasible boundary point
+    from itertools import product as _product
+    corner_extremes = [[MIN_CONC_MM, simplex_max_conc_mm[s]] for s in SURFACTANTS]
+    selected = []
+    selected_set = set()
+    for corner_vals in _product(*corner_extremes):
+        corner = {s: corner_vals[i] for i, s in enumerate(SURFACTANTS)}
+        # Find nearest boundary point to this corner in log-space
+        best_j = min(range(len(boundary_points)), key=lambda j: log_distance(corner, boundary_points[j]))
+        if best_j not in selected_set:
+            selected.append(best_j)
+            selected_set.add(best_j)
+    _logger.info(f"  Corner-seeded: {len(selected)} points from {2**n_surfactants} corners")
+
+    remaining = [j for j in range(len(boundary_points)) if j not in selected_set]
+    min_dists = [
+        min(log_distance(boundary_points[j], boundary_points[s]) for s in selected)
+        for j in remaining
+    ]
+
+    while len(selected) < n_boundary_points and remaining:
+        best_pos = int(np.argmax(min_dists))
+        best_idx = remaining[best_pos]
+        selected.append(best_idx)
+        remaining.pop(best_pos)
+        min_dists.pop(best_pos)
+        for k in range(len(remaining)):
+            d = log_distance(boundary_points[best_idx], boundary_points[remaining[k]])
+            if d < min_dists[k]:
+                min_dists[k] = d
+
+    result = []
+    for idx in selected:
+        pt = boundary_points[idx].copy()
+        pt["_init_source_type"] = "boundary"
+        result.append(pt)
+
+    _logger.info(f"  Selected {len(result)} boundary points via greedy max-spacing")
+    return result
+
+
+def generate_simplex_init(plans=None, logger=None):
+    """Stratified initialization with intelligent boundary wrapping.
+
+    Two layers:
+
+    1. Boundary wrapping (loose outline of source-achievable region)
+       Uses coarse grid to detect the source-achievable boundary, then uniformly
+       samples points along it. This gives good coverage of the achievable region's
+       shape in any dimensionality.
+
+    2. Sobol interior (INIT_INTERIOR_PTS points)
+       Quasi-random points sampled inside the simplex to seed interior coverage.
+
+    Duplicate points are removed. All returned points have _init_source_type 
+    metadata for plotting (boundary points blue, sobol points red).
+    
+    Args:
+        plans: List of source plans (required for source-achievable checking)
+        logger: Optional logger instance
+    """
+    global _sobol_pool_idx
+    import logging as _log
+    _logger = logger or _log.getLogger(__name__)
 
     pts = []
     seen = set()
 
-    def _add(pt):
-        # Round to 4 sig figs for dedup — enough to collapse true duplicates
-        # (axis-face overlaps) without collapsing nearby distinct points.
+    def _add(pt, source):
+        # Round to 4 sig figs for dedup
         key = tuple(float(f"{pt[s]:.4g}") for s in SURFACTANTS)
         if key not in seen:
             seen.add(key)
+            pt["_init_source_type"] = source  # For plotting
             pts.append(pt)
 
-    # 1. Axis rays
-    for s in SURFACTANTS:
-        concs = np.logspace(
-            np.log10(MIN_CONC_MM), np.log10(simplex_max_conc_mm[s]),
-            INIT_AXIS_PTS,
-        )
-        for c in concs:
-            pt = {surf: MIN_CONC_MM for surf in SURFACTANTS}
-            pt[s] = float(c)
-            _add(pt)
+    # Helper: check if point is source-achievable
+    def _is_achievable(pt):
+        if plans is None:
+            return True  # No plans available, assume achievable
+        try:
+            result = joint_select_sources(pt, plans)
+            return result is not None  # None = not achievable
+        except:
+            return False
 
-    # 2. Pairwise faces
-    for s_i, s_j in _comb(SURFACTANTS, 2):
-        ci_vals = np.logspace(
-            np.log10(MIN_CONC_MM), np.log10(simplex_max_conc_mm[s_i]),
-            INIT_FACE_PTS,
-        )
-        cj_vals = np.logspace(
-            np.log10(MIN_CONC_MM), np.log10(simplex_max_conc_mm[s_j]),
-            INIT_FACE_PTS,
-        )
-        for ci in ci_vals:
-            for cj in cj_vals:
-                pt = {surf: MIN_CONC_MM for surf in SURFACTANTS}
-                pt[s_i] = float(ci)
-                pt[s_j] = float(cj)
-                _add(project_to_simplex(pt))
+    # 1. Boundary wrapping: outline the source-achievable region
+    # Scale as LEVELS * n * (n-1) so boundary coverage grows with the manifold dimension:
+    # 2D->LEVELS*2, 3D->LEVELS*6, 4D->LEVELS*12
+    n_boundary = max(5, INIT_BOUNDARY_LEVELS * n_surfactants * max(1, n_surfactants - 1))
+    boundary_pts = generate_achievable_boundary_samples(n_boundary, plans=plans, logger=_logger)
+    for pt in boundary_pts:
+        _add(pt, "boundary")
 
-    # 3. Interior points — drawn from the pre-filtered Sobol pool when
-    # running sobol/random baselines; generated inline via stick-breaking
-    # for all other recommenders (triangle, bayesian, etc.) so the tessellation
-    # has real interior coverage from iteration 1.
+    # 2. Interior points — quasi-random Sobol sampling
     if INIT_INTERIOR_PTS > 0:
         if RECOMMENDER_TYPE in ('sobol', 'random'):
-            global _sobol_pool_idx
             for _ in range(INIT_INTERIOR_PTS):
                 if _sobol_pool_idx < len(_sobol_pool):
-                    _add(_sobol_pool[_sobol_pool_idx])
+                    _add(_sobol_pool[_sobol_pool_idx], "sobol")
                     _sobol_pool_idx += 1
         else:
             from scipy.stats.qmc import Sobol as _SobolInt
@@ -348,11 +464,50 @@ def generate_simplex_init():
                 pt = {s: float(10 ** (np.log10(MIN_CONC_MM) + row[i] * (
                           np.log10(simplex_max_conc_mm[s]) - np.log10(MIN_CONC_MM))))
                       for i, s in enumerate(SURFACTANTS)}
-                if is_feasible(pt):
-                    _add(pt)
+                if _is_achievable(pt):
+                    _add(pt, "sobol")
                     added += 1
 
     return pts
+
+
+def generate_simplex_boundary_points(levels=INIT_BOUNDARY_LEVELS):
+    """Generate geometric boundary-lattice points on the concentration simplex.
+
+    Boundary points are parameterized between MIN_CONC_MM and simplex_max_conc_mm
+    using weak compositions in n dimensions. This preserves the intended low-
+    concentration corners in pairwise projections while still enforcing the
+    global budget constraint via is_feasible().
+    """
+    levels = max(int(levels), 1)
+
+    def _weak_compositions(total, parts):
+        if parts == 1:
+            yield (total,)
+            return
+        for i in range(total + 1):
+            for tail in _weak_compositions(total - i, parts - 1):
+                yield (i,) + tail
+
+    points = []
+    all_candidates = []  # Track all for diagnostics
+    for comp in _weak_compositions(levels, n_surfactants):
+        pt = {}
+        for idx, s in enumerate(SURFACTANTS):
+            frac = comp[idx] / levels
+            conc_mm = MIN_CONC_MM + frac * (simplex_max_conc_mm[s] - MIN_CONC_MM)
+            pt[s] = float(conc_mm)
+        all_candidates.append(pt)
+        if is_feasible(pt):
+            points.append(pt)
+    
+    # Store diagnostic info for logging
+    if not hasattr(generate_simplex_boundary_points, '_diagnostic'):
+        generate_simplex_boundary_points._diagnostic = {}
+    generate_simplex_boundary_points._diagnostic['candidates_generated'] = len(all_candidates)
+    generate_simplex_boundary_points._diagnostic['survived_feasible'] = len(points)
+    
+    return points
 
 
 def collect_unique_targets_per_surf(points):
@@ -445,7 +600,52 @@ def stock_solutions_needed_from_plans(plans, dilution_recipes):
 # WELL RECIPES
 # ================================================================================
 
+def diagnose_white_dot(target_concs, plans, logger=None):
+    """Detailed diagnostic: explain why this point is infeasible.
+    
+    For each surfactant, report available sources, then show why joint_select_sources fails.
+    """
+    import logging as _log
+    _logger = logger or _log.getLogger(__name__)
+    
+    _logger.info(f"  WHITE DOT DIAGNOSTIC: {', '.join(f'{s}={target_concs[s]:.3e}mM' for s in SURFACTANTS)}")
+    
+    # Show individual source options per surfactant
+    for s in SURFACTANTS:
+        target = target_concs[s]
+        _logger.info(f"    {s} (target={target:.3e} mM):")
+        
+        # Stock solution volume
+        stock_conc = SURFACTANT_LIBRARY[s]["stock_conc"]
+        stock_vol = target * WELL_VOLUME_UL / stock_conc
+        status = "OK" if MIN_WELL_PIPETTE_VOLUME_UL <= stock_vol <= SURFACTANT_BUDGET_UL + 1.0 else "FAIL"
+        _logger.info(f"      Stock ({stock_conc:.2f} mM): {stock_vol:.1f} uL [{status}]")
+        
+        # Substocks
+        for sub in plans[s]["substocks_needed"]:
+            src_conc = sub["concentration_mm"]
+            if src_conc <= 0:
+                continue
+            vol = target * WELL_VOLUME_UL / src_conc
+            status = "OK" if MIN_WELL_PIPETTE_VOLUME_UL <= vol <= SURFACTANT_BUDGET_UL + 1.0 else "FAIL"
+            reason = ""
+            if vol < MIN_WELL_PIPETTE_VOLUME_UL:
+                reason = f"(too small, needs {MIN_WELL_PIPETTE_VOLUME_UL:.0f} uL min)"
+            elif vol > SURFACTANT_BUDGET_UL + 1.0:
+                reason = f"(too large, only {SURFACTANT_BUDGET_UL:.0f} uL budget)"
+            _logger.info(f"      {sub['vial_name']} ({src_conc:.2f} mM): {vol:.1f} uL [{status}] {reason}")
+    
+    # Now try joint selection and show the actual error
+    try:
+        sources = joint_select_sources(target_concs, plans)
+        total_vol = sum(sources[s]["volume_needed_ul"] for s in SURFACTANTS)
+        _logger.info(f"    JOINT SELECTION RESULT: {total_vol:.1f} uL total [UNEXPECTED SUCCESS?]")
+    except ValueError as e:
+        _logger.info(f"    JOINT SELECTION FAILED: {e}")
+
+
 def joint_select_sources(target_concs, plans):
+
     """Jointly select dispensing sources for all surfactants at one target point.
 
     Enumerates every combination of available sources (substocks + stock) across
@@ -540,6 +740,11 @@ def build_well_recipe(target_concs, plans, well_index, replicate=1):
         "control_type": "experiment",
         "replicate": replicate,
     }
+    
+    # Preserve metadata from target_concs (e.g., _init_source_type for plotting)
+    if "_init_source_type" in target_concs:
+        recipe["_init_source_type"] = target_concs["_init_source_type"]
+    
     total_surf_vol = 0.0
     sources = joint_select_sources(target_concs, plans)
     for s in SURFACTANTS:
@@ -795,32 +1000,42 @@ def filter_points_by_actual_volumes(points, plans, logger=None):
     sources for every surfactant sums to <= SURFACTANT_BUDGET_UL.
 
     Returns the filtered list and logs a warning per dropped point.
+    Also tracks and reports how many boundary vs interior points are dropped.
     """
     import logging as _log
     _logger = logger or _log.getLogger(__name__)
     feasible = []
+    dropped = []
+    drop_reasons = {}  # Count reasons for drops
+    
     for pt in points:
         try:
             sources = joint_select_sources(pt, plans)
             total_vol = sum(sources[s]["volume_needed_ul"] for s in SURFACTANTS)
-            if total_vol <= SURFACTANT_BUDGET_UL + 1e-9:
+            if total_vol <= SURFACTANT_BUDGET_UL + 1.0:  # Match tolerance in joint_select_sources()
                 feasible.append(pt)
             else:
-                _logger.debug(
-                    f"Dropping point (joint vol={total_vol:.1f} uL > "
-                    f"budget {SURFACTANT_BUDGET_UL:.1f} uL): "
-                    + ", ".join(f"{s}={pt[s]:.3g}mM" for s in SURFACTANTS)
-                )
+                reason = f"vol_exceeded: {total_vol:.1f}uL > {SURFACTANT_BUDGET_UL + 1.0:.1f}uL"
+                dropped.append((pt, reason))
+                drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
         except ValueError as exc:
-            _logger.debug(
-                f"Dropping point (no valid source combination): {exc}"
-            )
-    n_dropped = len(points) - len(feasible)
-    if n_dropped:
-        _logger.debug(
-            f"Filtered {n_dropped}/{len(points)} recommended points: "
-            f"no joint source combination fits the dispensing budget."
-        )
+            reason = f"no_sources: {str(exc)[:50]}"
+            dropped.append((pt, reason))
+            drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
+    
+    n_dropped = len(dropped)
+    if n_dropped > 0:
+        _logger.info(f"Filtered points: {n_dropped}/{len(points)} dropped, {len(feasible)} kept ({100*len(feasible)/len(points):.0f}%)")
+        for reason, count in drop_reasons.items():
+            _logger.info(f"  {count} dropped: {reason}")
+        # Log first 3 dropped points as examples
+        _logger.info(f"  Examples of dropped points:")
+        for i, (pt, reason) in enumerate(dropped[:3]):
+            conc_str = ", ".join(f"{s}={pt[s]:.3e}mM" for s in SURFACTANTS)
+            _logger.info(f"    [{i+1}] {conc_str} ({reason})")
+        if n_dropped > 3:
+            _logger.info(f"  ... and {n_dropped - 3} more dropped points")
+    
     return feasible
 
 
@@ -1876,11 +2091,16 @@ def run_multidim_workflow(lash_e):
         lash_e.logger.info(f"Sobol pool: {len(_sobol_pool)}/{_pool_size} feasible points pre-computed")
 
     if INIT_STRATEGY == 'simplex':
-        grid_points = generate_simplex_init()
+        # Build bootstrap plans early so boundary/interior selection can use source-achievable checks
+        bootstrap_targets_per_surf = {
+            s: sorted(set([MIN_CONC_MM, simplex_max_conc_mm[s]]))
+            for s in SURFACTANTS
+        }
+        bootstrap_plans = build_plans_for_surfactants(lash_e, bootstrap_targets_per_surf, existing_stock_solutions=None)
+        grid_points = generate_simplex_init(plans=bootstrap_plans, logger=lash_e.logger)
         lash_e.logger.info(
             f"Simplex init: {len(grid_points)} points "
-            f"({n_surfactants}D: {n_surfactants}x{INIT_AXIS_PTS} axis + "
-            f"{n_surfactants*(n_surfactants-1)//2}x{INIT_FACE_PTS}^2 faces + "
+            f"({n_surfactants}D: boundary levels={INIT_BOUNDARY_LEVELS} + "
             f"{INIT_INTERIOR_PTS} interior)"
         )
     else:
@@ -1889,6 +2109,8 @@ def run_multidim_workflow(lash_e):
             f"Grid init: {len(grid_points)} points "
             f"(= {GRID_POINTS_PER_AXIS}^{n_surfactants})"
         )
+    # Keep a copy so we can diagnose points dropped by plan-based volume filtering.
+    init_grid_candidates = [dict(pt) for pt in grid_points]
     targets_per_surf = collect_unique_targets_per_surf(grid_points)
 
     # 3. Plans + physical substocks
@@ -1900,10 +2122,27 @@ def run_multidim_workflow(lash_e):
     stock_solutions = stock_solutions_needed_from_plans(plans, dilution_recipes)
 
     # 4. Controls (first plate) + initial experiment grid -> dispense -> measure
+    grid_points_before_filter = len(grid_points)
     grid_points = filter_points_by_actual_volumes(grid_points, plans, lash_e.logger)
     if not grid_points:
         raise RuntimeError("All initial grid points were infeasible after volume check.")
-    lash_e.logger.info(f"  {len(grid_points)} initial points survived volume filter.")
+    lash_e.logger.info(f"  Initial grid: {len(grid_points)}/{grid_points_before_filter} points survived volume filter ({100*len(grid_points)/grid_points_before_filter:.0f}%)")
+
+    # Diagnose dropped points for visualization/debugging.
+    def _pt_key(pt):
+        return tuple(float(f"{pt[s]:.4g}") for s in SURFACTANTS)
+
+    kept_keys = {_pt_key(pt) for pt in grid_points}
+    dropped_init_points = [pt for pt in init_grid_candidates if _pt_key(pt) not in kept_keys]
+    n_dropped_boundary = sum(1 for pt in dropped_init_points if pt.get('_init_source_type') == 'boundary')
+    n_dropped_sobol = sum(1 for pt in dropped_init_points if pt.get('_init_source_type') == 'sobol')
+    lash_e.logger.info(
+        f"  Dropped init candidates: {len(dropped_init_points)} "
+        f"(boundary={n_dropped_boundary}, sobol={n_dropped_sobol})"
+    )
+    dropped_csv = os.path.join(output_folder, "dropped_init_candidates.csv")
+    pd.DataFrame(dropped_init_points).to_csv(dropped_csv, index=False)
+    lash_e.logger.info(f"  Dropped init candidates saved: {dropped_csv}")
 
     # Build controls first so well indices are contiguous on the plate.
     controls_df = build_control_wells_df(plans, starting_well_index=0)
@@ -1936,7 +2175,8 @@ def run_multidim_workflow(lash_e):
 
     # Plot initial grid so it can be compared against the final distribution.
     try:
-        from analysis.multidim_visualizer import plot_pairwise_maps
+        from analysis.multidim_visualizer import plot_pairwise_maps, plot_pairwise_feasible_overlay
+        from analysis.plot_3d_interactive import plot_init_feasible_overlay_3d
         init_plot_folder = os.path.join(output_folder, "plots_initial_grid")
         os.makedirs(init_plot_folder, exist_ok=True)
         # Only plot experiment wells for the initial grid view.
@@ -1944,6 +2184,65 @@ def run_multidim_workflow(lash_e):
         saved = plot_pairwise_maps(init_exp_measured, SURFACTANTS, init_plot_folder)
         for k, p in saved.items():
             lash_e.logger.info(f"  Initial grid plot saved: {p}")
+
+        if INIT_STRATEGY == 'simplex':
+            # 2D overlay should only show actual init picks (no extra boundary artifact series).
+            feasible_boundary_points = None
+            # 3D overlay needs boundary points to render the envelope mesh.
+            feasible_boundary_points_3d = [pt for pt in grid_points if pt.get('_init_source_type') == 'boundary']
+        else:
+            feasible_boundary_points = generate_log_grid(GRID_POINTS_PER_AXIS)
+            feasible_boundary_points_3d = feasible_boundary_points
+
+        # Wrap achievable_fn to log white dot diagnostics on first few failures
+        white_dot_log_count = [0]  # mutable counter in closure
+        MAX_WHITE_DOT_DIAGNOSTICS = 5  # Log details for first 5 white dots per panel
+        
+        def achievable_with_diagnostics(pt):
+            is_achievable = len(filter_points_by_actual_volumes([pt], plans)) == 1
+            if not is_achievable and white_dot_log_count[0] < MAX_WHITE_DOT_DIAGNOSTICS:
+                white_dot_log_count[0] += 1
+                diagnose_white_dot(pt, plans, logger=lash_e.logger)
+            return is_achievable
+        
+        p_overlay_2d = plot_pairwise_feasible_overlay(
+            init_exp_measured,
+            SURFACTANTS,
+            feasible_boundary_points,
+            init_plot_folder,
+            show_all_experiment=False,
+            feasible_config={
+                "stock_concs": {s: SURFACTANT_LIBRARY[s]["stock_conc"] for s in SURFACTANTS},
+                "well_volume_ul": WELL_VOLUME_UL,
+                "surfactant_budget_ul": SURFACTANT_BUDGET_UL,
+                "min_conc_mm": MIN_CONC_MM,
+                "max_conc_multiplier": FEASIBLE_MAX_CONC_MULTIPLIER,
+            },
+            achievable_fn=achievable_with_diagnostics,
+            grid_n=FEASIBLE_DIAGNOSTIC_GRID_N,
+            logger=lash_e.logger,
+            dropped_points=dropped_init_points,
+        )
+        if p_overlay_2d:
+            lash_e.logger.info(f"  Initial feasible-overlay 2D plot saved: {p_overlay_2d}")
+
+        if len(SURFACTANTS) == 3:
+            p_overlay_3d = plot_init_feasible_overlay_3d(
+                init_exp_measured,
+                SURFACTANTS,
+                feasible_boundary_points_3d,
+                output_dir=init_plot_folder,
+                feasible_config={
+                    "stock_concs": {s: SURFACTANT_LIBRARY[s]["stock_conc"] for s in SURFACTANTS},
+                    "well_volume_ul": WELL_VOLUME_UL,
+                    "surfactant_budget_ul": SURFACTANT_BUDGET_UL,
+                    "min_conc_mm": MIN_CONC_MM,
+                    "max_conc_multiplier": FEASIBLE_MAX_CONC_MULTIPLIER,
+                },
+                dropped_points=dropped_init_points,
+            )
+            if p_overlay_3d:
+                lash_e.logger.info(f"  Initial feasible-overlay 3D plot saved: {p_overlay_3d}")
     except Exception as e:
         lash_e.logger.warning(f"Initial grid plotting failed (non-fatal): {e}")
 
@@ -2110,7 +2409,7 @@ def run_multidim_workflow(lash_e):
             lash_e.logger.info(f"  3D turbidity plot: {p_turb}")
             lash_e.logger.info(f"  3D ratio plot: {p_ratio}")
             lash_e.logger.info("Generating turbidity cloud plot...")
-            p_iso = plot_isosurface(final_path, threshold=TURBIDITY_PENALTY_THRESHOLD, output_dir=output_folder)
+            p_iso = plot_isosurface(final_path, threshold=TURBIDITY_PLOT_THRESHOLD, output_dir=output_folder)
             lash_e.logger.info(f"  Turbidity cloud: {p_iso}")
             lash_e.logger.info("Generating ratio phase map...")
             p_phases = plot_ratio_phases(final_path, output_dir=output_folder)
