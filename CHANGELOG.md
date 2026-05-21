@@ -1,5 +1,18 @@
 # Changelog
 
+## [2026-05-14]
+
+### docs/bayesian_optimization_guide.md
+- ADDED: Student's guide to Bayesian optimization with Ax, covering AxClient vs. new Client API comparison, parameter types (range, choice, fixed), multi-objective setup with qNEHVI, parameter and outcome constraints, Sobol seeding and warm-starting, acquisition function options, and a section on categorical solvents/acids — treating them as choice parameters vs. featurizing with physicochemical descriptors.
+- ADDED: New Option D section covering mixture composition vectors (solvent/acid fractions with sum-to-1 constraints), including Ax linear-constraint encoding and practical modeling tradeoffs.
+- ADDED: Decision-rule note for current problem scale clarifying when to keep categorical identity parameters vs. when to switch to composition vectors for solvent/acid mixtures.
+- ADDED: New section on campaign stopping criteria, including budget-based stopping, target-threshold early exit, plateau detection, and Pareto-stability guidance for multi-objective optimization.
+
+### docs PDF handout export
+- NEW: `docs/build_student_pdf.py` script to render the guide into styled HTML with improved spacing, a workflow figure, and student-facing callout formatting.
+- NEW: `docs/bayesian_optimization_guide_student.html` generated styled handout source.
+- NEW: `docs/bayesian_optimization_guide_student.pdf` generated student-friendly PDF export.
+
 ## [2026-05-07]
 
 ### recommenders/systematic_compare_nd.py
@@ -7,6 +20,10 @@
 - ADDED: `--near-r` CLI option (default 0.04) to control `surf_precision` / `surf_recall` distance threshold for sensitivity checks across dimensions.
 - ADDED: `--candidate-pool` CLI option (default 50000) passed into `BayesianTransitionRecommender` for runtime-quality tradeoff control in long ND sweeps.
 - CHANGED: Iteration budget calculation now uses `args.q_batch` instead of hardcoded `Q_BATCH`, enabling exact runs like `96x4`.
+
+### recommenders/_boundary_pct_sensitivity.py
+- CHANGED: Recall panels now use adaptive y-axis limits (instead of fixed 0-1) to make low-recall differences visible, especially in 4D.
+- ADDED: Extra reporting figure `recommenders/test_outputs/boundary_percentile_sensitivity_recall_zoom.png` focused on recall-only panels with zoomed axes.
 
 ## [2026-05-06]
 
