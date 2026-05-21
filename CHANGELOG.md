@@ -1,5 +1,76 @@
 # Changelog
 
+## [2026-05-19]
+
+### data_tracker/ (new) — Windows restic backup system
+- Rewrote all files for Windows/PowerShell (original Linux versions replaced).
+- `data_tracker/.env` — PowerShell credentials file (gitignored); holds MinIO keys, restic password, repo URL, backup source path.
+- `data_tracker/backup.ps1` — backup script deployed to `C:\restic\`; incremental encrypted backup of `output\` to MinIO over Tailscale; retention cleanup (--keep-daily 14 --keep-weekly 8 --keep-monthly 6); logs to `C:\restic\backup.log`.
+- `data_tracker/setup.ps1` — one-time deploy script: installs restic via winget, deploys credentials to `C:\restic\`, initialises encrypted repo in MinIO, registers Windows Task Scheduler task (daily 2 AM).
+- `data_tracker/README.md` — full operations guide: credentials setup, restore examples, troubleshooting, retention policy, security notes.
+- `.gitignore` — appended `data_tracker/`.
+- Verified: 6.9 GiB initial backup, incremental backup 1.6 MiB, 2 snapshots in MinIO, Task Scheduler task active.
+
+### calibration_modular_v2/reprocess_interrupted_run.py (deleted after use)
+- One-shot script to reconstruct analysis outputs from an interrupted run clipped to 96 measurements (32 trials x 3).
+- Wrote `trial_results.csv`, `raw_measurements.csv`, `ax_trials_data.csv`, `optimal_conditions_DMSO.csv`, `experiment_summary.json/csv`, `analysis_report.txt`, and 3 plots to `run_1779212375_DMSO/`.
+- Script self-deleted on successful completion.
+
+
+- `.gitignore` — appended `data_tracker/` to prevent any backup credentials or scripts from being pushed to GitHub.
+
+
+
+### calibration_modular_v2/batch_calibration_automation.py
+- FIXED: `restore_files()` was overwriting `calibration_vials_short.csv` (live robot state)
+  and `north_robot_hardware.yaml` on every interrupt/completion. Now only `experiment_config.yaml`
+  is restored. The CSV must never be reset — it tracks real vial positions and tip counts.
+  The hardware config vial names are written fresh before each run anyway.
+- FIXED: The per-run "Step 0: Restore original vials state" CSV reset also removed.
+- FIXED: `overaspirate_vol` was silently clamped to `target_volume * max_fraction_of_target`
+  (default 0.2), limiting 50uL runs to 10uL max overaspirate instead of the configured 25uL.
+  Added `max_fraction_of_target: 1.0` to `experiment_config.yaml` so the absolute bounds
+  always govern.
+  crashing all 8 runs with a KeyError. Changed to only write `validation.volumes_ml` when the key
+  is present in the liquid config, allowing validation-free runs to proceed normally.
+- FIXED: Batch calibration was renaming vials to `liquid_source_0` in the CSV, but the protocol
+  now reads vial names from `north_robot_hardware.yaml`. Replaced `modify_vials_csv()` call with
+  `modify_hardware_config()` which writes the correct vial name into `north_robot_hardware.yaml`
+  before each run. Added backup/restore of `north_robot_hardware.yaml`.
+- FIXED: DMSO `target_vial` corrected from `'dmso'` (not in CSV) to `'liquid_source_0'` (actual name).
+
+## [2026-05-12]
+
+### workflows/surfactant_grid_replay.py
+- FIXED: Water vials were never refilled mid-run because REFILL_THRESHOLD_ML (4.0 mL) was too low.
+  From the CSV: chunk 1 consumed 2.824 mL leaving 5.176 mL, which was above the 4.0 threshold,
+  so no refill. Chunk 2 then consumed ~3.78 mL uninterrupted, leaving water_2 at ~1.4 mL.
+  Added separate WATER_REFILL_THRESHOLD_ML = 6.0 mL used only for water/water_2 vials.
+  Substocks/stocks continue using REFILL_THRESHOLD_ML = 4.0 mL unchanged.
+
+### workflows/surfactant_grid_replay.py
+- FIXED: `REFILL_CHECK_CHUNK_SIZE` reduced from 24 to 12. With 24, water_2 consumed ~3.2 mL across
+  chunk 2 (23 wells) after passing the pre-chunk threshold check at 4.64 mL, leaving the vial at
+  ~1.4 mL — causing the tip to scrape the bottom. Halving chunk size doubles the check frequency.
+
+### workflows/surfactant_grid_adaptive_concentrations.py
+- FIXED: `REFILL_THRESHOLD_ML` raised from 4.0 to 5.5 mL. At 4.0 mL, the pre-chunk check passed
+  at 4.64 mL (above threshold), then chunk 2 consumed another 3.2 mL undetected. At 5.5 mL, the
+  check at 4.64 mL triggers a refill before chunk 2 begins.
+
+### workflows/surfactant_grid_adaptive_concentrations.py
+- FIXED: `create_experiment_folder_structure` was using the module-level `SIMULATE = True` constant instead of the actual runtime simulate state. All hardware runs were creating the main output folder under `simulated_surfactant_grid/` while raw measurement CSVs (which use `lash_e.simulate`) went to `experimental_surfactant_grid/` — splitting the same experiment across two folders. Now passes `lash_e.simulate` explicitly.
+
+### analysis/surfactant_contour_simple.py
+- FIXED: Save path used `.replace('iterative_experiment_results.csv', ...)` which silently failed when passed `complete_experiment_results.csv`, causing matplotlib to try saving a `.csv` file and falling back to the root directory. Now uses `os.path.dirname(os.path.abspath(csv_file_path))`.
+
+### analysis/control_cmc_analysis.py
+- FIXED: Same `.replace()` save path bug as above. Now saves to the input file's directory.
+
+### workflows/surfactant_grid_replay.py
+- FIXED: Water/surfactant vials left in home position after mid-dispense refill. Refill functions (`fill_water_vial`, `create_substocks_from_recipes`) always return vials home, but vials had already been moved to safe dispensing positions. `_dispense_vial_in_chunks` now repositions any vial back to its assigned safe position after a refill via new `reposition_after_refill` parameter. Applied to water (44/45), buffer (47), and surfactant A/B (positions derived from `_SURF_SAFE_POSITIONS`).
+- ADDED: `START_PLATE` config constant and `start_plate` parameter on `execute_replay_workflow` to skip already-completed plates when resuming a crashed run.
+
 ## [2026-05-14]
 
 ### docs/bayesian_optimization_guide.md
@@ -34,6 +105,44 @@
 - NEW: `recommenders/test_gradient_transition_recommender.py` - head-to-head test harness for `step2d`, `circle2d`, `surfactant2d` (real `simulate_surfactant_measurements` simulator inlined). Generates 2D scatter plots, gradient-magnitude heatmaps, and HD-vs-iteration comparison plots. Includes `--unit` mode for Phase-3 sanity checks (1D `_grad_mu` vs `cos(x)`, `_grad_var` near-zero at training points, anisotropic exclusion mask shape).
 - Phase 3 unit checks pass: `_grad_mu` max-err = 0.005 vs `cos(x)`; `_grad_var` median ~7e-5 at training pts, max ~7e-2 off-training (~1000x growth as expected); anisotropic exclusion mask matches expected pattern.
 - Phase 4 2D tests pass: `step2d` correctly identifies x[0]=0.5 transition (lengthscale = 0.17 in x[0], 91 in x[1] = uninformative dim correctly identified); `circle2d` traces curved boundary; `surfactant2d` clusters picks in the upper-right transition region.
+
+## [2026-05-08]
+
+### pipetting_data/embedded_calibration_validation.py (patch)
+- Tightened error-pause threshold from 50% to `5% + 5 uL` (additive, bidirectional) for Stages 1, 2, and 3
+- Example: 10 uL pauses if off by >5.5 uL; 100 uL pauses if off by >10 uL; 800 uL pauses if off by >45 uL
+- Error message now shows signed error and threshold instead of "<50%"
+
+
+### workflows/surfactant_grid_replay.py (new, minor)
+- New thin workflow that replays a prior 192-row surfactant grid run from `iterative_experiment_results.csv` + `experiment_plan_stock_solutions.csv` in one pass, no optimization
+- Imports all dispensing/measurement/plotting helpers from `surfactant_grid_adaptive_concentrations.py` — no duplication
+- Adds `ensure_vial_above_threshold` (refill if vial < `REFILL_THRESHOLD_ML` = 4 mL) called between sub-chunks of `REFILL_CHECK_CHUNK_SIZE` = 24 wells inside each component dispense; routes to `fill_water_vial` / `refill_surfactant_vial` / `create_substocks_from_recipes` depending on vial kind, raises if buffer runs low (no auto source)
+- Splits the 192-row CSV into per-plate DataFrames by detecting `wellplate_index` resets and runs the full dispense -> DMSO -> turbidity -> fluorescence cycle per plate
+
+### workflows/REFACTORING.md (new)
+- Documented an 11-step refactor plan for `surfactant_grid_adaptive_concentrations.py` ordered easiest-first (dead-code strip -> module splits), with size estimates and stable-import guarantees so the replay workflow keeps working
+
+### workflows/surfactant_grid_adaptive_concentrations.py
+- Removed ~30 DEBUG log/print lines (function-tracing noise, pairing_queue type/structure prints, two `VIAL_DF` dumps, redundant recommender prints); kept useful diagnostic messages (CMC target concentration values, "no CMC target" warnings, turbidity max value, optimization target) with `DEBUG:` prefix stripped
+- Replaced `'ADD_BUFFER': bool` in `PAIRING_QUEUE` with `'BUFFER': str | None` — `None` means no buffer, a string like `'MES'`/`'HEPES'`/`'CAPS'` selects that buffer
+- Double_iterative loop now sets `ADD_BUFFER` and `SELECTED_BUFFER` globals from `pairing_config['BUFFER']` before each pairing runs, so all downstream functions pick up the correct per-pairing buffer
+- `setup_experiment_environment` appends `_{SELECTED_BUFFER}` to the folder name when `ADD_BUFFER` is True (e.g. `SDS_CTAB_CAPS_20260508_143022`)
+- Experiment output folders now go to `output/simulated/` or `output/experimental/` depending on simulate mode, and the `surfactant_grid_` prefix is removed from the folder name
+
+
+
+### North_Safe.py + robot_state/pipet_racks.yaml
+- Added piggyback tip shake in `_perform_pipet_pickup`: when `pickup_shake` is present in rack config, the extraction is split at `z_fraction` (default 0.5), a lateral shake is applied (opposite of pickup direction to push secondary tip back toward rack), then the second half of the extraction completes
+- Added `pickup_shake: {amplitude_mm: 2.0, repeats: 2, z_fraction: 0.5}` to `large_tip_rack_1` and `large_tip_rack_2` in `pipet_racks.yaml`; small tip racks are unaffected
+- Shake direction auto-computed from pickup_movement signs: x=-2.2 -> shake_x=+2.0, y=+2.2 -> shake_y=-2.0
+
+### workflows/glycerol_dispense_baseline.py
+- Fixed cap artifact in baseline mass: vial is now uncapped immediately after moving to clamp (before `read_steady_scale`), using `is_vial_pipetable` to skip open-cap vials
+- Fixed early termination: `run_baseline()` now runs a `while True` loop that processes chunks from both campaigns (200uL and 1000uL) in a single invocation, using all available tips of each type before exiting
+- Hardware init (home, move vial, uncap) moved outside the loop; final cleanup (move home, return vial) also runs once after all chunks
+- Per-chunk Slack notifications replace single per-run notification; final summary Slack message covers all chunks run
+- Return value changed from `{"campaign_folder", "rows_processed"}` to `{"chunks_run", "workflow_complete"}`
 
 ## [2026-05-04]
 

@@ -96,17 +96,64 @@ class GradientTransitionRecommender(TransitionRecommenderBase):
         self.multi_output_reduce = multi_output_reduce
         self.alpha_spacing = float(alpha_spacing)
         self.distance_scale = float(distance_scale)
+        self.output_normalization = 'log_zscore'
 
         print(f"Initialized GradientTransitionRecommender (gradient-UCB):")
         print(f"  Inputs ({self.n_inputs}D): {input_columns}")
         print(f"  Outputs ({self.n_outputs}): {output_columns}")
-        print(f"  log_transform_inputs={log_transform_inputs}")
+        print(f"  log_transform_inputs={log_transform_inputs}, output_normalization=log_zscore")
         print(f"  acq: max_j {multi_output_reduce}_k(|grad mu_kj| "
               f"+ beta*sqrt(Sigma_grad,jj_k))")
         print(f"  beta={beta}")
         print(f"  spacing: alpha={alpha_spacing:.2f} * (1/n_total)^(1/d), "
               f"sigmoid_scale={distance_scale:.2f} * target")
         print(f"  candidate_pool={candidate_pool:,}, device={self.device}")
+
+    # ------------------------------------------------------------------ #
+    # NaN-tolerant data pipeline overrides (same pattern as Bayesian)
+    # ------------------------------------------------------------------ #
+
+    def _prepare_data(self, data_df):
+        import pandas as pd
+        if 'well_type' in data_df.columns:
+            experiment_data = data_df[data_df['well_type'] == 'experiment'].copy()
+        else:
+            experiment_data = data_df.copy()
+        missing_inputs = [c for c in self.input_columns if c not in experiment_data.columns]
+        missing_outputs = [c for c in self.output_columns if c not in experiment_data.columns]
+        if missing_inputs:
+            raise ValueError(f"Missing input columns: {missing_inputs}")
+        if missing_outputs:
+            raise ValueError(f"Missing output columns: {missing_outputs}")
+        experiment_data = experiment_data.dropna(subset=self.input_columns)
+        output_all_nan = experiment_data[self.output_columns].isna().all(axis=1)
+        experiment_data = experiment_data[~output_all_nan]
+        n_partial = int(experiment_data[self.output_columns].isna().any(axis=1).sum())
+        if n_partial:
+            print(f"  {n_partial} rows have partial NaN outputs (GP fit per output on valid rows only)")
+        return experiment_data
+
+    def _process_outputs(self, experiment_data):
+        """log+zscore normalisation — prevents wide-range outputs from dominating."""
+        Y_raw = experiment_data[self.output_columns].values.astype(np.float64)
+        Y_standardized = np.full_like(Y_raw, np.nan)
+        for i, col in enumerate(self.output_columns):
+            col_vals = Y_raw[:, i]
+            valid = ~np.isnan(col_vals)
+            log_vals = np.full_like(col_vals, np.nan)
+            log_vals[valid] = np.log10(col_vals[valid] + 1e-6)
+            mean_val = float(np.nanmean(log_vals))
+            std_val = float(np.nanstd(log_vals))
+            if std_val == 0:
+                std_val = 1.0
+            Y_standardized[valid, i] = (log_vals[valid] - mean_val) / std_val
+            self.output_scalers[col] = (mean_val, std_val)
+            n_valid = int(valid.sum())
+            print(f"  {col}: [{np.nanmin(col_vals):.4f}, {np.nanmax(col_vals):.4f}] "
+                  f"-> log+zscore ({n_valid}/{len(col_vals)} valid): "
+                  f"[{np.nanmin(Y_standardized[:, i]):.3f}, {np.nanmax(Y_standardized[:, i]):.3f}]")
+        return (torch.tensor(Y_raw, dtype=self.dtype, device=self.device),
+                torch.tensor(Y_standardized, dtype=self.dtype, device=self.device))
 
     # ------------------------------------------------------------------ #
     # GP fitting
@@ -116,7 +163,17 @@ class GradientTransitionRecommender(TransitionRecommenderBase):
         models = []
         for i, col in enumerate(self.output_columns):
             print(f"  Fitting GP for {col}...")
-            model = SingleTaskGP(X, Y[:, i:i + 1])
+            valid_mask = ~torch.isnan(Y[:, i])
+            X_fit = X[valid_mask]
+            Y_fit = Y[valid_mask, i:i + 1]
+            n_valid = int(valid_mask.sum())
+            if n_valid < X_fit.shape[1] + 2:
+                print(f"    Warning: only {n_valid} valid rows for {col} — using dummy fit")
+                model = SingleTaskGP(X_fit[:1], Y_fit[:1])
+                models.append(model)
+                continue
+            print(f"    Fitting on {n_valid}/{X.shape[0]} valid rows")
+            model = SingleTaskGP(X_fit, Y_fit)
             mll = gpytorch.mlls.ExactMarginalLogLikelihood(
                 model.likelihood, model)
             try:
@@ -266,9 +323,24 @@ class GradientTransitionRecommender(TransitionRecommenderBase):
         bounds = torch.tensor([[0.0] * self.n_inputs, [1.0] * self.n_inputs],
                               dtype=self.dtype, device=self.device)
 
-        print(f"  Generating {self.candidate_pool:,} Sobol candidates...")
-        X_pool = draw_sobol_samples(
-            bounds=bounds, n=self.candidate_pool, q=1).squeeze(1)
+        print(f"  Generating {self.candidate_pool:,} Sobol candidates (persistent)...")
+        X_pool = self._draw_sobol_pool(self.candidate_pool)
+
+        # Feasibility filter: remove candidates that violate the physical
+        # dispensing constraint (e.g. simplex budget).
+        feasibility_fn = getattr(self, '_feasibility_fn', None)
+        if feasibility_fn is not None:
+            X_conc = self._to_concentration_space(X_pool)
+            feasible = torch.tensor(
+                feasibility_fn(X_conc),
+                dtype=torch.bool, device=self.device)
+            n_total = X_pool.shape[0]
+            X_pool = X_pool[feasible]
+            print(f"  Simplex feasibility filter: {X_pool.shape[0]:,}/{n_total:,} "
+                  f"candidates kept")
+            if X_pool.shape[0] < n_points * 5:
+                print(f"  WARNING: Only {X_pool.shape[0]} feasible candidates remain. "
+                      f"Consider increasing candidate_pool.")
 
         print(f"  Computing posterior gradient mean (autograd)...")
         grad_mu = self._grad_mu(models, X_pool)
@@ -287,7 +359,12 @@ class GradientTransitionRecommender(TransitionRecommenderBase):
             min_d = torch.full((X_pool.shape[0],), float('inf'),
                                dtype=self.dtype, device=self.device)
         weights = torch.sigmoid((min_d - target) / scale)
-        score = score_raw * weights
+        turb_penalty = self._turbidity_penalty(
+            models, X_pool,
+            threshold=getattr(self, 'turbidity_penalty_threshold', 0.2),
+            decay=getattr(self, 'turbidity_penalty_decay', 0.15),
+        )
+        score = score_raw * weights * turb_penalty
 
         selected = []
         chosen_X = []
@@ -307,4 +384,23 @@ class GradientTransitionRecommender(TransitionRecommenderBase):
             score = score_raw * weights
             score[selected] = float('-inf')
 
-        return torch.stack(chosen_X)
+        X_selected = torch.stack(chosen_X)
+
+        # viz_state for workflow-side plotting (any dimensionality)
+        b_min = self.input_bounds[0].cpu().numpy()
+        b_max = self.input_bounds[1].cpu().numpy()
+        # Per-output gradient magnitude: max over dims of |grad_mu| (N, n_out)
+        grad_mag_per_output = torch.abs(grad_mu).max(dim=2).values  # (N, n_out)
+        self._viz_state = dict(
+            X_pool=X_pool.detach().cpu().numpy(),
+            acq_per_output=grad_mag_per_output.detach().cpu().numpy(),
+            acq_total=score_raw.detach().cpu().numpy(),
+            X_existing=X_existing.detach().cpu().numpy(),
+            X_selected=X_selected.detach().cpu().numpy(),
+            b_min=b_min, b_max=b_max,
+            input_columns=self.input_columns,
+            output_columns=self.output_columns,
+            acq_label='gradient-UCB magnitude',
+        )
+
+        return X_selected

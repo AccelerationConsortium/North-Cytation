@@ -2018,8 +2018,11 @@ class VialManagerMainWindow(QMainWindow):
         # Create special combined view for auxiliary locations
         aux_locations = {'large_vial_rack', 'photoreactor_array', 'clamp'}
         
-        # First add main_8mL_rack tab with log vials display (ensure it's first)
+        # First add main_8mL_rack tab with log vials display (always show, even if empty)
         main_locations = {loc for loc in locations if '8mL' in loc or 'main' in loc}
+        # Always show the main rack tab using a default name if no vials exist yet
+        if not main_locations:
+            main_locations = {'main_8mL_rack'}
         first_main_processed = False
         for location in sorted(main_locations):
             if location and location != 'unknown':

@@ -22,8 +22,6 @@ import numpy as np
 import pandas as pd
 import torch
 
-from botorch.models import ModelListGP
-from botorch.utils.transforms import normalize
 from sklearn.preprocessing import StandardScaler
 
 import matplotlib.pyplot as plt
@@ -41,8 +39,8 @@ class TransitionRecommenderBase:
                  device: str = 'cpu', dtype=torch.double):
         if not (2 <= len(input_columns) <= 5):
             raise ValueError(f"Input dimensions must be 2-5, got {len(input_columns)}")
-        if len(output_columns) != 2:
-            raise ValueError(f"Must have exactly 2 outputs, got {len(output_columns)}")
+        if not (1 <= len(output_columns) <= 5):
+            raise ValueError(f"Must have 1-5 outputs, got {len(output_columns)}")
 
         self.input_columns = input_columns
         self.output_columns = output_columns
@@ -54,6 +52,12 @@ class TransitionRecommenderBase:
         self.n_inputs = len(input_columns)
         self.n_outputs = len(output_columns)
 
+        # Persistent Sobol generator — advances across all calls to _propose_batch
+        # so the full experiment samples one continuous low-discrepancy sequence.
+        # Never recreated after init; subclasses must use self._draw_sobol_pool().
+        from scipy.stats.qmc import Sobol as _Sobol
+        self._sobol_gen = _Sobol(d=self.n_inputs, scramble=True, seed=42)
+
         # Populated during processing
         self.input_bounds = None
         self.output_scalers = {}
@@ -63,12 +67,51 @@ class TransitionRecommenderBase:
     # Subclass hooks
     # ------------------------------------------------------------------ #
 
-    def _fit_models(self, X: torch.Tensor, Y: torch.Tensor) -> ModelListGP:
+    def _draw_sobol_pool(self, n: int) -> torch.Tensor:
+        """Draw n points from the persistent Sobol generator in [0,1]^d.
+
+        Advances the generator state so successive calls cover different
+        regions — giving one continuous low-discrepancy sequence across
+        all iterations rather than restarting from 0 each call.
+        """
+        raw = self._sobol_gen.random(n)          # (n, d) numpy float64
+        return torch.tensor(raw, dtype=self.dtype, device=self.device)
+
+    def _fit_models(self, X: torch.Tensor, Y: torch.Tensor):
         raise NotImplementedError("Subclass must implement _fit_models")
 
-    def _propose_batch(self, models: ModelListGP, X_existing: torch.Tensor,
+    def _propose_batch(self, models, X_existing: torch.Tensor,
                        n_points: int, boundary_func: callable = None) -> torch.Tensor:
         raise NotImplementedError("Subclass must implement _propose_batch")
+
+    def _turbidity_penalty(self, models, X_pool: torch.Tensor,
+                           threshold: float = 0.2,
+                           decay: float = 0.15) -> torch.Tensor:
+        """Soft penalty that down-weights candidates where the GP predicts
+        high turbidity. Returns a (N,) tensor of weights in (0, 1].
+
+        Below `threshold` (raw mAU): weight = 1.0 (no penalty).
+        Above `threshold`: weight = exp(-(mu_raw - threshold) / decay).
+          e.g. threshold=0.2, decay=0.15:
+            turbidity 0.2 -> 1.0  (boundary zone, no penalty)
+            turbidity 0.4 -> 0.26 (inside turbid zone, discouraged)
+            turbidity 0.7 -> 0.08 (deep inside, strongly discouraged)
+
+        If turbidity_600 is not in output_columns, returns all-ones (no-op).
+        Uses output_scalers to back-transform GP mean from log+zscore space.
+        """
+        if 'turbidity_600' not in self.output_columns:
+            return torch.ones(X_pool.shape[0], dtype=self.dtype, device=self.device)
+        j = self.output_columns.index('turbidity_600')
+        with torch.no_grad():
+            mu_std = models.posterior(X_pool).mean[:, j]
+        # Back-transform: log+zscore -> log10 -> raw
+        mean_val, std_val = self.output_scalers['turbidity_600']
+        mu_log10 = mu_std * std_val + mean_val
+        mu_raw = (torch.tensor(10.0, dtype=self.dtype, device=self.device)
+                  .pow(mu_log10)) - 1e-6
+        excess = torch.clamp(mu_raw - threshold, min=0.0)
+        return torch.exp(-excess / decay)
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -76,12 +119,27 @@ class TransitionRecommenderBase:
 
     def get_recommendations(self, data_df: pd.DataFrame, n_points: int,
                             iteration: int = None,
-                            boundary_func: callable = None) -> pd.DataFrame:
-        """Run the full data -> GP -> acquisition -> recommendations pipeline."""
+                            boundary_func: callable = None,
+                            feasibility_fn: callable = None) -> pd.DataFrame:
+        """Run the full data -> GP -> acquisition -> recommendations pipeline.
+
+        Parameters
+        ----------
+        feasibility_fn : callable or None
+            Optional vectorized feasibility filter applied to the Sobol
+            candidate pool inside _propose_batch.  Must accept an ndarray of
+            shape (N_candidates, n_inputs) of concentrations in original units
+            (mM) and return a boolean ndarray of shape (N_candidates,).
+            Infeasible candidates are removed before acquisition scoring.
+        """
 
         print(f"\n{'='*70}")
         print(f"TRANSITION RECOMMENDER ({self.__class__.__name__})")
         print(f"{'='*70}")
+
+        # Store feasibility function and iteration so _propose_batch can access them.
+        self._feasibility_fn = feasibility_fn
+        self._current_iteration = iteration
 
         print(f"\n1. Preparing experimental data...")
         experiment_data = self._prepare_data(data_df)
@@ -114,6 +172,19 @@ class TransitionRecommenderBase:
     # ------------------------------------------------------------------ #
     # Data pipeline (copied verbatim from BayesianTransitionRecommender)
     # ------------------------------------------------------------------ #
+
+    def _to_concentration_space(self, X_normalized: torch.Tensor) -> np.ndarray:
+        """Back-transform from normalized [0,1]^N to original concentration
+        space (mM).  Uses self.input_bounds set by _process_inputs.
+        Returns a numpy array of shape (N_candidates, n_inputs)."""
+        X_denorm = (X_normalized
+                    * (self.input_bounds[1] - self.input_bounds[0])
+                    + self.input_bounds[0])
+        if self.log_transform_inputs:
+            X_conc = torch.pow(10, X_denorm)
+        else:
+            X_conc = X_denorm
+        return X_conc.detach().cpu().numpy()
 
     def _prepare_data(self, data_df: pd.DataFrame) -> pd.DataFrame:
         if 'well_type' in data_df.columns:
@@ -161,6 +232,7 @@ class TransitionRecommenderBase:
             dtype=self.dtype, device=self.device).T  # (2, n_inputs)
 
         X_torch = torch.tensor(X_transformed, dtype=self.dtype, device=self.device)
+        from botorch.utils.transforms import normalize
         X_normalized = normalize(X_torch, bounds=self.input_bounds)
         print(f"  Normalized to [0,1]^{self.n_inputs}: {X_normalized.shape}")
         return X_torch, X_normalized
