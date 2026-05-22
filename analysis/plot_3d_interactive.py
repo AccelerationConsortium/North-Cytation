@@ -218,12 +218,14 @@ def plot_isosurface(csv_path, threshold=TURBIDITY_THRESHOLD, output_dir=None):
     y = np.log10(df[conc_cols[1]].values.astype(float))
     z = np.log10(df[conc_cols[2]].values.astype(float))
     turb = df['turbidity_600'].values.astype(float)
+    # Log-transform turbidity for coloring and cloud
+    turb_log = np.log10(np.clip(turb, 0.04, None))
 
     # Fit a GP to log-turbidity in log10-concentration space.
     # Matern(nu=1.5) matches what the recommenders use.
     # WhiteKernel absorbs measurement noise so the surface isn't pinned to outliers.
     pts = np.column_stack([x, y, z])
-    log_turb = np.log(np.clip(turb, 1e-6, None))  # log-space is more Gaussian
+    log_turb = np.log10(np.clip(turb, 0.04, None))  # log10 for visual scaling
 
     scaler = StandardScaler()
     pts_scaled = scaler.fit_transform(pts)
@@ -243,8 +245,10 @@ def plot_isosurface(csv_path, threshold=TURBIDITY_THRESHOLD, output_dir=None):
 
     print("  Predicting on grid...")
     log_turb_pred, log_turb_std = gp.predict(grid_pts_scaled, return_std=True)
-    turb_grid = np.exp(log_turb_pred)            # back to linear turbidity
-    turb_grid_upper = np.exp(log_turb_pred + log_turb_std)  # +1 sigma shell
+    turb_grid_log = log_turb_pred.reshape(GRID_N, GRID_N, GRID_N)
+    # For on/off cloud, binary mask above threshold in log space
+    threshold_log = np.log10(max(threshold, 0.04))
+    cloud_mask = (turb_grid_log >= threshold_log).astype(float)
 
     hover_text = [
         f"{s0}: {df[conc_cols[0]].iloc[i]:.3f} mM<br>"
@@ -256,36 +260,36 @@ def plot_isosurface(csv_path, threshold=TURBIDITY_THRESHOLD, output_dir=None):
 
     fig = go.Figure()
 
-    # Volumetric cloud: show the full region where GP predicts turbidity > threshold.
-    # go.Volume maps opacity to value — points deep inside the turbid zone are opaque,
-    # points near the boundary are translucent, points below threshold are invisible.
-    # Clip values below threshold to 0 so only the turbid region renders.
-    turb_clipped = np.where(turb_grid >= threshold, turb_grid, 0.0)
+    # Volumetric cloud: binary on/off mask in log-turbidity space
     fig.add_trace(go.Volume(
         x=Xg.ravel(), y=Yg.ravel(), z=Zg.ravel(),
-        value=turb_clipped,
-        isomin=threshold,
-        isomax=float(turb_clipped.max()),
-        opacity=0.08,           # low per-voxel opacity; cloud emerges from accumulation
-        surface_count=15,       # more slices = denser cloud
-        colorscale='Reds',
+        value=cloud_mask.ravel(),
+        isomin=0.5,  # binary mask: 1=above threshold, 0=below
+        isomax=1.0,
+        opacity=0.18,  # more visible boundary
+        surface_count=1,
+        colorscale=[[0.0, 'rgba(255,0,0,0.0)'], [1.0, 'rgba(255,0,0,0.7)']],
         showscale=False,
         caps=dict(x_show=False, y_show=False, z_show=False),
         name='GP turbid region',
     ))
 
-    # Raw scatter underneath, colored by turbidity
+    # Raw scatter underneath, colored by log-turbidity
     fig.add_trace(go.Scatter3d(
         x=x, y=y, z=z,
         mode='markers',
         marker=dict(
             size=4,
-            color=turb,
+            color=turb_log,
             colorscale='RdYlGn_r',
-            colorbar=dict(title='Turbidity'),
+            colorbar=dict(
+                title='log10(Turbidity)',
+                tickvals=[-1.4, -1.1, -0.7, -0.4, 0, 0.3, 0.7, 1.0],
+                ticktext=['0.04', '0.08', '0.2', '0.4', '1', '2', '5', '10']
+            ),
             opacity=0.7,
-            cmin=float(np.percentile(turb, 2)),
-            cmax=float(np.percentile(turb, 98)),
+            cmin=np.log10(0.04),
+            cmax=float(np.percentile(turb_log, 98)),
         ),
         text=hover_text,
         hovertemplate='%{text}<extra></extra>',
