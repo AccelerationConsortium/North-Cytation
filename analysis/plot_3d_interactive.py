@@ -218,12 +218,14 @@ def plot_isosurface(csv_path, threshold=TURBIDITY_THRESHOLD, output_dir=None):
     y = np.log10(df[conc_cols[1]].values.astype(float))
     z = np.log10(df[conc_cols[2]].values.astype(float))
     turb = df['turbidity_600'].values.astype(float)
+    # Log-transform turbidity for coloring and cloud
+    turb_log = np.log10(np.clip(turb, 0.04, None))
 
     # Fit a GP to log-turbidity in log10-concentration space.
     # Matern(nu=1.5) matches what the recommenders use.
     # WhiteKernel absorbs measurement noise so the surface isn't pinned to outliers.
     pts = np.column_stack([x, y, z])
-    log_turb = np.log(np.clip(turb, 1e-6, None))  # log-space is more Gaussian
+    log_turb = np.log10(np.clip(turb, 0.04, None))  # log10 for visual scaling
 
     scaler = StandardScaler()
     pts_scaled = scaler.fit_transform(pts)
@@ -243,8 +245,10 @@ def plot_isosurface(csv_path, threshold=TURBIDITY_THRESHOLD, output_dir=None):
 
     print("  Predicting on grid...")
     log_turb_pred, log_turb_std = gp.predict(grid_pts_scaled, return_std=True)
-    turb_grid = np.exp(log_turb_pred)            # back to linear turbidity
-    turb_grid_upper = np.exp(log_turb_pred + log_turb_std)  # +1 sigma shell
+    turb_grid_log = log_turb_pred.reshape(GRID_N, GRID_N, GRID_N)
+    # For on/off cloud, binary mask above threshold in log space
+    threshold_log = np.log10(max(threshold, 0.04))
+    cloud_mask = (turb_grid_log >= threshold_log).astype(float)
 
     hover_text = [
         f"{s0}: {df[conc_cols[0]].iloc[i]:.3f} mM<br>"
@@ -256,36 +260,36 @@ def plot_isosurface(csv_path, threshold=TURBIDITY_THRESHOLD, output_dir=None):
 
     fig = go.Figure()
 
-    # Volumetric cloud: show the full region where GP predicts turbidity > threshold.
-    # go.Volume maps opacity to value — points deep inside the turbid zone are opaque,
-    # points near the boundary are translucent, points below threshold are invisible.
-    # Clip values below threshold to 0 so only the turbid region renders.
-    turb_clipped = np.where(turb_grid >= threshold, turb_grid, 0.0)
+    # Volumetric cloud: binary on/off mask in log-turbidity space
     fig.add_trace(go.Volume(
         x=Xg.ravel(), y=Yg.ravel(), z=Zg.ravel(),
-        value=turb_clipped,
-        isomin=threshold,
-        isomax=float(turb_clipped.max()),
-        opacity=0.08,           # low per-voxel opacity; cloud emerges from accumulation
-        surface_count=15,       # more slices = denser cloud
-        colorscale='Reds',
-        colorbar=dict(title='GP turbidity'),
+        value=cloud_mask.ravel(),
+        isomin=0.5,  # binary mask: 1=above threshold, 0=below
+        isomax=1.0,
+        opacity=0.18,  # more visible boundary
+        surface_count=1,
+        colorscale=[[0.0, 'rgba(255,0,0,0.0)'], [1.0, 'rgba(255,0,0,0.7)']],
+        showscale=False,
         caps=dict(x_show=False, y_show=False, z_show=False),
         name='GP turbid region',
     ))
 
-    # Raw scatter underneath, colored by turbidity
+    # Raw scatter underneath, colored by log-turbidity
     fig.add_trace(go.Scatter3d(
         x=x, y=y, z=z,
         mode='markers',
         marker=dict(
             size=4,
-            color=turb,
+            color=turb_log,
             colorscale='RdYlGn_r',
-            colorbar=dict(title='Turbidity'),
+            colorbar=dict(
+                title='log10(Turbidity)',
+                tickvals=[-1.4, -1.1, -0.7, -0.4, 0, 0.3, 0.7, 1.0],
+                ticktext=['0.04', '0.08', '0.2', '0.4', '1', '2', '5', '10']
+            ),
             opacity=0.7,
-            cmin=float(np.percentile(turb, 2)),
-            cmax=float(np.percentile(turb, 98)),
+            cmin=np.log10(0.04),
+            cmax=float(np.percentile(turb_log, 98)),
         ),
         text=hover_text,
         hovertemplate='%{text}<extra></extra>',
@@ -459,6 +463,217 @@ def plot_ratio_phases(csv_path, output_dir=None):
     if output_dir is None:
         output_dir = os.path.dirname(csv_path)
     path = os.path.join(output_dir, "ratio_phases_3d.html")
+    fig.write_html(path)
+    print(f"Saved: {path}")
+    return path
+
+
+def plot_init_feasible_overlay_3d(results_csv_or_df, surfactants,
+                                  boundary_points, output_dir=None,
+                                  feasible_config=None, grid_n=32,
+                                  dropped_points=None):
+    """Plot 3D feasible-region overlay with init picks highlighted.
+
+    Args:
+        results_csv_or_df: CSV path or DataFrame containing measured data
+        surfactants: ordered list of three surfactant names
+        boundary_points: list of dicts with concentration keys for surfactants.
+            Used as fallback visualization when feasible_config is not provided.
+        output_dir: directory for HTML output
+        feasible_config: optional dict with keys stock_concs, well_volume_ul,
+            surfactant_budget_ul, min_conc_mm, and optional max_conc_multiplier.
+            When provided, render a true budget-feasibility isosurface from a
+            3D grid (consistent with 2D mask-based visualization).
+        grid_n: points per axis for 3D feasibility grid.
+    """
+    if len(surfactants) != 3:
+        print(f"plot_init_feasible_overlay_3d requires 3 surfactants, got {surfactants}")
+        return None
+
+    if isinstance(results_csv_or_df, str):
+        df = pd.read_csv(results_csv_or_df)
+        if output_dir is None:
+            output_dir = os.path.dirname(results_csv_or_df)
+    else:
+        df = results_csv_or_df.copy()
+
+    if output_dir is None:
+        output_dir = os.getcwd()
+
+    if 'well_type' in df.columns:
+        df = df[df['well_type'] == 'experiment'].copy()
+    if len(df) == 0:
+        print("plot_init_feasible_overlay_3d: no experiment rows")
+        return None
+
+    if 'iteration' in df.columns:
+        init_df = df[df['iteration'] == 0].copy()
+    else:
+        init_df = df.copy()
+    if len(init_df) == 0:
+        print("plot_init_feasible_overlay_3d: no iteration==0 rows")
+        return None
+
+    s0, s1, s2 = surfactants
+    c0 = f"{s0}_conc_mm"
+    c1 = f"{s1}_conc_mm"
+    c2 = f"{s2}_conc_mm"
+
+    ix = np.log10(init_df[c0].values.astype(float))
+    iy = np.log10(init_df[c1].values.astype(float))
+    iz = np.log10(init_df[c2].values.astype(float))
+
+    fig = go.Figure()
+
+    if feasible_config is not None:
+        stock_concs = feasible_config["stock_concs"]
+        well_volume_ul = float(feasible_config["well_volume_ul"])
+        budget_ul = float(feasible_config["surfactant_budget_ul"])
+        min_conc_mm = float(feasible_config["min_conc_mm"])
+        max_conc_multiplier = float(feasible_config.get("max_conc_multiplier", 1.0))
+
+        a0 = well_volume_ul / float(stock_concs[s0])
+        a1 = well_volume_ul / float(stock_concs[s1])
+        a2 = well_volume_ul / float(stock_concs[s2])
+
+        # Axis maxima with other surfactants pinned at minimum concentration.
+        x_max = max((budget_ul - a1 * min_conc_mm - a2 * min_conc_mm) / a0, min_conc_mm)
+        y_max = max((budget_ul - a0 * min_conc_mm - a2 * min_conc_mm) / a1, min_conc_mm)
+        z_max = max((budget_ul - a0 * min_conc_mm - a1 * min_conc_mm) / a2, min_conc_mm)
+
+        x_max *= max_conc_multiplier
+        y_max *= max_conc_multiplier
+        z_max *= max_conc_multiplier
+
+        lx = np.linspace(np.log10(min_conc_mm), np.log10(x_max), grid_n)
+        ly = np.linspace(np.log10(min_conc_mm), np.log10(y_max), grid_n)
+        lz = np.linspace(np.log10(min_conc_mm), np.log10(z_max), grid_n)
+        LX, LY, LZ = np.meshgrid(lx, ly, lz, indexing='ij')
+        X = 10 ** LX
+        Y = 10 ** LY
+        Z = 10 ** LZ
+
+        feasible = (a0 * X + a1 * Y + a2 * Z) <= budget_ul
+        values = feasible.astype(float)
+
+        fig.add_trace(go.Isosurface(
+            x=LX.ravel(),
+            y=LY.ravel(),
+            z=LZ.ravel(),
+            value=values.ravel(),
+            isomin=0.5,
+            isomax=0.5,
+            surface_count=1,
+            opacity=0.18,
+            colorscale=[[0.0, 'royalblue'], [1.0, 'royalblue']],
+            caps=dict(x_show=False, y_show=False, z_show=False),
+            name='Budget-feasible envelope',
+            hoverinfo='skip',
+            showscale=False,
+        ))
+    else:
+        bdf = pd.DataFrame(boundary_points)
+        if len(bdf) == 0:
+            print("plot_init_feasible_overlay_3d: no boundary points")
+            return None
+
+        def _col(df_like, surf, conc_col):
+            if conc_col in df_like.columns:
+                return conc_col
+            return surf
+
+        b0 = _col(bdf, s0, c0)
+        b1 = _col(bdf, s1, c1)
+        b2 = _col(bdf, s2, c2)
+
+        bx = np.log10(bdf[b0].values.astype(float))
+        by = np.log10(bdf[b1].values.astype(float))
+        bz = np.log10(bdf[b2].values.astype(float))
+
+        fig.add_trace(go.Mesh3d(
+            x=bx, y=by, z=bz,
+            alphahull=0,
+            color='royalblue',
+            opacity=0.18,
+            name='Geometric feasible envelope',
+            hoverinfo='skip',
+            showscale=False,
+        ))
+
+    n_total_init = len(init_df)
+    n_boundary_init = 0
+    n_sobol_init = 0
+    ddf = pd.DataFrame(dropped_points) if dropped_points is not None else pd.DataFrame()
+
+    if "_init_source_type" in init_df.columns:
+        boundary_mask = (init_df["_init_source_type"] == "boundary").values
+        sobol_mask = (init_df["_init_source_type"] == "sobol").values
+        n_boundary_init = int(np.sum(boundary_mask))
+        n_sobol_init = int(np.sum(sobol_mask))
+
+        if n_boundary_init > 0:
+            fig.add_trace(go.Scatter3d(
+                x=ix[boundary_mask], y=iy[boundary_mask], z=iz[boundary_mask],
+                mode='markers',
+                marker=dict(size=7, color='#2c5aa0', symbol='diamond-open', opacity=0.95,
+                            line=dict(color='white', width=1.0)),
+                name=f'Init boundary picks (n={n_boundary_init})',
+            ))
+
+        if n_sobol_init > 0:
+            fig.add_trace(go.Scatter3d(
+                x=ix[sobol_mask], y=iy[sobol_mask], z=iz[sobol_mask],
+                mode='markers',
+                marker=dict(size=6, color='#d62728', symbol='square', opacity=0.95,
+                            line=dict(color='white', width=0.8)),
+                name=f'Init sobol picks (n={n_sobol_init})',
+            ))
+    else:
+        fig.add_trace(go.Scatter3d(
+            x=ix, y=iy, z=iz,
+            mode='markers',
+            marker=dict(size=6, color='#d62728', symbol='diamond', opacity=0.95,
+                        line=dict(color='white', width=0.8)),
+            name=f'Init picks (iteration 0, n={n_total_init})',
+        ))
+
+    if len(ddf) > 0:
+        def _col(df_like, surf, conc_col):
+            if conc_col in df_like.columns:
+                return conc_col
+            return surf
+
+        d0 = _col(ddf, s0, c0)
+        d1 = _col(ddf, s1, c1)
+        d2 = _col(ddf, s2, c2)
+        dx = np.log10(ddf[d0].values.astype(float))
+        dy = np.log10(ddf[d1].values.astype(float))
+        dz = np.log10(ddf[d2].values.astype(float))
+
+        fig.add_trace(go.Scatter3d(
+            x=dx, y=dy, z=dz,
+            mode='markers',
+            marker=dict(size=4, color='#111111', symbol='x', opacity=0.85,
+                        line=dict(color='white', width=0.6)),
+            name=f'Dropped init candidates (n={len(ddf)})',
+        ))
+
+    fig.update_layout(
+        title=(
+            f'Feasible Region vs Init Picks — {s0} / {s1} / {s2}<br>'
+            f'<sup>init total={n_total_init}, boundary={n_boundary_init}, sobol={n_sobol_init}, dropped={len(ddf)}</sup>'
+        ),
+        scene=dict(
+            xaxis_title=f'log10({s0} mM)',
+            yaxis_title=f'log10({s1} mM)',
+            zaxis_title=f'log10({s2} mM)',
+        ),
+        width=950,
+        height=760,
+        legend=dict(x=0.01, y=0.99),
+    )
+
+    path = os.path.join(output_dir, "init_feasible_overlay_3d.html")
     fig.write_html(path)
     print(f"Saved: {path}")
     return path
