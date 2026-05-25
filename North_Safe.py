@@ -4024,7 +4024,7 @@ class North_Robot(North_Base):
         
         return current_position_safe and dest_position_safe
  
-    def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None):
+    def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None, gripper_angle=None):
         if vel is None:
             vel = self.get_speed('standard_xy')
         self.logger.debug(f"Moving robot relative to current position by x: {x_distance}, y: {y_distance}, z: {z_distance} mm, vel: {vel}")
@@ -4035,12 +4035,14 @@ class North_Robot(North_Base):
         shoulder_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'shoulder_axis', error_on_missing=False) or 2
         z_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'z_axis', error_on_missing=False) or 3
         
-        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(gripper_axis), self.c9.get_axis_position(elbow_axis), self.c9.get_axis_position(shoulder_axis))
+        gripper_angle = self.c9.get_axis_position(gripper_axis)
+        current_loc_mm = self.c9.n9_fk(gripper_angle, self.c9.get_axis_position(elbow_axis), self.c9.get_axis_position(shoulder_axis))
+        
         target_x =  current_loc_mm[0] + x_distance
         target_y =  current_loc_mm[1] + y_distance
         target_z =  self.c9.counts_to_mm(z_axis, self.c9.get_axis_position(z_axis)) + z_distance
 
-        self.c9.move_xyz(target_x, target_y, target_z, vel=vel)
+        self.c9.move_xyz(target_x, target_y, target_z, vel=vel, tool_orientation=gripper_angle)
 
     #Move the robot to the home position    
     def move_home(self):
