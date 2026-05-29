@@ -30,17 +30,17 @@ import shutil
 LIQUIDS_TO_CALIBRATE = [
 
     #     # --- POLYMER_DMSO ---
-    {
-        'liquid_name': 'PVA_DMSO',
-        'target_vial': 'polymer_dmso',
-        'volume_targets_ml': [0.050],
-    },
-    # {
-    #     'liquid_name': 'PVA_DMSO',
-    #     'target_vial': 'polymer_dmso',
-    #     'volume_targets_ml': [0.050],
-    #     'num_screening_trials': 32,  # SOBOL-only: fills entire budget
-    # },
+#    {
+#        'liquid_name': 'PVA_DMSO',
+#        'target_vial': 'polymer_dmso',
+#        'volume_targets_ml': [0.050],
+#    },
+     {
+         'liquid_name': 'PVA_DMSO',
+         'target_vial': 'polymer_dmso',
+         'volume_targets_ml': [0.050],
+         'num_screening_trials': 32,  # SOBOL-only: fills entire budget
+     },
         # --- GLYCEROL ---
     #{
     #    'liquid_name': 'glycerol',
