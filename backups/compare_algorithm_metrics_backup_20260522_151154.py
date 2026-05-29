@@ -37,7 +37,7 @@ COLOURS = {
     'sobol':    '#f4a582',   # peach (baseline)
 }
 
-PLOT_COLS = ['turb_rmse', 'ratio_rmse', 'iou_turbidity', 'iou_ratio_low', 'iou_ratio_high']
+PLOT_COLS = ['turb_hit_rate', 'n_cloud_measured', 'turb_rmse', 'ratio_rmse']
 
 
 def find_latest_results_csv(algorithm, base='output/simulated_surfactant_grid'):
@@ -76,7 +76,7 @@ def find_latest_metrics_csv(algorithm, base='output/simulated_surfactant_grid'):
 
 
 def load_all_metrics(algorithms=ALGORITHMS, base='output/simulated_surfactant_grid'):
-    """Load iteration_metrics.csv for each algorithm, tag with algorithm name, and compute IoU metrics."""
+    """Load iteration_metrics.csv for each algorithm, tag with algorithm name."""
     frames = []
     for alg in algorithms:
         csv = find_latest_metrics_csv(alg, base)
@@ -86,44 +86,6 @@ def load_all_metrics(algorithms=ALGORITHMS, base='output/simulated_surfactant_gr
         df = pd.read_csv(csv)
         df['algorithm'] = alg
         df['source_folder'] = os.path.dirname(csv)
-
-        # Compute IoU metrics for each iteration
-        # Load ground truth boundaries (A1/A2) from 1D CMC fit or use hardcoded for now
-        # For demonstration, use typical values (should be loaded from results_after_initial_grid.csv if available)
-        A1 = 0.85  # high ratio boundary (sub-CMC)
-        A2 = 0.70  # low ratio boundary (micellar)
-        turb_threshold = 0.1
-        df['iou_turbidity'] = np.nan
-        df['iou_ratio_low'] = np.nan
-        df['iou_ratio_high'] = np.nan
-        for i, row in df.iterrows():
-            # For each iteration, compute IoU on all picks up to this iteration
-            subset = df[df['iteration'] <= row['iteration']]
-            # Turbidity IoU
-            pred_turb = subset['turbidity_600'].values
-            true_turb = pred_turb  # In simulation, use same as pred (should use ground truth if available)
-            pred_mask = pred_turb > turb_threshold
-            true_mask = true_turb > turb_threshold
-            intersection = np.logical_and(pred_mask, true_mask).sum()
-            union = np.logical_or(pred_mask, true_mask).sum()
-            iou_turb = intersection / union if union > 0 else np.nan
-            df.at[i, 'iou_turbidity'] = iou_turb
-            # Ratio IoU (low)
-            pred_ratio = subset['ratio'].values
-            true_ratio = pred_ratio  # In simulation, use same as pred (should use ground truth if available)
-            pred_mask_low = pred_ratio < (A1 + 0.005)
-            true_mask_low = true_ratio < (A1 + 0.005)
-            intersection_low = np.logical_and(pred_mask_low, true_mask_low).sum()
-            union_low = np.logical_or(pred_mask_low, true_mask_low).sum()
-            iou_ratio_low = intersection_low / union_low if union_low > 0 else np.nan
-            df.at[i, 'iou_ratio_low'] = iou_ratio_low
-            # Ratio IoU (high)
-            pred_mask_high = pred_ratio > (A2 - 0.005)
-            true_mask_high = true_ratio > (A2 - 0.005)
-            intersection_high = np.logical_and(pred_mask_high, true_mask_high).sum()
-            union_high = np.logical_or(pred_mask_high, true_mask_high).sum()
-            iou_ratio_high = intersection_high / union_high if union_high > 0 else np.nan
-            df.at[i, 'iou_ratio_high'] = iou_ratio_high
         frames.append(df)
         print(f"  Loaded {alg}: {len(df)} iterations from {os.path.dirname(csv)}")
     if not frames:
@@ -134,11 +96,12 @@ def load_all_metrics(algorithms=ALGORITHMS, base='output/simulated_surfactant_gr
     return pd.concat(frames, ignore_index=True)
 
 
-def plot_comparison(combined_df, output_folder):
-    """Comparison: RMSE and IoU time-series panels only."""
+def plot_comparison(combined_df, output_folder, nn_distances=None):
+    """1x5 comparison: 4 time-series panels + 1 NN-distance histogram panel."""
     n_ts = sum(1 for c in PLOT_COLS if c in combined_df.columns)
-    fig, axes_grid = plt.subplots(1, n_ts, figsize=(5.5 * n_ts, 6))
-    if n_ts == 1:
+    n_panels = n_ts + (1 if nn_distances else 0)
+    fig, axes_grid = plt.subplots(1, n_panels, figsize=(5.5 * n_panels, 6))
+    if n_panels == 1:
         axes_grid = [axes_grid]
     fig.patch.set_facecolor('#f8f8f8')
 
@@ -177,6 +140,36 @@ def plot_comparison(combined_df, output_folder):
             linespacing=1.4,
         )
 
+    # --- Histogram panel: NN distances ---
+    ax_hist = axes_grid[n_ts] if nn_distances else None
+    ax_hist.set_facecolor('white')
+    if nn_distances:
+        all_vals = np.concatenate(list(nn_distances.values()))
+        bins = np.linspace(0, np.percentile(all_vals, 99), 40)
+        for alg in ALGORITHMS:
+            if alg not in nn_distances:
+                continue
+            ax_hist.hist(
+                nn_distances[alg], bins=bins,
+                color=COLOURS.get(alg, '#888888'),
+                alpha=0.45, density=True, label=alg,
+            )
+        ax_hist.set_xlabel('Nearest-neighbour distance (normalised)', fontsize=9)
+        ax_hist.set_ylabel('Density', fontsize=9)
+        ax_hist.set_title('NN Distance Distribution', fontsize=11,
+                          fontweight='bold', pad=18)
+        ax_hist.text(
+            0.5, 1.01,
+            'Distribution of distances to nearest neighbour (all 288 final picks).\n'
+            'Narrow peak near right = uniform; long left tail = dense clusters + large gaps',
+            transform=ax_hist.transAxes,
+            ha='center', va='bottom', fontsize=7, style='italic',
+            color='#555555', linespacing=1.4,
+        )
+        ax_hist.grid(True, alpha=0.2, linestyle='--')
+    else:
+        ax_hist.set_visible(False)
+
     # Shared legend
     legend_handles = [
         Line2D([0], [0], color=COLOURS.get(a, '#888888'), lw=2, marker='o',
@@ -194,7 +187,7 @@ def plot_comparison(combined_df, output_folder):
 
     plt.tight_layout(rect=[0, 0.04, 1, 0.97])
     fig.suptitle(
-        'Algorithm Comparison — Per-Iteration RMSE and IoU Metrics',
+        'Algorithm Comparison — Per-Iteration Exploration Metrics',
         fontsize=14, fontweight='bold', y=0.995,
     )
 
@@ -219,4 +212,40 @@ if __name__ == '__main__':
     combined.to_csv(csv_out, index=False)
     print(f"Combined CSV saved: {csv_out}")
 
-    plot_comparison(combined, out_folder)
+    # Check whether RMSE columns exist (requires simulate=True recompute)
+    has_rmse = 'turb_rmse' in combined.columns and not combined['turb_rmse'].isna().all()
+    if not has_rmse:
+        print("RMSE columns not found — recomputing metrics with simulate=True...")
+        from analysis.iteration_metrics import compute_iteration_metrics, save_iteration_metrics
+        import warnings
+        frames = []
+        for alg in ALGORITHMS:
+            csv = find_latest_results_csv(alg, BASE)
+            if csv is None:
+                continue
+            folder = os.path.dirname(csv)
+            print(f"  {alg}...", flush=True)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                df = compute_iteration_metrics(csv, SURFACTANTS, folder, simulate=True)
+            save_iteration_metrics(df, folder)
+            df['algorithm'] = alg
+            frames.append(df)
+            print(f"    turb_rmse final={df.turb_rmse.iloc[-1]:.4f}  ratio_rmse final={df.ratio_rmse.iloc[-1]:.4f}")
+        combined = pd.concat(frames, ignore_index=True)
+        combined.to_csv(csv_out, index=False)
+        print(f"Updated CSV saved: {csv_out}")
+
+    print("Computing NN distance distributions...")
+    import warnings
+    nn_dists = {}
+    for alg in ALGORITHMS:
+        rcsv = find_latest_results_csv(alg, BASE)
+        if rcsv is None:
+            continue
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            nn_dists[alg] = compute_nn_distances(rcsv, SURFACTANTS)
+        print(f"  {alg}: median NN = {np.median(nn_dists[alg]):.4f}")
+
+    plot_comparison(combined, out_folder, nn_distances=nn_dists)
