@@ -190,7 +190,7 @@ def _compute_optimal_overaspirate(point1_ov_ml: float, point1_measured_ml: float
     return optimal, slope
 
 
-def run_two_point_series_demo(simulate: bool = False) -> None:
+def run_two_point_series_demo(simulate: bool = False, show_first_gui: bool = False) -> None:
     global SIMULATE
     if simulate:
         SIMULATE = simulate
@@ -229,7 +229,7 @@ def run_two_point_series_demo(simulate: bool = False) -> None:
 
         for volume_ul in VOLUME_SERIES_UL:
             volume_ml = volume_ul / 1000.0
-            show_gui = first_run
+            show_gui = bool(show_first_gui and first_run and (not SIMULATE))
             first_run = False
 
             cfg = _create_protocol_config(
@@ -385,6 +385,11 @@ def run_two_point_series_demo(simulate: bool = False) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="v2-style two-point series calibration demo")
     parser.add_argument("--simulate", action="store_true", help="Run in simulation mode")
+    parser.add_argument(
+        "--show-first-gui",
+        action="store_true",
+        help="Show status/config GUI for the first liquid-volume run (disabled automatically in --simulate mode)",
+    )
     args = parser.parse_args()
 
-    run_two_point_series_demo(simulate=args.simulate)
+    run_two_point_series_demo(simulate=args.simulate, show_first_gui=args.show_first_gui)
