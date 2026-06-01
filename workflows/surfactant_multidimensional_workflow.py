@@ -101,17 +101,22 @@ TURBIDITY_PENALTY_THRESHOLD = 0.2
 TURBIDITY_PENALTY_DECAY = 0.15
 TURBIDITY_PENALTY_ENABLED = False  # Set False to disable penalty for all recommenders
 
+# Buffer addition settings
+ADD_BUFFER = True  # Set to False to skip buffer addition
+BUFFER_VOLUME_UL = 20  # uL buffer to add per well
+SELECTED_BUFFER = 'MES'  # Buffer vial name (must exist in input CSV)
+
 # Bayesian recommender spacing control
 # alpha_spacing scales the soft repulsion target: target = alpha * (1/n_total)^(1/d)
 # Lower values allow more clustering; 0.7 is the default (uniform-fill heuristic).
 BAYESIAN_ALPHA_SPACING = 0.7
 
 # Volume budget.
-# WATER_RESERVE_UL is always held back so that even at max concentration for
-# every surfactant there is still water to fill the well.
+# WATER_RESERVE_UL is always held back and split between water and buffer.
+# If ADD_BUFFER=True, the reserve is split; if False, it's all water.
 WELL_VOLUME_UL = 250
 PYRENE_VOLUME_UL = 5
-WATER_RESERVE_UL = 20          # Minimum water in every well (uL)
+WATER_RESERVE_UL = 20          # Minimum reserve in every well (uL); split between water + buffer
 SURFACTANT_BUDGET_UL = WELL_VOLUME_UL - PYRENE_VOLUME_UL - WATER_RESERVE_UL  # 225 uL
 
 # Initialization strategy
@@ -755,7 +760,8 @@ def build_well_recipe(target_concs, plans, well_index, replicate=1):
         recipe[f"{s}_volume_ul"] = float(sol["volume_needed_ul"])
         total_surf_vol += float(sol["volume_needed_ul"])
 
-    water_vol = WELL_VOLUME_UL - PYRENE_VOLUME_UL - total_surf_vol
+    buffer_vol = BUFFER_VOLUME_UL if ADD_BUFFER else 0.0
+    water_vol = WELL_VOLUME_UL - PYRENE_VOLUME_UL - total_surf_vol - buffer_vol
     if water_vol < 0:
         raise ValueError(
             f"Negative water volume ({water_vol:.2f} uL) at well {well_index}: "
@@ -764,9 +770,8 @@ def build_well_recipe(target_concs, plans, well_index, replicate=1):
         )
     recipe["water_volume_ul"] = water_vol
     recipe["pyrene_volume_ul"] = PYRENE_VOLUME_UL
-    # Buffer disabled in v1; legacy primitives expect this column to exist.
-    recipe["buffer_volume_ul"] = 0.0
-    recipe["buffer_used"] = None
+    recipe["buffer_volume_ul"] = buffer_vol
+    recipe["buffer_used"] = SELECTED_BUFFER if ADD_BUFFER else None
     return recipe
 
 
@@ -916,10 +921,10 @@ def build_control_wells_df(plans, starting_well_index=0):
             "control_type": "water_blank",
             "replicate": 1,
             **_zero_surf_cols(),
-            "water_volume_ul": WELL_VOLUME_UL - PYRENE_VOLUME_UL,
+            "water_volume_ul": (WELL_VOLUME_UL - PYRENE_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0.0)),
             "pyrene_volume_ul": PYRENE_VOLUME_UL,
-            "buffer_volume_ul": 0.0,
-            "buffer_used": None,
+            "buffer_volume_ul": (BUFFER_VOLUME_UL if ADD_BUFFER else 0.0),
+            "buffer_used": SELECTED_BUFFER if ADD_BUFFER else None,
         }
         rows.append(rec)
         well_idx += 1
@@ -937,10 +942,10 @@ def build_control_wells_df(plans, starting_well_index=0):
                 f"{s}_substock_name": f"{s}_stock",
                 f"{s}_substock_conc_mm": stock_conc,
                 f"{s}_volume_ul": float(STOCK_CONTROL_VOL_UL),
-                "water_volume_ul": WELL_VOLUME_UL - PYRENE_VOLUME_UL - STOCK_CONTROL_VOL_UL,
+                "water_volume_ul": WELL_VOLUME_UL - PYRENE_VOLUME_UL - STOCK_CONTROL_VOL_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0.0),
                 "pyrene_volume_ul": PYRENE_VOLUME_UL,
-                "buffer_volume_ul": 0.0,
-                "buffer_used": None,
+                "buffer_volume_ul": (BUFFER_VOLUME_UL if ADD_BUFFER else 0.0),
+                "buffer_used": SELECTED_BUFFER if ADD_BUFFER else None,
             }
             rows.append(rec)
             well_idx += 1
@@ -959,7 +964,8 @@ def build_control_wells_df(plans, starting_well_index=0):
                 src = _select_source_for_1d_control(s, conc, plans)
                 if src is None:
                     continue  # concentration unreachable with available stocks
-                water_vol = WELL_VOLUME_UL - PYRENE_VOLUME_UL - src["volume_ul"]
+                buffer_vol = BUFFER_VOLUME_UL if ADD_BUFFER else 0.0
+                water_vol = WELL_VOLUME_UL - PYRENE_VOLUME_UL - src["volume_ul"] - buffer_vol
                 if water_vol < 0:
                     continue  # volume infeasible
                 rec = {
@@ -974,8 +980,8 @@ def build_control_wells_df(plans, starting_well_index=0):
                     f"{s}_volume_ul": float(src["volume_ul"]),
                     "water_volume_ul": float(water_vol),
                     "pyrene_volume_ul": PYRENE_VOLUME_UL,
-                    "buffer_volume_ul": 0.0,
-                    "buffer_used": None,
+                    "buffer_volume_ul": buffer_vol,
+                    "buffer_used": SELECTED_BUFFER if ADD_BUFFER else None,
                 }
                 rows.append(rec)
                 well_idx += 1
@@ -1115,13 +1121,19 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
         w2 = water_wells.iloc[mid:]
         lash_e.nr_robot.move_vial_to_location("water", "main_8mL_rack", 44)
         lash_e.nr_robot.move_vial_to_location("water_2", "main_8mL_rack", 45)
+        if ADD_BUFFER:
+            lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, "main_8mL_rack", 47)
         if len(w1) > 0:
             dispense_component_to_wellplate(lash_e, w1, "water", "water", "water_volume_ul")
         if len(w2) > 0:
             dispense_component_to_wellplate(lash_e, w2, "water_2", "water", "water_volume_ul")
+        if ADD_BUFFER:
+            dispense_component_to_wellplate(lash_e, well_recipes_df, SELECTED_BUFFER, "water", "buffer_volume_ul")
         lash_e.nr_robot.remove_pipet()
         return_water_vial_home(lash_e, "water")
         return_water_vial_home(lash_e, "water_2")
+        if ADD_BUFFER:
+            lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
 
     return well_recipes_df
 
