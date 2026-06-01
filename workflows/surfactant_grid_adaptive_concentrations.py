@@ -2193,15 +2193,15 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
     logger.info(f"  {component_name}: Dispensing from {vial_name} to {len(wells_needing_component)} wells (sorted by volume, then well order)")
 
     # Split wells into two passes by tip type.
-    # Small tip physical max = 200 uL; effective safe threshold = 180 uL (leaves room for
+    # Small tip physical max = 200 uL; effective safe threshold = 175 uL (leaves room for
     # overaspirate + air volumes added by aspirate_from_vial).
-    # Pass 1: small-tip wells (< 200 uL) — condition with 150 uL, lock to small_tip.
+    # Pass 1: small-tip wells (< 175 uL) — condition with 150 uL, lock to small_tip.
     #         Runs first so the small tip held from previous dilution vials carries through.
-    # Pass 2: large-tip wells (>= 200 uL) — condition with 300 uL, lock to large_tip.
+    # Pass 2: large-tip wells (>= 175 uL) — condition with 300 uL, lock to large_tip.
     #         Runs last; only present on the stock vial (1 well at exactly 200 uL).
     # This ordering means all-small vials (dilutions) never trigger a remove_pipet between
     # them, so one small tip serves the entire dilution series + the stock's small wells.
-    SMALL_TIP_SAFE_UL = 200
+    SMALL_TIP_SAFE_UL = 175
     large_wells = wells_needing_component[wells_needing_component[volume_column] >= SMALL_TIP_SAFE_UL]
     small_wells = wells_needing_component[wells_needing_component[volume_column] < SMALL_TIP_SAFE_UL]
 
