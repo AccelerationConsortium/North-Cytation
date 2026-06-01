@@ -15,9 +15,9 @@ from typing import List, Dict, Any, Optional, Union
 import numpy as np
 from pathlib import Path
 
-from data_structures import PipettingParameters, VolumeCalibrationResult, CalibrationParameters, HardwareParameters
-from config_manager import ExperimentConfig
-from llm_config_generator import LLMConfigGenerator
+from .data_structures import PipettingParameters, VolumeCalibrationResult, CalibrationParameters, HardwareParameters
+from .config_manager import ExperimentConfig
+from .llm_config_generator import LLMConfigGenerator
 
 
 class LLMRecommender:

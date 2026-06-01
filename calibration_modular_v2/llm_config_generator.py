@@ -9,7 +9,7 @@ parameter names and hardware-specific warnings for portability.
 import json
 import yaml
 from typing import Dict, List, Any, Optional
-from config_manager import ExperimentConfig
+from .config_manager import ExperimentConfig
 
 class LLMConfigGenerator:
     """Generate LLM configuration from experiment config."""

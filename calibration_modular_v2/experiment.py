@@ -452,6 +452,15 @@ class CalibrationExperiment:
         """Configure experiment-specific logging."""
         # This would set up file logging, etc.
         pass
+
+    def _trial_budget_consumed(self, trial: Optional[TrialResult]) -> int:
+        """Return budget units consumed by a trial using protocol-reported metadata."""
+        if not trial:
+            return 0
+        consumed = 0
+        for measurement in trial.measurements:
+            consumed += int(measurement.metadata.get('measurement_budget_consumed', 1))
+        return consumed
     
     def _calculate_volume_budget(self, volume_index: int, target_volumes: list) -> int:
         """
@@ -548,8 +557,17 @@ class CalibrationExperiment:
                         
                         # Run two-point constraint calibration followed by inherited trial
                         try:
+                            # Reserve final-calibration budget from total-first split (e.g., 96-87=9).
+                            final_calibration_budget = max(
+                                0,
+                                self.config.get_max_total_measurements() - self.config.get_max_measurements_first_volume()
+                            )
+
                             # Run two-point constraint calibration using the optimized parameters
-                            constraint_update, two_point_trials = self._run_two_point_constraint_calibration(target_volume_ml, 10)  # Budget: 10 measurements for final calibration
+                            constraint_update, two_point_trials = self._run_two_point_constraint_calibration(
+                                target_volume_ml,
+                                final_calibration_budget
+                            )
                             final_calibration_trials = two_point_trials.copy()
                             
                             # Run inherited trial to test the optimal overaspirate value
@@ -1213,9 +1231,13 @@ class CalibrationExperiment:
         
         # Run optimization iterations
         optimization_trials = []
-        current_volume_measurements = sum(len(trial.measurements) for trial in screening_trials)
+        current_volume_measurements = sum(self._trial_budget_consumed(trial) for trial in screening_trials)
+        if hasattr(self, '_current_two_point_trials') and self._current_two_point_trials:
+            current_volume_measurements += sum(
+                self._trial_budget_consumed(trial) for trial in self._current_two_point_trials
+            )
         if inherited_trial:
-            current_volume_measurements += len(inherited_trial.measurements)
+            current_volume_measurements += self._trial_budget_consumed(inherited_trial)
         
         iteration = 0
         while not optimizer.is_converged() and current_volume_measurements < volume_budget:
@@ -1283,7 +1305,7 @@ class CalibrationExperiment:
                 )
                 
                 optimization_trials.append(trial)
-                current_volume_measurements += len(trial.measurements)
+                current_volume_measurements += self._trial_budget_consumed(trial)
                 
                 # Check if trial is successful using the standard method
                 is_successful = self._is_trial_successful(trial, target_volume_ml)
@@ -1550,7 +1572,16 @@ class CalibrationExperiment:
         logger.info("Starting two-point constraint calibration")
         
         calibration_trials = []
-        measurements_needed = 2  # 1 per point for two-point calibration
+        two_point_reps = self.config.get_two_point_calibration_replicates()
+        measurements_needed = 2 * two_point_reps
+
+        # Respect the per-phase budget passed by caller (e.g., reserved final-calibration headroom).
+        if measurements_needed > volume_budget:
+            logger.warning(
+                f"Insufficient phase budget for two-point calibration "
+                f"({measurements_needed} measurements needed, phase budget={volume_budget})"
+            )
+            return None, calibration_trials
         
         # Check if we have enough budget
         if self.total_measurements + measurements_needed > self.config.get_max_total_measurements():

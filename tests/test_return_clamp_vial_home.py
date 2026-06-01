@@ -30,14 +30,11 @@ else:
 
 lash_e = Lash_E(vial_file=VIAL_STATUS_FILE, simulate=SIMULATE, initialize_biotek=False)
 
-blowout_params = PipettingParameters(blowout_vol=0.5)
-
 # Find vial in clamp and return it home
 for _, row in lash_e.nr_robot.VIAL_DF.iterrows():
     if row['location'] == 'clamp':
         vial_name = row['vial_name']
         lash_e.logger.info("Dispensing tip contents back into %s", vial_name)
-        lash_e.nr_robot.dispense_into_vial(vial_name, 0.5, parameters=blowout_params)
         lash_e.logger.info("Returning %s from clamp to home", vial_name)
         lash_e.nr_robot.return_vial_home(vial_name)
         lash_e.logger.info("Done: %s returned home", vial_name)

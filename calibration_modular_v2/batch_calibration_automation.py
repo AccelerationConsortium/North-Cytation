@@ -35,18 +35,18 @@ LIQUIDS_TO_CALIBRATE = [
 #        'target_vial': 'polymer_dmso',
 #        'volume_targets_ml': [0.050],
 #    },
-     {
-         'liquid_name': 'PVA_DMSO',
-         'target_vial': 'polymer_dmso',
-         'volume_targets_ml': [0.050],
-         'num_screening_trials': 32,  # SOBOL-only: fills entire budget
-     },
+    #  {
+    #      'liquid_name': 'PVA_DMSO',
+    #      'target_vial': 'polymer_dmso',
+    #      'volume_targets_ml': [0.050],
+    #      'num_screening_trials': 32,  # SOBOL-only: fills entire budget
+    #  },
         # --- GLYCEROL ---
-    #{
-    #    'liquid_name': 'glycerol',
-    #    'target_vial': 'glycerol',
-    #    'volume_targets_ml': [0.050],
-    #},
+    {
+       'liquid_name': 'DMSO',
+       'target_vial': 'dmso',
+       'volume_targets_ml': [0.050],
+      },
     #  {
     #      'liquid_name': 'glycerol',
     #      'target_vial': 'glycerol',

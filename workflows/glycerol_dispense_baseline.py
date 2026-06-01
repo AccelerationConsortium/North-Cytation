@@ -96,8 +96,8 @@ def _interrupt_handler(signum, frame):
     
     if lash_e and current_vial_name:
         try:
-            print(f"🔒 Capping {current_vial_name}...")
-            lash_e.nr_robot.cap_clamp_vial()
+            print(f"🔒 Recapping clamp vial ({current_vial_name})...")
+            lash_e.nr_robot.recap_clamp_vial()
             
             print(f"🏠 Returning {current_vial_name} to home position...")
             lash_e.nr_robot.return_vial_home(current_vial_name)

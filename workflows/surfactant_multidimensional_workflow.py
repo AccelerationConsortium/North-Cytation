@@ -2062,6 +2062,22 @@ def run_multidim_workflow(lash_e):
 
     output_folder, experiment_name = setup_experiment_folder(lash_e)
 
+    def _send_workflow_slack(message):
+        """Best-effort Slack updates for workflow progress."""
+        if lash_e.simulate:
+            return
+        try:
+            import slack_agent
+            slack_agent.safe_send_slack_message(message)
+        except Exception as e:
+            lash_e.logger.warning(f"Slack notification failed (non-fatal): {e}")
+
+    _send_workflow_slack(
+        f"Surfactant multidim workflow started: {experiment_name} | "
+        f"surfactants={SURFACTANTS} | target_wells={TARGET_TOTAL_WELLS} | "
+        f"recommender={RECOMMENDER_TYPE}"
+    )
+
     # 1. Refill vials
     lash_e.nr_robot.home_robot_components()
     fill_water_vial(lash_e, "water")
@@ -2320,6 +2336,10 @@ def run_multidim_workflow(lash_e):
                 f"Iteration {iteration}: all recommended points were infeasible "
                 f"after volume check; skipping iteration."
             )
+            _send_workflow_slack(
+                f"{experiment_name} iteration {iteration} skipped: no feasible points "
+                f"after volume filtering. total_wells={len(well_recipes_df)}/{TARGET_TOTAL_WELLS}"
+            )
             iteration += 1
             continue
 
@@ -2377,6 +2397,11 @@ def run_multidim_workflow(lash_e):
         well_recipes_df = pd.concat([well_recipes_df, next_recipes_df], ignore_index=True)
         current_wellplate_wells += len(next_recipes_df)
         save_results(well_recipes_df, output_folder, "results_iterative")
+
+        _send_workflow_slack(
+            f"{experiment_name} iteration {iteration} complete: "
+            f"added_wells={len(next_recipes_df)}, total_wells={len(well_recipes_df)}/{TARGET_TOTAL_WELLS}"
+        )
 
         if current_wellplate_wells >= MAX_WELLS_PER_PLATE and len(well_recipes_df) < TARGET_TOTAL_WELLS:
             lash_e.logger.info("Plate full; rotating to a new plate.")
@@ -2436,6 +2461,13 @@ def run_multidim_workflow(lash_e):
     lash_e.logger.info(f"  Iterations: {iteration - 1}")
     lash_e.logger.info(f"  Output: {final_path}")
     lash_e.logger.info("=" * 80)
+
+    _send_workflow_slack(
+        f"Surfactant multidim workflow complete: {experiment_name} | "
+        f"total_wells={len(well_recipes_df)} ({n_exp_final} experiment + {n_ctrl_final} control) | "
+        f"iterations={iteration - 1}"
+    )
+
     return {
         "experiment_name": experiment_name,
         "output_folder": output_folder,

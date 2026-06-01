@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Any, Tuple
 import time
 from enum import Enum
 
-from data_structures import PipettingParameters, RawMeasurement, AdaptiveMeasurementResult
+from .data_structures import PipettingParameters, RawMeasurement, AdaptiveMeasurementResult
 
 
 class OptimizerType(Enum):

@@ -41,6 +41,7 @@ LIQUIDS = {
     "4%_hyaluronic_acid_water": {"density": 1.01, "refill_pipets": True},
     "agar_water": {"density": 1.01, "refill_pipets": False},
     "agar_water_refill": {"density": 1.01, "refill_pipets": True},
+    "agar_water_4%": {"density": 1.01, "refill_pipets": True},
     "TFA": {"density": 1.49, "refill_pipets": False},
     "6M_HCl": {"density": 1.10, "refill_pipets": False},
     "6M_TFA": {"density": 1.25, "refill_pipets": False},
@@ -120,6 +121,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         SINGLE_VIAL = True #True if you just want to use one vial, eg for a capped vial use "liquid_source_0"
 
         continuous_monitoring = True
+        max_retries_per_measurement = 0
 
         show_gui = False
 
@@ -143,6 +145,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             simulate = cfg['experiment'].get('simulate', False)
             show_gui = cfg['experiment'].get('show_gui', False)
             continuous_monitoring = cfg['experiment'].get('continuous_monitoring', True)
+            max_retries_per_measurement = int(cfg['experiment'].get('max_retries_per_measurement', 0))
+            if max_retries_per_measurement < 0:
+                max_retries_per_measurement = 0
             adjust_volume = cfg['experiment'].get('adjust_volume', True)
             
             print(f"Initializing North Robot hardware protocol for {liquid}")
@@ -230,6 +235,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 'swap_enabled': SWAP,
                 'measurement_count': 0,
                 'continuous_mass_monitoring': continuous_monitoring,
+                'max_retries_per_measurement': max_retries_per_measurement,
                 'simulate': simulate,
                 'adjust_volume': adjust_volume
             }
@@ -399,7 +405,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
            
             if not simulate:
                 # Real hardware measurements with quality-controlled retry loop
-                max_retries = 2
+                max_retries = int(state.get('max_retries_per_measurement', 0))
                 retry_count = 0
                 measurement_acceptable = False
                 

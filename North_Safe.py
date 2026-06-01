@@ -763,7 +763,7 @@ class North_Powder:
         
         self.c9.move_carousel(0,0)
 
-    def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=False, max_tries=20):
+    def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=True, max_tries=20):
         import settings.powder_settings as settings
         start_t = time.perf_counter()
         mg_togo = mg_target
@@ -820,9 +820,9 @@ class North_Powder:
             shake_t = max(ps.min_shake_t, shake_t)  # no shorter than min time
             shake_t = min(ps.max_shake_t, shake_t)  # no longer than max time
 
-            self.logger.debug(f'Iteration {count}:')
-            self.logger.debug(f'\tJust dispensed:  {delta_mass:.1f} mg')
-            self.logger.debug(f'\tRemaining:       {mg_togo:.1f} mg')
+            self.logger.info(f'Iteration {count}:')
+            self.logger.info(f'\tJust dispensed:  {delta_mass:.1f} mg')
+            self.logger.info(f'\tRemaining:       {mg_togo:.1f} mg')
             self.logger.debug(f'\tNext target:     {iter_target:.1f} mg')
             self.logger.debug(f'\tNext time:       {int(shake_t)} ms')
             self.logger.debug('')
@@ -4024,7 +4024,7 @@ class North_Robot(North_Base):
         
         return current_position_safe and dest_position_safe
  
-    def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None, gripper_angle=None):
+    def move_rel_xyz(self, x_distance=0, y_distance=0, z_distance=0, vel=None):
         if vel is None:
             vel = self.get_speed('standard_xy')
         self.logger.debug(f"Moving robot relative to current position by x: {x_distance}, y: {y_distance}, z: {z_distance} mm, vel: {vel}")
@@ -4040,9 +4040,10 @@ class North_Robot(North_Base):
         
         target_x =  current_loc_mm[0] + x_distance
         target_y =  current_loc_mm[1] + y_distance
+        target_theta = math.degrees(current_loc_mm[2])
         target_z =  self.c9.counts_to_mm(z_axis, self.c9.get_axis_position(z_axis)) + z_distance
 
-        self.c9.move_xyz(target_x, target_y, target_z, vel=vel, tool_orientation=gripper_angle)
+        self.c9.move_xyz(target_x, target_y, target_z, vel=vel, tool_orientation=target_theta)
 
     #Move the robot to the home position    
     def move_home(self):

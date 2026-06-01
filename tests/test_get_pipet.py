@@ -25,7 +25,7 @@ def test_get_pipet(tip_types):
 #lash_e.nr_robot.home_robot_components()
 # Uncomment to test large tips:
 test_get_pipet(['large_tip'] * 3)
-input()
+#input()
 
 # Uncomment to test mixed types:
 # test_get_pipet(['small_tip', 'large_tip', 'small_tip'])

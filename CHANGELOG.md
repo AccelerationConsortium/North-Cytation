@@ -1,5 +1,62 @@
 # Changelog
 
+## [2026-06-01] - Two-Point Series Calibration Demo (v2 compartmentalized)
+
+### calibration_modular_v2/two_point_series_calibration_demo.py
+- ADDED: New standalone v2 demo script for two-point overaspirate calibration across 25, 50, 75, 100, 150 uL.
+- ADDED: Uses `HardwareCalibrationProtocol` directly for each liquid and volume, with 3 replicates per point.
+- ADDED: Implements v2 delta equation exactly: `spread_ul = max(abs(shortfall_ul) + tolerance_buffer_ul, 2.0)` and adaptive Point 2 direction.
+- ADDED: Computes interpolated optimal overaspirate from Point 1/Point 2 means and exports both detailed and summary CSV outputs.
+- ADDED: Includes placeholder baseline "existing best conditions" dictionary per liquid so source-of-best-params can be integrated later.
+
+## [2026-06-01] - Calibration Vials Short: Use Real HardwareCalibrationProtocol Infrastructure
+
+### workflows/calibration_vials_short_mass_validation.py
+- CHANGED: Complete refactor to use `HardwareCalibrationProtocol` directly (matching batch calibration pattern) instead of bypassing to Lash_E. Now respects tip conditioning and refill_pipets logic from protocol.
+- FIXED: Densities now sourced from protocol's `LIQUIDS` dict (single source of truth) instead of hardcoded values. No more silent fallbacks.
+- CHANGED: Vial names now use exact protocol names: updated references to match `LIQUIDS` dict keys.
+- CHANGED: Workflow iterates through liquids using `protocol.initialize(cfg)` -> `protocol.measure(state, 0.05mL, params, replicates=3)` -> `protocol.wrapup(state)` pattern (unified interface).
+
+### status/calibration_vials_short.csv
+- FIXED: Vial names updated to match protocol LIQUIDS dict exactly: `polymer_dmso` -> `PVA_DMSO`, `dmso` -> `DMSO`.
+
+## [2026-06-01] - Simple Calibration Vials Short Mass Validation Workflow
+
+### workflows/calibration_vials_short_mass_validation.py
+- CHANGED: Refactored workflow to use calibration_modular_v2 HardwareCalibrationProtocol directly (`initialize` -> `measure` -> `wrapup`) instead of embedded validation helpers.
+- ADDED: Per-liquid update of `calibration_modular_v2/north_robot_hardware.yaml` for `liquid`, `source_vial`, and `measurement_vial` before each protocol run.
+- ADDED: Automatic restoration of original hardware YAML after workflow completion/failure to avoid persistent config drift.
+- ADDED: Explicit preflight checks that fail loudly if required vial names are missing from `status/calibration_vials_short.csv` or if protocol liquid names are invalid.
+- ADDED: Consolidated CSV output in `output/calibration_vials_short_mass_validation_v2_<timestamp>.csv` with per-replicate measured volume fields from protocol results.
+
+## [2026-05-29] - MOF Multi-Run Template Example
+
+### workflows/mof_synthesis_workflow.py
+- ADDED: Commented `RUNS` template showing all supported per-run override keys (`reaction_vial`, `replicates`, `prepare_substock`, ratio, volume, temperature, sampling cadence, and dispense volume) for easier multi-run setup.
+
+## [2026-05-29] - MOF Workflow Config Loading Fix
+
+### workflows/mof_synthesis_workflow.py
+- FIXED: `Lash_E` initialization now passes `workflow_name="mof_synthesis_workflow"` along with `workflow_globals=globals()` so ConfigManager can load/save workflow YAML settings and GUI edits.
+
+## [2026-05-25] - Calibration Budget Enforcement and Retry Default
+
+### calibration_modular_v2/experiment.py
+- FIXED: Volume-budget accounting in optimization now uses protocol-reported `measurement_budget_consumed` instead of raw replicate counts.
+- FIXED: Optimization budget now includes already-executed two-point calibration trials when computing remaining volume budget.
+- FIXED: First-volume final calibration budget now derives from configured split `max_total_measurements - max_measurements_first_volume` (e.g., 96-87=9), replacing hardcoded budget value.
+- FIXED: Two-point calibration now computes required measurements as `2 * two_point_calibration_replicates` and validates against the phase budget before execution.
+- ADDED: Internal `_trial_budget_consumed()` helper to centralize budget-unit accounting from trial metadata.
+
+### calibration_modular_v2/calibration_protocol_northrobot.py
+- CHANGED: Added config-driven `experiment.max_retries_per_measurement` with default `0`.
+- CHANGED: Measurement retry loop now uses `max_retries_per_measurement` from protocol state instead of hardcoded retries.
+- CHANGED: Protocol state now stores `max_retries_per_measurement` for explicit runtime behavior.
+
+### workflows/surfactant_multidimensional_workflow.py
+- ADDED: Lightweight Slack notifications for workflow start, per-iteration completion, per-iteration skip (no feasible points), and workflow completion.
+- ADDED: Local best-effort Slack helper that is non-blocking and disabled in simulation mode.
+
 ## [2026-05-21] — Unified Feasibility Authority to Source-Achievable
 
 ### workflows/surfactant_multidimensional_workflow.py

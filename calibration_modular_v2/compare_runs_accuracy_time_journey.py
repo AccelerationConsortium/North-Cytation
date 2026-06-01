@@ -18,13 +18,14 @@ import matplotlib.colors as mcolors
 # ── Configuration ─────────────────────────────────────────────────────────────
 RUNS_BY_LIQUID = [
     {
-        "liquid": "DMSO",
-        "output": "dmso_accuracy_time_journey.png",
+        "liquid": "Glycerol",
+        "output": "glycerol_accuracy_time_journey.png",
         "dirs":   [
-            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779208775_DMSO",
-            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779212375_DMSO",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779237313_glycerol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779282234_glycerol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779731396_glycerol",
         ],
-        "labels": ["SOBOL+BAYESIAN", "SOBOL"],
+        "labels": ["SOBOL+BAYESIAN", "SOBOL", "SOBOL+BAYESIAN+TOOLS"],
     },
     {
         "liquid": "Water",
@@ -32,23 +33,46 @@ RUNS_BY_LIQUID = [
         "dirs":   [
             r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779220789_water",
             r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779224764_water",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779739005_water",
         ],
-        "labels": ["SOBOL+BAYESIAN", "SOBOL"],
+        "labels": ["SOBOL+BAYESIAN", "SOBOL", "SOBOL+BAYESIAN+TOOLS"],
     },
     {
-        "liquid": "Glycerol",
-        "output": "glycerol_accuracy_time_journey.png",
+        "liquid": "Alginate",
+        "output": "alginate_accuracy_time_journey.png",
         "dirs":   [
-            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779237313_glycerol",
-            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779282234_glycerol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779813169_agar_water_4%",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779820046_agar_water_4%",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779897239_agar_water_4%",
         ],
-        "labels": ["SOBOL+BAYESIAN", "SOBOL"],
+        "labels": ["SOBOL+BAYESIAN+TOOLS", "SOBOL+BAYESIAN", "SOBOL"],
+    },
+    {
+        "liquid": "PVA+DMSO",
+        "output": "pva_dmso_accuracy_time_journey.png",
+        "dirs":   [
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779290791_PVA_DMSO",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779471577_PVA_DMSO",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779906029_PVA_DMSO",
+        ],
+        "labels": ["SOBOL+BAYESIAN", "SOBOL", "SOBOL+BAYESIAN+TOOLS"],
+    },
+    {
+        "liquid": "DMSO",
+        "output": "dmso_accuracy_time_journey.png",
+        "dirs":   [
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779208775_DMSO",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779212375_DMSO",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779912579_DMSO",
+        ],
+        "labels": ["SOBOL+BAYESIAN", "SOBOL", "SOBOL+BAYESIAN+TOOLS"],
     },
 ]
 
 PALETTE = [
     ("#FF5722", "#FFCCBC"),   # (dark, light) for SOBOL+BAYESIAN
     ("#2196F3", "#BBDEFB"),   # (dark, light) for SOBOL
+    ("#4CAF50", "#C8E6C9"),   # (dark, light) for SOBOL+BAYESIAN+TOOLS
 ]
 COMPARISONS_DIR = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\comparisons"
 # ──────────────────────────────────────────────────────────────────────────────
@@ -59,7 +83,10 @@ def load_df(run_dir: str) -> pd.DataFrame:
     for col in ["deviation_pct", "duration_mean_s"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df["trial_num"] = df["trial_id"].str.extract(r"(\d+)").astype(int)
-    return df.sort_values("trial_num").reset_index(drop=True)
+    df = df.sort_values("trial_num").reset_index(drop=True)
+    # Add cumulative measurement count
+    df["cumulative_measurements"] = df["measurement_count"].cumsum()
+    return df
 
 
 def running_best_composite(df: pd.DataFrame) -> pd.DataFrame:
@@ -81,24 +108,24 @@ def running_best_composite(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_name: str) -> None:
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize=(12, 7))
     ax.set_title(
         f"Accuracy vs Time — Optimization Journey ({liquid_name})\n"
         "Each dot = one trial  |  Line = best solution found so far",
         fontsize=13, fontweight="bold"
     )
 
-    n_trials = max(len(df) for _, df in runs)
+    journey_points = []
 
-    for (label, df), (color_dark, color_light) in zip(runs, PALETTE):
+    for idx, ((label, df), (color_dark, color_light)) in enumerate(zip(runs, PALETTE)):
         # Colour each dot by trial order: light (early) -> dark (late)
         cmap = mcolors.LinearSegmentedColormap.from_list(
             f"cmap_{label}", [color_light, color_dark]
         )
-        norm = plt.Normalize(vmin=1, vmax=n_trials)
+        norm = plt.Normalize(vmin=1, vmax=max(df["trial_num"]))
         colors = [cmap(norm(t)) for t in df["trial_num"]]
 
-        # All trial dots
+        # All trial dots: x = duration, y = accuracy deviation
         ax.scatter(
             df["duration_mean_s"], df["deviation_pct"],
             c=colors, s=55, zorder=3, alpha=0.85, linewidths=0
@@ -106,6 +133,7 @@ def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_
 
         # Journey line through best-composite points
         best = running_best_composite(df)
+        journey_points.append(best[["duration_mean_s", "deviation_pct"]].copy())
         ax.plot(
             best["duration_mean_s"], best["deviation_pct"],
             color=color_dark, linewidth=2.2, zorder=4,
@@ -114,8 +142,9 @@ def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_
             label=label
         )
 
-        # Annotate trial numbers on journey waypoints
-        for _, row in best.iterrows():
+        # Annotate trial numbers on journey waypoints (only on every Nth waypoint to avoid clutter)
+        waypoints = best.iloc[::max(1, len(best)//3)]  # Sample ~3 waypoints
+        for _, row in waypoints.iterrows():
             ax.annotate(
                 f"T{int(row['trial_num'])}",
                 xy=(row["duration_mean_s"], row["deviation_pct"]),
@@ -131,8 +160,8 @@ def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_
             edgecolors="white", linewidths=0.8
         )
 
-    # Colourbar to show trial progression
-    sm = plt.cm.ScalarMappable(cmap="Greys", norm=plt.Normalize(vmin=1, vmax=n_trials))
+    # Colourbar to show trial progression (for reference only)
+    sm = plt.cm.ScalarMappable(cmap="Greys", norm=plt.Normalize(vmin=1, vmax=max(df["trial_num"].max() for _, df in runs)))
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=ax, pad=0.02)
     cbar.set_label("Trial number (dot shade)", fontsize=9)
@@ -141,6 +170,29 @@ def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_
     ax.set_ylabel("|Accuracy deviation| (%)", fontsize=11)
     ax.grid(True, linestyle="--", alpha=0.4)
     ax.legend(fontsize=10, loc="upper right")
+
+    # Auto-zoom: trim high-end outliers while preserving journey visibility.
+    all_times = pd.concat([df["duration_mean_s"] for _, df in runs])
+    all_devs = pd.concat([df["deviation_pct"] for _, df in runs])
+    journey_df = pd.concat(journey_points, ignore_index=True)
+
+    x_max = max(all_times.quantile(0.95), journey_df["duration_mean_s"].max())
+
+    # Y-limits come from points inside the kept x-range so low-time/high-deviation
+    # points remain visible even when trimming very slow outliers.
+    in_zoom_x = all_times <= x_max
+    y_trimmed = all_devs[in_zoom_x]
+    y_min = min(y_trimmed.min(), journey_df["deviation_pct"].min())
+    y_max = max(y_trimmed.quantile(0.95), journey_df["deviation_pct"].max())
+
+    # Derive x_min from data that remains visible after y-trimming, while
+    # always keeping journey points in view.
+    in_zoom_y = all_devs <= y_max
+    x_trimmed = all_times[in_zoom_y]
+    x_min = min(x_trimmed.min(), journey_df["duration_mean_s"].min())
+
+    ax.set_xlim(left=x_min, right=x_max * 1.05)
+    ax.set_ylim(bottom=max(0, y_min * 0.95), top=y_max * 1.10)
 
     # Dashed reference lines at 5% accuracy and 30s as rough targets
     ax.axhline(5.0,  color="grey", linestyle=":", linewidth=1, alpha=0.6)

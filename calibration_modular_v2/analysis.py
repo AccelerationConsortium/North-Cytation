@@ -37,7 +37,7 @@ from .data_structures import (
     RawMeasurement, AdaptiveMeasurementResult, TrialResult, 
     QualityEvaluation, VolumeTolerances, PipettingParameters
 )
-from config_manager import ExperimentConfig, ObjectiveWeights
+from .config_manager import ExperimentConfig, ObjectiveWeights
 
 logger = logging.getLogger(__name__)
 
