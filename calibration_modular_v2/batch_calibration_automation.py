@@ -43,13 +43,13 @@ LIQUIDS_TO_CALIBRATE = [
     #  },
         # --- GLYCEROL ---
     {
-       'liquid_name': 'DMSO',
-       'target_vial': 'dmso',
+       'liquid_name': 'ethanol',
+       'target_vial': 'ethanol',
        'volume_targets_ml': [0.050],
       },
     #  {
-    #      'liquid_name': 'glycerol',
-    #      'target_vial': 'glycerol',
+    #      'liquid_name': 'ethanol',
+    #      'target_vial': 'ethanol',
     #      'volume_targets_ml': [0.050],
     #      'num_screening_trials': 32,  # SOBOL-only: fills entire budget
     #  },

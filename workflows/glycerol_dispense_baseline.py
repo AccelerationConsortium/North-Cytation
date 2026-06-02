@@ -96,6 +96,8 @@ def _interrupt_handler(signum, frame):
     
     if lash_e and current_vial_name:
         try:
+            lash_e.nr_robot.remove_pipet()
+
             print(f"🔒 Recapping clamp vial ({current_vial_name})...")
             lash_e.nr_robot.recap_clamp_vial()
             
