@@ -15,11 +15,29 @@ Usage: edit RUNS_BY_LIQUID and COLORS, then run.
 """
 
 import os
-import statistics
+import yaml
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+
+
+def _desirability(metric: float, tolerance: float, s: float = 2.0) -> float:
+    """Soft desirability: 1.0=perfect, 0.5=at tolerance, >0 beyond tolerance."""
+    return 1.0 / (1.0 + (metric / tolerance) ** s)
+
+
+def _get_tolerance_pct(run_dir: str) -> float:
+    """Read volume target from experiment_config_used.yaml and return the matching tolerance %."""
+    cfg_path = os.path.join(run_dir, "experiment_config_used.yaml")
+    with open(cfg_path) as f:
+        cfg = yaml.safe_load(f)
+    vol_ml = cfg["experiment"]["volume_targets_ml"][0]
+    vol_ul = vol_ml * 1000
+    for vr in cfg["tolerances"]["volume_ranges"]:
+        if vr["volume_min_ul"] <= vol_ul <= vr["volume_max_ul"]:
+            return float(vr["tolerance_pct"])
+    return 3.0  # fallback
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 RUNS_BY_LIQUID = [
@@ -73,6 +91,16 @@ RUNS_BY_LIQUID = [
         ],
         "labels": ["SOBOL+BAYESIAN", "SOBOL", "SOBOL+BAYESIAN+TOOLS"],
     },
+    {
+        "liquid": "Ethanol",
+        "output": "ethanol_best_over_trials.png",
+        "dirs":   [
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780412080_ethanol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780417119_ethanol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780420806_ethanol",
+        ],
+        "labels": ["SOBOL+BAYESIAN+TOOLS", "SOBOL+BAYESIAN", "SOBOL"],
+    },
 ]
 
 COLORS = [
@@ -86,38 +114,36 @@ COMPARISONS_DIR = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibratio
 def load_trial_results(run_dir: str) -> pd.DataFrame:
     csv_path = f"{run_dir}/trial_results.csv"
     df = pd.read_csv(csv_path)
-    for col in ["deviation_pct", "precision_cv_pct", "duration_mean_s"]:
+    for col in ["deviation_pct", "precision_cv_pct", "duration_mean_s", "measurement_count"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df["trial_num"] = df["trial_id"].str.extract(r"(\d+)").astype(int)
     df = df.sort_values("trial_num").reset_index(drop=True)
-    # Add cumulative measurement count
+    # Filter out single-measurement trials: CV is undefined with n=1, distorts precision scoring
+    df = df[df["measurement_count"] >= 2].reset_index(drop=True)
+    # Recompute cumulative measurements after filtering
     df["cumulative_measurements"] = df["measurement_count"].cumsum()
     return df
 
 
-def add_cross_run_composite(runs: list[tuple[str, pd.DataFrame]]) -> None:
-    """Recompute composite score using the combined population of all runs.
+def add_cross_run_composite(runs: list[tuple[str, pd.DataFrame, str]]) -> None:
+    """Recompute composite desirability score using per-run tolerance from config.
 
-    The per-run SDL composite stored in the CSV is normalized against each
-    run's own population, making cross-run comparison meaningless.  Here we
-    pool every trial from every run, compute combined stds, and re-score so
-    both runs are on the same scale.
+    Desirability: d=1/(1+(metric/tolerance)^2), higher=better.
+    Time normalized across the combined population (no fixed reference).
+    Weights: accuracy=0.4, precision=0.5, time=0.1.
     """
-    all_dfs = [df for _, df in runs]
+    all_dfs = [df for _, df, _ in runs]
     combined = pd.concat(all_dfs, ignore_index=True)
+    t_min = combined["duration_mean_s"].min()
+    t_max = combined["duration_mean_s"].max()
+    t_range = max(t_max - t_min, 1.0)
 
-    acc_std  = max(combined["deviation_pct"].std(),    0.1)
-    prec_std = max(combined["precision_cv_pct"].std(), 0.1)
-    time_std = max(combined["duration_mean_s"].std(),  1.0)
-
-    # Same weights as the system (equal weighting — adjust if needed)
-    acc_w, prec_w, time_w = 1.0, 1.0, 1.0
-
-    for _, df in runs:
+    for _, df, run_dir in runs:
+        tol = _get_tolerance_pct(run_dir)
         df["cross_composite"] = (
-            acc_w  * df["deviation_pct"]    / acc_std  * 100 +
-            prec_w * df["precision_cv_pct"] / prec_std * 100 +
-            time_w * df["duration_mean_s"]  / time_std * 100
+            0.4 * df["deviation_pct"].apply(lambda x: _desirability(x, tol)) +
+            0.5 * df["precision_cv_pct"].apply(lambda x: _desirability(x, tol)) +
+            0.1 * (t_max - df["duration_mean_s"]) / t_range
         )
 
 
@@ -128,22 +154,22 @@ def best_over_trials(series: pd.Series, lower_is_better: bool = True) -> pd.Seri
     return series.cummax()
 
 
-def plot_comparison(runs: list[tuple[str, pd.DataFrame]], liquid_name: str) -> None:
+def plot_comparison(runs: list[tuple[str, pd.DataFrame, str]], liquid_name: str) -> None:
     metrics = [
         ("deviation_pct",    "Best Accuracy\n(|Deviation %|, lower = better)",              True),
         ("precision_cv_pct", "Best Precision\n(CV %, lower = better)",                      True),
         ("duration_mean_s",  "Best Time\n(Mean duration s, lower = better)",                True),
-        ("cross_composite",  "Best Composite Score\n(cross-run normalized, lower = better)", True),
+        ("cross_composite",  "Best Composite Score\n(desirability, higher = better)", False),
     ]
 
     n_runs = len(runs)
     fig, axes = plt.subplots(2, 2, figsize=(13, 9))
     axes = axes.flatten()
-    fig.suptitle(f"Best Metric Achieved Over Measurements — {liquid_name} ({n_runs}-way Comparison)", 
+    fig.suptitle(f"Best Metric Achieved Over Measurements -- {liquid_name} ({n_runs}-way Comparison)", 
                  fontsize=14, fontweight="bold")
 
     for ax, (col, title, lower_is_better) in zip(axes, metrics):
-        for (label, _), color, (_, df) in zip(runs, COLORS[:len(runs)], runs):
+        for (label, df, _), color in zip(runs, COLORS[:len(runs)]):
             # Cap at 96 measurements
             df_capped = df[df["cumulative_measurements"] <= 96]
             x = df_capped["cumulative_measurements"]
@@ -161,7 +187,7 @@ def plot_comparison(runs: list[tuple[str, pd.DataFrame]], liquid_name: str) -> N
 
     # Annotate final best values
     for ax, (col, _, lower_is_better) in zip(axes, metrics):
-        for (label, _), color, (_, df) in zip(runs, COLORS[:len(runs)], runs):
+        for (label, df, _), color in zip(runs, COLORS[:len(runs)]):
             df_capped = df[df["cumulative_measurements"] <= 96]
             if len(df_capped) > 0:
                 final_best = best_over_trials(df_capped[col], lower_is_better).iloc[-1]
@@ -185,7 +211,7 @@ def main():
             try:
                 df = load_trial_results(run_dir)
                 print(f"  {label}: {len(df)} trials, {df['measurement_count'].sum():.0f} total measurements")
-                runs.append((label, df))
+                runs.append((label, df, run_dir))
             except FileNotFoundError as e:
                 print(f"  WARNING: Skipping {label} ({run_dir}) - file not found: {e}")
                 continue

@@ -10,6 +10,7 @@ Usage: edit RUN_DIRS, RUN_LABELS, and OUTPUT_NAME, then run.
 """
 
 import os
+import yaml
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -67,6 +68,16 @@ RUNS_BY_LIQUID = [
         ],
         "labels": ["SOBOL+BAYESIAN", "SOBOL", "SOBOL+BAYESIAN+TOOLS"],
     },
+    {
+        "liquid": "Ethanol",
+        "output": "ethanol_accuracy_time_journey.png",
+        "dirs":   [
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780412080_ethanol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780417119_ethanol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780420806_ethanol",
+        ],
+        "labels": ["SOBOL+BAYESIAN+TOOLS", "SOBOL+BAYESIAN", "SOBOL"],
+    },
 ]
 
 PALETTE = [
@@ -80,44 +91,74 @@ COMPARISONS_DIR = r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibratio
 
 def load_df(run_dir: str) -> pd.DataFrame:
     df = pd.read_csv(f"{run_dir}/trial_results.csv")
-    for col in ["deviation_pct", "duration_mean_s"]:
+    for col in ["deviation_pct", "precision_cv_pct", "duration_mean_s", "measurement_count"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df["trial_num"] = df["trial_id"].str.extract(r"(\d+)").astype(int)
     df = df.sort_values("trial_num").reset_index(drop=True)
-    # Add cumulative measurement count
+    # Filter out single-measurement trials: CV is undefined with n=1, distorts precision scoring
+    df = df[df["measurement_count"] >= 2].reset_index(drop=True)
+    # Recompute cumulative measurements after filtering
     df["cumulative_measurements"] = df["measurement_count"].cumsum()
     return df
 
 
-def running_best_composite(df: pd.DataFrame) -> pd.DataFrame:
-    """Return rows that were the best composite point (min accuracy+time sum,
-    cross-normalized) at the moment they were seen."""
-    # Simple equal-weight composite on normalised axes so both runs share the same scale
-    acc_std  = max(df["deviation_pct"].std(),   0.1)
-    time_std = max(df["duration_mean_s"].std(), 1.0)
-    df = df.copy()
-    df["_score"] = df["deviation_pct"] / acc_std + df["duration_mean_s"] / time_std
+def _desirability(metric: float, tolerance: float, s: float = 2.0) -> float:
+    """Soft desirability: 1.0=perfect, 0.5=at tolerance, >0 beyond tolerance."""
+    return 1.0 / (1.0 + (metric / tolerance) ** s)
 
-    best_score = np.inf
+
+def _get_tolerance_pct(run_dir: str) -> float:
+    """Read volume target from experiment_config_used.yaml and return the matching tolerance %."""
+    cfg_path = os.path.join(run_dir, "experiment_config_used.yaml")
+    with open(cfg_path) as f:
+        cfg = yaml.safe_load(f)
+    vol_ml = cfg["experiment"]["volume_targets_ml"][0]
+    vol_ul = vol_ml * 1000
+    for vr in cfg["tolerances"]["volume_ranges"]:
+        if vr["volume_min_ul"] <= vol_ul <= vr["volume_max_ul"]:
+            return float(vr["tolerance_pct"])
+    return 3.0  # fallback
+
+
+def running_best_composite(df: pd.DataFrame, run_dir: str) -> pd.DataFrame:
+    """Return rows that set a new best desirability at the moment they were seen.
+
+    Desirability: d=1/(1+(metric/tolerance)^2), higher=better.
+    Time normalized within this run's population.
+    Weights: accuracy=0.4, precision=0.5, time=0.1.
+    """
+    tol = _get_tolerance_pct(run_dir)
+    t_min = df["duration_mean_s"].min()
+    t_max = df["duration_mean_s"].max()
+    t_range = max(t_max - t_min, 1.0)
+
+    df = df.copy()
+    df["_score"] = (
+        0.4 * df["deviation_pct"].apply(lambda x: _desirability(x, tol)) +
+        0.5 * df["precision_cv_pct"].apply(lambda x: _desirability(x, tol)) +
+        0.1 * (t_max - df["duration_mean_s"]) / t_range
+    )
+
+    best_score = -np.inf
     best_rows = []
     for _, row in df.iterrows():
-        if row["_score"] < best_score:
+        if row["_score"] > best_score:
             best_score = row["_score"]
             best_rows.append(row)
     return pd.DataFrame(best_rows)
 
 
-def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_name: str) -> None:
+def plot_journey(runs: list[tuple[str, pd.DataFrame, str]], liquid_name: str, output_name: str) -> None:
     fig, ax = plt.subplots(figsize=(12, 7))
     ax.set_title(
-        f"Accuracy vs Time — Optimization Journey ({liquid_name})\n"
+        f"Accuracy vs Time -- Optimization Journey ({liquid_name})\n"
         "Each dot = one trial  |  Line = best solution found so far",
         fontsize=13, fontweight="bold"
     )
 
     journey_points = []
 
-    for idx, ((label, df), (color_dark, color_light)) in enumerate(zip(runs, PALETTE)):
+    for idx, ((label, df, run_dir), (color_dark, color_light)) in enumerate(zip(runs, PALETTE)):
         # Colour each dot by trial order: light (early) -> dark (late)
         cmap = mcolors.LinearSegmentedColormap.from_list(
             f"cmap_{label}", [color_light, color_dark]
@@ -132,7 +173,7 @@ def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_
         )
 
         # Journey line through best-composite points
-        best = running_best_composite(df)
+        best = running_best_composite(df, run_dir)
         journey_points.append(best[["duration_mean_s", "deviation_pct"]].copy())
         ax.plot(
             best["duration_mean_s"], best["deviation_pct"],
@@ -161,7 +202,7 @@ def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_
         )
 
     # Colourbar to show trial progression (for reference only)
-    sm = plt.cm.ScalarMappable(cmap="Greys", norm=plt.Normalize(vmin=1, vmax=max(df["trial_num"].max() for _, df in runs)))
+    sm = plt.cm.ScalarMappable(cmap="Greys", norm=plt.Normalize(vmin=1, vmax=max(df["trial_num"].max() for _, df, _ in runs)))
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=ax, pad=0.02)
     cbar.set_label("Trial number (dot shade)", fontsize=9)
@@ -172,8 +213,8 @@ def plot_journey(runs: list[tuple[str, pd.DataFrame]], liquid_name: str, output_
     ax.legend(fontsize=10, loc="upper right")
 
     # Auto-zoom: trim high-end outliers while preserving journey visibility.
-    all_times = pd.concat([df["duration_mean_s"] for _, df in runs])
-    all_devs = pd.concat([df["deviation_pct"] for _, df in runs])
+    all_times = pd.concat([df["duration_mean_s"] for _, df, _ in runs])
+    all_devs = pd.concat([df["deviation_pct"] for _, df, _ in runs])
     journey_df = pd.concat(journey_points, ignore_index=True)
 
     x_max = max(all_times.quantile(0.95), journey_df["duration_mean_s"].max())
@@ -214,7 +255,7 @@ def main():
         for run_dir, label in zip(cfg["dirs"], cfg["labels"]):
             df = load_df(run_dir)
             print(f"  {label}: {len(df)} trials")
-            runs.append((label, df))
+            runs.append((label, df, run_dir))
         plot_journey(runs, cfg["liquid"], cfg["output"])
 
 
