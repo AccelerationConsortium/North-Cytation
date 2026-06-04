@@ -1,5 +1,57 @@
 # Changelog
 
+## [2026-06-03] - Fix Embedded Validation Overaspirate Runaway
+
+### pipetting_data/embedded_calibration_validation.py
+- **FIXED**: `_interpolate_optimal_overaspirate` now clamps slope to [0.5, 1.5] uL/uL (mirrors v2 `_compute_optimal_overaspirate`). Degenerate/negative slopes (caused by Stage 2 landing on the same side as Stage 1 due to noise + zero-floor clamping) returned Stage 3 overaspirate of +44 uL, causing a +52 uL dispensing error and workflow stoppage on 2026-06-02.
+- **FIXED**: Stage 2 crossing strategy now allows negative overaspirate (±10 uL delta from baseline) instead of clamping to 0.0, allowing proper bracketing of the target.
+- **FIXED**: Stage 2 and Stage 3 over-threshold results now log a warning and continue to the best-stage selection logic, rather than calling `pause_after_error` and raising. Workflow no longer halts on a bad optimization stage.
+
+## [2026-06-03] - Heating Mantle Positioning and Mixing Test
+
+### tests/Heating positioning.py (new)
+### status/heating_mantle_vials.csv (new)
+- **ADDED**: Test script that moves four open-top vials (V0-V3, ~2 mL each) sequentially
+  through heating mantle positions 2, 5, 8, and 4.
+- For each vial: robot places it in the heater, returns it to the safe pipetting rack,
+  mixes it (5 x 0.5 mL aspirate-dispense cycles back into the same vial), removes the
+  pipet tip, then returns the vial to its heater position.
+- All vials are returned home at the end of the run.
+- `SIMULATE = True` by default; set to `False` for live hardware.
+
+## [2026-06-02] - Desirability-Based Composite Scoring
+
+### calibration_modular_v2/compare_runs_best_over_trials.py
+### calibration_modular_v2/compare_runs_accuracy_time_journey.py
+### calibration_modular_v2/two_point_series_calibration_demo.py
+- **CHANGED**: Replaced stdev-normalized SDL composite score with desirability scoring.
+  - **Before**: `score = 0.4*(dev/acc_std)*100 + 0.5*(cv/prec_std)*100 + 0.1*(t/time_std)*100` (lower=better)
+  - **After**: `desirability = 0.4*d(dev,tol) + 0.5*d(cv,tol) + 0.1*d_time` (higher=better)
+  - Desirability: `d(x, tol) = 1 / (1 + (x/tol)^2)` — soft boundary, 1.0=perfect, 0.5=at tolerance, never clips to zero.
+  - Tolerance sourced from `experiment_config_used.yaml` per run dir (volume-dependent: 1%/2%/3%/10%).
+  - Time normalized within population `(t_max - t) / (t_max - t_min)` — no fixed reference needed.
+- **REASON**: Stdev normalization allowed outlier precision values (e.g. cv=0.14% vs population mean ~2%) to dominate scoring, selecting trials with poor accuracy. Desirability scoring treats any cv below the tolerance as diminishing returns, which matches physical reality.
+- Composite panel in best_over_trials plots now labeled "desirability, higher = better".
+- All 12 comparison plots regenerated (output/comparisons/).
+
+## [2026-06-02] - Baseline Parameter Extraction & SDL Composite Score Fix
+
+### calibration_modular_v2/compare_runs_accuracy_time_journey.py
+- **CRITICAL FIX**: `running_best_composite()` now includes precision (CV %) in SDL composite score calculation.
+  - **Before**: `score = deviation_pct / acc_std + duration_s / time_std` (ignored precision entirely)
+  - **After**: `score = acc_w * deviation / acc_std + prec_w * precision_cv / prec_std + time_w * duration / time_std` (matches real v2 logic)
+  - This was causing the trajectory plot to select wrong "best" conditions when precision varied significantly.
+
+### calibration_modular_v2/two_point_series_calibration_demo.py
+- **ADDED**: Baseline parameter extraction from prior trial_results.csv using SDL composite scoring (with precision).
+  - New configuration dict `TRIAL_RESULTS_BY_LIQUID` at top of file for specifying trial_results.csv paths per liquid.
+  - New function `_load_trial_results()`: Loads CSV and filters to trials with >=2 measurements only (can't calculate precision with n=1).
+  - New function `_extract_best_trial_parameters()`: Calculates SDL composite score using population normalization (same as v2 analysis.py).
+  - New function `_get_baseline_params_for_liquid()`: Wrapper to load from file or fall back to defaults.
+- **CHANGED**: Demo now sources real baseline parameters from optimization runs instead of hardcoded defaults.
+  - Falls back to `DEFAULT_BASELINE_PARAMS` if trial_results.csv not provided or not found.
+- **IMPROVED**: Logging now shows composite score breakdown when extracting baseline.
+
 ## [2026-06-02] - Volume Audit Refill Tracking and Baseline Assumption
 
 ### output/volume_audit_20260602_171504/volume_audit_from_log.py
@@ -33,7 +85,6 @@
 - ADDED: Uses `HardwareCalibrationProtocol` directly for each liquid and volume, with 3 replicates per point.
 - ADDED: Implements v2 delta equation exactly: `spread_ul = max(abs(shortfall_ul) + tolerance_buffer_ul, 2.0)` and adaptive Point 2 direction.
 - ADDED: Computes interpolated optimal overaspirate from Point 1/Point 2 means and exports both detailed and summary CSV outputs.
-- ADDED: Includes placeholder baseline "existing best conditions" dictionary per liquid so source-of-best-params can be integrated later.
 
 ## [2026-06-01] - Calibration Vials Short: Use Real HardwareCalibrationProtocol Infrastructure
 
