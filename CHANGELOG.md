@@ -1,5 +1,31 @@
 # Changelog
 
+## [2026-06-02] - Volume Audit Refill Tracking and Baseline Assumption
+
+### output/volume_audit_20260602_171504/volume_audit_from_log.py
+- CHANGED: Added explicit parsing for water refill actions (`Filling water vial ... (adding XmL)`) as `water_refill_add` events.
+- CHANGED: Added explicit parsing for surfactant stock refill actions (`Refilling surfactant vial ... (adding XmL)`) as `stock_refill_add` events.
+- ADDED: Added parsing of refill transfer lines (`Dispensing XmL from *_refill to *_stock`) to track refill source depletion as `stock_refill_source_out`.
+- ADDED: Implemented requested baseline assumption that non-substock, non-water vials start at 7.8mL, recorded as `assumed_initial_volume`.
+- CHANGED: Initialization now occurs lazily when a vial first appears in an authoritative event, ensuring assumption events are explicit in per-vial CSV traces.
+
+## [2026-06-02] - Vial Movement and Aspiration-Location Analysis
+
+### output/volume_audit_20260602_171504/volume_audit_from_log.py
+- ADDED: Parsed vial movement events from workflow logs (`Moving vial X to LOCATION: INDEX`) and tracked live vial location state.
+- ADDED: Captured location-at-aspiration for all well-withdrawal sources (including substocks), linking each aspiration to the vial location active at that line.
+- ADDED: Added `source_type` classification (`substock` vs `non_substock`) in aspiration-location CSV outputs for easier filtering.
+- ADDED: New location analysis outputs under per-run `location_analysis/`:
+  - `movement_events.csv`
+  - `movement_summary_by_vial.csv`
+  - `movement_summary_by_vial_location.csv`
+  - `well_aspiration_location_events.csv`
+  - `well_aspiration_summary_by_vial.csv`
+  - `well_aspiration_summary_by_vial_location.csv`
+- ADDED: New location plots under `location_analysis/plots/`:
+  - `top_vial_location_aspirations.png`
+  - per-vial aspiration-location bar charts (for non-substock sources)
+
 ## [2026-06-01] - Two-Point Series Calibration Demo (v2 compartmentalized)
 
 ### calibration_modular_v2/two_point_series_calibration_demo.py
