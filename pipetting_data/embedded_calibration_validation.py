@@ -473,14 +473,28 @@ def _interpolate_optimal_overaspirate(point1_overaspirate: float, point1_measure
     
     slope = volume_diff / overaspirate_diff
     
+    # Physics-based slope bounds (mirrors calibration_modular_v2 _compute_optimal_overaspirate).
+    # slope < 0.1 uL/uL means degenerate/negative — Stage 2 failed to bracket the target,
+    # so extrapolation would produce nonsense (as seen in the +52 uL Stage 3 incident).
+    MIN_SLOPE, MAX_SLOPE = 0.5, 1.5
+    if slope < 0.1:
+        print(f"      WARNING: Degenerate slope ({slope:.3f} uL/uL) — Stage 2 did not bracket target. Returning Stage 1 overaspirate as fallback.")
+        return point1_overaspirate
+    if not (MIN_SLOPE <= slope <= MAX_SLOPE):
+        print(f"      WARNING: Slope {slope:.3f} uL/uL outside physical bounds [{MIN_SLOPE}, {MAX_SLOPE}], clamping.")
+        slope = max(MIN_SLOPE, min(MAX_SLOPE, slope))
+    
     # Linear interpolation: target = point1_measured + slope * (optimal_overaspirate - point1_overaspirate)
     # Solve for optimal_overaspirate
     volume_needed = target_volume - point1_measured
-    overaspirate_adjustment = volume_needed / slope if abs(slope) > 1e-6 else 0
+    overaspirate_adjustment = volume_needed / slope
     optimal_overaspirate = point1_overaspirate + overaspirate_adjustment
     
-    # Safety bounds: prevent negative values only
-    optimal_overaspirate = max(0.0, optimal_overaspirate)  # No upper limit - trust calibration data
+    # Delta clamp: this is a fine-tuning adjustment, not a full recalibration.
+    # Limit how far we move from the baseline (point1) in either direction.
+    DELTA_LIMIT_ML = 0.010  # +/- 10 uL max adjustment
+    optimal_overaspirate = max(point1_overaspirate - DELTA_LIMIT_ML,
+                               min(point1_overaspirate + DELTA_LIMIT_ML, optimal_overaspirate))
     
     return optimal_overaspirate
 
@@ -962,12 +976,16 @@ def validate_pipetting_accuracy(
                     if abs(needed_adjustment) < min_adjustment:
                         needed_adjustment = min_adjustment * (1 if needed_adjustment >= 0 else -1)
                     
-                    # Apply the adjustment
+                    # Apply the adjustment.
+                    # Allow negative overaspirate so Stage 2 can bracket the target from below.
+                    # Clamp to +/-10 uL from baseline — this is fine-tuning, not recalibration.
+                    DELTA_LIMIT_ML = 0.010
                     stage2_overaspirate = initial_overaspirate + needed_adjustment
-                    stage2_overaspirate = max(0.0, stage2_overaspirate)  # Non-negative bound
+                    stage2_overaspirate = max(initial_overaspirate - DELTA_LIMIT_ML,
+                                              min(initial_overaspirate + DELTA_LIMIT_ML, stage2_overaspirate))
                     
                     print(f"      Stage 1 error: {stage1_error_ml*1000:+.1f}uL, targeting opposite error: {target_stage2_error*1000:+.1f}uL")
-                    print(f"      Crossing strategy: adjusting overaspirate by {needed_adjustment*1000:+.1f}uL to {stage2_overaspirate:.4f}mL")
+                    print(f"      Crossing strategy: adjusting overaspirate by {needed_adjustment*1000:+.1f}uL to {stage2_overaspirate:.4f}mL (may be negative)")
                     
                     # Create Stage 2 parameters by copying all optimized params
                     stage2_params = PipettingParameters()
@@ -1024,13 +1042,14 @@ def validate_pipetting_accuracy(
                             target_ul = volume_ml * 1000
                             error_threshold_ul = 0.05 * target_ul + 5.0  # 5% + 5 uL
                             if abs(measured_ul - target_ul) > error_threshold_ul:
-                                error_msg = (
+                                warn_msg = (
                                     f"Stage 2 dispensed {measured_ul:.2f}uL vs {target_ul:.1f}uL target "
                                     f"(error {measured_ul - target_ul:+.1f}uL, threshold +/-{error_threshold_ul:.1f}uL). "
-                                    f"Check tip attachment, liquid availability, and vial positioning."
+                                    f"Continuing — best stage logic will fall back to Stage 1 if needed."
                                 )
-                                lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
-                                raise ValueError(error_msg)
+                                lash_e.logger.warning(warn_msg)
+                                stage2_volumes.append(stage2_mass / density)
+                                break
                         
                         stage2_volume = stage2_mass / density
                         stage2_volumes.append(stage2_volume)
@@ -1132,13 +1151,14 @@ def validate_pipetting_accuracy(
                             target_ul = volume_ml * 1000
                             error_threshold_ul = 0.05 * target_ul + 5.0  # 5% + 5 uL
                             if abs(measured_ul - target_ul) > error_threshold_ul:
-                                error_msg = (
+                                warn_msg = (
                                     f"Stage 3 dispensed {measured_ul:.2f}uL vs {target_ul:.1f}uL target "
                                     f"(error {measured_ul - target_ul:+.1f}uL, threshold +/-{error_threshold_ul:.1f}uL). "
-                                    f"Check tip attachment, liquid availability, and vial positioning."
+                                    f"Continuing — best stage logic will fall back to Stage 1 or 2 if needed."
                                 )
-                                lash_e.nr_robot.pause_after_error(error_msg, send_slack=True)
-                                raise ValueError(error_msg)
+                                lash_e.logger.warning(warn_msg)
+                                stage3_volumes.append(stage3_mass / density)
+                                break
                         
                         stage3_volume = stage3_mass / density
                         stage3_volumes.append(stage3_volume)

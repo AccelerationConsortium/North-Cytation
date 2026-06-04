@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026-06-03] - Fix Embedded Validation Overaspirate Runaway
+
+### pipetting_data/embedded_calibration_validation.py
+- **FIXED**: `_interpolate_optimal_overaspirate` now clamps slope to [0.5, 1.5] uL/uL (mirrors v2 `_compute_optimal_overaspirate`). Degenerate/negative slopes (caused by Stage 2 landing on the same side as Stage 1 due to noise + zero-floor clamping) returned Stage 3 overaspirate of +44 uL, causing a +52 uL dispensing error and workflow stoppage on 2026-06-02.
+- **FIXED**: Stage 2 crossing strategy now allows negative overaspirate (±10 uL delta from baseline) instead of clamping to 0.0, allowing proper bracketing of the target.
+- **FIXED**: Stage 2 and Stage 3 over-threshold results now log a warning and continue to the best-stage selection logic, rather than calling `pause_after_error` and raising. Workflow no longer halts on a bad optimization stage.
+
 ## [2026-06-03] - Heating Mantle Positioning and Mixing Test
 
 ### tests/Heating positioning.py (new)

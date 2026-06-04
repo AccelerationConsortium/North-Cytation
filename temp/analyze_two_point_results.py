@@ -11,8 +11,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-SUMMARY = "output/two_point_series_demo_summary_20260602_183433.csv"
-DETAILS = "output/two_point_series_demo_details_20260602_183433.csv"
+SUMMARIES = [
+    "output/two_point_series_demo_summary_20260602_183433.csv",
+    "output/two_point_series_demo_summary_20260604_121212.csv",
+    "output/two_point_series_demo_summary_20260604_155945.csv",
+]
+DETAILS_FILES = [
+    "output/two_point_series_demo_details_20260602_183433.csv",
+    "output/two_point_series_demo_details_20260604_121212.csv",
+    "output/two_point_series_demo_details_20260604_155945.csv",
+]
 
 OUT_DIR = Path("output/two_point_analysis")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -23,10 +31,17 @@ SBT_TRIAL_RESULTS = {
     "DMSO":     "calibration_modular_v2/output/run_1779912579_DMSO/trial_results.csv",
     "water":    "calibration_modular_v2/output/run_1779739005_water/trial_results.csv",
     "ethanol":  "calibration_modular_v2/output/run_1780412080_ethanol/trial_results.csv",
+    "glycerol":      "calibration_modular_v2/output/run_1780513054_glycerol/trial_results.csv",
+    "alginate":      "calibration_modular_v2/output/run_1779897239_agar_water_4%/trial_results.csv",
 }
 
-df = pd.read_csv(SUMMARY)
-det = pd.read_csv(DETAILS)
+df = pd.concat([pd.read_csv(p) for p in SUMMARIES], ignore_index=True)
+det = pd.concat([pd.read_csv(p) for p in DETAILS_FILES], ignore_index=True)
+
+# Normalise liquid names
+_remap = {"agar_water_4%": "alginate"}
+df["liquid_name"]  = df["liquid_name"].replace(_remap)
+det["liquid_name"] = det["liquid_name"].replace(_remap)
 
 # ── 1. P3 calibration accuracy ──────────────────────────────────────────────
 print("=" * 65)
@@ -94,9 +109,12 @@ for liq in df["liquid_name"].unique():
 
 # ── 3. R2 plot: target vs P3 measured, one panel per liquid ─────────────────
 liquids = df["liquid_name"].unique()
-colors = {"PVA_DMSO": "#e07b39", "DMSO": "#5b8fd4", "water": "#4caf7d", "ethanol": "#b05fc9"}
+colors = {"PVA_DMSO": "#e07b39", "DMSO": "#5b8fd4", "water": "#4caf7d", "ethanol": "#b05fc9", "glycerol": "#c0392b", "alginate": "#7d5a9e"}
 
-fig, axes = plt.subplots(2, 2, figsize=(10, 9))
+n = len(liquids)
+ncols = 3
+nrows = (n + ncols - 1) // ncols
+fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4.5 * nrows))
 axes = axes.flatten()
 
 for ax, liq in zip(axes, liquids):
@@ -122,6 +140,8 @@ for ax, liq in zip(axes, liquids):
     ax.legend(fontsize=8)
 
 fig.suptitle("Two-Point Calibration: P3 Validation Accuracy", fontsize=13, fontweight="bold")
+for ax in axes[len(liquids):]:
+    ax.set_visible(False)
 fig.tight_layout()
 p = OUT_DIR / "p3_accuracy_r2.png"
 fig.savefig(p, dpi=150)

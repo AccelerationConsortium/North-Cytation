@@ -45,11 +45,11 @@ RUNS_BY_LIQUID = [
         "liquid": "Glycerol",
         "output": "glycerol_best_over_trials.png",
         "dirs":   [
-            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779237313_glycerol",
-            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779282234_glycerol",
-            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1779731396_glycerol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780513054_glycerol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780521190_glycerol",
+            r"C:\Users\Imaging Controller\Desktop\utoronto_demo\calibration_modular_v2\output\run_1780592810_glycerol",
         ],
-        "labels": ["SOBOL+BAYESIAN", "SOBOL", "SOBOL+BAYESIAN+TOOLS"],
+        "labels": ["SOBOL+BAYESIAN+TOOLS", "SOBOL", "SOBOL+BAYESIAN"],
     },
     {
         "liquid": "Water",

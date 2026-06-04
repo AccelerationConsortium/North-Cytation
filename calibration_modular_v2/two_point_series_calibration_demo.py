@@ -39,7 +39,7 @@ from calibration_modular_v2.calibration_protocol_northrobot import HardwareCalib
 # BASELINE PARAMETERS SOURCE: Prior trial_results.csv files
 # Provide the path to trial_results.csv for each liquid, or leave as None to use defaults
 TRIAL_RESULTS_BY_LIQUID: Dict[str, Optional[str]] = {
-     "glycerol": "calibration_modular_v2/output/run_1779731396_glycerol/trial_results.csv",
+     "glycerol": "calibration_modular_v2/output/run_1780513054_glycerol/trial_results.csv",
      "agar_water_4%": "calibration_modular_v2/output/run_1779813169_agar_water_4%/trial_results.csv",
     "DMSO": "calibration_modular_v2/output/run_1779912579_DMSO/trial_results.csv",
     "water": "calibration_modular_v2/output/run_1779739005_water/trial_results.csv",
@@ -119,6 +119,7 @@ def _extract_best_trial_parameters(df: pd.DataFrame, tolerance_pct: float = 3.0)
     param_cols = [
         "aspirate_speed", "dispense_speed", "aspirate_wait_time", "dispense_wait_time",
         "pre_asp_air_vol", "post_asp_air_vol", "blowout_vol", "asp_disp_cycles",
+        "post_retract_wait_time", "retract_speed",
     ]
     
     params = {}
@@ -194,8 +195,8 @@ def _get_baseline_params_for_liquid(liquid_name: str) -> Optional[Dict[str, floa
     return params
 
 LIQUID_SERIES: List[Dict[str, str]] = [
-    {"label": "glycerol", "liquid_name": "glycerol", "vial_name": "glycerol"},
-    # {"label": "alginate_4pct", "liquid_name": "agar_water_4%", "vial_name": "agar_water_4%"},
+    # {"label": "glycerol", "liquid_name": "glycerol", "vial_name": "glycerol"},
+    {"label": "alginate_4pct", "liquid_name": "agar_water_4%", "vial_name": "agar_water_4%"},
     # {"label": "PVA_dmso", "liquid_name": "PVA_DMSO", "vial_name": "PVA_DMSO"},
     # {"label": "dmso", "liquid_name": "DMSO", "vial_name": "DMSO"},
     # {"label": "water", "liquid_name": "water", "vial_name": "water"},
@@ -316,6 +317,8 @@ def _build_measure_params(base: Dict[str, float], overaspirate_ml: float) -> Dic
             "post_asp_air_vol": base["post_asp_air_vol"],
             "blowout_vol": base["blowout_vol"],
             "asp_disp_cycles": int(base["asp_disp_cycles"]),
+            "post_retract_wait_time": base.get("post_retract_wait_time", 0.0),
+            "retract_speed": base.get("retract_speed", 5.0),
         },
         "overaspirate_vol": float(overaspirate_ml),
     }
