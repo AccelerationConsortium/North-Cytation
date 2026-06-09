@@ -587,6 +587,9 @@ def run_baseline():
 
         per_row_summaries = []
         for row_idx, row in campaign_df.iterrows():
+            if _interrupt_state["interrupted"]:
+                print("Interrupt flag detected — stopping row loop.")
+                break
             total_tips_processed += 1
             params, volume_ml = _row_to_parameters(row)
             volume_ul = volume_ml * 1000.0
@@ -769,6 +772,10 @@ def run_baseline():
 
         print(f"[{next_campaign}] chunk complete. Processed {len(campaign_df)} rows.")
         print(f"Summary: {summary_path}")
+
+        if _interrupt_state["interrupted"]:
+            print("Interrupt flag set — exiting campaign loop after chunk cleanup.")
+            break
 
         chunks_run.append({
             "campaign": next_campaign,
