@@ -1,7 +1,7 @@
 """Compare per-iteration metrics across multiple recommender algorithms.
 
-Finds the most recent run folder per algorithm, loads iteration_metrics.csv,
-and plots all algorithms on the same 8-panel figure.
+Recomputes metrics (including IoU) directly from results_final.csv so that
+all existing simulation runs can be compared without re-running workflows.
 
 Usage (from repo root):
     python analysis/compare_algorithm_metrics.py
@@ -14,17 +14,17 @@ Output:
 import os
 import sys
 import glob
+import warnings
 import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from analysis.iteration_metrics import _TITLES, _SUBTITLES, _YLABELS
+from analysis.iteration_metrics import _TITLES, _SUBTITLES, _YLABELS, compute_iteration_metrics
 
 ALGORITHMS = ['bayesian', 'gradient', 'levelset', 'triangle', 'sobol']
 
@@ -37,7 +37,7 @@ COLOURS = {
     'sobol':    '#f4a582',   # peach (baseline)
 }
 
-PLOT_COLS = ['turb_rmse', 'ratio_rmse', 'iou_turbidity', 'iou_ratio_low', 'iou_ratio_high']
+PLOT_COLS = ['turb_rmse', 'ratio_rmse', 'iou_ratio_0_81']
 
 
 def find_latest_results_csv(algorithm, base='output/simulated_surfactant_grid'):
@@ -50,85 +50,34 @@ def find_latest_results_csv(algorithm, base='output/simulated_surfactant_grid'):
     return matches[-1]
 
 
-def compute_nn_distances(results_csv, surfactants):
-    """Return normalised NN distances for all picks in results_final.csv."""
-    from analysis.plot_3d_interactive import compute_gp_grids
-    df = pd.read_csv(results_csv)
-    conc_cols = [f'{s}_conc_mm' for s in surfactants]
-    _, _, _, log10_bounds = compute_gp_grids(results_csv, surfactants=surfactants)
-    span = log10_bounds[:, 1] - log10_bounds[:, 0]
-    span = np.where(span < 1e-12, 1.0, span)
-    log_c = np.log10(np.clip(df[conc_cols].values.astype(float), 1e-9, None))
-    picks_norm = np.clip((log_c - log10_bounds[:, 0]) / span, 0.0, 1.0)
-    nn_d, _ = cKDTree(picks_norm).query(picks_norm, k=2)
-    return nn_d[:, 1]
+def load_all_metrics(algorithms=ALGORITHMS, base='output/simulated_surfactant_grid',
+                     surfactants=None):
+    """Recompute per-iteration metrics (including IoU) from results_final.csv.
 
+    Uses the noise-free synthetic function as ground truth, so IoU is properly
+    defined against a fixed boundary rather than the measured data itself.
+    Existing simulation runs do not need to be re-run.
+    """
+    if surfactants is None:
+        surfactants = ['SDS', 'TTAB', 'DTAB']
 
-def find_latest_metrics_csv(algorithm, base='output/simulated_surfactant_grid'):
-    """Find the most recent iteration_metrics.csv for a given algorithm."""
-    pattern = os.path.join(base, f'multidim_3D_*_{algorithm}_*', 'iteration_metrics.csv')
-    matches = glob.glob(pattern)
-    if not matches:
-        return None
-    # Sort by folder timestamp (last component of parent path)
-    matches.sort(key=lambda p: os.path.dirname(p))
-    return matches[-1]
-
-
-def load_all_metrics(algorithms=ALGORITHMS, base='output/simulated_surfactant_grid'):
-    """Load iteration_metrics.csv for each algorithm, tag with algorithm name, and compute IoU metrics."""
     frames = []
     for alg in algorithms:
-        csv = find_latest_metrics_csv(alg, base)
+        csv = find_latest_results_csv(alg, base)
         if csv is None:
-            print(f"  WARNING: no iteration_metrics.csv found for '{alg}' — skipping")
+            print(f"  WARNING: no results_final.csv found for '{alg}' — skipping")
             continue
-        df = pd.read_csv(csv)
+        print(f"  Computing metrics for {alg} ...")
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            df = compute_iteration_metrics(csv, surfactants, '', simulate=True)
         df['algorithm'] = alg
         df['source_folder'] = os.path.dirname(csv)
-
-        # Compute IoU metrics for each iteration
-        # Load ground truth boundaries (A1/A2) from 1D CMC fit or use hardcoded for now
-        # For demonstration, use typical values (should be loaded from results_after_initial_grid.csv if available)
-        A1 = 0.85  # high ratio boundary (sub-CMC)
-        A2 = 0.70  # low ratio boundary (micellar)
-        turb_threshold = 0.1
-        df['iou_turbidity'] = np.nan
-        df['iou_ratio_low'] = np.nan
-        df['iou_ratio_high'] = np.nan
-        for i, row in df.iterrows():
-            # For each iteration, compute IoU on all picks up to this iteration
-            subset = df[df['iteration'] <= row['iteration']]
-            # Turbidity IoU
-            pred_turb = subset['turbidity_600'].values
-            true_turb = pred_turb  # In simulation, use same as pred (should use ground truth if available)
-            pred_mask = pred_turb > turb_threshold
-            true_mask = true_turb > turb_threshold
-            intersection = np.logical_and(pred_mask, true_mask).sum()
-            union = np.logical_or(pred_mask, true_mask).sum()
-            iou_turb = intersection / union if union > 0 else np.nan
-            df.at[i, 'iou_turbidity'] = iou_turb
-            # Ratio IoU (low)
-            pred_ratio = subset['ratio'].values
-            true_ratio = pred_ratio  # In simulation, use same as pred (should use ground truth if available)
-            pred_mask_low = pred_ratio < (A1 + 0.005)
-            true_mask_low = true_ratio < (A1 + 0.005)
-            intersection_low = np.logical_and(pred_mask_low, true_mask_low).sum()
-            union_low = np.logical_or(pred_mask_low, true_mask_low).sum()
-            iou_ratio_low = intersection_low / union_low if union_low > 0 else np.nan
-            df.at[i, 'iou_ratio_low'] = iou_ratio_low
-            # Ratio IoU (high)
-            pred_mask_high = pred_ratio > (A2 - 0.005)
-            true_mask_high = true_ratio > (A2 - 0.005)
-            intersection_high = np.logical_and(pred_mask_high, true_mask_high).sum()
-            union_high = np.logical_or(pred_mask_high, true_mask_high).sum()
-            iou_ratio_high = intersection_high / union_high if union_high > 0 else np.nan
-            df.at[i, 'iou_ratio_high'] = iou_ratio_high
         frames.append(df)
-        print(f"  Loaded {alg}: {len(df)} iterations from {os.path.dirname(csv)}")
+        print(f"    {len(df)} iterations from {os.path.dirname(csv)}")
     if not frames:
         raise FileNotFoundError(
-            "No iteration_metrics.csv found for any algorithm. "
+            "No results_final.csv found for any algorithm. "
             "Run the workflow for each algorithm first."
         )
     return pd.concat(frames, ignore_index=True)
@@ -210,8 +159,8 @@ if __name__ == '__main__':
     SURFACTANTS = ['SDS', 'TTAB', 'DTAB']
     BASE = 'output/simulated_surfactant_grid'
 
-    print("Loading iteration metrics for all algorithms...")
-    combined = load_all_metrics()
+    print("Computing iteration metrics for all algorithms...")
+    combined = load_all_metrics(surfactants=SURFACTANTS, base=BASE)
 
     out_folder = os.path.join('output', 'algorithm_comparison')
     csv_out = os.path.join(out_folder, 'algorithm_metrics_combined.csv')
