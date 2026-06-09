@@ -10,6 +10,7 @@ import pandas as pd
 import os
 from datetime import datetime
 import logging
+import threading
 
 # Import ConfigManager for workflow config handling
 try:
@@ -71,6 +72,113 @@ def flatten_cytation_data(data, measurement_type="unknown"):
         data.columns = ['well_position'] + list(data.columns[1:])
     
     return data
+
+# ================================================================================
+# ASYNC MEASUREMENT HANDLE
+# ================================================================================
+
+class MeasurementHandle:
+    """
+    Returned by Lash_E.measure_wellplate_async(). Holds the in-progress cytation
+    read in a background thread. Call handle.complete() when you are ready to collect
+    the result and return the wellplate to the pipetting area.
+
+    Timeline:
+        handle = lash_e.measure_wellplate_async(...)   # plate already at cytation, read running
+        lash_e.nr_robot.dispense_stuff(...)            # arm works freely while cytation reads
+        data = handle.complete()                       # parks arm, waits for read, returns plate
+    """
+
+    def __init__(self, lash_e, protocol_file_path, wells_to_measure, wellplate_index,
+                 plate_type, cytation_plate_type, repeats, use_lid):
+        self._lash_e = lash_e
+        self._wellplate_index = wellplate_index
+        self._plate_type = plate_type
+        self._use_lid = use_lid
+        self._result = None
+        self._error = None
+        self._done_event = threading.Event()
+
+        # Capture everything the background thread needs
+        self._protocol_file_path = protocol_file_path
+        self._wells_to_measure = wells_to_measure
+        self._cytation_plate_type = cytation_plate_type
+        self._repeats = repeats
+
+        self._thread = threading.Thread(target=self._run_cytation, daemon=True, name="cytation_read")
+        self._thread.start()
+        lash_e.logger.info("MeasurementHandle: cytation read started in background thread")
+
+    def _run_cytation(self):
+        """Background thread: runs the cytation protocol and stores the result."""
+        try:
+            lash_e = self._lash_e
+            all_data = []
+
+            if not lash_e.simulate and self._protocol_file_path is not None:
+                protocol_paths = (self._protocol_file_path
+                                  if isinstance(self._protocol_file_path, list)
+                                  else [self._protocol_file_path])
+
+                for i in range(self._repeats):
+                    for protocol_path in protocol_paths:
+                        lash_e.logger.info(f"MeasurementHandle: running protocol {protocol_path} (rep {i+1})")
+                        try:
+                            data = lash_e.cytation.run_protocol(
+                                protocol_path, self._wells_to_measure,
+                                plate_type=self._cytation_plate_type
+                            )
+                            if data is not None:
+                                label = f"rep{i+1}_{os.path.splitext(os.path.basename(protocol_path))[0]}"
+                                data.columns = pd.MultiIndex.from_tuples([(label, col) for col in data.columns])
+                                all_data.append(data)
+                        except RuntimeError as e:
+                            lash_e.logger.error(f"MeasurementHandle: plate read failed: {e}")
+                            self._error = e
+                            return
+
+            self._result = pd.concat(all_data, axis=1) if all_data else None
+            lash_e.logger.info("MeasurementHandle: cytation read complete")
+
+        except Exception as e:
+            self._lash_e.logger.error(f"MeasurementHandle: unexpected error in background thread: {e}")
+            self._error = e
+        finally:
+            self._done_event.set()
+
+    def complete(self):
+        """
+        Finish the measurement cycle:
+          1. Parks the robot arm (unconditionally, before track moves)
+          2. Waits for cytation read to finish (may already be done)
+          3. Returns plate from cytation to pipetting area
+          4. Returns the measurement DataFrame (or None in simulate mode)
+
+        Raises any exception that occurred during the cytation read.
+        """
+        lash_e = self._lash_e
+        lash_e.logger.info("MeasurementHandle.complete(): parking arm before returning plate")
+
+        # Step 1: arm home — unconditional, must happen before track moves
+        lash_e.nr_robot.move_home()
+
+        # Step 2: wait for cytation read (may already be done)
+        lash_e.logger.info("MeasurementHandle.complete(): waiting for cytation read to finish")
+        self._done_event.wait()
+
+        if self._error is not None:
+            lash_e.nr_robot.pause_after_error(f"Cytation read failed in background thread: {self._error}")
+            raise self._error
+
+        # Step 3: return plate
+        lash_e.logger.info("MeasurementHandle.complete(): returning plate from cytation")
+        lash_e.move_wellplate_back_from_cytation(
+            self._wellplate_index, plate_type=self._plate_type, use_lid=self._use_lid
+        )
+        lash_e.nr_track.origin()
+
+        return self._result
+
 
 # ================================================================================
 
@@ -444,6 +552,43 @@ class Lash_E:
         self.move_wellplate_back_from_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid)
         self.nr_track.origin()
         return combined_data
+
+    def measure_wellplate_async(self, protocol_file_path=None, wells_to_measure=None, wellplate_index=0, plate_type="96 WELL PLATE", repeats=1, use_lid=False, safe_movement=True):
+        """
+        Non-blocking version of measure_wellplate(). Moves the wellplate to the Cytation
+        and starts the read in a background thread, then returns a MeasurementHandle
+        immediately so the robot arm can continue dispensing.
+
+        Usage:
+            handle = lash_e.measure_wellplate_async(protocol_file, wells_list)
+            # ... arm does next round of dispensing ...
+            data = handle.complete()  # parks arm, waits for cytation, returns plate, returns data
+
+        Args: same as measure_wellplate()
+        Returns: MeasurementHandle
+        """
+        self.logger.info("measure_wellplate_async: moving plate to cytation then starting background read")
+
+        # Resolve cytation plate type once here (same logic as measure_wellplate)
+        cytation_plate_type = self.nr_robot.get_config_parameter('wellplates', plate_type, 'name_in_cytation', error_on_missing=True)
+        if not cytation_plate_type:
+            cytation_plate_type = plate_type
+
+        # Step 1: park arm and move plate to cytation (synchronous — track needs c9)
+        self.nr_robot.move_home()
+        self.move_wellplate_to_cytation(wellplate_index, plate_type=plate_type, use_lid=use_lid, safe_movement=safe_movement)
+
+        # Step 2: start cytation read in background (c9 is now idle)
+        return MeasurementHandle(
+            lash_e=self,
+            protocol_file_path=protocol_file_path,
+            wells_to_measure=wells_to_measure,
+            wellplate_index=wellplate_index,
+            plate_type=plate_type,
+            cytation_plate_type=cytation_plate_type,
+            repeats=repeats,
+            use_lid=use_lid,
+        )
 
     def run_photoreactor(self,vial_index,target_rpm,intensity,duration,reactor_num):
         self.logger.info("Running photoreactor for vial %d with target RPM: %d, intensity: %d, duration: %d, reactor number: %d", vial_index, target_rpm, intensity, duration, reactor_num)

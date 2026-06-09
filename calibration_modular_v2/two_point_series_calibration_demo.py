@@ -40,17 +40,17 @@ from calibration_modular_v2.calibration_protocol_northrobot import HardwareCalib
 # Provide the path to trial_results.csv for each liquid, or leave as None to use defaults
 TRIAL_RESULTS_BY_LIQUID: Dict[str, Optional[str]] = {
      "glycerol": "calibration_modular_v2/output/run_1780513054_glycerol/trial_results.csv",
-     "agar_water_4%": "calibration_modular_v2/output/run_1779813169_agar_water_4%/trial_results.csv",
-    "DMSO": "calibration_modular_v2/output/run_1779912579_DMSO/trial_results.csv",
+     #"agar_water_4%": "calibration_modular_v2/output/run_1779813169_agar_water_4%/trial_results.csv",
+    #"DMSO": "calibration_modular_v2/output/run_1779912579_DMSO/trial_results.csv",
     "water": "calibration_modular_v2/output/run_1779739005_water/trial_results.csv",
     "ethanol": "calibration_modular_v2/output/run_1780412080_ethanol/trial_results.csv",
-    "PVA_DMSO": "calibration_modular_v2/output/run_1779906029_PVA_DMSO/trial_results.csv",
+    #"PVA_DMSO": "calibration_modular_v2/output/run_1779906029_PVA_DMSO/trial_results.csv",
 }
 # ────────────────────────────────────────────────────────────────────────────
 
-SIMULATE = False
+SIMULATE = True
 REPLICATES = 3
-VOLUME_SERIES_UL = [25.0, 50.0, 75.0, 100.0]
+VOLUME_SERIES_UL = [70, 100.0, 150.0]
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 CONFIG_FILE = Path(__file__).resolve().parent / "experiment_config.yaml"
@@ -195,12 +195,12 @@ def _get_baseline_params_for_liquid(liquid_name: str) -> Optional[Dict[str, floa
     return params
 
 LIQUID_SERIES: List[Dict[str, str]] = [
-    # {"label": "glycerol", "liquid_name": "glycerol", "vial_name": "glycerol"},
-    {"label": "alginate_4pct", "liquid_name": "agar_water_4%", "vial_name": "agar_water_4%"},
-    # {"label": "PVA_dmso", "liquid_name": "PVA_DMSO", "vial_name": "PVA_DMSO"},
-    # {"label": "dmso", "liquid_name": "DMSO", "vial_name": "DMSO"},
-    # {"label": "water", "liquid_name": "water", "vial_name": "water"},
-    # {"label": "ethanol", "liquid_name": "ethanol", "vial_name": "ethanol"},
+    {"label": "glycerol_dye", "liquid_name": "glycerol", "vial_name": "glycerol_dye"},
+    {"label": "water_dye",    "liquid_name": "water",    "vial_name": "water_dye"},
+    {"label": "ethanol_dye",  "liquid_name": "ethanol",  "vial_name": "ethanol_dye"},
+    {"label": "glycerol",     "liquid_name": "glycerol", "vial_name": "glycerol"},
+    {"label": "water",        "liquid_name": "water",    "vial_name": "water"},
+    {"label": "ethanol",      "liquid_name": "ethanol",  "vial_name": "ethanol"},
 ]
 
 # Default baseline parameters (used if trial_results.csv not available)

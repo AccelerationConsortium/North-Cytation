@@ -175,8 +175,14 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 print(f"Using vials from config: source='{source_vial}', measurement='{measurement_vial}'")
             
-            # Initialize vial file path
+            # Initialize vial file path from hardware config, fall back to default
             vial_file = "status/calibration_vials_short.csv"
+            try:
+                hw_vial_status = hardware_config.get("hardware_files", {}).get("vial_status")
+                if hw_vial_status:
+                    vial_file = hw_vial_status
+            except Exception:
+                pass
             
             # Initialize Lash_E coordinator
             lash_e = Lash_E(vial_file, simulate=simulate, initialize_biotek=False, show_gui=show_gui)
