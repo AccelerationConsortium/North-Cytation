@@ -8,6 +8,8 @@ Three metrics, computed cumulatively at each iteration:
 Simulation-only metrics (simulate=True, requires ground-truth simulator):
   turb_rmse          RMSE of the algorithm's GP turbidity vs ground truth on a fixed test set
   ratio_rmse         RMSE of the algorithm's GP ratio vs ground truth on a fixed test set
+  iou_ratio_0_81     IoU between the algorithm's GP-predicted ratio < 0.81 region and the
+                     noise-free ground-truth boundary; higher = better boundary discovery
 """
 
 import os
@@ -99,6 +101,40 @@ def _fit_gp_predict(train_norm, y_train, test_norm, log_target=False):
 
 
 TURBIDITY_THRESHOLD = 0.1
+# Fixed ratio boundary for IoU evaluation.
+# The synthetic function produces ratio in [0.70, 0.85]; 0.81 sits in the
+# transition zone between sub-CMC (ratio ~0.85) and micellar (ratio ~0.70).
+RATIO_BOUNDARY = 0.81
+
+
+def _build_iou_grid(surfactants, log10_bounds, span, n=2000):
+    """Build a fixed Sobol grid with noise-free ground-truth ratio labels.
+
+    Returns (grid_norm, gt_ratio_mask) where:
+      grid_norm      (n, d) float array in normalised [0,1]^d space
+      gt_ratio_mask  (n,) bool, True where noise-free ratio < RATIO_BOUNDARY
+
+    Seed is fixed (42) so the grid is identical across all algorithms.
+    """
+    from scipy.stats.qmc import Sobol as _Sobol
+    from workflows.surfactant_grid_adaptive_concentrations import SURFACTANT_LIBRARY
+
+    seq = _Sobol(d=len(surfactants), scramble=True, seed=42)
+    raw = seq.random(8192)
+    log_c = log10_bounds[:, 0] + raw * span
+    concs = 10.0 ** log_c
+    # Same feasibility proxy used by _build_test_set
+    budget = concs.max(axis=1).max() * len(surfactants) * 0.6
+    feas = concs.sum(axis=1) <= budget
+    grid_concs = concs[feas][:n]
+    grid_norm = raw[feas][:n]
+
+    ratio_gt = np.array([
+        _simulate_ground_truth(dict(zip(surfactants, row)), SURFACTANT_LIBRARY)[1]
+        for row in grid_concs
+    ])
+    gt_ratio_mask = ratio_gt < RATIO_BOUNDARY
+    return grid_norm, gt_ratio_mask
 
 
 def compute_iteration_metrics(csv_path, surfactants, output_folder, simulate=False):
@@ -116,7 +152,7 @@ def compute_iteration_metrics(csv_path, surfactants, output_folder, simulate=Fal
     -------
     pd.DataFrame with one row per iteration.
     Columns: iteration, n_picks, turb_hit_rate, n_cloud_measured
-             [+ turb_rmse, ratio_rmse if simulate=True]
+             [+ turb_rmse, ratio_rmse, iou_ratio_0_81 if simulate=True]
     """
     df = pd.read_csv(csv_path)
 
@@ -138,11 +174,12 @@ def compute_iteration_metrics(csv_path, surfactants, output_folder, simulate=Fal
     span = log10_bounds[:, 1] - log10_bounds[:, 0]
     span = np.where(span < 1e-12, 1.0, span)
 
-    # --- Ground-truth test set (simulation only) ---
+    # --- Ground-truth test set and IoU grid (simulation only) ---
     if simulate:
         test_norm, test_turb_true, test_ratio_true = _build_test_set(
             surfactants, log10_bounds, span
         )
+        iou_grid_norm, gt_ratio_mask = _build_iou_grid(surfactants, log10_bounds, span)
 
     def normalize_picks(rows_df):
         concs = rows_df[conc_cols].values.astype(float)
@@ -175,7 +212,7 @@ def compute_iteration_metrics(csv_path, surfactants, output_folder, simulate=Fal
         # Directly measured turbid wells (no GP)
         row['n_cloud_measured'] = int((subset['turbidity_600'] > TURBIDITY_THRESHOLD).sum())
 
-        # Simulation RMSE: how accurately does this algorithm's GP predict truth?
+        # Simulation RMSE + IoU: how accurately does this algorithm's GP predict truth?
         if simulate and len(picks_norm) >= 4:
             import warnings
             with warnings.catch_warnings():
@@ -185,16 +222,26 @@ def compute_iteration_metrics(csv_path, surfactants, output_folder, simulate=Fal
                     subset['turbidity_600'].values.astype(float),
                     test_norm, log_target=True,
                 )
-                ratio_pred = _fit_gp_predict(
+                # Fit ratio GP once; predict on both test set (RMSE) and IoU grid
+                ratio_pred_combined = _fit_gp_predict(
                     picks_norm,
                     subset['ratio'].values.astype(float),
-                    test_norm, log_target=False,
+                    np.vstack([test_norm, iou_grid_norm]), log_target=False,
                 )
+            n_test = len(test_norm)
+            ratio_pred_test = ratio_pred_combined[:n_test]
+            ratio_pred_grid = ratio_pred_combined[n_test:]
             row['turb_rmse'] = float(np.sqrt(np.mean((turb_pred - test_turb_true) ** 2)))
-            row['ratio_rmse'] = float(np.sqrt(np.mean((ratio_pred - test_ratio_true) ** 2)))
+            row['ratio_rmse'] = float(np.sqrt(np.mean((ratio_pred_test - test_ratio_true) ** 2)))
+            # IoU: predicted region (ratio < RATIO_BOUNDARY) vs ground-truth region
+            pred_ratio_mask = ratio_pred_grid < RATIO_BOUNDARY
+            intersection = np.logical_and(pred_ratio_mask, gt_ratio_mask).sum()
+            union = np.logical_or(pred_ratio_mask, gt_ratio_mask).sum()
+            row['iou_ratio_0_81'] = float(intersection / union) if union > 0 else float('nan')
         elif simulate:
             row['turb_rmse'] = float('nan')
             row['ratio_rmse'] = float('nan')
+            row['iou_ratio_0_81'] = float('nan')
 
         rows.append(row)
 
@@ -219,6 +266,10 @@ _SUBTITLES = {
         "RMSE of the algorithm's GP ratio vs noise-free ground truth\n"
         "on a fixed 500-point test set. Lower = better model. Simulation only."
     ),
+    'iou_ratio_0_81': (
+        "IoU between algorithm's GP-predicted ratio < 0.81 region\n"
+        "and noise-free ground-truth. Higher = better boundary discovery. Simulation only."
+    ),
 }
 
 _TITLES = {
@@ -226,6 +277,7 @@ _TITLES = {
     'n_cloud_measured': 'Measured Turbid Wells',
     'turb_rmse':        'Turbidity Model RMSE',
     'ratio_rmse':       'Ratio Model RMSE',
+    'iou_ratio_0_81':   'Ratio Boundary IoU (threshold=0.81)',
 }
 
 _YLABELS = {
@@ -233,6 +285,7 @@ _YLABELS = {
     'n_cloud_measured': 'Cumulative count',
     'turb_rmse':        'RMSE (OD600)',
     'ratio_rmse':       'RMSE (ratio)',
+    'iou_ratio_0_81':   'IoU',
 }
 
 
@@ -244,7 +297,7 @@ def save_iteration_metrics(metrics_df, output_folder):
     csv_path = os.path.join(output_folder, "iteration_metrics.csv")
     metrics_df.to_csv(csv_path, index=False)
 
-    cols = [c for c in ['turb_hit_rate', 'n_cloud_measured', 'turb_rmse', 'ratio_rmse']
+    cols = [c for c in ['turb_hit_rate', 'n_cloud_measured', 'turb_rmse', 'ratio_rmse', 'iou_ratio_0_81']
             if c in metrics_df.columns]
     n_cols = len(cols)
     fig, axes_grid = plt.subplots(1, n_cols, figsize=(5 * n_cols, 5))

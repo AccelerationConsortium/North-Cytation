@@ -1,0 +1,30 @@
+# ZIF-8@BSA Experiment Design Table
+# ---------------------------------------------------------------------------
+# Each row is one synthesis experiment. The robot will assign reaction vials
+# automatically (reaction_vial_1 ... reaction_vial_6) in batches of 6.
+#
+# STOCK CONCENTRATIONS (must match values in zif8_bsa_workflow.py):
+#   HIMIM_STOCK_CONC_MM       = 160.0 mM
+#   ZN_STOCK_CONC_MM          = 40.0  mM
+#   BSA_STOCK_CONC_MG_PER_ML  = 10.0  mg/mL
+#
+# VOLUME CONSTRAINTS (6 mL total, split 3+3):
+#   Pre-aging half (3 mL): V_himim + V_bsa + V_water <= 3 mL
+#     -> himim_conc_mM  <= 160 * 3/6 = 80 mM max
+#     -> bsa_mg_per_mL  <= 10  * 3/6 =  5 mg/mL max (when no HmIm water dilution needed)
+#   Zn half (3 mL):       V_zn   + V_water <= 3 mL
+#     -> zn_conc_mM     <= 40  * 3/6 = 20 mM max
+# ---------------------------------------------------------------------------
+experiment_id,himim_conc_mM,zn_conc_mM,bsa_mg_per_mL,reaction_time_min,notes
+1,80,20,1.0,60,standard ratio 4:1 HmIm:Zn
+2,80,20,2.0,60,higher BSA
+3,80,20,0.5,60,lower BSA
+4,40,10,1.0,60,half concentration
+5,40,20,1.0,60,lower HmIm ratio
+6,80,10,1.0,60,higher HmIm ratio
+7,80,20,1.0,30,shorter reaction
+8,80,20,1.0,120,longer reaction
+9,40,20,2.0,60,
+10,80,10,2.0,120,
+11,40,10,0.5,30,
+12,80,20,1.0,60,replicate of exp 1

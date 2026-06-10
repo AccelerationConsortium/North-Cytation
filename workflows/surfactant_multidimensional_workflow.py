@@ -60,6 +60,8 @@ from workflows.surfactant_grid_adaptive_concentrations import (
     validate_pipetting_system,
 )
 
+from workflows.vial_risk_analyzer import get_vial_risk_assessment
+
 # ================================================================================
 # CONFIGURATION
 # ================================================================================
@@ -955,8 +957,8 @@ def build_control_wells_df(plans, starting_well_index=0):
     if ADD_1D_CONTROLS:
         for s in SURFACTANTS:
             cmc = SURFACTANT_LIBRARY[s]["cmc_mm"]
-            # Log-spaced from CMC/20 to CMC*5, clipped to the active search region.
-            c_lo = max(cmc / 20.0, MIN_CONC_MM)
+            # Log-spaced from CMC/200 to CMC*5, clipped to the active search region.
+            c_lo = max(cmc / 200.0, MIN_CONC_MM)
             c_hi = min(cmc * 5.0, max_conc_mm[s])
             if c_lo >= c_hi:
                 c_lo = MIN_CONC_MM
@@ -1117,6 +1119,25 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
             f"{MIN_WATER_DISPENSE_UL:.1f}uL to 0"
             + (f" and moved {tiny_total_ul:.2f}uL total into buffer." if ADD_BUFFER else ".")
         )
+
+    # PRE-DISPENSE RISK ASSESSMENT
+    # Build per-surfactant shims so the analyzer sees the correct column names.
+    # Each entry: (surfactant_name, vial_list, shim_df)
+    surfactant_shims = []
+    for s in SURFACTANTS:
+        shim = _shim_df_for_surfactant(well_recipes_df, s)
+        vials_for_s = shim[shim["surf_A_volume_ul"] > 0]["substock_A_name"].dropna().unique().tolist()
+        if vials_for_s:
+            surfactant_shims.append((s, vials_for_s, shim))
+
+    get_vial_risk_assessment(lash_e, surfactant_shims)
+
+    # PAUSE FOR REVIEW
+    lash_e.logger.info("")
+    lash_e.logger.info("Risk assessment complete. Review the report above.")
+    lash_e.logger.info("")
+    #input("Press ENTER to continue with dispensing, or Ctrl+C to abort: ")
+    lash_e.logger.info("Proceeding with dispensing...\n")
 
     for s in SURFACTANTS:
         shim = _shim_df_for_surfactant(well_recipes_df, s)

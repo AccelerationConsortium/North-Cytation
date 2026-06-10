@@ -899,6 +899,12 @@ class CombinedRackWidget(QScrollArea):
     
     def _setup_sections(self):
         """Set up sections for different rack types."""
+        # Clear any existing widgets from the layout before rebuilding
+        while self.main_layout.count():
+            item = self.main_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
         # Large Vial Rack section (2x2 grid)
         large_vial_group = QGroupBox("Large Vial Rack (20mL)")
         large_vial_layout = QGridLayout(large_vial_group)
@@ -2465,8 +2471,11 @@ class VialManagerMainWindow(QMainWindow):
                         rack_widget.vials.clear()
                         rack_widget.vial_data_list.clear()
                         
-                        # Reset grid to empty placeholders
-                        rack_widget._setup_grid()
+                        # Reset to empty placeholders (widget-type-aware)
+                        if hasattr(rack_widget, '_setup_grid'):
+                            rack_widget._setup_grid()
+                        elif hasattr(rack_widget, '_setup_sections'):
+                            rack_widget._setup_sections()
                     
                     # Reload with current data
                     rack_widget.add_vials(self.original_vials_data)
@@ -2551,16 +2560,9 @@ class VialManagerMainWindow(QMainWindow):
             return
             
         try:
-            # Collect all current vial data from rack widgets ONLY
-            all_vials_data = []
-            for rack_widget in self.rack_widgets.values():
-                try:
-                    widget_data = rack_widget.get_vials_data()
-                    all_vials_data.extend(widget_data)
-                except Exception as e:
-                    QMessageBox.critical(self, "Data Collection Error", 
-                                       f"Failed to collect vial data from {type(rack_widget).__name__}:\n{str(e)}")
-                    return
+            # original_vials_data is the single source of truth — every widget edit
+            # flows through _on_vial_edited() which keeps it current.
+            all_vials_data = list(self.original_vials_data)
             
             # Check for duplicate vial names - BLOCK the save if found
             seen_names = set()
