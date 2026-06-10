@@ -1,0 +1,158 @@
+2026-06-09 14:25:42,940 - INFO - Workflow config loaded: mof_synthesis_workflow_multiple
+2026-06-09 14:25:42,940 - INFO - Config keys updated: 19 (LINKER_STOCK_CONC, METAL_STOCK_CONC, LINKER_TO_METAL_RATIO_1, LINKER_TO_METAL_RATIO_2, LINKER_TO_METAL_RATIO_3, LINKER_TO_METAL_RATIO, REACTION_TIME_HOURS, REACTION_TEMP, STIRRING_SPEED, ANALYSIS_WELLS_PER_REACTION, CYTATION_PROTOCOL_FILE, SAMPLING_INTERVAL_MINUTES, TOTAL_SAMPLING_TIME_MINUTES, TOTAL_REACTION_VOLUME, WELLPLATE_DISPENSE_VOLUME, SIMULATE, STAGGER_MINUTES, RUNS, INPUT_VIAL_STATUS_FILE)
+2026-06-09 14:25:42,940 - INFO - SIMULATE mode: False
+2026-06-09 14:25:42,940 - INFO - Launching status review GUI...
+2026-06-09 14:25:43,305 - INFO - Detected workflow name: mof_synthesis_workflow_multiple
+2026-06-09 14:25:44,017 - INFO - Config editor loaded for workflow: mof_synthesis_workflow_multiple
+2026-06-09 14:25:58,992 - INFO - User selected: Run Workflow
+2026-06-09 14:25:59,012 - INFO - Status review completed - proceeding with hardware initialization
+2026-06-09 14:25:59,033 - DEBUG - Reloading config after status check to get updated values
+2026-06-09 14:25:59,070 - INFO - Config Manager: Updated 19 workflow constants from mof_synthesis_workflow_multiple.yaml
+2026-06-09 14:25:59,070 - INFO - SIMULATE flag updated: False -> True
+2026-06-09 14:25:59,070 - DEBUG - No components needed simulate flag update
+2026-06-09 14:25:59,075 - INFO - Initializing North Robot...
+2026-06-09 14:25:59,077 - DEBUG - Loading robot configuration files...
+2026-06-09 14:25:59,101 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-06-09 14:25:59,104 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-06-09 14:25:59,114 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-06-09 14:25:59,119 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-06-09 14:25:59,123 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-06-09 14:25:59,128 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-06-09 14:25:59,128 - DEBUG - Loading robot state files...
+2026-06-09 14:25:59,144 - DEBUG - Loaded vial data from ../utoronto_demo/status/mof_synthesis_vials.csv
+2026-06-09 14:25:59,160 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-06-09 14:25:59,170 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-06-09 14:25:59,170 - DEBUG - Robot status loaded successfully
+2026-06-09 14:25:59,170 - INFO - Physical initialization of North Robot...
+2026-06-09 14:25:59,174 - DEBUG - Loading pumps from YAML configuration...
+2026-06-09 14:25:59,176 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-06-09 14:25:59,178 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-06-09 14:25:59,178 - INFO - Moving robot to home position
+2026-06-09 14:25:59,182 - DEBUG - Initializing centrifuge controller...
+2026-06-09 14:25:59,192 - DEBUG - Current reader status: <MagicMock name='mock.get_reader_status()' id='2502581537568'>
+2026-06-09 14:25:59,194 - INFO - Initializing North Track...
+2026-06-09 14:25:59,196 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-06-09 14:25:59,196 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-06-09 14:25:59,200 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-06-09 14:25:59,201 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-06-09 14:25:59,213 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-06-09 14:25:59,213 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-06-09 14:25:59,217 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-06-09 14:25:59,222 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-06-09 14:25:59,223 - DEBUG - Moving North Track to home position
+2026-06-09 14:25:59,223 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-06-09 14:25:59,223 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-06-09 14:25:59,231 - INFO - Measuring stock solution baselines
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated aspirate_speed=13 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated dispense_speed=9 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated post_asp_air_vol=0.05 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated overaspirate_vol=-0.0035768381000000136 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Using calibrated pre_asp_air_vol=0.1 for ethanol at 0.200mL
+2026-06-09 14:25:59,244 - DEBUG - Selected large_tip for volume 0.250 mL
+2026-06-09 14:25:59,244 - INFO - Getting large_tip (pipet number 13) from rack: large_tip_rack_2
+2026-06-09 14:25:59,244 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-06-09 14:25:59,244 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-06-09 14:25:59,244 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-06-09 14:25:59,244 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-06-09 14:25:59,258 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-06-09 14:25:59,259 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-06-09 14:25:59,260 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-06-09 14:25:59,266 - INFO - Pipetting from vial diva_stock, amount: 0.200 mL
+2026-06-09 14:25:59,266 - INFO - Additional volume from calibration, amount: -0.004 mL
+2026-06-09 14:25:59,269 - DEBUG - Adjusting pump 0 speed to 10
+2026-06-09 14:25:59,270 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-06-09 14:25:59,271 - DEBUG - Adjusting pump 0 speed to 13
+2026-06-09 14:25:59,271 - DEBUG - Aspirating 0.196 mL then waiting 0.0 s
+2026-06-09 14:25:59,271 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated aspirate_speed=13 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated dispense_speed=9 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated post_asp_air_vol=0.05 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated overaspirate_vol=-0.0035768381000000136 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,286 - DEBUG - Using calibrated pre_asp_air_vol=0.1 for ethanol at 0.200mL
+2026-06-09 14:25:59,289 - DEBUG - Adjusting pump 0 speed to 9
+2026-06-09 14:25:59,289 - INFO - Transferring 0.200 mL into well #0 of 96 WELL PLATE
+2026-06-09 14:25:59,289 - DEBUG - Dispensing 0.346 mL then waiting 1.5 s
+2026-06-09 14:25:59,292 - INFO - Removing pipet
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated aspirate_speed=13 for ethanol at 0.200mL
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated dispense_speed=9 for ethanol at 0.200mL
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated post_asp_air_vol=0.05 for ethanol at 0.200mL
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated overaspirate_vol=-0.0035768381000000136 for ethanol at 0.200mL
+2026-06-09 14:25:59,301 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,302 - DEBUG - Using calibrated pre_asp_air_vol=0.1 for ethanol at 0.200mL
+2026-06-09 14:25:59,302 - DEBUG - Selected large_tip for volume 0.250 mL
+2026-06-09 14:25:59,303 - INFO - Getting large_tip (pipet number 14) from rack: large_tip_rack_2
+2026-06-09 14:25:59,303 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-06-09 14:25:59,303 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-06-09 14:25:59,303 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-06-09 14:25:59,305 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-06-09 14:25:59,305 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-06-09 14:25:59,305 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-06-09 14:25:59,305 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-06-09 14:25:59,308 - INFO - Pipetting from vial copper_nitrate_stock, amount: 0.200 mL
+2026-06-09 14:25:59,309 - INFO - Additional volume from calibration, amount: -0.004 mL
+2026-06-09 14:25:59,314 - DEBUG - Adjusting pump 0 speed to 10
+2026-06-09 14:25:59,314 - DEBUG - Aspirating 0.100 mL then waiting 0 s
+2026-06-09 14:25:59,315 - DEBUG - Adjusting pump 0 speed to 13
+2026-06-09 14:25:59,315 - DEBUG - Aspirating 0.196 mL then waiting 0.0 s
+2026-06-09 14:25:59,315 - DEBUG - Aspirating 0.050 mL then waiting 0 s
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated aspirate_speed=13 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated dispense_speed=9 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated post_asp_air_vol=0.05 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated overaspirate_vol=-0.0035768381000000136 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Using calibrated pre_asp_air_vol=0.1 for ethanol at 0.200mL
+2026-06-09 14:25:59,320 - DEBUG - Adjusting pump 0 speed to 9
+2026-06-09 14:25:59,320 - INFO - Transferring 0.200 mL into well #1 of 96 WELL PLATE
+2026-06-09 14:25:59,320 - DEBUG - Dispensing 0.346 mL then waiting 1.5 s
+2026-06-09 14:25:59,320 - INFO - Removing pipet
+2026-06-09 14:25:59,320 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\mof_absorbance.prt
+2026-06-09 14:25:59,320 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-06-09 14:25:59,320 - INFO - Moving robot to home position
+2026-06-09 14:25:59,325 - INFO - Moving wellplate 0 to Cytation
+2026-06-09 14:25:59,325 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-06-09 14:25:59,325 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-06-09 14:25:59,325 - INFO - Grabbing wellplate from location: pipetting_area
+2026-06-09 14:25:59,325 - DEBUG - No waypoint locations provided, skipping path movement
+2026-06-09 14:25:59,327 - DEBUG - Opening gripper
+2026-06-09 14:25:59,327 - DEBUG - Closing gripper
+2026-06-09 14:25:59,329 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-06-09 14:25:59,329 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-06-09 14:25:59,329 - INFO - Releasing wellplate at location: cytation_tray
+2026-06-09 14:25:59,329 - DEBUG - No waypoint locations provided, skipping path movement
+2026-06-09 14:25:59,329 - DEBUG - Opening gripper
+2026-06-09 14:25:59,329 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-06-09 14:25:59,329 - INFO - Moving wellplate 0 back from Cytation
+2026-06-09 14:25:59,329 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-06-09 14:25:59,329 - INFO - Grabbing wellplate from location: cytation_tray
+2026-06-09 14:25:59,329 - DEBUG - No waypoint locations provided, skipping path movement
+2026-06-09 14:25:59,329 - DEBUG - Opening gripper
+2026-06-09 14:25:59,329 - DEBUG - Closing gripper
+2026-06-09 14:25:59,329 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-06-09 14:25:59,329 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-06-09 14:25:59,329 - INFO - Releasing wellplate at location: pipetting_area
+2026-06-09 14:25:59,329 - DEBUG - No waypoint locations provided, skipping path movement
+2026-06-09 14:25:59,329 - DEBUG - Opening gripper
+2026-06-09 14:25:59,329 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-06-09 14:25:59,329 - DEBUG - Moving North Track to home position
+2026-06-09 14:25:59,329 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-06-09 14:25:59,329 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-06-09 14:25:59,329 - INFO - Stock baselines measured
+2026-06-09 14:25:59,338 - INFO - Heater and stirring turned off

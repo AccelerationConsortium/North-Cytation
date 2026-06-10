@@ -479,7 +479,7 @@ def prepare_substock_from_solid(
 # ================================================================================
 
 if __name__ == "__main__":
-    STAGGER_MINUTES = 5  # delay between placing each reaction on the heater
+    STAGGER_MINUTES = 7  # delay between placing each reaction on the heater
 
     RUNS = [
         {"reaction_vial": "reaction_vial_1", "linker_to_metal_ratio": LINKER_TO_METAL_RATIO_1, "replicates": 3},
@@ -517,19 +517,44 @@ if __name__ == "__main__":
 
     lash_e.temp_controller.turn_on_stirring()
     vial_start_times = {}
+    vial_heater_slots = {}  # maps reaction_vial -> heater slot index
+    well_index = 2  # wells 0-1 used for stock baselines
+    run_measurements = {run["reaction_vial"]: [] for run in RUNS}
 
     try:
-        # Staggered preparation: prepare each vial and place on heater with STAGGER_MINUTES delay
+        # Staggered preparation: prepare each vial, take t=0 sample, then place on heater
         for i, run in enumerate(RUNS):
             reaction_vial = run["reaction_vial"]
             ratio = run["linker_to_metal_ratio"]
             linker_volume = TOTAL_REACTION_VOLUME * ratio / (ratio + 1)
             metal_volume = TOTAL_REACTION_VOLUME / (ratio + 1)
+            heater_slot = i  # each vial gets its own slot: 0, 1, 2
+            vial_heater_slots[reaction_vial] = heater_slot
             lash_e.logger.info(f"Preparing {reaction_vial}: ratio {ratio}:1")
             prepare_reaction_mixture(lash_e, reaction_vial, linker_volume, metal_volume)
-            lash_e.nr_robot.move_vial_to_location(reaction_vial, "heater", 0)
+
+            # t=0 sample taken before moving to heater
+            lash_e.logger.info(f"  Sampling {reaction_vial} at t=0min")
+            replicates = run.get("replicates", 3)
+            wells_t0 = dispense_samples_to_wells(
+                lash_e, reaction_vial, well_index, replicates, WELLPLATE_DISPENSE_VOLUME
+            )
+            well_index += len(wells_t0)
+            uv_vis_t0 = lash_e.measure_wellplate(CYTATION_PROTOCOL_FILE, wells_to_measure=wells_t0)
+            lash_e.logger.info(f"  Measured t=0 wells {wells_t0}")
+            if uv_vis_t0 is not None:
+                if not lash_e.simulate:
+                    raw_file = output_dir / f"mof_{reaction_vial}_0min.txt"
+                    uv_vis_t0.to_csv(raw_file, sep=',', index=True)
+                run_measurements[reaction_vial].extend(
+                    transpose_well_data(uv_vis_t0, wells_t0, 0, reaction_vial)
+                )
+
+            # Now move to heater and start the clock
+            lash_e.nr_robot.move_vial_to_location(reaction_vial, "heater", heater_slot)
             vial_start_times[reaction_vial] = time.time()
-            lash_e.logger.info(f"  {reaction_vial} on heater")
+            lash_e.logger.info(f"  {reaction_vial} on heater slot {heater_slot}")
+
             if i < len(RUNS) - 1:
                 if lash_e.simulate:
                     lash_e.logger.info(f"  [SIMULATE] Skipping {STAGGER_MINUTES} min stagger")
@@ -539,16 +564,14 @@ if __name__ == "__main__":
 
         lash_e.logger.info("All vials on heater - starting per-vial sampling")
 
-        # Build event list: each vial's time points are relative to its own start time
-        well_index = 2  # wells 0-1 used for stock baselines
-        run_measurements = {run["reaction_vial"]: [] for run in RUNS}
+        # Build event list: t=0 already taken, so start from first interval
         runs_by_vial = {run["reaction_vial"]: run for run in RUNS}
 
         events = []
         for run in RUNS:
             vial = run["reaction_vial"]
             start = vial_start_times[vial]
-            for t in range(0, TOTAL_SAMPLING_TIME_MINUTES + 1, SAMPLING_INTERVAL_MINUTES):
+            for t in range(SAMPLING_INTERVAL_MINUTES, TOTAL_SAMPLING_TIME_MINUTES + 1, SAMPLING_INTERVAL_MINUTES):
                 events.append((start + t * 60, vial, t))
         events.sort()
 
@@ -573,7 +596,7 @@ if __name__ == "__main__":
                 run.get("replicates", 3), WELLPLATE_DISPENSE_VOLUME
             )
             well_index += len(wells)
-            lash_e.nr_robot.move_vial_to_location(reaction_vial, "heater", 0)
+            lash_e.nr_robot.move_vial_to_location(reaction_vial, "heater", vial_heater_slots[reaction_vial])
 
             uv_vis_data = lash_e.measure_wellplate(CYTATION_PROTOCOL_FILE, wells_to_measure=wells)
             lash_e.logger.info(f"  Measured wells {wells}")
