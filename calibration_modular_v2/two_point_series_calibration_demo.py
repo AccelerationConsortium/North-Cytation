@@ -48,7 +48,7 @@ TRIAL_RESULTS_BY_LIQUID: Dict[str, Optional[str]] = {
 }
 # ────────────────────────────────────────────────────────────────────────────
 
-SIMULATE = True
+SIMULATE = False
 REPLICATES = 3
 VOLUME_SERIES_UL = [70, 100.0, 150.0]
 
@@ -195,11 +195,11 @@ def _get_baseline_params_for_liquid(liquid_name: str) -> Optional[Dict[str, floa
     return params
 
 LIQUID_SERIES: List[Dict[str, str]] = [
-    {"label": "glycerol_dye", "liquid_name": "glycerol", "vial_name": "glycerol_dye"},
-    {"label": "water_dye",    "liquid_name": "water",    "vial_name": "water_dye"},
-    {"label": "ethanol_dye",  "liquid_name": "ethanol",  "vial_name": "ethanol_dye"},
-    {"label": "glycerol",     "liquid_name": "glycerol", "vial_name": "glycerol"},
-    {"label": "water",        "liquid_name": "water",    "vial_name": "water"},
+    # {"label": "glycerol_dye", "liquid_name": "glycerol", "vial_name": "glycerol_dye"},
+    # {"label": "water_dye",    "liquid_name": "water",    "vial_name": "water_dye"},
+    # {"label": "ethanol_dye",  "liquid_name": "ethanol",  "vial_name": "ethanol_dye"},
+    # {"label": "glycerol",     "liquid_name": "glycerol", "vial_name": "glycerol"},
+    # {"label": "water",        "liquid_name": "water",    "vial_name": "water"},
     {"label": "ethanol",      "liquid_name": "ethanol",  "vial_name": "ethanol"},
 ]
 

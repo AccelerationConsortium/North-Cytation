@@ -23,7 +23,7 @@ import os
 from datetime import datetime
 
 # Import embedded calibration validation
-from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
+from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy, condition_tip
 import slack_agent
 
 # ========================================
@@ -33,12 +33,12 @@ import slack_agent
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/ilya_input_vials.csv"  # Updated extension
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Ilya_Measurement.prt"  
-INSTRUCTIONS_FILE = "../utoronto_demo/status/ilya_input_70_100_150.csv"
+INSTRUCTIONS_FILE = "../utoronto_demo/status/ilya_input_70_100_150_matched.csv"
 
 # Workflow settings
-SIMULATE = True  # Set to False for hardware execution
+SIMULATE = False  # Set to False for hardware execution
 N_ROUNDS = 3  # Number of rounds to execute
-WELLS_PER_ROUND = 36  # Wells per round (36 wells: 70/100/150 uL x 12 component groups)
+WELLS_PER_ROUND = 48  # Wells per round (48 wells: 70/100/150 uL x 12 groups + blank 200 positions)
 
 # Volume settings (in uL)
 MIN_PIPETTE_VOLUME_UL = 10.0   # Minimum volume for accurate pipetting
@@ -110,7 +110,8 @@ def condition_tip_for_liquid(lash_e, vial_name, liquid_type='water', max_volume_
     
     # Standard conditioning: 5 cycles (like other workflows)
     cycles = 5
-    volume_per_cycle_ml = 0.200  # 200 μL conditioning volume (already in mL)
+    # Use actual max volume from batch (capped at 150 uL) to stay within calibration range
+    volume_per_cycle_ml = min(max_volume_ul, 150.0) / 1000.0 if max_volume_ul else 0.150
     
     try:
         for cycle in range(cycles):
@@ -154,10 +155,8 @@ def dispense_component_to_wells(lash_e, component_df, vial_name, liquid_type, we
     if liquid_type == 'glycerol':
         print(f"    Using fresh tips for glycerol (no conditioning)")
     else:
-        # Condition tip for ethanol and water only
-        max_volume_ml = component_df[vial_name].max()  # Data already in mL
-        max_volume_ul = max_volume_ml * 1000.0  # Convert to μL for conditioning
-        condition_tip_for_liquid(lash_e, vial_name, liquid_type, max_volume_ul)
+        # Use fast standard conditioning (3 cycles, dummy params)
+        condition_tip(lash_e, vial_name, conditioning_volume_ul=150, liquid_type=liquid_type)
     
     # Sort wells by volume (descending) for better pipetting efficiency
     component_df_sorted = component_df.sort_values(by=vial_name, ascending=False)  # Use actual column name
@@ -305,16 +304,14 @@ def ilya_workflow_v2():
 
     timing_records = []
 
-    for round_num in range(1, N_ROUNDS + 1):
+    for round_num in range(3, N_ROUNDS + 1):
         print(f"\n--- ROUND {round_num}/{N_ROUNDS} ---")
         
         # Set well range for this round
-        if round_num == 1:
-            wells = range(0, 36)
-        elif round_num == 2:
-            wells = range(36, 72)
+        if round_num == 2:
+            wells = range(48, 96)   # Round 2: second half of same plate
         else:
-            wells = range(0, 36)  # Round 3: repeat wells 0-35
+            wells = range(0, 48)    # Rounds 1 and 3: wells 0-47
         
         # Wellplate management
         if round_num == 1:
@@ -327,17 +324,10 @@ def ilya_workflow_v2():
             lash_e.nr_track.discard_wellplate()
             lash_e.nr_track.get_new_wellplate()
         
-        # Set well indices for this round
-        # Always use the same CSV data (wells 0-35) but map to different wellplate positions
-        csv_wells = range(0, 36)  # Always use CSV wells 0-35
-        round_data = input_data[input_data.index.isin(csv_wells)].copy()
-        
-        # Map CSV well indices to actual wellplate positions
+        # Load CSV data (wells 0-47) and remap indices to actual wellplate positions
+        round_data = input_data.copy()
         if round_num == 2:
-            # For round 2, map CSV wells 0-35 to wellplate wells 36-71
-            wellplate_mapping = {i: i + 36 for i in range(36)}
-            round_data.index = [wellplate_mapping[i] for i in round_data.index]
-        # Rounds 1 and 3 use wells 0-35 as-is
+            round_data.index = [i + 48 for i in round_data.index]
         
         print(f"Round {round_num} data shape: {round_data.shape}")
         
@@ -397,25 +387,25 @@ def ilya_workflow_v2():
         # Measure wellplate after dispensing
         wells_list = list(wells)
         print(f"Measuring wellplate: wells {wells_list[0]}-{wells_list[-1]}")
-        try:
-            measurement_data = lash_e.measure_wellplate(
-                protocol_file_path=MEASUREMENT_PROTOCOL_FILE,
-                wells_to_measure=wells_list
-            )
-            print(f"Measurement complete for round {round_num}")
+        # try:
+        #     measurement_data = lash_e.measure_wellplate(
+        #         protocol_file_path=MEASUREMENT_PROTOCOL_FILE,
+        #         wells_to_measure=wells_list
+        #     )
+        #     print(f"Measurement complete for round {round_num}")
             
-            # Save measurement data if valid
-            if measurement_data is not None:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"ilya_measurement_round{round_num}_{timestamp}.csv"
-                filepath = os.path.join("output", filename)
-                measurement_data.to_csv(filepath, sep=',')
-                print(f"Saved: {filename}")
-            else:
-                print(f"No measurement data returned for round {round_num}")
+        #     # Save measurement data if valid
+        #     if measurement_data is not None:
+        #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        #         filename = f"ilya_measurement_round{round_num}_{timestamp}.csv"
+        #         filepath = os.path.join("output", filename)
+        #         measurement_data.to_csv(filepath, sep=',')
+        #         print(f"Saved: {filename}")
+        #     else:
+        #         print(f"No measurement data returned for round {round_num}")
             
-        except Exception as e:
-            print(f"Measurement failed for round {round_num}: {e}")
+        # except Exception as e:
+        #     print(f"Measurement failed for round {round_num}: {e}")
 
         # Manual lid removal
         if not SIMULATE:
