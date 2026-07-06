@@ -20,12 +20,12 @@ experiment:
   description: Testing calibration across 4 volumes
   fixed_parameters:
     asp_disp_cycles: 0
-    post_asp_air_vol: 0.0
-    post_retract_wait_time: 0.0
+    post_asp_air_vol: 0
+    post_retract_wait_time: 5.0
     retract_speed: 5.0
     dispense_wait_time: 3.0
   hardware_protocol: calibration_protocol_northrobot
-  liquid: DMSO
+  liquid: ethanol
   max_measurements_first_volume: 96
   max_replicates_per_trial: 3
   max_total_measurements: 96
@@ -36,7 +36,7 @@ experiment:
   simulation_protocol: calibration_protocol_simulated
   two_point_calibration_replicates: 0
   volume_targets_ml:
-  - 0.05
+  - 0.050
 hardware:
   parameter_warnings:
   - 'IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter
@@ -162,7 +162,7 @@ optimization:
     carry_optimizer_state: false
     enabled: true
   stopping_criteria:
-    min_good_trials: 96
+    min_good_trials: 100
   use_range_based_variability: false
 output:
   base_directory: output/

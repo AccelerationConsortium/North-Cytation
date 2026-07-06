@@ -1,0 +1,1683 @@
+2026-05-29 15:11:12,084 - INFO - Workflow config loaded: mof_synthesis_workflow
+2026-05-29 15:11:12,084 - INFO - Config keys updated: 14 (SIMULATE, LINKER_STOCK_CONC, METAL_STOCK_CONC, LINKER_TO_METAL_RATIO, REACTION_TIME_HOURS, REACTION_TEMP, STIRRING_SPEED, ANALYSIS_WELLS_PER_REACTION, SAMPLING_INTERVAL_MINUTES, TOTAL_SAMPLING_TIME_MINUTES, TOTAL_REACTION_VOLUME, WELLPLATE_DISPENSE_VOLUME, INPUT_VIAL_STATUS_FILE, CYTATION_PROTOCOL_FILE)
+2026-05-29 15:11:12,084 - INFO - SIMULATE mode: False
+2026-05-29 15:11:12,084 - INFO - Launching status review GUI...
+2026-05-29 15:11:12,268 - INFO - Detected workflow name: mof_synthesis_workflow
+2026-05-29 15:11:12,647 - INFO - Config editor loaded for workflow: mof_synthesis_workflow
+2026-05-29 15:11:56,001 - INFO - User selected: Run Workflow
+2026-05-29 15:11:56,001 - INFO - Status review completed - proceeding with hardware initialization
+2026-05-29 15:11:56,021 - DEBUG - Reloading config after status check to get updated values
+2026-05-29 15:11:56,042 - INFO - Config Manager: Updated 14 workflow constants from mof_synthesis_workflow.yaml
+2026-05-29 15:11:56,646 - INFO - Initializing North Robot...
+2026-05-29 15:11:56,646 - DEBUG - Loading robot configuration files...
+2026-05-29 15:11:56,668 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-05-29 15:11:56,670 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-05-29 15:11:56,675 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-05-29 15:11:56,677 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-05-29 15:11:56,680 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-05-29 15:11:56,680 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-05-29 15:11:56,680 - DEBUG - Loading robot state files...
+2026-05-29 15:11:56,697 - DEBUG - Loaded vial data from ../utoronto_demo/status/mof_synthesis_vials.csv
+2026-05-29 15:11:56,699 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-05-29 15:11:56,704 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-05-29 15:11:56,704 - DEBUG - Robot status loaded successfully
+2026-05-29 15:11:56,704 - INFO - Physical initialization of North Robot...
+2026-05-29 15:12:00,147 - DEBUG - Loading pumps from YAML configuration...
+2026-05-29 15:12:00,259 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-05-29 15:12:00,345 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-05-29 15:12:00,345 - INFO - Moving robot to home position
+2026-05-29 15:12:00,770 - DEBUG - Initializing centrifuge controller...
+2026-05-29 15:12:07,238 - DEBUG - Current reader status: 0
+2026-05-29 15:12:07,238 - INFO - Cytation5 is connected and ready
+2026-05-29 15:12:07,238 - INFO - Initializing North Track...
+2026-05-29 15:12:07,238 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-05-29 15:12:07,238 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-05-29 15:12:07,241 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-05-29 15:12:07,241 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-05-29 15:12:07,242 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-05-29 15:12:07,242 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-05-29 15:12:07,252 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-05-29 15:12:07,255 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-05-29 15:12:07,330 - DEBUG - Moving North Track to home position
+2026-05-29 15:12:07,330 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-29 15:12:07,331 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-29 15:12:07,333 - DEBUG - Initializing temperature controller...
+2026-05-29 15:12:07,497 - DEBUG - Setting channel 0 to target temperature 25C
+2026-05-29 15:12:07,543 - INFO - Starting MOF synthesis reaction preparation
+2026-05-29 15:12:07,543 - INFO - Using reaction_vial_1 for MOF synthesis
+2026-05-29 15:12:07,543 - INFO -   Linker volume (DiVA): 4.000 mL
+2026-05-29 15:12:07,544 - INFO -   Metal volume (Cu(NO3)2): 2.000 mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated retract_speed=5 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated overaspirate_vol=0.005939628199999948 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 4.000mL
+2026-05-29 15:12:07,553 - INFO - Dispensing 4.000 mL from diva_stock to reaction_vial_1
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated overaspirate_vol=0.005939628199999948 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.800mL
+2026-05-29 15:12:07,554 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:12:07,554 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:12:07,554 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:12:07,554 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:12:07,554 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:12:07,554 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:12:07,554 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:12:07,554 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:12:07,554 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:12:07,554 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:12:07,554 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:07,554 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,565 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:12:07,565 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:12:07,565 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,565 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,565 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:12:07,565 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,565 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:12:07,565 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:12:07,565 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:12:07,565 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:12:07,565 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:12:07,565 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:12:07,565 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:12:07,565 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:12:07,565 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:12:07,565 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:12:07,565 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:12:07,565 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:12:07,570 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:12:07,570 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:12:07,570 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:12:07,570 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:12:07,570 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:12:07,570 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:12:07,570 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:12:07,570 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:12:07,570 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:12:07,570 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:12:07,570 - INFO - Total tip volume (4.247 mL) exceeds capacity, splitting into 6 transfers of 0.667 mL each
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:07,570 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,576 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:12:07,576 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:12:07,576 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,576 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,576 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:12:07,576 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:07,576 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:12:07,576 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:12:07,576 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:12:07,576 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:12:07,576 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:12:07,576 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:12:07,576 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:12:07,576 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:12:07,576 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:12:07,576 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:12:07,576 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:12:07,576 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:12:07,578 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:12:07,578 - INFO - Getting large_tip (pipet number 32) from rack: large_tip_rack_1
+2026-05-29 15:12:10,379 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:12:10,661 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 15:12:10,661 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:12:10,843 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:12:11,014 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:12:11,180 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:12:11,336 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:12:11,627 - INFO - Pipetting from vial diva_stock, amount: 0.667 mL
+2026-05-29 15:12:11,627 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:12:11,627 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:12:15,123 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:12:16,252 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:12:16,700 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:12:24,318 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:12:24,318 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:12:24,318 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:12:24,318 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:12:24,318 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:12:24,318 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:12:24,318 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:12:24,318 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:12:24,318 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:12:24,318 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:12:24,318 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:12:24,318 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:12:24,334 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:12:27,006 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:12:33,244 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:12:33,244 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:12:33,244 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:12:33,244 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:12:33,244 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:12:33,244 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:12:33,244 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:12:33,244 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:12:33,244 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:12:33,244 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:12:33,244 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:12:33,244 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:12:33,244 - INFO - Pipetting from vial diva_stock, amount: 0.667 mL
+2026-05-29 15:12:33,244 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:12:33,244 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:12:36,056 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:12:37,217 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:12:37,655 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:12:45,293 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:12:45,293 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:12:45,293 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:12:45,293 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:12:45,293 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:12:45,293 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:12:45,293 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:12:45,293 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:12:45,293 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:12:45,293 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:12:45,293 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:12:45,293 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:12:45,296 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:12:47,966 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:12:54,229 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:12:54,229 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:12:54,229 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:12:54,229 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:12:54,229 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:12:54,229 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:12:54,229 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:12:54,229 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:12:54,229 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:12:54,229 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:12:54,229 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:12:54,229 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:12:54,229 - INFO - Pipetting from vial diva_stock, amount: 0.667 mL
+2026-05-29 15:12:54,229 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:12:54,229 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:12:57,063 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:12:58,188 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:12:58,658 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:13:06,326 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:13:06,326 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:13:06,326 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:13:06,326 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:13:06,326 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:13:06,326 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:13:06,326 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:13:06,326 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:13:06,326 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:13:06,326 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:13:06,326 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:13:06,329 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:13:06,329 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:13:09,001 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:13:15,258 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:13:15,258 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:13:15,258 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:13:15,258 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:13:15,258 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:13:15,258 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:13:15,258 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:13:15,258 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:13:15,258 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:13:15,258 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:13:15,258 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:13:15,258 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:13:15,258 - INFO - Pipetting from vial diva_stock, amount: 0.667 mL
+2026-05-29 15:13:15,258 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:13:15,258 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:13:18,074 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:13:19,232 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:13:19,703 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:13:27,457 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:13:27,457 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:13:27,457 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:13:27,457 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:13:27,457 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:13:27,457 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:13:27,457 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:13:27,457 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:13:27,457 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:13:27,457 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:13:27,457 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:13:27,459 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:13:27,459 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:13:30,147 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:13:36,438 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:13:36,438 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:13:36,438 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:13:36,438 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:13:36,438 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:13:36,438 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:13:36,438 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:13:36,438 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:13:36,438 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:13:36,438 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:13:36,438 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:13:36,445 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:13:36,445 - INFO - Pipetting from vial diva_stock, amount: 0.667 mL
+2026-05-29 15:13:36,445 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:13:36,445 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:13:39,269 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:13:40,427 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:13:40,912 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:13:48,677 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:13:48,677 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:13:48,677 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:13:48,677 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:13:48,677 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:13:48,677 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:13:48,677 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:13:48,677 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:13:48,677 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:13:48,677 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:13:48,678 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:13:48,678 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:13:48,678 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:13:51,346 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:13:57,613 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:13:57,613 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:13:57,613 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:13:57,613 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:13:57,613 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:13:57,613 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:13:57,613 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:13:57,613 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:13:57,613 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:13:57,613 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:13:57,613 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:13:57,613 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:13:57,613 - INFO - Pipetting from vial diva_stock, amount: 0.667 mL
+2026-05-29 15:13:57,613 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:13:57,613 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:14:00,446 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:14:01,573 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:14:02,048 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:14:09,832 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:14:09,832 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:14:09,832 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:14:09,832 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:14:09,832 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:14:09,832 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:14:09,832 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:14:09,832 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:14:09,832 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:14:09,832 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:14:09,832 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:14:09,832 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:14:09,832 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:14:12,509 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:14:18,763 - INFO - Removing pipet
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated retract_speed=5 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated overaspirate_vol=0.005939628199999948 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 2.000mL
+2026-05-29 15:14:22,093 - INFO - Dispensing 2.000 mL from copper_nitrate_stock to reaction_vial_1
+2026-05-29 15:14:22,105 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:22,105 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:22,105 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,105 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:14:22,105 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:14:22,110 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,110 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,110 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:14:22,110 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,110 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:14:22,110 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:14:22,110 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:14:22,110 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:14:22,110 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:14:22,110 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:14:22,110 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:14:22,110 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:14:22,110 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:14:22,110 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:14:22,110 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:14:22,110 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:14:22,114 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:14:22,115 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:14:22,115 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:14:22,115 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:14:22,115 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:14:22,115 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:14:22,115 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:14:22,115 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:14:22,115 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:14:22,115 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:14:22,115 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:14:22,115 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:14:22,115 - INFO - Total tip volume (2.247 mL) exceeds capacity, splitting into 3 transfers of 0.667 mL each
+2026-05-29 15:14:22,120 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:14:22,121 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:14:22,121 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:14:22,121 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:14:22,121 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:14:22,121 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:14:22,121 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:14:22,121 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:14:22,121 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:14:22,121 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:14:22,121 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:14:22,121 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:14:22,122 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:14:22,122 - INFO - Getting large_tip (pipet number 33) from rack: large_tip_rack_1
+2026-05-29 15:14:23,545 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:14:23,822 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 15:14:23,822 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:14:24,003 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:14:24,176 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:14:24,335 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:14:24,503 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:14:24,779 - INFO - Pipetting from vial copper_nitrate_stock, amount: 0.667 mL
+2026-05-29 15:14:24,779 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:14:24,779 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:14:27,960 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:14:29,104 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:14:29,524 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:14:37,090 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:14:37,090 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:14:37,090 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:14:37,090 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:14:37,090 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:14:37,090 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:14:37,090 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:14:37,090 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:14:37,090 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:14:37,090 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:14:37,090 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:14:37,090 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:14:37,090 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:14:40,288 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:14:46,550 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:14:46,550 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:14:46,550 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:14:46,550 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:14:46,550 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:14:46,550 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:14:46,550 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:14:46,550 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:14:46,550 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:14:46,550 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:14:46,550 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:14:46,550 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:14:46,550 - INFO - Pipetting from vial copper_nitrate_stock, amount: 0.667 mL
+2026-05-29 15:14:46,550 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:14:46,550 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:14:49,876 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:14:51,047 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:14:51,482 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:14:59,012 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:14:59,012 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:14:59,012 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:14:59,012 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:14:59,012 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:14:59,012 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:14:59,012 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:14:59,012 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:14:59,012 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:14:59,012 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:14:59,012 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:14:59,014 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:14:59,014 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:15:02,202 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated overaspirate_vol=-0.006779488359333362 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:15:08,468 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:15:08,468 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:15:08,468 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:15:08,468 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:15:08,468 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:15:08,468 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:15:08,468 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:15:08,468 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:15:08,468 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:15:08,468 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:15:08,468 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:15:08,470 - DEBUG - Selected large_tip for volume 0.667 mL
+2026-05-29 15:15:08,470 - INFO - Pipetting from vial copper_nitrate_stock, amount: 0.667 mL
+2026-05-29 15:15:08,470 - INFO - Additional volume from calibration, amount: 0.006 mL
+2026-05-29 15:15:08,470 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:15:11,806 - DEBUG - Aspirating 0.241 mL then waiting 0 s
+2026-05-29 15:15:12,934 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:15:13,375 - DEBUG - Aspirating 0.673 mL then waiting 3.0 s
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated aspirate_speed=12 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated dispense_speed=12 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated aspirate_wait_time=3.0 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated overaspirate_vol=-0.006811365844444476 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Using calibrated pre_asp_air_vol=0.241 for ethanol at 0.667mL
+2026-05-29 15:15:20,950 - DEBUG - Applied object param asp_disp_cycles=0
+2026-05-29 15:15:20,950 - DEBUG - Applied object param aspirate_speed=12
+2026-05-29 15:15:20,950 - DEBUG - Applied object param aspirate_wait_time=3.0
+2026-05-29 15:15:20,950 - DEBUG - Applied object param blowout_vol=0.0
+2026-05-29 15:15:20,950 - DEBUG - Applied object param dispense_speed=12
+2026-05-29 15:15:20,950 - DEBUG - Applied object param dispense_wait_time=1.5
+2026-05-29 15:15:20,950 - DEBUG - Applied object param overaspirate_vol=0.005939628199999948
+2026-05-29 15:15:20,950 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-05-29 15:15:20,950 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-05-29 15:15:20,950 - DEBUG - Applied object param pre_asp_air_vol=0.241
+2026-05-29 15:15:20,950 - DEBUG - Applied object param retract_speed=5
+2026-05-29 15:15:20,950 - INFO - Pipetting into vial reaction_vial_1, amount: 0.667 mL
+2026-05-29 15:15:20,950 - DEBUG - Adjusting pump 0 speed to 12
+2026-05-29 15:15:24,152 - DEBUG - Dispensing 0.914 mL then waiting 1.5 s
+2026-05-29 15:15:30,439 - INFO - Removing pipet
+2026-05-29 15:15:33,757 - INFO -   Mixed linker and metal solutions in reaction_vial_1
+2026-05-29 15:15:33,757 - INFO - Moving vial reaction_vial_1 to heater: 0
+2026-05-29 15:15:33,757 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:15:35,875 - DEBUG - Dropping off vial 2 at location heater with index 0
+2026-05-29 15:15:40,144 - DEBUG - Turning on stirring at speed 10000
+2026-05-29 15:15:40,194 - INFO - Started heating and stirring reaction_vial_1 at 25°C
+2026-05-29 15:15:40,194 - INFO - Time point: 0 minutes - taking 3 samples from reaction_vial_1
+2026-05-29 15:15:40,194 - INFO - Moving vial reaction_vial_1 to clamp: 0
+2026-05-29 15:15:40,194 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:15:40,478 - DEBUG - Dropping off vial 2 at location clamp with index 0
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:44,179 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:15:44,179 - INFO - Getting large_tip (pipet number 34) from rack: large_tip_rack_1
+2026-05-29 15:15:47,631 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:15:47,914 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 15:15:47,914 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:15:48,085 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:15:48,248 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:15:48,398 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:15:48,569 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:15:48,848 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:15:48,848 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:15:48,848 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:15:51,799 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:15:52,717 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:15:54,352 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:15:58,536 - INFO - Transferring 0.200 mL into well #1 of 96 WELL PLATE
+2026-05-29 15:15:58,536 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:00,855 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:16:00,855 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:16:00,855 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:16:00,867 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:16:04,506 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:16:05,424 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:07,151 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:16:11,326 - INFO - Transferring 0.200 mL into well #2 of 96 WELL PLATE
+2026-05-29 15:16:11,326 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:13,628 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:16:13,628 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:16:13,628 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:16:13,628 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:16:17,233 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:16:18,147 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:16:19,848 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:16:23,987 - INFO - Transferring 0.200 mL into well #3 of 96 WELL PLATE
+2026-05-29 15:16:23,987 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:16:26,285 - INFO - Removing pipet
+2026-05-29 15:16:29,953 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\mof_absorbance.prt
+2026-05-29 15:16:29,953 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-05-29 15:16:29,953 - INFO - Moving robot to home position
+2026-05-29 15:16:31,587 - INFO - Moving wellplate 0 to Cytation
+2026-05-29 15:16:31,587 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 15:16:32,687 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 15:16:32,687 - INFO - Grabbing wellplate from location: pipetting_area
+2026-05-29 15:16:32,687 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:16:36,322 - DEBUG - Opening gripper
+2026-05-29 15:16:39,144 - DEBUG - Closing gripper
+2026-05-29 15:16:41,575 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 15:16:43,393 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-05-29 15:16:45,594 - INFO - Releasing wellplate at location: cytation_tray
+2026-05-29 15:16:45,594 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:16:48,279 - DEBUG - Opening gripper
+2026-05-29 15:16:50,563 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 15:16:53,467 - DEBUG - Experiment created successfully.
+2026-05-29 15:16:53,473 - DEBUG - Experiment Protocol Type: Standard
+2026-05-29 15:16:53,473 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-05-29 15:16:53,484 - INFO - Running plate with wells: ['A2', 'A3', 'A4'] and protocol type: spectra
+2026-05-29 15:16:55,867 - INFO - Read started. Waiting for completion...
+2026-05-29 15:17:18,578 - INFO - Plate read completed successfully.
+2026-05-29 15:17:19,145 - INFO - Moving wellplate 0 back from Cytation
+2026-05-29 15:17:19,145 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 15:17:21,350 - INFO - Grabbing wellplate from location: cytation_tray
+2026-05-29 15:17:21,350 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:17:21,430 - DEBUG - Opening gripper
+2026-05-29 15:17:23,997 - DEBUG - Closing gripper
+2026-05-29 15:17:26,347 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 15:17:26,899 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 15:17:29,454 - INFO - Releasing wellplate at location: pipetting_area
+2026-05-29 15:17:29,454 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:17:33,835 - DEBUG - Opening gripper
+2026-05-29 15:17:36,272 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 15:17:40,689 - DEBUG - Moving North Track to home position
+2026-05-29 15:17:40,689 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-29 15:17:40,689 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-29 15:17:40,689 - INFO -   Measured wells [1, 2, 3] at 0 min
+2026-05-29 15:17:40,689 - INFO -   Saved time point data: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_output_0min.txt
+2026-05-29 15:17:41,473 - INFO - Moving vial reaction_vial_1 to heater: 0
+2026-05-29 15:17:41,473 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:17:44,041 - DEBUG - Dropping off vial 2 at location heater with index 0
+2026-05-29 15:17:47,760 - INFO -   Waiting 10 minutes until next sample...
+2026-05-29 15:27:47,782 - INFO - Time point: 10 minutes - taking 3 samples from reaction_vial_1
+2026-05-29 15:27:47,815 - INFO - Moving vial reaction_vial_1 to clamp: 0
+2026-05-29 15:27:47,815 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:27:48,096 - DEBUG - Dropping off vial 2 at location clamp with index 0
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:27:51,850 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:27:51,850 - INFO - Getting large_tip (pipet number 35) from rack: large_tip_rack_1
+2026-05-29 15:27:55,302 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:27:55,600 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 15:27:55,601 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:27:55,771 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:27:55,933 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:27:56,093 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:27:56,254 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:27:56,546 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:27:56,546 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:27:56,549 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:27:59,479 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:28:00,418 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:28:02,200 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:02,201 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:28:06,320 - INFO - Transferring 0.200 mL into well #4 of 96 WELL PLATE
+2026-05-29 15:28:06,320 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:08,645 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:08,647 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:28:08,649 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:28:08,649 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:28:08,649 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:28:12,225 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:28:13,176 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:14,976 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:28:19,053 - INFO - Transferring 0.200 mL into well #5 of 96 WELL PLATE
+2026-05-29 15:28:19,053 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:21,361 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:28:21,361 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:28:21,361 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:28:21,374 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:28:24,922 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:28:25,864 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:28:27,672 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:28:31,724 - INFO - Transferring 0.200 mL into well #6 of 96 WELL PLATE
+2026-05-29 15:28:31,724 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:28:34,020 - INFO - Removing pipet
+2026-05-29 15:28:37,659 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\mof_absorbance.prt
+2026-05-29 15:28:37,659 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-05-29 15:28:37,660 - INFO - Moving robot to home position
+2026-05-29 15:28:39,296 - INFO - Moving wellplate 0 to Cytation
+2026-05-29 15:28:39,297 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 15:28:40,389 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 15:28:40,389 - INFO - Grabbing wellplate from location: pipetting_area
+2026-05-29 15:28:40,389 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:28:43,993 - DEBUG - Opening gripper
+2026-05-29 15:28:46,830 - DEBUG - Closing gripper
+2026-05-29 15:28:49,263 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 15:28:51,104 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-05-29 15:28:53,316 - INFO - Releasing wellplate at location: cytation_tray
+2026-05-29 15:28:53,316 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:28:55,973 - DEBUG - Opening gripper
+2026-05-29 15:28:58,293 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 15:29:01,211 - DEBUG - Experiment created successfully.
+2026-05-29 15:29:01,216 - DEBUG - Experiment Protocol Type: Standard
+2026-05-29 15:29:01,217 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-05-29 15:29:01,230 - INFO - Running plate with wells: ['A5', 'A6', 'A7'] and protocol type: spectra
+2026-05-29 15:29:03,634 - INFO - Read started. Waiting for completion...
+2026-05-29 15:29:26,359 - INFO - Plate read completed successfully.
+2026-05-29 15:29:26,893 - INFO - Moving wellplate 0 back from Cytation
+2026-05-29 15:29:26,893 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 15:29:29,093 - INFO - Grabbing wellplate from location: cytation_tray
+2026-05-29 15:29:29,093 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:29:29,170 - DEBUG - Opening gripper
+2026-05-29 15:29:31,739 - DEBUG - Closing gripper
+2026-05-29 15:29:34,100 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 15:29:34,650 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 15:29:37,200 - INFO - Releasing wellplate at location: pipetting_area
+2026-05-29 15:29:37,201 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:29:41,588 - DEBUG - Opening gripper
+2026-05-29 15:29:44,018 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 15:29:48,457 - DEBUG - Moving North Track to home position
+2026-05-29 15:29:48,457 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-29 15:29:48,457 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-29 15:29:48,457 - INFO -   Measured wells [4, 5, 6] at 10 min
+2026-05-29 15:29:48,470 - INFO -   Saved time point data: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_output_10min.txt
+2026-05-29 15:29:48,646 - INFO - Moving vial reaction_vial_1 to heater: 0
+2026-05-29 15:29:48,646 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:29:51,217 - DEBUG - Dropping off vial 2 at location heater with index 0
+2026-05-29 15:29:54,958 - INFO -   Waiting 10 minutes until next sample...
+2026-05-29 15:39:54,972 - INFO - Time point: 20 minutes - taking 3 samples from reaction_vial_1
+2026-05-29 15:39:54,972 - INFO - Moving vial reaction_vial_1 to clamp: 0
+2026-05-29 15:39:54,972 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:39:55,255 - DEBUG - Dropping off vial 2 at location clamp with index 0
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:39:58,985 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:39:58,985 - INFO - Getting large_tip (pipet number 36) from rack: large_tip_rack_1
+2026-05-29 15:40:02,433 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:40:02,706 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 15:40:02,706 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:40:02,891 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:40:03,051 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:40:03,203 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:40:03,379 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:40:03,657 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:40:03,657 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:40:03,657 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:40:06,592 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:40:07,530 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:09,371 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:40:13,406 - INFO - Transferring 0.200 mL into well #7 of 96 WELL PLATE
+2026-05-29 15:40:13,406 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:40:15,742 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:15,743 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:15,744 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:40:15,746 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:40:15,746 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:40:15,747 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:40:19,226 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:40:20,180 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:40:22,027 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:40:22,027 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:40:22,027 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:22,027 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:40:22,027 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:40:22,027 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:22,027 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:22,028 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:40:22,028 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:22,028 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:22,028 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:40:26,036 - INFO - Transferring 0.200 mL into well #8 of 96 WELL PLATE
+2026-05-29 15:40:26,036 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:28,345 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:28,353 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:40:28,355 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:40:28,355 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:40:28,357 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:40:31,809 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:40:32,791 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:40:34,669 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:40:38,651 - INFO - Transferring 0.200 mL into well #9 of 96 WELL PLATE
+2026-05-29 15:40:38,651 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:40:40,984 - INFO - Removing pipet
+2026-05-29 15:40:44,603 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\mof_absorbance.prt
+2026-05-29 15:40:44,603 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-05-29 15:40:44,603 - INFO - Moving robot to home position
+2026-05-29 15:40:46,232 - INFO - Moving wellplate 0 to Cytation
+2026-05-29 15:40:46,232 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 15:40:47,343 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 15:40:47,343 - INFO - Grabbing wellplate from location: pipetting_area
+2026-05-29 15:40:47,343 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:40:50,990 - DEBUG - Opening gripper
+2026-05-29 15:40:53,840 - DEBUG - Closing gripper
+2026-05-29 15:40:56,278 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 15:40:58,111 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-05-29 15:41:00,325 - INFO - Releasing wellplate at location: cytation_tray
+2026-05-29 15:41:00,325 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:41:02,964 - DEBUG - Opening gripper
+2026-05-29 15:41:05,282 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 15:41:08,123 - DEBUG - Experiment created successfully.
+2026-05-29 15:41:08,125 - DEBUG - Experiment Protocol Type: Standard
+2026-05-29 15:41:08,126 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-05-29 15:41:08,134 - INFO - Running plate with wells: ['A8', 'A9', 'A10'] and protocol type: spectra
+2026-05-29 15:41:10,523 - INFO - Read started. Waiting for completion...
+2026-05-29 15:41:33,457 - INFO - Plate read completed successfully.
+2026-05-29 15:41:33,992 - INFO - Moving wellplate 0 back from Cytation
+2026-05-29 15:41:33,992 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 15:41:36,187 - INFO - Grabbing wellplate from location: cytation_tray
+2026-05-29 15:41:36,187 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:41:36,260 - DEBUG - Opening gripper
+2026-05-29 15:41:38,825 - DEBUG - Closing gripper
+2026-05-29 15:41:41,159 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 15:41:41,727 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 15:41:44,157 - INFO - Releasing wellplate at location: pipetting_area
+2026-05-29 15:41:44,157 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:41:48,529 - DEBUG - Opening gripper
+2026-05-29 15:41:50,973 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 15:41:55,405 - DEBUG - Moving North Track to home position
+2026-05-29 15:41:55,405 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-29 15:41:55,405 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-29 15:41:55,405 - INFO -   Measured wells [7, 8, 9] at 20 min
+2026-05-29 15:41:55,405 - INFO -   Saved time point data: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_output_20min.txt
+2026-05-29 15:41:55,591 - INFO - Moving vial reaction_vial_1 to heater: 0
+2026-05-29 15:41:55,591 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:41:58,183 - DEBUG - Dropping off vial 2 at location heater with index 0
+2026-05-29 15:42:01,900 - INFO -   Waiting 10 minutes until next sample...
+2026-05-29 15:52:01,908 - INFO - Time point: 30 minutes - taking 3 samples from reaction_vial_1
+2026-05-29 15:52:01,908 - INFO - Moving vial reaction_vial_1 to clamp: 0
+2026-05-29 15:52:01,910 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:52:02,192 - DEBUG - Dropping off vial 2 at location clamp with index 0
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:05,916 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:52:05,916 - INFO - Getting large_tip (pipet number 37) from rack: large_tip_rack_1
+2026-05-29 15:52:09,342 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:52:09,646 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 15:52:09,646 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:52:09,821 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:52:09,981 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 15:52:10,132 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 15:52:10,306 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 15:52:10,594 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:52:10,594 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:52:10,594 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:52:13,509 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:52:14,480 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:16,339 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:52:20,273 - INFO - Transferring 0.200 mL into well #10 of 96 WELL PLATE
+2026-05-29 15:52:20,273 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:22,557 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:52:22,557 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:52:22,557 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:52:22,557 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:52:25,948 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:52:26,930 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:28,872 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:52:32,778 - INFO - Transferring 0.200 mL into well #11 of 96 WELL PLATE
+2026-05-29 15:52:32,778 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:35,120 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:35,122 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 15:52:35,125 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 15:52:35,126 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 15:52:35,127 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 15:52:38,494 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 15:52:39,475 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 15:52:41,428 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 15:52:45,632 - INFO - Transferring 0.200 mL into well #12 of 96 WELL PLATE
+2026-05-29 15:52:45,632 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 15:52:47,951 - INFO - Removing pipet
+2026-05-29 15:52:51,604 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\mof_absorbance.prt
+2026-05-29 15:52:51,604 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-05-29 15:52:51,604 - INFO - Moving robot to home position
+2026-05-29 15:52:53,239 - INFO - Moving wellplate 0 to Cytation
+2026-05-29 15:52:53,239 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 15:52:54,350 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 15:52:54,350 - INFO - Grabbing wellplate from location: pipetting_area
+2026-05-29 15:52:54,350 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:52:58,060 - DEBUG - Opening gripper
+2026-05-29 15:53:00,909 - DEBUG - Closing gripper
+2026-05-29 15:53:03,354 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 15:53:05,182 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-05-29 15:53:07,382 - INFO - Releasing wellplate at location: cytation_tray
+2026-05-29 15:53:07,382 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:53:10,048 - DEBUG - Opening gripper
+2026-05-29 15:53:12,345 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 15:53:15,070 - DEBUG - Experiment created successfully.
+2026-05-29 15:53:15,070 - DEBUG - Experiment Protocol Type: Standard
+2026-05-29 15:53:15,070 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-05-29 15:53:15,081 - INFO - Running plate with wells: ['A11', 'A12'] and protocol type: spectra
+2026-05-29 15:53:17,451 - INFO - Read started. Waiting for completion...
+2026-05-29 15:53:37,956 - INFO - Plate read completed successfully.
+2026-05-29 15:53:37,970 - INFO - Running plate with wells: ['B1'] and protocol type: spectra
+2026-05-29 15:53:40,379 - INFO - Read started. Waiting for completion...
+2026-05-29 15:53:57,664 - INFO - Plate read completed successfully.
+2026-05-29 15:53:58,055 - INFO - Moving wellplate 0 back from Cytation
+2026-05-29 15:53:58,055 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 15:54:00,265 - INFO - Grabbing wellplate from location: cytation_tray
+2026-05-29 15:54:00,265 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:54:00,341 - DEBUG - Opening gripper
+2026-05-29 15:54:02,910 - DEBUG - Closing gripper
+2026-05-29 15:54:05,245 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 15:54:05,795 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 15:54:08,243 - INFO - Releasing wellplate at location: pipetting_area
+2026-05-29 15:54:08,243 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 15:54:12,651 - DEBUG - Opening gripper
+2026-05-29 15:54:15,085 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 15:54:19,519 - DEBUG - Moving North Track to home position
+2026-05-29 15:54:19,519 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-29 15:54:19,520 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-29 15:54:19,520 - INFO -   Measured wells [10, 11, 12] at 30 min
+2026-05-29 15:54:19,522 - INFO -   Saved time point data: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_output_30min.txt
+2026-05-29 15:54:19,683 - INFO - Moving vial reaction_vial_1 to heater: 0
+2026-05-29 15:54:19,683 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 15:54:22,268 - DEBUG - Dropping off vial 2 at location heater with index 0
+2026-05-29 15:54:25,953 - INFO -   Waiting 10 minutes until next sample...
+2026-05-29 16:04:25,961 - INFO - Time point: 40 minutes - taking 3 samples from reaction_vial_1
+2026-05-29 16:04:25,962 - INFO - Moving vial reaction_vial_1 to clamp: 0
+2026-05-29 16:04:25,962 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 16:04:26,243 - DEBUG - Dropping off vial 2 at location clamp with index 0
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:29,965 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:29,968 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:04:29,968 - INFO - Getting large_tip (pipet number 38) from rack: large_tip_rack_1
+2026-05-29 16:04:33,390 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 16:04:33,677 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 16:04:33,677 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 16:04:33,847 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 16:04:34,033 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 16:04:34,197 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 16:04:34,364 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 16:04:34,634 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:04:34,634 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:04:34,634 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:04:37,522 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:04:38,511 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:40,518 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:04:44,689 - INFO - Transferring 0.200 mL into well #13 of 96 WELL PLATE
+2026-05-29 16:04:44,689 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:46,982 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:46,990 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:04:46,992 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:04:46,992 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:04:46,994 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:04:50,639 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:04:51,623 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:04:53,627 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:04:57,793 - INFO - Transferring 0.200 mL into well #14 of 96 WELL PLATE
+2026-05-29 16:04:57,793 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:00,094 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:05:00,094 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:05:00,094 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:05:00,094 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:05:03,678 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:05:04,663 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:05:06,669 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:05:10,821 - INFO - Transferring 0.200 mL into well #15 of 96 WELL PLATE
+2026-05-29 16:05:10,821 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:05:13,136 - INFO - Removing pipet
+2026-05-29 16:05:16,757 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\mof_absorbance.prt
+2026-05-29 16:05:16,757 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-05-29 16:05:16,757 - INFO - Moving robot to home position
+2026-05-29 16:05:18,397 - INFO - Moving wellplate 0 to Cytation
+2026-05-29 16:05:18,397 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 16:05:19,492 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 16:05:19,492 - INFO - Grabbing wellplate from location: pipetting_area
+2026-05-29 16:05:19,492 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:05:23,161 - DEBUG - Opening gripper
+2026-05-29 16:05:26,016 - DEBUG - Closing gripper
+2026-05-29 16:05:28,462 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 16:05:30,286 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-05-29 16:05:32,476 - INFO - Releasing wellplate at location: cytation_tray
+2026-05-29 16:05:32,476 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:05:35,151 - DEBUG - Opening gripper
+2026-05-29 16:05:37,448 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 16:05:40,173 - DEBUG - Experiment created successfully.
+2026-05-29 16:05:40,176 - DEBUG - Experiment Protocol Type: Standard
+2026-05-29 16:05:40,177 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-05-29 16:05:40,185 - INFO - Running plate with wells: ['B2', 'B3', 'B4'] and protocol type: spectra
+2026-05-29 16:05:42,564 - INFO - Read started. Waiting for completion...
+2026-05-29 16:06:05,144 - INFO - Plate read completed successfully.
+2026-05-29 16:06:05,690 - INFO - Moving wellplate 0 back from Cytation
+2026-05-29 16:06:05,690 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 16:06:07,883 - INFO - Grabbing wellplate from location: cytation_tray
+2026-05-29 16:06:07,883 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:06:07,966 - DEBUG - Opening gripper
+2026-05-29 16:06:10,535 - DEBUG - Closing gripper
+2026-05-29 16:06:12,893 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 16:06:13,443 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 16:06:15,996 - INFO - Releasing wellplate at location: pipetting_area
+2026-05-29 16:06:15,996 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:06:20,369 - DEBUG - Opening gripper
+2026-05-29 16:06:22,804 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 16:06:27,231 - DEBUG - Moving North Track to home position
+2026-05-29 16:06:27,231 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-29 16:06:27,231 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-29 16:06:27,231 - INFO -   Measured wells [13, 14, 15] at 40 min
+2026-05-29 16:06:27,240 - INFO -   Saved time point data: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_output_40min.txt
+2026-05-29 16:06:27,377 - INFO - Moving vial reaction_vial_1 to heater: 0
+2026-05-29 16:06:27,377 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 16:06:29,969 - DEBUG - Dropping off vial 2 at location heater with index 0
+2026-05-29 16:06:33,693 - INFO -   Waiting 10 minutes until next sample...
+2026-05-29 16:16:33,698 - INFO - Time point: 50 minutes - taking 3 samples from reaction_vial_1
+2026-05-29 16:16:33,699 - INFO - Moving vial reaction_vial_1 to clamp: 0
+2026-05-29 16:16:33,699 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 16:16:33,982 - DEBUG - Dropping off vial 2 at location clamp with index 0
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:37,693 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:16:37,693 - INFO - Getting large_tip (pipet number 39) from rack: large_tip_rack_1
+2026-05-29 16:16:41,117 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 16:16:41,402 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 16:16:41,402 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 16:16:41,570 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 16:16:41,746 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 16:16:41,914 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 16:16:42,072 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 16:16:42,357 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:16:42,357 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:16:42,357 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:16:45,224 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:16:46,224 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:48,310 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:16:52,438 - INFO - Transferring 0.200 mL into well #16 of 96 WELL PLATE
+2026-05-29 16:16:52,438 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:16:54,732 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:16:54,732 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:16:54,732 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:16:54,744 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:16:58,300 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:16:59,327 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:01,369 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:17:05,465 - INFO - Transferring 0.200 mL into well #17 of 96 WELL PLATE
+2026-05-29 16:17:05,465 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:07,750 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:17:07,750 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:17:07,750 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:17:07,750 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:17:11,272 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:17:12,273 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:17:14,398 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:17:18,450 - INFO - Transferring 0.200 mL into well #18 of 96 WELL PLATE
+2026-05-29 16:17:18,450 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:17:20,791 - INFO - Removing pipet
+2026-05-29 16:17:24,398 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\mof_absorbance.prt
+2026-05-29 16:17:24,398 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-05-29 16:17:24,398 - INFO - Moving robot to home position
+2026-05-29 16:17:26,050 - INFO - Moving wellplate 0 to Cytation
+2026-05-29 16:17:26,050 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 16:17:27,148 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 16:17:27,148 - INFO - Grabbing wellplate from location: pipetting_area
+2026-05-29 16:17:27,148 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:17:30,815 - DEBUG - Opening gripper
+2026-05-29 16:17:33,661 - DEBUG - Closing gripper
+2026-05-29 16:17:36,105 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 16:17:37,930 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-05-29 16:17:40,145 - INFO - Releasing wellplate at location: cytation_tray
+2026-05-29 16:17:40,145 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:17:42,798 - DEBUG - Opening gripper
+2026-05-29 16:17:45,094 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 16:17:47,923 - DEBUG - Experiment created successfully.
+2026-05-29 16:17:47,930 - DEBUG - Experiment Protocol Type: Standard
+2026-05-29 16:17:47,931 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-05-29 16:17:47,937 - INFO - Running plate with wells: ['B5', 'B6', 'B7'] and protocol type: spectra
+2026-05-29 16:17:50,329 - INFO - Read started. Waiting for completion...
+2026-05-29 16:18:13,011 - INFO - Plate read completed successfully.
+2026-05-29 16:18:13,563 - INFO - Moving wellplate 0 back from Cytation
+2026-05-29 16:18:13,563 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 16:18:15,771 - INFO - Grabbing wellplate from location: cytation_tray
+2026-05-29 16:18:15,771 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:18:15,846 - DEBUG - Opening gripper
+2026-05-29 16:18:18,413 - DEBUG - Closing gripper
+2026-05-29 16:18:20,756 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 16:18:21,314 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 16:18:23,862 - INFO - Releasing wellplate at location: pipetting_area
+2026-05-29 16:18:23,862 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:18:28,296 - DEBUG - Opening gripper
+2026-05-29 16:18:30,729 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 16:18:35,171 - DEBUG - Moving North Track to home position
+2026-05-29 16:18:35,171 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-29 16:18:35,171 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-29 16:18:35,171 - INFO -   Measured wells [16, 17, 18] at 50 min
+2026-05-29 16:18:35,173 - INFO -   Saved time point data: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_output_50min.txt
+2026-05-29 16:18:35,330 - INFO - Moving vial reaction_vial_1 to heater: 0
+2026-05-29 16:18:35,330 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 16:18:37,927 - DEBUG - Dropping off vial 2 at location heater with index 0
+2026-05-29 16:18:41,643 - INFO -   Waiting 10 minutes until next sample...
+2026-05-29 16:28:41,649 - INFO - Time point: 60 minutes - taking 3 samples from reaction_vial_1
+2026-05-29 16:28:41,649 - INFO - Moving vial reaction_vial_1 to clamp: 0
+2026-05-29 16:28:41,649 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 16:28:41,933 - DEBUG - Dropping off vial 2 at location clamp with index 0
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:45,660 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:45,663 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:28:45,663 - INFO - Getting large_tip (pipet number 40) from rack: large_tip_rack_1
+2026-05-29 16:28:49,090 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 16:28:49,377 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-05-29 16:28:49,377 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 16:28:49,543 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 16:28:49,703 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-05-29 16:28:49,862 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-05-29 16:28:50,022 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-05-29 16:28:50,294 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:28:50,294 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:28:50,294 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:28:53,156 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:28:54,177 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:28:56,286 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:29:00,297 - INFO - Transferring 0.200 mL into well #19 of 96 WELL PLATE
+2026-05-29 16:29:00,297 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:02,610 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:29:02,610 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:29:02,610 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:29:02,610 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:29:06,075 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:29:07,121 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:09,269 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:29:13,264 - INFO - Transferring 0.200 mL into well #20 of 96 WELL PLATE
+2026-05-29 16:29:13,264 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:15,555 - DEBUG - Selected large_tip for volume 0.200 mL
+2026-05-29 16:29:15,555 - INFO - Pipetting from vial reaction_vial_1, amount: 0.200 mL
+2026-05-29 16:29:15,555 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-05-29 16:29:15,555 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-29 16:29:19,003 - DEBUG - Adjusting pump 0 speed to 9
+2026-05-29 16:29:20,044 - DEBUG - Aspirating 0.200 mL then waiting 0.0 s
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated aspirate_speed=9 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated dispense_speed=8 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated aspirate_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated dispense_wait_time=1.5 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated retract_speed=5 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated blowout_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated post_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated overaspirate_vol=0.00021123785382374648 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated post_retract_wait_time=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for ethanol at 0.200mL
+2026-05-29 16:29:22,223 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-29 16:29:26,184 - INFO - Transferring 0.200 mL into well #21 of 96 WELL PLATE
+2026-05-29 16:29:26,184 - DEBUG - Dispensing 0.200 mL then waiting 1.5 s
+2026-05-29 16:29:28,500 - INFO - Removing pipet
+2026-05-29 16:29:32,079 - INFO - Measuring wellplate 0 with protocols: C:\Protocols\mof_absorbance.prt
+2026-05-29 16:29:32,079 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE'
+2026-05-29 16:29:32,079 - INFO - Moving robot to home position
+2026-05-29 16:29:33,719 - INFO - Moving wellplate 0 to Cytation
+2026-05-29 16:29:33,719 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 16:29:34,821 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 16:29:34,821 - INFO - Grabbing wellplate from location: pipetting_area
+2026-05-29 16:29:34,822 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:29:38,422 - DEBUG - Opening gripper
+2026-05-29 16:29:41,265 - DEBUG - Closing gripper
+2026-05-29 16:29:43,722 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 16:29:45,551 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 75000}
+2026-05-29 16:29:47,756 - INFO - Releasing wellplate at location: cytation_tray
+2026-05-29 16:29:47,756 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:29:50,406 - DEBUG - Opening gripper
+2026-05-29 16:29:52,716 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 16:29:55,390 - DEBUG - Experiment created successfully.
+2026-05-29 16:29:55,393 - DEBUG - Experiment Protocol Type: Standard
+2026-05-29 16:29:55,395 - DEBUG - Grouping wells for plate type: 96 WELL PLATE
+2026-05-29 16:29:55,400 - INFO - Running plate with wells: ['B8', 'B9', 'B10'] and protocol type: spectra
+2026-05-29 16:29:57,790 - INFO - Read started. Waiting for completion...
+2026-05-29 16:30:20,706 - INFO - Plate read completed successfully.
+2026-05-29 16:30:21,237 - INFO - Moving wellplate 0 back from Cytation
+2026-05-29 16:30:21,237 - DEBUG - Using robot plate type '96 WELL PLATE' -> Cytation plate type '96 WELL PLATE' for CarrierIn
+2026-05-29 16:30:23,447 - INFO - Grabbing wellplate from location: cytation_tray
+2026-05-29 16:30:23,447 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:30:23,524 - DEBUG - Opening gripper
+2026-05-29 16:30:26,093 - DEBUG - Closing gripper
+2026-05-29 16:30:28,447 - DEBUG - Updated gripper location to: cytation_tray at position {'x': 68225, 'z': 0}
+2026-05-29 16:30:28,994 - DEBUG - Updated gripper location to: cytation_safe_area at position {'x': 47775, 'z': 0}
+2026-05-29 16:30:31,549 - INFO - Releasing wellplate at location: pipetting_area
+2026-05-29 16:30:31,549 - DEBUG - No waypoint locations provided, skipping path movement
+2026-05-29 16:30:35,967 - DEBUG - Opening gripper
+2026-05-29 16:30:38,405 - DEBUG - Updated gripper location to: pipetting_area at position {'x': 131650, 'z': 75000}
+2026-05-29 16:30:42,837 - DEBUG - Moving North Track to home position
+2026-05-29 16:30:42,837 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-29 16:30:42,837 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-29 16:30:42,837 - INFO -   Measured wells [19, 20, 21] at 60 min
+2026-05-29 16:30:42,837 - INFO -   Saved time point data: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_output_60min.txt
+2026-05-29 16:30:43,020 - INFO - Completed periodic sampling for reaction_vial_1
+2026-05-29 16:30:43,020 - INFO - Analyzing time series spectroscopic data for MOF formation kinetics...
+2026-05-29 16:30:43,024 - INFO - Saved complete time series: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_complete_timeseries.csv
+2026-05-29 16:30:43,802 - INFO - Saved spectral evolution plot: output\mof_synthesis\20260529_151533_reaction_vial_1\mof_spectral_evolution.png
+2026-05-29 16:30:43,802 - INFO - Returning vial reaction_vial_1 to home location: main_8mL_rack index 36
+2026-05-29 16:30:43,802 - INFO - Moving vial reaction_vial_1 to main_8mL_rack: 36
+2026-05-29 16:30:43,802 - DEBUG - Grabbing vial 2 with index 2
+2026-05-29 16:30:46,373 - DEBUG - Dropping off vial 2 at location main_8mL_rack with index 36
+2026-05-29 16:30:49,877 - DEBUG - Turning off stirring
+2026-05-29 16:30:50,491 - DEBUG - Turning off heating for channel 0
+2026-05-29 16:30:50,515 - INFO - Heater and stirring turned off
+2026-05-29 16:30:50,515 - INFO - MOF synthesis workflow completed
+2026-05-29 16:30:50,515 - INFO - Results saved with timestamp: 20260529_151533

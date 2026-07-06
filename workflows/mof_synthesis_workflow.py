@@ -12,14 +12,13 @@ SYNTHESIS OVERVIEW:
 
 WORKFLOW STEPS:
 1. Initialize workstation (robot, track, cytation, heater for stirring)
-2. Check stock solution vial status
+2. Measure stock solution baselines: 0.2 mL each (DiVA + Cu(NO3)2) into wells 0-1, UV-Vis
 3. Prepare reaction vial with linker solution (DiVA)
 4. Add metal solution (Cu(NO3)2.2.5H2O) in 2:1 ratio
 5. Stir mixture at room temperature for 1 hour
-6. Monitor for color change (brown -> teal/green) and precipitate formation
-7. Dispense reaction mixture onto wellplate for analysis
-8. Take UV-Vis measurements to detect MOF formation signals
-9. Data analysis and reporting
+6. Dispense reaction mixture onto wellplate for analysis
+7. Take UV-Vis measurements to detect MOF formation signals
+8. Data analysis and reporting
 """
 
 # ================================================================================
@@ -60,14 +59,14 @@ ANALYSIS_WELLS_PER_REACTION = 3  # Triplicate measurements
 CYTATION_PROTOCOL_FILE = r"C:\Protocols\mof_absorbance.prt"  # UV-Vis protocol for MOF detection
 
 # Sampling parameters
-SAMPLING_INTERVAL_MINUTES = 10  # Sample every 10 minutes
+SAMPLING_INTERVAL_MINUTES = 5  # Sample every 10 minutes
 TOTAL_SAMPLING_TIME_MINUTES = 60  # 1 hour total sampling time
 
 # Volume parameters (mL)
 TOTAL_REACTION_VOLUME = 6.0  # Total reaction volume
 WELLPLATE_DISPENSE_VOLUME = 0.200  # Volume per well for analysis
 
-SIMULATE = False  # Set to False for hardware execution
+SIMULATE = False # Set to False for hardware execution
 
 # ================================================================================
 # MOF SYNTHESIS WORKFLOW FUNCTION
@@ -77,7 +76,13 @@ def mof_synthesis_workflow(
     lash_e,
     reaction_vial: str = "reaction_vial_1",
     replicates: int = 3,
-    prepare_substock: dict = None
+    prepare_substock: dict = None,
+    linker_to_metal_ratio: float = None,
+    total_reaction_volume: float = None,
+    reaction_temp: int = None,
+    sampling_interval_minutes: int = None,
+    total_sampling_time_minutes: int = None,
+    wellplate_dispense_volume: float = None,
 ):
     """
     Automated MOF synthesis workflow for Cu(NO3)2.2.5H2O + DiVA system.
@@ -94,7 +99,14 @@ def mof_synthesis_workflow(
     Returns:
         dict: Analysis results with UV-Vis data and MOF formation indicators
     """
-    
+    # Resolve per-run overrides, falling back to module-level globals
+    linker_to_metal_ratio      = linker_to_metal_ratio      if linker_to_metal_ratio      is not None else LINKER_TO_METAL_RATIO
+    total_reaction_volume      = total_reaction_volume      if total_reaction_volume      is not None else TOTAL_REACTION_VOLUME
+    reaction_temp              = reaction_temp              if reaction_temp              is not None else REACTION_TEMP
+    sampling_interval_minutes  = sampling_interval_minutes  if sampling_interval_minutes  is not None else SAMPLING_INTERVAL_MINUTES
+    total_sampling_time_minutes = total_sampling_time_minutes if total_sampling_time_minutes is not None else TOTAL_SAMPLING_TIME_MINUTES
+    wellplate_dispense_volume  = wellplate_dispense_volume  if wellplate_dispense_volume  is not None else WELLPLATE_DISPENSE_VOLUME
+
     # ============================================================================
     # STEP 1: SETUP WORKSTATION
     # ============================================================================
@@ -102,14 +114,13 @@ def mof_synthesis_workflow(
     # Send startup Slack notification
     if not lash_e.simulate:
         startup_message = f"🧪 MOF Synthesis Workflow Started\n" \
-                         f"Reaction: Cu(NO3)2 + DiVA ({LINKER_TO_METAL_RATIO}:1)\n" \
+                         f"Reaction: Cu(NO3)2 + DiVA ({linker_to_metal_ratio}:1)\n" \
                          f"Vial: {reaction_vial}\n" \
                          f"Replicates: {replicates} per time point\n" \
-                         f"Duration: {TOTAL_SAMPLING_TIME_MINUTES} min"
+                         f"Duration: {total_sampling_time_minutes} min"
         slack_agent.send_slack_message(startup_message)
     
-    lash_e.temp_controller.set_temp(REACTION_TEMP)
-    #lash_e.grab_new_wellplate()
+    lash_e.temp_controller.set_temp(reaction_temp)
     
     # ============================================================================
     # STEP 1b: PREPARE SUBSTOCK FROM SOLID (OPTIONAL)
@@ -127,38 +138,67 @@ def mof_synthesis_workflow(
         )
 
     # ============================================================================
-    # STEP 2: PREPARE REACTION MIXTURE
+    # STEP 2: STOCK SOLUTION BASELINE UV-VIS
     # ============================================================================
-    
-    linker_volume_ratio = LINKER_TO_METAL_RATIO / (LINKER_TO_METAL_RATIO + 1)
-    metal_volume_ratio = 1 / (LINKER_TO_METAL_RATIO + 1)
-    linker_volume = TOTAL_REACTION_VOLUME * linker_volume_ratio
-    metal_volume = TOTAL_REACTION_VOLUME * metal_volume_ratio
-    
-    lash_e.logger.info("Starting MOF synthesis reaction preparation")
-    #prepare_reaction_mixture(lash_e, reaction_vial, linker_volume, metal_volume)
-    
-    # ============================================================================
-    # STEP 3: REACTION MIXING WITH PERIODIC SAMPLING
-    # ============================================================================
-    
-    sampling_times = list(range(0, TOTAL_SAMPLING_TIME_MINUTES + 1, SAMPLING_INTERVAL_MINUTES))
-    all_measurements = []
-    well_index = 0
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path("output/mof_synthesis") / f"{timestamp}_{reaction_vial}"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    lash_e.logger.info("Measuring stock solution baselines before reaction")
+
+    # Aspirate directly from stock vials in their rack positions (no vial move to clamp)
+    lash_e.nr_robot.aspirate_from_vial("diva_stock", wellplate_dispense_volume, liquid="ethanol")
+    lash_e.nr_robot.dispense_into_wellplate([0], [wellplate_dispense_volume], liquid="ethanol")
+    lash_e.nr_robot.remove_pipet()
+    lash_e.nr_robot.aspirate_from_vial("copper_nitrate_stock", wellplate_dispense_volume, liquid="ethanol")
+    lash_e.nr_robot.dispense_into_wellplate([1], [wellplate_dispense_volume], liquid="ethanol")
+    lash_e.nr_robot.remove_pipet()
+    baseline_wells = [0, 1]
+    lash_e.logger.info(f"Dispensed {wellplate_dispense_volume:.3f} mL diva_stock -> well 0, "
+                       f"copper_nitrate_stock -> well 1")
+
+    baseline_data = lash_e.measure_wellplate(CYTATION_PROTOCOL_FILE, wells_to_measure=baseline_wells)
+    lash_e.logger.info(f"Measured stock baselines in wells {baseline_wells}")
+
+    if baseline_data is not None and not lash_e.simulate:
+        baseline_file = output_dir / "stock_solution_baselines.txt"
+        baseline_data.to_csv(baseline_file, sep=',', index=True)
+        lash_e.logger.info(f"Saved stock baseline data: {baseline_file}")
+
+    # ============================================================================
+    # STEP 3: PREPARE REACTION MIXTURE
+    # ============================================================================
     
-    setup_synthesis_environment(lash_e, reaction_vial, REACTION_TEMP)
+    linker_volume_ratio = linker_to_metal_ratio / (linker_to_metal_ratio + 1)
+    metal_volume_ratio = 1 / (linker_to_metal_ratio + 1)
+    linker_volume = total_reaction_volume * linker_volume_ratio
+    metal_volume = total_reaction_volume * metal_volume_ratio
+    
+    lash_e.logger.info("Starting MOF synthesis reaction preparation")
+    prepare_reaction_mixture(lash_e, reaction_vial, linker_volume, metal_volume)
+    
+    # ============================================================================
+    # STEP 4: REACTION MIXING WITH PERIODIC SAMPLING
+    # ============================================================================
+    
+    sampling_times = list(range(0, total_sampling_time_minutes + 1, sampling_interval_minutes))
+    all_measurements = []
+    well_index = 2  # Wells 0 and 1 used for stock baselines
+
+    setup_synthesis_environment(lash_e, reaction_vial, reaction_temp)
     
     for time_point in sampling_times:
         lash_e.logger.info(f"Time point: {time_point} minutes - taking {replicates} samples from {reaction_vial}")
         
         # Dispense samples to wells
-        wells = dispense_samples_to_wells(lash_e, reaction_vial, well_index + 1, replicates, WELLPLATE_DISPENSE_VOLUME)
+        wells = dispense_samples_to_wells(lash_e, reaction_vial, well_index, replicates, wellplate_dispense_volume)
         well_index += len(wells)
-        
+
+        # Return vial to stir plate/block before UV-vis measurement
+        lash_e.nr_robot.move_vial_to_location(reaction_vial, "heater", 0)
+        lash_e.logger.info(f"  Returned {reaction_vial} to heater block before UV-vis measurement")
+
         # Collect measurement data
         uv_vis_data = collect_timepoint_data(lash_e, CYTATION_PROTOCOL_FILE, wells, time_point, output_dir, lash_e.simulate)
         
@@ -171,23 +211,23 @@ def mof_synthesis_workflow(
         if not lash_e.simulate:
             progress_msg = f"⏱️ MOF Time Point {time_point} min completed\n" \
                           f"Wells measured: {wells}\n" \
-                          f"Progress: {time_point}/{TOTAL_SAMPLING_TIME_MINUTES} min"
+                          f"Progress: {time_point}/{total_sampling_time_minutes} min"
             slack_agent.send_slack_message(progress_msg)
         
         # Return to heater and wait (except last time point)
         if time_point < sampling_times[-1]:
             lash_e.nr_robot.move_vial_to_location(reaction_vial, "heater", 0)
             if lash_e.simulate:
-                lash_e.logger.info(f"  [SIMULATE] Skipping {SAMPLING_INTERVAL_MINUTES} min wait")
+                lash_e.logger.info(f"  [SIMULATE] Skipping {sampling_interval_minutes} min wait")
             else:
-                wait_time = SAMPLING_INTERVAL_MINUTES * 60
-                lash_e.logger.info(f"  Waiting {SAMPLING_INTERVAL_MINUTES} minutes until next sample...")
+                wait_time = sampling_interval_minutes * 60
+                lash_e.logger.info(f"  Waiting {sampling_interval_minutes} minutes until next sample...")
                 time.sleep(wait_time)
     
     lash_e.logger.info(f"Completed periodic sampling for {reaction_vial}")
     
     # ============================================================================
-    # STEP 4: DATA PROCESSING AND CLEANUP
+    # STEP 5: DATA PROCESSING AND CLEANUP
     # ============================================================================
     
     lash_e.logger.info("Analyzing time series spectroscopic data for MOF formation kinetics...")
@@ -210,8 +250,8 @@ def mof_synthesis_workflow(
         'timestamp': timestamp,
         'reaction_vial': reaction_vial,
         'replicates_per_timepoint': replicates,
-        'linker_metal_ratio': f"{LINKER_TO_METAL_RATIO}:1",
-        'sampling_interval_minutes': SAMPLING_INTERVAL_MINUTES,
+        'linker_metal_ratio': f"{linker_to_metal_ratio}:1",
+        'sampling_interval_minutes': sampling_interval_minutes,
         'total_sampling_points': len(sampling_times),
         'total_wells_measured': well_index,
         'sampling_schedule': sampling_times,
@@ -438,21 +478,18 @@ def prepare_substock_from_solid(
 if __name__ == "__main__":
     # Initialize Lash_E coordinator
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/mof_synthesis_vials.csv"
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, initialize_t8=True, simulate=SIMULATE)
-    
-    # Run MOF synthesis workflow
-    results = mof_synthesis_workflow(
-        lash_e,
-        # prepare_substock={
-        #     'vial': 'diva_stock',
-        #     'target_volume_mL': 6.0,
-        #     'molecular_weight_g_per_mol': 274.27,  # DiVA MW
-        #     'target_concentration_mM': LINKER_STOCK_CONC,
-        #     'ethanol_vial': 'ethanol',
-        #     'powder_channel': 0,
-        #     'vortex_time': 10
-        # }
-        prepare_substock=None  # Set to None to skip substock preparation and use existing stocks
+    lash_e = Lash_E(
+        INPUT_VIAL_STATUS_FILE,
+        initialize_t8=True,
+        simulate=SIMULATE,
+        workflow_globals=globals(),
+        workflow_name="mof_synthesis_workflow",
     )
-    
-    print(f"MOF synthesis workflow completed. Results: {results}")
+
+    try:
+        results = mof_synthesis_workflow(lash_e, reaction_vial="reaction_vial_1", replicates=3)
+    finally:
+        lash_e.logger.info("Turning off stirring (finally block)")
+        lash_e.temp_controller.turn_off_stirring()
+
+    lash_e.logger.info(f"MOF synthesis completed. Output: {results['output_folder']}")

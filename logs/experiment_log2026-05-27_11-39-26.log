@@ -1,0 +1,1155 @@
+2026-05-27 11:39:26,550 - DEBUG - No workflow config provided - using default initialization
+2026-05-27 11:39:26,565 - INFO - GUI disabled - skipping status review, proceeding directly to hardware initialization
+2026-05-27 11:39:26,976 - INFO - Initializing North Robot...
+2026-05-27 11:39:26,976 - DEBUG - Loading robot configuration files...
+2026-05-27 11:39:26,988 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-05-27 11:39:26,988 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-05-27 11:39:27,000 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-05-27 11:39:27,000 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-05-27 11:39:27,000 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-05-27 11:39:27,000 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-05-27 11:39:27,000 - DEBUG - Loading robot state files...
+2026-05-27 11:39:27,016 - DEBUG - Loaded vial data from status/calibration_vials_short.csv
+2026-05-27 11:39:27,017 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-05-27 11:39:27,018 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-05-27 11:39:27,018 - DEBUG - Robot status loaded successfully
+2026-05-27 11:39:27,018 - INFO - Physical initialization of North Robot...
+2026-05-27 11:39:30,515 - DEBUG - Loading pumps from YAML configuration...
+2026-05-27 11:39:30,616 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-05-27 11:39:30,733 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-05-27 11:39:30,733 - INFO - Moving robot to home position
+2026-05-27 11:39:31,136 - DEBUG - Initializing centrifuge controller...
+2026-05-27 11:39:31,136 - INFO - Initializing North Track...
+2026-05-27 11:39:31,136 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-05-27 11:39:31,136 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-05-27 11:39:31,136 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-05-27 11:39:31,136 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-05-27 11:39:31,136 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-05-27 11:39:31,136 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-05-27 11:39:31,136 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-05-27 11:39:31,153 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-05-27 11:39:31,225 - DEBUG - Moving North Track to home position
+2026-05-27 11:39:31,225 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-05-27 11:39:31,225 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-05-27 11:39:31,225 - INFO - Homing all robot components...
+2026-05-27 11:39:31,225 - DEBUG - Homing carousel...
+2026-05-27 11:39:38,995 - DEBUG - Homing robot axes...
+2026-05-27 11:39:51,200 - DEBUG - Homing pump 0...
+2026-05-27 11:39:52,919 - DEBUG - Homing pump 1...
+2026-05-27 11:39:54,634 - DEBUG - Homing track axes...
+2026-05-27 11:39:54,634 - DEBUG - Homing track axis z_axis (axis 6)...
+2026-05-27 11:39:58,165 - DEBUG - Homing track axis x_axis (axis 7)...
+2026-05-27 11:40:02,230 - INFO - All robot components homed successfully
+2026-05-27 11:40:02,230 - INFO - Moving vial agar_water_4% to clamp: 0
+2026-05-27 11:40:02,230 - DEBUG - Grabbing vial 4 with index 4
+2026-05-27 11:40:04,516 - DEBUG - Dropping off vial 4 at location clamp with index 0
+2026-05-27 11:40:07,691 - DEBUG - Vial move required for pipetting
+2026-05-27 11:40:07,691 - INFO - Moving vial agar_water_4% to safe pipetting location
+2026-05-27 11:40:07,691 - INFO - Vial 4 already at clamp index 0, no move needed
+2026-05-27 11:40:07,691 - DEBUG - Removing cap from clamped vial
+2026-05-27 11:40:12,131 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param aspirate_speed=11
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param dispense_speed=30
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param aspirate_wait_time=9.4
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param pre_asp_air_vol=0.444
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param blowout_vol=0.367
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param overaspirate_vol=0.0073
+2026-05-27 11:40:14,268 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:40:14,268 - DEBUG - Selected small_tip for volume 0.050 mL
+2026-05-27 11:40:14,270 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_1
+2026-05-27 11:40:18,854 - INFO - Pipetting from vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:40:18,854 - INFO - Additional volume from calibration, amount: 0.007 mL
+2026-05-27 11:40:18,854 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-27 11:40:21,970 - DEBUG - Aspirating 0.444 mL then waiting 0 s
+2026-05-27 11:40:23,878 - DEBUG - Adjusting pump 0 speed to 11
+2026-05-27 11:40:24,267 - DEBUG - Aspirating 0.057 mL then waiting 9.4 s
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param aspirate_speed=11
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param dispense_speed=30
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param aspirate_wait_time=9.4
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param pre_asp_air_vol=0.444
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param blowout_vol=0.367
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param overaspirate_vol=0.0073
+2026-05-27 11:40:34,864 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:40:34,864 - INFO - Pipetting into vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:40:34,864 - DEBUG - Adjusting pump 0 speed to 30
+2026-05-27 11:40:36,704 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-05-27 11:40:37,718 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-05-27 11:40:37,866 - DEBUG - Mass: 14.0881g at 0.000s (baseline_pre) steady=False
+2026-05-27 11:40:38,265 - DEBUG - Mass: 14.0887g at 0.359s (baseline_pre) steady=False
+2026-05-27 11:40:38,656 - DEBUG - Mass: 14.0878g at 0.751s (baseline_pre) steady=False
+2026-05-27 11:40:39,060 - DEBUG - Mass: 14.0888g at 1.151s (baseline_pre) steady=False
+2026-05-27 11:40:39,465 - DEBUG - Mass: 14.0898g at 1.558s (baseline_pre) steady=False
+2026-05-27 11:40:39,721 - DEBUG - Dispensing 0.501 mL then waiting 3.0 s
+2026-05-27 11:40:39,867 - DEBUG - Mass: 14.0892g at 1.955s (baseline_pre) steady=True
+2026-05-27 11:40:40,266 - DEBUG - Mass: 14.0915g at 2.357s (dispensing) steady=False
+2026-05-27 11:40:40,657 - DEBUG - Mass: 14.0945g at 2.763s (dispensing) steady=False
+2026-05-27 11:40:41,065 - DEBUG - Mass: 14.0939g at 3.150s (dispensing) steady=False
+2026-05-27 11:40:41,466 - DEBUG - Mass: 14.0933g at 3.550s (dispensing) steady=False
+2026-05-27 11:40:41,864 - DEBUG - Mass: 14.0933g at 3.955s (dispensing) steady=False
+2026-05-27 11:40:42,266 - DEBUG - Mass: 14.0942g at 4.360s (dispensing) steady=False
+2026-05-27 11:40:42,667 - DEBUG - Mass: 14.0937g at 4.753s (dispensing) steady=True
+2026-05-27 11:40:43,067 - DEBUG - Mass: 14.0937g at 5.152s (dispensing) steady=True
+2026-05-27 11:40:43,455 - DEBUG - Mass: 14.1022g at 5.555s (dispensing) steady=False
+2026-05-27 11:40:43,866 - DEBUG - Mass: 14.1050g at 5.961s (dispensing) steady=False
+2026-05-27 11:40:44,265 - DEBUG - Mass: 14.1049g at 6.351s (dispensing) steady=False
+2026-05-27 11:40:44,655 - DEBUG - Mass: 14.1048g at 6.749s (dispensing) steady=False
+2026-05-27 11:40:45,060 - DEBUG - Mass: 14.1054g at 7.158s (dispensing) steady=False
+2026-05-27 11:40:45,466 - DEBUG - Mass: 14.1146g at 7.549s (dispensing) steady=False
+2026-05-27 11:40:45,861 - DEBUG - Mass: 14.1170g at 7.952s (dispensing) steady=False
+2026-05-27 11:40:46,266 - DEBUG - Mass: 14.1182g at 8.351s (dispensing) steady=False
+2026-05-27 11:40:46,666 - DEBUG - Mass: 14.1181g at 8.749s (dispensing) steady=False
+2026-05-27 11:40:47,065 - DEBUG - Mass: 14.1284g at 9.162s (dispensing) steady=False
+2026-05-27 11:40:47,455 - DEBUG - Mass: 14.1293g at 9.556s (dispensing) steady=False
+2026-05-27 11:40:47,868 - DEBUG - Mass: 14.1296g at 9.957s (dispensing) steady=True
+2026-05-27 11:40:48,264 - DEBUG - Mass: 14.1409g at 10.358s (dispensing) steady=False
+2026-05-27 11:40:48,666 - DEBUG - Mass: 14.1420g at 10.753s (dispensing) steady=False
+2026-05-27 11:40:49,065 - DEBUG - Mass: 14.1431g at 11.152s (dispensing) steady=False
+2026-05-27 11:40:49,466 - DEBUG - Mass: 14.1435g at 11.556s (dispensing) steady=False
+2026-05-27 11:40:49,864 - DEBUG - Mass: 14.1434g at 11.956s (dispensing) steady=False
+2026-05-27 11:40:50,265 - DEBUG - Mass: 14.1436g at 12.356s (dispensing) steady=False
+2026-05-27 11:40:50,665 - DEBUG - Mass: 14.1436g at 12.757s (dispensing) steady=False
+2026-05-27 11:40:51,067 - DEBUG - Mass: 14.1438g at 13.158s (dispensing) steady=True
+2026-05-27 11:40:51,458 - DEBUG - Mass: 14.1438g at 13.557s (dispensing) steady=True
+2026-05-27 11:40:51,860 - DEBUG - Mass: 14.1438g at 13.962s (dispensing) steady=True
+2026-05-27 11:40:52,261 - DEBUG - Mass: 14.1438g at 14.362s (dispensing) steady=True
+2026-05-27 11:40:52,668 - DEBUG - Mass: 14.1438g at 14.753s (dispensing) steady=True
+2026-05-27 11:40:53,059 - DEBUG - Mass: 14.1438g at 15.152s (dispensing) steady=True
+2026-05-27 11:40:53,454 - DEBUG - Mass: 14.1438g at 15.560s (dispensing) steady=True
+2026-05-27 11:40:53,855 - DEBUG - Mass: 14.1438g at 15.961s (dispensing) steady=True
+2026-05-27 11:40:54,262 - DEBUG - Mass: 14.1438g at 16.361s (dispensing) steady=True
+2026-05-27 11:40:54,661 - DEBUG - Mass: 14.1438g at 16.753s (dispensing) steady=True
+2026-05-27 11:40:55,059 - DEBUG - Mass: 14.1438g at 17.165s (dispensing) steady=True
+2026-05-27 11:40:55,465 - DEBUG - Mass: 14.1438g at 17.560s (dispensing) steady=True
+2026-05-27 11:40:55,854 - DEBUG - Mass: 14.1438g at 17.961s (dispensing) steady=True
+2026-05-27 11:40:56,263 - DEBUG - Mass: 14.1438g at 18.359s (dispensing) steady=True
+2026-05-27 11:40:56,665 - DEBUG - Mass: 14.1438g at 18.754s (dispensing) steady=True
+2026-05-27 11:40:57,064 - DEBUG - Mass: 14.1438g at 19.154s (dispensing) steady=True
+2026-05-27 11:40:57,457 - DEBUG - Mass: 14.1438g at 19.561s (dispensing) steady=True
+2026-05-27 11:40:57,863 - DEBUG - Mass: 14.1438g at 19.963s (dispensing) steady=True
+2026-05-27 11:40:58,267 - DEBUG - Mass: 14.1438g at 20.363s (dispensing) steady=True
+2026-05-27 11:40:58,667 - DEBUG - Mass: 14.1439g at 20.757s (dispensing) steady=True
+2026-05-27 11:40:59,067 - DEBUG - Mass: 14.1439g at 21.157s (dispensing) steady=True
+2026-05-27 11:40:59,457 - DEBUG - Mass: 14.1439g at 21.561s (dispensing) steady=True
+2026-05-27 11:40:59,857 - DEBUG - Mass: 14.1439g at 21.963s (dispensing) steady=True
+2026-05-27 11:41:00,265 - DEBUG - Mass: 14.1439g at 22.359s (dispensing) steady=True
+2026-05-27 11:41:00,667 - DEBUG - Mass: 14.1439g at 22.757s (dispensing) steady=True
+2026-05-27 11:41:01,064 - DEBUG - Mass: 14.1439g at 23.156s (dispensing) steady=True
+2026-05-27 11:41:01,467 - DEBUG - Mass: 14.1439g at 23.563s (dispensing) steady=True
+2026-05-27 11:41:01,868 - DEBUG - Mass: 14.1439g at 23.950s (dispensing) steady=True
+2026-05-27 11:41:02,266 - DEBUG - Mass: 14.1439g at 24.365s (dispensing) steady=True
+2026-05-27 11:41:02,667 - DEBUG - Mass: 14.1439g at 24.758s (dispensing) steady=True
+2026-05-27 11:41:03,067 - DEBUG - Mass: 14.1439g at 25.158s (dispensing) steady=True
+2026-05-27 11:41:03,466 - DEBUG - Mass: 14.1439g at 25.552s (dispensing) steady=True
+2026-05-27 11:41:03,858 - DEBUG - Mass: 14.1439g at 25.964s (dispensing) steady=True
+2026-05-27 11:41:04,267 - DEBUG - Mass: 14.1439g at 26.364s (dispensing) steady=True
+2026-05-27 11:41:04,654 - DEBUG - Mass: 14.1439g at 26.759s (dispensing) steady=True
+2026-05-27 11:41:05,067 - DEBUG - Mass: 14.1439g at 27.158s (dispensing) steady=True
+2026-05-27 11:41:05,466 - DEBUG - Mass: 14.1439g at 27.565s (dispensing) steady=True
+2026-05-27 11:41:05,867 - DEBUG - Mass: 14.1439g at 27.951s (dispensing) steady=True
+2026-05-27 11:41:06,268 - DEBUG - Mass: 14.1439g at 28.351s (dispensing) steady=True
+2026-05-27 11:41:06,654 - DEBUG - Mass: 14.1439g at 28.760s (dispensing) steady=True
+2026-05-27 11:41:07,059 - DEBUG - Mass: 14.1439g at 29.161s (dispensing) steady=True
+2026-05-27 11:41:07,463 - DEBUG - Mass: 14.1439g at 29.551s (dispensing) steady=True
+2026-05-27 11:41:07,867 - DEBUG - Mass: 14.1439g at 29.952s (dispensing) steady=True
+2026-05-27 11:41:08,262 - DEBUG - Mass: 14.1439g at 30.350s (dispensing) steady=True
+2026-05-27 11:41:08,667 - DEBUG - Mass: 14.1439g at 30.760s (dispensing) steady=True
+2026-05-27 11:41:09,054 - DEBUG - Mass: 14.1439g at 31.160s (dispensing) steady=True
+2026-05-27 11:41:09,464 - DEBUG - Mass: 14.1439g at 31.551s (dispensing) steady=True
+2026-05-27 11:41:09,862 - DEBUG - Mass: 14.1439g at 31.953s (dispensing) steady=True
+2026-05-27 11:41:10,260 - DEBUG - Mass: 14.1439g at 32.351s (dispensing) steady=True
+2026-05-27 11:41:10,655 - DEBUG - Mass: 14.1439g at 32.762s (dispensing) steady=True
+2026-05-27 11:41:11,061 - DEBUG - Mass: 14.1439g at 33.161s (dispensing) steady=True
+2026-05-27 11:41:11,468 - DEBUG - Mass: 14.1439g at 33.553s (dispensing) steady=True
+2026-05-27 11:41:11,867 - DEBUG - Mass: 14.1439g at 33.955s (dispensing) steady=True
+2026-05-27 11:41:12,267 - DEBUG - Mass: 14.1440g at 34.352s (dispensing) steady=True
+2026-05-27 11:41:12,667 - DEBUG - Mass: 14.1440g at 34.761s (dispensing) steady=True
+2026-05-27 11:41:13,066 - DEBUG - Mass: 14.1440g at 35.154s (dispensing) steady=True
+2026-05-27 11:41:13,468 - DEBUG - Mass: 14.1440g at 35.564s (dispensing) steady=True
+2026-05-27 11:41:13,867 - DEBUG - Mass: 14.1440g at 35.968s (dispensing) steady=True
+2026-05-27 11:41:14,267 - DEBUG - Mass: 14.1440g at 36.352s (dispensing) steady=True
+2026-05-27 11:41:14,667 - DEBUG - Mass: 14.1440g at 36.751s (dispensing) steady=True
+2026-05-27 11:41:15,057 - DEBUG - Mass: 14.1440g at 37.152s (dispensing) steady=True
+2026-05-27 11:41:15,461 - DEBUG - Mass: 14.1440g at 37.557s (dispensing) steady=True
+2026-05-27 11:41:15,859 - DEBUG - Mass: 14.1440g at 37.954s (dispensing) steady=True
+2026-05-27 11:41:16,268 - DEBUG - Mass: 14.1440g at 38.356s (dispensing) steady=True
+2026-05-27 11:41:16,667 - DEBUG - Mass: 14.1440g at 38.755s (dispensing) steady=True
+2026-05-27 11:41:17,065 - DEBUG - Mass: 14.1440g at 39.155s (dispensing) steady=True
+2026-05-27 11:41:17,460 - DEBUG - Mass: 14.1440g at 39.557s (dispensing) steady=True
+2026-05-27 11:41:17,859 - DEBUG - Mass: 14.1440g at 39.955s (dispensing) steady=True
+2026-05-27 11:41:18,262 - DEBUG - Mass: 14.1440g at 40.356s (dispensing) steady=True
+2026-05-27 11:41:18,659 - DEBUG - Mass: 14.1440g at 40.755s (dispensing) steady=True
+2026-05-27 11:41:19,060 - DEBUG - Mass: 14.1440g at 41.155s (dispensing) steady=True
+2026-05-27 11:41:19,460 - DEBUG - Mass: 14.1440g at 41.558s (dispensing) steady=True
+2026-05-27 11:41:19,866 - DEBUG - Mass: 14.1440g at 41.956s (dispensing) steady=True
+2026-05-27 11:41:20,261 - DEBUG - Mass: 14.1440g at 42.356s (dispensing) steady=True
+2026-05-27 11:41:20,664 - DEBUG - Mass: 14.1440g at 42.756s (dispensing) steady=True
+2026-05-27 11:41:21,060 - DEBUG - Mass: 14.1440g at 43.157s (dispensing) steady=True
+2026-05-27 11:41:21,462 - DEBUG - Mass: 14.1440g at 43.560s (dispensing) steady=True
+2026-05-27 11:41:21,860 - DEBUG - Mass: 14.1440g at 43.959s (dispensing) steady=True
+2026-05-27 11:41:22,262 - DEBUG - Mass: 14.1440g at 44.357s (dispensing) steady=True
+2026-05-27 11:41:22,661 - DEBUG - Mass: 14.1440g at 44.757s (dispensing) steady=True
+2026-05-27 11:41:23,067 - DEBUG - Mass: 14.1440g at 45.158s (dispensing) steady=True
+2026-05-27 11:41:23,142 - DEBUG - Blowing out 0.367 mL
+2026-05-27 11:41:23,142 - DEBUG - Adjusting pump 0 speed to 5
+2026-05-27 11:41:23,463 - DEBUG - Mass: 14.1417g at 45.559s (dispensing) steady=False
+2026-05-27 11:41:23,863 - DEBUG - Mass: 14.1469g at 45.959s (dispensing) steady=False
+2026-05-27 11:41:24,262 - DEBUG - Mass: 14.1470g at 46.358s (dispensing) steady=False
+2026-05-27 11:41:24,666 - DEBUG - Mass: 14.1440g at 46.758s (dispensing) steady=False
+2026-05-27 11:41:24,744 - DEBUG - Adjusting pump 0 speed to 30
+2026-05-27 11:41:25,065 - DEBUG - Mass: 14.1434g at 47.160s (dispensing) steady=False
+2026-05-27 11:41:25,465 - DEBUG - Mass: 14.1468g at 47.561s (dispensing) steady=False
+2026-05-27 11:41:25,863 - DEBUG - Mass: 14.1448g at 47.961s (dispensing) steady=False
+2026-05-27 11:41:26,264 - DEBUG - Mass: 14.1444g at 48.360s (dispensing) steady=False
+2026-05-27 11:41:26,663 - DEBUG - Mass: 14.1448g at 48.759s (dispensing) steady=False
+2026-05-27 11:41:27,063 - DEBUG - Mass: 14.1448g at 49.161s (dispensing) steady=False
+2026-05-27 11:41:27,466 - DEBUG - Mass: 14.1444g at 49.560s (dispensing) steady=True
+2026-05-27 11:41:27,868 - DEBUG - Mass: 14.1444g at 49.959s (dispensing) steady=True
+2026-05-27 11:41:28,264 - DEBUG - Mass: 14.1444g at 50.360s (dispensing) steady=True
+2026-05-27 11:41:28,663 - DEBUG - Mass: 14.1444g at 50.761s (dispensing) steady=True
+2026-05-27 11:41:29,067 - DEBUG - Mass: 14.1444g at 51.161s (dispensing) steady=True
+2026-05-27 11:41:29,464 - DEBUG - Mass: 14.1444g at 51.562s (dispensing) steady=True
+2026-05-27 11:41:29,865 - DEBUG - Mass: 14.1444g at 51.961s (dispensing) steady=True
+2026-05-27 11:41:30,265 - DEBUG - Mass: 14.1444g at 52.361s (dispensing) steady=True
+2026-05-27 11:41:30,664 - DEBUG - Mass: 14.1444g at 52.762s (dispensing) steady=True
+2026-05-27 11:41:31,064 - DEBUG - Mass: 14.1444g at 53.161s (dispensing) steady=True
+2026-05-27 11:41:31,467 - DEBUG - Mass: 14.1444g at 53.559s (dispensing) steady=True
+2026-05-27 11:41:31,866 - DEBUG - Mass: 14.1444g at 53.960s (dispensing) steady=True
+2026-05-27 11:41:32,264 - DEBUG - Mass: 14.1444g at 54.353s (dispensing) steady=True
+2026-05-27 11:41:32,668 - DEBUG - Mass: 14.1444g at 54.756s (dispensing) steady=True
+2026-05-27 11:41:33,068 - DEBUG - Mass: 14.1444g at 55.156s (dispensing) steady=True
+2026-05-27 11:41:33,467 - DEBUG - Mass: 14.1444g at 55.563s (dispensing) steady=True
+2026-05-27 11:41:33,867 - DEBUG - Mass: 14.1444g at 55.962s (dispensing) steady=True
+2026-05-27 11:41:34,265 - DEBUG - Mass: 14.1444g at 56.355s (dispensing) steady=True
+2026-05-27 11:41:34,667 - DEBUG - Mass: 14.1444g at 56.757s (dispensing) steady=True
+2026-05-27 11:41:35,068 - DEBUG - Mass: 14.1444g at 57.161s (dispensing) steady=True
+2026-05-27 11:41:35,467 - DEBUG - Mass: 14.1444g at 57.563s (dispensing) steady=True
+2026-05-27 11:41:35,867 - DEBUG - Mass: 14.1444g at 57.963s (dispensing) steady=True
+2026-05-27 11:41:36,267 - DEBUG - Mass: 14.1444g at 58.363s (dispensing) steady=True
+2026-05-27 11:41:36,667 - DEBUG - Mass: 14.1444g at 58.762s (dispensing) steady=True
+2026-05-27 11:41:37,068 - DEBUG - Mass: 14.1444g at 59.163s (dispensing) steady=True
+2026-05-27 11:41:37,467 - DEBUG - Mass: 14.1444g at 59.551s (dispensing) steady=True
+2026-05-27 11:41:37,868 - DEBUG - Mass: 14.1444g at 59.963s (dispensing) steady=True
+2026-05-27 11:41:38,268 - DEBUG - Mass: 14.1444g at 60.364s (dispensing) steady=True
+2026-05-27 11:41:38,668 - DEBUG - Mass: 14.1444g at 60.753s (dispensing) steady=True
+2026-05-27 11:41:39,067 - DEBUG - Mass: 14.1444g at 61.158s (dispensing) steady=True
+2026-05-27 11:41:39,468 - DEBUG - Mass: 14.1444g at 61.558s (dispensing) steady=True
+2026-05-27 11:41:39,868 - DEBUG - Mass: 14.1444g at 61.965s (dispensing) steady=True
+2026-05-27 11:41:40,268 - DEBUG - Mass: 14.1444g at 62.357s (dispensing) steady=True
+2026-05-27 11:41:40,666 - DEBUG - Mass: 14.1444g at 62.766s (dispensing) steady=True
+2026-05-27 11:41:41,067 - DEBUG - Mass: 14.1444g at 63.161s (dispensing) steady=True
+2026-05-27 11:41:41,465 - DEBUG - Mass: 14.1444g at 63.559s (dispensing) steady=True
+2026-05-27 11:41:41,867 - DEBUG - Mass: 14.1444g at 63.965s (dispensing) steady=True
+2026-05-27 11:41:42,268 - DEBUG - Mass: 14.1444g at 64.351s (dispensing) steady=True
+2026-05-27 11:41:42,669 - DEBUG - Mass: 14.1444g at 64.751s (dispensing) steady=True
+2026-05-27 11:41:43,067 - DEBUG - Mass: 14.1444g at 65.153s (dispensing) steady=True
+2026-05-27 11:41:43,454 - DEBUG - Mass: 14.1444g at 65.564s (dispensing) steady=True
+2026-05-27 11:41:43,867 - DEBUG - Mass: 14.1444g at 65.951s (dispensing) steady=True
+2026-05-27 11:41:44,253 - DEBUG - Mass: 14.1444g at 66.352s (dispensing) steady=True
+2026-05-27 11:41:44,655 - DEBUG - Mass: 14.1444g at 66.757s (dispensing) steady=True
+2026-05-27 11:41:45,067 - DEBUG - Mass: 14.1444g at 67.165s (dispensing) steady=True
+2026-05-27 11:41:45,468 - DEBUG - Mass: 14.1444g at 67.554s (dispensing) steady=True
+2026-05-27 11:41:45,867 - DEBUG - Mass: 14.1444g at 67.955s (dispensing) steady=True
+2026-05-27 11:41:46,266 - DEBUG - Mass: 14.1444g at 68.351s (dispensing) steady=True
+2026-05-27 11:41:46,658 - DEBUG - Mass: 14.1444g at 68.761s (dispensing) steady=True
+2026-05-27 11:41:47,054 - DEBUG - Mass: 14.1444g at 69.160s (dispensing) steady=True
+2026-05-27 11:41:47,466 - DEBUG - Mass: 14.1444g at 69.556s (dispensing) steady=True
+2026-05-27 11:41:47,864 - DEBUG - Mass: 14.1444g at 69.956s (dispensing) steady=True
+2026-05-27 11:41:48,262 - DEBUG - Mass: 14.1444g at 70.352s (dispensing) steady=True
+2026-05-27 11:41:48,667 - DEBUG - Mass: 14.1444g at 70.764s (dispensing) steady=True
+2026-05-27 11:41:49,057 - DEBUG - Mass: 14.1444g at 71.163s (dispensing) steady=True
+2026-05-27 11:41:49,467 - DEBUG - Mass: 14.1444g at 71.555s (dispensing) steady=True
+2026-05-27 11:41:49,868 - DEBUG - Mass: 14.1444g at 71.957s (dispensing) steady=True
+2026-05-27 11:41:50,263 - DEBUG - Mass: 14.1444g at 72.356s (dispensing) steady=True
+2026-05-27 11:41:50,668 - DEBUG - Mass: 14.1444g at 72.765s (dispensing) steady=True
+2026-05-27 11:41:51,068 - DEBUG - Mass: 14.1444g at 73.160s (dispensing) steady=True
+2026-05-27 11:41:51,460 - DEBUG - Mass: 14.1444g at 73.556s (dispensing) steady=True
+2026-05-27 11:41:51,867 - DEBUG - Mass: 14.1444g at 73.956s (dispensing) steady=True
+2026-05-27 11:41:52,267 - DEBUG - Mass: 14.1444g at 74.356s (dispensing) steady=True
+2026-05-27 11:41:52,667 - DEBUG - Mass: 14.1444g at 74.756s (dispensing) steady=True
+2026-05-27 11:41:53,061 - DEBUG - Mass: 14.1444g at 75.159s (dispensing) steady=True
+2026-05-27 11:41:53,460 - DEBUG - Mass: 14.1444g at 75.560s (dispensing) steady=True
+2026-05-27 11:41:53,861 - DEBUG - Mass: 14.1444g at 75.958s (dispensing) steady=True
+2026-05-27 11:41:54,260 - DEBUG - Mass: 14.1444g at 76.358s (dispensing) steady=True
+2026-05-27 11:41:54,661 - DEBUG - Mass: 14.1444g at 76.757s (dispensing) steady=True
+2026-05-27 11:41:55,061 - DEBUG - Mass: 14.1444g at 77.157s (dispensing) steady=True
+2026-05-27 11:41:55,461 - DEBUG - Mass: 14.1444g at 77.559s (dispensing) steady=True
+2026-05-27 11:41:55,866 - DEBUG - Mass: 14.1444g at 77.956s (dispensing) steady=True
+2026-05-27 11:41:56,262 - DEBUG - Mass: 14.1444g at 78.357s (dispensing) steady=True
+2026-05-27 11:41:56,662 - DEBUG - Mass: 14.1444g at 78.758s (dispensing) steady=True
+2026-05-27 11:41:57,068 - DEBUG - Mass: 14.1444g at 79.155s (dispensing) steady=True
+2026-05-27 11:41:57,462 - DEBUG - Mass: 14.1398g at 79.556s (dispensing) steady=False
+2026-05-27 11:41:57,865 - DEBUG - Mass: 14.1398g at 79.957s (dispensing) steady=False
+2026-05-27 11:41:58,267 - DEBUG - Mass: 14.1396g at 80.359s (dispensing) steady=False
+2026-05-27 11:41:58,666 - DEBUG - Mass: 14.1398g at 80.759s (dispensing) steady=True
+2026-05-27 11:41:59,063 - DEBUG - Mass: 14.1398g at 81.152s (dispensing) steady=True
+2026-05-27 11:41:59,463 - DEBUG - Mass: 14.1398g at 81.560s (dispensing) steady=True
+2026-05-27 11:41:59,811 - INFO - Dispensing took 80.090s, collecting post-dispense baseline
+2026-05-27 11:41:59,865 - DEBUG - Mass: 14.1398g at 81.960s (dispensing) steady=True
+2026-05-27 11:42:00,262 - DEBUG - Mass: 14.1398g at 82.362s (baseline_post) steady=True
+2026-05-27 11:42:00,668 - DEBUG - Mass: 14.1398g at 82.758s (baseline_post) steady=True
+2026-05-27 11:42:01,063 - DEBUG - Mass: 14.1398g at 83.159s (baseline_post) steady=True
+2026-05-27 11:42:01,456 - DEBUG - Mass: 14.1398g at 83.560s (baseline_post) steady=True
+2026-05-27 11:42:01,861 - DEBUG - Mass: 14.1398g at 83.962s (baseline_post) steady=True
+2026-05-27 11:42:02,078 - INFO - Stopped continuous mass monitoring. Collected 211 data points
+2026-05-27 11:42:02,084 - INFO - Pre-baseline: 1 stable readings, avg=14.089200g
+2026-05-27 11:42:02,084 - INFO - Post-baseline: 5 stable readings, avg=14.139800g
+2026-05-27 11:42:02,084 - INFO - INDEPENDENT BASELINE calculation:
+2026-05-27 11:42:02,086 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.050600g
+2026-05-27 11:42:02,088 - INFO - Reading summary: 6 pre-readings (1 stable), 5 post-readings (5 stable)
+2026-05-27 11:42:02,088 - INFO - Baseline variability: pre_std=0.000726g, post_std=0.000000g
+2026-05-27 11:42:02,088 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-05-27 11:42:02,090 - INFO - Saved 211 mass measurements to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_data_agar_water_4%_20260527_114202.csv
+2026-05-27 11:42:02,994 - INFO - Saved dispense mass vs time plot to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_plot_agar_water_4%_20260527_114202.png
+2026-05-27 11:42:02,995 - INFO - Removing pipet
+2026-05-27 11:42:06,321 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:42:08,279 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param aspirate_speed=11
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param dispense_speed=30
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param aspirate_wait_time=9.4
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param pre_asp_air_vol=0.444
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param blowout_vol=0.367
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param overaspirate_vol=0.0073
+2026-05-27 11:42:08,466 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:42:08,466 - DEBUG - Selected small_tip for volume 0.050 mL
+2026-05-27 11:42:08,466 - INFO - Getting small_tip (pipet number 1) from rack: small_tip_rack_1
+2026-05-27 11:42:11,389 - INFO - Pipetting from vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:42:11,390 - INFO - Additional volume from calibration, amount: 0.007 mL
+2026-05-27 11:42:11,391 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-27 11:42:14,517 - DEBUG - Aspirating 0.444 mL then waiting 0 s
+2026-05-27 11:42:16,420 - DEBUG - Adjusting pump 0 speed to 11
+2026-05-27 11:42:16,806 - DEBUG - Aspirating 0.057 mL then waiting 9.4 s
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param aspirate_speed=11
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param dispense_speed=30
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param aspirate_wait_time=9.4
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param pre_asp_air_vol=0.444
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param blowout_vol=0.367
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:42:27,465 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:42:27,467 - DEBUG - Applied dict param overaspirate_vol=0.0073
+2026-05-27 11:42:27,467 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:42:27,467 - INFO - Pipetting into vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:42:27,467 - DEBUG - Adjusting pump 0 speed to 30
+2026-05-27 11:42:29,324 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-05-27 11:42:30,330 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-05-27 11:42:30,467 - DEBUG - Mass: 14.0903g at 0.002s (baseline_pre) steady=True
+2026-05-27 11:42:30,863 - DEBUG - Mass: 14.0903g at 0.350s (baseline_pre) steady=True
+2026-05-27 11:42:31,268 - DEBUG - Mass: 14.0903g at 0.748s (baseline_pre) steady=True
+2026-05-27 11:42:31,663 - DEBUG - Mass: 14.0903g at 1.148s (baseline_pre) steady=True
+2026-05-27 11:42:32,061 - DEBUG - Mass: 14.0903g at 1.554s (baseline_pre) steady=True
+2026-05-27 11:42:32,344 - DEBUG - Dispensing 0.501 mL then waiting 3.0 s
+2026-05-27 11:42:32,461 - DEBUG - Mass: 14.0903g at 1.952s (baseline_pre) steady=True
+2026-05-27 11:42:32,866 - DEBUG - Mass: 14.0931g at 2.351s (dispensing) steady=False
+2026-05-27 11:42:33,267 - DEBUG - Mass: 14.0951g at 2.751s (dispensing) steady=False
+2026-05-27 11:42:33,663 - DEBUG - Mass: 14.0944g at 3.144s (dispensing) steady=False
+2026-05-27 11:42:34,065 - DEBUG - Mass: 14.0944g at 3.547s (dispensing) steady=False
+2026-05-27 11:42:34,465 - DEBUG - Mass: 14.0951g at 3.952s (dispensing) steady=False
+2026-05-27 11:42:34,866 - DEBUG - Mass: 14.0956g at 4.342s (dispensing) steady=False
+2026-05-27 11:42:35,268 - DEBUG - Mass: 14.0950g at 4.742s (dispensing) steady=True
+2026-05-27 11:42:35,667 - DEBUG - Mass: 14.0950g at 5.143s (dispensing) steady=True
+2026-05-27 11:42:36,068 - DEBUG - Mass: 14.0950g at 5.552s (dispensing) steady=True
+2026-05-27 11:42:36,468 - DEBUG - Mass: 14.0950g at 5.942s (dispensing) steady=True
+2026-05-27 11:42:36,868 - DEBUG - Mass: 14.0950g at 6.353s (dispensing) steady=True
+2026-05-27 11:42:37,264 - DEBUG - Mass: 14.1055g at 6.753s (dispensing) steady=False
+2026-05-27 11:42:37,667 - DEBUG - Mass: 14.1067g at 7.153s (dispensing) steady=False
+2026-05-27 11:42:38,064 - DEBUG - Mass: 14.1072g at 7.551s (dispensing) steady=False
+2026-05-27 11:42:38,466 - DEBUG - Mass: 14.1134g at 7.954s (dispensing) steady=False
+2026-05-27 11:42:38,866 - DEBUG - Mass: 14.1185g at 8.341s (dispensing) steady=False
+2026-05-27 11:42:39,266 - DEBUG - Mass: 14.1186g at 8.754s (dispensing) steady=False
+2026-05-27 11:42:39,666 - DEBUG - Mass: 14.1262g at 9.154s (dispensing) steady=False
+2026-05-27 11:42:40,065 - DEBUG - Mass: 14.1283g at 9.542s (dispensing) steady=False
+2026-05-27 11:42:40,466 - DEBUG - Mass: 14.1354g at 9.940s (dispensing) steady=False
+2026-05-27 11:42:40,866 - DEBUG - Mass: 14.1378g at 10.355s (dispensing) steady=False
+2026-05-27 11:42:41,267 - DEBUG - Mass: 14.1380g at 10.754s (dispensing) steady=False
+2026-05-27 11:42:41,666 - DEBUG - Mass: 14.1381g at 11.147s (dispensing) steady=False
+2026-05-27 11:42:42,067 - DEBUG - Mass: 14.1379g at 11.553s (dispensing) steady=True
+2026-05-27 11:42:42,467 - DEBUG - Mass: 14.1379g at 11.950s (dispensing) steady=True
+2026-05-27 11:42:42,868 - DEBUG - Mass: 14.1379g at 12.342s (dispensing) steady=True
+2026-05-27 11:42:43,254 - DEBUG - Mass: 14.1435g at 12.755s (dispensing) steady=False
+2026-05-27 11:42:43,664 - DEBUG - Mass: 14.1451g at 13.140s (dispensing) steady=False
+2026-05-27 11:42:44,065 - DEBUG - Mass: 14.1454g at 13.540s (dispensing) steady=False
+2026-05-27 11:42:44,451 - DEBUG - Mass: 14.1454g at 13.941s (dispensing) steady=False
+2026-05-27 11:42:44,866 - DEBUG - Mass: 14.1458g at 14.341s (dispensing) steady=False
+2026-05-27 11:42:45,268 - DEBUG - Mass: 14.1456g at 14.750s (dispensing) steady=True
+2026-05-27 11:42:45,668 - DEBUG - Mass: 14.1456g at 15.143s (dispensing) steady=True
+2026-05-27 11:42:46,068 - DEBUG - Mass: 14.1456g at 15.543s (dispensing) steady=True
+2026-05-27 11:42:46,469 - DEBUG - Mass: 14.1456g at 15.945s (dispensing) steady=True
+2026-05-27 11:42:46,868 - DEBUG - Mass: 14.1456g at 16.357s (dispensing) steady=True
+2026-05-27 11:42:47,268 - DEBUG - Mass: 14.1456g at 16.743s (dispensing) steady=True
+2026-05-27 11:42:47,667 - DEBUG - Mass: 14.1456g at 17.142s (dispensing) steady=True
+2026-05-27 11:42:48,053 - DEBUG - Mass: 14.1456g at 17.551s (dispensing) steady=True
+2026-05-27 11:42:48,468 - DEBUG - Mass: 14.1456g at 17.941s (dispensing) steady=True
+2026-05-27 11:42:48,857 - DEBUG - Mass: 14.1456g at 18.342s (dispensing) steady=True
+2026-05-27 11:42:49,268 - DEBUG - Mass: 14.1456g at 18.755s (dispensing) steady=True
+2026-05-27 11:42:49,663 - DEBUG - Mass: 14.1456g at 19.144s (dispensing) steady=True
+2026-05-27 11:42:50,068 - DEBUG - Mass: 14.1456g at 19.543s (dispensing) steady=True
+2026-05-27 11:42:50,454 - DEBUG - Mass: 14.1456g at 19.942s (dispensing) steady=True
+2026-05-27 11:42:50,856 - DEBUG - Mass: 14.1456g at 20.341s (dispensing) steady=True
+2026-05-27 11:42:51,263 - DEBUG - Mass: 14.1456g at 20.743s (dispensing) steady=True
+2026-05-27 11:42:51,658 - DEBUG - Mass: 14.1456g at 21.143s (dispensing) steady=True
+2026-05-27 11:42:52,067 - DEBUG - Mass: 14.1456g at 21.544s (dispensing) steady=True
+2026-05-27 11:42:52,455 - DEBUG - Mass: 14.1456g at 21.947s (dispensing) steady=True
+2026-05-27 11:42:52,857 - DEBUG - Mass: 14.1456g at 22.343s (dispensing) steady=True
+2026-05-27 11:42:53,267 - DEBUG - Mass: 14.1456g at 22.744s (dispensing) steady=True
+2026-05-27 11:42:53,658 - DEBUG - Mass: 14.1456g at 23.155s (dispensing) steady=True
+2026-05-27 11:42:54,057 - DEBUG - Mass: 14.1456g at 23.553s (dispensing) steady=True
+2026-05-27 11:42:54,468 - DEBUG - Mass: 14.1456g at 23.946s (dispensing) steady=True
+2026-05-27 11:42:54,868 - DEBUG - Mass: 14.1456g at 24.346s (dispensing) steady=True
+2026-05-27 11:42:55,265 - DEBUG - Mass: 14.1456g at 24.745s (dispensing) steady=True
+2026-05-27 11:42:55,667 - DEBUG - Mass: 14.1456g at 25.156s (dispensing) steady=True
+2026-05-27 11:42:56,057 - DEBUG - Mass: 14.1456g at 25.555s (dispensing) steady=True
+2026-05-27 11:42:56,467 - DEBUG - Mass: 14.1456g at 25.946s (dispensing) steady=True
+2026-05-27 11:42:56,868 - DEBUG - Mass: 14.1456g at 26.347s (dispensing) steady=True
+2026-05-27 11:42:57,265 - DEBUG - Mass: 14.1456g at 26.746s (dispensing) steady=True
+2026-05-27 11:42:57,668 - DEBUG - Mass: 14.1456g at 27.157s (dispensing) steady=True
+2026-05-27 11:42:58,059 - DEBUG - Mass: 14.1456g at 27.556s (dispensing) steady=True
+2026-05-27 11:42:58,468 - DEBUG - Mass: 14.1456g at 27.947s (dispensing) steady=True
+2026-05-27 11:42:58,868 - DEBUG - Mass: 14.1456g at 28.348s (dispensing) steady=True
+2026-05-27 11:42:59,259 - DEBUG - Mass: 14.1456g at 28.746s (dispensing) steady=True
+2026-05-27 11:42:59,664 - DEBUG - Mass: 14.1456g at 29.143s (dispensing) steady=True
+2026-05-27 11:43:00,061 - DEBUG - Mass: 14.1456g at 29.542s (dispensing) steady=True
+2026-05-27 11:43:00,466 - DEBUG - Mass: 14.1456g at 29.948s (dispensing) steady=True
+2026-05-27 11:43:00,867 - DEBUG - Mass: 14.1456g at 30.348s (dispensing) steady=True
+2026-05-27 11:43:01,260 - DEBUG - Mass: 14.1456g at 30.747s (dispensing) steady=True
+2026-05-27 11:43:01,662 - DEBUG - Mass: 14.1456g at 31.143s (dispensing) steady=True
+2026-05-27 11:43:02,061 - DEBUG - Mass: 14.1456g at 31.556s (dispensing) steady=True
+2026-05-27 11:43:02,455 - DEBUG - Mass: 14.1456g at 31.949s (dispensing) steady=True
+2026-05-27 11:43:02,863 - DEBUG - Mass: 14.1456g at 32.350s (dispensing) steady=True
+2026-05-27 11:43:03,261 - DEBUG - Mass: 14.1456g at 32.749s (dispensing) steady=True
+2026-05-27 11:43:03,661 - DEBUG - Mass: 14.1456g at 33.143s (dispensing) steady=True
+2026-05-27 11:43:04,060 - DEBUG - Mass: 14.1456g at 33.541s (dispensing) steady=True
+2026-05-27 11:43:04,456 - DEBUG - Mass: 14.1456g at 33.950s (dispensing) steady=True
+2026-05-27 11:43:04,867 - DEBUG - Mass: 14.1456g at 34.352s (dispensing) steady=True
+2026-05-27 11:43:05,262 - DEBUG - Mass: 14.1456g at 34.749s (dispensing) steady=True
+2026-05-27 11:43:05,668 - DEBUG - Mass: 14.1456g at 35.145s (dispensing) steady=True
+2026-05-27 11:43:06,062 - DEBUG - Mass: 14.1456g at 35.543s (dispensing) steady=True
+2026-05-27 11:43:06,457 - DEBUG - Mass: 14.1456g at 35.951s (dispensing) steady=True
+2026-05-27 11:43:06,867 - DEBUG - Mass: 14.1456g at 36.353s (dispensing) steady=True
+2026-05-27 11:43:07,263 - DEBUG - Mass: 14.1456g at 36.752s (dispensing) steady=True
+2026-05-27 11:43:07,668 - DEBUG - Mass: 14.1456g at 37.147s (dispensing) steady=True
+2026-05-27 11:43:08,064 - DEBUG - Mass: 14.1456g at 37.546s (dispensing) steady=True
+2026-05-27 11:43:08,468 - DEBUG - Mass: 14.1456g at 37.951s (dispensing) steady=True
+2026-05-27 11:43:08,855 - DEBUG - Mass: 14.1456g at 38.352s (dispensing) steady=True
+2026-05-27 11:43:09,268 - DEBUG - Mass: 14.1456g at 38.750s (dispensing) steady=True
+2026-05-27 11:43:09,668 - DEBUG - Mass: 14.1456g at 39.146s (dispensing) steady=True
+2026-05-27 11:43:10,063 - DEBUG - Mass: 14.1456g at 39.545s (dispensing) steady=True
+2026-05-27 11:43:10,457 - DEBUG - Mass: 14.1456g at 39.953s (dispensing) steady=True
+2026-05-27 11:43:10,868 - DEBUG - Mass: 14.1456g at 40.354s (dispensing) steady=True
+2026-05-27 11:43:11,268 - DEBUG - Mass: 14.1456g at 40.751s (dispensing) steady=True
+2026-05-27 11:43:11,668 - DEBUG - Mass: 14.1456g at 41.147s (dispensing) steady=True
+2026-05-27 11:43:12,068 - DEBUG - Mass: 14.1456g at 41.547s (dispensing) steady=True
+2026-05-27 11:43:12,460 - DEBUG - Mass: 14.1455g at 41.954s (dispensing) steady=True
+2026-05-27 11:43:12,860 - DEBUG - Mass: 14.1455g at 42.354s (dispensing) steady=True
+2026-05-27 11:43:13,266 - DEBUG - Mass: 14.1455g at 42.753s (dispensing) steady=True
+2026-05-27 11:43:13,668 - DEBUG - Mass: 14.1455g at 43.148s (dispensing) steady=True
+2026-05-27 11:43:14,068 - DEBUG - Mass: 14.1455g at 43.546s (dispensing) steady=True
+2026-05-27 11:43:14,468 - DEBUG - Mass: 14.1455g at 43.955s (dispensing) steady=True
+2026-05-27 11:43:14,868 - DEBUG - Mass: 14.1455g at 44.341s (dispensing) steady=True
+2026-05-27 11:43:15,267 - DEBUG - Mass: 14.1455g at 44.756s (dispensing) steady=True
+2026-05-27 11:43:15,668 - DEBUG - Mass: 14.1455g at 45.149s (dispensing) steady=True
+2026-05-27 11:43:15,732 - DEBUG - Blowing out 0.367 mL
+2026-05-27 11:43:15,732 - DEBUG - Adjusting pump 0 speed to 5
+2026-05-27 11:43:16,058 - DEBUG - Mass: 14.1438g at 45.549s (dispensing) steady=False
+2026-05-27 11:43:16,461 - DEBUG - Mass: 14.1477g at 45.941s (dispensing) steady=False
+2026-05-27 11:43:16,867 - DEBUG - Mass: 14.1483g at 46.341s (dispensing) steady=False
+2026-05-27 11:43:17,259 - DEBUG - Mass: 14.1455g at 46.740s (dispensing) steady=False
+2026-05-27 11:43:17,334 - DEBUG - Adjusting pump 0 speed to 30
+2026-05-27 11:43:17,666 - DEBUG - Mass: 14.1460g at 47.150s (dispensing) steady=False
+2026-05-27 11:43:18,062 - DEBUG - Mass: 14.1470g at 47.549s (dispensing) steady=False
+2026-05-27 11:43:18,466 - DEBUG - Mass: 14.1457g at 47.942s (dispensing) steady=False
+2026-05-27 11:43:18,867 - DEBUG - Mass: 14.1452g at 48.343s (dispensing) steady=False
+2026-05-27 11:43:19,264 - DEBUG - Mass: 14.1454g at 48.742s (dispensing) steady=False
+2026-05-27 11:43:19,667 - DEBUG - Mass: 14.1455g at 49.152s (dispensing) steady=False
+2026-05-27 11:43:20,066 - DEBUG - Mass: 14.1441g at 49.550s (dispensing) steady=False
+2026-05-27 11:43:20,464 - DEBUG - Mass: 14.1454g at 49.943s (dispensing) steady=False
+2026-05-27 11:43:20,863 - DEBUG - Mass: 14.1455g at 50.344s (dispensing) steady=True
+2026-05-27 11:43:21,261 - DEBUG - Mass: 14.1455g at 50.742s (dispensing) steady=True
+2026-05-27 11:43:21,668 - DEBUG - Mass: 14.1455g at 51.152s (dispensing) steady=True
+2026-05-27 11:43:22,053 - DEBUG - Mass: 14.1455g at 51.551s (dispensing) steady=True
+2026-05-27 11:43:22,466 - DEBUG - Mass: 14.1455g at 51.944s (dispensing) steady=True
+2026-05-27 11:43:22,868 - DEBUG - Mass: 14.1455g at 52.343s (dispensing) steady=True
+2026-05-27 11:43:23,260 - DEBUG - Mass: 14.1455g at 52.756s (dispensing) steady=True
+2026-05-27 11:43:23,659 - DEBUG - Mass: 14.1455g at 53.153s (dispensing) steady=True
+2026-05-27 11:43:24,054 - DEBUG - Mass: 14.1455g at 53.551s (dispensing) steady=True
+2026-05-27 11:43:24,465 - DEBUG - Mass: 14.1455g at 53.945s (dispensing) steady=True
+2026-05-27 11:43:24,864 - DEBUG - Mass: 14.1455g at 54.345s (dispensing) steady=True
+2026-05-27 11:43:25,263 - DEBUG - Mass: 14.1455g at 54.744s (dispensing) steady=True
+2026-05-27 11:43:25,668 - DEBUG - Mass: 14.1455g at 55.155s (dispensing) steady=True
+2026-05-27 11:43:26,068 - DEBUG - Mass: 14.1455g at 55.553s (dispensing) steady=True
+2026-05-27 11:43:26,466 - DEBUG - Mass: 14.1455g at 55.946s (dispensing) steady=True
+2026-05-27 11:43:26,867 - DEBUG - Mass: 14.1455g at 56.346s (dispensing) steady=True
+2026-05-27 11:43:27,264 - DEBUG - Mass: 14.1455g at 56.746s (dispensing) steady=True
+2026-05-27 11:43:27,668 - DEBUG - Mass: 14.1455g at 57.155s (dispensing) steady=True
+2026-05-27 11:43:28,061 - DEBUG - Mass: 14.1455g at 57.553s (dispensing) steady=True
+2026-05-27 11:43:28,468 - DEBUG - Mass: 14.1455g at 57.947s (dispensing) steady=True
+2026-05-27 11:43:28,868 - DEBUG - Mass: 14.1455g at 58.349s (dispensing) steady=True
+2026-05-27 11:43:29,264 - DEBUG - Mass: 14.1455g at 58.747s (dispensing) steady=True
+2026-05-27 11:43:29,668 - DEBUG - Mass: 14.1455g at 59.147s (dispensing) steady=True
+2026-05-27 11:43:30,068 - DEBUG - Mass: 14.1455g at 59.555s (dispensing) steady=True
+2026-05-27 11:43:30,467 - DEBUG - Mass: 14.1455g at 59.946s (dispensing) steady=True
+2026-05-27 11:43:30,868 - DEBUG - Mass: 14.1455g at 60.348s (dispensing) steady=True
+2026-05-27 11:43:31,268 - DEBUG - Mass: 14.1455g at 60.747s (dispensing) steady=True
+2026-05-27 11:43:31,667 - DEBUG - Mass: 14.1455g at 61.141s (dispensing) steady=True
+2026-05-27 11:43:32,065 - DEBUG - Mass: 14.1455g at 61.555s (dispensing) steady=True
+2026-05-27 11:43:32,468 - DEBUG - Mass: 14.1455g at 61.949s (dispensing) steady=True
+2026-05-27 11:43:32,867 - DEBUG - Mass: 14.1455g at 62.343s (dispensing) steady=True
+2026-05-27 11:43:33,265 - DEBUG - Mass: 14.1455g at 62.746s (dispensing) steady=True
+2026-05-27 11:43:33,663 - DEBUG - Mass: 14.1455g at 63.142s (dispensing) steady=True
+2026-05-27 11:43:34,058 - DEBUG - Mass: 14.1455g at 63.541s (dispensing) steady=True
+2026-05-27 11:43:34,468 - DEBUG - Mass: 14.1455g at 63.950s (dispensing) steady=True
+2026-05-27 11:43:34,864 - DEBUG - Mass: 14.1455g at 64.351s (dispensing) steady=True
+2026-05-27 11:43:35,261 - DEBUG - Mass: 14.1455g at 64.749s (dispensing) steady=True
+2026-05-27 11:43:35,666 - DEBUG - Mass: 14.1455g at 65.144s (dispensing) steady=True
+2026-05-27 11:43:36,068 - DEBUG - Mass: 14.1455g at 65.542s (dispensing) steady=True
+2026-05-27 11:43:36,455 - DEBUG - Mass: 14.1455g at 65.950s (dispensing) steady=True
+2026-05-27 11:43:36,853 - DEBUG - Mass: 14.1455g at 66.351s (dispensing) steady=True
+2026-05-27 11:43:37,266 - DEBUG - Mass: 14.1455g at 66.749s (dispensing) steady=True
+2026-05-27 11:43:37,668 - DEBUG - Mass: 14.1455g at 67.144s (dispensing) steady=True
+2026-05-27 11:43:38,067 - DEBUG - Mass: 14.1455g at 67.543s (dispensing) steady=True
+2026-05-27 11:43:38,456 - DEBUG - Mass: 14.1455g at 67.950s (dispensing) steady=True
+2026-05-27 11:43:38,868 - DEBUG - Mass: 14.1455g at 68.351s (dispensing) steady=True
+2026-05-27 11:43:39,264 - DEBUG - Mass: 14.1455g at 68.750s (dispensing) steady=True
+2026-05-27 11:43:39,668 - DEBUG - Mass: 14.1455g at 69.145s (dispensing) steady=True
+2026-05-27 11:43:40,062 - DEBUG - Mass: 14.1455g at 69.543s (dispensing) steady=True
+2026-05-27 11:43:40,456 - DEBUG - Mass: 14.1455g at 69.951s (dispensing) steady=True
+2026-05-27 11:43:40,864 - DEBUG - Mass: 14.1455g at 70.352s (dispensing) steady=True
+2026-05-27 11:43:41,264 - DEBUG - Mass: 14.1455g at 70.750s (dispensing) steady=True
+2026-05-27 11:43:41,668 - DEBUG - Mass: 14.1455g at 71.147s (dispensing) steady=True
+2026-05-27 11:43:42,068 - DEBUG - Mass: 14.1455g at 71.546s (dispensing) steady=True
+2026-05-27 11:43:42,468 - DEBUG - Mass: 14.1455g at 71.952s (dispensing) steady=True
+2026-05-27 11:43:42,857 - DEBUG - Mass: 14.1455g at 72.355s (dispensing) steady=True
+2026-05-27 11:43:43,268 - DEBUG - Mass: 14.1455g at 72.754s (dispensing) steady=True
+2026-05-27 11:43:43,668 - DEBUG - Mass: 14.1455g at 73.148s (dispensing) steady=True
+2026-05-27 11:43:44,067 - DEBUG - Mass: 14.1455g at 73.547s (dispensing) steady=True
+2026-05-27 11:43:44,467 - DEBUG - Mass: 14.1454g at 73.954s (dispensing) steady=True
+2026-05-27 11:43:44,859 - DEBUG - Mass: 14.1454g at 74.356s (dispensing) steady=True
+2026-05-27 11:43:45,268 - DEBUG - Mass: 14.1454g at 74.754s (dispensing) steady=True
+2026-05-27 11:43:45,668 - DEBUG - Mass: 14.1454g at 75.148s (dispensing) steady=True
+2026-05-27 11:43:46,065 - DEBUG - Mass: 14.1454g at 75.545s (dispensing) steady=True
+2026-05-27 11:43:46,468 - DEBUG - Mass: 14.1454g at 75.954s (dispensing) steady=True
+2026-05-27 11:43:46,868 - DEBUG - Mass: 14.1454g at 76.357s (dispensing) steady=True
+2026-05-27 11:43:47,268 - DEBUG - Mass: 14.1454g at 76.755s (dispensing) steady=True
+2026-05-27 11:43:47,667 - DEBUG - Mass: 14.1454g at 77.149s (dispensing) steady=True
+2026-05-27 11:43:48,068 - DEBUG - Mass: 14.1454g at 77.547s (dispensing) steady=True
+2026-05-27 11:43:48,462 - DEBUG - Mass: 14.1454g at 77.955s (dispensing) steady=True
+2026-05-27 11:43:48,867 - DEBUG - Mass: 14.1454g at 78.341s (dispensing) steady=True
+2026-05-27 11:43:49,268 - DEBUG - Mass: 14.1454g at 78.755s (dispensing) steady=True
+2026-05-27 11:43:49,667 - DEBUG - Mass: 14.1454g at 79.151s (dispensing) steady=True
+2026-05-27 11:43:50,063 - DEBUG - Mass: 14.1404g at 79.549s (dispensing) steady=False
+2026-05-27 11:43:50,463 - DEBUG - Mass: 14.1413g at 79.941s (dispensing) steady=False
+2026-05-27 11:43:50,867 - DEBUG - Mass: 14.1409g at 80.343s (dispensing) steady=False
+2026-05-27 11:43:51,268 - DEBUG - Mass: 14.1408g at 80.741s (dispensing) steady=True
+2026-05-27 11:43:51,667 - DEBUG - Mass: 14.1408g at 81.151s (dispensing) steady=True
+2026-05-27 11:43:52,054 - DEBUG - Mass: 14.1408g at 81.551s (dispensing) steady=True
+2026-05-27 11:43:52,415 - INFO - Dispensing took 80.071s, collecting post-dispense baseline
+2026-05-27 11:43:52,460 - DEBUG - Mass: 14.1408g at 81.943s (dispensing) steady=True
+2026-05-27 11:43:52,867 - DEBUG - Mass: 14.1408g at 82.353s (baseline_post) steady=True
+2026-05-27 11:43:53,253 - DEBUG - Mass: 14.1408g at 82.741s (baseline_post) steady=True
+2026-05-27 11:43:53,669 - DEBUG - Mass: 14.1408g at 83.141s (baseline_post) steady=True
+2026-05-27 11:43:54,060 - DEBUG - Mass: 14.1408g at 83.556s (baseline_post) steady=True
+2026-05-27 11:43:54,463 - DEBUG - Mass: 14.1408g at 83.955s (baseline_post) steady=True
+2026-05-27 11:43:54,670 - INFO - Stopped continuous mass monitoring. Collected 211 data points
+2026-05-27 11:43:54,670 - INFO - Pre-baseline: 6 stable readings, avg=14.090300g
+2026-05-27 11:43:54,670 - INFO - Post-baseline: 5 stable readings, avg=14.140800g
+2026-05-27 11:43:54,670 - INFO - INDEPENDENT BASELINE calculation:
+2026-05-27 11:43:54,670 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.050500g
+2026-05-27 11:43:54,670 - INFO - Reading summary: 6 pre-readings (6 stable), 5 post-readings (5 stable)
+2026-05-27 11:43:54,670 - INFO - Baseline variability: pre_std=0.000000g, post_std=0.000000g
+2026-05-27 11:43:54,670 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-05-27 11:43:54,670 - INFO - Saved 211 mass measurements to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_data_agar_water_4%_20260527_114354.csv
+2026-05-27 11:43:55,111 - INFO - Saved dispense mass vs time plot to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_plot_agar_water_4%_20260527_114354.png
+2026-05-27 11:43:55,111 - INFO - Removing pipet
+2026-05-27 11:43:58,438 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:43:59,673 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param aspirate_speed=11
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param dispense_speed=30
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param aspirate_wait_time=9.4
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param pre_asp_air_vol=0.444
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param blowout_vol=0.367
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param overaspirate_vol=0.0073
+2026-05-27 11:43:59,868 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:43:59,868 - DEBUG - Selected small_tip for volume 0.050 mL
+2026-05-27 11:43:59,871 - INFO - Getting small_tip (pipet number 2) from rack: small_tip_rack_1
+2026-05-27 11:44:02,755 - INFO - Pipetting from vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:44:02,755 - INFO - Additional volume from calibration, amount: 0.007 mL
+2026-05-27 11:44:02,755 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-27 11:44:05,834 - DEBUG - Aspirating 0.444 mL then waiting 0 s
+2026-05-27 11:44:07,741 - DEBUG - Adjusting pump 0 speed to 11
+2026-05-27 11:44:08,124 - DEBUG - Aspirating 0.057 mL then waiting 9.4 s
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param aspirate_speed=11
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param dispense_speed=30
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param aspirate_wait_time=9.4
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param pre_asp_air_vol=0.444
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param blowout_vol=0.367
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param overaspirate_vol=0.0073
+2026-05-27 11:44:18,779 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:44:18,779 - INFO - Pipetting into vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:44:18,779 - DEBUG - Adjusting pump 0 speed to 30
+2026-05-27 11:44:20,607 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-05-27 11:44:21,617 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-05-27 11:44:21,863 - DEBUG - Mass: 14.0902g at 0.001s (baseline_pre) steady=True
+2026-05-27 11:44:22,268 - DEBUG - Mass: 14.0902g at 0.453s (baseline_pre) steady=True
+2026-05-27 11:44:22,668 - DEBUG - Mass: 14.0902g at 0.867s (baseline_pre) steady=True
+2026-05-27 11:44:23,065 - DEBUG - Mass: 14.0902g at 1.252s (baseline_pre) steady=True
+2026-05-27 11:44:23,468 - DEBUG - Mass: 14.0902g at 1.653s (baseline_pre) steady=True
+2026-05-27 11:44:23,623 - DEBUG - Dispensing 0.501 mL then waiting 3.0 s
+2026-05-27 11:44:23,866 - DEBUG - Mass: 14.0902g at 2.054s (dispensing) steady=True
+2026-05-27 11:44:24,262 - DEBUG - Mass: 14.0954g at 2.453s (dispensing) steady=False
+2026-05-27 11:44:24,666 - DEBUG - Mass: 14.0945g at 2.863s (dispensing) steady=False
+2026-05-27 11:44:25,060 - DEBUG - Mass: 14.0944g at 3.261s (dispensing) steady=False
+2026-05-27 11:44:25,462 - DEBUG - Mass: 14.0952g at 3.654s (dispensing) steady=False
+2026-05-27 11:44:25,861 - DEBUG - Mass: 14.0960g at 4.053s (dispensing) steady=False
+2026-05-27 11:44:26,260 - DEBUG - Mass: 14.0953g at 4.451s (dispensing) steady=False
+2026-05-27 11:44:26,667 - DEBUG - Mass: 14.0952g at 4.864s (dispensing) steady=False
+2026-05-27 11:44:27,055 - DEBUG - Mass: 14.1003g at 5.263s (dispensing) steady=False
+2026-05-27 11:44:27,465 - DEBUG - Mass: 14.1060g at 5.655s (dispensing) steady=False
+2026-05-27 11:44:27,863 - DEBUG - Mass: 14.1054g at 6.054s (dispensing) steady=False
+2026-05-27 11:44:28,262 - DEBUG - Mass: 14.1061g at 6.454s (dispensing) steady=True
+2026-05-27 11:44:28,669 - DEBUG - Mass: 14.1061g at 6.865s (dispensing) steady=True
+2026-05-27 11:44:29,056 - DEBUG - Mass: 14.1145g at 7.263s (dispensing) steady=False
+2026-05-27 11:44:29,466 - DEBUG - Mass: 14.1181g at 7.655s (dispensing) steady=False
+2026-05-27 11:44:29,865 - DEBUG - Mass: 14.1192g at 8.057s (dispensing) steady=False
+2026-05-27 11:44:30,264 - DEBUG - Mass: 14.1184g at 8.456s (dispensing) steady=False
+2026-05-27 11:44:30,667 - DEBUG - Mass: 14.1288g at 8.865s (dispensing) steady=False
+2026-05-27 11:44:31,066 - DEBUG - Mass: 14.1303g at 9.264s (dispensing) steady=False
+2026-05-27 11:44:31,467 - DEBUG - Mass: 14.1326g at 9.656s (dispensing) steady=False
+2026-05-27 11:44:31,866 - DEBUG - Mass: 14.1411g at 10.058s (dispensing) steady=False
+2026-05-27 11:44:32,265 - DEBUG - Mass: 14.1426g at 10.456s (dispensing) steady=False
+2026-05-27 11:44:32,666 - DEBUG - Mass: 14.1418g at 10.866s (dispensing) steady=True
+2026-05-27 11:44:33,068 - DEBUG - Mass: 14.1418g at 11.265s (dispensing) steady=True
+2026-05-27 11:44:33,453 - DEBUG - Mass: 14.1432g at 11.658s (dispensing) steady=False
+2026-05-27 11:44:33,852 - DEBUG - Mass: 14.1432g at 12.060s (dispensing) steady=False
+2026-05-27 11:44:34,258 - DEBUG - Mass: 14.1433g at 12.458s (dispensing) steady=False
+2026-05-27 11:44:34,667 - DEBUG - Mass: 14.1434g at 12.851s (dispensing) steady=False
+2026-05-27 11:44:35,068 - DEBUG - Mass: 14.1436g at 13.251s (dispensing) steady=True
+2026-05-27 11:44:35,469 - DEBUG - Mass: 14.1436g at 13.657s (dispensing) steady=True
+2026-05-27 11:44:35,869 - DEBUG - Mass: 14.1436g at 14.060s (dispensing) steady=True
+2026-05-27 11:44:36,259 - DEBUG - Mass: 14.1436g at 14.459s (dispensing) steady=True
+2026-05-27 11:44:36,661 - DEBUG - Mass: 14.1436g at 14.868s (dispensing) steady=True
+2026-05-27 11:44:37,067 - DEBUG - Mass: 14.1436g at 15.268s (dispensing) steady=True
+2026-05-27 11:44:37,453 - DEBUG - Mass: 14.1436g at 15.658s (dispensing) steady=True
+2026-05-27 11:44:37,868 - DEBUG - Mass: 14.1436g at 16.056s (dispensing) steady=True
+2026-05-27 11:44:38,262 - DEBUG - Mass: 14.1436g at 16.453s (dispensing) steady=True
+2026-05-27 11:44:38,669 - DEBUG - Mass: 14.1436g at 16.854s (dispensing) steady=True
+2026-05-27 11:44:39,067 - DEBUG - Mass: 14.1436g at 17.253s (dispensing) steady=True
+2026-05-27 11:44:39,467 - DEBUG - Mass: 14.1436g at 17.659s (dispensing) steady=True
+2026-05-27 11:44:39,864 - DEBUG - Mass: 14.1436g at 18.056s (dispensing) steady=True
+2026-05-27 11:44:40,260 - DEBUG - Mass: 14.1436g at 18.453s (dispensing) steady=True
+2026-05-27 11:44:40,666 - DEBUG - Mass: 14.1436g at 18.854s (dispensing) steady=True
+2026-05-27 11:44:41,062 - DEBUG - Mass: 14.1436g at 19.253s (dispensing) steady=True
+2026-05-27 11:44:41,469 - DEBUG - Mass: 14.1436g at 19.660s (dispensing) steady=True
+2026-05-27 11:44:41,855 - DEBUG - Mass: 14.1436g at 20.062s (dispensing) steady=True
+2026-05-27 11:44:42,266 - DEBUG - Mass: 14.1437g at 20.460s (dispensing) steady=True
+2026-05-27 11:44:42,668 - DEBUG - Mass: 14.1437g at 20.854s (dispensing) steady=True
+2026-05-27 11:44:43,068 - DEBUG - Mass: 14.1437g at 21.252s (dispensing) steady=True
+2026-05-27 11:44:43,469 - DEBUG - Mass: 14.1437g at 21.662s (dispensing) steady=True
+2026-05-27 11:44:43,866 - DEBUG - Mass: 14.1437g at 22.063s (dispensing) steady=True
+2026-05-27 11:44:44,263 - DEBUG - Mass: 14.1437g at 22.462s (dispensing) steady=True
+2026-05-27 11:44:44,668 - DEBUG - Mass: 14.1437g at 22.854s (dispensing) steady=True
+2026-05-27 11:44:45,061 - DEBUG - Mass: 14.1437g at 23.252s (dispensing) steady=True
+2026-05-27 11:44:45,469 - DEBUG - Mass: 14.1437g at 23.662s (dispensing) steady=True
+2026-05-27 11:44:45,869 - DEBUG - Mass: 14.1437g at 24.065s (dispensing) steady=True
+2026-05-27 11:44:46,264 - DEBUG - Mass: 14.1437g at 24.465s (dispensing) steady=True
+2026-05-27 11:44:46,668 - DEBUG - Mass: 14.1437g at 24.858s (dispensing) steady=True
+2026-05-27 11:44:47,064 - DEBUG - Mass: 14.1437g at 25.255s (dispensing) steady=True
+2026-05-27 11:44:47,468 - DEBUG - Mass: 14.1437g at 25.664s (dispensing) steady=True
+2026-05-27 11:44:47,869 - DEBUG - Mass: 14.1437g at 26.065s (dispensing) steady=True
+2026-05-27 11:44:48,268 - DEBUG - Mass: 14.1437g at 26.462s (dispensing) steady=True
+2026-05-27 11:44:48,669 - DEBUG - Mass: 14.1437g at 26.858s (dispensing) steady=True
+2026-05-27 11:44:49,065 - DEBUG - Mass: 14.1437g at 27.257s (dispensing) steady=True
+2026-05-27 11:44:49,459 - DEBUG - Mass: 14.1437g at 27.665s (dispensing) steady=True
+2026-05-27 11:44:49,868 - DEBUG - Mass: 14.1437g at 28.065s (dispensing) steady=True
+2026-05-27 11:44:50,269 - DEBUG - Mass: 14.1437g at 28.463s (dispensing) steady=True
+2026-05-27 11:44:50,669 - DEBUG - Mass: 14.1437g at 28.859s (dispensing) steady=True
+2026-05-27 11:44:51,068 - DEBUG - Mass: 14.1437g at 29.257s (dispensing) steady=True
+2026-05-27 11:44:51,460 - DEBUG - Mass: 14.1437g at 29.666s (dispensing) steady=True
+2026-05-27 11:44:51,860 - DEBUG - Mass: 14.1437g at 30.068s (dispensing) steady=True
+2026-05-27 11:44:52,267 - DEBUG - Mass: 14.1437g at 30.467s (dispensing) steady=True
+2026-05-27 11:44:52,669 - DEBUG - Mass: 14.1437g at 30.859s (dispensing) steady=True
+2026-05-27 11:44:53,068 - DEBUG - Mass: 14.1437g at 31.259s (dispensing) steady=True
+2026-05-27 11:44:53,469 - DEBUG - Mass: 14.1437g at 31.666s (dispensing) steady=True
+2026-05-27 11:44:53,861 - DEBUG - Mass: 14.1437g at 32.053s (dispensing) steady=True
+2026-05-27 11:44:54,267 - DEBUG - Mass: 14.1437g at 32.466s (dispensing) steady=True
+2026-05-27 11:44:54,669 - DEBUG - Mass: 14.1437g at 32.860s (dispensing) steady=True
+2026-05-27 11:44:55,069 - DEBUG - Mass: 14.1437g at 33.257s (dispensing) steady=True
+2026-05-27 11:44:55,469 - DEBUG - Mass: 14.1437g at 33.653s (dispensing) steady=True
+2026-05-27 11:44:55,868 - DEBUG - Mass: 14.1437g at 34.053s (dispensing) steady=True
+2026-05-27 11:44:56,269 - DEBUG - Mass: 14.1437g at 34.468s (dispensing) steady=True
+2026-05-27 11:44:56,668 - DEBUG - Mass: 14.1437g at 34.863s (dispensing) steady=True
+2026-05-27 11:44:57,068 - DEBUG - Mass: 14.1437g at 35.262s (dispensing) steady=True
+2026-05-27 11:44:57,463 - DEBUG - Mass: 14.1437g at 35.653s (dispensing) steady=True
+2026-05-27 11:44:57,863 - DEBUG - Mass: 14.1437g at 36.054s (dispensing) steady=True
+2026-05-27 11:44:58,261 - DEBUG - Mass: 14.1437g at 36.453s (dispensing) steady=True
+2026-05-27 11:44:58,669 - DEBUG - Mass: 14.1437g at 36.863s (dispensing) steady=True
+2026-05-27 11:44:59,068 - DEBUG - Mass: 14.1437g at 37.262s (dispensing) steady=True
+2026-05-27 11:44:59,468 - DEBUG - Mass: 14.1437g at 37.654s (dispensing) steady=True
+2026-05-27 11:44:59,869 - DEBUG - Mass: 14.1437g at 38.055s (dispensing) steady=True
+2026-05-27 11:45:00,261 - DEBUG - Mass: 14.1437g at 38.453s (dispensing) steady=True
+2026-05-27 11:45:00,667 - DEBUG - Mass: 14.1437g at 38.865s (dispensing) steady=True
+2026-05-27 11:45:01,063 - DEBUG - Mass: 14.1437g at 39.264s (dispensing) steady=True
+2026-05-27 11:45:01,466 - DEBUG - Mass: 14.1437g at 39.655s (dispensing) steady=True
+2026-05-27 11:45:01,868 - DEBUG - Mass: 14.1437g at 40.057s (dispensing) steady=True
+2026-05-27 11:45:02,269 - DEBUG - Mass: 14.1437g at 40.456s (dispensing) steady=True
+2026-05-27 11:45:02,658 - DEBUG - Mass: 14.1437g at 40.865s (dispensing) steady=True
+2026-05-27 11:45:03,068 - DEBUG - Mass: 14.1437g at 41.265s (dispensing) steady=True
+2026-05-27 11:45:03,468 - DEBUG - Mass: 14.1437g at 41.655s (dispensing) steady=True
+2026-05-27 11:45:03,868 - DEBUG - Mass: 14.1437g at 42.057s (dispensing) steady=True
+2026-05-27 11:45:04,265 - DEBUG - Mass: 14.1437g at 42.456s (dispensing) steady=True
+2026-05-27 11:45:04,669 - DEBUG - Mass: 14.1437g at 42.867s (dispensing) steady=True
+2026-05-27 11:45:05,064 - DEBUG - Mass: 14.1437g at 43.265s (dispensing) steady=True
+2026-05-27 11:45:05,468 - DEBUG - Mass: 14.1437g at 43.657s (dispensing) steady=True
+2026-05-27 11:45:05,868 - DEBUG - Mass: 14.1437g at 44.059s (dispensing) steady=True
+2026-05-27 11:45:06,267 - DEBUG - Mass: 14.1437g at 44.458s (dispensing) steady=True
+2026-05-27 11:45:06,668 - DEBUG - Mass: 14.1437g at 44.867s (dispensing) steady=True
+2026-05-27 11:45:06,724 - DEBUG - Blowing out 0.367 mL
+2026-05-27 11:45:06,724 - DEBUG - Adjusting pump 0 speed to 5
+2026-05-27 11:45:07,066 - DEBUG - Mass: 14.1434g at 45.266s (dispensing) steady=False
+2026-05-27 11:45:07,467 - DEBUG - Mass: 14.1454g at 45.658s (dispensing) steady=False
+2026-05-27 11:45:07,866 - DEBUG - Mass: 14.1462g at 46.057s (dispensing) steady=False
+2026-05-27 11:45:08,267 - DEBUG - Mass: 14.1434g at 46.457s (dispensing) steady=False
+2026-05-27 11:45:08,342 - DEBUG - Adjusting pump 0 speed to 30
+2026-05-27 11:45:08,661 - DEBUG - Mass: 14.1427g at 46.852s (dispensing) steady=False
+2026-05-27 11:45:09,066 - DEBUG - Mass: 14.1463g at 47.252s (dispensing) steady=False
+2026-05-27 11:45:09,467 - DEBUG - Mass: 14.1441g at 47.657s (dispensing) steady=False
+2026-05-27 11:45:09,853 - DEBUG - Mass: 14.1438g at 48.060s (dispensing) steady=False
+2026-05-27 11:45:10,260 - DEBUG - Mass: 14.1446g at 48.460s (dispensing) steady=False
+2026-05-27 11:45:10,661 - DEBUG - Mass: 14.1437g at 48.853s (dispensing) steady=False
+2026-05-27 11:45:11,067 - DEBUG - Mass: 14.1430g at 49.267s (dispensing) steady=False
+2026-05-27 11:45:11,468 - DEBUG - Mass: 14.1434g at 49.660s (dispensing) steady=True
+2026-05-27 11:45:11,855 - DEBUG - Mass: 14.1434g at 50.052s (dispensing) steady=True
+2026-05-27 11:45:12,261 - DEBUG - Mass: 14.1434g at 50.462s (dispensing) steady=True
+2026-05-27 11:45:12,669 - DEBUG - Mass: 14.1434g at 50.853s (dispensing) steady=True
+2026-05-27 11:45:13,068 - DEBUG - Mass: 14.1434g at 51.253s (dispensing) steady=True
+2026-05-27 11:45:13,469 - DEBUG - Mass: 14.1434g at 51.659s (dispensing) steady=True
+2026-05-27 11:45:13,855 - DEBUG - Mass: 14.1434g at 52.063s (dispensing) steady=True
+2026-05-27 11:45:14,268 - DEBUG - Mass: 14.1434g at 52.461s (dispensing) steady=True
+2026-05-27 11:45:14,669 - DEBUG - Mass: 14.1434g at 52.854s (dispensing) steady=True
+2026-05-27 11:45:15,063 - DEBUG - Mass: 14.1434g at 53.254s (dispensing) steady=True
+2026-05-27 11:45:15,469 - DEBUG - Mass: 14.1434g at 53.661s (dispensing) steady=True
+2026-05-27 11:45:15,869 - DEBUG - Mass: 14.1434g at 54.063s (dispensing) steady=True
+2026-05-27 11:45:16,268 - DEBUG - Mass: 14.1434g at 54.462s (dispensing) steady=True
+2026-05-27 11:45:16,668 - DEBUG - Mass: 14.1434g at 54.856s (dispensing) steady=True
+2026-05-27 11:45:17,067 - DEBUG - Mass: 14.1434g at 55.256s (dispensing) steady=True
+2026-05-27 11:45:17,469 - DEBUG - Mass: 14.1434g at 55.662s (dispensing) steady=True
+2026-05-27 11:45:17,857 - DEBUG - Mass: 14.1434g at 56.064s (dispensing) steady=True
+2026-05-27 11:45:18,264 - DEBUG - Mass: 14.1434g at 56.462s (dispensing) steady=True
+2026-05-27 11:45:18,668 - DEBUG - Mass: 14.1434g at 56.857s (dispensing) steady=True
+2026-05-27 11:45:19,067 - DEBUG - Mass: 14.1434g at 57.254s (dispensing) steady=True
+2026-05-27 11:45:19,469 - DEBUG - Mass: 14.1434g at 57.662s (dispensing) steady=True
+2026-05-27 11:45:19,869 - DEBUG - Mass: 14.1434g at 58.064s (dispensing) steady=True
+2026-05-27 11:45:20,265 - DEBUG - Mass: 14.1434g at 58.464s (dispensing) steady=True
+2026-05-27 11:45:20,666 - DEBUG - Mass: 14.1434g at 58.858s (dispensing) steady=True
+2026-05-27 11:45:21,067 - DEBUG - Mass: 14.1434g at 59.258s (dispensing) steady=True
+2026-05-27 11:45:21,458 - DEBUG - Mass: 14.1434g at 59.665s (dispensing) steady=True
+2026-05-27 11:45:21,869 - DEBUG - Mass: 14.1434g at 60.066s (dispensing) steady=True
+2026-05-27 11:45:22,268 - DEBUG - Mass: 14.1434g at 60.464s (dispensing) steady=True
+2026-05-27 11:45:22,665 - DEBUG - Mass: 14.1434g at 60.857s (dispensing) steady=True
+2026-05-27 11:45:23,069 - DEBUG - Mass: 14.1434g at 61.256s (dispensing) steady=True
+2026-05-27 11:45:23,469 - DEBUG - Mass: 14.1434g at 61.665s (dispensing) steady=True
+2026-05-27 11:45:23,860 - DEBUG - Mass: 14.1434g at 62.068s (dispensing) steady=True
+2026-05-27 11:45:24,267 - DEBUG - Mass: 14.1434g at 62.467s (dispensing) steady=True
+2026-05-27 11:45:24,669 - DEBUG - Mass: 14.1434g at 62.859s (dispensing) steady=True
+2026-05-27 11:45:25,069 - DEBUG - Mass: 14.1434g at 63.259s (dispensing) steady=True
+2026-05-27 11:45:25,469 - DEBUG - Mass: 14.1434g at 63.667s (dispensing) steady=True
+2026-05-27 11:45:25,869 - DEBUG - Mass: 14.1434g at 64.068s (dispensing) steady=True
+2026-05-27 11:45:26,268 - DEBUG - Mass: 14.1435g at 64.467s (dispensing) steady=True
+2026-05-27 11:45:26,667 - DEBUG - Mass: 14.1435g at 64.861s (dispensing) steady=True
+2026-05-27 11:45:27,069 - DEBUG - Mass: 14.1435g at 65.260s (dispensing) steady=True
+2026-05-27 11:45:27,462 - DEBUG - Mass: 14.1435g at 65.667s (dispensing) steady=True
+2026-05-27 11:45:27,869 - DEBUG - Mass: 14.1435g at 66.068s (dispensing) steady=True
+2026-05-27 11:45:28,268 - DEBUG - Mass: 14.1435g at 66.468s (dispensing) steady=True
+2026-05-27 11:45:28,669 - DEBUG - Mass: 14.1435g at 66.863s (dispensing) steady=True
+2026-05-27 11:45:29,067 - DEBUG - Mass: 14.1435g at 67.262s (dispensing) steady=True
+2026-05-27 11:45:29,464 - DEBUG - Mass: 14.1435g at 67.653s (dispensing) steady=True
+2026-05-27 11:45:29,869 - DEBUG - Mass: 14.1435g at 68.055s (dispensing) steady=True
+2026-05-27 11:45:30,268 - DEBUG - Mass: 14.1435g at 68.455s (dispensing) steady=True
+2026-05-27 11:45:30,669 - DEBUG - Mass: 14.1435g at 68.863s (dispensing) steady=True
+2026-05-27 11:45:31,066 - DEBUG - Mass: 14.1435g at 69.263s (dispensing) steady=True
+2026-05-27 11:45:31,469 - DEBUG - Mass: 14.1435g at 69.654s (dispensing) steady=True
+2026-05-27 11:45:31,869 - DEBUG - Mass: 14.1435g at 70.055s (dispensing) steady=True
+2026-05-27 11:45:32,262 - DEBUG - Mass: 14.1435g at 70.454s (dispensing) steady=True
+2026-05-27 11:45:32,654 - DEBUG - Mass: 14.1435g at 70.864s (dispensing) steady=True
+2026-05-27 11:45:33,054 - DEBUG - Mass: 14.1435g at 71.261s (dispensing) steady=True
+2026-05-27 11:45:33,469 - DEBUG - Mass: 14.1435g at 71.656s (dispensing) steady=True
+2026-05-27 11:45:33,868 - DEBUG - Mass: 14.1435g at 72.055s (dispensing) steady=True
+2026-05-27 11:45:34,262 - DEBUG - Mass: 14.1435g at 72.454s (dispensing) steady=True
+2026-05-27 11:45:34,669 - DEBUG - Mass: 14.1435g at 72.865s (dispensing) steady=True
+2026-05-27 11:45:35,068 - DEBUG - Mass: 14.1435g at 73.264s (dispensing) steady=True
+2026-05-27 11:45:35,469 - DEBUG - Mass: 14.1435g at 73.656s (dispensing) steady=True
+2026-05-27 11:45:35,864 - DEBUG - Mass: 14.1435g at 74.056s (dispensing) steady=True
+2026-05-27 11:45:36,263 - DEBUG - Mass: 14.1435g at 74.455s (dispensing) steady=True
+2026-05-27 11:45:36,659 - DEBUG - Mass: 14.1435g at 74.866s (dispensing) steady=True
+2026-05-27 11:45:37,061 - DEBUG - Mass: 14.1435g at 75.265s (dispensing) steady=True
+2026-05-27 11:45:37,469 - DEBUG - Mass: 14.1435g at 75.657s (dispensing) steady=True
+2026-05-27 11:45:37,869 - DEBUG - Mass: 14.1435g at 76.059s (dispensing) steady=True
+2026-05-27 11:45:38,258 - DEBUG - Mass: 14.1435g at 76.458s (dispensing) steady=True
+2026-05-27 11:45:38,669 - DEBUG - Mass: 14.1436g at 76.865s (dispensing) steady=True
+2026-05-27 11:45:39,055 - DEBUG - Mass: 14.1436g at 77.262s (dispensing) steady=True
+2026-05-27 11:45:39,469 - DEBUG - Mass: 14.1436g at 77.658s (dispensing) steady=True
+2026-05-27 11:45:39,868 - DEBUG - Mass: 14.1436g at 78.060s (dispensing) steady=True
+2026-05-27 11:45:40,258 - DEBUG - Mass: 14.1436g at 78.458s (dispensing) steady=True
+2026-05-27 11:45:40,668 - DEBUG - Mass: 14.1436g at 78.868s (dispensing) steady=True
+2026-05-27 11:45:41,067 - DEBUG - Mass: 14.1398g at 79.267s (dispensing) steady=False
+2026-05-27 11:45:41,467 - DEBUG - Mass: 14.1387g at 79.657s (dispensing) steady=False
+2026-05-27 11:45:41,867 - DEBUG - Mass: 14.1384g at 80.060s (dispensing) steady=False
+2026-05-27 11:45:42,260 - DEBUG - Mass: 14.1391g at 80.459s (dispensing) steady=False
+2026-05-27 11:45:42,664 - DEBUG - Mass: 14.1398g at 80.853s (dispensing) steady=False
+2026-05-27 11:45:43,060 - DEBUG - Mass: 14.1381g at 81.253s (dispensing) steady=False
+2026-05-27 11:45:43,422 - INFO - Dispensing took 79.800s, collecting post-dispense baseline
+2026-05-27 11:45:43,468 - DEBUG - Mass: 14.1388g at 81.659s (dispensing) steady=True
+2026-05-27 11:45:43,869 - DEBUG - Mass: 14.1388g at 82.055s (baseline_post) steady=True
+2026-05-27 11:45:44,269 - DEBUG - Mass: 14.1388g at 82.459s (baseline_post) steady=True
+2026-05-27 11:45:44,661 - DEBUG - Mass: 14.1388g at 82.859s (baseline_post) steady=True
+2026-05-27 11:45:45,068 - DEBUG - Mass: 14.1388g at 83.256s (baseline_post) steady=True
+2026-05-27 11:45:45,460 - DEBUG - Mass: 14.1388g at 83.659s (baseline_post) steady=True
+2026-05-27 11:45:45,680 - INFO - Stopped continuous mass monitoring. Collected 210 data points
+2026-05-27 11:45:45,684 - INFO - Pre-baseline: 5 stable readings, avg=14.090200g
+2026-05-27 11:45:45,684 - INFO - Post-baseline: 5 stable readings, avg=14.138800g
+2026-05-27 11:45:45,684 - INFO - INDEPENDENT BASELINE calculation:
+2026-05-27 11:45:45,684 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.048600g
+2026-05-27 11:45:45,684 - INFO - Reading summary: 5 pre-readings (5 stable), 5 post-readings (5 stable)
+2026-05-27 11:45:45,684 - INFO - Baseline variability: pre_std=0.000000g, post_std=0.000000g
+2026-05-27 11:45:45,684 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-05-27 11:45:45,684 - INFO - Saved 210 mass measurements to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_data_agar_water_4%_20260527_114545.csv
+2026-05-27 11:45:46,115 - INFO - Saved dispense mass vs time plot to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_plot_agar_water_4%_20260527_114545.png
+2026-05-27 11:45:46,115 - INFO - Removing pipet
+2026-05-27 11:45:49,451 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:45:50,892 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param aspirate_speed=22
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param dispense_speed=15
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param aspirate_wait_time=17.900000000000002
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param pre_asp_air_vol=0.012
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param blowout_vol=0.06
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param overaspirate_vol=0.013900000000000001
+2026-05-27 11:45:51,062 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:45:51,062 - DEBUG - Selected small_tip for volume 0.050 mL
+2026-05-27 11:45:51,062 - INFO - Getting small_tip (pipet number 3) from rack: small_tip_rack_1
+2026-05-27 11:45:53,956 - INFO - Pipetting from vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:45:53,956 - INFO - Additional volume from calibration, amount: 0.014 mL
+2026-05-27 11:45:53,956 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-27 11:45:57,047 - DEBUG - Aspirating 0.012 mL then waiting 0 s
+2026-05-27 11:45:57,348 - DEBUG - Adjusting pump 0 speed to 22
+2026-05-27 11:45:57,722 - DEBUG - Aspirating 0.064 mL then waiting 17.900000000000002 s
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param aspirate_speed=22
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param dispense_speed=15
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param aspirate_wait_time=17.900000000000002
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param pre_asp_air_vol=0.012
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param blowout_vol=0.06
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param overaspirate_vol=0.013900000000000001
+2026-05-27 11:46:19,376 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:46:19,376 - INFO - Pipetting into vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:46:19,376 - DEBUG - Adjusting pump 0 speed to 15
+2026-05-27 11:46:21,230 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-05-27 11:46:22,244 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-05-27 11:46:22,469 - DEBUG - Mass: 14.0783g at 0.000s (baseline_pre) steady=True
+2026-05-27 11:46:22,861 - DEBUG - Mass: 14.0783g at 0.425s (baseline_pre) steady=True
+2026-05-27 11:46:23,261 - DEBUG - Mass: 14.0783g at 0.825s (baseline_pre) steady=True
+2026-05-27 11:46:23,668 - DEBUG - Mass: 14.0783g at 1.229s (baseline_pre) steady=True
+2026-05-27 11:46:24,062 - DEBUG - Mass: 14.0783g at 1.626s (baseline_pre) steady=True
+2026-05-27 11:46:24,254 - DEBUG - Dispensing 0.076 mL then waiting 3.0 s
+2026-05-27 11:46:24,459 - DEBUG - Mass: 14.0783g at 2.036s (dispensing) steady=True
+2026-05-27 11:46:24,859 - DEBUG - Mass: 14.0830g at 2.439s (dispensing) steady=False
+2026-05-27 11:46:25,146 - DEBUG - Blowing out 0.060 mL
+2026-05-27 11:46:25,146 - DEBUG - Adjusting pump 0 speed to 5
+2026-05-27 11:46:25,267 - DEBUG - Mass: 14.0877g at 2.837s (dispensing) steady=False
+2026-05-27 11:46:25,661 - DEBUG - Mass: 14.1048g at 3.233s (dispensing) steady=False
+2026-05-27 11:46:26,067 - DEBUG - Mass: 14.1128g at 3.630s (dispensing) steady=False
+2026-05-27 11:46:26,128 - DEBUG - Adjusting pump 0 speed to 15
+2026-05-27 11:46:26,459 - DEBUG - Mass: 14.1151g at 4.036s (dispensing) steady=False
+2026-05-27 11:46:26,867 - DEBUG - Mass: 14.1270g at 4.438s (dispensing) steady=False
+2026-05-27 11:46:27,267 - DEBUG - Mass: 14.1270g at 4.837s (dispensing) steady=False
+2026-05-27 11:46:27,668 - DEBUG - Mass: 14.1322g at 5.232s (dispensing) steady=False
+2026-05-27 11:46:28,067 - DEBUG - Mass: 14.1352g at 5.630s (dispensing) steady=False
+2026-05-27 11:46:28,464 - DEBUG - Mass: 14.1354g at 6.038s (dispensing) steady=False
+2026-05-27 11:46:28,864 - DEBUG - Mass: 14.1345g at 6.425s (dispensing) steady=False
+2026-05-27 11:46:29,267 - DEBUG - Mass: 14.1341g at 6.823s (dispensing) steady=False
+2026-05-27 11:46:29,668 - DEBUG - Mass: 14.1351g at 7.232s (dispensing) steady=False
+2026-05-27 11:46:30,066 - DEBUG - Mass: 14.1342g at 7.632s (dispensing) steady=False
+2026-05-27 11:46:30,414 - INFO - Dispensing took 6.160s, collecting post-dispense baseline
+2026-05-27 11:46:30,468 - DEBUG - Mass: 14.1343g at 8.038s (dispensing) steady=False
+2026-05-27 11:46:30,869 - DEBUG - Mass: 14.1350g at 8.435s (baseline_post) steady=True
+2026-05-27 11:46:31,268 - DEBUG - Mass: 14.1350g at 8.838s (baseline_post) steady=True
+2026-05-27 11:46:31,668 - DEBUG - Mass: 14.1350g at 9.238s (baseline_post) steady=True
+2026-05-27 11:46:32,056 - DEBUG - Mass: 14.1350g at 9.635s (baseline_post) steady=True
+2026-05-27 11:46:32,467 - DEBUG - Mass: 14.1350g at 10.039s (baseline_post) steady=True
+2026-05-27 11:46:32,670 - INFO - Stopped continuous mass monitoring. Collected 26 data points
+2026-05-27 11:46:32,671 - INFO - Pre-baseline: 5 stable readings, avg=14.078300g
+2026-05-27 11:46:32,671 - INFO - Post-baseline: 5 stable readings, avg=14.135000g
+2026-05-27 11:46:32,671 - INFO - INDEPENDENT BASELINE calculation:
+2026-05-27 11:46:32,671 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.056700g
+2026-05-27 11:46:32,671 - INFO - Reading summary: 5 pre-readings (5 stable), 5 post-readings (5 stable)
+2026-05-27 11:46:32,671 - INFO - Baseline variability: pre_std=0.000000g, post_std=0.000000g
+2026-05-27 11:46:32,671 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-05-27 11:46:32,671 - INFO - Saved 26 mass measurements to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_data_agar_water_4%_20260527_114632.csv
+2026-05-27 11:46:33,103 - INFO - Saved dispense mass vs time plot to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_plot_agar_water_4%_20260527_114632.png
+2026-05-27 11:46:33,103 - INFO - Removing pipet
+2026-05-27 11:46:36,422 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:46:37,671 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param aspirate_speed=22
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param dispense_speed=15
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param aspirate_wait_time=17.900000000000002
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param pre_asp_air_vol=0.012
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param blowout_vol=0.06
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param overaspirate_vol=0.013900000000000001
+2026-05-27 11:46:37,869 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:46:37,869 - DEBUG - Selected small_tip for volume 0.050 mL
+2026-05-27 11:46:37,869 - INFO - Getting small_tip (pipet number 4) from rack: small_tip_rack_1
+2026-05-27 11:46:40,761 - INFO - Pipetting from vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:46:40,761 - INFO - Additional volume from calibration, amount: 0.014 mL
+2026-05-27 11:46:40,761 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-27 11:46:43,832 - DEBUG - Aspirating 0.012 mL then waiting 0 s
+2026-05-27 11:46:44,147 - DEBUG - Adjusting pump 0 speed to 22
+2026-05-27 11:46:44,543 - DEBUG - Aspirating 0.064 mL then waiting 17.900000000000002 s
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param aspirate_speed=22
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param dispense_speed=15
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param aspirate_wait_time=17.900000000000002
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param pre_asp_air_vol=0.012
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param blowout_vol=0.06
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param overaspirate_vol=0.013900000000000001
+2026-05-27 11:47:06,221 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:47:06,221 - INFO - Pipetting into vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:47:06,221 - DEBUG - Adjusting pump 0 speed to 15
+2026-05-27 11:47:08,065 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-05-27 11:47:09,070 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-05-27 11:47:09,252 - DEBUG - Mass: 14.0739g at 0.000s (baseline_pre) steady=False
+2026-05-27 11:47:09,657 - DEBUG - Mass: 14.0744g at 0.411s (baseline_pre) steady=False
+2026-05-27 11:47:10,054 - DEBUG - Mass: 14.0737g at 0.800s (baseline_pre) steady=False
+2026-05-27 11:47:10,454 - DEBUG - Mass: 14.0745g at 1.200s (baseline_pre) steady=False
+2026-05-27 11:47:10,867 - DEBUG - Mass: 14.0746g at 1.607s (baseline_pre) steady=False
+2026-05-27 11:47:11,072 - DEBUG - Dispensing 0.076 mL then waiting 3.0 s
+2026-05-27 11:47:11,265 - DEBUG - Mass: 14.0735g at 2.003s (dispensing) steady=False
+2026-05-27 11:47:11,667 - DEBUG - Mass: 14.0762g at 2.413s (dispensing) steady=False
+2026-05-27 11:47:12,055 - DEBUG - Mass: 14.0783g at 2.810s (dispensing) steady=False
+2026-05-27 11:47:12,199 - DEBUG - Blowing out 0.060 mL
+2026-05-27 11:47:12,199 - DEBUG - Adjusting pump 0 speed to 5
+2026-05-27 11:47:12,466 - DEBUG - Mass: 14.0852g at 3.202s (dispensing) steady=False
+2026-05-27 11:47:12,868 - DEBUG - Mass: 14.1082g at 3.604s (dispensing) steady=False
+2026-05-27 11:47:13,262 - DEBUG - Mass: 14.1125g at 4.002s (dispensing) steady=False
+2026-05-27 11:47:13,340 - DEBUG - Adjusting pump 0 speed to 15
+2026-05-27 11:47:13,660 - DEBUG - Mass: 14.1159g at 4.399s (dispensing) steady=False
+2026-05-27 11:47:14,056 - DEBUG - Mass: 14.1178g at 4.811s (dispensing) steady=False
+2026-05-27 11:47:14,467 - DEBUG - Mass: 14.1278g at 5.204s (dispensing) steady=False
+2026-05-27 11:47:14,868 - DEBUG - Mass: 14.1246g at 5.604s (dispensing) steady=False
+2026-05-27 11:47:15,264 - DEBUG - Mass: 14.1247g at 6.003s (dispensing) steady=False
+2026-05-27 11:47:15,668 - DEBUG - Mass: 14.1237g at 6.414s (dispensing) steady=False
+2026-05-27 11:47:16,059 - DEBUG - Mass: 14.1236g at 6.814s (dispensing) steady=False
+2026-05-27 11:47:16,468 - DEBUG - Mass: 14.1250g at 7.205s (dispensing) steady=False
+2026-05-27 11:47:16,865 - DEBUG - Mass: 14.1247g at 7.607s (dispensing) steady=False
+2026-05-27 11:47:17,264 - DEBUG - Mass: 14.1241g at 8.004s (dispensing) steady=True
+2026-05-27 11:47:17,548 - INFO - Dispensing took 6.476s, collecting post-dispense baseline
+2026-05-27 11:47:17,663 - DEBUG - Mass: 14.1241g at 8.415s (dispensing) steady=True
+2026-05-27 11:47:18,060 - DEBUG - Mass: 14.1241g at 8.815s (baseline_post) steady=True
+2026-05-27 11:47:18,459 - DEBUG - Mass: 14.1241g at 9.205s (baseline_post) steady=True
+2026-05-27 11:47:18,864 - DEBUG - Mass: 14.1241g at 9.605s (baseline_post) steady=True
+2026-05-27 11:47:19,264 - DEBUG - Mass: 14.1241g at 10.015s (baseline_post) steady=True
+2026-05-27 11:47:19,669 - DEBUG - Mass: 14.1241g at 10.416s (baseline_post) steady=True
+2026-05-27 11:47:19,884 - INFO - Stopped continuous mass monitoring. Collected 27 data points
+2026-05-27 11:47:19,885 - INFO - Pre-baseline: No stable readings, using time-based avg=14.074220g
+2026-05-27 11:47:19,885 - INFO - Post-baseline: 5 stable readings, avg=14.124100g
+2026-05-27 11:47:19,885 - INFO - INDEPENDENT BASELINE calculation:
+2026-05-27 11:47:19,885 - INFO - Pre: TIME-BASED, Post: STABLE, Mass difference: 0.049880g
+2026-05-27 11:47:19,885 - INFO - Reading summary: 5 pre-readings (0 stable), 5 post-readings (5 stable)
+2026-05-27 11:47:19,885 - INFO - Baseline variability: pre_std=0.000396g, post_std=0.000000g
+2026-05-27 11:47:19,885 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-05-27 11:47:19,893 - INFO - Saved 27 mass measurements to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_data_agar_water_4%_20260527_114719.csv
+2026-05-27 11:47:20,326 - INFO - Saved dispense mass vs time plot to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_plot_agar_water_4%_20260527_114719.png
+2026-05-27 11:47:20,329 - INFO - Removing pipet
+2026-05-27 11:47:23,631 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:47:23,873 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param aspirate_speed=22
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param dispense_speed=15
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param aspirate_wait_time=17.900000000000002
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param pre_asp_air_vol=0.012
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param blowout_vol=0.06
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param overaspirate_vol=0.013900000000000001
+2026-05-27 11:47:24,068 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:47:24,068 - DEBUG - Selected small_tip for volume 0.050 mL
+2026-05-27 11:47:24,068 - INFO - Getting small_tip (pipet number 5) from rack: small_tip_rack_1
+2026-05-27 11:47:26,918 - INFO - Pipetting from vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:47:26,918 - INFO - Additional volume from calibration, amount: 0.014 mL
+2026-05-27 11:47:26,918 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-27 11:47:29,969 - DEBUG - Aspirating 0.012 mL then waiting 0 s
+2026-05-27 11:47:30,281 - DEBUG - Adjusting pump 0 speed to 22
+2026-05-27 11:47:30,650 - DEBUG - Aspirating 0.064 mL then waiting 17.900000000000002 s
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param aspirate_speed=22
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param dispense_speed=15
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param aspirate_wait_time=17.900000000000002
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param pre_asp_air_vol=0.012
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param blowout_vol=0.06
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param overaspirate_vol=0.013900000000000001
+2026-05-27 11:47:52,291 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:47:52,292 - INFO - Pipetting into vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:47:52,293 - DEBUG - Adjusting pump 0 speed to 15
+2026-05-27 11:47:54,141 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-05-27 11:47:55,143 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-05-27 11:47:55,268 - DEBUG - Mass: 14.0639g at 0.000s (baseline_pre) steady=False
+2026-05-27 11:47:55,663 - DEBUG - Mass: 14.0631g at 0.330s (baseline_pre) steady=False
+2026-05-27 11:47:56,061 - DEBUG - Mass: 14.0637g at 0.734s (baseline_pre) steady=False
+2026-05-27 11:47:56,466 - DEBUG - Mass: 14.0634g at 1.135s (baseline_pre) steady=False
+2026-05-27 11:47:56,868 - DEBUG - Mass: 14.0626g at 1.528s (baseline_pre) steady=False
+2026-05-27 11:47:57,151 - DEBUG - Dispensing 0.076 mL then waiting 3.0 s
+2026-05-27 11:47:57,263 - DEBUG - Mass: 14.0634g at 1.928s (baseline_pre) steady=True
+2026-05-27 11:47:57,664 - DEBUG - Mass: 14.0634g at 2.330s (dispensing) steady=True
+2026-05-27 11:47:58,064 - DEBUG - Mass: 14.0681g at 2.730s (dispensing) steady=False
+2026-05-27 11:47:58,192 - DEBUG - Blowing out 0.060 mL
+2026-05-27 11:47:58,192 - DEBUG - Adjusting pump 0 speed to 5
+2026-05-27 11:47:58,460 - DEBUG - Mass: 14.0729g at 3.136s (dispensing) steady=False
+2026-05-27 11:47:58,858 - DEBUG - Mass: 14.1007g at 3.538s (dispensing) steady=False
+2026-05-27 11:47:59,268 - DEBUG - Mass: 14.0979g at 3.938s (dispensing) steady=False
+2026-05-27 11:47:59,346 - DEBUG - Adjusting pump 0 speed to 15
+2026-05-27 11:47:59,668 - DEBUG - Mass: 14.1067g at 4.331s (dispensing) steady=False
+2026-05-27 11:48:00,065 - DEBUG - Mass: 14.1093g at 4.731s (dispensing) steady=False
+2026-05-27 11:48:00,460 - DEBUG - Mass: 14.1179g at 5.136s (dispensing) steady=False
+2026-05-27 11:48:00,865 - DEBUG - Mass: 14.1157g at 5.540s (dispensing) steady=False
+2026-05-27 11:48:01,265 - DEBUG - Mass: 14.1151g at 5.937s (dispensing) steady=False
+2026-05-27 11:48:01,665 - DEBUG - Mass: 14.1151g at 6.330s (dispensing) steady=False
+2026-05-27 11:48:02,066 - DEBUG - Mass: 14.1145g at 6.729s (dispensing) steady=False
+2026-05-27 11:48:02,458 - DEBUG - Mass: 14.1145g at 7.138s (dispensing) steady=False
+2026-05-27 11:48:02,868 - DEBUG - Mass: 14.1151g at 7.540s (dispensing) steady=False
+2026-05-27 11:48:03,265 - DEBUG - Mass: 14.1151g at 7.937s (dispensing) steady=True
+2026-05-27 11:48:03,603 - INFO - Dispensing took 6.452s, collecting post-dispense baseline
+2026-05-27 11:48:03,667 - DEBUG - Mass: 14.1151g at 8.332s (dispensing) steady=True
+2026-05-27 11:48:04,069 - DEBUG - Mass: 14.1151g at 8.736s (baseline_post) steady=True
+2026-05-27 11:48:04,469 - DEBUG - Mass: 14.1151g at 9.138s (baseline_post) steady=True
+2026-05-27 11:48:04,866 - DEBUG - Mass: 14.1150g at 9.539s (baseline_post) steady=True
+2026-05-27 11:48:05,267 - DEBUG - Mass: 14.1150g at 9.935s (baseline_post) steady=True
+2026-05-27 11:48:05,669 - DEBUG - Mass: 14.1150g at 10.334s (baseline_post) steady=True
+2026-05-27 11:48:05,876 - INFO - Stopped continuous mass monitoring. Collected 27 data points
+2026-05-27 11:48:05,876 - INFO - Pre-baseline: 1 stable readings, avg=14.063400g
+2026-05-27 11:48:05,876 - INFO - Post-baseline: 5 stable readings, avg=14.115040g
+2026-05-27 11:48:05,876 - INFO - INDEPENDENT BASELINE calculation:
+2026-05-27 11:48:05,876 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.051640g
+2026-05-27 11:48:05,882 - INFO - Reading summary: 6 pre-readings (1 stable), 5 post-readings (5 stable)
+2026-05-27 11:48:05,882 - INFO - Baseline variability: pre_std=0.000459g, post_std=0.000055g
+2026-05-27 11:48:05,882 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-05-27 11:48:05,884 - INFO - Saved 27 mass measurements to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_data_agar_water_4%_20260527_114805.csv
+2026-05-27 11:48:06,317 - INFO - Saved dispense mass vs time plot to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_plot_agar_water_4%_20260527_114805.png
+2026-05-27 11:48:06,317 - INFO - Removing pipet
+2026-05-27 11:48:09,643 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:48:10,888 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param aspirate_speed=8
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param dispense_speed=6
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param aspirate_wait_time=4.800000000000001
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param pre_asp_air_vol=0.249
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param blowout_vol=0.41100000000000003
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:48:11,069 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:48:11,070 - DEBUG - Applied dict param overaspirate_vol=0.0244
+2026-05-27 11:48:11,070 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:48:11,072 - DEBUG - Selected small_tip for volume 0.050 mL
+2026-05-27 11:48:11,073 - INFO - Getting small_tip (pipet number 6) from rack: small_tip_rack_1
+2026-05-27 11:48:13,938 - INFO - Pipetting from vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:48:13,941 - INFO - Additional volume from calibration, amount: 0.024 mL
+2026-05-27 11:48:13,941 - DEBUG - Adjusting pump 0 speed to 10
+2026-05-27 11:48:16,962 - DEBUG - Aspirating 0.249 mL then waiting 0 s
+2026-05-27 11:48:18,122 - DEBUG - Adjusting pump 0 speed to 8
+2026-05-27 11:48:18,489 - DEBUG - Aspirating 0.074 mL then waiting 4.800000000000001 s
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param aspirate_speed=8
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param dispense_speed=6
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param aspirate_wait_time=4.800000000000001
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param dispense_wait_time=3.0
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param pre_asp_air_vol=0.249
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param retract_speed=5.0
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param blowout_vol=0.41100000000000003
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param post_asp_air_vol=0.0
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param post_retract_wait_time=0.0
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param overaspirate_vol=0.0244
+2026-05-27 11:48:24,555 - DEBUG - Applied dict param asp_disp_cycles=0
+2026-05-27 11:48:24,555 - INFO - Pipetting into vial agar_water_4%, amount: 0.050 mL
+2026-05-27 11:48:24,555 - DEBUG - Adjusting pump 0 speed to 6
+2026-05-27 11:48:26,394 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-05-27 11:48:27,395 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-05-27 11:48:27,659 - DEBUG - Mass: 14.0559g at 0.000s (baseline_pre) steady=True
+2026-05-27 11:48:28,070 - DEBUG - Mass: 14.0559g at 0.480s (baseline_pre) steady=True
+2026-05-27 11:48:28,470 - DEBUG - Mass: 14.0559g at 0.882s (baseline_pre) steady=True
+2026-05-27 11:48:28,869 - DEBUG - Mass: 14.0559g at 1.288s (baseline_pre) steady=True
+2026-05-27 11:48:29,263 - DEBUG - Mass: 14.0559g at 1.681s (baseline_pre) steady=True
+2026-05-27 11:48:29,395 - DEBUG - Dispensing 0.323 mL then waiting 3.0 s
+2026-05-27 11:48:29,669 - DEBUG - Mass: 14.0559g at 2.082s (dispensing) steady=True
+2026-05-27 11:48:30,060 - DEBUG - Mass: 14.0691g at 2.478s (dispensing) steady=False
+2026-05-27 11:48:30,465 - DEBUG - Mass: 14.0943g at 2.880s (dispensing) steady=False
+2026-05-27 11:48:30,544 - DEBUG - Blowing out 0.411 mL
+2026-05-27 11:48:30,544 - DEBUG - Adjusting pump 0 speed to 5
+2026-05-27 11:48:30,862 - DEBUG - Mass: 14.0930g at 3.275s (dispensing) steady=False
+2026-05-27 11:48:31,267 - DEBUG - Mass: 14.1020g at 3.682s (dispensing) steady=False
+2026-05-27 11:48:31,668 - DEBUG - Mass: 14.1080g at 4.079s (dispensing) steady=False
+2026-05-27 11:48:32,067 - DEBUG - Mass: 14.1102g at 4.475s (dispensing) steady=False
+2026-05-27 11:48:32,144 - DEBUG - Adjusting pump 0 speed to 6
+2026-05-27 11:48:32,458 - DEBUG - Mass: 14.1091g at 4.883s (dispensing) steady=False
+2026-05-27 11:48:32,868 - DEBUG - Mass: 14.1112g at 5.281s (dispensing) steady=False
+2026-05-27 11:48:33,267 - DEBUG - Mass: 14.1141g at 5.676s (dispensing) steady=False
+2026-05-27 11:48:33,666 - DEBUG - Mass: 14.1140g at 6.079s (dispensing) steady=False
+2026-05-27 11:48:34,058 - DEBUG - Mass: 14.1072g at 6.483s (dispensing) steady=False
+2026-05-27 11:48:34,463 - DEBUG - Mass: 14.1064g at 6.885s (dispensing) steady=False
+2026-05-27 11:48:34,868 - DEBUG - Mass: 14.1059g at 7.275s (dispensing) steady=False
+2026-05-27 11:48:35,269 - DEBUG - Mass: 14.1056g at 7.676s (dispensing) steady=True
+2026-05-27 11:48:35,666 - DEBUG - Mass: 14.1056g at 8.084s (dispensing) steady=True
+2026-05-27 11:48:36,064 - DEBUG - Mass: 14.1056g at 8.485s (dispensing) steady=True
+2026-05-27 11:48:36,466 - DEBUG - Mass: 14.1056g at 8.886s (dispensing) steady=True
+2026-05-27 11:48:36,738 - INFO - Dispensing took 7.342s, collecting post-dispense baseline
+2026-05-27 11:48:36,870 - DEBUG - Mass: 14.1056g at 9.278s (dispensing) steady=True
+2026-05-27 11:48:37,268 - DEBUG - Mass: 14.1056g at 9.680s (baseline_post) steady=True
+2026-05-27 11:48:37,670 - DEBUG - Mass: 14.1056g at 10.080s (baseline_post) steady=True
+2026-05-27 11:48:38,069 - DEBUG - Mass: 14.1056g at 10.485s (baseline_post) steady=True
+2026-05-27 11:48:38,466 - DEBUG - Mass: 14.1056g at 10.887s (baseline_post) steady=True
+2026-05-27 11:48:38,864 - DEBUG - Mass: 14.1056g at 11.278s (baseline_post) steady=True
+2026-05-27 11:48:39,075 - INFO - Stopped continuous mass monitoring. Collected 29 data points
+2026-05-27 11:48:39,078 - INFO - Pre-baseline: 5 stable readings, avg=14.055900g
+2026-05-27 11:48:39,079 - INFO - Post-baseline: 5 stable readings, avg=14.105600g
+2026-05-27 11:48:39,079 - INFO - INDEPENDENT BASELINE calculation:
+2026-05-27 11:48:39,079 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.049700g
+2026-05-27 11:48:39,080 - INFO - Reading summary: 5 pre-readings (5 stable), 5 post-readings (5 stable)
+2026-05-27 11:48:39,080 - INFO - Baseline variability: pre_std=0.000000g, post_std=0.000000g
+2026-05-27 11:48:39,080 - INFO - Target: 0.050 mL = ~0.050000 g for water
+2026-05-27 11:48:39,083 - INFO - Saved 29 mass measurements to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_data_agar_water_4%_20260527_114839.csv
+2026-05-27 11:48:39,534 - INFO - Saved dispense mass vs time plot to output\mass_measurements\experiment_log2026-05-27_11-39-26\mass_plot_agar_water_4%_20260527_114839.png
+2026-05-27 11:48:39,536 - INFO - Removing pipet
+2026-05-27 11:48:42,841 - INFO - Vial agar_water_4% already at clamp index 0, no move needed
+2026-05-27 11:48:43,675 - INFO - Vial agar_water_4% already at clamp index 0, no move needed

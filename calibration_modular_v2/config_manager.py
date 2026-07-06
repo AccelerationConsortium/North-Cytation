@@ -26,7 +26,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 import logging
 
-from data_structures import (
+from .data_structures import (
     PipettingParameters, VolumeTolerances, 
     CalibrationParameters, HardwareParameters
 )

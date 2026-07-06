@@ -30,26 +30,27 @@ import shutil
 LIQUIDS_TO_CALIBRATE = [
 
     #     # --- POLYMER_DMSO ---
-    {
-        'liquid_name': 'PVA_DMSO',
-        'target_vial': 'polymer_dmso',
-        'volume_targets_ml': [0.050],
-    },
-    # {
-    #     'liquid_name': 'PVA_DMSO',
-    #     'target_vial': 'polymer_dmso',
-    #     'volume_targets_ml': [0.050],
-    #     'num_screening_trials': 32,  # SOBOL-only: fills entire budget
-    # },
-        # --- GLYCEROL ---
-    #{
-    #    'liquid_name': 'glycerol',
-    #    'target_vial': 'glycerol',
-    #    'volume_targets_ml': [0.050],
-    #},
+   {
+       'liquid_name': 'glycerol',
+       'target_vial': 'glycerol',
+       'volume_targets_ml': [0.050],
+   },
     #  {
-    #      'liquid_name': 'glycerol',
-    #      'target_vial': 'glycerol',
+    #      'liquid_name': 'PVA_DMSO',
+    #      'target_vial': 'polymer_dmso',
+    #      'volume_targets_ml': [0.050],
+    #      'num_screening_trials': 32,  # SOBOL-only: fills entire budget
+    #  },
+        # --- ETHANOL ---
+    # {
+    #     'liquid_name': 'ethanol',
+    #     'target_vial': 'ethanol',
+    #     'volume_targets_ml': [0.200, 0.500, 0.800],
+    #     'validation_volumes_ml': [0.200, 0.500, 0.800],
+    # },
+    #  {
+    #      'liquid_name': 'ethanol',
+    #      'target_vial': 'ethanol',
     #      'volume_targets_ml': [0.050],
     #      'num_screening_trials': 32,  # SOBOL-only: fills entire budget
     #  },
@@ -308,7 +309,7 @@ class BatchCalibrationAutomator:
             print("  - Verify vial positions")  
             print("  - Check robot status")
             print("  - Perform any manual setup needed")
-            input("\nPress Enter when ready to proceed with batch calibration...")
+            #input("\nPress Enter when ready to proceed with batch calibration...")
             
             # Clean shutdown
             try:
@@ -362,6 +363,17 @@ class BatchCalibrationAutomator:
                     if not self.run_script(CALIBRATION_SCRIPT):
                         print(f"Calibration failed for {liquid} [{mode}]")
                         continue
+
+                    # Step 4: Run validation only if validation_volumes_ml specified in liquid config
+                    if 'validation_volumes_ml' in liquid_config:
+                        print(f"  Updating validation config for {liquid}...")
+                        if self.update_validation_config():
+                            if not self.run_script(VALIDATION_SCRIPT):
+                                print(f"  WARNING: Validation failed for {liquid} [{mode}]")
+                        else:
+                            print(f"  WARNING: Could not update validation config - skipping validation for {liquid} [{mode}]")
+                    else:
+                        print(f"  Skipping validation for {liquid} [{mode}] (no validation_volumes_ml specified)")
 
                     print(f"Run {idx + 1}/{total} complete: {liquid} [{mode}]")
 

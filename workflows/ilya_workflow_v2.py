@@ -23,7 +23,8 @@ import os
 from datetime import datetime
 
 # Import embedded calibration validation
-from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy
+from pipetting_data.embedded_calibration_validation import validate_pipetting_accuracy, condition_tip
+import slack_agent
 
 # ========================================
 # CONFIGURATION SECTION
@@ -32,12 +33,12 @@ from pipetting_data.embedded_calibration_validation import validate_pipetting_ac
 # File paths
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/ilya_input_vials.csv"  # Updated extension
 MEASUREMENT_PROTOCOL_FILE = r"C:\Protocols\Ilya_Measurement.prt"  
-INSTRUCTIONS_FILE = "../utoronto_demo/status/ilya_input.csv"
+INSTRUCTIONS_FILE = "../utoronto_demo/status/ilya_input_70_100_150_matched.csv"
 
 # Workflow settings
 SIMULATE = False  # Set to False for hardware execution
 N_ROUNDS = 3  # Number of rounds to execute
-WELLS_PER_ROUND = 48  # Wells per round (48 for rounds 1-2, alternative: 96 for full plate)
+WELLS_PER_ROUND = 48  # Wells per round (48 wells: 70/100/150 uL x 12 groups + blank 200 positions)
 
 # Volume settings (in uL)
 MIN_PIPETTE_VOLUME_UL = 10.0   # Minimum volume for accurate pipetting
@@ -109,7 +110,8 @@ def condition_tip_for_liquid(lash_e, vial_name, liquid_type='water', max_volume_
     
     # Standard conditioning: 5 cycles (like other workflows)
     cycles = 5
-    volume_per_cycle_ml = 0.200  # 200 μL conditioning volume (already in mL)
+    # Use actual max volume from batch (capped at 150 uL) to stay within calibration range
+    volume_per_cycle_ml = min(max_volume_ul, 150.0) / 1000.0 if max_volume_ul else 0.150
     
     try:
         for cycle in range(cycles):
@@ -147,16 +149,14 @@ def dispense_component_to_wells(lash_e, component_df, vial_name, liquid_type, we
     
     # Move vial from storage to working position
     print(f"    Moving {vial_name} to working position...")
-    lash_e.nr_robot.move_vial_to_location(vial_name, "main_8mL_rack", 43)
+    lash_e.nr_robot.move_vial_to_location(vial_name, "clamp", 0)
     
     # Tip strategy: condition ethanol/water, change tip for glycerol every time
     if liquid_type == 'glycerol':
         print(f"    Using fresh tips for glycerol (no conditioning)")
     else:
-        # Condition tip for ethanol and water only
-        max_volume_ml = component_df[vial_name].max()  # Data already in mL
-        max_volume_ul = max_volume_ml * 1000.0  # Convert to μL for conditioning
-        condition_tip_for_liquid(lash_e, vial_name, liquid_type, max_volume_ul)
+        # Use fast standard conditioning (3 cycles, dummy params)
+        condition_tip(lash_e, vial_name, conditioning_volume_ul=150, liquid_type=liquid_type)
     
     # Sort wells by volume (descending) for better pipetting efficiency
     component_df_sorted = component_df.sort_values(by=vial_name, ascending=False)  # Use actual column name
@@ -173,7 +173,7 @@ def dispense_component_to_wells(lash_e, component_df, vial_name, liquid_type, we
         try:
             print(f"    Well {well_idx}: {volume_ul:.1f}uL")
             
-            # Aspirate from vial with liquid-specific parameters
+            # Aspirate from vial with liquid-specific parameterscan 
             lash_e.nr_robot.aspirate_from_vial(
                 source_vial_name=vial_name,
                 amount_mL=volume_ml,  # Use mL for robot calls
@@ -238,7 +238,7 @@ def run_embedded_calibration(lash_e):
                     source_vial=source_vial,
                     destination_vial=source_vial,  # Self-calibration
                     liquid_type=liquid_type,
-                    volumes_ml=[0.070, 0.100, 0.150, 0.200],  # 70, 100, 150, 200 μL
+                    volumes_ml=[0.070, 0.100, 0.150],  # 70, 100, 150, 200 μL
                     replicates=3,
                     condition_tip_enabled=True,
                     conditioning_volume_ul=150,
@@ -252,7 +252,7 @@ def run_embedded_calibration(lash_e):
                     source_vial=source_vial,
                     destination_vial=source_vial,  # Self-calibration
                     liquid_type=liquid_type,
-                    volumes_ml=[0.070, 0.100, 0.150, 0.200],  # 70, 100, 150, 200 μL
+                    volumes_ml=[0.070, 0.100, 0.150],  # 70, 100, 150, 200 μL
                     replicates=3,
                     switch_pipet=True,  # Fresh tip for each measurement (like real workflow)
                     adaptive_correction=True  # Enable dynamic parameter tuning for viscous glycerol
@@ -299,18 +299,19 @@ def ilya_workflow_v2():
     
     # Convert to mL after validation
     input_data = input_data / 1000
-    
+
+    os.makedirs("output", exist_ok=True)
+
+    timing_records = []
 
     for round_num in range(3, N_ROUNDS + 1):
         print(f"\n--- ROUND {round_num}/{N_ROUNDS} ---")
         
         # Set well range for this round
-        if round_num == 1:
-            wells = range(0, 48)
-        elif round_num == 2:
-            wells = range(48, 96)
+        if round_num == 2:
+            wells = range(48, 96)   # Round 2: second half of same plate
         else:
-            wells = range(0, 48)  # Round 3: repeat wells 0-47
+            wells = range(0, 48)    # Rounds 1 and 3: wells 0-47
         
         # Wellplate management
         if round_num == 1:
@@ -323,21 +324,15 @@ def ilya_workflow_v2():
             lash_e.nr_track.discard_wellplate()
             lash_e.nr_track.get_new_wellplate()
         
-        # Set well indices for this round
-        # Always use the same CSV data (wells 0-47) but map to different wellplate positions
-        csv_wells = range(0, 48)  # Always use CSV wells 0-47
-        round_data = input_data[input_data.index.isin(csv_wells)].copy()
-        
-        # Map CSV well indices to actual wellplate positions
+        # Load CSV data (wells 0-47) and remap indices to actual wellplate positions
+        round_data = input_data.copy()
         if round_num == 2:
-            # For round 2, map CSV wells 0-47 to wellplate wells 48-95
-            wellplate_mapping = {i: i + 48 for i in range(48)}
-            round_data.index = [wellplate_mapping[i] for i in round_data.index]
-        # Rounds 1 and 3 use wells 0-47 as-is
+            round_data.index = [i + 48 for i in round_data.index]
         
         print(f"Round {round_num} data shape: {round_data.shape}")
         
         # Process each liquid component - vial name = column name
+        dispense_start = datetime.now()
         liquid_components = [
             ('water_dye', 'water'),
             ('water', 'water'),
@@ -370,38 +365,52 @@ def ilya_workflow_v2():
         
         lash_e.nr_robot.move_home()
 
-        # # Place lid before measurement
-        # print("Placing wellplate lid for measurement...")
-        # move_lid_to_wellplate(lash_e)
-        
-        # # Measure wellplate after dispensing
-        # wells_list = list(wells)
-        # print(f"Measuring wellplate: wells {wells_list[0]}-{wells_list[-1]}")
+        dispense_end = datetime.now()
+        dispense_elapsed = (dispense_end - dispense_start).total_seconds()
+        dispense_mins = int(dispense_elapsed // 60)
+        dispense_secs = int(dispense_elapsed % 60)
+        print(f"Round {round_num} dispense time: {dispense_mins}m {dispense_secs}s ({dispense_elapsed:.1f}s total)")
+        timing_records.append({
+            "round": round_num,
+            "dispense_start": dispense_start.strftime("%Y-%m-%d %H:%M:%S"),
+            "dispense_end": dispense_end.strftime("%Y-%m-%d %H:%M:%S"),
+            "dispense_elapsed_s": round(dispense_elapsed, 1),
+        })
+
+        # Manual lid placement
+        dispense_time_msg = f"Round {round_num} dispensing complete ({dispense_mins}m {dispense_secs}s) - please place lid on wellplate, then press Enter in terminal."
+        if not SIMULATE:
+            slack_agent.send_slack_message(dispense_time_msg)
+            slack_agent.send_slack_message(f"Round {round_num} dispensing complete - please place lid on wellplate, then press Enter in terminal.")
+            input("Place lid on wellplate, then press Enter to measure...")
+
+        # Measure wellplate after dispensing
+        wells_list = list(wells)
+        print(f"Measuring wellplate: wells {wells_list[0]}-{wells_list[-1]}")
         # try:
         #     measurement_data = lash_e.measure_wellplate(
         #         protocol_file_path=MEASUREMENT_PROTOCOL_FILE,
         #         wells_to_measure=wells_list
         #     )
-        #     print(f"✓ Measurement complete for round {round_num}")
+        #     print(f"Measurement complete for round {round_num}")
             
         #     # Save measurement data if valid
         #     if measurement_data is not None:
         #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         #         filename = f"ilya_measurement_round{round_num}_{timestamp}.csv"
         #         filepath = os.path.join("output", filename)
-        #         os.makedirs("output", exist_ok=True)
-        #         measurement_data.to_csv(filepath)
-        #         print(f"✓ Saved: {filename}")
+        #         measurement_data.to_csv(filepath, sep=',')
+        #         print(f"Saved: {filename}")
         #     else:
-        #         print(f"⚠️  No measurement data returned for round {round_num}")
+        #         print(f"No measurement data returned for round {round_num}")
             
         # except Exception as e:
-        #     print(f"⚠️  Measurement failed for round {round_num}: {e}")
-        
-        # # Remove lid after measurement
-        # print("Removing wellplate lid after measurement...")
-        # remove_lid_from_wellplate(lash_e)
-        # print("✓ Lid removed successfully")
+        #     print(f"Measurement failed for round {round_num}: {e}")
+
+        # Manual lid removal
+        if not SIMULATE:
+            slack_agent.send_slack_message(f"Round {round_num} measurement complete - please remove lid from wellplate, then press Enter in terminal.")
+            input("Remove lid from wellplate, then press Enter to continue...")
         
         if round_num < N_ROUNDS:
             if not SIMULATE:
@@ -409,6 +418,14 @@ def ilya_workflow_v2():
             else:
                 print("Simulation: Moving to next round...")
     
+    # Save timing data
+    if timing_records:
+        timing_df = pd.DataFrame(timing_records)
+        timing_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timing_filepath = os.path.join("output", f"ilya_dispense_timing_{timing_timestamp}.csv")
+        timing_df.to_csv(timing_filepath, index=False)
+        print(f"Dispense timing saved: {timing_filepath}")
+
     # Step 6: Workflow completion
     print("\n" + "="*50)
     print("WORKFLOW COMPLETE!")

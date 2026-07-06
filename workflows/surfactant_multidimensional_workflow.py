@@ -60,6 +60,8 @@ from workflows.surfactant_grid_adaptive_concentrations import (
     validate_pipetting_system,
 )
 
+from workflows.vial_risk_analyzer import get_vial_risk_assessment
+
 # ================================================================================
 # CONFIGURATION
 # ================================================================================
@@ -101,17 +103,27 @@ TURBIDITY_PENALTY_THRESHOLD = 0.2
 TURBIDITY_PENALTY_DECAY = 0.15
 TURBIDITY_PENALTY_ENABLED = False  # Set False to disable penalty for all recommenders
 
+# Buffer addition settings
+ADD_BUFFER = True  # Set to False to skip buffer addition
+BUFFER_VOLUME_UL = 20  # uL buffer to add per well
+SELECTED_BUFFER = 'MES'  # Buffer vial name (must exist in input CSV)
+MIN_WATER_DISPENSE_UL = 1.0  # Ignore water dispenses smaller than this threshold
+
+# Use a tiny epsilon only for floating-point comparisons. Do not allow
+# physically meaningful budget overruns to pass feasibility checks.
+VOLUME_COMPARE_EPS_UL = 1e-6
+
 # Bayesian recommender spacing control
 # alpha_spacing scales the soft repulsion target: target = alpha * (1/n_total)^(1/d)
 # Lower values allow more clustering; 0.7 is the default (uniform-fill heuristic).
 BAYESIAN_ALPHA_SPACING = 0.7
 
 # Volume budget.
-# WATER_RESERVE_UL is always held back so that even at max concentration for
-# every surfactant there is still water to fill the well.
+# WATER_RESERVE_UL is always held back and split between water and buffer.
+# If ADD_BUFFER=True, the reserve is split; if False, it's all water.
 WELL_VOLUME_UL = 250
 PYRENE_VOLUME_UL = 5
-WATER_RESERVE_UL = 20          # Minimum water in every well (uL)
+WATER_RESERVE_UL = 20          # Minimum reserve in every well (uL); split between water + buffer
 SURFACTANT_BUDGET_UL = WELL_VOLUME_UL - PYRENE_VOLUME_UL - WATER_RESERVE_UL  # 225 uL
 
 # Initialization strategy
@@ -214,14 +226,13 @@ def is_feasible(point):
     """Return True if the total surfactant volume fits within the dispensing budget.
 
     The simplex constraint: sum(conc_mm[s] * WELL_VOLUME_UL / stock_conc[s]) <= BUDGET.
-    A 1 uL tolerance is used to absorb the negligible overage that can arise
-    when MIN_CONC_MM clamping nudges points slightly past the boundary.
+    Only a tiny floating-point epsilon is allowed.
     """
     total_vol = sum(
         point[s] * WELL_VOLUME_UL / SURFACTANT_LIBRARY[s]["stock_conc"]
         for s in SURFACTANTS
     )
-    return total_vol <= SURFACTANT_BUDGET_UL + 1.0  # 1 uL tolerance
+    return total_vol <= SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL
 
 
 def project_to_simplex(point):
@@ -237,7 +248,7 @@ def project_to_simplex(point):
         point[s] * WELL_VOLUME_UL / SURFACTANT_LIBRARY[s]["stock_conc"]
         for s in SURFACTANTS
     )
-    if total_vol <= SURFACTANT_BUDGET_UL + 1e-9:
+    if total_vol <= SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL:
         return dict(point)
     scale = SURFACTANT_BUDGET_UL / total_vol
     return {s: point[s] * scale for s in SURFACTANTS}
@@ -618,7 +629,7 @@ def diagnose_white_dot(target_concs, plans, logger=None):
         # Stock solution volume
         stock_conc = SURFACTANT_LIBRARY[s]["stock_conc"]
         stock_vol = target * WELL_VOLUME_UL / stock_conc
-        status = "OK" if MIN_WELL_PIPETTE_VOLUME_UL <= stock_vol <= SURFACTANT_BUDGET_UL + 1.0 else "FAIL"
+        status = "OK" if MIN_WELL_PIPETTE_VOLUME_UL <= stock_vol <= SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL else "FAIL"
         _logger.info(f"      Stock ({stock_conc:.2f} mM): {stock_vol:.1f} uL [{status}]")
         
         # Substocks
@@ -627,11 +638,11 @@ def diagnose_white_dot(target_concs, plans, logger=None):
             if src_conc <= 0:
                 continue
             vol = target * WELL_VOLUME_UL / src_conc
-            status = "OK" if MIN_WELL_PIPETTE_VOLUME_UL <= vol <= SURFACTANT_BUDGET_UL + 1.0 else "FAIL"
+            status = "OK" if MIN_WELL_PIPETTE_VOLUME_UL <= vol <= SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL else "FAIL"
             reason = ""
             if vol < MIN_WELL_PIPETTE_VOLUME_UL:
                 reason = f"(too small, needs {MIN_WELL_PIPETTE_VOLUME_UL:.0f} uL min)"
-            elif vol > SURFACTANT_BUDGET_UL + 1.0:
+            elif vol > SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL:
                 reason = f"(too large, only {SURFACTANT_BUDGET_UL:.0f} uL budget)"
             _logger.info(f"      {sub['vial_name']} ({src_conc:.2f} mM): {vol:.1f} uL [{status}] {reason}")
     
@@ -669,9 +680,7 @@ def joint_select_sources(target_concs, plans):
     for s in SURFACTANTS:
         target = target_concs[s]
         cands = []
-        # 1 uL tolerance on the upper bound absorbs floating-point overshoot
-        # when simplex axis points are generated via log10/10** arithmetic.
-        _vol_upper = SURFACTANT_BUDGET_UL + 1.0
+        _vol_upper = SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL
         # Substocks in the plan
         for sub in plans[s]["substocks_needed"]:
             src_conc = sub["concentration_mm"]
@@ -682,8 +691,8 @@ def joint_select_sources(target_concs, plans):
                 cands.append({
                     "vial_name": sub["vial_name"],
                     "concentration_mm": src_conc,
-                    "volume_needed_ul": min(vol_ul, SURFACTANT_BUDGET_UL),
-                    "volume_needed_ml": min(vol_ul, SURFACTANT_BUDGET_UL) / 1000.0,
+                    "volume_needed_ul": vol_ul,
+                    "volume_needed_ml": vol_ul / 1000.0,
                     "is_stock": False,
                 })
         # Stock solution
@@ -693,8 +702,8 @@ def joint_select_sources(target_concs, plans):
             cands.append({
                 "vial_name": f"{s}_stock",
                 "concentration_mm": stock_conc,
-                "volume_needed_ul": min(vol_ul, SURFACTANT_BUDGET_UL),
-                "volume_needed_ml": min(vol_ul, SURFACTANT_BUDGET_UL) / 1000.0,
+                "volume_needed_ul": vol_ul,
+                "volume_needed_ml": vol_ul / 1000.0,
                 "is_stock": True,
             })
         if not cands:
@@ -710,7 +719,7 @@ def joint_select_sources(target_concs, plans):
     best_score = (-1.0, -1.0)
     for combo in _it.product(*all_candidates):
         total_vol = sum(c["volume_needed_ul"] for c in combo)
-        if total_vol > SURFACTANT_BUDGET_UL + 1.0:
+        if total_vol > SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL:
             continue
         min_vol = min(c["volume_needed_ul"] for c in combo)
         score = (min_vol, total_vol)  # maximise min first, then total
@@ -755,18 +764,18 @@ def build_well_recipe(target_concs, plans, well_index, replicate=1):
         recipe[f"{s}_volume_ul"] = float(sol["volume_needed_ul"])
         total_surf_vol += float(sol["volume_needed_ul"])
 
-    water_vol = WELL_VOLUME_UL - PYRENE_VOLUME_UL - total_surf_vol
-    if water_vol < 0:
+    buffer_vol = BUFFER_VOLUME_UL if ADD_BUFFER else 0.0
+    water_vol = WELL_VOLUME_UL - PYRENE_VOLUME_UL - total_surf_vol - buffer_vol
+    if water_vol < -VOLUME_COMPARE_EPS_UL:
         raise ValueError(
             f"Negative water volume ({water_vol:.2f} uL) at well {well_index}: "
             f"surfactant total {total_surf_vol:.2f} uL exceeds budget "
             f"{SURFACTANT_BUDGET_UL:.2f} uL."
         )
-    recipe["water_volume_ul"] = water_vol
+    recipe["water_volume_ul"] = max(water_vol, 0.0)
     recipe["pyrene_volume_ul"] = PYRENE_VOLUME_UL
-    # Buffer disabled in v1; legacy primitives expect this column to exist.
-    recipe["buffer_volume_ul"] = 0.0
-    recipe["buffer_used"] = None
+    recipe["buffer_volume_ul"] = buffer_vol
+    recipe["buffer_used"] = SELECTED_BUFFER if ADD_BUFFER else None
     return recipe
 
 
@@ -844,7 +853,7 @@ def _select_source_for_1d_control(surf_name, target_conc_mm, plans):
     """
     best = None
     best_vol = None
-    vol_upper = SURFACTANT_BUDGET_UL + 1.0
+    vol_upper = SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL
 
     for sub in plans[surf_name]["substocks_needed"]:
         src_conc = sub["concentration_mm"]
@@ -916,10 +925,10 @@ def build_control_wells_df(plans, starting_well_index=0):
             "control_type": "water_blank",
             "replicate": 1,
             **_zero_surf_cols(),
-            "water_volume_ul": WELL_VOLUME_UL - PYRENE_VOLUME_UL,
+            "water_volume_ul": (WELL_VOLUME_UL - PYRENE_VOLUME_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0.0)),
             "pyrene_volume_ul": PYRENE_VOLUME_UL,
-            "buffer_volume_ul": 0.0,
-            "buffer_used": None,
+            "buffer_volume_ul": (BUFFER_VOLUME_UL if ADD_BUFFER else 0.0),
+            "buffer_used": SELECTED_BUFFER if ADD_BUFFER else None,
         }
         rows.append(rec)
         well_idx += 1
@@ -937,10 +946,10 @@ def build_control_wells_df(plans, starting_well_index=0):
                 f"{s}_substock_name": f"{s}_stock",
                 f"{s}_substock_conc_mm": stock_conc,
                 f"{s}_volume_ul": float(STOCK_CONTROL_VOL_UL),
-                "water_volume_ul": WELL_VOLUME_UL - PYRENE_VOLUME_UL - STOCK_CONTROL_VOL_UL,
+                "water_volume_ul": WELL_VOLUME_UL - PYRENE_VOLUME_UL - STOCK_CONTROL_VOL_UL - (BUFFER_VOLUME_UL if ADD_BUFFER else 0.0),
                 "pyrene_volume_ul": PYRENE_VOLUME_UL,
-                "buffer_volume_ul": 0.0,
-                "buffer_used": None,
+                "buffer_volume_ul": (BUFFER_VOLUME_UL if ADD_BUFFER else 0.0),
+                "buffer_used": SELECTED_BUFFER if ADD_BUFFER else None,
             }
             rows.append(rec)
             well_idx += 1
@@ -948,8 +957,8 @@ def build_control_wells_df(plans, starting_well_index=0):
     if ADD_1D_CONTROLS:
         for s in SURFACTANTS:
             cmc = SURFACTANT_LIBRARY[s]["cmc_mm"]
-            # Log-spaced from CMC/20 to CMC*5, clipped to the active search region.
-            c_lo = max(cmc / 20.0, MIN_CONC_MM)
+            # Log-spaced from CMC/200 to CMC*5, clipped to the active search region.
+            c_lo = max(cmc / 200.0, MIN_CONC_MM)
             c_hi = min(cmc * 5.0, max_conc_mm[s])
             if c_lo >= c_hi:
                 c_lo = MIN_CONC_MM
@@ -959,7 +968,8 @@ def build_control_wells_df(plans, starting_well_index=0):
                 src = _select_source_for_1d_control(s, conc, plans)
                 if src is None:
                     continue  # concentration unreachable with available stocks
-                water_vol = WELL_VOLUME_UL - PYRENE_VOLUME_UL - src["volume_ul"]
+                buffer_vol = BUFFER_VOLUME_UL if ADD_BUFFER else 0.0
+                water_vol = WELL_VOLUME_UL - PYRENE_VOLUME_UL - src["volume_ul"] - buffer_vol
                 if water_vol < 0:
                     continue  # volume infeasible
                 rec = {
@@ -974,8 +984,8 @@ def build_control_wells_df(plans, starting_well_index=0):
                     f"{s}_volume_ul": float(src["volume_ul"]),
                     "water_volume_ul": float(water_vol),
                     "pyrene_volume_ul": PYRENE_VOLUME_UL,
-                    "buffer_volume_ul": 0.0,
-                    "buffer_used": None,
+                    "buffer_volume_ul": buffer_vol,
+                    "buffer_used": SELECTED_BUFFER if ADD_BUFFER else None,
                 }
                 rows.append(rec)
                 well_idx += 1
@@ -1012,10 +1022,10 @@ def filter_points_by_actual_volumes(points, plans, logger=None):
         try:
             sources = joint_select_sources(pt, plans)
             total_vol = sum(sources[s]["volume_needed_ul"] for s in SURFACTANTS)
-            if total_vol <= SURFACTANT_BUDGET_UL + 1.0:  # Match tolerance in joint_select_sources()
+            if total_vol <= SURFACTANT_BUDGET_UL + VOLUME_COMPARE_EPS_UL:
                 feasible.append(pt)
             else:
-                reason = f"vol_exceeded: {total_vol:.1f}uL > {SURFACTANT_BUDGET_UL + 1.0:.1f}uL"
+                reason = f"vol_exceeded: {total_vol:.3f}uL > {SURFACTANT_BUDGET_UL:.3f}uL"
                 dropped.append((pt, reason))
                 drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
         except ValueError as exc:
@@ -1089,6 +1099,46 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
     lash_e.logger.info(f"Executing N-D dispensing for {len(well_recipes_df)} wells...")
     well_recipes_df = _validate_and_convert_volumes_nd(well_recipes_df)
 
+    # Tiny water doses (<1 uL) are below reliable pipetting range and create
+    # noisy errors in simulation and hardware runs. Treat them as zero; if a
+    # buffer is present, move that tiny aqueous volume into buffer instead.
+    tiny_water_mask = (well_recipes_df["water_volume_ul"] > 0) & (
+        well_recipes_df["water_volume_ul"] < MIN_WATER_DISPENSE_UL
+    )
+    if tiny_water_mask.any():
+        n_tiny = int(tiny_water_mask.sum())
+        tiny_total_ul = float(well_recipes_df.loc[tiny_water_mask, "water_volume_ul"].sum())
+        if ADD_BUFFER:
+            well_recipes_df.loc[tiny_water_mask, "buffer_volume_ul"] = (
+                well_recipes_df.loc[tiny_water_mask, "buffer_volume_ul"]
+                + well_recipes_df.loc[tiny_water_mask, "water_volume_ul"]
+            )
+        well_recipes_df.loc[tiny_water_mask, "water_volume_ul"] = 0.0
+        lash_e.logger.info(
+            f"Tiny-water cleanup: set {n_tiny} water dispenses below "
+            f"{MIN_WATER_DISPENSE_UL:.1f}uL to 0"
+            + (f" and moved {tiny_total_ul:.2f}uL total into buffer." if ADD_BUFFER else ".")
+        )
+
+    # PRE-DISPENSE RISK ASSESSMENT
+    # Build per-surfactant shims so the analyzer sees the correct column names.
+    # Each entry: (surfactant_name, vial_list, shim_df)
+    surfactant_shims = []
+    for s in SURFACTANTS:
+        shim = _shim_df_for_surfactant(well_recipes_df, s)
+        vials_for_s = shim[shim["surf_A_volume_ul"] > 0]["substock_A_name"].dropna().unique().tolist()
+        if vials_for_s:
+            surfactant_shims.append((s, vials_for_s, shim))
+
+    get_vial_risk_assessment(lash_e, surfactant_shims)
+
+    # PAUSE FOR REVIEW
+    lash_e.logger.info("")
+    lash_e.logger.info("Risk assessment complete. Review the report above.")
+    lash_e.logger.info("")
+    #input("Press ENTER to continue with dispensing, or Ctrl+C to abort: ")
+    lash_e.logger.info("Proceeding with dispensing...\n")
+
     for s in SURFACTANTS:
         shim = _shim_df_for_surfactant(well_recipes_df, s)
         vials_for_s = shim[shim["surf_A_volume_ul"] > 0]["substock_A_name"].dropna().unique()
@@ -1115,13 +1165,19 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
         w2 = water_wells.iloc[mid:]
         lash_e.nr_robot.move_vial_to_location("water", "main_8mL_rack", 44)
         lash_e.nr_robot.move_vial_to_location("water_2", "main_8mL_rack", 45)
+        if ADD_BUFFER:
+            lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, "main_8mL_rack", 47)
         if len(w1) > 0:
             dispense_component_to_wellplate(lash_e, w1, "water", "water", "water_volume_ul")
         if len(w2) > 0:
             dispense_component_to_wellplate(lash_e, w2, "water_2", "water", "water_volume_ul")
+        if ADD_BUFFER:
+            dispense_component_to_wellplate(lash_e, well_recipes_df, SELECTED_BUFFER, "water", "buffer_volume_ul")
         lash_e.nr_robot.remove_pipet()
         return_water_vial_home(lash_e, "water")
         return_water_vial_home(lash_e, "water_2")
+        if ADD_BUFFER:
+            lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
 
     return well_recipes_df
 
@@ -2062,6 +2118,22 @@ def run_multidim_workflow(lash_e):
 
     output_folder, experiment_name = setup_experiment_folder(lash_e)
 
+    def _send_workflow_slack(message):
+        """Best-effort Slack updates for workflow progress."""
+        if lash_e.simulate:
+            return
+        try:
+            import slack_agent
+            slack_agent.safe_send_slack_message(message)
+        except Exception as e:
+            lash_e.logger.warning(f"Slack notification failed (non-fatal): {e}")
+
+    _send_workflow_slack(
+        f"Surfactant multidim workflow started: {experiment_name} | "
+        f"surfactants={SURFACTANTS} | target_wells={TARGET_TOTAL_WELLS} | "
+        f"recommender={RECOMMENDER_TYPE}"
+    )
+
     # 1. Refill vials
     lash_e.nr_robot.home_robot_components()
     fill_water_vial(lash_e, "water")
@@ -2320,6 +2392,10 @@ def run_multidim_workflow(lash_e):
                 f"Iteration {iteration}: all recommended points were infeasible "
                 f"after volume check; skipping iteration."
             )
+            _send_workflow_slack(
+                f"{experiment_name} iteration {iteration} skipped: no feasible points "
+                f"after volume filtering. total_wells={len(well_recipes_df)}/{TARGET_TOTAL_WELLS}"
+            )
             iteration += 1
             continue
 
@@ -2377,6 +2453,11 @@ def run_multidim_workflow(lash_e):
         well_recipes_df = pd.concat([well_recipes_df, next_recipes_df], ignore_index=True)
         current_wellplate_wells += len(next_recipes_df)
         save_results(well_recipes_df, output_folder, "results_iterative")
+
+        _send_workflow_slack(
+            f"{experiment_name} iteration {iteration} complete: "
+            f"added_wells={len(next_recipes_df)}, total_wells={len(well_recipes_df)}/{TARGET_TOTAL_WELLS}"
+        )
 
         if current_wellplate_wells >= MAX_WELLS_PER_PLATE and len(well_recipes_df) < TARGET_TOTAL_WELLS:
             lash_e.logger.info("Plate full; rotating to a new plate.")
@@ -2436,6 +2517,13 @@ def run_multidim_workflow(lash_e):
     lash_e.logger.info(f"  Iterations: {iteration - 1}")
     lash_e.logger.info(f"  Output: {final_path}")
     lash_e.logger.info("=" * 80)
+
+    _send_workflow_slack(
+        f"Surfactant multidim workflow complete: {experiment_name} | "
+        f"total_wells={len(well_recipes_df)} ({n_exp_final} experiment + {n_ctrl_final} control) | "
+        f"iterations={iteration - 1}"
+    )
+
     return {
         "experiment_name": experiment_name,
         "output_folder": output_folder,

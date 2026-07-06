@@ -1,5 +1,139 @@
 # Changelog
 
+## [2026-06-03] - Fix Embedded Validation Overaspirate Runaway
+
+### pipetting_data/embedded_calibration_validation.py
+- **FIXED**: `_interpolate_optimal_overaspirate` now clamps slope to [0.5, 1.5] uL/uL (mirrors v2 `_compute_optimal_overaspirate`). Degenerate/negative slopes (caused by Stage 2 landing on the same side as Stage 1 due to noise + zero-floor clamping) returned Stage 3 overaspirate of +44 uL, causing a +52 uL dispensing error and workflow stoppage on 2026-06-02.
+- **FIXED**: Stage 2 crossing strategy now allows negative overaspirate (±10 uL delta from baseline) instead of clamping to 0.0, allowing proper bracketing of the target.
+- **FIXED**: Stage 2 and Stage 3 over-threshold results now log a warning and continue to the best-stage selection logic, rather than calling `pause_after_error` and raising. Workflow no longer halts on a bad optimization stage.
+
+## [2026-06-03] - Heating Mantle Positioning and Mixing Test
+
+### tests/Heating positioning.py (new)
+### status/heating_mantle_vials.csv (new)
+- **ADDED**: Test script that moves four open-top vials (V0-V3, ~2 mL each) sequentially
+  through heating mantle positions 2, 5, 8, and 4.
+- For each vial: robot places it in the heater, returns it to the safe pipetting rack,
+  mixes it (5 x 0.5 mL aspirate-dispense cycles back into the same vial), removes the
+  pipet tip, then returns the vial to its heater position.
+- All vials are returned home at the end of the run.
+- `SIMULATE = True` by default; set to `False` for live hardware.
+
+## [2026-06-02] - Desirability-Based Composite Scoring
+
+### calibration_modular_v2/compare_runs_best_over_trials.py
+### calibration_modular_v2/compare_runs_accuracy_time_journey.py
+### calibration_modular_v2/two_point_series_calibration_demo.py
+- **CHANGED**: Replaced stdev-normalized SDL composite score with desirability scoring.
+  - **Before**: `score = 0.4*(dev/acc_std)*100 + 0.5*(cv/prec_std)*100 + 0.1*(t/time_std)*100` (lower=better)
+  - **After**: `desirability = 0.4*d(dev,tol) + 0.5*d(cv,tol) + 0.1*d_time` (higher=better)
+  - Desirability: `d(x, tol) = 1 / (1 + (x/tol)^2)` — soft boundary, 1.0=perfect, 0.5=at tolerance, never clips to zero.
+  - Tolerance sourced from `experiment_config_used.yaml` per run dir (volume-dependent: 1%/2%/3%/10%).
+  - Time normalized within population `(t_max - t) / (t_max - t_min)` — no fixed reference needed.
+- **REASON**: Stdev normalization allowed outlier precision values (e.g. cv=0.14% vs population mean ~2%) to dominate scoring, selecting trials with poor accuracy. Desirability scoring treats any cv below the tolerance as diminishing returns, which matches physical reality.
+- Composite panel in best_over_trials plots now labeled "desirability, higher = better".
+- All 12 comparison plots regenerated (output/comparisons/).
+
+## [2026-06-02] - Baseline Parameter Extraction & SDL Composite Score Fix
+
+### calibration_modular_v2/compare_runs_accuracy_time_journey.py
+- **CRITICAL FIX**: `running_best_composite()` now includes precision (CV %) in SDL composite score calculation.
+  - **Before**: `score = deviation_pct / acc_std + duration_s / time_std` (ignored precision entirely)
+  - **After**: `score = acc_w * deviation / acc_std + prec_w * precision_cv / prec_std + time_w * duration / time_std` (matches real v2 logic)
+  - This was causing the trajectory plot to select wrong "best" conditions when precision varied significantly.
+
+### calibration_modular_v2/two_point_series_calibration_demo.py
+- **ADDED**: Baseline parameter extraction from prior trial_results.csv using SDL composite scoring (with precision).
+  - New configuration dict `TRIAL_RESULTS_BY_LIQUID` at top of file for specifying trial_results.csv paths per liquid.
+  - New function `_load_trial_results()`: Loads CSV and filters to trials with >=2 measurements only (can't calculate precision with n=1).
+  - New function `_extract_best_trial_parameters()`: Calculates SDL composite score using population normalization (same as v2 analysis.py).
+  - New function `_get_baseline_params_for_liquid()`: Wrapper to load from file or fall back to defaults.
+- **CHANGED**: Demo now sources real baseline parameters from optimization runs instead of hardcoded defaults.
+  - Falls back to `DEFAULT_BASELINE_PARAMS` if trial_results.csv not provided or not found.
+- **IMPROVED**: Logging now shows composite score breakdown when extracting baseline.
+
+## [2026-06-02] - Volume Audit Refill Tracking and Baseline Assumption
+
+### output/volume_audit_20260602_171504/volume_audit_from_log.py
+- CHANGED: Added explicit parsing for water refill actions (`Filling water vial ... (adding XmL)`) as `water_refill_add` events.
+- CHANGED: Added explicit parsing for surfactant stock refill actions (`Refilling surfactant vial ... (adding XmL)`) as `stock_refill_add` events.
+- ADDED: Added parsing of refill transfer lines (`Dispensing XmL from *_refill to *_stock`) to track refill source depletion as `stock_refill_source_out`.
+- ADDED: Implemented requested baseline assumption that non-substock, non-water vials start at 7.8mL, recorded as `assumed_initial_volume`.
+- CHANGED: Initialization now occurs lazily when a vial first appears in an authoritative event, ensuring assumption events are explicit in per-vial CSV traces.
+
+## [2026-06-02] - Vial Movement and Aspiration-Location Analysis
+
+### output/volume_audit_20260602_171504/volume_audit_from_log.py
+- ADDED: Parsed vial movement events from workflow logs (`Moving vial X to LOCATION: INDEX`) and tracked live vial location state.
+- ADDED: Captured location-at-aspiration for all well-withdrawal sources (including substocks), linking each aspiration to the vial location active at that line.
+- ADDED: Added `source_type` classification (`substock` vs `non_substock`) in aspiration-location CSV outputs for easier filtering.
+- ADDED: New location analysis outputs under per-run `location_analysis/`:
+  - `movement_events.csv`
+  - `movement_summary_by_vial.csv`
+  - `movement_summary_by_vial_location.csv`
+  - `well_aspiration_location_events.csv`
+  - `well_aspiration_summary_by_vial.csv`
+  - `well_aspiration_summary_by_vial_location.csv`
+- ADDED: New location plots under `location_analysis/plots/`:
+  - `top_vial_location_aspirations.png`
+  - per-vial aspiration-location bar charts (for non-substock sources)
+
+## [2026-06-01] - Two-Point Series Calibration Demo (v2 compartmentalized)
+
+### calibration_modular_v2/two_point_series_calibration_demo.py
+- ADDED: New standalone v2 demo script for two-point overaspirate calibration across 25, 50, 75, 100, 150 uL.
+- ADDED: Uses `HardwareCalibrationProtocol` directly for each liquid and volume, with 3 replicates per point.
+- ADDED: Implements v2 delta equation exactly: `spread_ul = max(abs(shortfall_ul) + tolerance_buffer_ul, 2.0)` and adaptive Point 2 direction.
+- ADDED: Computes interpolated optimal overaspirate from Point 1/Point 2 means and exports both detailed and summary CSV outputs.
+
+## [2026-06-01] - Calibration Vials Short: Use Real HardwareCalibrationProtocol Infrastructure
+
+### workflows/calibration_vials_short_mass_validation.py
+- CHANGED: Complete refactor to use `HardwareCalibrationProtocol` directly (matching batch calibration pattern) instead of bypassing to Lash_E. Now respects tip conditioning and refill_pipets logic from protocol.
+- FIXED: Densities now sourced from protocol's `LIQUIDS` dict (single source of truth) instead of hardcoded values. No more silent fallbacks.
+- CHANGED: Vial names now use exact protocol names: updated references to match `LIQUIDS` dict keys.
+- CHANGED: Workflow iterates through liquids using `protocol.initialize(cfg)` -> `protocol.measure(state, 0.05mL, params, replicates=3)` -> `protocol.wrapup(state)` pattern (unified interface).
+
+### status/calibration_vials_short.csv
+- FIXED: Vial names updated to match protocol LIQUIDS dict exactly: `polymer_dmso` -> `PVA_DMSO`, `dmso` -> `DMSO`.
+
+## [2026-06-01] - Simple Calibration Vials Short Mass Validation Workflow
+
+### workflows/calibration_vials_short_mass_validation.py
+- CHANGED: Refactored workflow to use calibration_modular_v2 HardwareCalibrationProtocol directly (`initialize` -> `measure` -> `wrapup`) instead of embedded validation helpers.
+- ADDED: Per-liquid update of `calibration_modular_v2/north_robot_hardware.yaml` for `liquid`, `source_vial`, and `measurement_vial` before each protocol run.
+- ADDED: Automatic restoration of original hardware YAML after workflow completion/failure to avoid persistent config drift.
+- ADDED: Explicit preflight checks that fail loudly if required vial names are missing from `status/calibration_vials_short.csv` or if protocol liquid names are invalid.
+- ADDED: Consolidated CSV output in `output/calibration_vials_short_mass_validation_v2_<timestamp>.csv` with per-replicate measured volume fields from protocol results.
+
+## [2026-05-29] - MOF Multi-Run Template Example
+
+### workflows/mof_synthesis_workflow.py
+- ADDED: Commented `RUNS` template showing all supported per-run override keys (`reaction_vial`, `replicates`, `prepare_substock`, ratio, volume, temperature, sampling cadence, and dispense volume) for easier multi-run setup.
+
+## [2026-05-29] - MOF Workflow Config Loading Fix
+
+### workflows/mof_synthesis_workflow.py
+- FIXED: `Lash_E` initialization now passes `workflow_name="mof_synthesis_workflow"` along with `workflow_globals=globals()` so ConfigManager can load/save workflow YAML settings and GUI edits.
+
+## [2026-05-25] - Calibration Budget Enforcement and Retry Default
+
+### calibration_modular_v2/experiment.py
+- FIXED: Volume-budget accounting in optimization now uses protocol-reported `measurement_budget_consumed` instead of raw replicate counts.
+- FIXED: Optimization budget now includes already-executed two-point calibration trials when computing remaining volume budget.
+- FIXED: First-volume final calibration budget now derives from configured split `max_total_measurements - max_measurements_first_volume` (e.g., 96-87=9), replacing hardcoded budget value.
+- FIXED: Two-point calibration now computes required measurements as `2 * two_point_calibration_replicates` and validates against the phase budget before execution.
+- ADDED: Internal `_trial_budget_consumed()` helper to centralize budget-unit accounting from trial metadata.
+
+### calibration_modular_v2/calibration_protocol_northrobot.py
+- CHANGED: Added config-driven `experiment.max_retries_per_measurement` with default `0`.
+- CHANGED: Measurement retry loop now uses `max_retries_per_measurement` from protocol state instead of hardcoded retries.
+- CHANGED: Protocol state now stores `max_retries_per_measurement` for explicit runtime behavior.
+
+### workflows/surfactant_multidimensional_workflow.py
+- ADDED: Lightweight Slack notifications for workflow start, per-iteration completion, per-iteration skip (no feasible points), and workflow completion.
+- ADDED: Local best-effort Slack helper that is non-blocking and disabled in simulation mode.
+
 ## [2026-05-21] — Unified Feasibility Authority to Source-Achievable
 
 ### workflows/surfactant_multidimensional_workflow.py

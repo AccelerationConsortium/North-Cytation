@@ -763,7 +763,7 @@ class North_Powder:
         
         self.c9.move_carousel(0,0)
 
-    def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=False, max_tries=20):
+    def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=True, max_tries=20):
         import settings.powder_settings as settings
         start_t = time.perf_counter()
         mg_togo = mg_target
@@ -820,9 +820,9 @@ class North_Powder:
             shake_t = max(ps.min_shake_t, shake_t)  # no shorter than min time
             shake_t = min(ps.max_shake_t, shake_t)  # no longer than max time
 
-            self.logger.debug(f'Iteration {count}:')
-            self.logger.debug(f'\tJust dispensed:  {delta_mass:.1f} mg')
-            self.logger.debug(f'\tRemaining:       {mg_togo:.1f} mg')
+            self.logger.info(f'Iteration {count}:')
+            self.logger.info(f'\tJust dispensed:  {delta_mass:.1f} mg')
+            self.logger.info(f'\tRemaining:       {mg_togo:.1f} mg')
             self.logger.debug(f'\tNext target:     {iter_target:.1f} mg')
             self.logger.debug(f'\tNext time:       {int(shake_t)} ms')
             self.logger.debug('')
@@ -4035,12 +4035,15 @@ class North_Robot(North_Base):
         shoulder_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'shoulder_axis', error_on_missing=False) or 2
         z_axis = self.get_config_parameter('robot_hardware', 'robot_axes', 'z_axis', error_on_missing=False) or 3
         
-        current_loc_mm = self.c9.n9_fk(self.c9.get_axis_position(gripper_axis), self.c9.get_axis_position(elbow_axis), self.c9.get_axis_position(shoulder_axis))
+        gripper_angle = self.c9.get_axis_position(gripper_axis)
+        current_loc_mm = self.c9.n9_fk(gripper_angle, self.c9.get_axis_position(elbow_axis), self.c9.get_axis_position(shoulder_axis))
+        
         target_x =  current_loc_mm[0] + x_distance
         target_y =  current_loc_mm[1] + y_distance
+        target_theta = math.degrees(current_loc_mm[2])
         target_z =  self.c9.counts_to_mm(z_axis, self.c9.get_axis_position(z_axis)) + z_distance
 
-        self.c9.move_xyz(target_x, target_y, target_z, vel=vel)
+        self.c9.move_xyz(target_x, target_y, target_z, vel=vel, tool_orientation=target_theta)
 
     #Move the robot to the home position    
     def move_home(self):
