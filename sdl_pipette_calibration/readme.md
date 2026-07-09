@@ -1,106 +1,160 @@
-# Calibration Modular V2 - User Instructions
+# SDL Pipette Calibration
 
-## Overview
+Automated pipetting-parameter calibration using multi-objective Bayesian
+optimization. Given a target volume and a way to measure delivered volume, the
+system searches over a hardware parameter space (speeds, wait times, air gaps,
+blowout, overaspirate) and returns an optimized recipe balancing accuracy,
+precision, and time.
 
-This is a next-generation calibration system that uses Bayesian optimization to find optimal pipetting parameters for different volumes. The system is hardware-agnostic with clean protocol abstraction, making it easy to adapt to different liquid handling systems.
+The decision layer is fully hardware-agnostic: you plug in a protocol module
+that implements four functions (`initialize`, `measure`, `wrapup`,
+`get_parameter_constraints`) and the optimizer takes it from there. A
+simulated protocol is bundled so you can run the entire pipeline end-to-end
+with no hardware.
 
-## Key Features
+## Features
 
-- **Hardware Abstraction**: Easy to switch between simulation and real hardware
-- **Bayesian Optimization**: Multi-objective optimization using Ax platform
-- **Adaptive Measurements**: Conditional replicates based on measurement quality
-- **Volume-Dependent Parameters**: Automatic re-optimization for different volumes
-- **Type-Safe Configuration**: YAML-based config with comprehensive validation
-- **Transfer Learning**: Parameter inheritance between volume (Optional)
-- **Transfer Learning**: Load existing data to jump-start learning (Optional)
-- **Optional LLM Integration**: AI-powered parameter suggestions (experimental)
+- **Hardware Abstraction** — swap protocols by editing one line of YAML
+- **Bayesian Optimization** — multi-objective search via the Ax platform (qNEHVI, GPEI)
+- **Adaptive Measurements** — optional extra replicates on noisy trials
+- **Volume-Dependent Parameters** — re-optimize per target volume with transfer learning
+- **Type-Safe Configuration** — YAML with strict schema validation
+- **External Data Bootstrapping** — seed the optimizer from prior experiments (optional)
+- **LLM-Guided Screening** — experimental AI-assisted parameter suggestions
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Install
 
 ```bash
+cd sdl_pipette_calibration
 pip install -r requirements.txt
 ```
 
-### 2. Run Basic Calibration
+### 2. Run a simulated calibration
+
+Edit `experiment_config.yaml` and set:
+
+```yaml
+experiment:
+  simulate: true
+```
+
+Then:
 
 ```bash
-cd calibration_modular_v2
 python run_calibration.py
 ```
 
-This will use the default configuration with simulated measurements.
+Results land in `output/<run_name>/` — CSV summaries, optimized-parameter
+files, and plots. No hardware needed.
+
+### 3. Validate the optimized parameters
+
+Point `validation.optimal_conditions_file` at the CSV the calibration produced,
+then:
+
+```bash
+python run_validation.py
+```
 
 ## Customizing Your Setup
 
-### Step 1: Update Your Experiment Config
+All behavior is controlled by [`experiment_config.yaml`](experiment_config.yaml).
+The file is organized into commented sections: `experiment`,
+`calibration_parameters`, `hardware_parameters`, `optimization`, `output`,
+`validation`, `screening`, `tolerances`, `adaptive_measurement`. Skim it once
+— the inline comments explain each block.
 
-Edit `experiment_config.yaml` to customize your calibration:
+### Basic experiment settings
 
-#### Basic Experiment Settings
 ```yaml
 experiment:
-  name: "my_calibration_test"
-  liquid: "water"  # or "glycerol", "ethanol", etc.
-  description: "Your experiment description"
-
-volumes:
-  targets_ml: [0.005, 0.01, 0.025, 0.05]  # Volumes to calibrate
-
-execution:
-  simulate: false  # Set to true for simulation, false for hardware
+  liquid: water                                    # label, propagated to outputs
+  volume_targets_ml: [0.005, 0.01, 0.025, 0.05]    # volumes to calibrate
+  simulate: true                                    # false = run on real hardware
+  hardware_protocol: calibration_protocol_myrobot   # your protocol (used when simulate: false)
+  simulation_protocol: calibration_protocol_simulated
+  name: my_calibration_run
+  description: Testing accuracy across four volumes
+  random_seed: 30
+  max_total_measurements: 96
+  num_screening_trials: 8
 ```
 
-#### Parameter Space (Hardware-Specific)
+### Hardware parameter search space
+
+Each entry in `hardware_parameters` defines one dimension of the search:
+
 ```yaml
 hardware_parameters:
-  my_speed_param:
-    bounds: [1.0, 50.0]
-    default: 20.0
-    type: "integer"                     # "integer" or "float"
-    description: "My hardware speed parameter"
-    
-  my_timing_param:
-    bounds: [0.5, 10.0] 
-    default: 2.0
-    type: "float"                       # "integer" or "float"
-    description: "My hardware timing parameter"
-    
-  # Add your hardware-specific parameters here
+  aspirate_speed:
+    bounds: [2, 30]
+    default: 10
+    type: integer
+    round_to_nearest: 1
+    time_affecting: true
+    description: Aspiration speed (relative units).
+
+  aspirate_wait_time:
+    bounds: [0.0, 30.0]
+    default: 10.0
+    type: float
+    round_to_nearest: 0.1
+    time_affecting: true
+    description: Wait time after aspiration (seconds).
 ```
 
-#### Optimization Settings
+### Pinning parameters (skip optimization without deleting them)
+
+Any parameter listed under `experiment.fixed_parameters` is held at the given
+value and excluded from the search space, while its `hardware_parameters`
+block (bounds/default/description) stays intact. Toggle a parameter in or out
+of the optimizer by adding or removing its entry in `fixed_parameters` —
+no need to rewrite the parameter definition.
+
+```yaml
+experiment:
+  fixed_parameters:
+    post_asp_air_vol: 0        # held constant; not tuned
+    retract_speed: 5.0         # held constant; not tuned
+```
+
+### Optimization settings
+
 ```yaml
 optimization:
   objectives:
-    accuracy_weight: 0.5    # Weight for volume accuracy
-    precision_weight: 0.4   # Weight for measurement precision  
-    time_weight: 0.1        # Weight for operation speed
-    
+    # weights must sum to 1.0
+    accuracy_weight: 0.4
+    precision_weight: 0.5
+    time_weight: 0.1
+
   optimizer:
-    type: "multi_objective"  # or "single_objective"
-    backend: "qNEHVI"       # Optimizer algorithm
+    type: multi_objective       # or single_objective
+    backend: qNEHVI             # first-stage screening backend
+    backend_subsequent: GPEI    # backend for subsequent volumes
 ```
 
-### Step 2: Write Your Hardware Protocol
+### Writing your own protocol
 
 The easiest way to create a new protocol is to copy and modify the template:
 
-1. **Copy the template**: `cp calibration_protocol_template.py calibration_protocol_myrobot.py`
+1. **Copy the template**: `cp protocols/calibration_protocol_template.py protocols/calibration_protocol_myrobot.py`
 2. **Edit the TODO sections** with your hardware-specific code
 3. **Test your protocol** by running the calibration
 
-See `calibration_protocol_template.py` for a complete, minimal example with TODO comments showing exactly what to replace.
+See `protocols/calibration_protocol_template.py` for a complete, minimal example with TODO comments showing exactly what to replace.
 
-### Step 3: Update Protocol Configuration
+### Point the config at your protocol
 
-In `experiment_config.yaml`, point to your protocol:
+In `experiment_config.yaml`:
 
 ```yaml
-protocol:
-  hardware_module: "calibration_protocol_myrobot"  # Your protocol file (no .py)
-  simulation_module: "calibration_protocol_simulated"  # Keep this for simulation
+experiment:
+  hardware_protocol: calibration_protocol_myrobot   # your protocol (no .py)
+  simulation_protocol: calibration_protocol_simulated
+  simulate: false                                    # set true to use the simulated protocol
 ```
 
 ## Protocol Interface Requirements
@@ -183,11 +237,11 @@ Enable AI-powered parameter suggestions (experimental):
 optimization:
   llm_optimization:
     enabled: true
-    config_path: "llm_config.json"
+    config_path: "llm_recommender/calibration_screening_llm_template.json"
 
 screening:
   use_llm_suggestions: true
-  llm_config_path: "calibration_screening_llm_template.json"
+  llm_config_path: "llm_recommender/calibration_screening_llm_template.json"
 ```
 
 ### Adaptive Measurements
@@ -196,28 +250,42 @@ Control when additional replicates are performed:
 ```yaml
 adaptive_measurement:
   enabled: true
-  deviation_threshold_pct: 10.0    # Run more replicates if >10% deviation
-  base_replicates: 1               # Start with 1 replicate
-  additional_replicates: 2         # Add 2 more if needed
+  base_replicates: 1                  # baseline replicate count per trial
+  deviation_threshold_pct: 100.0      # trigger extra replicates if deviation > this
+  penalty_variability_pct: 100.0      # trigger extra replicates if variability > this
 ```
+
+Extra replicates are drawn adaptively (capped by
+`experiment.max_replicates_per_trial`) when a trial's deviation or variability
+exceeds either threshold.
 
 ## Directory Structure
 
 ```
-calibration_modular_v2/
+sdl_pipette_calibration/
 ├── run_calibration.py                   # Main entry point
-├── experiment_config.yaml              # Configuration file
-├── calibration_protocol_template.py    # Template for new protocols
-├── calibration_protocol_hardware.py    # North Robot protocol (example)
-├── calibration_protocol_simulated.py   # Simulation protocol
-├── calibration_protocol_base.py        # Abstract base class
-├── experiment.py                       # Main experiment orchestration
-├── config_manager.py                   # Configuration loading
-├── data_structures.py                  # Type-safe data classes
-├── bayesian_recommender.py             # Optimization engine
-├── analysis.py                         # Statistical analysis
-├── output/                             # Results and plots
-└── INSTRUCTIONS.md                     # This file
+├── run_validation.py                    # Validation entry point
+├── experiment_config.yaml               # Configuration file
+├── experiment.py                        # Main experiment orchestration
+├── config_manager.py                    # Configuration loading
+├── data_structures.py                   # Type-safe data classes
+├── bayesian_recommender.py              # Optimization engine
+├── analysis.py                          # Statistical analysis
+├── visualization.py                     # Plot generation
+├── csv_export.py                        # Results export
+├── external_data.py                     # External data loader
+├── protocol_loader.py                   # Protocol discovery
+├── constraint_calibration.py            # Two-point overaspirate calibration
+├── pipetting_wizard.py                  # Load & interpolate calibrated parameters
+├── input_data/                          # Sample / external datasets (e.g. external_calibration_data.csv)
+├── protocols/                           # All hardware protocol modules
+│   ├── calibration_protocol_base.py     # Abstract base class
+│   ├── calibration_protocol_template.py # Template for new protocols
+│   ├── calibration_protocol_simulated.py# Simulation protocol
+│   └── calibration_protocol_northrobot.py, ... (reference North Robot protocols)
+├── llm_recommender/                     # Optional LLM-guided screening
+├── tools/                               # GUI, dashboards, helper scripts
+└── output/                              # Results and plots (gitignored)
 ```
 
 ## Troubleshooting
@@ -226,11 +294,11 @@ calibration_modular_v2/
 
 **Import Errors**: Make sure `requirements.txt` is installed and you're in the right directory.
 
-**Protocol Not Found**: Check that your protocol file is in `calibration_modular_v2/` and the name in config matches the filename.
+**Protocol Not Found**: Check that your protocol file is in `sdl_pipette_calibration/protocols/` and the name in config matches the filename.
 
 **Configuration Errors**: The config is strictly validated. Check YAML syntax and required fields.
 
-**Hardware Simulation**: If you want to test without hardware, set `execution.simulate: true` in config.
+**Hardware Simulation**: If you want to test without hardware, set `experiment.simulate: true` in the config.
 
 ### Getting Help
 
@@ -240,10 +308,13 @@ calibration_modular_v2/
 
 ## Example Workflow
 
-1. **Start with simulation**: Set `simulate: true`, run with default config
-2. **Customize parameters**: Edit parameter bounds for your hardware
-3. **Implement your protocol**: Create new protocol file with your hardware interface
-4. **Test with real hardware**: Set `simulate: false`, run calibration
-5. **Analyze results**: Check `output/` directory for results and plots
+1. **Start with simulation** — set `experiment.simulate: true`, run `python run_calibration.py`
+2. **Inspect outputs** — look at `output/<run_name>/` for plots and CSVs
+3. **Adjust parameter bounds** — tune `hardware_parameters` for your setup
+4. **Write your protocol** — copy `protocols/calibration_protocol_template.py`
+5. **Run on hardware** — set `experiment.simulate: false`, run `python run_calibration.py`
+6. **Validate** — point `validation.optimal_conditions_file` at the run's CSV, run `python run_validation.py`
 
-The system will automatically optimize parameters, handle measurement replicates, and provide comprehensive analysis of calibration quality.
+The optimizer handles replication, transfer learning between volumes, and
+produces analysis outputs (plots, feature importance, statistical summaries)
+automatically.

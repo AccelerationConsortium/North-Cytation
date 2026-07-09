@@ -62,8 +62,10 @@ try:
     from .csv_export import export_clean_csvs
     from .experiment_analysis import analyze_calibration_experiment
     ENHANCED_OUTPUTS_AVAILABLE = True
+    _ENHANCED_OUTPUTS_IMPORT_ERROR: Optional[str] = None
 except ImportError as e:
     ENHANCED_OUTPUTS_AVAILABLE = False
+    _ENHANCED_OUTPUTS_IMPORT_ERROR = str(e)
 
 # Import optimization modules (required - no fallbacks)
 from .optimization_structures import OptimizationObjectives, OptimizerType
@@ -679,20 +681,21 @@ class CalibrationExperiment:
         """Initialize the measurement protocol."""
         try:
             logger.info(f"Initializing protocol...")
-            
-            # Convert config to dict format for protocols - FAIL if hardware missing
+
+            # Build the cfg dict passed to protocol.initialize().
+            # Protocols read from cfg['experiment'] (liquid, simulate, ...) and
+            # cfg['random_seed']. The optional 'hardware' section is passed through
+            # if present in the YAML - no protocol requires it, but some may consume it.
             raw_config = self.config.get_raw_config()
-            if 'hardware' not in raw_config:
-                raise ValueError("Missing required 'hardware' configuration section")
-            
             config_dict = {
-                'experiment': {
-                    'liquid': self.config.get_liquid_name()
-                },
-                'hardware': raw_config['hardware'],  # Fail if missing
-                'random_seed': self.config.get_random_seed()
+                'experiment': dict(raw_config.get('experiment', {})),
+                'random_seed': self.config.get_random_seed(),
             }
-            
+            # Ensure liquid is present (config accessor is the authoritative source)
+            config_dict['experiment']['liquid'] = self.config.get_liquid_name()
+            if 'hardware' in raw_config:
+                config_dict['hardware'] = raw_config['hardware']
+
             # Load protocol module from config
             protocol_name = self.config.get_protocol_module()
             self.protocol_module = load_hardware_protocol(protocol_name)
@@ -962,7 +965,7 @@ class CalibrationExperiment:
             llm_config_path = self.config.get_screening_llm_config_path()
             if llm_config_path:
                 try:
-                    from llm_recommender import LLMRecommender
+                    from .llm_recommender.llm_recommender import LLMRecommender
                     llm_recommender = LLMRecommender(self.config, llm_config_path, phase="screening")
                     parameters = llm_recommender.suggest_parameters(target_volume_ml, trial_idx)
                     logger.info(f"Using LLM-generated parameters for screening trial {trial_idx}")
@@ -1021,7 +1024,7 @@ class CalibrationExperiment:
             logger.info(f"[DEBUG] LLM config path: {llm_config_path}")
             if llm_config_path:
                 try:
-                    from llm_recommender import LLMRecommender
+                    from .llm_recommender.llm_recommender import LLMRecommender
                     llm_recommender = LLMRecommender(self.config, llm_config_path, phase="optimization")
                     
                     # For optimization phase, pass previous trial results for context using new API
@@ -1883,7 +1886,11 @@ class CalibrationExperiment:
     def _generate_enhanced_outputs(self, results: ExperimentResults) -> None:
         """Generate enhanced visualization and analysis outputs."""
         if not ENHANCED_OUTPUTS_AVAILABLE:
-            logger.info("Enhanced outputs not available (modules not imported)")
+            logger.warning(
+                "Enhanced outputs disabled: could not import visualization/analysis modules. "
+                f"Missing dependency: {_ENHANCED_OUTPUTS_IMPORT_ERROR}. "
+                "Install scipy and scikit-learn (or run `pip install -r requirements.txt`) to enable."
+            )
             return
             
         try:

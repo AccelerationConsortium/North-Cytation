@@ -2,15 +2,17 @@
 Simple Hardware Protocol Loader
 ===============================
 
-Loads single-file hardware protocols that follow the 3-function interface:
+Loads single-file hardware protocols from the ``protocols/`` subfolder. Each
+protocol module follows the 3-function interface:
 - initialize(config) -> state
-- measure(state, volume_mL, params, replicates) -> results  
+- measure(state, volume_mL, params, replicates) -> results
 - wrapup(state) -> None
 
-Each hardware type gets exactly one file:
-- calibration_protocol_example.py (Hardware interface)
-- calibration_protocol_simulated.py (Simulation hardware)  
-- calibration_protocol_template.py (Template for new hardware)
+Example modules shipped in ``protocols/``:
+- calibration_protocol_base.py       (Abstract base class)
+- calibration_protocol_template.py   (Template for new hardware)
+- calibration_protocol_simulated.py  (Simulation hardware)
+- calibration_protocol_northrobot.py (Reference North Robot protocol)
 
 No complex classes, inheritance, or abstractions - just simple function imports.
 """
@@ -18,9 +20,18 @@ No complex classes, inheritance, or abstractions - just simple function imports.
 import importlib
 import logging
 import os
+import sys
 from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
+
+# All protocol files live in the ``protocols/`` subfolder. Add it to sys.path so
+# they can be loaded by a bare module name (e.g. "calibration_protocol_simulated"
+# or "calibration_protocol_northrobot").
+_PKG_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROTOCOLS_DIR = os.path.join(_PKG_DIR, "protocols")
+if _PROTOCOLS_DIR not in sys.path:
+    sys.path.insert(0, _PROTOCOLS_DIR)
 
 
 def load_hardware_protocol(protocol_name: str):
@@ -28,8 +39,9 @@ def load_hardware_protocol(protocol_name: str):
     Load a hardware protocol module by name.
     
     Args:
-        protocol_name: Name of protocol file (without .py extension)
-                      e.g., 'calibration_protocol_hardware' or 'calibration_protocol_simulated'
+        protocol_name: Name of protocol file (without .py extension) or a
+                      dotted module path. Bare names are searched at the
+                      package top level and under ``examples/``.
     
     Returns:
         Protocol instance or module with initialize(), measure(), and wrapup() functions
@@ -61,15 +73,12 @@ def load_hardware_protocol(protocol_name: str):
 
 
 def _get_available_protocols() -> List[str]:
-    """Get list of available protocol files in current directory."""
+    """Get list of available protocol files in the ``protocols/`` subfolder."""
     protocols = []
-    current_dir = os.path.dirname(__file__)
-    
-    for filename in os.listdir(current_dir):
-        if filename.startswith('calibration_protocol_') and filename.endswith('.py'):
-            protocol_name = filename[:-3]  # Remove .py extension
-            protocols.append(protocol_name)
-    
+    if os.path.isdir(_PROTOCOLS_DIR):
+        for filename in os.listdir(_PROTOCOLS_DIR):
+            if filename.startswith('calibration_protocol_') and filename.endswith('.py'):
+                protocols.append(filename[:-3])
     return protocols
 
 

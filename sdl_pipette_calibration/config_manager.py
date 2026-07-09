@@ -451,8 +451,12 @@ class ExperimentConfig:
         return self._config.get('screening', {}).get('external_data', {}).get('enabled', False)
     
     def get_external_data_path(self) -> Optional[str]:
-        """Get path to external data file."""
-        return self._config.get('screening', {}).get('external_data', {}).get('data_path')
+        """Get path to external data file, resolved relative to the config file location."""
+        data_path = self._config.get('screening', {}).get('external_data', {}).get('data_path')
+        if data_path and self._config_path and not Path(data_path).is_absolute():
+            config_dir = Path(self._config_path).parent
+            return str((config_dir / data_path).resolve())
+        return data_path
     
     def get_external_data_volume_filter(self) -> Optional[float]:
         """Get volume filter for external data."""

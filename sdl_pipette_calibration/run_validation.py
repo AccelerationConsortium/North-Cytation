@@ -40,9 +40,9 @@ matplotlib.use('Agg')  # Non-interactive backend
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from calibration_modular_v2 import ExperimentConfig
-from calibration_modular_v2.protocol_loader import create_protocol
-from calibration_modular_v2.pipetting_wizard_v2 import PipettingWizardV2
+from sdl_pipette_calibration import ExperimentConfig
+from sdl_pipette_calibration.protocol_loader import create_protocol
+from sdl_pipette_calibration.pipetting_wizard import PipettingWizard
 
 
 def setup_logging():
@@ -65,7 +65,7 @@ class ValidationRunner:
         self.logger = logging.getLogger(__name__)
         self.protocol = None
         self.protocol_state = None
-        self.pipetting_wizard = PipettingWizardV2()
+        self.pipetting_wizard = PipettingWizard()
         
         # Set up output directory relative to config file location
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

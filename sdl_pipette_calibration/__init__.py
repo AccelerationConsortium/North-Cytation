@@ -1,13 +1,13 @@
 """
-Calibration Modular V2 - Next Generation Calibration System
-===========================================================
+SDL Pipette Calibration
+=======================
 
-A modular, type-safe calibration system combining the best of both
-next_gen architecture and simplified workflow logic.
+A modular, type-safe Bayesian calibration system for automated liquid-handling
+platforms.
 
 Key Features:
 - Type-safe data structures with comprehensive validation
-- Clean protocol abstraction (simulation/hardware)
+- Clean protocol abstraction (simulation / real hardware)
 - Multi-objective Bayesian optimization
 - Adaptive measurement with conditional replicates
 - Transfer learning between volumes
@@ -16,12 +16,12 @@ Key Features:
 Components:
 - data_structures: Type-safe data classes for all experiment data
 - config_manager: YAML configuration loading and validation
-- protocols: Hardware abstraction for simulation/real execution
+- protocols: Hardware abstraction for simulation / real execution
 - analysis: Statistical analysis and quality evaluation
 - experiment: Main workflow orchestration
 
 Quick Start:
-    from calibration_modular_v2 import CalibrationExperiment, ExperimentConfig
+    from sdl_pipette_calibration import CalibrationExperiment, ExperimentConfig
     
     config = ExperimentConfig.from_yaml("experiment_config.yaml")
     experiment = CalibrationExperiment(config)

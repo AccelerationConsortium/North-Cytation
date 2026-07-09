@@ -13,8 +13,8 @@ Volumes tested (uL): 25, 50, 75, 100, 150
 Replicates per point: 3
 
 Usage:
-  python calibration_modular_v2/two_point_series_calibration_demo.py
-  python calibration_modular_v2/two_point_series_calibration_demo.py --simulate
+  python sdl_pipette_calibration/tools/two_point_series_calibration_demo.py
+  python sdl_pipette_calibration/tools/two_point_series_calibration_demo.py --simulate
 """
 
 import argparse#asd
@@ -33,18 +33,20 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from calibration_modular_v2.calibration_protocol_northrobot import HardwareCalibrationProtocol, LIQUIDS
+from sdl_pipette_calibration.yaml_io import load_yaml, dump_yaml
+
+from sdl_pipette_calibration.protocols.calibration_protocol_northrobot import HardwareCalibrationProtocol, LIQUIDS
 
 # ────────────────────────────────────────────────────────────────────────────
 # BASELINE PARAMETERS SOURCE: Prior trial_results.csv files
 # Provide the path to trial_results.csv for each liquid, or leave as None to use defaults
 TRIAL_RESULTS_BY_LIQUID: Dict[str, Optional[str]] = {
-     "glycerol": "calibration_modular_v2/output/run_1780513054_glycerol/trial_results.csv",
-     #"agar_water_4%": "calibration_modular_v2/output/run_1779813169_agar_water_4%/trial_results.csv",
-    #"DMSO": "calibration_modular_v2/output/run_1779912579_DMSO/trial_results.csv",
-    "water": "calibration_modular_v2/output/run_1779739005_water/trial_results.csv",
-    "ethanol": "calibration_modular_v2/output/run_1780412080_ethanol/trial_results.csv",
-    #"PVA_DMSO": "calibration_modular_v2/output/run_1779906029_PVA_DMSO/trial_results.csv",
+     "glycerol": "sdl_pipette_calibration/output/run_1780513054_glycerol/trial_results.csv",
+     #"agar_water_4%": "sdl_pipette_calibration/output/run_1779813169_agar_water_4%/trial_results.csv",
+    #"DMSO": "sdl_pipette_calibration/output/run_1779912579_DMSO/trial_results.csv",
+    "water": "sdl_pipette_calibration/output/run_1779739005_water/trial_results.csv",
+    "ethanol": "sdl_pipette_calibration/output/run_1780412080_ethanol/trial_results.csv",
+    #"PVA_DMSO": "sdl_pipette_calibration/output/run_1779906029_PVA_DMSO/trial_results.csv",
 }
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -283,12 +285,10 @@ def _create_protocol_config(liquid_name: str, simulate: bool, vial_name: str, vo
     cfg["experiment"]["simulate"] = simulate
     cfg["experiment"]["show_gui"] = show_gui
 
-    with open(HARDWARE_CONFIG_FILE, "r", encoding="utf-8") as f:
-        hw_cfg = yaml.safe_load(f)
+    hw_cfg = load_yaml(HARDWARE_CONFIG_FILE)
     hw_cfg["vials"]["source_vial"] = vial_name
     hw_cfg["vials"]["measurement_vial"] = vial_name
-    with open(HARDWARE_CONFIG_FILE, "w", encoding="utf-8") as f:
-        yaml.dump(hw_cfg, f, default_flow_style=False, sort_keys=False)
+    dump_yaml(hw_cfg, HARDWARE_CONFIG_FILE)
 
     return cfg
 

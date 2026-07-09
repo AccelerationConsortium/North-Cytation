@@ -96,7 +96,7 @@ ax_client.complete_trial(
 )
 ```
 
-See `calibration_modular_v2/bayesian_recommender.py` for a full production example with generation strategy configuration, parameter constraints, and multi-objective setup.
+See `sdl_pipette_calibration/bayesian_recommender.py` for a full production example with generation strategy configuration, parameter constraints, and multi-objective setup.
 
 **Persisting state across sessions:**
 ```python

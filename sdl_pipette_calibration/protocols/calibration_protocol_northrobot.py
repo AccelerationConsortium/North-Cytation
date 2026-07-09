@@ -12,15 +12,15 @@ Optional: start_time, end_time, echoed params.
 import time
 import sys
 import os
-from sympy import true
 import yaml
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from calibration_protocol_base import CalibrationProtocolBase
 
-# Add parent directory to path for North Robot imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+# Add utoronto_demo/ (three levels up: protocols/ -> sdl_pipette_calibration/ -> utoronto_demo/)
+# to sys.path for North Robot imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
 import slack_agent

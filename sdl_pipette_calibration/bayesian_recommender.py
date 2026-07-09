@@ -233,7 +233,7 @@ class AxBayesianOptimizer:
             for i, constraint in enumerate(constraint_list, 1):
                 logger.debug(f"    {i}. {constraint}")
         else:
-            logger.warning(f"⚠️  NO CONSTRAINTS FOUND - Ax will use unconstrained optimization!")
+            logger.warning(f"NO CONSTRAINTS FOUND - Ax will use unconstrained optimization!")
         
         return constraint_list
     
@@ -823,7 +823,7 @@ class AxBayesianOptimizer:
                         logger.info(f"   Parameter '{param_name}': No lower/upper bounds found")
                     break
             else:
-                logger.info(f"   ⚠️  'overaspirate_vol' parameter not found!")
+                logger.info(f"   'overaspirate_vol' parameter not found!")
             
             # Check parameter constraints
             if hasattr(search_space, 'parameter_constraints'):
@@ -843,7 +843,7 @@ class AxBayesianOptimizer:
                 logger.info(f"   No outcome constraints found")
                 
         except Exception as e:
-            logger.error(f"   ❌ Error checking Ax constraints: {e}")
+            logger.error(f"   Error checking Ax constraints: {e}")
 
     def set_csv_export_directory(self, output_dir: str):
         """Set directory for exporting Ax trials CSV."""

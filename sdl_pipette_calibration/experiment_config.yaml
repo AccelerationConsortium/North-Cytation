@@ -1,213 +1,206 @@
-adaptive_measurement:
-  base_replicates: 1
-  deviation_threshold_pct: 100.0
-  enabled: true
-  penalty_variability_pct: 100.0
-calibration_parameters:
-  overaspirate_vol:
-    bounds:
-    - 0.0
-    - 0.025
-    default: 0.004
-    description: Extra volume drawn by the syringe pump, to compensate for lack of
-      volume aspired or dispensed for any reason. Can be used to crudely correct accuracy
-      at minimal cost to time. May reduce precision if overused.
-    max_fraction_of_target: 1.0
-    round_to_nearest: 0.0001
-    type: float
-    volume_dependent: true
+
+# ── Main experiment settings ───────────────────────────────────────────────
+# Edit liquid, volume_targets_ml, simulate, and hardware_protocol for each run.
 experiment:
+  liquid: ethanol
+  volume_targets_ml:
+  - 0.05
+  simulate: false
+  hardware_protocol: calibration_protocol_northrobot
+  simulation_protocol: calibration_protocol_simulated
+  name: multi_volume_calibration_test
   description: Testing calibration across 4 volumes
+  random_seed: 30
+  max_total_measurements: 96
+  max_measurements_first_volume: 96
+  max_replicates_per_trial: 3
+  num_screening_trials: 8
+  two_point_calibration_replicates: 0
   fixed_parameters:
+    # Parameters listed here are held constant and excluded from optimization.
+    # Their bounds/defaults in hardware_parameters are kept for reference.
+    # Remove a key from this block to let the optimizer tune it.
     asp_disp_cycles: 0
     post_asp_air_vol: 0
     post_retract_wait_time: 5.0
     retract_speed: 5.0
     dispense_wait_time: 3.0
-  hardware_protocol: calibration_protocol_northrobot
-  liquid: ethanol
-  max_measurements_first_volume: 96
-  max_replicates_per_trial: 3
-  max_total_measurements: 96
-  name: multi_volume_calibration_test
-  num_screening_trials: 8
-  random_seed: 30
-  simulate: false
-  simulation_protocol: calibration_protocol_simulated
-  two_point_calibration_replicates: 0
-  volume_targets_ml:
-  - 0.050
-hardware:
-  parameter_warnings:
-  - 'IMPORTANT: Higher speed values = SLOWER operation (counterintuitive parameter
-    scaling)'
-  - 'NOTE: Speeds are relative units, not absolute velocities'
-  - 'CAUTION: Retract speed behaves differently - higher = faster'
+
+# ── Calibration target parameter ───────────────────────────────────────────
+# overaspirate_vol is treated separately from hardware_parameters and is always tuned.
+calibration_parameters:
+  overaspirate_vol:
+    bounds: [0.0, 0.025]
+    default: 0.004
+    type: float
+    volume_dependent: true
+    max_fraction_of_target: 1.0
+    round_to_nearest: 0.0001
+    description: Extra volume drawn by the syringe pump, to compensate for lack of volume aspired or dispensed for any reason.
+      Can be used to crudely correct accuracy at minimal cost to time. May reduce precision if overused.
+
+# ── Hardware parameter search space ────────────────────────────────────────
+# Parameters in experiment.fixed_parameters are excluded from optimization
+# but their bounds/defaults stay here for reference.
 hardware_parameters:
   aspirate_speed:
-    bounds:
-    - 2
-    - 30
+    bounds: [2, 30]
     default: 10
-    description: Aspiration speed (relative units) - Higher values = SLOWER operation.
-      Increasing aspirate_speed can help with thicker liquids for accuracy and precision
-      but increases operation time. Slower aspiration reduces cavitation and bubble
-      formation in viscous liquids.
+    type: integer
+    description: Aspiration speed (relative units) - Higher values = SLOWER operation. Increasing aspirate_speed can help
+      with thicker liquids for accuracy and precision but increases operation time. Slower aspiration reduces cavitation and
+      bubble formation in viscous liquids.
     round_to_nearest: 1
     time_affecting: true
+  dispense_speed:
+    bounds: [2, 30]
+    default: 10
     type: integer
+    description: Dispense speed (relative units) - Higher values = SLOWER operation. Increasing dispense_speed can help with
+      thicker liquids for accuracy, but making it low (fast) may help expel liquids quickly which can be helpful since it
+      is simpler to push out than pull in. Fast dispense can reduce dripping time.
+    round_to_nearest: 1
+    time_affecting: true
   aspirate_wait_time:
-    bounds:
-    - 0.0
-    - 30.0
+    bounds: [0.0, 30.0]
     default: 10.0
-    description: Wait time after aspiration in liquid (seconds) - Allows pressure
-      equilibration and meniscus stabilization after liquid is drawn into tip. Critical
-      for viscous liquids >1000 cP to prevent incomplete aspiration and ensure accurate
+    type: float
+    description: Wait time after aspiration in liquid (seconds) - Allows pressure equilibration and meniscus stabilization
+      after liquid is drawn into tip. Critical for viscous liquids >1000 cP to prevent incomplete aspiration and ensure accurate
       volume transfer.
     round_to_nearest: 0.1
     time_affecting: true
-    type: float
-  blowout_vol:
-    bounds:
-    - 0.0
-    - 0.5
-    default: 0.0
-    description: Blowout volume after dispense (mL) - A neat and simple way to push
-      out extra liquid from the tip afterwards. If dispense_speed is high (slow) then
-      this blowout will take a long time. More effective for viscous liquids that
-      stick to tips.
-    round_to_nearest: 0.001
-    time_affecting: false
-    type: float
-  dispense_speed:
-    bounds:
-    - 2
-    - 30
-    default: 10
-    description: Dispense speed (relative units) - Higher values = SLOWER operation.
-      Increasing dispense_speed can help with thicker liquids for accuracy, but making
-      it low (fast) may help expel liquids quickly which can be helpful since it's
-      simpler to push out than pull in. Fast dispense can reduce dripping time.
-    round_to_nearest: 1
-    time_affecting: true
-    type: integer
   dispense_wait_time:
-    bounds:
-    - 0
-    - 15.0
+    bounds: [0, 15.0]
     default: 1.5
-    description: Wait time after dispense (seconds) - Allows complete liquid evacuation
-      from tip and pressure equilibration. Longer waits help ensure all liquid is
-      expelled, especially important for viscous liquids that flow slowly.
+    type: float
+    description: Wait time after dispense (seconds) - Allows complete liquid evacuation from tip and pressure equilibration.
+      Longer waits help ensure all liquid is expelled, especially important for viscous liquids that flow slowly.
     round_to_nearest: 0.1
     time_affecting: true
-    type: float
   post_asp_air_vol:
-    bounds:
-    - 0.0
-    - 0.1
+    bounds: [0.0, 0.1]
     default: 0.0
-    description: Post-aspiration air gap volume (mL) - Creates a gas bubble after
-      your liquid. Seems to help more for larger volumes with large tips but can hurt
-      with thick liquids. Provides barrier against backflow during transport.
+    type: float
+    description: Post-aspiration air gap volume (mL) - Creates a gas bubble after your liquid. Seems to help more for larger
+      volumes with large tips but can hurt with thick liquids. Provides barrier against backflow during transport.
     round_to_nearest: 0.001
     time_affecting: false
+  pre_asp_air_vol:
+    bounds: [0.0, 0.5]
+    default: 0.0
     type: float
+    description: Pre-aspiration air volume (mL) - A faster way to achieve blowout and push liquid from the tip, but it is
+      more constrained and can cause liquid to get stuck in the tip. Creates air cushion before liquid aspiration.
+    round_to_nearest: 0.001
+    time_affecting: false
+    volume_dependent: true
+  blowout_vol:
+    bounds: [0.0, 0.5]
+    default: 0.0
+    type: float
+    description: Blowout volume after dispense (mL) - A neat and simple way to push out extra liquid from the tip afterwards.
+      If dispense_speed is high (slow) then this blowout will take a long time. More effective for viscous liquids that stick
+      to tips.
+    round_to_nearest: 0.001
+    time_affecting: false
   post_retract_wait_time:
-    bounds:
-    - 0.0
-    - 15.0
+    bounds: [0.0, 15.0]
     default: 5.0
-    description: Wait time after aspiration in liquid (seconds) - Allows thick liquid
-      to drip off the outside of tip. Only relevant for quite viscous liquids that
-      need time for external dripping, e.g. ~5s for glycerol-level viscosity.
+    type: float
+    description: Wait time after aspiration in liquid (seconds) - Allows thick liquid to drip off the outside of tip. Only
+      relevant for quite viscous liquids that need time for external dripping, e.g. ~5s for glycerol-level viscosity.
     round_to_nearest: 0.1
     time_affecting: true
-    type: float
-  pre_asp_air_vol:
-    bounds:
-    - 0.0
-    - 0.5
-    default: 0.0
-    description: Pre-aspiration air volume (mL) - A faster way to achieve blowout
-      and push liquid from the tip, but it is more constrained and can cause liquid
-      to get stuck in the tip. Creates air cushion before liquid aspiration.
-    round_to_nearest: 0.001
-    time_affecting: false
-    type: float
-    volume_dependent: true
+
+# ── Optimizer settings ─────────────────────────────────────────────────────
 optimization:
-  first_volume_final_calibration:
-    description: Performs final 2-point overaspirate calibration on first volume before
-      proceeding to next volume
-    enabled: false
-    skip_if_good_trial: true
-  llm_optimization:
-    config_path: calibration_screening_llm_template.json
-    enabled: false
-  objective_thresholds:
-    deviation_threshold_pct: 50.0
-    time_threshold_s: 120.0
-    variability_threshold_pct: 25.0
   objectives:
+    # weights must sum to 1.0
     accuracy_weight: 0.4
     precision_weight: 0.5
     time_weight: 0.1
+  objective_thresholds:
+    deviation_threshold_pct: 50.0
+    variability_threshold_pct: 25.0
+    time_threshold_s: 120.0
   optimizer:
+    type: multi_objective
     backend: qNEHVI
     backend_subsequent: GPEI
-    type: multi_objective
-  parameter_inheritance:
-    carry_optimizer_state: false
-    enabled: true
   stopping_criteria:
     min_good_trials: 100
+  parameter_inheritance:
+    enabled: true
+    carry_optimizer_state: false
   use_range_based_variability: false
+  first_volume_final_calibration:
+    enabled: false
+    skip_if_good_trial: true
+    description: Performs final 2-point overaspirate calibration on first volume before proceeding to next volume
+  # LLM-assisted optimization (experimental - requires API key)
+  llm_optimization:
+    enabled: false
+    config_path: calibration_screening_llm_template.json
+
+# ── Output ──────────────────────────────────────────────────────────────────
 output:
   base_directory: output/
   export_optimal_conditions: true
   generate_plots: true
   save_raw_measurements: true
+
+# ── Validation settings ─────────────────────────────────────────────────────
+validation:
+  # Set to your calibration output path before running run_validation.py
+  optimal_conditions_file: optimized_parameters/optimal_conditions_example.csv
+  volumes_ml:
+  - 0.05
+  replicates_per_volume: 5
+  output_directory: validation/
+  generate_plots: true
+  save_raw_data: true
+  success_criteria:
+    use_volume_tolerances: true
+
+# ── Advanced: screening options ────────────────────────────────────────────
+# LLM suggestions and external data injection (both disabled by default).
 screening:
-  external_data:
-    data_path: calibration_modular_v2\external_calibration_data.csv
-    enabled: false
-    liquid_filter: null
-    required_columns: []
-    volume_filter_ml: null
-  llm_config_path: calibration_screening_llm_template.json
   use_llm_suggestions: false
+  llm_config_path: calibration_screening_llm_template.json
+  external_data:
+    enabled: false
+    data_path: input_data/external_calibration_data.csv
+    volume_filter_ml:
+    liquid_filter:
+    required_columns: []
+
+# ── Pass/fail tolerances by volume range ────────────────────────────────────
 tolerances:
   simulation:
     deviation_multiplier: 1.5
     variability_multiplier: 1.5
   volume_ranges:
-  - tolerance_pct: 1.0
+  - volume_min_ul: 200
     volume_max_ul: 1000
-    volume_min_ul: 200
-  - tolerance_pct: 2.0
+    tolerance_pct: 1.0
+  - volume_min_ul: 60
     volume_max_ul: 199
-    volume_min_ul: 60
-  - tolerance_pct: 3.0
+    tolerance_pct: 2.0
+  - volume_min_ul: 20
     volume_max_ul: 59
-    volume_min_ul: 20
-  - tolerance_pct: 10.0
+    tolerance_pct: 3.0
+  - volume_min_ul: 2.5
     volume_max_ul: 19
-    volume_min_ul: 2.5
-  - tolerance_pct: 10.0
+    tolerance_pct: 10.0
+  - volume_min_ul: 0
     volume_max_ul: 2.499
-    volume_min_ul: 0
-validation:
-  generate_plots: true
-  optimal_conditions_file: output/run_1774908149/optimal_conditions.csv
-  output_directory: validation/
-  replicates_per_volume: 5
-  save_raw_data: true
-  success_criteria:
-    use_volume_tolerances: true
-  volumes_ml:
-  - 0.05
-volumes:
-  volume_targets_ml:
-  - 0.05
+    tolerance_pct: 10.0
+
+# ── Advanced: adaptive replication ──────────────────────────────────────────
+# Automatically run extra replicates when a measurement looks noisy.
+adaptive_measurement:
+  enabled: true
+  base_replicates: 1
+  deviation_threshold_pct: 100.0
+  penalty_variability_pct: 100.0

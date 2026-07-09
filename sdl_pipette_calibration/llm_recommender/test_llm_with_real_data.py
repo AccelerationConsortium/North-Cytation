@@ -9,8 +9,8 @@ import sys
 import pandas as pd
 from pathlib import Path
 
-# Add parent directory to path for imports (like other v2 programs)
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add utoronto_demo/ to sys.path so `sdl_pipette_calibration` is importable.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 # Minimal fake classes for LLM compatibility (keep in test only)
 class FakeParameters:
@@ -67,9 +67,9 @@ def test_llm_with_real_data():
     
     try:
         # Import LLM components (now with proper path setup)
-        from calibration_modular_v2.llm_recommender import LLMRecommender
-        from calibration_modular_v2.config_manager import ExperimentConfig
-        print("✓ LLM modules imported successfully")
+        from sdl_pipette_calibration.llm_recommender.llm_recommender import LLMRecommender
+        from sdl_pipette_calibration.config_manager import ExperimentConfig
+        print("OK LLM modules imported successfully")
     except ImportError as e:
         print(f"✗ Failed to import LLM modules: {e}")
         import traceback
@@ -78,7 +78,7 @@ def test_llm_with_real_data():
     
     try:
         # Load real calibration data
-        data_file = "calibration_modular_v2/external_calibration_data.csv"
+        data_file = "sdl_pipette_calibration/input_data/external_calibration_data.csv"
         df = pd.read_csv(data_file)
         print(f"✓ Loaded {len(df)} measurements from {data_file}")
         print(f"  Liquid: {df['liquid_type'].unique()[0]}")
@@ -90,7 +90,7 @@ def test_llm_with_real_data():
     
     try:
         # Load config
-        config = ExperimentConfig.from_yaml("calibration_modular_v2/experiment_config.yaml")
+        config = ExperimentConfig.from_yaml("sdl_pipette_calibration/experiment_config.yaml")
         print("✓ Config loaded successfully")
     except Exception as e:
         print(f"✗ Failed to load config: {e}")
@@ -98,7 +98,7 @@ def test_llm_with_real_data():
     
     try:
         # Create LLM recommender for optimization phase (with previous data)
-        template_path = "calibration_screening_llm_template.json"
+        template_path = "sdl_pipette_calibration/llm_recommender/calibration_screening_llm_template.json"
         llm_recommender = LLMRecommender(config, template_path, phase="optimization")
         print(f"✓ LLM recommender created with template: {template_path}")
     except Exception as e:
@@ -197,11 +197,11 @@ def test_llm_screening_mode():
     """Test LLM in screening mode (no previous data)."""
     
     try:
-        from calibration_modular_v2.llm_recommender import LLMRecommender
-        from calibration_modular_v2.config_manager import ExperimentConfig
+        from sdl_pipette_calibration.llm_recommender.llm_recommender import LLMRecommender
+        from sdl_pipette_calibration.config_manager import ExperimentConfig
         
-        config = ExperimentConfig.from_yaml("calibration_modular_v2/experiment_config.yaml")
-        template_path = "calibration_screening_llm_template.json"
+        config = ExperimentConfig.from_yaml("sdl_pipette_calibration/experiment_config.yaml")
+        template_path = "sdl_pipette_calibration/llm_recommender/calibration_screening_llm_template.json"
         
         llm_recommender = LLMRecommender(config, template_path, phase="screening")
         print("\\n🔍 Testing LLM in screening mode (no previous data)...")
@@ -245,6 +245,6 @@ if __name__ == "__main__":
         
     print("\\nTo enable LLM in real experiments:")
     print("  1. Set optimization.llm_optimization.enabled: true")
-    print("  2. Set optimization.llm_optimization.config_path: calibration_modular_v2/calibration_screening_llm_template.json")
+    print("  2. Set optimization.llm_optimization.config_path: sdl_pipette_calibration/llm_recommender/calibration_screening_llm_template.json")
     print("  3. Or set screening.use_llm_suggestions: true for screening phase")
-    print("\nTo run this test: python calibration_modular_v2/test_llm_with_real_data.py")
+    print("\nTo run this test: python sdl_pipette_calibration/llm_recommender/test_llm_with_real_data.py")

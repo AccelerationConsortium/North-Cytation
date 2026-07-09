@@ -1,9 +1,9 @@
-# pipetting_wizard_v2.py
+# pipetting_wizard.py
 """
-Hardware-Agnostic Pipetting Parameter Wizard V2
+Hardware-Agnostic Pipetting Parameter Wizard
 
-Provides intelligent parameter lookup and interpolation based on calibration_v2 data.
-Works with the new format that uses hardware_parameters_ prefixes and calibration_overaspirate_vol.
+Provides intelligent parameter lookup and interpolation from calibration output data.
+Works with the format that uses hardware_parameters_ prefixes and calibration_overaspirate_vol.
 Dynamically discovers available hardware parameters without hardcoded defaults.
 """
 
@@ -15,14 +15,14 @@ from typing import Dict, List, Optional, Tuple
 import glob
 import logging
 
-class PipettingWizardV2:
+class PipettingWizard:
     """
-    Hardware-agnostic pipetting parameter provider for calibration_v2 data format.
+    Hardware-agnostic pipetting parameter provider for the calibration output data format.
     """
     
     def __init__(self, search_directory: str = None):
         """
-        Initialize the V2 pipetting wizard.
+        Initialize the pipetting wizard.
         
         Args:
             search_directory: Directory to search for optimal_conditions.csv files. 
@@ -418,22 +418,22 @@ class PipettingWizardV2:
         return parameters
 
 
-def create_wizard_v2(search_directory: str = None) -> PipettingWizardV2:
+def create_wizard(search_directory: str = None) -> PipettingWizard:
     """
-    Convenience function to create a PipettingWizardV2 instance.
+    Convenience function to create a PipettingWizard instance.
     
     Args:
         search_directory: Directory to search for calibration files
         
     Returns:
-        PipettingWizardV2 instance
+        PipettingWizard instance
     """
-    return PipettingWizardV2(search_directory)
+    return PipettingWizard(search_directory)
 
 
-def get_pipetting_parameters_v2(volume_ml: float, search_directory: str = None, liquid: str = None, compensate_overvolume: bool = True) -> Optional[Dict[str, float]]:
+def get_pipetting_parameters(volume_ml: float, search_directory: str = None, liquid: str = None, compensate_overvolume: bool = True) -> Optional[Dict[str, float]]:
     """
-    Convenience function to get V2 pipetting parameters without creating a wizard instance.
+    Convenience function to get pipetting parameters without creating a wizard instance.
     
     Args:
         volume_ml: Target volume in mL
@@ -444,7 +444,7 @@ def get_pipetting_parameters_v2(volume_ml: float, search_directory: str = None, 
     Returns:
         Dictionary with pipetting parameters, or None if not available
     """
-    wizard = PipettingWizardV2(search_directory)
+    wizard = PipettingWizard(search_directory)
     return wizard.get_pipetting_parameters(volume_ml, liquid, compensate_overvolume)
 
 
@@ -453,11 +453,11 @@ if __name__ == "__main__":
     # Set up logging
     logging.basicConfig(level=logging.DEBUG)
     
-    # Create V2 wizard instance
-    wizard = PipettingWizardV2()
+    # Create wizard instance
+    wizard = PipettingWizard()
     
     # Test: Get parameters for 0.025 mL (should match your example data)
-    print("=== Test: 0.025 mL V2 Parameters ===")
+    print("=== Test: 0.025 mL Parameters ===")
     params = wizard.get_pipetting_parameters(0.025)
     
     if params:

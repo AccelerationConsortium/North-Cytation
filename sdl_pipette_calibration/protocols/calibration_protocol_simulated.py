@@ -117,7 +117,7 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
             raise ValueError("Missing required 'liquid' in experiment configuration")
         liquid = cfg['experiment']['liquid']
         
-        print(f"✅ Simulation initialized (liquid: {liquid}, seeded: {seeded})")
+        print(f"Simulation initialized (liquid: {liquid}, seeded: {seeded})")
         
         state = {
             'initialized_at': datetime.now(),
@@ -164,7 +164,7 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
 
     def wrapup(self, state: Dict[str, Any]) -> None:
         """Clean up simulation resources."""
-        print(f"✅ Simulation cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
+        print(f"Simulation cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
 
     def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
         """Get hardware-specific parameter constraints for North Robot simulation."""

@@ -31,7 +31,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from calibration_modular_v2 import ExperimentConfig, CalibrationExperiment
+from sdl_pipette_calibration import ExperimentConfig, CalibrationExperiment
 
 
 def setup_logging():

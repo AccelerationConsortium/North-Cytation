@@ -23,6 +23,7 @@ import csv
 import time
 import logging
 import yaml  # TODO: Will need this when optimization config format is fixed
+from sdl_pipette_calibration.yaml_io import load_yaml, dump_yaml
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
@@ -1176,7 +1177,7 @@ class OptimizationWorker(QThread):
         self.debug_message.emit("[TEST] Starting test mode - no subprocess")
         
         # Create mock output directory
-        test_output = Path("calibration_modular_v2/output/test_run_debug")
+        test_output = Path("sdl_pipette_calibration/output/test_run_debug")
         test_output.mkdir(parents=True, exist_ok=True)
         self.output_dir = test_output
         
@@ -1212,7 +1213,7 @@ class OptimizationWorker(QThread):
     def create_config_file(self) -> str:
         """Create experiment_config.yaml from GUI parameters."""
         try:
-            config_path = "calibration_modular_v2/experiment_config_gui.yaml"
+            config_path = "sdl_pipette_calibration/experiment_config.yaml"
             
             # Create config structure based on GUI parameters
             config = {
@@ -1253,7 +1254,7 @@ class OptimizationWorker(QThread):
         try:
             # For now, use the existing experiment_config.yaml instead of GUI-generated config
             # TODO: Later improve GUI config generation to include all required sections
-            cmd = [sys.executable, "calibration_modular_v2/run_calibration.py"]
+            cmd = [sys.executable, "sdl_pipette_calibration/run_calibration.py"]
             cwd = str(Path(__file__).parent.parent)
             
             # Remove PIPE so output shows in terminal
@@ -1263,7 +1264,7 @@ class OptimizationWorker(QThread):
         
     def wait_for_output_dir(self):
         """Wait for NEW output directory to be created by the subprocess."""
-        # Monitor calibration_modular_v2/output for run directories
+        # Monitor sdl_pipette_calibration/output for run directories
         output_base = Path(__file__).parent / "output"
         self.debug_message.emit(f"[DEBUG] Looking for NEW output directory in: {output_base}")
         
@@ -1857,7 +1858,7 @@ class CalibrationTestMainWindow(QMainWindow):
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             self.current_session_id = f"calibration_session_{timestamp}"
             
-            # Use main output directory (not calibration_modular_v2 subfolder)
+            # Use main output directory (not sdl_pipette_calibration subfolder)
             main_output_dir = Path(__file__).parent.parent / "output"
             self.session_folder = main_output_dir / self.current_session_id
             
@@ -2400,11 +2401,9 @@ class CalibrationTestMainWindow(QMainWindow):
             
             # UPDATE HARDWARE CONFIG WITH GUI SELECTIONS BEFORE INITIALIZATION
             self.add_status_message("[INIT] Updating hardware config with GUI selections...")
-            hardware_config_path = Path("calibration_modular_v2/north_robot_hardware.yaml")
+            hardware_config_path = Path("sdl_pipette_calibration/protocols/north_robot_hardware.yaml")
             if hardware_config_path.exists():
-                import yaml
-                with open(hardware_config_path, 'r') as f:
-                    hardware_config = yaml.safe_load(f)
+                hardware_config = load_yaml(hardware_config_path)
                 
                 # Add vials section if it doesn't exist
                 if 'vials' not in hardware_config:
@@ -2415,8 +2414,7 @@ class CalibrationTestMainWindow(QMainWindow):
                 hardware_config['vials']['measurement_vial'] = self.liquid_combo.currentText()
                 
                 # Save hardware config
-                with open(hardware_config_path, 'w') as f:
-                    yaml.dump(hardware_config, f, default_flow_style=False)
+                dump_yaml(hardware_config, hardware_config_path)
                 
                 self.add_status_message(f"[INIT] Updated hardware config: liquid={self.liquid_type_combo.currentText()}, vials={self.liquid_combo.currentText()}")
             else:
@@ -2560,11 +2558,9 @@ class CalibrationTestMainWindow(QMainWindow):
             
             # UPDATE EXPERIMENT CONFIG FILE WITH GUI SELECTIONS
             self.add_status_message("[CONFIG] Updating experiment config with GUI selections...")
-            config_path = Path("calibration_modular_v2/experiment_config.yaml")
+            config_path = Path("sdl_pipette_calibration/experiment_config.yaml")
             if config_path.exists():
-                import yaml
-                with open(config_path, 'r') as f:
-                    config = yaml.safe_load(f)
+                config = load_yaml(config_path)
                 
                 # Update experiment settings from GUI
                 if 'experiment' not in config:
@@ -2574,10 +2570,9 @@ class CalibrationTestMainWindow(QMainWindow):
                 config['experiment']['simulate'] = simulate
                 
                 # Update hardware config with vial selections
-                hardware_config_path = Path("calibration_modular_v2/north_robot_hardware.yaml")
+                hardware_config_path = Path("sdl_pipette_calibration/protocols/north_robot_hardware.yaml")
                 if hardware_config_path.exists():
-                    with open(hardware_config_path, 'r') as f:
-                        hardware_config = yaml.safe_load(f)
+                    hardware_config = load_yaml(hardware_config_path)
                     
                     # Add vials section if it doesn't exist
                     if 'vials' not in hardware_config:
@@ -2588,17 +2583,15 @@ class CalibrationTestMainWindow(QMainWindow):
                     hardware_config['vials']['measurement_vial'] = self.liquid_combo.currentText()
                     
                     # Save hardware config
-                    with open(hardware_config_path, 'w') as f:
-                        yaml.dump(hardware_config, f, default_flow_style=False)
+                    dump_yaml(hardware_config, hardware_config_path)
                 
-                # Update target volume
-                if 'volumes' not in config:
-                    config['volumes'] = {}
-                config['volumes']['volume_targets_ml'] = [target_volume_ml]
+                # Update target volume (authoritative location read by config_manager)
+                if 'experiment' not in config:
+                    config['experiment'] = {}
+                config['experiment']['volume_targets_ml'] = [target_volume_ml]
                 
                 # Save updated config
-                with open(config_path, 'w') as f:
-                    yaml.dump(config, f, default_flow_style=False)
+                dump_yaml(config, config_path)
                 
                 self.add_status_message(f"[CONFIG] Updated: liquid={self.liquid_type_combo.currentText()}, vial={self.liquid_combo.currentText()}, volume={target_volume_ml}mL")
             else:
@@ -2898,7 +2891,7 @@ class CalibrationTestMainWindow(QMainWindow):
                     # Also try from current directory  
                     import os
                     self.add_status_message(f"[OPT] Current working directory: {os.getcwd()}")
-                    self.add_status_message(f"[OPT] Try from calibration_modular_v2/output/mass_measurements/")
+                    self.add_status_message(f"[OPT] Try from sdl_pipette_calibration/output/mass_measurements/")
         else:
             # In simulation mode, add None for mass data
             self.mass_data_replicates.append(None)
@@ -3524,7 +3517,7 @@ class CalibrationTestMainWindow(QMainWindow):
             # Try multiple possible locations
             patterns = [
                 "output/mass_measurements/*/mass_data_*.csv",
-                "calibration_modular_v2/output/mass_measurements/*/mass_data_*.csv", 
+                "sdl_pipette_calibration/output/mass_measurements/*/mass_data_*.csv", 
                 "../output/mass_measurements/*/mass_data_*.csv"
             ]
             
@@ -3930,18 +3923,16 @@ class CalibrationTestMainWindow(QMainWindow):
             
             # Save external data CSV
             external_df = pd.DataFrame(external_data)
-            external_file_path = Path("calibration_modular_v2/external_calibration_data.csv")
+            external_file_path = Path("sdl_pipette_calibration/input_data/external_calibration_data.csv")
             external_df.to_csv(external_file_path, index=False)
             
             self.add_status_message(f"[CONVERT] Saved external data to: {external_file_path}")
             self.add_status_message(f"[CONVERT] External data will be loaded as individual measurements -> grouped into trials -> sent to optimizer")
             
             # Update config file to enable external data
-            config_path = Path("calibration_modular_v2/experiment_config.yaml")
+            config_path = Path("sdl_pipette_calibration/experiment_config.yaml")
             if config_path.exists():
-                import yaml
-                with open(config_path, 'r') as f:
-                    config = yaml.safe_load(f)
+                config = load_yaml(config_path)
                 
                 # Enable external data and set path
                 if 'screening' not in config:
@@ -3950,7 +3941,8 @@ class CalibrationTestMainWindow(QMainWindow):
                     config['screening']['external_data'] = {}
                     
                 config['screening']['external_data']['enabled'] = True
-                config['screening']['external_data']['data_path'] = str(external_file_path)
+                # Store relative to config file so path resolution in config_manager is CWD-independent
+                config['screening']['external_data']['data_path'] = 'input_data/external_calibration_data.csv'
                 config['screening']['external_data']['volume_filter_ml'] = None  # Use all volumes
                 config['screening']['external_data']['liquid_filter'] = None      # Use all liquids
                 
@@ -3962,10 +3954,9 @@ class CalibrationTestMainWindow(QMainWindow):
                 config['experiment']['liquid'] = self.liquid_type_combo.currentText()
                 
                 # Update hardware config with vial selections
-                hardware_config_path = Path("calibration_modular_v2/north_robot_hardware.yaml")
+                hardware_config_path = Path("sdl_pipette_calibration/protocols/north_robot_hardware.yaml")
                 if hardware_config_path.exists():
-                    with open(hardware_config_path, 'r') as f:
-                        hardware_config = yaml.safe_load(f)
+                    hardware_config = load_yaml(hardware_config_path)
                     
                     # Add vials section if it doesn't exist
                     if 'vials' not in hardware_config:
@@ -3976,8 +3967,7 @@ class CalibrationTestMainWindow(QMainWindow):
                     hardware_config['vials']['measurement_vial'] = self.liquid_combo.currentText()
                     
                     # Save hardware config
-                    with open(hardware_config_path, 'w') as f:
-                        yaml.dump(hardware_config, f, default_flow_style=False)
+                    dump_yaml(hardware_config, hardware_config_path)
                 
                 self.add_status_message(f"[CONVERT] Updated experiment settings:")
                 self.add_status_message(f"[CONVERT]   liquid: {self.liquid_type_combo.currentText()}")
@@ -3985,8 +3975,7 @@ class CalibrationTestMainWindow(QMainWindow):
                 self.add_status_message(f"[CONVERT]   measurement_vial: {self.liquid_combo.currentText()}")
                 
                 # Save updated config
-                with open(config_path, 'w') as f:
-                    yaml.dump(config, f, default_flow_style=False)
+                dump_yaml(config, config_path)
                 
                 self.add_status_message(f"[CONVERT] Updated config file: {config_path}")
                 self.add_status_message("[CONVERT] External data enabled - next optimization will use your measurements instead of SOBOL!")
