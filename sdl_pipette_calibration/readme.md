@@ -6,11 +6,11 @@ system searches over a hardware parameter space (speeds, wait times, air gaps,
 blowout, overaspirate) and returns an optimized recipe balancing accuracy,
 precision, and time.
 
-The decision layer is fully hardware-agnostic: you plug in a protocol module
-that implements four functions (`initialize`, `measure`, `wrapup`,
-`get_parameter_constraints`) and the optimizer takes it from there. A
-simulated protocol is bundled so you can run the entire pipeline end-to-end
-with no hardware.
+The decision layer is **purely software** — no specific robot or balance is
+required. You plug in a protocol module that implements four functions
+(`initialize`, `measure`, `wrapup`, `get_parameter_constraints`) and the
+optimizer takes it from there. A simulated protocol is bundled so you can run
+the entire pipeline end-to-end with no hardware at all.
 
 ## Features
 
@@ -138,23 +138,22 @@ optimization:
 
 ### Writing your own protocol
 
-The easiest way to create a new protocol is to copy and modify the template:
+Copy the template and fill in the TODO sections:
 
-1. **Copy the template**: `cp protocols/calibration_protocol_template.py protocols/calibration_protocol_myrobot.py`
-2. **Edit the TODO sections** with your hardware-specific code
-3. **Test your protocol** by running the calibration
+```bash
+cp protocols/calibration_protocol_template.py protocols/calibration_protocol_myrobot.py
+```
 
-See `protocols/calibration_protocol_template.py` for a complete, minimal example with TODO comments showing exactly what to replace.
+See `protocols/calibration_protocol_template.py` for a minimal, annotated
+example showing exactly what to implement.
 
-### Point the config at your protocol
-
-In `experiment_config.yaml`:
+Then point the config at it:
 
 ```yaml
 experiment:
-  hardware_protocol: calibration_protocol_myrobot   # your protocol (no .py)
+  hardware_protocol: calibration_protocol_myrobot   # filename without .py
   simulation_protocol: calibration_protocol_simulated
-  simulate: false                                    # set true to use the simulated protocol
+  simulate: false
 ```
 
 ## Protocol Interface Requirements
@@ -266,26 +265,29 @@ sdl_pipette_calibration/
 ├── run_calibration.py                   # Main entry point
 ├── run_validation.py                    # Validation entry point
 ├── experiment_config.yaml               # Configuration file
-├── experiment.py                        # Main experiment orchestration
-├── config_manager.py                    # Configuration loading
+├── experiment.py                        # Experiment orchestration
+├── config_manager.py                    # Configuration loading & validation
 ├── data_structures.py                   # Type-safe data classes
-├── bayesian_recommender.py              # Optimization engine
-├── analysis.py                          # Statistical analysis
+├── optimization_structures.py           # Optimization objective definitions
+├── bayesian_recommender.py              # Ax/BoTorch optimization engine
+├── analysis.py                          # Per-trial statistical analysis
+├── experiment_analysis.py               # Post-hoc analysis (feature importance, etc.)
 ├── visualization.py                     # Plot generation
 ├── csv_export.py                        # Results export
 ├── external_data.py                     # External data loader
 ├── protocol_loader.py                   # Protocol discovery
 ├── constraint_calibration.py            # Two-point overaspirate calibration
 ├── pipetting_wizard.py                  # Load & interpolate calibrated parameters
-├── input_data/                          # Sample / external datasets (e.g. external_calibration_data.csv)
-├── protocols/                           # All hardware protocol modules
+├── yaml_io.py                           # Round-trip YAML writes (preserves comments)
+├── input_data/                          # Sample / external datasets
+├── protocols/                           # Hardware protocol modules
 │   ├── calibration_protocol_base.py     # Abstract base class
-│   ├── calibration_protocol_template.py # Template for new protocols
-│   ├── calibration_protocol_simulated.py# Simulation protocol
-│   └── calibration_protocol_northrobot.py, ... (reference North Robot protocols)
+│   ├── calibration_protocol_template.py # Start here for new hardware
+│   ├── calibration_protocol_simulated.py# Simulation (no hardware needed)
+│   └── calibration_protocol_northrobot.py, ...  # Reference implementations
 ├── llm_recommender/                     # Optional LLM-guided screening
-├── tools/                               # GUI, dashboards, helper scripts
-└── output/                              # Results and plots (gitignored)
+├── tools/                               # Demo GUI and dashboards (not required)
+└── output/                              # Run outputs — results and plots (gitignored)
 ```
 
 ## Troubleshooting
@@ -302,9 +304,9 @@ sdl_pipette_calibration/
 
 ### Getting Help
 
-1. Check the example protocols (`calibration_protocol_hardware.py`, `calibration_protocol_simulated.py`)
-2. Look at the type definitions in `data_structures.py` for required data formats
-3. Examine `experiment_config.yaml` for all configuration options
+1. Start from `protocols/calibration_protocol_template.py` — it has TODO comments for every required method
+2. Look at `data_structures.py` for the expected types and fields
+3. `experiment_config.yaml` is fully annotated — it documents every option inline
 
 ## Example Workflow
 
