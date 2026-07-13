@@ -6,7 +6,7 @@ from master_usdl_coordinator import Lash_E
 from North_Safe import PipettingParameters
 
 VIAL_STATUS_FILE = "status/calibration_vials_short.csv"
-HARDWARE_CONFIG_FILE = "calibration_modular_v2/north_robot_hardware.yaml"
+HARDWARE_CONFIG_FILE = "sdl_pipette_calibration/protocols/north_robot_hardware.yaml"
 SIMULATE = False
 
 # Read the vial that was in use from hardware config (never gets reset)

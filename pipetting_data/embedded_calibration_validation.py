@@ -473,7 +473,7 @@ def _interpolate_optimal_overaspirate(point1_overaspirate: float, point1_measure
     
     slope = volume_diff / overaspirate_diff
     
-    # Physics-based slope bounds (mirrors calibration_modular_v2 _compute_optimal_overaspirate).
+    # Physics-based slope bounds (mirrors sdl_pipette_calibration _compute_optimal_overaspirate).
     # slope < 0.1 uL/uL means degenerate/negative — Stage 2 failed to bracket the target,
     # so extrapolation would produce nonsense (as seen in the +52 uL Stage 3 incident).
     MIN_SLOPE, MAX_SLOPE = 0.5, 1.5

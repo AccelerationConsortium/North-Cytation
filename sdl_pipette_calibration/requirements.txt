@@ -1,0 +1,25 @@
+# Requirements for the sdl_pipette_calibration package.
+# These are the decision-making dependencies only - NO hardware automation.
+# With just these installed you can run a full simulated calibration end-to-end.
+
+# Core - Bayesian optimization backend
+ax-platform==0.4.3
+
+# Core - numerics & data
+numpy==1.26.4
+pandas==2.2.3
+
+# Core - config loading
+pyyaml==6.0.2
+ruamel.yaml>=0.17
+
+# Visualization (plots and dashboards)
+matplotlib==3.10.0
+seaborn==0.13.2
+
+# Enhanced post-hoc analysis (feature importance, statistical summaries)
+scipy>=1.10.0
+scikit-learn>=1.3.0
+
+# Optional: SHAP feature importance. Skipped gracefully at runtime if absent.
+shap>=0.44

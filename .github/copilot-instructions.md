@@ -104,17 +104,9 @@ logger.info(f"Range: ±{tolerance:.1f}μL")
 - Use `simulate=True` for development - no hardware required
 - Follow the Lash_E → validation → execution → analysis pattern
 - Avoid creating new files until asked; extend existing workflow patterns
-- Each code change should update CHANGELOG.md with semantic versioning
+- Update CHANGELOG.md only for significant, user-visible changes — not on every edit
 - **NEVER save any files in the root directory** - use appropriate subdirectories
-
-### MANDATORY: Automatic Backup Protocol
-**ALWAYS create backups before making significant code changes:**
-```powershell
-$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-Copy-Item "path/to/file.py" "backups/file_backup_$timestamp.py"
-```
-
-**Required for**: Files >500 lines, critical workflows, core system changes
+- Use git branches instead of timestamped backup copies of files
 
 ### CRITICAL: Workflow Debugging Guidelines
 **NEVER use print() statements in workflow files:**

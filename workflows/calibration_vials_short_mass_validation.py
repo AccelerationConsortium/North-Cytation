@@ -21,15 +21,15 @@ from typing import Dict, List, Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from calibration_modular_v2.calibration_protocol_northrobot import HardwareCalibrationProtocol, LIQUIDS
+from sdl_pipette_calibration.protocols.calibration_protocol_northrobot import HardwareCalibrationProtocol, LIQUIDS
 from pipetting_data.pipetting_parameters import PipettingParameters
 
 SIMULATE = False
 TARGET_VOLUME_ML = 0.05
 REPLICATES = 3
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
-CONFIG_FILE = Path(__file__).resolve().parent.parent / "calibration_modular_v2" / "experiment_config.yaml"
-HARDWARE_CONFIG_FILE = Path(__file__).resolve().parent.parent / "calibration_modular_v2" / "north_robot_hardware.yaml"
+CONFIG_FILE = Path(__file__).resolve().parent.parent / "sdl_pipette_calibration" / "experiment_config.yaml"
+HARDWARE_CONFIG_FILE = Path(__file__).resolve().parent.parent / "sdl_pipette_calibration" / "protocols" / "north_robot_hardware.yaml"
 VIAL_STATUS_FILE = Path(__file__).resolve().parent.parent / "status" / "calibration_vials_short.csv"
 
 # Liquids to measure - using exact names from protocol's LIQUIDS dict

@@ -764,7 +764,7 @@ class North_Powder:
         self.c9.move_carousel(0,0)
 
     def cl_pow_dispense(self,mg_target, channel, protocol=None, zero_scale=True, max_tries=20):
-        import settings.powder_settings as settings
+        import powder_settings as settings
         start_t = time.perf_counter()
         mg_togo = mg_target
 
