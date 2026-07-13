@@ -1,0 +1,61 @@
+2026-06-12 16:31:39,695 - INFO - Workflow config loaded: surfactant_multidimensional_workflow
+2026-06-12 16:31:39,695 - INFO - Config keys updated: 40 (SURFACTANT_LIBRARY, NUM_SUBSTOCKS, MIN_WELL_PIPETTE_VOLUME_UL, SURFACTANTS, EXPERIMENT_TAG, SIMULATE, VALIDATE_LIQUIDS, RECOMMENDER_TYPE, FILTER_UNRELIABLE_RATIOS, TURBIDITY_FILTER_THRESHOLD, FLAT_TURBIDITY_MAX, TURBIDITY_PENALTY_THRESHOLD, TURBIDITY_PLOT_THRESHOLD, TURBIDITY_PENALTY_DECAY, TURBIDITY_PENALTY_ENABLED, BAYESIAN_ALPHA_SPACING, WELL_VOLUME_UL, PYRENE_VOLUME_UL, WATER_RESERVE_UL, SURFACTANT_BUDGET_UL, INIT_STRATEGY, GRID_POINTS_PER_AXIS, INIT_BOUNDARY_LEVELS, INIT_INTERIOR_PTS, MIN_CONC_MM, FEASIBLE_MAX_CONC_MULTIPLIER, FEASIBLE_DIAGNOSTIC_GRID_N, GRADIENT_SUGGESTIONS_PER_ITERATION, RECOMMEND_OVERSAMPLE_FACTOR, TARGET_TOTAL_WELLS, MAX_ITERATIONS, MAX_WELLS_PER_PLATE, ADD_REGULAR_CONTROLS, ADD_1D_CONTROLS, CMC_CONTROL_POINTS, STOCK_CONTROL_VOL_UL, INPUT_VIAL_STATUS_FILE, ADD_BUFFER, BUFFER_VOLUME_UL, SELECTED_BUFFER)
+2026-06-12 16:31:39,696 - INFO - SIMULATE mode: False
+2026-06-12 16:31:39,696 - INFO - Launching status review GUI...
+2026-06-12 16:31:39,894 - INFO - Detected workflow name: surfactant_multidimensional_workflow
+2026-06-12 16:31:40,393 - INFO - Config editor loaded for workflow: surfactant_multidimensional_workflow
+2026-06-12 16:32:36,587 - INFO - User selected: Run Workflow
+2026-06-12 16:32:36,604 - INFO - Status review completed - proceeding with hardware initialization
+2026-06-12 16:32:36,625 - DEBUG - Reloading config after status check to get updated values
+2026-06-12 16:32:36,668 - INFO - Config Manager: Updated 40 workflow constants from surfactant_multidimensional_workflow.yaml
+2026-06-12 16:32:37,325 - INFO - Initializing North Robot...
+2026-06-12 16:32:37,325 - DEBUG - Loading robot configuration files...
+2026-06-12 16:32:37,343 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-06-12 16:32:37,345 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-06-12 16:32:37,352 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-06-12 16:32:37,356 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-06-12 16:32:37,359 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-06-12 16:32:37,363 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-06-12 16:32:37,363 - DEBUG - Loading robot state files...
+2026-06-12 16:32:37,381 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_multidim_vials.csv
+2026-06-12 16:32:37,384 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-06-12 16:32:37,389 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-06-12 16:32:37,389 - DEBUG - Robot status loaded successfully
+2026-06-12 16:32:37,389 - INFO - Physical initialization of North Robot...
+2026-06-12 16:32:40,887 - DEBUG - Loading pumps from YAML configuration...
+2026-06-12 16:32:41,003 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-06-12 16:32:41,114 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-06-12 16:32:41,114 - INFO - Moving robot to home position
+2026-06-12 16:32:43,491 - DEBUG - Initializing centrifuge controller...
+2026-06-12 16:32:45,291 - DEBUG - Current reader status: -2
+2026-06-12 16:32:45,291 - ERROR - Cytation5 not connected... May need to restart
+2026-06-12 16:37:26,846 - INFO - Initializing North Track...
+2026-06-12 16:37:26,846 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-06-12 16:37:26,846 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-06-12 16:37:26,846 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-06-12 16:37:26,846 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-06-12 16:37:26,846 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-06-12 16:37:26,846 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-06-12 16:37:26,846 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-06-12 16:37:26,864 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-06-12 16:37:26,923 - DEBUG - Moving North Track to home position
+2026-06-12 16:37:26,923 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-06-12 16:37:26,923 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-06-12 16:37:26,939 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-06-12 16:37:26,939 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-06-12 16:37:26,939 - INFO -   VALIDATION-ONLY MODE: Running comprehensive pipetting validation for 1 surfactants...
+2026-06-12 16:37:26,939 - INFO -   Validation data will be saved to: output\validation_20260612_163726/calibration_validation/
+2026-06-12 16:37:26,939 - INFO -     Validating water pipetting (10-900 uL)...
+2026-06-12 16:37:26,939 - INFO -       Testing small water volumes (10-100 uL) with conditioning...
+2026-06-12 16:37:26,955 - DEBUG - Using calibrated aspirate_speed=30 for water at 0.020mL
+2026-06-12 16:37:26,955 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-06-12 16:37:26,955 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:37:26,955 - DEBUG - Using calibrated dispense_wait_time=3.0 for water at 0.020mL
+2026-06-12 16:37:26,955 - DEBUG - Using calibrated retract_speed=5 for water at 0.020mL
+2026-06-12 16:37:26,955 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-06-12 16:37:26,956 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:37:26,956 - DEBUG - Using calibrated overaspirate_vol=-0.02 for water at 0.020mL
+2026-06-12 16:37:26,956 - DEBUG - Using calibrated post_retract_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:37:26,956 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:37:26,959 - INFO - Moving vial water to clamp: 0
+2026-06-12 16:37:26,959 - DEBUG - Grabbing vial 3 with index 3

@@ -1,0 +1,86 @@
+2026-06-12 16:24:27,511 - INFO - Workflow config loaded: surfactant_multidimensional_workflow
+2026-06-12 16:24:27,512 - INFO - Config keys updated: 40 (SURFACTANT_LIBRARY, NUM_SUBSTOCKS, MIN_WELL_PIPETTE_VOLUME_UL, SURFACTANTS, EXPERIMENT_TAG, SIMULATE, VALIDATE_LIQUIDS, RECOMMENDER_TYPE, FILTER_UNRELIABLE_RATIOS, TURBIDITY_FILTER_THRESHOLD, FLAT_TURBIDITY_MAX, TURBIDITY_PENALTY_THRESHOLD, TURBIDITY_PLOT_THRESHOLD, TURBIDITY_PENALTY_DECAY, TURBIDITY_PENALTY_ENABLED, BAYESIAN_ALPHA_SPACING, WELL_VOLUME_UL, PYRENE_VOLUME_UL, WATER_RESERVE_UL, SURFACTANT_BUDGET_UL, INIT_STRATEGY, GRID_POINTS_PER_AXIS, INIT_BOUNDARY_LEVELS, INIT_INTERIOR_PTS, MIN_CONC_MM, FEASIBLE_MAX_CONC_MULTIPLIER, FEASIBLE_DIAGNOSTIC_GRID_N, GRADIENT_SUGGESTIONS_PER_ITERATION, RECOMMEND_OVERSAMPLE_FACTOR, TARGET_TOTAL_WELLS, MAX_ITERATIONS, MAX_WELLS_PER_PLATE, ADD_REGULAR_CONTROLS, ADD_1D_CONTROLS, CMC_CONTROL_POINTS, STOCK_CONTROL_VOL_UL, INPUT_VIAL_STATUS_FILE, ADD_BUFFER, BUFFER_VOLUME_UL, SELECTED_BUFFER)
+2026-06-12 16:24:27,512 - INFO - SIMULATE mode: False
+2026-06-12 16:24:27,512 - INFO - Launching status review GUI...
+2026-06-12 16:24:27,723 - INFO - Detected workflow name: surfactant_multidimensional_workflow
+2026-06-12 16:24:28,215 - INFO - Config editor loaded for workflow: surfactant_multidimensional_workflow
+2026-06-12 16:25:03,885 - INFO - User selected: Run Workflow
+2026-06-12 16:25:03,905 - INFO - Status review completed - proceeding with hardware initialization
+2026-06-12 16:25:03,913 - DEBUG - Reloading config after status check to get updated values
+2026-06-12 16:25:03,949 - INFO - Config Manager: Updated 40 workflow constants from surfactant_multidimensional_workflow.yaml
+2026-06-12 16:25:04,465 - INFO - Initializing North Robot...
+2026-06-12 16:25:04,465 - DEBUG - Loading robot configuration files...
+2026-06-12 16:25:04,474 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-06-12 16:25:04,474 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-06-12 16:25:04,474 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-06-12 16:25:04,489 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-06-12 16:25:04,489 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-06-12 16:25:04,489 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-06-12 16:25:04,489 - DEBUG - Loading robot state files...
+2026-06-12 16:25:04,489 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_multidim_vials.csv
+2026-06-12 16:25:04,505 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-06-12 16:25:04,508 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-06-12 16:25:04,508 - DEBUG - Robot status loaded successfully
+2026-06-12 16:25:04,508 - INFO - Physical initialization of North Robot...
+2026-06-12 16:25:08,028 - DEBUG - Loading pumps from YAML configuration...
+2026-06-12 16:25:10,126 - WARNING - Physical cleanup failed (attempt 1/2): Main: HOME REQUIRED: Home the axis before moving
+2026-06-12 16:25:10,126 - INFO - Homing robot components before pump initialization...
+2026-06-12 16:25:10,126 - INFO - Homing all robot components...
+2026-06-12 16:25:10,127 - DEBUG - Homing carousel...
+2026-06-12 16:25:17,942 - DEBUG - Homing robot axes...
+2026-06-12 16:25:58,011 - DEBUG - Homing pump 0...
+2026-06-12 16:25:59,731 - DEBUG - Homing pump 1...
+2026-06-12 16:26:01,394 - DEBUG - Homing track axes...
+2026-06-12 16:26:01,394 - DEBUG - Homing track axis z_axis (axis 6)...
+2026-06-12 16:26:04,928 - DEBUG - Homing track axis x_axis (axis 7)...
+2026-06-12 16:26:09,000 - INFO - All robot components homed successfully
+2026-06-12 16:26:09,000 - DEBUG - Loading pumps from YAML configuration...
+2026-06-12 16:26:09,107 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-06-12 16:26:09,206 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-06-12 16:26:09,206 - INFO - Moving robot to home position
+2026-06-12 16:26:09,691 - DEBUG - Initializing centrifuge controller...
+2026-06-12 16:26:11,488 - DEBUG - Current reader status: -2
+2026-06-12 16:26:11,488 - ERROR - Cytation5 not connected... May need to restart
+2026-06-12 16:26:32,779 - INFO - Initializing North Track...
+2026-06-12 16:26:32,780 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-06-12 16:26:32,780 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-06-12 16:26:32,781 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-06-12 16:26:32,781 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-06-12 16:26:32,790 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-06-12 16:26:32,790 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-06-12 16:26:32,792 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-06-12 16:26:32,792 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-06-12 16:26:32,870 - DEBUG - Moving North Track to home position
+2026-06-12 16:26:32,870 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-06-12 16:26:32,871 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-06-12 16:26:32,871 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-06-12 16:26:32,871 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-06-12 16:26:32,871 - INFO -   VALIDATION-ONLY MODE: Running comprehensive pipetting validation for 1 surfactants...
+2026-06-12 16:26:32,871 - INFO -   Validation data will be saved to: output\validation_20260612_162632/calibration_validation/
+2026-06-12 16:26:32,871 - INFO -     Validating water pipetting (10-900 uL)...
+2026-06-12 16:26:32,871 - INFO -       Testing small water volumes (10-100 uL) with conditioning...
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated aspirate_speed=30 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated dispense_wait_time=3.0 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated retract_speed=5 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated overaspirate_vol=-0.02 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated post_retract_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:26:32,891 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:26:32,891 - INFO - Vial water already at clamp index 0, no move needed
+2026-06-12 16:26:32,891 - INFO -     Conditioning tip with water: 3 cycles of 150.0uL (fast dummy params)
+2026-06-12 16:26:32,891 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:26:32,891 - DEBUG - Applied object param aspirate_speed=15
+2026-06-12 16:26:32,891 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:26:32,891 - DEBUG - Applied object param blowout_vol=0.5
+2026-06-12 16:26:32,891 - DEBUG - Applied object param dispense_speed=5
+2026-06-12 16:26:32,891 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-06-12 16:26:32,891 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-06-12 16:26:32,891 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:26:32,891 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:26:32,891 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:26:32,891 - DEBUG - Applied object param retract_speed=10
+2026-06-12 16:26:32,891 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-06-12 16:26:32,900 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_1
