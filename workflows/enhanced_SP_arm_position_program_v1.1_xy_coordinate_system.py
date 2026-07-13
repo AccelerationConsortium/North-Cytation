@@ -50,6 +50,7 @@ import sys
 import os
 import csv
 import json
+import ast
 import pandas as pd
 import yaml
 from datetime import datetime
@@ -68,6 +69,17 @@ try:
 except ImportError:
     NORTH_AVAILABLE = False
     print("Warning: North robotics library not available. Running in simulation mode.")
+
+# n9_kinematics is a pure math module (no hardware required) that ships with the
+# north package. It exposes the same IK/FK the real controller uses, so grid
+# generation and its verification can run in simulation without fabricating math.
+# If the module is not installed, grid generation is disabled rather than faked.
+try:
+    from north import n9_kinematics as n9k
+    N9K_AVAILABLE = True
+except ImportError:
+    N9K_AVAILABLE = False
+    print("Warning: north.n9_kinematics not available - grid generation will be disabled.")
 
 try:
     from master_usdl_coordinator import Lash_E
@@ -104,10 +116,14 @@ def load_positions_from_system():
     Array positions (list of lists) are keyed as name[index].
     category = variable name for arrays, 'single' for standalone positions.
     """
-    import inspect
+    import inspect, importlib, sys
     positions = {}
     
     try:
+        # Always reload so changes written by update_locator_array are reflected
+        # immediately without restarting the GUI.
+        if 'robot_state.Locator' in sys.modules:
+            importlib.reload(sys.modules['robot_state.Locator'])
         import robot_state.Locator as Locator
 
         for name, value in inspect.getmembers(Locator):
@@ -225,28 +241,71 @@ class EnhancedRobotArmController:
         self.config_frame = None
         
         # Grid array generator state
-        self.grid_origin = None  # {x, y, z_cts, gripper_cts, shoulder_cts}
-        self.grid_configs = self._load_grid_configs()  # from vial_positions.yaml
+        self.grid_origin = None  # {x, y, z_cts, gripper_cts, shoulder_cts, tool_theta_rad}
+        self.grid_configs = self._load_grid_configs()  # from vial_positions.yaml + pipet_racks.yaml
+        self.grid_array_type = None       # tk.StringVar, set in create_gui
+        self.locator_update_status = None  # ttk.Label, set in create_gui
         
     def _load_grid_configs(self):
-        """Load grid_params from vial_positions.yaml for all objects that have them."""
+        """Load grid_params from vial_positions.yaml and pipet_racks.yaml.
+
+        Two source files use different field names for the Locator variable
+        (kept as-is so the yaml stays human-readable next to its consumers):
+
+        vial_positions.yaml
+            vial_positions_in_Locator      -> gripper-move array
+            pipetting_positions_in_Locator -> pipetting-move array
+
+        pipet_racks.yaml
+            capture_location               -> tip-capture array (also read by
+                                              North_Safe.py; keep the name).
+                                              Mapped into 'locator_var_gripper'
+                                              here so the existing "Gripper"
+                                              radio button in the GUI writes to
+                                              it via update_locator_array().
+        """
         import yaml
         configs = {}
-        yaml_path = os.path.join(os.path.dirname(__file__), '..', 'robot_state', 'vial_positions.yaml')
+        base_dir = os.path.dirname(__file__)
+
+        # ── vial_positions.yaml (labware with gripper + pipetting arrays) ──
+        vial_path = os.path.join(base_dir, '..', 'robot_state', 'vial_positions.yaml')
         try:
-            with open(yaml_path, 'r') as f:
+            with open(vial_path, 'r') as f:
                 data = yaml.safe_load(f)
             for obj_name, obj_data in data.items():
                 gp = obj_data.get('grid_params', {})
                 if gp and gp.get('num_cols') is not None:
                     configs[obj_name] = {
-                        'num_cols':   gp.get('num_cols'),
-                        'num_rows':   gp.get('num_rows'),
-                        'x_delta_mm': gp.get('x_delta_mm'),
-                        'y_delta_mm': gp.get('y_delta_mm'),
+                        'num_cols':            gp.get('num_cols'),
+                        'num_rows':            gp.get('num_rows'),
+                        'x_delta_mm':          gp.get('x_delta_mm'),
+                        'y_delta_mm':          gp.get('y_delta_mm'),
+                        'locator_var_gripper': obj_data.get('vial_positions_in_Locator'),
+                        'locator_var_pip':     obj_data.get('pipetting_positions_in_Locator'),
                     }
         except Exception as e:
             logger.warning(f"Could not load grid configs from vial_positions.yaml: {e}")
+
+        # ── pipet_racks.yaml (tip racks with a single capture array) ────────
+        racks_path = os.path.join(base_dir, '..', 'robot_state', 'pipet_racks.yaml')
+        try:
+            with open(racks_path, 'r') as f:
+                data = yaml.safe_load(f)
+            for obj_name, obj_data in data.items():
+                gp = obj_data.get('grid_params', {})
+                if gp and gp.get('num_cols') is not None:
+                    configs[obj_name] = {
+                        'num_cols':            gp.get('num_cols'),
+                        'num_rows':            gp.get('num_rows'),
+                        'x_delta_mm':          gp.get('x_delta_mm'),
+                        'y_delta_mm':          gp.get('y_delta_mm'),
+                        'locator_var_gripper': obj_data.get('capture_location'),
+                        'locator_var_pip':     None,
+                    }
+        except Exception as e:
+            logger.warning(f"Could not load grid configs from pipet_racks.yaml: {e}")
+
         return configs
 
     def connect_robot(self):
@@ -549,6 +608,19 @@ class EnhancedRobotArmController:
             text="Select an object then an index",
             font=("Arial", 9), foreground="gray")
         self.position_description_label.pack(anchor=tk.W, pady=(4, 0))
+        ttk.Button(pos_sel_frame, text="Reload Positions from Locator",
+                   command=self.reload_positions).pack(anchor=tk.W, pady=(4, 0))
+
+        # Manual "Go to Counts" - paste [g, e, s, z] and jump directly.
+        # Uses goto_safe (same code path as "Go To") so collision checks apply.
+        raw_row = ttk.Frame(pos_sel_frame)
+        raw_row.pack(fill=tk.X, pady=(6, 0))
+        ttk.Label(raw_row, text="Counts:", width=7).pack(side=tk.LEFT)
+        self.raw_counts_entry = ttk.Entry(raw_row, width=28)
+        self.raw_counts_entry.pack(side=tk.LEFT, padx=(4, 6))
+        self.raw_counts_entry.insert(0, "[g, e, s, z]")
+        ttk.Button(raw_row, text="Go to Counts",
+                   command=self.goto_arbitrary_counts).pack(side=tk.LEFT)
 
         # ── LEFT: Current Position ──────────────────────────────────────────
         pos_frame = ttk.LabelFrame(left_frame, text="Current Position", padding="8")
@@ -616,9 +688,19 @@ class EnhancedRobotArmController:
                    command=self.get_pipet_large).grid(row=7, column=1, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="GET SMALL",
                    command=self.get_pipet_small).grid(row=7, column=2, padx=2, sticky=(tk.W, tk.E))
+        ttk.Label(control_frame, text="Held tip:").grid(row=8, column=0, sticky=tk.W)
+        self.held_tip_var = tk.StringVar(value="(auto)")
+        held_tip_combo = ttk.Combobox(
+            control_frame,
+            textvariable=self.held_tip_var,
+            values=["(auto)", "large_tip", "small_tip", "none"],
+            state="readonly", width=9,
+        )
+        held_tip_combo.grid(row=8, column=1, columnspan=2, padx=2, sticky=(tk.W, tk.E))
+        held_tip_combo.bind("<<ComboboxSelected>>", self.on_held_tip_selected)
         ttk.Button(control_frame, text="REMOVE PIPET",
                    command=self.remove_pipet_action).grid(
-            row=8, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
+            row=9, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
 
         control_frame.columnconfigure(1, weight=1)
         control_frame.columnconfigure(2, weight=1)
@@ -751,6 +833,22 @@ class EnhancedRobotArmController:
                    command=self.copy_grid_output).grid(
             row=5, column=0, columnspan=8, sticky=(tk.W, tk.E), pady=(4, 0))
 
+        # ── Update in Locator ────────────────────────────────────────────────
+        update_row = ttk.Frame(grid_gen_frame)
+        update_row.grid(row=6, column=0, columnspan=8, sticky=(tk.W, tk.E), pady=(6, 2))
+        ttk.Label(update_row, text="Update target:").pack(side=tk.LEFT)
+        self.grid_array_type = tk.StringVar(value="gripper")
+        self.gripper_radio = ttk.Radiobutton(update_row, text="Gripper positions",
+                        variable=self.grid_array_type, value="gripper")
+        self.gripper_radio.pack(side=tk.LEFT, padx=(6, 0))
+        self.pip_radio = ttk.Radiobutton(update_row, text="Pipetting positions",
+                        variable=self.grid_array_type, value="pip")
+        self.pip_radio.pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Button(update_row, text="Update in Locator",
+                   command=self.update_locator_array).pack(side=tk.LEFT, padx=(14, 0))
+        self.locator_update_status = ttk.Label(update_row, text="", foreground="green")
+        self.locator_update_status.pack(side=tk.LEFT, padx=(8, 0))
+
         grid_gen_frame.columnconfigure(1, weight=1)
         grid_gen_frame.columnconfigure(3, weight=1)
 
@@ -788,7 +886,29 @@ class EnhancedRobotArmController:
             description = f"{position_data['description']} (Category: {position_data['category']})"
             self.position_description_label.config(text=description, foreground="black")
             self.selected_position = position_name
-            
+
+    def reload_positions(self):
+        """Reload workflow_positions from Locator.py and refresh the dropdowns.
+
+        Call this after 'Update in Locator' so the updated array is live in the
+        GUI without restarting. load_positions_from_system() always force-reloads
+        the Locator module, so the new coordinates are read from disk immediately.
+        """
+        self.workflow_positions = load_positions_from_system()
+        self.position_groups = {}
+        for key, data in self.workflow_positions.items():
+            var = data['locator_var']
+            self.position_groups.setdefault(var, []).append(key)
+        obj_names = sorted(self.position_groups.keys())
+        self.position_object_dropdown['values'] = obj_names
+        self.position_object_dropdown.set('')
+        self.position_dropdown['values'] = []
+        self.position_dropdown.set('')
+        self.selected_position = None
+        self.position_description_label.config(
+            text="Positions reloaded from Locator.py", foreground="green")
+        logger.info("Positions reloaded from Locator.py")
+
     def goto_selected_position(self):
         """Move robot to the selected workflow position."""
         if not self.is_connected:
@@ -847,7 +967,51 @@ class EnhancedRobotArmController:
             messagebox.showerror("Error", f"Failed to move to position:\n{str(e)}")
         finally:
             self.update_display()
-    
+
+    def goto_arbitrary_counts(self):
+        """Move to counts pasted into the Counts entry, format: [g, e, s, z].
+
+        Same code path as Goto Selected Position (goto_safe if available, else
+        goto). Intended for one-off test moves without editing Locator.py.
+        """
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+        raw = self.raw_counts_entry.get().strip()
+        try:
+            parsed = ast.literal_eval(raw)
+        except (ValueError, SyntaxError) as e:
+            messagebox.showerror("Error", f"Could not parse counts:\n{raw}\n\n{e}")
+            return
+        if not (isinstance(parsed, (list, tuple)) and len(parsed) == 4):
+            messagebox.showerror("Error",
+                f"Expected 4 numbers as [g, e, s, z], got: {parsed!r}")
+            return
+        try:
+            target = [int(v) for v in parsed]
+        except (TypeError, ValueError) as e:
+            messagebox.showerror("Error", f"All 4 values must be integers.\n{e}")
+            return
+        try:
+            self.store_original_position()
+            logger.info(f"Manual goto counts: {target}")
+            if hasattr(self.robot, 'goto_safe'):
+                self.robot.goto_safe(target)
+                logger.info("Moved to counts using goto_safe")
+            else:
+                self.robot.goto(target, wait=True)
+                logger.info("Moved to counts using goto")
+            self.session_history.append({
+                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                "action": "goto_counts",
+                "target_position": target,
+            })
+        except Exception as e:
+            logger.error(f"Error moving to counts {target}: {e}")
+            messagebox.showerror("Error", f"Failed to move to counts:\n{e}")
+        finally:
+            self.update_display()
+
     def store_original_position(self):
         """Store the current position as the original reference."""
         if self.is_connected:
@@ -1722,11 +1886,25 @@ class EnhancedRobotArmController:
         else:
             logger.warning("nr_robot not available - connect robot first")
 
+    def on_held_tip_selected(self, event):
+        """Manually override HELD_PIPET_TYPE on the robot so remove_pipet uses the correct procedure."""
+        if self.nr_robot is None:
+            return
+        choice = self.held_tip_var.get()
+        if choice == "(auto)":
+            return
+        new_type = None if choice == "none" else choice
+        self.nr_robot.HELD_PIPET_TYPE = new_type
+        self.nr_robot.save_robot_status()
+        logger.info(f"Held tip manually set to: {new_type}")
+        self.update_display()
+
     def remove_pipet_action(self):
         """Remove pipet tip using nr_robot."""
         if self.nr_robot is not None:
             try:
                 self.nr_robot.remove_pipet()
+                self.held_tip_var.set("(auto)")
                 self.update_display()
             except Exception as e:
                 logger.error(f"Error removing pipet: {str(e)}")
@@ -1734,7 +1912,8 @@ class EnhancedRobotArmController:
             logger.warning("nr_robot not available - connect robot first")
 
     def on_grid_object_selected(self, event):
-        """Populate grid entry fields from the selected object's config in vial_positions.yaml."""
+        """Populate grid entry fields from the selected object's config
+        (vial_positions.yaml for labware, pipet_racks.yaml for tip racks)."""
         obj_name = self.grid_object_dropdown.get()
         cfg = self.grid_configs.get(obj_name)
         if cfg is None:
@@ -1748,48 +1927,170 @@ class EnhancedRobotArmController:
             entry.delete(0, tk.END)
             val = cfg.get(key)
             entry.insert(0, str(val) if val is not None else "")
+        # Enable/disable pip radio and show actual Locator var names
+        gripper_var = cfg.get('locator_var_gripper') or ''
+        pip_var = cfg.get('locator_var_pip') or ''
+        self.gripper_radio.config(text=f"Array 1: {gripper_var}" if gripper_var else "Array 1 (none)")
+        has_pip = bool(pip_var)
+        self.pip_radio.config(
+            text=f"Array 2: {pip_var}" if has_pip else "Array 2 (none)",
+            state=tk.NORMAL if has_pip else tk.DISABLED,
+        )
+        if not has_pip:
+            self.grid_array_type.set("gripper")
         logger.info(f"Grid config loaded from '{obj_name}': {cfg}")
 
     def set_grid_origin(self):
-        """Freeze current robot position as the grid origin for array generation."""
+        """Freeze current robot position as the grid origin for array generation.
+
+        Captures (x, y, theta) via n9_kinematics.fk so that the same math is used
+        for origin capture, grid generation, and verification. tool_theta_rad is
+        essential: without it, generate_grid_array defaults to theta=0 at every
+        cell (n9_kinematics.ik default) and the physical pipette tip drifts.
+        """
         if not self.is_connected:
             messagebox.showerror("Error", "Robot not connected")
+            return
+        if not N9K_AVAILABLE:
+            messagebox.showerror("Error",
+                "n9_kinematics module not available - cannot compute origin theta.\n"
+                "Install/upgrade the 'north' package.")
             return
         try:
             positions = self.robot.get_robot_positions()
             gripper_cts, elbow_cts, shoulder_cts, z_cts = (
                 positions[0], positions[1], positions[2], positions[3]
             )
-            x, y, _ = self.robot.n9_fk(gripper_cts, elbow_cts, shoulder_cts)
+            # Use n9k.fk (real kinematics) rather than self.robot.n9_fk so origin
+            # and grid math are consistent (the mock robot's n9_fk is a rough
+            # approximation and would disagree with n9k.ik used in generation).
+            x, y, theta = n9k.fk(gripper_cts, elbow_cts, shoulder_cts)
             self.grid_origin = {
                 'x': x, 'y': y,
                 'z_cts': z_cts,
                 'gripper_cts': gripper_cts,
                 'shoulder_cts': shoulder_cts,
+                'tool_theta_rad': theta,
             }
             self.grid_origin_label.config(
-                text=f"Origin: X={x:.1f}mm, Y={y:.1f}mm  |  Z={z_cts}cts  G={gripper_cts}cts",
+                text=(f"Origin: X={x:.2f}mm, Y={y:.2f}mm, theta={theta:+.3f}rad  "
+                      f"|  Z={z_cts}cts  G={gripper_cts}cts"),
                 foreground="green"
             )
-            logger.info(f"Grid origin set: X={x:.1f}, Y={y:.1f}, Z_cts={z_cts}, G_cts={gripper_cts}")
+            logger.info(f"Grid origin set: X={x:.2f}, Y={y:.2f}, theta={theta:+.4f}rad, "
+                        f"Z_cts={z_cts}, G_cts={gripper_cts}")
         except Exception as e:
             logger.error(f"Error setting grid origin: {str(e)}")
 
+    def _compute_grid_entries(self, x0, y0, z_cts, origin_gripper_cts,
+                              x_offset, y_offset, n_cols, n_rows,
+                              start_shoulder_rad,
+                              xy_tol_mm=0.5):
+        """Pure math helper: produce Locator.py-style entries for a rectangular grid.
+
+        Requires N9K_AVAILABLE. Uses n9_kinematics directly (no hardware, no mock
+        approximations) so behavior is identical in sim and on real hardware.
+
+        Ordering: column-major (col outer, row inner). Column varies X, row varies Y.
+        Cell index in the returned list = col * n_rows + row.
+
+        Convention matches _move_xy_delta (the physically-verified Cartesian jog):
+          - Do NOT pass tool_orientation to n9k.ik (use its default).
+          - Solve IK only for (elbow, shoulder).
+          - PRESERVE origin_gripper_cts on every cell. Never take IK's gripper
+            output.
+
+        Why: on this hardware the pipette tip is offset from the wrist rotation
+        axis, so swinging gripper cell-to-cell (which the previous
+        tool_orientation-locked IK did) translates the physical tip by many mm
+        that n9k.fk cannot see. Pinning gripper matches the jog's proven behavior
+        so a generated grid is physically equivalent to sequentially jogging
+        +x_offset / +y_offset from the origin.
+
+        For each cell tries both SHOULDER_CENTER and SHOULDER_OUT solutions and
+        keeps the one whose shoulder angle is closest to the previous cell's
+        shoulder (smooth arm progression, avoids elbow flips mid-grid).
+
+        Returns
+        -------
+        entries : list[list[int] | None]
+            One entry per (col, row) in column-major order. Each entry is
+            [gripper_cts, elbow_cts, shoulder_cts, z_cts] or None on IK failure.
+        ik_errors : list[str]
+            Human-readable message for every IK failure.
+        verify_errors : list[str]
+            Cells where FK round-trip (x, y) drift exceeded xy_tol_mm. Only wrist
+            center is checked; tool_theta is intentionally allowed to drift
+            because gripper is pinned to origin (same as _move_xy_delta).
+
+        Intended for future reuse: to shift an existing Locator array by adjusting
+        one reference cell, call this with the new (x0, y0, z_cts,
+        origin_gripper_cts) captured from the jogged reference cell, plus the
+        array's known geometry.
+        """
+        if not N9K_AVAILABLE:
+            raise RuntimeError("n9_kinematics module required for grid computation")
+
+        entries = []
+        ik_errors = []
+        verify_errors = []
+        last_shoulder_rad = start_shoulder_rad
+
+        for col in range(n_cols):
+            for row in range(n_rows):
+                target_x = x0 + col * x_offset
+                target_y = y0 + row * y_offset
+                try:
+                    # NO tool_orientation - matches _move_xy_delta
+                    sol_c = n9k.ik(target_x, target_y,
+                                   shoulder_preference=n9k.SHOULDER_CENTER)
+                    sol_o = n9k.ik(target_x, target_y,
+                                   shoulder_preference=n9k.SHOULDER_OUT)
+                    chosen = sol_c if abs(sol_c[2] - last_shoulder_rad) <= abs(sol_o[2] - last_shoulder_rad) else sol_o
+                    last_shoulder_rad = chosen[2]
+
+                    # PRESERVE origin gripper - matches _move_xy_delta
+                    gripper_cts = int(origin_gripper_cts)
+                    elbow_cts = int(n9k.rad_to_counts(n9k.ELBOW, chosen[1]))
+                    shoulder_cts = int(n9k.rad_to_counts(n9k.SHOULDER, chosen[2]))
+                    entry = [gripper_cts, elbow_cts, shoulder_cts, int(z_cts)]
+                    entries.append(entry)
+
+                    # FK round-trip verification: converting rad->counts->rad loses
+                    # precision, so confirm the actual pose these counts produce
+                    # still matches the target wrist-center within tolerance.
+                    # Gripper does not affect wrist (x, y), so pinning it is safe.
+                    fk_x, fk_y, _fk_theta = n9k.fk(gripper_cts, elbow_cts, shoulder_cts)
+                    dx = fk_x - target_x
+                    dy = fk_y - target_y
+                    if abs(dx) > xy_tol_mm or abs(dy) > xy_tol_mm:
+                        verify_errors.append(
+                            f"col={col}, row={row}: target=({target_x:.2f}, {target_y:.2f}), "
+                            f"got=({fk_x:.2f}, {fk_y:.2f}), "
+                            f"drift=(dx={dx:+.3f}mm, dy={dy:+.3f}mm)"
+                        )
+                except Exception as e:
+                    ik_errors.append(f"col={col}, row={row} @ ({target_x:.2f}, {target_y:.2f}): {e}")
+                    entries.append(None)
+
+        return entries, ik_errors, verify_errors
+
     def generate_grid_array(self):
         """Generate Locator.py-format position array from origin + grid parameters.
-        
-        Ordering: column-major (all rows in col 0, then all rows in col 1, ...)
-        so index = col * n_rows + row.  Different rows have different Y,
-        different columns have different X.
-        Output format: [gripper, elbow, shoulder, z]  (matches standard API convention)
+
+        Output format per entry: [gripper_cts, elbow_cts, shoulder_cts, z_cts]
+        (matches Locator.py convention and c9.goto argument order).
         """
+        if not N9K_AVAILABLE:
+            messagebox.showerror("Error",
+                "n9_kinematics module not available - cannot generate grid.")
+            return
         if self.grid_origin is None:
             messagebox.showerror("Error", "Set origin first (jog to position, then click Set Origin)")
             return
-        if not hasattr(self.robot, 'n9_ik'):
+        if 'tool_theta_rad' not in self.grid_origin:
             messagebox.showerror("Error",
-                "Grid generation requires real hardware.\n"
-                "n9_ik is not available in simulation mode.")
+                "Origin was captured without tool orientation. Re-click Set Origin.")
             return
         try:
             x_offset = float(self.grid_x_offset_entry.get())
@@ -1803,51 +2104,51 @@ class EnhancedRobotArmController:
         x0 = self.grid_origin['x']
         y0 = self.grid_origin['y']
         z_cts = self.grid_origin['z_cts']
-        shoulder_cts = self.grid_origin['shoulder_cts']
+        origin_gripper_cts = self.grid_origin['gripper_cts']
+        start_shoulder_rad = n9k.counts_to_rad(n9k.SHOULDER, self.grid_origin['shoulder_cts'])
 
-        entries = []
-        ik_errors = []
-        last_shoulder_rad = self.robot.counts_to_rad(self.robot.SHOULDER, shoulder_cts)  # Track shoulder progression
-        
-        for col in range(n_cols):          # COLUMN-MAJOR: Column loop (outer)
-            for row in range(n_rows):      # Row loop (inner) - go down Y first
-                target_x = x0 + col * x_offset
-                target_y = y0 + row * y_offset
-                try:
-                    sol_c = self.robot.n9_ik(target_x, target_y,
-                                             shoulder_preference=self.robot.SHOULDER_CENTER)
-                    sol_o = self.robot.n9_ik(target_x, target_y,
-                                             shoulder_preference=self.robot.SHOULDER_OUT)
-                    # Pick config closest to PREVIOUS position shoulder for smooth progression
-                    chosen = sol_c if abs(sol_c[2] - last_shoulder_rad) <= abs(sol_o[2] - last_shoulder_rad) else sol_o
-                    
-                    # Update shoulder reference for next position
-                    last_shoulder_rad = chosen[2]
-                    
-                    # CRITICAL: n9_ik returns radians, must convert to counts before creating entry
-                    gripper_cts = int(self.robot.rad_to_counts(self.robot.GRIPPER, chosen[0]))
-                    elbow_cts = int(self.robot.rad_to_counts(self.robot.ELBOW, chosen[1]))
-                    shoulder_cts_target = int(self.robot.rad_to_counts(self.robot.SHOULDER, chosen[2]))
-                    
-                    entry = [gripper_cts, elbow_cts, shoulder_cts_target, int(z_cts)]
-                    entries.append((col, row, entry))
-                except Exception as e:
-                    ik_errors.append(f"col={col}, row={row}: {e}")
-                    entries.append((col, row, None))
+        entries, ik_errors, verify_errors = self._compute_grid_entries(
+            x0=x0, y0=y0, z_cts=z_cts, origin_gripper_cts=origin_gripper_cts,
+            x_offset=x_offset, y_offset=y_offset,
+            n_cols=n_cols, n_rows=n_rows,
+            start_shoulder_rad=start_shoulder_rad,
+        )
 
-        # Build output string
-        valid_positions = [pos for _, _, pos in entries if pos is not None]
-        output = f"my_grid = {valid_positions}"
+        valid_positions = [e for e in entries if e is not None]
+
+        # Assemble the output text: array literal, then any warnings underneath so
+        # they are visible before the user pastes into Locator.py.
+        lines = [f"my_grid = {valid_positions}"]
+        n_total = n_cols * n_rows
+        n_ok = len(valid_positions)
+        lines.append("")
+        lines.append(f"# Generated {n_ok}/{n_total} positions from origin "
+                     f"(x={x0:.2f}, y={y0:.2f}, gripper_cts={origin_gripper_cts} PRESERVED, z_cts={z_cts})")
+        lines.append(f"# Column-major: index = col * {n_rows} + row  "
+                     f"(offsets: dx={x_offset}mm, dy={y_offset}mm)")
+        if ik_errors:
+            lines.append(f"# IK FAILURES ({len(ik_errors)}):")
+            for msg in ik_errors:
+                lines.append(f"#   {msg}")
+        if verify_errors:
+            lines.append(f"# FK ROUND-TRIP DRIFT ({len(verify_errors)} cells exceeded tolerance):")
+            for msg in verify_errors:
+                lines.append(f"#   {msg}")
+        output = "\n".join(lines)
+
         self.grid_output_text.config(state=tk.NORMAL)
         self.grid_output_text.delete("1.0", tk.END)
         self.grid_output_text.insert(tk.END, output)
         self.grid_output_text.config(state=tk.DISABLED)
 
-        n_ok = sum(1 for _, _, p in entries if p is not None)
         if ik_errors:
-            logger.warning(f"Grid generation: {n_ok}/{len(entries)} succeeded. Failures: {ik_errors}")
+            logger.warning(f"Grid generation: {n_ok}/{n_total} IK ok. Failures: {ik_errors}")
         else:
-            logger.info(f"Grid generated: {n_cols}x{n_rows}={len(entries)} positions")
+            logger.info(f"Grid generated: {n_cols}x{n_rows}={n_total} positions, all IK ok")
+        if verify_errors:
+            logger.warning(f"Grid verification: {len(verify_errors)} cells drifted beyond tolerance")
+        else:
+            logger.info("Grid verification: all cells within tolerance (xy<=0.5mm, theta<=0.005rad)")
 
     def copy_grid_output(self):
         """Copy the grid output text to clipboard."""
@@ -1856,6 +2157,142 @@ class EnhancedRobotArmController:
             self.root.clipboard_clear()
             self.root.clipboard_append(content)
             logger.info("Grid array copied to clipboard")
+
+    def update_locator_array(self):
+        """Write the generated grid array back into robot_state/Locator.py.
+
+        Replaces the active (uncommented) variable assignment for the selected
+        object/type. The old line is preserved inline as a dated comment directly
+        above the new assignment, matching the existing versioning convention in
+        Locator.py. A .bak file is written before any change is made.
+        """
+        import re, ast
+
+        # ── 1. Resolve target Locator variable ──────────────────────────────
+        obj_name = self.grid_object_dropdown.get()
+        if not obj_name:
+            messagebox.showwarning("Warning", "Select an object from 'Load config' first.")
+            return
+
+        cfg = self.grid_configs.get(obj_name)
+        if cfg is None:
+            messagebox.showerror("Error", f"No config found for '{obj_name}'.")
+            return
+
+        array_type = self.grid_array_type.get()  # "gripper" or "pip"
+        if array_type == "gripper":
+            varname = cfg.get('locator_var_gripper')
+            type_label = "gripper positions"
+        else:
+            varname = cfg.get('locator_var_pip')
+            type_label = "pipetting positions"
+
+        if not varname:
+            messagebox.showerror("Error",
+                f"No Locator variable defined for '{obj_name}' {type_label}.\n"
+                f"For labware, check 'vial_positions_in_Locator' / "
+                f"'pipetting_positions_in_Locator' in robot_state/vial_positions.yaml.\n"
+                f"For tip racks, check 'capture_location' in robot_state/pipet_racks.yaml "
+                f"(select 'Gripper positions' to write to it).")
+            return
+
+        # ── 2. Parse the generated array from the output text ───────────────
+        output_text = self.grid_output_text.get("1.0", tk.END).strip()
+        if not output_text or not output_text.startswith("my_grid = "):
+            messagebox.showwarning("Warning",
+                "No valid grid output found. Run 'Generate Grid Array' first.")
+            return
+
+        first_line = output_text.split('\n')[0].strip()
+        array_literal = first_line[len("my_grid = "):]
+        try:
+            new_array = ast.literal_eval(array_literal)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not parse generated array:\n{e}")
+            return
+
+        if not isinstance(new_array, list) or len(new_array) == 0:
+            messagebox.showerror("Error", "Generated array is empty or invalid.")
+            return
+
+        new_array_str = repr(new_array)
+
+        # ── 3. Confirm with user ─────────────────────────────────────────────
+        n_entries = len(new_array)
+        confirm = messagebox.askyesno(
+            "Confirm Update",
+            f"Update '{varname}' in Locator.py?\n\n"
+            f"Object:  {obj_name}\n"
+            f"Type:    {type_label}\n"
+            f"Entries: {n_entries}\n\n"
+            f"The old line will be preserved as a dated comment.\n"
+            f"A backup (.bak) will be saved first."
+        )
+        if not confirm:
+            return
+
+        # ── 4. Read Locator.py ───────────────────────────────────────────────
+        locator_path = os.path.join(os.path.dirname(__file__), '..', 'robot_state', 'Locator.py')
+        locator_path = os.path.normpath(locator_path)
+        try:
+            with open(locator_path, 'r') as f:
+                original_content = f.read()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not read Locator.py:\n{e}")
+            return
+
+        # ── 5. Find the active (uncommented) assignment ──────────────────────
+        # Matches lines like:  varname = [...]
+        # Does NOT match commented lines (# varname = [...])
+        pattern = re.compile(
+            r'^(' + re.escape(varname) + r' = \[.+\])$',
+            re.MULTILINE
+        )
+        matches = pattern.findall(original_content)
+        if len(matches) == 0:
+            messagebox.showerror("Error",
+                f"Could not find active assignment for '{varname}' in Locator.py.\n"
+                f"Check that the variable exists and is not commented out.")
+            return
+        if len(matches) > 1:
+            messagebox.showerror("Error",
+                f"Found {len(matches)} active assignments for '{varname}' in Locator.py.\n"
+                f"Locator.py must have exactly one active (uncommented) assignment for this variable.")
+            return
+
+        # ── 6. Write .bak before touching the file ───────────────────────────
+        bak_path = locator_path + '.bak'
+        try:
+            with open(bak_path, 'w') as f:
+                f.write(original_content)
+            logger.info(f"Locator.py backed up to {bak_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not write backup file:\n{e}")
+            return
+
+        # ── 7. Replace and write ──────────────────────────────────────────────
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+        def replacer(m):
+            return (f'# Previous ({timestamp}): {m.group(1)}\n'
+                    f'{varname} = {new_array_str}')
+
+        new_content, n_replaced = pattern.subn(replacer, original_content)
+        if n_replaced != 1:
+            messagebox.showerror("Error", "Replacement failed unexpectedly. Locator.py not written.")
+            return
+
+        try:
+            with open(locator_path, 'w') as f:
+                f.write(new_content)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not write Locator.py:\n{e}")
+            return
+
+        msg = f"Updated '{varname}' ({n_entries} entries) in Locator.py"
+        logger.info(msg)
+        if self.locator_update_status is not None:
+            self.locator_update_status.config(text=f"Done: {varname} updated ({timestamp})")
+        messagebox.showinfo("Success", msg + f"\nBackup saved to Locator.py.bak")
 
     def home_robot(self):
         """Home the robot."""

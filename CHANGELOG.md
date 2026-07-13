@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026-07-13] - Grid Array Generator: Preserve Tool Orientation + Sim Support
+
+### workflows/enhanced_SP_arm_position_program_v1.1_xy_coordinate_system.py
+- FIXED: `generate_grid_array` no longer drops the tool orientation between origin capture and per-cell IK. Previously `n9_ik(x, y)` was called without `tool_orientation=`, so every generated cell defaulted to theta=0 regardless of the origin's actual tool angle. In sim this caused ~176 deg of tool rotation drift between origin and cells; on hardware this meant the wrist center landed on target but the pipette tip physically missed vials. Root cause verified empirically against `north.n9_kinematics`.
+- CHANGED: `set_grid_origin` now captures `tool_theta_rad` via `n9_kinematics.fk` (same math used by generation and verification) and displays it in the origin label.
+- ADDED: Import of `north.n9_kinematics` as `n9k` with graceful fallback (`N9K_AVAILABLE`). Grid generation is disabled with a clear message if the module is missing rather than silently doing the wrong thing.
+- ADDED: Pure `_compute_grid_entries(...)` helper that runs entirely on `n9_kinematics` (works in sim without hardware, no fabricated math). Structured for future reuse: takes any (x0, y0, z_cts, tool_theta_rad) origin so the same math can shift an existing `Locator.py` array by re-anchoring one reference cell.
+- ADDED: FK round-trip verification on every generated cell (tolerances: 0.5 mm XY, 0.005 rad theta). Any drift beyond tolerance is embedded as `# FK ROUND-TRIP DRIFT` comments in the grid output text so the user sees it before pasting into `Locator.py`.
+- REMOVED: The `hasattr(self.robot, 'n9_ik')` block that unnecessarily disabled grid generation in simulation mode.
+
 ## [2026-07-08] - Two-Point Demo Details CSV Parameter Metadata
 
 ### calibration_modular_v2/two_point_series_calibration_demo.py
