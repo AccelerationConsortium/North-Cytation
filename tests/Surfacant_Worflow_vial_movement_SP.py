@@ -325,6 +325,22 @@ def _replay_first_plate_vial_movements(lash_e, first_plate_df):
 	logger.info("Stage 1 complete")
 
 
+def _run_water_vial_movement_only(lash_e):
+	logger = lash_e.logger
+	robot = lash_e.nr_robot
+
+	logger.info("")
+	logger.info("=== Water vial movement-only test ===")
+
+	for idx, (location, location_index) in enumerate(SAFE_POSITIONS_FOR_WATER_TEST, start=1):
+		pos_label = _position_label(location, location_index)
+		logger.info(f"Position {idx}/{len(SAFE_POSITIONS_FOR_WATER_TEST)}: {pos_label}")
+		robot.move_vial_to_location(WATER_TEST_VIAL, location, location_index)
+		robot.return_vial_home(WATER_TEST_VIAL)
+
+	logger.info("Water vial movement test complete")
+
+
 def _run_water_safe_position_aspiration_test(lash_e):
 	logger = lash_e.logger
 	robot = lash_e.nr_robot
@@ -386,7 +402,7 @@ def run_surfactant_workflow_movement_test():
 	if WATER_VIAL_MOVEMENT_ONLY:
 		logger.info("WATER_VIAL_MOVEMENT_ONLY=True: skipping surfactant recipe build and vial movements")
 		_assert_required_vials_exist(lash_e, [WATER_TEST_VIAL])
-		_run_water_safe_position_aspiration_test(lash_e)
+		_run_water_vial_movement_only(lash_e)
 	else:
 		first_plate_df = _build_first_plate_recipes(lash_e)
 
