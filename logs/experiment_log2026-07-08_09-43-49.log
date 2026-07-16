@@ -1,0 +1,86 @@
+2026-07-08 09:43:49,557 - DEBUG - No workflow config provided - using default initialization
+2026-07-08 09:43:49,557 - INFO - Launching status review GUI...
+2026-07-08 09:43:49,797 - INFO - Detected workflow name: Surfacant_Worflow_vial_movement_SP
+2026-07-08 09:43:50,271 - INFO - Config editor loaded for workflow: Surfacant_Worflow_vial_movement_SP
+2026-07-08 09:44:02,053 - INFO - User selected: Run Workflow
+2026-07-08 09:44:02,061 - INFO - Status review completed - proceeding with hardware initialization
+2026-07-08 09:44:02,814 - INFO - Initializing North Robot...
+2026-07-08 09:44:02,814 - DEBUG - Loading robot configuration files...
+2026-07-08 09:44:02,833 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-07-08 09:44:02,844 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-07-08 09:44:02,849 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-07-08 09:44:02,852 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-07-08 09:44:02,855 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-07-08 09:44:02,859 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-07-08 09:44:02,859 - DEBUG - Loading robot state files...
+2026-07-08 09:44:02,880 - DEBUG - Loaded vial data from C:\Users\Imaging Controller\Desktop\utoronto_demo\status\surfactant_multidim_vials.csv
+2026-07-08 09:44:02,882 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-07-08 09:44:02,886 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-07-08 09:44:02,886 - DEBUG - Robot status loaded successfully
+2026-07-08 09:44:02,886 - INFO - Physical initialization of North Robot...
+2026-07-08 09:44:06,338 - DEBUG - Loading pumps from YAML configuration...
+2026-07-08 09:44:06,442 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-07-08 09:44:06,554 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-07-08 09:44:06,554 - INFO - Moving robot to home position
+2026-07-08 09:44:07,041 - DEBUG - Initializing centrifuge controller...
+2026-07-08 09:44:07,041 - INFO - Initializing North Track...
+2026-07-08 09:44:07,042 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-07-08 09:44:07,042 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-07-08 09:44:07,053 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-07-08 09:44:07,053 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-07-08 09:44:07,062 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-07-08 09:44:07,062 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-07-08 09:44:07,065 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-07-08 09:44:07,069 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-07-08 09:44:07,142 - DEBUG - Moving North Track to home position
+2026-07-08 09:44:07,142 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-07-08 09:44:07,143 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-07-08 09:44:07,146 - INFO - Starting surfactant workflow movement replay test
+2026-07-08 09:44:07,146 - INFO - Simulation mode: False
+2026-07-08 09:44:07,146 - INFO - Workflow init strategy: grid
+2026-07-08 09:44:07,147 - INFO - Rack-only configuration enabled for this test
+2026-07-08 09:44:07,147 - INFO - Selected surfactants: ['TTAB', 'SDS', 'CHAPS']
+2026-07-08 09:44:07,147 - INFO - Selected buffer: NaCl
+2026-07-08 09:44:07,147 - INFO - Workflow surfactants: ['TTAB', 'SDS', 'CHAPS']
+2026-07-08 09:44:07,147 - INFO - Homing robot components before test
+2026-07-08 09:44:07,147 - INFO - Homing all robot components...
+2026-07-08 09:44:07,147 - DEBUG - Homing carousel...
+2026-07-08 09:44:14,982 - DEBUG - Homing robot axes...
+2026-07-08 09:44:27,197 - DEBUG - Homing pump 0...
+2026-07-08 09:44:28,828 - DEBUG - Homing pump 1...
+2026-07-08 09:44:30,524 - DEBUG - Homing track axes...
+2026-07-08 09:44:30,524 - DEBUG - Homing track axis z_axis (axis 6)...
+2026-07-08 09:44:34,071 - DEBUG - Homing track axis x_axis (axis 7)...
+2026-07-08 09:44:38,144 - INFO - All robot components homed successfully
+2026-07-08 09:44:38,145 - INFO - Grid init prepared: 27 points (= 3^3)
+2026-07-08 09:44:38,146 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-07-08 09:44:38,146 - INFO - Target concentrations: ['1.00e-02', '3.87e-01', '1.50e+01'] mM
+2026-07-08 09:44:38,147 - INFO - Systematic dilution series: ['10', '4', '1.5', '0.7', '0.3', '0.1'] mM
+2026-07-08 09:44:38,147 - INFO -   1.00e-02 mM: Use TTAB_dilution_5 (20.0 uL)
+2026-07-08 09:44:38,147 - INFO -   3.87e-01 mM: Use TTAB_dilution_2 (51.6 uL)
+2026-07-08 09:44:38,147 - INFO -   1.50e+01 mM: Use TTAB_stock (60.0 uL)
+2026-07-08 09:44:38,147 - INFO - 
+=== Analyzing dilution strategy for SDS ===
+2026-07-08 09:44:38,147 - INFO - Target concentrations: ['1.00e-02', '3.87e-01', '1.50e+01'] mM
+2026-07-08 09:44:38,147 - INFO - Systematic dilution series: ['10', '4', '1.5', '0.7', '0.3', '0.1'] mM
+2026-07-08 09:44:38,147 - INFO -   1.00e-02 mM: Use SDS_dilution_5 (20.0 uL)
+2026-07-08 09:44:38,147 - INFO -   3.87e-01 mM: Use SDS_dilution_2 (51.6 uL)
+2026-07-08 09:44:38,147 - INFO -   1.50e+01 mM: Use SDS_stock (60.0 uL)
+2026-07-08 09:44:38,147 - INFO - 
+=== Analyzing dilution strategy for CHAPS ===
+2026-07-08 09:44:38,147 - INFO - Target concentrations: ['1.00e-02', '3.00e-01', '9.00e+00'] mM
+2026-07-08 09:44:38,147 - INFO - Systematic dilution series: ['5', '3', '1', '0.5', '0.2', '0.1'] mM
+2026-07-08 09:44:38,147 - INFO -   1.00e-02 mM: Use CHAPS_dilution_5 (20.0 uL)
+2026-07-08 09:44:38,147 - INFO -   3.00e-01 mM: Use CHAPS_dilution_2 (60.0 uL)
+2026-07-08 09:44:38,161 - INFO -   9.00e+00 mM: Use CHAPS_stock (60.0 uL)
+2026-07-08 09:44:38,161 - INFO - Initial points kept: 27/27
+2026-07-08 09:44:38,166 - INFO - 
+2026-07-08 09:44:38,166 - INFO - === Stage 1: Replaying first-plate vial placement movements ===
+2026-07-08 09:44:38,166 - INFO - First plate rows: 55
+2026-07-08 09:44:38,172 - INFO - Replaying movement for TTAB: 7 vials
+2026-07-08 09:44:38,173 - INFO -   Positioning surfactant A vials by concentration (concentrated -> dilute):
+2026-07-08 09:44:38,173 - INFO -     TTAB_stock (50.00mM) -> main_8mL_rack[47]
+2026-07-08 09:44:38,173 - INFO - Moving vial TTAB_stock to main_8mL_rack: 47
+2026-07-08 09:44:38,173 - DEBUG - Grabbing vial 2 with index 2
+2026-07-08 09:44:40,759 - DEBUG - Dropping off vial 2 at location main_8mL_rack with index 47

@@ -1,0 +1,1512 @@
+2026-06-12 16:55:30,433 - INFO - Workflow config loaded: surfactant_multidimensional_workflow
+2026-06-12 16:55:30,433 - INFO - Config keys updated: 40 (SURFACTANT_LIBRARY, NUM_SUBSTOCKS, MIN_WELL_PIPETTE_VOLUME_UL, SURFACTANTS, EXPERIMENT_TAG, SIMULATE, VALIDATE_LIQUIDS, RECOMMENDER_TYPE, FILTER_UNRELIABLE_RATIOS, TURBIDITY_FILTER_THRESHOLD, FLAT_TURBIDITY_MAX, TURBIDITY_PENALTY_THRESHOLD, TURBIDITY_PLOT_THRESHOLD, TURBIDITY_PENALTY_DECAY, TURBIDITY_PENALTY_ENABLED, BAYESIAN_ALPHA_SPACING, WELL_VOLUME_UL, PYRENE_VOLUME_UL, WATER_RESERVE_UL, SURFACTANT_BUDGET_UL, INIT_STRATEGY, GRID_POINTS_PER_AXIS, INIT_BOUNDARY_LEVELS, INIT_INTERIOR_PTS, MIN_CONC_MM, FEASIBLE_MAX_CONC_MULTIPLIER, FEASIBLE_DIAGNOSTIC_GRID_N, GRADIENT_SUGGESTIONS_PER_ITERATION, RECOMMEND_OVERSAMPLE_FACTOR, TARGET_TOTAL_WELLS, MAX_ITERATIONS, MAX_WELLS_PER_PLATE, ADD_REGULAR_CONTROLS, ADD_1D_CONTROLS, CMC_CONTROL_POINTS, STOCK_CONTROL_VOL_UL, INPUT_VIAL_STATUS_FILE, ADD_BUFFER, BUFFER_VOLUME_UL, SELECTED_BUFFER)
+2026-06-12 16:55:30,433 - INFO - SIMULATE mode: False
+2026-06-12 16:55:30,433 - INFO - Launching status review GUI...
+2026-06-12 16:55:30,612 - INFO - Detected workflow name: surfactant_multidimensional_workflow
+2026-06-12 16:55:31,078 - INFO - Config editor loaded for workflow: surfactant_multidimensional_workflow
+2026-06-12 16:55:36,132 - INFO - User selected: Run Workflow
+2026-06-12 16:55:36,145 - INFO - Status review completed - proceeding with hardware initialization
+2026-06-12 16:55:36,160 - DEBUG - Reloading config after status check to get updated values
+2026-06-12 16:55:36,201 - INFO - Config Manager: Updated 40 workflow constants from surfactant_multidimensional_workflow.yaml
+2026-06-12 16:55:36,815 - INFO - Initializing North Robot...
+2026-06-12 16:55:36,831 - DEBUG - Loading robot configuration files...
+2026-06-12 16:55:36,847 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-06-12 16:55:36,848 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-06-12 16:55:36,848 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-06-12 16:55:36,848 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-06-12 16:55:36,848 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-06-12 16:55:36,848 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-06-12 16:55:36,848 - DEBUG - Loading robot state files...
+2026-06-12 16:55:36,865 - DEBUG - Loaded vial data from ../utoronto_demo/status/surfactant_multidim_vials.csv
+2026-06-12 16:55:36,865 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-06-12 16:55:36,865 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-06-12 16:55:36,865 - DEBUG - Robot status loaded successfully
+2026-06-12 16:55:36,865 - INFO - Physical initialization of North Robot...
+2026-06-12 16:55:40,363 - DEBUG - Loading pumps from YAML configuration...
+2026-06-12 16:55:40,464 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-06-12 16:55:40,576 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-06-12 16:55:40,576 - INFO - Moving robot to home position
+2026-06-12 16:55:40,983 - DEBUG - Initializing centrifuge controller...
+2026-06-12 16:55:47,875 - DEBUG - Current reader status: 0
+2026-06-12 16:55:47,875 - INFO - Cytation5 is connected and ready
+2026-06-12 16:55:47,875 - INFO - Initializing North Track...
+2026-06-12 16:55:47,875 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-06-12 16:55:47,876 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-06-12 16:55:47,877 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-06-12 16:55:47,877 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-06-12 16:55:47,879 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-06-12 16:55:47,879 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-06-12 16:55:47,887 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-06-12 16:55:47,891 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-06-12 16:55:47,964 - DEBUG - Moving North Track to home position
+2026-06-12 16:55:47,964 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-06-12 16:55:47,965 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-06-12 16:55:47,977 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-06-12 16:55:47,978 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-06-12 16:55:47,979 - INFO -   VALIDATION-ONLY MODE: Running comprehensive pipetting validation for 1 surfactants...
+2026-06-12 16:55:47,979 - INFO -   Validation data will be saved to: output\validation_20260612_165547/calibration_validation/
+2026-06-12 16:55:47,979 - INFO -     Validating water pipetting (10-900 uL)...
+2026-06-12 16:55:47,979 - INFO -       Testing small water volumes (10-100 uL) with conditioning...
+2026-06-12 16:55:47,997 - DEBUG - Using calibrated aspirate_speed=30 for water at 0.020mL
+2026-06-12 16:55:47,997 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-06-12 16:55:47,997 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:55:47,997 - DEBUG - Using calibrated dispense_wait_time=3.0 for water at 0.020mL
+2026-06-12 16:55:47,997 - DEBUG - Using calibrated retract_speed=5 for water at 0.020mL
+2026-06-12 16:55:47,997 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-06-12 16:55:47,997 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:55:47,997 - DEBUG - Using calibrated overaspirate_vol=-0.02 for water at 0.020mL
+2026-06-12 16:55:47,998 - DEBUG - Using calibrated post_retract_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:55:47,998 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:55:47,999 - INFO - Moving vial water to clamp: 0
+2026-06-12 16:55:48,000 - DEBUG - Grabbing vial 3 with index 3
+2026-06-12 16:55:50,582 - DEBUG - Dropping off vial 3 at location clamp with index 0
+2026-06-12 16:55:53,319 - INFO -     Conditioning tip with water: 3 cycles of 150.0uL (fast dummy params)
+2026-06-12 16:55:53,319 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:55:53,319 - DEBUG - Applied object param aspirate_speed=15
+2026-06-12 16:55:53,319 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:55:53,319 - DEBUG - Applied object param blowout_vol=0.5
+2026-06-12 16:55:53,319 - DEBUG - Applied object param dispense_speed=5
+2026-06-12 16:55:53,319 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-06-12 16:55:53,319 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-06-12 16:55:53,319 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:55:53,319 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:55:53,319 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:55:53,319 - DEBUG - Applied object param retract_speed=10
+2026-06-12 16:55:53,329 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-06-12 16:55:53,329 - INFO - Getting small_tip (pipet number 0) from rack: small_tip_rack_1
+2026-06-12 16:55:58,436 - INFO - Pipetting from vial water, amount: 0.150 mL
+2026-06-12 16:55:58,437 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-06-12 16:55:58,439 - DEBUG - Adjusting pump 0 speed to 10
+2026-06-12 16:56:00,804 - DEBUG - Adjusting pump 0 speed to 15
+2026-06-12 16:56:01,786 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-06-12 16:56:03,873 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:56:03,873 - DEBUG - Applied object param aspirate_speed=15
+2026-06-12 16:56:03,873 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:56:03,873 - DEBUG - Applied object param blowout_vol=0.5
+2026-06-12 16:56:03,873 - DEBUG - Applied object param dispense_speed=5
+2026-06-12 16:56:03,873 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-06-12 16:56:03,873 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-06-12 16:56:03,873 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:56:03,873 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:56:03,873 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:56:03,873 - DEBUG - Applied object param retract_speed=10
+2026-06-12 16:56:03,873 - INFO - Pipetting into vial water, amount: 0.150 mL
+2026-06-12 16:56:03,873 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:05,729 - DEBUG - Dispensing 0.150 mL then waiting 0.0 s
+2026-06-12 16:56:06,215 - DEBUG - Blowing out 0.500 mL
+2026-06-12 16:56:06,215 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:07,782 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:09,319 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:56:09,319 - DEBUG - Applied object param aspirate_speed=15
+2026-06-12 16:56:09,319 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:56:09,319 - DEBUG - Applied object param blowout_vol=0.5
+2026-06-12 16:56:09,319 - DEBUG - Applied object param dispense_speed=5
+2026-06-12 16:56:09,319 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-06-12 16:56:09,319 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-06-12 16:56:09,319 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:56:09,319 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:56:09,319 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:56:09,319 - DEBUG - Applied object param retract_speed=10
+2026-06-12 16:56:09,319 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-06-12 16:56:09,319 - INFO - Pipetting from vial water, amount: 0.150 mL
+2026-06-12 16:56:09,319 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-06-12 16:56:09,319 - DEBUG - Adjusting pump 0 speed to 10
+2026-06-12 16:56:10,397 - DEBUG - Adjusting pump 0 speed to 15
+2026-06-12 16:56:11,343 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-06-12 16:56:13,434 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:56:13,434 - DEBUG - Applied object param aspirate_speed=15
+2026-06-12 16:56:13,434 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:56:13,434 - DEBUG - Applied object param blowout_vol=0.5
+2026-06-12 16:56:13,434 - DEBUG - Applied object param dispense_speed=5
+2026-06-12 16:56:13,434 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-06-12 16:56:13,434 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-06-12 16:56:13,434 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:56:13,434 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:56:13,434 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:56:13,434 - DEBUG - Applied object param retract_speed=10
+2026-06-12 16:56:13,436 - INFO - Pipetting into vial water, amount: 0.150 mL
+2026-06-12 16:56:13,438 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:15,299 - DEBUG - Dispensing 0.150 mL then waiting 0.0 s
+2026-06-12 16:56:15,838 - DEBUG - Blowing out 0.500 mL
+2026-06-12 16:56:15,838 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:17,385 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:18,921 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:56:18,921 - DEBUG - Applied object param aspirate_speed=15
+2026-06-12 16:56:18,921 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:56:18,921 - DEBUG - Applied object param blowout_vol=0.5
+2026-06-12 16:56:18,921 - DEBUG - Applied object param dispense_speed=5
+2026-06-12 16:56:18,921 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-06-12 16:56:18,921 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-06-12 16:56:18,921 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:56:18,921 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:56:18,921 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:56:18,921 - DEBUG - Applied object param retract_speed=10
+2026-06-12 16:56:18,921 - DEBUG - Selected small_tip for volume 0.150 mL
+2026-06-12 16:56:18,921 - INFO - Pipetting from vial water, amount: 0.150 mL
+2026-06-12 16:56:18,921 - INFO - Additional volume from calibration, amount: 0.000 mL
+2026-06-12 16:56:18,921 - DEBUG - Adjusting pump 0 speed to 10
+2026-06-12 16:56:20,015 - DEBUG - Adjusting pump 0 speed to 15
+2026-06-12 16:56:20,981 - DEBUG - Aspirating 0.150 mL then waiting 0.0 s
+2026-06-12 16:56:22,999 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:56:22,999 - DEBUG - Applied object param aspirate_speed=15
+2026-06-12 16:56:22,999 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:56:22,999 - DEBUG - Applied object param blowout_vol=0.5
+2026-06-12 16:56:22,999 - DEBUG - Applied object param dispense_speed=5
+2026-06-12 16:56:22,999 - DEBUG - Applied object param dispense_wait_time=0.0
+2026-06-12 16:56:22,999 - DEBUG - Applied object param overaspirate_vol=0.0
+2026-06-12 16:56:22,999 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:56:22,999 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:56:22,999 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:56:22,999 - DEBUG - Applied object param retract_speed=10
+2026-06-12 16:56:22,999 - INFO - Pipetting into vial water, amount: 0.150 mL
+2026-06-12 16:56:22,999 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:24,853 - DEBUG - Dispensing 0.150 mL then waiting 0.0 s
+2026-06-12 16:56:25,337 - DEBUG - Blowing out 0.500 mL
+2026-06-12 16:56:25,337 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:26,876 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 16:56:28,415 - INFO -     Tip conditioning complete for water
+2026-06-12 16:56:28,415 - INFO - Vial water already at clamp index 0, no move needed
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated aspirate_speed=30 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated dispense_wait_time=3.0 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated retract_speed=5 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated overaspirate_vol=-0.02 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated post_retract_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:56:28,422 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:28,422 - INFO - Dispensing 0.020 mL from water to water
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated aspirate_speed=30 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated dispense_wait_time=3.0 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated retract_speed=5 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated overaspirate_vol=-0.02 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated post_retract_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:28,430 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:56:28,430 - DEBUG - Applied object param aspirate_speed=30
+2026-06-12 16:56:28,430 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:56:28,430 - DEBUG - Applied object param blowout_vol=0.0
+2026-06-12 16:56:28,430 - DEBUG - Applied object param dispense_speed=11
+2026-06-12 16:56:28,430 - DEBUG - Applied object param dispense_wait_time=3.0
+2026-06-12 16:56:28,430 - DEBUG - Applied object param overaspirate_vol=-0.02
+2026-06-12 16:56:28,430 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:56:28,430 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:56:28,431 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:56:28,431 - DEBUG - Applied object param retract_speed=5
+2026-06-12 16:56:28,431 - DEBUG - Selected small_tip for volume 0.020 mL
+2026-06-12 16:56:28,434 - INFO - Pipetting from vial water, amount: 0.020 mL
+2026-06-12 16:56:28,434 - INFO - Additional volume from calibration, amount: -0.020 mL
+2026-06-12 16:56:28,435 - DEBUG - Adjusting pump 0 speed to 10
+2026-06-12 16:56:29,533 - DEBUG - Adjusting pump 0 speed to 30
+2026-06-12 16:56:30,510 - DEBUG - Aspirating 0.000 mL then waiting 0.0 s
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated aspirate_speed=30 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated dispense_speed=11 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated aspirate_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated dispense_wait_time=3.0 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated retract_speed=5 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated blowout_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated post_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated overaspirate_vol=-0.02 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated post_retract_wait_time=0.0 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for water at 0.020mL
+2026-06-12 16:56:31,151 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 16:56:31,151 - DEBUG - Applied object param aspirate_speed=30
+2026-06-12 16:56:31,151 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 16:56:31,151 - DEBUG - Applied object param blowout_vol=0.0
+2026-06-12 16:56:31,151 - DEBUG - Applied object param dispense_speed=11
+2026-06-12 16:56:31,151 - DEBUG - Applied object param dispense_wait_time=3.0
+2026-06-12 16:56:31,151 - DEBUG - Applied object param overaspirate_vol=-0.02
+2026-06-12 16:56:31,151 - DEBUG - Applied object param post_asp_air_vol=0.0
+2026-06-12 16:56:31,151 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 16:56:31,151 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 16:56:31,151 - DEBUG - Applied object param retract_speed=5
+2026-06-12 16:56:31,151 - INFO - Pipetting into vial water, amount: 0.020 mL
+2026-06-12 16:56:31,151 - DEBUG - Adjusting pump 0 speed to 11
+2026-06-12 16:56:33,001 - INFO - Short wait time (1.0s), allowing scale to settle after robot positioning...
+2026-06-12 16:56:34,010 - INFO - Started continuous mass monitoring with pre-dispense baseline
+2026-06-12 16:56:34,272 - DEBUG - Mass: 16.6873g at 0.000s (baseline_pre) steady=True
+2026-06-12 16:56:34,672 - DEBUG - Mass: 16.6873g at 0.469s (baseline_pre) steady=True
+2026-06-12 16:56:35,059 - DEBUG - Mass: 16.6873g at 0.869s (baseline_pre) steady=True
+2026-06-12 16:56:35,468 - DEBUG - Mass: 16.6873g at 1.272s (baseline_pre) steady=True
+2026-06-12 16:56:35,863 - DEBUG - Mass: 16.6873g at 1.677s (baseline_pre) steady=True
+2026-06-12 16:56:36,021 - DEBUG - Dispensing 0.000 mL then waiting 3.0 s
+2026-06-12 16:56:36,259 - DEBUG - Mass: 16.6873g at 2.076s (dispensing) steady=True
+2026-06-12 16:56:36,659 - DEBUG - Mass: 16.6873g at 2.471s (dispensing) steady=True
+2026-06-12 16:56:37,073 - DEBUG - Mass: 16.6873g at 2.872s (dispensing) steady=True
+2026-06-12 16:56:37,466 - DEBUG - Mass: 16.6873g at 3.265s (dispensing) steady=True
+2026-06-12 16:56:37,871 - DEBUG - Mass: 16.6873g at 3.670s (dispensing) steady=True
+2026-06-12 16:56:38,260 - DEBUG - Mass: 16.6873g at 4.068s (dispensing) steady=True
+2026-06-12 16:56:38,660 - DEBUG - Mass: 16.6873g at 4.476s (dispensing) steady=True
+2026-06-12 16:56:39,066 - DEBUG - Mass: 16.6873g at 4.864s (dispensing) steady=True
+2026-06-12 16:56:39,343 - INFO - Dispensing took 3.322s, collecting post-dispense baseline
+2026-06-12 16:56:39,468 - DEBUG - Mass: 16.6873g at 5.270s (dispensing) steady=True
+2026-06-12 16:56:39,865 - DEBUG - Mass: 16.6873g at 5.677s (baseline_post) steady=True
+2026-06-12 16:56:40,273 - DEBUG - Mass: 16.6873g at 6.077s (baseline_post) steady=True
+2026-06-12 16:56:40,665 - DEBUG - Mass: 16.6873g at 6.464s (baseline_post) steady=True
+2026-06-12 16:56:41,071 - DEBUG - Mass: 16.6873g at 6.871s (baseline_post) steady=True
+2026-06-12 16:56:41,466 - DEBUG - Mass: 16.6873g at 7.269s (baseline_post) steady=True
+2026-06-12 16:56:41,684 - INFO - Stopped continuous mass monitoring. Collected 19 data points
+2026-06-12 16:56:41,684 - INFO - Pre-baseline: 5 stable readings, avg=16.687300g
+2026-06-12 16:56:41,684 - INFO - Post-baseline: 5 stable readings, avg=16.687300g
+2026-06-12 16:56:41,684 - INFO - INDEPENDENT BASELINE calculation:
+2026-06-12 16:56:41,684 - INFO - Pre: STABLE, Post: STABLE, Mass difference: 0.000000g
+2026-06-12 16:56:41,692 - INFO - Reading summary: 5 pre-readings (5 stable), 5 post-readings (5 stable)
+2026-06-12 16:56:41,692 - INFO - Baseline variability: pre_std=0.000000g, post_std=0.000000g
+2026-06-12 16:56:41,692 - INFO - Target: 0.020 mL = ~0.020000 g for water
+2026-06-12 16:56:41,696 - INFO - Saved 19 mass measurements to output\mass_measurements\experiment_log2026-06-12_16-55-30\mass_data_3_20260612_165641.csv
+2026-06-12 16:56:42,238 - INFO - Saved dispense mass vs time plot to output\mass_measurements\experiment_log2026-06-12_16-55-30\mass_plot_3_20260612_165641.png
+2026-06-12 16:56:42,844 - ERROR - Stage 1 dispensed 0.00uL vs 20.0uL target (error -20.0uL, threshold +/-6.0uL). Check tip attachment, liquid availability, and vial positioning.
+2026-06-12 18:53:48,026 - INFO -     Pipetting validation FAILED: Stage 1 dispensed 0.00uL vs 20.0uL target (error -20.0uL, threshold +/-6.0uL). Check tip attachment, liquid availability, and vial positioning.
+2026-06-12 18:53:48,049 - INFO -     Continuing with workflow (validation failure non-critical)...
+2026-06-12 18:53:48,064 - INFO - ================================================================================
+2026-06-12 18:53:48,065 - INFO - N-D SURFACTANT WORKFLOW: 3 surfactants ['CTAB', 'TTAB', 'NaC']
+2026-06-12 18:53:48,066 - INFO -   init strategy: simplex
+2026-06-12 18:53:48,067 - INFO -   simplex vertex maxima: CTAB=3.50 mM, TTAB=35.00 mM, NaC=35.00 mM
+2026-06-12 18:53:48,067 - INFO -   cube maxima (grid mode): CTAB=1.50 mM, TTAB=15.00 mM, NaC=15.00 mM
+2026-06-12 18:53:48,067 - INFO -   recommender: triangle
+2026-06-12 18:53:48,068 - INFO -   simulate: False
+2026-06-12 18:53:48,068 - INFO - ================================================================================
+2026-06-12 18:53:48,074 - INFO - Experiment folder: output\experimental_surfactant_grid\multidim_3D_CTAB_TTAB_NaC_triangle_simplex_multidim_v1_20260612_185348
+2026-06-12 18:53:48,340 - INFO - Homing all robot components...
+2026-06-12 18:53:48,340 - DEBUG - Homing carousel...
+2026-06-12 18:53:56,158 - DEBUG - Homing robot axes...
+2026-06-12 18:54:54,789 - DEBUG - Homing pump 0...
+2026-06-12 18:54:56,430 - DEBUG - Homing pump 1...
+2026-06-12 18:54:58,076 - DEBUG - Homing track axes...
+2026-06-12 18:54:58,076 - DEBUG - Homing track axis z_axis (axis 6)...
+2026-06-12 18:55:01,622 - DEBUG - Homing track axis x_axis (axis 7)...
+2026-06-12 18:55:05,695 - INFO - All robot components homed successfully
+2026-06-12 18:55:05,775 - INFO -     Water vial 'water' already full (8.00mL), skipping fill
+2026-06-12 18:55:05,775 - INFO -     Water vial 'water_2' already full (8.00mL), skipping fill
+2026-06-12 18:55:05,777 - INFO -     Surfactant vial 'CTAB_stock' already full (7.80mL), skipping fill
+2026-06-12 18:55:05,778 - INFO -     Surfactant vial 'TTAB_stock' already full (7.36mL), skipping fill
+2026-06-12 18:55:05,780 - INFO -     Surfactant vial 'NaC_stock' already full (7.80mL), skipping fill
+2026-06-12 18:55:05,781 - INFO - 
+=== Analyzing dilution strategy for CTAB ===
+2026-06-12 18:55:05,783 - INFO - Target concentrations: ['1.00e-03', '3.50e+00'] mM
+2026-06-12 18:55:05,788 - INFO - Systematic dilution series: ['1', '0.4', '0.15', '0.07', '0.03', '0.01'] mM
+2026-06-12 18:55:05,848 - INFO -   1.00e-03 mM: Use CTAB_dilution_5 (20.0 uL)
+2026-06-12 18:55:05,849 - INFO -   3.50e+00 mM: Use CTAB_stock (140.0 uL)
+2026-06-12 18:55:05,849 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-06-12 18:55:05,850 - INFO - Target concentrations: ['1.00e-03', '3.50e+01'] mM
+2026-06-12 18:55:05,850 - INFO - Systematic dilution series: ['10', '3', '0.7', '0.15', '0.04', '0.01'] mM
+2026-06-12 18:55:05,851 - INFO -   1.00e-03 mM: Use TTAB_dilution_5 (20.0 uL)
+2026-06-12 18:55:05,852 - INFO -   3.50e+01 mM: Use TTAB_stock (140.0 uL)
+2026-06-12 18:55:05,852 - INFO - 
+=== Analyzing dilution strategy for NaC ===
+2026-06-12 18:55:05,852 - INFO - Target concentrations: ['1.00e-03', '3.50e+01'] mM
+2026-06-12 18:55:05,852 - INFO - Systematic dilution series: ['10', '3', '0.7', '0.15', '0.04', '0.01'] mM
+2026-06-12 18:55:05,854 - INFO -   1.00e-03 mM: Use NaC_dilution_5 (20.0 uL)
+2026-06-12 18:55:05,854 - INFO -   3.50e+01 mM: Use NaC_stock (140.0 uL)
+2026-06-12 18:55:05,854 - INFO - Boundary sampling: 144^3 grid...
+2026-06-12 18:56:12,725 - INFO -   Feasible: 2888262/2985984 grid points
+2026-06-12 18:56:22,047 - INFO -   Boundary: 117823 points
+2026-06-12 18:56:27,289 - INFO -   Corner-seeded: 8 points from 8 corners
+2026-06-12 18:56:59,100 - INFO -   Selected 48 boundary points via greedy max-spacing
+2026-06-12 18:57:00,448 - INFO - Simplex init: 68 points (3D: boundary levels=8 + 20 interior)
+2026-06-12 18:57:00,449 - INFO - 
+=== Analyzing dilution strategy for CTAB ===
+2026-06-12 18:57:00,449 - INFO - Target concentrations: ['1.00e-03', '1.10e-03', '1.26e-03', '1.67e-03', '1.98e-03', '2.35e-03', '2.50e-03', '3.13e-03', '3.76e-03', '7.47e-03', '7.80e-03', '1.06e-02', '1.56e-02', '2.10e-02', '2.38e-02', '2.90e-02', '3.25e-02', '3.64e-02', '3.86e-02', '4.08e-02', '4.32e-02', '5.32e-02', '5.43e-02', '5.75e-02', '6.46e-02', '8.54e-02', '1.13e-01', '1.14e-01', '1.70e-01', '3.37e-01', '3.78e-01', '4.00e-01', '4.24e-01', '4.38e-01', '4.49e-01', '4.77e-01', '7.08e-01', '9.77e-01', '1.21e+00', '1.37e+00', '1.57e+00', '1.84e+00', '1.87e+00', '2.40e+00', '2.79e+00', '2.95e+00', '3.12e+00', '3.31e+00', '3.50e+00'] mM
+2026-06-12 18:57:00,449 - INFO - Systematic dilution series: ['1', '0.4', '0.15', '0.07', '0.03', '0.01'] mM
+2026-06-12 18:57:00,450 - INFO -   1.00e-03 mM: Use CTAB_dilution_5 (20.0 uL)
+2026-06-12 18:57:00,452 - INFO -   1.10e-03 mM: Use CTAB_dilution_5 (22.1 uL)
+2026-06-12 18:57:00,452 - INFO -   1.26e-03 mM: Use CTAB_dilution_5 (25.1 uL)
+2026-06-12 18:57:00,453 - INFO -   1.67e-03 mM: Use CTAB_dilution_4 (11.1 uL)
+2026-06-12 18:57:00,454 - INFO -   1.98e-03 mM: Use CTAB_dilution_4 (13.2 uL)
+2026-06-12 18:57:00,455 - INFO -   2.35e-03 mM: Use CTAB_dilution_4 (15.7 uL)
+2026-06-12 18:57:00,457 - INFO -   2.50e-03 mM: Use CTAB_dilution_4 (16.7 uL)
+2026-06-12 18:57:00,458 - INFO -   3.13e-03 mM: Use CTAB_dilution_4 (20.9 uL)
+2026-06-12 18:57:00,460 - INFO -   3.76e-03 mM: Use CTAB_dilution_3 (10.8 uL)
+2026-06-12 18:57:00,461 - INFO -   7.47e-03 mM: Use CTAB_dilution_3 (21.4 uL)
+2026-06-12 18:57:00,463 - INFO -   7.80e-03 mM: Use CTAB_dilution_2 (10.4 uL)
+2026-06-12 18:57:00,466 - INFO -   1.06e-02 mM: Use CTAB_dilution_2 (14.1 uL)
+2026-06-12 18:57:00,468 - INFO -   1.56e-02 mM: Use CTAB_dilution_2 (20.8 uL)
+2026-06-12 18:57:00,470 - INFO -   2.10e-02 mM: Use CTAB_dilution_1 (10.5 uL)
+2026-06-12 18:57:00,472 - INFO -   2.38e-02 mM: Use CTAB_dilution_1 (11.9 uL)
+2026-06-12 18:57:00,474 - INFO -   2.90e-02 mM: Use CTAB_dilution_1 (14.5 uL)
+2026-06-12 18:57:00,476 - INFO -   3.25e-02 mM: Use CTAB_dilution_1 (16.2 uL)
+2026-06-12 18:57:00,478 - INFO -   3.64e-02 mM: Use CTAB_dilution_1 (18.2 uL)
+2026-06-12 18:57:00,480 - INFO -   3.86e-02 mM: Use CTAB_dilution_1 (19.3 uL)
+2026-06-12 18:57:00,482 - INFO -   4.08e-02 mM: Use CTAB_dilution_1 (20.4 uL)
+2026-06-12 18:57:00,483 - INFO -   4.32e-02 mM: Use CTAB_dilution_1 (21.6 uL)
+2026-06-12 18:57:00,486 - INFO -   5.32e-02 mM: Use CTAB_dilution_0 (10.6 uL)
+2026-06-12 18:57:00,487 - INFO -   5.43e-02 mM: Use CTAB_dilution_0 (10.9 uL)
+2026-06-12 18:57:00,489 - INFO -   5.75e-02 mM: Use CTAB_dilution_0 (11.5 uL)
+2026-06-12 18:57:00,492 - INFO -   6.46e-02 mM: Use CTAB_dilution_0 (12.9 uL)
+2026-06-12 18:57:00,494 - INFO -   8.54e-02 mM: Use CTAB_dilution_0 (17.1 uL)
+2026-06-12 18:57:00,496 - INFO -   1.13e-01 mM: Use CTAB_dilution_0 (22.6 uL)
+2026-06-12 18:57:00,498 - INFO -   1.14e-01 mM: Use CTAB_dilution_0 (22.8 uL)
+2026-06-12 18:57:00,499 - INFO -   1.70e-01 mM: Use CTAB_dilution_0 (34.0 uL)
+2026-06-12 18:57:00,500 - INFO -   3.37e-01 mM: Use CTAB_stock (13.5 uL)
+2026-06-12 18:57:00,502 - INFO -   3.78e-01 mM: Use CTAB_stock (15.1 uL)
+2026-06-12 18:57:00,504 - INFO -   4.00e-01 mM: Use CTAB_stock (16.0 uL)
+2026-06-12 18:57:00,506 - INFO -   4.24e-01 mM: Use CTAB_stock (16.9 uL)
+2026-06-12 18:57:00,507 - INFO -   4.38e-01 mM: Use CTAB_stock (17.5 uL)
+2026-06-12 18:57:00,508 - INFO -   4.49e-01 mM: Use CTAB_stock (17.9 uL)
+2026-06-12 18:57:00,510 - INFO -   4.77e-01 mM: Use CTAB_stock (19.1 uL)
+2026-06-12 18:57:00,512 - INFO -   7.08e-01 mM: Use CTAB_stock (28.3 uL)
+2026-06-12 18:57:00,513 - INFO -   9.77e-01 mM: Use CTAB_stock (39.1 uL)
+2026-06-12 18:57:00,514 - INFO -   1.21e+00 mM: Use CTAB_stock (48.4 uL)
+2026-06-12 18:57:00,514 - INFO -   1.37e+00 mM: Use CTAB_stock (54.9 uL)
+2026-06-12 18:57:00,515 - INFO -   1.57e+00 mM: Use CTAB_stock (63.0 uL)
+2026-06-12 18:57:00,515 - INFO -   1.84e+00 mM: Use CTAB_stock (73.7 uL)
+2026-06-12 18:57:00,516 - INFO -   1.87e+00 mM: Use CTAB_stock (74.7 uL)
+2026-06-12 18:57:00,516 - INFO -   2.40e+00 mM: Use CTAB_stock (96.0 uL)
+2026-06-12 18:57:00,518 - INFO -   2.79e+00 mM: Use CTAB_stock (111.4 uL)
+2026-06-12 18:57:00,518 - INFO -   2.95e+00 mM: Use CTAB_stock (118.0 uL)
+2026-06-12 18:57:00,519 - INFO -   3.12e+00 mM: Use CTAB_stock (124.9 uL)
+2026-06-12 18:57:00,520 - INFO -   3.31e+00 mM: Use CTAB_stock (132.2 uL)
+2026-06-12 18:57:00,521 - INFO -   3.50e+00 mM: Use CTAB_stock (140.0 uL)
+2026-06-12 18:57:00,521 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-06-12 18:57:00,521 - INFO - Target concentrations: ['1.00e-03', '1.27e-03', '1.60e-03', '1.80e-03', '2.79e-03', '3.50e-03', '5.64e-03', '7.21e-03', '7.47e-03', '8.98e-03', '1.04e-02', '1.12e-02', '1.61e-02', '1.81e-02', '2.32e-02', '4.49e-02', '4.61e-02', '7.40e-02', '1.00e-01', '1.06e-01', '1.16e-01', '1.25e-01', '1.35e-01', '1.61e-01', '1.68e-01', '1.80e-01', '2.52e-01', '2.75e-01', '3.92e-01', '4.03e-01', '4.67e-01', '9.16e-01', '9.87e-01', '1.04e+00', '1.12e+00', '1.74e+00', '1.87e+00', '2.31e+00', '3.92e+00', '5.13e+00', '6.05e+00', '9.38e+00', '1.01e+01', '1.21e+01', '1.45e+01', '1.88e+01', '2.10e+01', '3.50e+01'] mM
+2026-06-12 18:57:00,521 - INFO - Systematic dilution series: ['10', '3', '0.7', '0.15', '0.04', '0.01'] mM
+2026-06-12 18:57:00,522 - INFO -   1.00e-03 mM: Use TTAB_dilution_5 (20.0 uL)
+2026-06-12 18:57:00,522 - INFO -   1.27e-03 mM: Use TTAB_dilution_5 (25.3 uL)
+2026-06-12 18:57:00,523 - INFO -   1.60e-03 mM: Use TTAB_dilution_5 (32.1 uL)
+2026-06-12 18:57:00,523 - INFO -   1.80e-03 mM: Use TTAB_dilution_5 (35.9 uL)
+2026-06-12 18:57:00,525 - INFO -   2.79e-03 mM: Use TTAB_dilution_4 (13.9 uL)
+2026-06-12 18:57:00,526 - INFO -   3.50e-03 mM: Use TTAB_dilution_4 (17.5 uL)
+2026-06-12 18:57:00,527 - INFO -   5.64e-03 mM: Use TTAB_dilution_4 (28.2 uL)
+2026-06-12 18:57:00,529 - INFO -   7.21e-03 mM: Use TTAB_dilution_4 (36.1 uL)
+2026-06-12 18:57:00,530 - INFO -   7.47e-03 mM: Use TTAB_dilution_4 (37.4 uL)
+2026-06-12 18:57:00,532 - INFO -   8.98e-03 mM: Use TTAB_dilution_3 (12.0 uL)
+2026-06-12 18:57:00,534 - INFO -   1.04e-02 mM: Use TTAB_dilution_3 (13.9 uL)
+2026-06-12 18:57:00,536 - INFO -   1.12e-02 mM: Use TTAB_dilution_3 (14.9 uL)
+2026-06-12 18:57:00,537 - INFO -   1.61e-02 mM: Use TTAB_dilution_3 (21.5 uL)
+2026-06-12 18:57:00,538 - INFO -   1.81e-02 mM: Use TTAB_dilution_3 (24.2 uL)
+2026-06-12 18:57:00,539 - INFO -   2.32e-02 mM: Use TTAB_dilution_3 (31.0 uL)
+2026-06-12 18:57:00,540 - INFO -   4.49e-02 mM: Use TTAB_dilution_2 (12.8 uL)
+2026-06-12 18:57:00,541 - INFO -   4.61e-02 mM: Use TTAB_dilution_2 (13.2 uL)
+2026-06-12 18:57:00,542 - INFO -   7.40e-02 mM: Use TTAB_dilution_2 (21.1 uL)
+2026-06-12 18:57:00,544 - INFO -   1.00e-01 mM: Use TTAB_dilution_2 (28.7 uL)
+2026-06-12 18:57:00,544 - INFO -   1.06e-01 mM: Use TTAB_dilution_2 (30.4 uL)
+2026-06-12 18:57:00,546 - INFO -   1.16e-01 mM: Use TTAB_dilution_2 (33.2 uL)
+2026-06-12 18:57:00,547 - INFO -   1.25e-01 mM: Use TTAB_dilution_2 (35.7 uL)
+2026-06-12 18:57:00,548 - INFO -   1.35e-01 mM: Use TTAB_dilution_2 (38.5 uL)
+2026-06-12 18:57:00,550 - INFO -   1.61e-01 mM: Use TTAB_dilution_1 (10.8 uL)
+2026-06-12 18:57:00,552 - INFO -   1.68e-01 mM: Use TTAB_dilution_1 (11.2 uL)
+2026-06-12 18:57:00,553 - INFO -   1.80e-01 mM: Use TTAB_dilution_1 (12.0 uL)
+2026-06-12 18:57:00,555 - INFO -   2.52e-01 mM: Use TTAB_dilution_1 (16.8 uL)
+2026-06-12 18:57:00,556 - INFO -   2.75e-01 mM: Use TTAB_dilution_1 (18.3 uL)
+2026-06-12 18:57:00,557 - INFO -   3.92e-01 mM: Use TTAB_dilution_1 (26.1 uL)
+2026-06-12 18:57:00,558 - INFO -   4.03e-01 mM: Use TTAB_dilution_1 (26.9 uL)
+2026-06-12 18:57:00,559 - INFO -   4.67e-01 mM: Use TTAB_dilution_1 (31.1 uL)
+2026-06-12 18:57:00,560 - INFO -   9.16e-01 mM: Use TTAB_dilution_0 (18.3 uL)
+2026-06-12 18:57:00,562 - INFO -   9.87e-01 mM: Use TTAB_dilution_0 (19.7 uL)
+2026-06-12 18:57:00,563 - INFO -   1.04e+00 mM: Use TTAB_dilution_0 (20.9 uL)
+2026-06-12 18:57:00,564 - INFO -   1.12e+00 mM: Use TTAB_dilution_0 (22.5 uL)
+2026-06-12 18:57:00,565 - INFO -   1.74e+00 mM: Use TTAB_dilution_0 (34.9 uL)
+2026-06-12 18:57:00,566 - INFO -   1.87e+00 mM: Use TTAB_dilution_0 (37.5 uL)
+2026-06-12 18:57:00,568 - INFO -   2.31e+00 mM: Use TTAB_dilution_0 (46.2 uL)
+2026-06-12 18:57:00,569 - INFO -   3.92e+00 mM: Use TTAB_stock (15.7 uL)
+2026-06-12 18:57:00,571 - INFO -   5.13e+00 mM: Use TTAB_stock (20.5 uL)
+2026-06-12 18:57:00,572 - INFO -   6.05e+00 mM: Use TTAB_stock (24.2 uL)
+2026-06-12 18:57:00,573 - INFO -   9.38e+00 mM: Use TTAB_stock (37.5 uL)
+2026-06-12 18:57:00,574 - INFO -   1.01e+01 mM: Use TTAB_stock (40.4 uL)
+2026-06-12 18:57:00,574 - INFO -   1.21e+01 mM: Use TTAB_stock (48.3 uL)
+2026-06-12 18:57:00,575 - INFO -   1.45e+01 mM: Use TTAB_stock (58.2 uL)
+2026-06-12 18:57:00,575 - INFO -   1.88e+01 mM: Use TTAB_stock (75.3 uL)
+2026-06-12 18:57:00,576 - INFO -   2.10e+01 mM: Use TTAB_stock (83.9 uL)
+2026-06-12 18:57:00,578 - INFO -   3.50e+01 mM: Use TTAB_stock (140.0 uL)
+2026-06-12 18:57:00,578 - INFO - 
+=== Analyzing dilution strategy for NaC ===
+2026-06-12 18:57:00,578 - INFO - Target concentrations: ['1.00e-03', '1.25e-03', '1.46e-03', '2.50e-03', '2.76e-03', '3.73e-03', '3.99e-03', '7.19e-03', '8.35e-03', '9.66e-03', '1.04e-02', '1.31e-02', '1.50e-02', '1.61e-02', '2.32e-02', '2.44e-02', '4.17e-02', '4.49e-02', '5.00e-02', '6.66e-02', '7.05e-02', '1.25e-01', '1.30e-01', '1.35e-01', '1.45e-01', '1.80e-01', '2.31e-01', '2.80e-01', '4.36e-01', '5.02e-01', '6.73e-01', '7.79e-01', '1.21e+00', '1.48e+00', '1.62e+00', '1.87e+00', '2.02e+00', '2.19e+00', '2.51e+00', '2.70e+00', '2.82e+00', '4.35e+00', '5.74e+00', '7.00e+00', '8.72e+00', '1.26e+01', '1.45e+01', '2.10e+01', '2.90e+01', '3.25e+01', '3.50e+01'] mM
+2026-06-12 18:57:00,578 - INFO - Systematic dilution series: ['10', '3', '0.7', '0.15', '0.04', '0.01'] mM
+2026-06-12 18:57:00,579 - INFO -   1.00e-03 mM: Use NaC_dilution_5 (20.0 uL)
+2026-06-12 18:57:00,580 - INFO -   1.25e-03 mM: Use NaC_dilution_5 (24.9 uL)
+2026-06-12 18:57:00,580 - INFO -   1.46e-03 mM: Use NaC_dilution_5 (29.2 uL)
+2026-06-12 18:57:00,581 - INFO -   2.50e-03 mM: Use NaC_dilution_4 (12.5 uL)
+2026-06-12 18:57:00,582 - INFO -   2.76e-03 mM: Use NaC_dilution_4 (13.8 uL)
+2026-06-12 18:57:00,584 - INFO -   3.73e-03 mM: Use NaC_dilution_4 (18.7 uL)
+2026-06-12 18:57:00,585 - INFO -   3.99e-03 mM: Use NaC_dilution_4 (19.9 uL)
+2026-06-12 18:57:00,586 - INFO -   7.19e-03 mM: Use NaC_dilution_4 (36.0 uL)
+2026-06-12 18:57:00,588 - INFO -   8.35e-03 mM: Use NaC_dilution_3 (11.1 uL)
+2026-06-12 18:57:00,589 - INFO -   9.66e-03 mM: Use NaC_dilution_3 (12.9 uL)
+2026-06-12 18:57:00,592 - INFO -   1.04e-02 mM: Use NaC_dilution_3 (13.9 uL)
+2026-06-12 18:57:00,593 - INFO -   1.31e-02 mM: Use NaC_dilution_3 (17.4 uL)
+2026-06-12 18:57:00,594 - INFO -   1.50e-02 mM: Use NaC_dilution_3 (20.0 uL)
+2026-06-12 18:57:00,595 - INFO -   1.61e-02 mM: Use NaC_dilution_3 (21.5 uL)
+2026-06-12 18:57:00,596 - INFO -   2.32e-02 mM: Use NaC_dilution_3 (31.0 uL)
+2026-06-12 18:57:00,597 - INFO -   2.44e-02 mM: Use NaC_dilution_3 (32.5 uL)
+2026-06-12 18:57:00,599 - INFO -   4.17e-02 mM: Use NaC_dilution_2 (11.9 uL)
+2026-06-12 18:57:00,600 - INFO -   4.49e-02 mM: Use NaC_dilution_2 (12.8 uL)
+2026-06-12 18:57:00,601 - INFO -   5.00e-02 mM: Use NaC_dilution_2 (14.3 uL)
+2026-06-12 18:57:00,603 - INFO -   6.66e-02 mM: Use NaC_dilution_2 (19.0 uL)
+2026-06-12 18:57:00,605 - INFO -   7.05e-02 mM: Use NaC_dilution_2 (20.1 uL)
+2026-06-12 18:57:00,606 - INFO -   1.25e-01 mM: Use NaC_dilution_2 (35.7 uL)
+2026-06-12 18:57:00,607 - INFO -   1.30e-01 mM: Use NaC_dilution_2 (37.2 uL)
+2026-06-12 18:57:00,608 - INFO -   1.35e-01 mM: Use NaC_dilution_2 (38.5 uL)
+2026-06-12 18:57:00,609 - INFO -   1.45e-01 mM: Use NaC_dilution_2 (41.4 uL)
+2026-06-12 18:57:00,609 - INFO -   1.80e-01 mM: Use NaC_dilution_1 (12.0 uL)
+2026-06-12 18:57:00,611 - INFO -   2.31e-01 mM: Use NaC_dilution_1 (15.4 uL)
+2026-06-12 18:57:00,613 - INFO -   2.80e-01 mM: Use NaC_dilution_1 (18.7 uL)
+2026-06-12 18:57:00,613 - INFO -   4.36e-01 mM: Use NaC_dilution_1 (29.0 uL)
+2026-06-12 18:57:00,615 - INFO -   5.02e-01 mM: Use NaC_dilution_0 (10.0 uL)
+2026-06-12 18:57:00,617 - INFO -   6.73e-01 mM: Use NaC_dilution_0 (13.5 uL)
+2026-06-12 18:57:00,618 - INFO -   7.79e-01 mM: Use NaC_dilution_0 (15.6 uL)
+2026-06-12 18:57:00,619 - INFO -   1.21e+00 mM: Use NaC_dilution_0 (24.2 uL)
+2026-06-12 18:57:00,621 - INFO -   1.48e+00 mM: Use NaC_dilution_0 (29.6 uL)
+2026-06-12 18:57:00,622 - INFO -   1.62e+00 mM: Use NaC_dilution_0 (32.4 uL)
+2026-06-12 18:57:00,623 - INFO -   1.87e+00 mM: Use NaC_dilution_0 (37.5 uL)
+2026-06-12 18:57:00,624 - INFO -   2.02e+00 mM: Use NaC_dilution_0 (40.3 uL)
+2026-06-12 18:57:00,625 - INFO -   2.19e+00 mM: Use NaC_dilution_0 (43.9 uL)
+2026-06-12 18:57:00,627 - INFO -   2.51e+00 mM: Use NaC_stock (10.1 uL)
+2026-06-12 18:57:00,629 - INFO -   2.70e+00 mM: Use NaC_stock (10.8 uL)
+2026-06-12 18:57:00,631 - INFO -   2.82e+00 mM: Use NaC_stock (11.3 uL)
+2026-06-12 18:57:00,632 - INFO -   4.35e+00 mM: Use NaC_stock (17.4 uL)
+2026-06-12 18:57:00,633 - INFO -   5.74e+00 mM: Use NaC_stock (23.0 uL)
+2026-06-12 18:57:00,634 - INFO -   7.00e+00 mM: Use NaC_stock (28.0 uL)
+2026-06-12 18:57:00,635 - INFO -   8.72e+00 mM: Use NaC_stock (34.9 uL)
+2026-06-12 18:57:00,635 - INFO -   1.26e+01 mM: Use NaC_stock (50.3 uL)
+2026-06-12 18:57:00,637 - INFO -   1.45e+01 mM: Use NaC_stock (58.2 uL)
+2026-06-12 18:57:00,638 - INFO -   2.10e+01 mM: Use NaC_stock (83.9 uL)
+2026-06-12 18:57:00,638 - INFO -   2.90e+01 mM: Use NaC_stock (115.8 uL)
+2026-06-12 18:57:00,639 - INFO -   3.25e+01 mM: Use NaC_stock (130.1 uL)
+2026-06-12 18:57:00,640 - INFO -   3.50e+01 mM: Use NaC_stock (140.0 uL)
+2026-06-12 18:57:00,640 - INFO - 
+=== SUBSTOCK DILUTION RECIPES ===
+2026-06-12 18:57:00,640 - INFO - For each substock showing: source + volume -> target_concentration
+2026-06-12 18:57:00,640 - INFO - (Using minimum 200uL pipetting volumes for accuracy)
+2026-06-12 18:57:00,640 - INFO - 
+CTAB substocks:
+2026-06-12 18:57:00,640 - INFO -   CTAB_dilution_0: 1200uL CTAB_stock + 4800uL water -> 1.00e+00 mM
+2026-06-12 18:57:00,640 - INFO -     (Dilution factor: 5.0x from 5.00e+00 mM stock)
+2026-06-12 18:57:00,640 - INFO -   CTAB_dilution_1: 480uL CTAB_stock + 5520uL water -> 4.00e-01 mM
+2026-06-12 18:57:00,641 - INFO -     (Dilution factor: 12.5x from 5.00e+00 mM stock)
+2026-06-12 18:57:00,641 - INFO -   CTAB_dilution_2: 900uL CTAB_dilution_0 + 5100uL water -> 1.50e-01 mM
+2026-06-12 18:57:00,641 - INFO -     (Dilution factor: 6.7x from 1.00e+00 mM dilution)
+2026-06-12 18:57:00,641 - INFO -   CTAB_dilution_3: 420uL CTAB_dilution_0 + 5580uL water -> 7.00e-02 mM
+2026-06-12 18:57:00,641 - INFO -     (Dilution factor: 14.3x from 1.00e+00 mM dilution)
+2026-06-12 18:57:00,641 - INFO -   CTAB_dilution_4: 450uL CTAB_dilution_1 + 5550uL water -> 3.00e-02 mM
+2026-06-12 18:57:00,641 - INFO -     (Dilution factor: 13.3x from 4.00e-01 mM dilution)
+2026-06-12 18:57:00,641 - INFO -   CTAB_dilution_5: 400uL CTAB_dilution_2 + 5600uL water -> 1.00e-02 mM
+2026-06-12 18:57:00,642 - INFO -     (Dilution factor: 15.0x from 1.50e-01 mM dilution)
+2026-06-12 18:57:00,642 - INFO - 
+CTAB substocks:
+2026-06-12 18:57:00,642 - INFO -   CTAB_dilution_0: 1200uL CTAB_stock + 4800uL water -> 1.00e+00 mM
+2026-06-12 18:57:00,642 - INFO -     (Dilution factor: 5.0x from 5.00e+00 mM stock)
+2026-06-12 18:57:00,642 - INFO -   CTAB_dilution_1: 480uL CTAB_stock + 5520uL water -> 4.00e-01 mM
+2026-06-12 18:57:00,642 - INFO -     (Dilution factor: 12.5x from 5.00e+00 mM stock)
+2026-06-12 18:57:00,642 - INFO -   CTAB_dilution_2: 900uL CTAB_dilution_0 + 5100uL water -> 1.50e-01 mM
+2026-06-12 18:57:00,642 - INFO -     (Dilution factor: 6.7x from 1.00e+00 mM dilution)
+2026-06-12 18:57:00,643 - INFO -   CTAB_dilution_3: 420uL CTAB_dilution_0 + 5580uL water -> 7.00e-02 mM
+2026-06-12 18:57:00,643 - INFO -     (Dilution factor: 14.3x from 1.00e+00 mM dilution)
+2026-06-12 18:57:00,643 - INFO -   CTAB_dilution_4: 450uL CTAB_dilution_1 + 5550uL water -> 3.00e-02 mM
+2026-06-12 18:57:00,643 - INFO -     (Dilution factor: 13.3x from 4.00e-01 mM dilution)
+2026-06-12 18:57:00,643 - INFO -   CTAB_dilution_5: 400uL CTAB_dilution_2 + 5600uL water -> 1.00e-02 mM
+2026-06-12 18:57:00,643 - INFO -     (Dilution factor: 15.0x from 1.50e-01 mM dilution)
+2026-06-12 18:57:00,643 - INFO - 
+=== SUBSTOCK DILUTION RECIPES ===
+2026-06-12 18:57:00,643 - INFO - For each substock showing: source + volume -> target_concentration
+2026-06-12 18:57:00,643 - INFO - (Using minimum 200uL pipetting volumes for accuracy)
+2026-06-12 18:57:00,643 - INFO - 
+TTAB substocks:
+2026-06-12 18:57:00,644 - INFO -   TTAB_dilution_0: 1200uL TTAB_stock + 4800uL water -> 1.00e+01 mM
+2026-06-12 18:57:00,644 - INFO -     (Dilution factor: 5.0x from 5.00e+01 mM stock)
+2026-06-12 18:57:00,644 - INFO -   TTAB_dilution_1: 360uL TTAB_stock + 5640uL water -> 3.00e+00 mM
+2026-06-12 18:57:00,644 - INFO -     (Dilution factor: 16.7x from 5.00e+01 mM stock)
+2026-06-12 18:57:00,644 - INFO -   TTAB_dilution_2: 420uL TTAB_dilution_0 + 5580uL water -> 7.00e-01 mM
+2026-06-12 18:57:00,644 - INFO -     (Dilution factor: 14.3x from 1.00e+01 mM dilution)
+2026-06-12 18:57:00,644 - INFO -   TTAB_dilution_3: 300uL TTAB_dilution_1 + 5700uL water -> 1.50e-01 mM
+2026-06-12 18:57:00,644 - INFO -     (Dilution factor: 20.0x from 3.00e+00 mM dilution)
+2026-06-12 18:57:00,644 - INFO -   TTAB_dilution_4: 343uL TTAB_dilution_2 + 5657uL water -> 4.00e-02 mM
+2026-06-12 18:57:00,644 - INFO -     (Dilution factor: 17.5x from 7.00e-01 mM dilution)
+2026-06-12 18:57:00,645 - INFO -   TTAB_dilution_5: 400uL TTAB_dilution_3 + 5600uL water -> 1.00e-02 mM
+2026-06-12 18:57:00,645 - INFO -     (Dilution factor: 15.0x from 1.50e-01 mM dilution)
+2026-06-12 18:57:00,645 - INFO - 
+TTAB substocks:
+2026-06-12 18:57:00,645 - INFO -   TTAB_dilution_0: 1200uL TTAB_stock + 4800uL water -> 1.00e+01 mM
+2026-06-12 18:57:00,645 - INFO -     (Dilution factor: 5.0x from 5.00e+01 mM stock)
+2026-06-12 18:57:00,645 - INFO -   TTAB_dilution_1: 360uL TTAB_stock + 5640uL water -> 3.00e+00 mM
+2026-06-12 18:57:00,645 - INFO -     (Dilution factor: 16.7x from 5.00e+01 mM stock)
+2026-06-12 18:57:00,645 - INFO -   TTAB_dilution_2: 420uL TTAB_dilution_0 + 5580uL water -> 7.00e-01 mM
+2026-06-12 18:57:00,645 - INFO -     (Dilution factor: 14.3x from 1.00e+01 mM dilution)
+2026-06-12 18:57:00,646 - INFO -   TTAB_dilution_3: 300uL TTAB_dilution_1 + 5700uL water -> 1.50e-01 mM
+2026-06-12 18:57:00,646 - INFO -     (Dilution factor: 20.0x from 3.00e+00 mM dilution)
+2026-06-12 18:57:00,646 - INFO -   TTAB_dilution_4: 343uL TTAB_dilution_2 + 5657uL water -> 4.00e-02 mM
+2026-06-12 18:57:00,646 - INFO -     (Dilution factor: 17.5x from 7.00e-01 mM dilution)
+2026-06-12 18:57:00,646 - INFO -   TTAB_dilution_5: 400uL TTAB_dilution_3 + 5600uL water -> 1.00e-02 mM
+2026-06-12 18:57:00,646 - INFO -     (Dilution factor: 15.0x from 1.50e-01 mM dilution)
+2026-06-12 18:57:00,646 - INFO - 
+=== SUBSTOCK DILUTION RECIPES ===
+2026-06-12 18:57:00,646 - INFO - For each substock showing: source + volume -> target_concentration
+2026-06-12 18:57:00,646 - INFO - (Using minimum 200uL pipetting volumes for accuracy)
+2026-06-12 18:57:00,646 - INFO - 
+NaC substocks:
+2026-06-12 18:57:00,646 - INFO -   NaC_dilution_0: 1200uL NaC_stock + 4800uL water -> 1.00e+01 mM
+2026-06-12 18:57:00,648 - INFO -     (Dilution factor: 5.0x from 5.00e+01 mM stock)
+2026-06-12 18:57:00,648 - INFO -   NaC_dilution_1: 360uL NaC_stock + 5640uL water -> 3.00e+00 mM
+2026-06-12 18:57:00,648 - INFO -     (Dilution factor: 16.7x from 5.00e+01 mM stock)
+2026-06-12 18:57:00,648 - INFO -   NaC_dilution_2: 420uL NaC_dilution_0 + 5580uL water -> 7.00e-01 mM
+2026-06-12 18:57:00,648 - INFO -     (Dilution factor: 14.3x from 1.00e+01 mM dilution)
+2026-06-12 18:57:00,648 - INFO -   NaC_dilution_3: 300uL NaC_dilution_1 + 5700uL water -> 1.50e-01 mM
+2026-06-12 18:57:00,648 - INFO -     (Dilution factor: 20.0x from 3.00e+00 mM dilution)
+2026-06-12 18:57:00,648 - INFO -   NaC_dilution_4: 343uL NaC_dilution_2 + 5657uL water -> 4.00e-02 mM
+2026-06-12 18:57:00,648 - INFO -     (Dilution factor: 17.5x from 7.00e-01 mM dilution)
+2026-06-12 18:57:00,648 - INFO -   NaC_dilution_5: 400uL NaC_dilution_3 + 5600uL water -> 1.00e-02 mM
+2026-06-12 18:57:00,649 - INFO -     (Dilution factor: 15.0x from 1.50e-01 mM dilution)
+2026-06-12 18:57:00,649 - INFO - 
+NaC substocks:
+2026-06-12 18:57:00,649 - INFO -   NaC_dilution_0: 1200uL NaC_stock + 4800uL water -> 1.00e+01 mM
+2026-06-12 18:57:00,649 - INFO -     (Dilution factor: 5.0x from 5.00e+01 mM stock)
+2026-06-12 18:57:00,649 - INFO -   NaC_dilution_1: 360uL NaC_stock + 5640uL water -> 3.00e+00 mM
+2026-06-12 18:57:00,649 - INFO -     (Dilution factor: 16.7x from 5.00e+01 mM stock)
+2026-06-12 18:57:00,649 - INFO -   NaC_dilution_2: 420uL NaC_dilution_0 + 5580uL water -> 7.00e-01 mM
+2026-06-12 18:57:00,649 - INFO -     (Dilution factor: 14.3x from 1.00e+01 mM dilution)
+2026-06-12 18:57:00,649 - INFO -   NaC_dilution_3: 300uL NaC_dilution_1 + 5700uL water -> 1.50e-01 mM
+2026-06-12 18:57:00,649 - INFO -     (Dilution factor: 20.0x from 3.00e+00 mM dilution)
+2026-06-12 18:57:00,650 - INFO -   NaC_dilution_4: 343uL NaC_dilution_2 + 5657uL water -> 4.00e-02 mM
+2026-06-12 18:57:00,650 - INFO -     (Dilution factor: 17.5x from 7.00e-01 mM dilution)
+2026-06-12 18:57:00,650 - INFO -   NaC_dilution_5: 400uL NaC_dilution_3 + 5600uL water -> 1.00e-02 mM
+2026-06-12 18:57:00,650 - INFO -     (Dilution factor: 15.0x from 1.50e-01 mM dilution)
+2026-06-12 18:57:00,650 - INFO - Checking 18 substocks (threshold: 4.0 mL)...
+2026-06-12 18:57:00,658 - INFO - =================================================================
+2026-06-12 18:57:00,658 - INFO -   SUBSTOCK STATUS (18 vials, threshold=4.0 mL)
+2026-06-12 18:57:00,658 - INFO -   Vial                    Current  Action
+2026-06-12 18:57:00,658 - INFO -   ------------------------------------------------------------
+2026-06-12 18:57:00,660 - INFO -   TTAB_dilution_0          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,660 - INFO -          (1200 uL TTAB_stock + 4800 uL water)
+2026-06-12 18:57:00,660 - INFO -   NaC_dilution_0           0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,660 - INFO -          (1200 uL NaC_stock + 4800 uL water)
+2026-06-12 18:57:00,660 - INFO -   TTAB_dilution_1          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,660 - INFO -          (360 uL TTAB_stock + 5640 uL water)
+2026-06-12 18:57:00,660 - INFO -   NaC_dilution_1           0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,660 - INFO -          (360 uL NaC_stock + 5640 uL water)
+2026-06-12 18:57:00,660 - INFO -   CTAB_dilution_0          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,660 - INFO -          (1200 uL CTAB_stock + 4800 uL water)
+2026-06-12 18:57:00,661 - INFO -   TTAB_dilution_2          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,661 - INFO -          (420 uL TTAB_dilution_0 + 5580 uL water)
+2026-06-12 18:57:00,661 - INFO -   NaC_dilution_2           0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,661 - INFO -          (420 uL NaC_dilution_0 + 5580 uL water)
+2026-06-12 18:57:00,661 - INFO -   CTAB_dilution_1          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,661 - INFO -          (480 uL CTAB_stock + 5520 uL water)
+2026-06-12 18:57:00,661 - INFO -   CTAB_dilution_2          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,661 - INFO -          (900 uL CTAB_dilution_0 + 5100 uL water)
+2026-06-12 18:57:00,661 - INFO -   TTAB_dilution_3          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,661 - INFO -          (300 uL TTAB_dilution_1 + 5700 uL water)
+2026-06-12 18:57:00,662 - INFO -   NaC_dilution_3           0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,662 - INFO -          (300 uL NaC_dilution_1 + 5700 uL water)
+2026-06-12 18:57:00,662 - INFO -   CTAB_dilution_3          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,662 - INFO -          (420 uL CTAB_dilution_0 + 5580 uL water)
+2026-06-12 18:57:00,662 - INFO -   TTAB_dilution_4          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,662 - INFO -          (343 uL TTAB_dilution_2 + 5657 uL water)
+2026-06-12 18:57:00,662 - INFO -   NaC_dilution_4           0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,662 - INFO -          (343 uL NaC_dilution_2 + 5657 uL water)
+2026-06-12 18:57:00,662 - INFO -   CTAB_dilution_4          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,662 - INFO -          (450 uL CTAB_dilution_1 + 5550 uL water)
+2026-06-12 18:57:00,662 - INFO -   CTAB_dilution_5          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,662 - INFO -          (400 uL CTAB_dilution_2 + 5600 uL water)
+2026-06-12 18:57:00,662 - INFO -   TTAB_dilution_5          0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,662 - INFO -          (400 uL TTAB_dilution_3 + 5600 uL water)
+2026-06-12 18:57:00,663 - INFO -   NaC_dilution_5           0.00 mL  CREATE (full 6.0 mL)
+2026-06-12 18:57:00,663 - INFO -          (400 uL NaC_dilution_3 + 5600 uL water)
+2026-06-12 18:57:00,663 - INFO - =================================================================
+2026-06-12 18:57:00,663 - INFO -   >> CREATE 6.0 mL: TTAB_dilution_0 (1.00e+01 mM)
+2026-06-12 18:57:00,663 - INFO -      Source : 1200.0 uL from TTAB_stock
+2026-06-12 18:57:00,663 - INFO -      Water  : 4800.0 uL
+2026-06-12 18:57:00,686 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - DEBUG - Using calibrated dispense_speed=14 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - DEBUG - Using calibrated overaspirate_vol=0.029461712704297295 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 1.200mL
+2026-06-12 18:57:00,687 - INFO - Dispensing 1.200 mL from TTAB_stock to TTAB_dilution_0
+2026-06-12 18:57:00,692 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:57:00,692 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:57:00,692 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,692 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:57:00,692 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:57:00,693 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:57:00,693 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:57:00,693 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,693 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,693 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:57:00,693 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:57:00,693 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:57:00,693 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:57:00,693 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:57:00,693 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:57:00,693 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:57:00,693 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:57:00,693 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:57:00,693 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:57:00,693 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,697 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:57:00,697 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:57:00,697 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:57:00,697 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:57:00,697 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:57:00,697 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:57:00,697 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:57:00,697 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:57:00,697 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:57:00,697 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:57:00,697 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:57:00,698 - INFO - Total tip volume (1.240 mL) exceeds capacity, splitting into 2 transfers of 0.6 mL each
+2026-06-12 18:57:00,701 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:57:00,701 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:57:00,703 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,703 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:57:00,703 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:57:00,703 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:57:00,703 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:57:00,703 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,703 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:57:00,703 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:57:00,703 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:57:00,703 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:57:00,703 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:57:00,703 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:57:00,703 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:57:00,703 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:57:00,703 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:57:00,703 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:57:00,703 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:57:00,703 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:57:00,703 - DEBUG - Selected large_tip for volume 0.611 mL
+2026-06-12 18:57:00,705 - INFO - Switching from small_tip to large_tip
+2026-06-12 18:57:00,705 - INFO - Removing pipet
+2026-06-12 18:57:03,390 - INFO - Getting large_tip (pipet number 0) from rack: large_tip_rack_1
+2026-06-12 18:57:05,117 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-06-12 18:57:05,411 - INFO - Piggyback shake: 2 cycles, amplitude=2.0mm, direction=(2.0, -2.0)
+2026-06-12 18:57:05,411 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-06-12 18:57:05,584 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-06-12 18:57:05,764 - DEBUG - Moving robot relative to current position by x: 2.0, y: -2.0, z: 0 mm, vel: 30
+2026-06-12 18:57:05,934 - DEBUG - Moving robot relative to current position by x: -2.0, y: 2.0, z: 0 mm, vel: 30
+2026-06-12 18:57:06,116 - DEBUG - Moving robot relative to current position by x: -1.1, y: 1.1, z: 25.0 mm, vel: 30
+2026-06-12 18:57:06,394 - INFO - Pipetting from vial TTAB_stock, amount: 0.600 mL
+2026-06-12 18:57:06,397 - INFO - Additional volume from calibration, amount: 0.029 mL
+2026-06-12 18:57:06,397 - DEBUG - Adjusting pump 0 speed to 10
+2026-06-12 18:57:09,347 - DEBUG - Adjusting pump 0 speed to 8
+2026-06-12 18:57:10,465 - DEBUG - Aspirating 0.629 mL then waiting 0.0 s
+2026-06-12 18:57:13,009 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:57:13,318 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:57:13,318 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:57:13,318 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:57:13,318 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:57:13,318 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:57:13,318 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:57:13,318 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:57:13,318 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:57:13,318 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:57:13,318 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:57:13,318 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:57:13,318 - INFO - Pipetting into vial TTAB_dilution_0, amount: 0.600 mL
+2026-06-12 18:57:13,318 - DEBUG - Adjusting pump 0 speed to 14
+2026-06-12 18:57:15,878 - DEBUG - Dispensing 0.640 mL then waiting 3.5437186 s
+2026-06-12 18:57:15,878 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2026-06-12 18:57:20,800 - DEBUG - Blowing out 0.016 mL
+2026-06-12 18:57:20,800 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 18:57:21,582 - DEBUG - Adjusting pump 0 speed to 14
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:57:25,891 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:57:25,891 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:57:25,891 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:57:25,891 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:57:25,891 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:57:25,891 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:57:25,891 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:57:25,891 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:57:25,891 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:57:25,891 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:57:25,891 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:57:25,891 - DEBUG - Selected large_tip for volume 0.611 mL
+2026-06-12 18:57:25,891 - INFO - Pipetting from vial TTAB_stock, amount: 0.600 mL
+2026-06-12 18:57:25,891 - INFO - Additional volume from calibration, amount: 0.029 mL
+2026-06-12 18:57:25,903 - DEBUG - Adjusting pump 0 speed to 10
+2026-06-12 18:57:27,581 - DEBUG - Adjusting pump 0 speed to 8
+2026-06-12 18:57:28,714 - DEBUG - Aspirating 0.629 mL then waiting 0.0 s
+2026-06-12 18:57:31,211 - DEBUG - Aspirating 0.011 mL then waiting 0 s
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:57:31,528 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:57:31,528 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:57:31,528 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:57:31,528 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:57:31,528 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:57:31,528 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:57:31,528 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:57:31,528 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:57:31,528 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:57:31,528 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:57:31,528 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:57:31,528 - INFO - Pipetting into vial TTAB_dilution_0, amount: 0.600 mL
+2026-06-12 18:57:31,528 - DEBUG - Adjusting pump 0 speed to 14
+2026-06-12 18:57:34,087 - DEBUG - Dispensing 0.640 mL then waiting 3.5437186 s
+2026-06-12 18:57:34,087 - WARNING - Dispense exceeded limit: Dispensing all liquid
+2026-06-12 18:57:39,093 - DEBUG - Blowing out 0.016 mL
+2026-06-12 18:57:39,093 - DEBUG - Adjusting pump 0 speed to 5
+2026-06-12 18:57:39,891 - DEBUG - Adjusting pump 0 speed to 14
+2026-06-12 18:57:44,220 - INFO - Removing pipet
+2026-06-12 18:57:47,424 - INFO - Returning vial water to home location: main_8mL_rack index 3
+2026-06-12 18:57:47,424 - INFO - Moving vial water to main_8mL_rack: 3
+2026-06-12 18:57:47,424 - DEBUG - Grabbing vial 3 with index 3
+2026-06-12 18:57:49,794 - DEBUG - Dropping off vial 3 at location main_8mL_rack with index 3
+2026-06-12 18:57:52,532 - INFO - Dispensing into vial 12 from reservoir 1: 4.800 mL
+2026-06-12 18:57:52,532 - DEBUG - Reservoir parameters: aspirate_speed=11, dispense_speed=11, overaspirate=0.000 mL
+2026-06-12 18:57:52,532 - INFO - Moving vial TTAB_dilution_0 to clamp: 0
+2026-06-12 18:57:52,532 - DEBUG - Grabbing vial 12 with index 12
+2026-06-12 18:57:54,810 - DEBUG - Dropping off vial 12 at location clamp with index 0
+2026-06-12 18:57:57,749 - INFO - Moving robot to home position
+2026-06-12 18:58:03,168 - INFO - DISPENSING DEBUG: simulate=False, volume=4.800mL, overaspirate=0.000mL
+2026-06-12 18:58:03,169 - INFO - DISPENSING DEBUG: total_vol=4.800mL, num_dispenses=2, dispense_vol=2.400mL, actual_dispense=2.400mL
+2026-06-12 18:58:03,169 - DEBUG - Dispensing 2.400 mL (with 0.000 mL overaspirate) 2 times
+2026-06-12 18:58:03,169 - INFO - DISPENSING LOOP 1/2: simulate=False
+2026-06-12 18:58:03,740 - INFO - ASPIRATING: 2.400mL from reservoir 1
+2026-06-12 18:58:08,727 - INFO - DISPENSING: 2.400mL into vial 12
+2026-06-12 18:58:13,021 - INFO - DISPENSING LOOP 2/2: simulate=False
+2026-06-12 18:58:13,604 - INFO - ASPIRATING: 2.400mL from reservoir 1
+2026-06-12 18:58:18,539 - INFO - DISPENSING: 2.400mL into vial 12
+2026-06-12 18:58:27,086 - INFO - Vortexing Vial: TTAB_dilution_0
+2026-06-12 18:58:27,086 - DEBUG - Grabbing vial 12 with index 12
+2026-06-12 18:58:46,657 - DEBUG - Dropping off vial 12 at location clamp with index 0
+2026-06-12 18:58:48,106 - INFO - Returning vial TTAB_dilution_0 to home location: main_8mL_rack index 12
+2026-06-12 18:58:48,106 - INFO - Moving vial TTAB_dilution_0 to main_8mL_rack: 12
+2026-06-12 18:58:48,106 - DEBUG - Grabbing vial 12 with index 12
+2026-06-12 18:58:48,403 - DEBUG - Dropping off vial 12 at location main_8mL_rack with index 12
+2026-06-12 18:58:51,316 - INFO -      Done   : TTAB_dilution_0 now ~6.00 mL
+2026-06-12 18:58:51,322 - INFO -   + CREATE 6.0 mL TTAB_dilution_0: now ~6.00 mL
+2026-06-12 18:58:51,322 - INFO -   >> CREATE 6.0 mL: NaC_dilution_0 (1.00e+01 mM)
+2026-06-12 18:58:51,322 - INFO -      Source : 1200.0 uL from NaC_stock
+2026-06-12 18:58:51,322 - INFO -      Water  : 4800.0 uL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated dispense_speed=14 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated overaspirate_vol=0.029461712704297295 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 1.200mL
+2026-06-12 18:58:51,327 - INFO - Dispensing 1.200 mL from NaC_stock to NaC_dilution_0
+2026-06-12 18:58:51,332 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:58:51,332 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:58:51,332 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,332 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:58:51,332 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:58:51,332 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:58:51,332 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:58:51,333 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,333 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,333 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:58:51,333 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:58:51,333 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:58:51,333 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:58:51,333 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:58:51,333 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:58:51,333 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:58:51,333 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:58:51,333 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:58:51,333 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:58:51,333 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,337 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,338 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:58:51,338 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:58:51,338 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:58:51,338 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:58:51,338 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:58:51,338 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:58:51,338 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:58:51,338 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:58:51,338 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:58:51,338 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:58:51,338 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:58:51,338 - INFO - Total tip volume (1.240 mL) exceeds capacity, splitting into 2 transfers of 0.6 mL each
+2026-06-12 18:58:51,341 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-12 18:58:51,341 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-12 18:58:51,341 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,341 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-12 18:58:51,341 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-12 18:58:51,341 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-12 18:58:51,343 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-12 18:58:51,343 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,343 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-12 18:58:51,343 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-12 18:58:51,343 - DEBUG - Applied object param aspirate_speed=8
+2026-06-12 18:58:51,343 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-12 18:58:51,343 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-12 18:58:51,343 - DEBUG - Applied object param dispense_speed=14
+2026-06-12 18:58:51,343 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-12 18:58:51,343 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-12 18:58:51,343 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-12 18:58:51,343 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-12 18:58:51,343 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-12 18:58:51,343 - DEBUG - Applied object param retract_speed=10
+2026-06-12 18:58:51,344 - DEBUG - Selected large_tip for volume 0.611 mL
+2026-06-12 18:58:51,344 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:44:30,871 - ERROR -   - Failed CREATE 6.0 mL NaC_dilution_0: Read timeout
+2026-06-15 08:44:30,880 - INFO -   >> CREATE 6.0 mL: TTAB_dilution_1 (3.00e+00 mM)
+2026-06-15 08:44:30,880 - INFO -      Source : 360.0 uL from TTAB_stock
+2026-06-15 08:44:30,880 - INFO -      Water  : 5640.0 uL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.360mL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.360mL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.360mL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.360mL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.360mL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.360mL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated overaspirate_vol=0.01538921233346021 for SDS at 0.360mL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.360mL
+2026-06-15 08:44:31,045 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.360mL
+2026-06-15 08:44:31,046 - INFO - Dispensing 0.360 mL from TTAB_stock to TTAB_dilution_1
+2026-06-15 08:44:31,057 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.360mL
+2026-06-15 08:44:31,057 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.360mL
+2026-06-15 08:44:31,057 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.360mL
+2026-06-15 08:44:31,057 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.360mL
+2026-06-15 08:44:31,057 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.360mL
+2026-06-15 08:44:31,057 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.360mL
+2026-06-15 08:44:31,057 - DEBUG - Using calibrated overaspirate_vol=0.01538921233346021 for SDS at 0.360mL
+2026-06-15 08:44:31,058 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.360mL
+2026-06-15 08:44:31,058 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.360mL
+2026-06-15 08:44:31,058 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:31,058 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:31,058 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:31,058 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:31,058 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:31,058 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:31,058 - DEBUG - Applied object param overaspirate_vol=0.01538921233346021
+2026-06-15 08:44:31,058 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:31,058 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:31,058 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:31,058 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:31,060 - DEBUG - Selected large_tip for volume 0.371 mL
+2026-06-15 08:44:31,062 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:44:35,529 - ERROR -   - Failed CREATE 6.0 mL TTAB_dilution_1: Read timeout
+2026-06-15 08:44:35,530 - INFO -   >> CREATE 6.0 mL: NaC_dilution_1 (3.00e+00 mM)
+2026-06-15 08:44:35,530 - INFO -      Source : 360.0 uL from NaC_stock
+2026-06-15 08:44:35,530 - INFO -      Water  : 5640.0 uL
+2026-06-15 08:44:35,534 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - DEBUG - Using calibrated overaspirate_vol=0.01538921233346021 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.360mL
+2026-06-15 08:44:35,536 - INFO - Dispensing 0.360 mL from NaC_stock to NaC_dilution_1
+2026-06-15 08:44:35,543 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.360mL
+2026-06-15 08:44:35,543 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.360mL
+2026-06-15 08:44:35,543 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.360mL
+2026-06-15 08:44:35,543 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.360mL
+2026-06-15 08:44:35,544 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.360mL
+2026-06-15 08:44:35,544 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.360mL
+2026-06-15 08:44:35,544 - DEBUG - Using calibrated overaspirate_vol=0.01538921233346021 for SDS at 0.360mL
+2026-06-15 08:44:35,544 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.360mL
+2026-06-15 08:44:35,544 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.360mL
+2026-06-15 08:44:35,544 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:35,544 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:35,544 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:35,544 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:35,544 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:35,544 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:35,544 - DEBUG - Applied object param overaspirate_vol=0.01538921233346021
+2026-06-15 08:44:35,544 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:35,544 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:35,544 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:35,544 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:35,545 - DEBUG - Selected large_tip for volume 0.371 mL
+2026-06-15 08:44:35,545 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:44:40,025 - ERROR -   - Failed CREATE 6.0 mL NaC_dilution_1: Read timeout
+2026-06-15 08:44:40,025 - INFO -   >> CREATE 6.0 mL: CTAB_dilution_0 (1.00e+00 mM)
+2026-06-15 08:44:40,025 - INFO -      Source : 1200.0 uL from CTAB_stock
+2026-06-15 08:44:40,025 - INFO -      Water  : 4800.0 uL
+2026-06-15 08:44:40,031 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 1.200mL
+2026-06-15 08:44:40,031 - DEBUG - Using calibrated dispense_speed=14 for SDS at 1.200mL
+2026-06-15 08:44:40,031 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 1.200mL
+2026-06-15 08:44:40,031 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 1.200mL
+2026-06-15 08:44:40,031 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 1.200mL
+2026-06-15 08:44:40,031 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 1.200mL
+2026-06-15 08:44:40,031 - DEBUG - Using calibrated overaspirate_vol=0.029461712704297295 for SDS at 1.200mL
+2026-06-15 08:44:40,032 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 1.200mL
+2026-06-15 08:44:40,032 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 1.200mL
+2026-06-15 08:44:40,032 - INFO - Dispensing 1.200 mL from CTAB_stock to CTAB_dilution_0
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,039 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:40,039 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:40,039 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:40,039 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:40,039 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:40,039 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:40,039 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-15 08:44:40,039 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:40,039 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:40,039 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:40,039 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:40,044 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-15 08:44:40,044 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-15 08:44:40,044 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,044 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-15 08:44:40,045 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-15 08:44:40,045 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-15 08:44:40,045 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-15 08:44:40,045 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,045 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,045 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:40,045 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:40,045 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:40,045 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:40,045 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:40,045 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:40,045 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-15 08:44:40,046 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:40,046 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:40,046 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:40,046 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:40,047 - INFO - Total tip volume (1.240 mL) exceeds capacity, splitting into 2 transfers of 0.6 mL each
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated overaspirate_vol=0.019371984390898787 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.600mL
+2026-06-15 08:44:40,056 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:40,056 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:40,056 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:40,056 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:40,056 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:40,056 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:40,057 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-15 08:44:40,057 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:40,057 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:40,057 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:40,057 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:40,059 - DEBUG - Selected large_tip for volume 0.611 mL
+2026-06-15 08:44:40,060 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:44:44,532 - ERROR -   - Failed CREATE 6.0 mL CTAB_dilution_0: Read timeout
+2026-06-15 08:44:44,533 - INFO -   >> CREATE 6.0 mL: TTAB_dilution_2 (7.00e-01 mM)
+2026-06-15 08:44:44,533 - INFO -      Source : 420.0 uL from TTAB_dilution_0
+2026-06-15 08:44:44,533 - INFO -      Water  : 5580.0 uL
+2026-06-15 08:44:44,533 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - DEBUG - Using calibrated overaspirate_vol=0.01652628142247265 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.420mL
+2026-06-15 08:44:44,539 - INFO - Dispensing 0.420 mL from TTAB_dilution_0 to TTAB_dilution_2
+2026-06-15 08:44:44,544 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.420mL
+2026-06-15 08:44:44,544 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.420mL
+2026-06-15 08:44:44,544 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:44:44,544 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.420mL
+2026-06-15 08:44:44,546 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.420mL
+2026-06-15 08:44:44,546 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.420mL
+2026-06-15 08:44:44,546 - DEBUG - Using calibrated overaspirate_vol=0.016526281422472647 for SDS at 0.420mL
+2026-06-15 08:44:44,546 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:44:44,546 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.420mL
+2026-06-15 08:44:44,546 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:44,546 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:44,546 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:44,546 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:44,546 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:44,546 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:44,546 - DEBUG - Applied object param overaspirate_vol=0.01652628142247265
+2026-06-15 08:44:44,546 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:44,546 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:44,546 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:44,546 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:44,547 - DEBUG - Selected large_tip for volume 0.431 mL
+2026-06-15 08:44:44,547 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:44:49,020 - ERROR -   - Failed CREATE 6.0 mL TTAB_dilution_2: Read timeout
+2026-06-15 08:44:49,021 - INFO -   >> CREATE 6.0 mL: NaC_dilution_2 (7.00e-01 mM)
+2026-06-15 08:44:49,021 - INFO -      Source : 420.0 uL from NaC_dilution_0
+2026-06-15 08:44:49,021 - INFO -      Water  : 5580.0 uL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated overaspirate_vol=0.01652628142247265 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.420mL
+2026-06-15 08:44:49,021 - INFO - Dispensing 0.420 mL from NaC_dilution_0 to NaC_dilution_2
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated overaspirate_vol=0.016526281422472647 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.420mL
+2026-06-15 08:44:49,031 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:49,031 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:49,031 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:49,032 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:49,032 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:49,032 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:49,032 - DEBUG - Applied object param overaspirate_vol=0.01652628142247265
+2026-06-15 08:44:49,032 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:49,032 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:49,032 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:49,032 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:49,032 - DEBUG - Selected large_tip for volume 0.431 mL
+2026-06-15 08:44:49,033 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:44:53,497 - ERROR -   - Failed CREATE 6.0 mL NaC_dilution_2: Read timeout
+2026-06-15 08:44:53,497 - INFO -   >> CREATE 6.0 mL: CTAB_dilution_1 (4.00e-01 mM)
+2026-06-15 08:44:53,497 - INFO -      Source : 480.0 uL from CTAB_stock
+2026-06-15 08:44:53,497 - INFO -      Water  : 5520.0 uL
+2026-06-15 08:44:53,497 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - DEBUG - Using calibrated overaspirate_vol=0.017663350511485085 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.480mL
+2026-06-15 08:44:53,504 - INFO - Dispensing 0.480 mL from CTAB_stock to CTAB_dilution_1
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated overaspirate_vol=0.017663350511485085 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.480mL
+2026-06-15 08:44:53,510 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:53,510 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:53,511 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:53,511 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:53,511 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:53,511 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:53,511 - DEBUG - Applied object param overaspirate_vol=0.017663350511485085
+2026-06-15 08:44:53,511 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:53,511 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:53,511 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:53,511 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:53,512 - DEBUG - Selected large_tip for volume 0.491 mL
+2026-06-15 08:44:53,512 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:44:57,979 - ERROR -   - Failed CREATE 6.0 mL CTAB_dilution_1: Read timeout
+2026-06-15 08:44:57,979 - INFO -   >> CREATE 6.0 mL: CTAB_dilution_2 (1.50e-01 mM)
+2026-06-15 08:44:57,979 - INFO -      Source : 900.0 uL from CTAB_dilution_0
+2026-06-15 08:44:57,979 - INFO -      Water  : 5100.0 uL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated overaspirate_vol=0.029461712704297295 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.900mL
+2026-06-15 08:44:57,986 - INFO - Dispensing 0.900 mL from CTAB_dilution_0 to CTAB_dilution_2
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated overaspirate_vol=0.029461712704297295 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.900mL
+2026-06-15 08:44:57,993 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:44:57,993 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:44:57,993 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:44:57,994 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:44:57,994 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:44:57,994 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:44:57,994 - DEBUG - Applied object param overaspirate_vol=0.029461712704297295
+2026-06-15 08:44:57,994 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:44:57,994 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:44:57,994 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:44:57,994 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:44:57,995 - DEBUG - Selected large_tip for volume 0.911 mL
+2026-06-15 08:44:57,995 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:02,478 - ERROR -   - Failed CREATE 6.0 mL CTAB_dilution_2: Read timeout
+2026-06-15 08:45:02,478 - INFO -   >> CREATE 6.0 mL: TTAB_dilution_3 (1.50e-01 mM)
+2026-06-15 08:45:02,478 - INFO -      Source : 300.0 uL from TTAB_dilution_1
+2026-06-15 08:45:02,479 - INFO -      Water  : 5700.0 uL
+2026-06-15 08:45:02,480 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.300mL
+2026-06-15 08:45:02,480 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.300mL
+2026-06-15 08:45:02,480 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.300mL
+2026-06-15 08:45:02,485 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.300mL
+2026-06-15 08:45:02,485 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.300mL
+2026-06-15 08:45:02,485 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.300mL
+2026-06-15 08:45:02,485 - DEBUG - Using calibrated overaspirate_vol=0.014252143244447775 for SDS at 0.300mL
+2026-06-15 08:45:02,485 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.300mL
+2026-06-15 08:45:02,485 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.300mL
+2026-06-15 08:45:02,485 - INFO - Dispensing 0.300 mL from TTAB_dilution_1 to TTAB_dilution_3
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated overaspirate_vol=0.014252143244447773 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.300mL
+2026-06-15 08:45:02,491 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:02,491 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:02,492 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:02,492 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:02,492 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:02,492 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:02,492 - DEBUG - Applied object param overaspirate_vol=0.014252143244447775
+2026-06-15 08:45:02,492 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:02,492 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:02,492 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:02,492 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:02,492 - DEBUG - Selected large_tip for volume 0.311 mL
+2026-06-15 08:45:02,494 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:06,969 - ERROR -   - Failed CREATE 6.0 mL TTAB_dilution_3: Read timeout
+2026-06-15 08:45:06,970 - INFO -   >> CREATE 6.0 mL: NaC_dilution_3 (1.50e-01 mM)
+2026-06-15 08:45:06,970 - INFO -      Source : 300.0 uL from NaC_dilution_1
+2026-06-15 08:45:06,970 - INFO -      Water  : 5700.0 uL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated overaspirate_vol=0.014252143244447775 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.300mL
+2026-06-15 08:45:07,029 - INFO - Dispensing 0.300 mL from NaC_dilution_1 to NaC_dilution_3
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.300mL
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.300mL
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.300mL
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.300mL
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.300mL
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.300mL
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated overaspirate_vol=0.014252143244447773 for SDS at 0.300mL
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.300mL
+2026-06-15 08:45:07,034 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.300mL
+2026-06-15 08:45:07,035 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:07,035 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:07,035 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:07,035 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:07,035 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:07,035 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:07,035 - DEBUG - Applied object param overaspirate_vol=0.014252143244447775
+2026-06-15 08:45:07,035 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:07,035 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:07,035 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:07,035 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:07,036 - DEBUG - Selected large_tip for volume 0.311 mL
+2026-06-15 08:45:07,036 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:11,502 - ERROR -   - Failed CREATE 6.0 mL NaC_dilution_3: Read timeout
+2026-06-15 08:45:11,502 - INFO -   >> CREATE 6.0 mL: CTAB_dilution_3 (7.00e-02 mM)
+2026-06-15 08:45:11,502 - INFO -      Source : 420.0 uL from CTAB_dilution_0
+2026-06-15 08:45:11,502 - INFO -      Water  : 5580.0 uL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated overaspirate_vol=0.01652628142247265 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.420mL
+2026-06-15 08:45:11,505 - INFO - Dispensing 0.420 mL from CTAB_dilution_0 to CTAB_dilution_3
+2026-06-15 08:45:11,513 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.420mL
+2026-06-15 08:45:11,513 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.420mL
+2026-06-15 08:45:11,513 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:45:11,513 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.420mL
+2026-06-15 08:45:11,514 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.420mL
+2026-06-15 08:45:11,514 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.420mL
+2026-06-15 08:45:11,514 - DEBUG - Using calibrated overaspirate_vol=0.016526281422472647 for SDS at 0.420mL
+2026-06-15 08:45:11,514 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.420mL
+2026-06-15 08:45:11,514 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.420mL
+2026-06-15 08:45:11,514 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:11,514 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:11,514 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:11,514 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:11,514 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:11,514 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:11,514 - DEBUG - Applied object param overaspirate_vol=0.01652628142247265
+2026-06-15 08:45:11,514 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:11,514 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:11,514 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:11,514 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:11,515 - DEBUG - Selected large_tip for volume 0.431 mL
+2026-06-15 08:45:11,515 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:15,983 - ERROR -   - Failed CREATE 6.0 mL CTAB_dilution_3: Read timeout
+2026-06-15 08:45:15,983 - INFO -   >> CREATE 6.0 mL: TTAB_dilution_4 (4.00e-02 mM)
+2026-06-15 08:45:15,983 - INFO -      Source : 342.9 uL from TTAB_dilution_2
+2026-06-15 08:45:15,983 - INFO -      Water  : 5657.1 uL
+2026-06-15 08:45:15,983 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.343mL
+2026-06-15 08:45:15,983 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.343mL
+2026-06-15 08:45:15,989 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.343mL
+2026-06-15 08:45:15,989 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.343mL
+2026-06-15 08:45:15,989 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.343mL
+2026-06-15 08:45:15,989 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.343mL
+2026-06-15 08:45:15,989 - DEBUG - Using calibrated overaspirate_vol=0.015064335450885228 for SDS at 0.343mL
+2026-06-15 08:45:15,989 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.343mL
+2026-06-15 08:45:15,989 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.343mL
+2026-06-15 08:45:15,989 - INFO - Dispensing 0.343 mL from TTAB_dilution_2 to TTAB_dilution_4
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated overaspirate_vol=0.01506704275824002 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.343mL
+2026-06-15 08:45:15,995 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:15,995 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:15,995 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:15,995 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:15,996 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:15,996 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:15,996 - DEBUG - Applied object param overaspirate_vol=0.015064335450885228
+2026-06-15 08:45:15,996 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:15,996 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:15,996 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:15,996 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:15,996 - DEBUG - Selected large_tip for volume 0.354 mL
+2026-06-15 08:45:15,997 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:20,464 - ERROR -   - Failed CREATE 6.0 mL TTAB_dilution_4: Read timeout
+2026-06-15 08:45:20,464 - INFO -   >> CREATE 6.0 mL: NaC_dilution_4 (4.00e-02 mM)
+2026-06-15 08:45:20,464 - INFO -      Source : 342.9 uL from NaC_dilution_2
+2026-06-15 08:45:20,464 - INFO -      Water  : 5657.1 uL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.343mL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.343mL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.343mL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.343mL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.343mL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.343mL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated overaspirate_vol=0.015064335450885228 for SDS at 0.343mL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.343mL
+2026-06-15 08:45:20,464 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.343mL
+2026-06-15 08:45:20,470 - INFO - Dispensing 0.343 mL from NaC_dilution_2 to NaC_dilution_4
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated overaspirate_vol=0.01506704275824002 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.343mL
+2026-06-15 08:45:20,475 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:20,476 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:20,476 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:20,476 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:20,476 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:20,476 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:20,476 - DEBUG - Applied object param overaspirate_vol=0.015064335450885228
+2026-06-15 08:45:20,476 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:20,476 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:20,476 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:20,476 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:20,476 - DEBUG - Selected large_tip for volume 0.354 mL
+2026-06-15 08:45:20,478 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:24,946 - ERROR -   - Failed CREATE 6.0 mL NaC_dilution_4: Read timeout
+2026-06-15 08:45:24,946 - INFO -   >> CREATE 6.0 mL: CTAB_dilution_4 (3.00e-02 mM)
+2026-06-15 08:45:24,946 - INFO -      Source : 450.0 uL from CTAB_dilution_1
+2026-06-15 08:45:24,946 - INFO -      Water  : 5550.0 uL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated overaspirate_vol=0.017094815966978864 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.450mL
+2026-06-15 08:45:24,946 - INFO - Dispensing 0.450 mL from CTAB_dilution_1 to CTAB_dilution_4
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated overaspirate_vol=0.017094815966978868 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.450mL
+2026-06-15 08:45:24,956 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:24,956 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:24,956 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:24,956 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:24,956 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:24,956 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:24,956 - DEBUG - Applied object param overaspirate_vol=0.017094815966978864
+2026-06-15 08:45:24,956 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:24,956 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:24,956 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:24,956 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:24,958 - DEBUG - Selected large_tip for volume 0.461 mL
+2026-06-15 08:45:24,959 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:29,431 - ERROR -   - Failed CREATE 6.0 mL CTAB_dilution_4: Read timeout
+2026-06-15 08:45:29,431 - INFO -   >> CREATE 6.0 mL: CTAB_dilution_5 (1.00e-02 mM)
+2026-06-15 08:45:29,431 - INFO -      Source : 400.0 uL from CTAB_dilution_2
+2026-06-15 08:45:29,431 - INFO -      Water  : 5600.0 uL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated overaspirate_vol=0.016147258392801834 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.400mL
+2026-06-15 08:45:29,434 - INFO - Dispensing 0.400 mL from CTAB_dilution_2 to CTAB_dilution_5
+2026-06-15 08:45:29,441 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Using calibrated overaspirate_vol=0.016147258392801837 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.400mL
+2026-06-15 08:45:29,442 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:29,442 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:29,442 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:29,442 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:29,442 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:29,442 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:29,442 - DEBUG - Applied object param overaspirate_vol=0.016147258392801834
+2026-06-15 08:45:29,442 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:29,442 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:29,442 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:29,442 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:29,444 - DEBUG - Selected large_tip for volume 0.411 mL
+2026-06-15 08:45:29,444 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:33,906 - ERROR -   - Failed CREATE 6.0 mL CTAB_dilution_5: Read timeout
+2026-06-15 08:45:33,906 - INFO -   >> CREATE 6.0 mL: TTAB_dilution_5 (1.00e-02 mM)
+2026-06-15 08:45:33,906 - INFO -      Source : 400.0 uL from TTAB_dilution_3
+2026-06-15 08:45:33,906 - INFO -      Water  : 5600.0 uL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated overaspirate_vol=0.016147258392801834 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.400mL
+2026-06-15 08:45:33,906 - INFO - Dispensing 0.400 mL from TTAB_dilution_3 to TTAB_dilution_5
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated overaspirate_vol=0.016147258392801837 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.400mL
+2026-06-15 08:45:33,919 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:33,919 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:33,919 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:33,919 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:33,919 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:33,919 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:33,919 - DEBUG - Applied object param overaspirate_vol=0.016147258392801834
+2026-06-15 08:45:33,920 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:33,920 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:33,920 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:33,920 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:33,920 - DEBUG - Selected large_tip for volume 0.411 mL
+2026-06-15 08:45:33,921 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:38,387 - ERROR -   - Failed CREATE 6.0 mL TTAB_dilution_5: Read timeout
+2026-06-15 08:45:38,387 - INFO -   >> CREATE 6.0 mL: NaC_dilution_5 (1.00e-02 mM)
+2026-06-15 08:45:38,387 - INFO -      Source : 400.0 uL from NaC_dilution_3
+2026-06-15 08:45:38,387 - INFO -      Water  : 5600.0 uL
+2026-06-15 08:45:38,387 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.400mL
+2026-06-15 08:45:38,387 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.400mL
+2026-06-15 08:45:38,393 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:38,393 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.400mL
+2026-06-15 08:45:38,393 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.400mL
+2026-06-15 08:45:38,393 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.400mL
+2026-06-15 08:45:38,393 - DEBUG - Using calibrated overaspirate_vol=0.016147258392801834 for SDS at 0.400mL
+2026-06-15 08:45:38,393 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:38,393 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.400mL
+2026-06-15 08:45:38,393 - INFO - Dispensing 0.400 mL from NaC_dilution_3 to NaC_dilution_5
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated aspirate_speed=8 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated dispense_speed=14 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated aspirate_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated dispense_wait_time=3.5437186 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated blowout_vol=0.016158898 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated post_asp_air_vol=0.010581106 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated overaspirate_vol=0.016147258392801837 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated post_retract_wait_time=0.0 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Using calibrated pre_asp_air_vol=0.0 for SDS at 0.400mL
+2026-06-15 08:45:38,398 - DEBUG - Applied object param asp_disp_cycles=0
+2026-06-15 08:45:38,398 - DEBUG - Applied object param aspirate_speed=8
+2026-06-15 08:45:38,398 - DEBUG - Applied object param aspirate_wait_time=0.0
+2026-06-15 08:45:38,398 - DEBUG - Applied object param blowout_vol=0.016158898
+2026-06-15 08:45:38,398 - DEBUG - Applied object param dispense_speed=14
+2026-06-15 08:45:38,400 - DEBUG - Applied object param dispense_wait_time=3.5437186
+2026-06-15 08:45:38,400 - DEBUG - Applied object param overaspirate_vol=0.016147258392801834
+2026-06-15 08:45:38,400 - DEBUG - Applied object param post_asp_air_vol=0.010581106
+2026-06-15 08:45:38,400 - DEBUG - Applied object param post_retract_wait_time=0.0
+2026-06-15 08:45:38,400 - DEBUG - Applied object param pre_asp_air_vol=0.0
+2026-06-15 08:45:38,400 - DEBUG - Applied object param retract_speed=10
+2026-06-15 08:45:38,400 - DEBUG - Selected large_tip for volume 0.411 mL
+2026-06-15 08:45:38,401 - INFO - Getting large_tip (pipet number 1) from rack: large_tip_rack_1
+2026-06-15 08:45:42,864 - ERROR -   - Failed CREATE 6.0 mL NaC_dilution_5: Read timeout
+2026-06-15 08:45:42,864 - INFO - Substock summary: 1 created, 0 topped up, 0 skipped, 1 total available
+2026-06-15 08:45:42,867 - INFO -   Initial grid: 68/68 points survived volume filter (100%)
+2026-06-15 08:45:42,879 - INFO -   Dropped init candidates: 0 (boundary=0, sobol=0)
+2026-06-15 08:45:42,915 - INFO -   Dropped init candidates saved: output\experimental_surfactant_grid\multidim_3D_CTAB_TTAB_NaC_triangle_simplex_multidim_v1_20260612_185348\dropped_init_candidates.csv
+2026-06-15 08:45:42,932 - INFO -   Built 28 control wells for first plate (1 water blank, 3 stock refs, 24 1D CMC).
+2026-06-15 08:45:42,943 - INFO - Grabbing new wellplate
+2026-06-15 08:45:42,943 - INFO - Moving robot to home position

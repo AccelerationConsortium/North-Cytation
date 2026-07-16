@@ -384,6 +384,10 @@ def run_two_point_series_demo(simulate: bool = False) -> None:
     detail_fields = [
         "label", "liquid_name", "vial_name", "target_volume_uL", "point", "replicate",
         "overaspirate_uL", "measured_volume_uL", "elapsed_s", "density_g_mL", "timestamp",
+        "baseline_parameter_source",
+        "aspirate_speed", "dispense_speed", "aspirate_wait_time", "dispense_wait_time",
+        "pre_asp_air_vol", "post_asp_air_vol", "blowout_vol", "asp_disp_cycles",
+        "post_retract_wait_time", "retract_speed",
     ]
     summary_fields = [
         "label", "liquid_name", "vial_name", "target_volume_uL", "replicates_per_point",
@@ -423,8 +427,10 @@ def run_two_point_series_demo(simulate: bool = False) -> None:
             if liquid_name not in DEFAULT_BASELINE_PARAMS:
                 raise ValueError(f"Missing default baseline params for liquid '{liquid_name}'")
             base = DEFAULT_BASELINE_PARAMS[liquid_name]
+            baseline_parameter_source = "default_baseline_params"
         else:
             logger.info(f"Loaded baseline parameters from trial results for '{liquid_name}'")
+            baseline_parameter_source = "trial_results_best_row"
 
 
         show_gui = bool(first_run and (not SIMULATE))
@@ -501,6 +507,8 @@ def run_two_point_series_demo(simulate: bool = False) -> None:
                     ("point_2", point2_ov_ml, point2_measurements),
                     ("point_3_validation", optimal_ov_ml, point3_measurements),
                 ]:
+                    point_params = _build_measure_params(base, overasp_ml)
+                    point_hw = point_params["parameters"]
                     for m in measurements:
                         detail_rows.append(
                             {
@@ -515,6 +523,17 @@ def run_two_point_series_demo(simulate: bool = False) -> None:
                                 "elapsed_s": m["elapsed_s"],
                                 "density_g_mL": LIQUIDS[liquid_name]["density"],
                                 "timestamp": m.get("start_time", datetime.now().isoformat()),
+                                "baseline_parameter_source": baseline_parameter_source,
+                                "aspirate_speed": point_hw["aspirate_speed"],
+                                "dispense_speed": point_hw["dispense_speed"],
+                                "aspirate_wait_time": point_hw["aspirate_wait_time"],
+                                "dispense_wait_time": point_hw["dispense_wait_time"],
+                                "pre_asp_air_vol": point_hw["pre_asp_air_vol"],
+                                "post_asp_air_vol": point_hw["post_asp_air_vol"],
+                                "blowout_vol": point_hw["blowout_vol"],
+                                "asp_disp_cycles": point_hw["asp_disp_cycles"],
+                                "post_retract_wait_time": point_hw["post_retract_wait_time"],
+                                "retract_speed": point_hw["retract_speed"],
                             }
                         )
 

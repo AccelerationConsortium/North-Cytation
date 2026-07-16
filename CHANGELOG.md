@@ -1,5 +1,53 @@
 # Changelog
 
+## [2026-07-13] - Grid Array Generator: Preserve Tool Orientation + Sim Support
+
+### workflows/enhanced_SP_arm_position_program_v1.1_xy_coordinate_system.py
+- FIXED: `generate_grid_array` no longer drops the tool orientation between origin capture and per-cell IK. Previously `n9_ik(x, y)` was called without `tool_orientation=`, so every generated cell defaulted to theta=0 regardless of the origin's actual tool angle. In sim this caused ~176 deg of tool rotation drift between origin and cells; on hardware this meant the wrist center landed on target but the pipette tip physically missed vials. Root cause verified empirically against `north.n9_kinematics`.
+- CHANGED: `set_grid_origin` now captures `tool_theta_rad` via `n9_kinematics.fk` (same math used by generation and verification) and displays it in the origin label.
+- ADDED: Import of `north.n9_kinematics` as `n9k` with graceful fallback (`N9K_AVAILABLE`). Grid generation is disabled with a clear message if the module is missing rather than silently doing the wrong thing.
+- ADDED: Pure `_compute_grid_entries(...)` helper that runs entirely on `n9_kinematics` (works in sim without hardware, no fabricated math). Structured for future reuse: takes any (x0, y0, z_cts, tool_theta_rad) origin so the same math can shift an existing `Locator.py` array by re-anchoring one reference cell.
+- ADDED: FK round-trip verification on every generated cell (tolerances: 0.5 mm XY, 0.005 rad theta). Any drift beyond tolerance is embedded as `# FK ROUND-TRIP DRIFT` comments in the grid output text so the user sees it before pasting into `Locator.py`.
+- REMOVED: The `hasattr(self.robot, 'n9_ik')` block that unnecessarily disabled grid generation in simulation mode.
+
+## [2026-07-08] - Two-Point Demo Details CSV Parameter Metadata
+
+### calibration_modular_v2/two_point_series_calibration_demo.py
+- CHANGED: Expanded `two_point_series_demo_details_*.csv` output schema to include full effective measurement parameters per replicate row (`aspirate_speed`, `dispense_speed`, wait times, air volumes, blowout, cycles, retract settings).
+- ADDED: New `baseline_parameter_source` field in detail rows to indicate whether parameters came from `trial_results` best row or fallback defaults.
+- REASON: Detail CSV previously recorded only `overaspirate_uL`, making it impossible to audit which hardware parameters were used for each measurement.
+
+## [2026-07-08] - Surfactant Workflow Movement Replay Test
+
+### tests/Surfacant_Worflow_vial_movement_SP.py
+- ADDED: New movement-only validation script that builds the first-plate recipe context from the multidimensional surfactant workflow and replays vial placement/return moves without dispensing to wells.
+- ADDED: Replays surfactant source-vial movement sequence using the same concentration-based safe-position ordering used by the production workflow.
+- ADDED: Replays water and buffer placement/return moves used in first-plate dispensing setup.
+- ADDED: Final small-tip water aspiration check across all safe positions (including heater position) with aspirate-then-dispense-back verification per position.
+- ADDED: Explicit required-vial validation against the selected vial status file so missing workflow vials fail loudly.
+- CHANGED: Added rack-only auto-configuration for this test script so surfactants are selected from currently available `*_stock` vials in the loaded vial CSV (minimum 2, capped by `MAX_SURFACTANTS_FROM_RACK`).
+- CHANGED: Buffer selection now auto-picks the first available candidate from configured priority (`MES`, `HEPES`, `CAPS`, `NaCl`) and disables buffer moves for this test if none are present.
+
+## [2026-06-23] - Safe Pipette Position Test Script
+
+### tests/Pipette_testing_positions_SP.py (new)
+- ADDED: Standalone pipette position tester that moves the water vial to each safe pipetting position used by the surfactant multidimensional workflow.
+- ADDED: Aspirates 2 mL (large_tip) at each position using `aspirate_from_vial` with `move_to_aspirate=True` so the robot physically lowers to the computed aspirate height, then retracts.
+- ADDED: Removes tip and returns vial home after each position.
+- ADDED: `HOME_BETWEEN_POSITIONS` boolean toggle for optional full robot homing between cycles.
+- ADDED: `TEST_POSITIONS` list mirrors the safe-placement positions from `position_surfactant_vials_by_concentration`.
+
+## [2026-06-19] - Safe Position Movement Test Script
+
+### tests/position_test_SP.py
+- ADDED: Standalone safe-position tester for vial motion validation using surfactant workflow context only (no workflow code changes).
+- ADDED: Sequence that moves a target vial to clamp and home first, then iterates through safe positions and returns home after each move.
+- CHANGED: Simplified homing control by removing interactive prompt-based logic.
+- ADDED: Direct boolean toggles in script (`HOME_BEFORE_START`, `HOME_BETWEEN_MOVES`) to turn homing on/off.
+- ADDED: Configurable safe-position override format (`47 46 clamp heater:2`) with defaults aligned to surfactant safe-placement pattern.
+- CHANGED: Added simple top-level `SAFE_POSITION_TOKENS` list so safe positions can be reassigned without tuple syntax or parser edits.
+- CHANGED: Default vial CSV now matches the multidimensional surfactant workflow input (`status/surfactant_multidim_vials.csv`).
+
 ## [2026-06-03] - Fix Embedded Validation Overaspirate Runaway
 
 ### pipetting_data/embedded_calibration_validation.py

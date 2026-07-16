@@ -1,0 +1,285 @@
+2026-07-10 16:01:27,705 - DEBUG - No workflow config provided - using default initialization
+2026-07-10 16:01:27,705 - INFO - Launching status review GUI...
+2026-07-10 16:01:27,905 - INFO - Detected workflow name: Surfacant_Worflow_vial_movement_SP
+2026-07-10 16:01:28,365 - INFO - Config editor loaded for workflow: Surfacant_Worflow_vial_movement_SP
+2026-07-10 16:01:41,349 - INFO - User selected: Run Workflow
+2026-07-10 16:01:41,364 - INFO - Status review completed - proceeding with hardware initialization
+2026-07-10 16:01:42,062 - INFO - Initializing North Robot...
+2026-07-10 16:01:42,062 - DEBUG - Loading robot configuration files...
+2026-07-10 16:01:42,079 - DEBUG - Loaded vial positions configuration from robot_state/vial_positions.yaml
+2026-07-10 16:01:42,079 - DEBUG - Loaded pipet tips configuration from robot_state/pipet_tips.yaml
+2026-07-10 16:01:42,079 - DEBUG - Loaded pipet racks configuration from robot_state/pipet_racks.yaml
+2026-07-10 16:01:42,095 - DEBUG - Loaded pump configuration from robot_state/syringe_pumps.yaml
+2026-07-10 16:01:42,095 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-07-10 16:01:42,095 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-07-10 16:01:42,095 - DEBUG - Loading robot state files...
+2026-07-10 16:01:42,117 - DEBUG - Loaded vial data from C:\Users\Imaging Controller\Desktop\utoronto_demo\status\surfactant_multidim_vials.csv
+2026-07-10 16:01:42,119 - DEBUG - Loaded robot status from robot_state/robot_status.yaml
+2026-07-10 16:01:42,123 - DEBUG - Loaded wellplate positions from robot_state/wellplates.yaml
+2026-07-10 16:01:42,123 - DEBUG - Robot status loaded successfully
+2026-07-10 16:01:42,123 - INFO - Physical initialization of North Robot...
+2026-07-10 16:01:45,611 - DEBUG - Loading pumps from YAML configuration...
+2026-07-10 16:01:45,709 - DEBUG - Loaded pump 0: volume=1.0mL, speed=11, liquid=None
+2026-07-10 16:01:45,828 - DEBUG - Loaded pump 1: volume=2.5mL, speed=15, liquid=water
+2026-07-10 16:01:45,828 - INFO - Moving robot to home position
+2026-07-10 16:01:46,300 - DEBUG - Initializing centrifuge controller...
+2026-07-10 16:01:46,300 - INFO - Initializing North Track...
+2026-07-10 16:01:46,300 - DEBUG - Loading track status from file: robot_state/track_status.yaml
+2026-07-10 16:01:46,300 - DEBUG - Getting track status from file: robot_state/track_status.yaml
+2026-07-10 16:01:46,301 - DEBUG - Loaded track status from robot_state/track_status.yaml
+2026-07-10 16:01:46,301 - DEBUG - Loading track positions from: robot_state/track_positions.yaml
+2026-07-10 16:01:46,301 - DEBUG - Loaded track positions configuration from robot_state/track_positions.yaml
+2026-07-10 16:01:46,301 - DEBUG - Loading robot hardware configuration from: robot_state/robot_hardware.yaml
+2026-07-10 16:01:46,301 - DEBUG - Loaded robot hardware configuration from robot_state/robot_hardware.yaml
+2026-07-10 16:01:46,316 - DEBUG - Loaded wellplate properties configuration from robot_state/wellplates.yaml
+2026-07-10 16:01:46,388 - DEBUG - Moving North Track to home position
+2026-07-10 16:01:46,388 - DEBUG - Detected origin position (0,0) - setting location to 'origin'
+2026-07-10 16:01:46,389 - DEBUG - Updated gripper location to: origin at position {'x': 0, 'z': 0}
+2026-07-10 16:01:46,391 - INFO - Starting surfactant workflow movement replay test
+2026-07-10 16:01:46,392 - INFO - Simulation mode: False
+2026-07-10 16:01:46,392 - INFO - Workflow init strategy: grid
+2026-07-10 16:01:46,394 - INFO - Rack-only configuration enabled for this test
+2026-07-10 16:01:46,394 - INFO - Selected surfactants: ['TTAB', 'SDS', 'CHAPS']
+2026-07-10 16:01:46,394 - INFO - Selected buffer: NaCl
+2026-07-10 16:01:46,395 - INFO - Workflow surfactants: ['TTAB', 'SDS', 'CHAPS']
+2026-07-10 16:01:46,395 - INFO - Homing robot components before test
+2026-07-10 16:01:46,395 - INFO - Homing all robot components...
+2026-07-10 16:01:46,395 - DEBUG - Homing carousel...
+2026-07-10 16:01:54,201 - DEBUG - Homing robot axes...
+2026-07-10 16:02:06,425 - DEBUG - Homing pump 0...
+2026-07-10 16:02:08,092 - DEBUG - Homing pump 1...
+2026-07-10 16:02:09,775 - DEBUG - Homing track axes...
+2026-07-10 16:02:09,775 - DEBUG - Homing track axis z_axis (axis 6)...
+2026-07-10 16:02:13,334 - DEBUG - Homing track axis x_axis (axis 7)...
+2026-07-10 16:02:17,417 - INFO - All robot components homed successfully
+2026-07-10 16:02:17,418 - INFO - Grid init prepared: 27 points (= 3^3)
+2026-07-10 16:02:17,418 - INFO - 
+=== Analyzing dilution strategy for TTAB ===
+2026-07-10 16:02:17,418 - INFO - Target concentrations: ['1.00e-02', '3.87e-01', '1.50e+01'] mM
+2026-07-10 16:02:17,419 - INFO - Systematic dilution series: ['10', '4', '1.5', '0.7', '0.3', '0.1'] mM
+2026-07-10 16:02:17,420 - INFO -   1.00e-02 mM: Use TTAB_dilution_5 (20.0 uL)
+2026-07-10 16:02:17,425 - INFO -   3.87e-01 mM: Use TTAB_dilution_2 (51.6 uL)
+2026-07-10 16:02:17,425 - INFO -   1.50e+01 mM: Use TTAB_stock (60.0 uL)
+2026-07-10 16:02:17,426 - INFO - 
+=== Analyzing dilution strategy for SDS ===
+2026-07-10 16:02:17,426 - INFO - Target concentrations: ['1.00e-02', '3.87e-01', '1.50e+01'] mM
+2026-07-10 16:02:17,426 - INFO - Systematic dilution series: ['10', '4', '1.5', '0.7', '0.3', '0.1'] mM
+2026-07-10 16:02:17,427 - INFO -   1.00e-02 mM: Use SDS_dilution_5 (20.0 uL)
+2026-07-10 16:02:17,427 - INFO -   3.87e-01 mM: Use SDS_dilution_2 (51.6 uL)
+2026-07-10 16:02:17,427 - INFO -   1.50e+01 mM: Use SDS_stock (60.0 uL)
+2026-07-10 16:02:17,430 - INFO - 
+=== Analyzing dilution strategy for CHAPS ===
+2026-07-10 16:02:17,430 - INFO - Target concentrations: ['1.00e-02', '3.00e-01', '9.00e+00'] mM
+2026-07-10 16:02:17,430 - INFO - Systematic dilution series: ['5', '3', '1', '0.5', '0.2', '0.1'] mM
+2026-07-10 16:02:17,431 - INFO -   1.00e-02 mM: Use CHAPS_dilution_5 (20.0 uL)
+2026-07-10 16:02:17,433 - INFO -   3.00e-01 mM: Use CHAPS_dilution_2 (60.0 uL)
+2026-07-10 16:02:17,433 - INFO -   9.00e+00 mM: Use CHAPS_stock (60.0 uL)
+2026-07-10 16:02:17,434 - INFO - Initial points kept: 27/27
+2026-07-10 16:02:17,439 - INFO - 
+2026-07-10 16:02:17,439 - INFO - === Stage 1: Replaying first-plate vial placement movements ===
+2026-07-10 16:02:17,440 - INFO - First plate rows: 55
+2026-07-10 16:02:17,445 - INFO - Replaying movement for TTAB: 7 vials
+2026-07-10 16:02:17,447 - INFO -   Positioning surfactant A vials by concentration (concentrated -> dilute):
+2026-07-10 16:02:17,447 - INFO -     TTAB_stock (50.00mM) -> main_8mL_rack[47]
+2026-07-10 16:02:17,447 - INFO - Moving vial TTAB_stock to main_8mL_rack: 47
+2026-07-10 16:02:17,447 - DEBUG - Grabbing vial 2 with index 2
+2026-07-10 16:02:20,019 - DEBUG - Dropping off vial 2 at location main_8mL_rack with index 47
+2026-07-10 16:02:23,483 - INFO -     TTAB_dilution_0 (10.00mM) -> main_8mL_rack[46]
+2026-07-10 16:02:23,483 - INFO - Moving vial TTAB_dilution_0 to main_8mL_rack: 46
+2026-07-10 16:02:23,483 - DEBUG - Grabbing vial 18 with index 18
+2026-07-10 16:02:25,847 - DEBUG - Dropping off vial 18 at location main_8mL_rack with index 46
+2026-07-10 16:02:29,038 - INFO -     TTAB_dilution_1 (4.00mM) -> main_8mL_rack[45]
+2026-07-10 16:02:29,038 - INFO - Moving vial TTAB_dilution_1 to main_8mL_rack: 45
+2026-07-10 16:02:29,038 - DEBUG - Grabbing vial 19 with index 19
+2026-07-10 16:02:31,409 - DEBUG - Dropping off vial 19 at location main_8mL_rack with index 45
+2026-07-10 16:02:34,620 - INFO -     TTAB_dilution_2 (1.50mM) -> main_8mL_rack[44]
+2026-07-10 16:02:34,620 - INFO - Moving vial TTAB_dilution_2 to main_8mL_rack: 44
+2026-07-10 16:02:34,620 - DEBUG - Grabbing vial 20 with index 20
+2026-07-10 16:02:37,023 - DEBUG - Dropping off vial 20 at location main_8mL_rack with index 44
+2026-07-10 16:02:40,268 - INFO -     TTAB_dilution_3 (0.70mM) -> clamp
+2026-07-10 16:02:40,268 - INFO - Moving vial TTAB_dilution_3 to clamp: 0
+2026-07-10 16:02:40,268 - DEBUG - Grabbing vial 21 with index 21
+2026-07-10 16:02:42,687 - DEBUG - Dropping off vial 21 at location clamp with index 0
+2026-07-10 16:02:45,793 - INFO -     TTAB_dilution_4 (0.30mM) -> main_8mL_rack[43]
+2026-07-10 16:02:45,793 - INFO - Moving vial TTAB_dilution_4 to main_8mL_rack: 43
+2026-07-10 16:02:45,793 - DEBUG - Grabbing vial 22 with index 22
+2026-07-10 16:02:48,113 - DEBUG - Dropping off vial 22 at location main_8mL_rack with index 43
+2026-07-10 16:02:51,413 - INFO -     TTAB_dilution_5 (0.10mM) -> heater[2]
+2026-07-10 16:02:51,413 - INFO - Moving vial TTAB_dilution_5 to heater: 2
+2026-07-10 16:02:51,413 - DEBUG - Grabbing vial 23 with index 23
+2026-07-10 16:02:53,877 - DEBUG - Dropping off vial 23 at location heater with index 2
+2026-07-10 16:02:57,733 - INFO -   Dispensing order will be: dilute -> concentrated
+2026-07-10 16:02:57,733 - INFO -   Returning surfactant A vials to home positions:
+2026-07-10 16:02:57,733 - INFO -     TTAB_dilution_5 -> home
+2026-07-10 16:02:57,734 - INFO - Returning vial TTAB_dilution_5 to home location: main_8mL_rack index 23
+2026-07-10 16:02:57,734 - INFO - Moving vial TTAB_dilution_5 to main_8mL_rack: 23
+2026-07-10 16:02:57,734 - DEBUG - Grabbing vial 23 with index 23
+2026-07-10 16:02:58,016 - DEBUG - Dropping off vial 23 at location main_8mL_rack with index 23
+2026-07-10 16:03:01,896 - INFO -     TTAB_dilution_4 -> home
+2026-07-10 16:03:01,896 - INFO - Returning vial TTAB_dilution_4 to home location: main_8mL_rack index 22
+2026-07-10 16:03:01,896 - INFO - Moving vial TTAB_dilution_4 to main_8mL_rack: 22
+2026-07-10 16:03:01,896 - DEBUG - Grabbing vial 22 with index 22
+2026-07-10 16:03:04,393 - DEBUG - Dropping off vial 22 at location main_8mL_rack with index 22
+2026-07-10 16:03:07,662 - INFO -     TTAB_dilution_3 -> home
+2026-07-10 16:03:07,667 - INFO - Returning vial TTAB_dilution_3 to home location: main_8mL_rack index 21
+2026-07-10 16:03:07,667 - INFO - Moving vial TTAB_dilution_3 to main_8mL_rack: 21
+2026-07-10 16:03:07,667 - DEBUG - Grabbing vial 21 with index 21
+2026-07-10 16:03:09,979 - DEBUG - Dropping off vial 21 at location main_8mL_rack with index 21
+2026-07-10 16:03:13,063 - INFO -     TTAB_dilution_2 -> home
+2026-07-10 16:03:13,064 - INFO - Returning vial TTAB_dilution_2 to home location: main_8mL_rack index 20
+2026-07-10 16:03:13,066 - INFO - Moving vial TTAB_dilution_2 to main_8mL_rack: 20
+2026-07-10 16:03:13,066 - DEBUG - Grabbing vial 20 with index 20
+2026-07-10 16:03:15,494 - DEBUG - Dropping off vial 20 at location main_8mL_rack with index 20
+2026-07-10 16:03:18,731 - INFO -     TTAB_dilution_1 -> home
+2026-07-10 16:03:18,734 - INFO - Returning vial TTAB_dilution_1 to home location: main_8mL_rack index 19
+2026-07-10 16:03:18,735 - INFO - Moving vial TTAB_dilution_1 to main_8mL_rack: 19
+2026-07-10 16:03:18,735 - DEBUG - Grabbing vial 19 with index 19
+2026-07-10 16:03:21,146 - DEBUG - Dropping off vial 19 at location main_8mL_rack with index 19
+2026-07-10 16:03:24,356 - INFO -     TTAB_dilution_0 -> home
+2026-07-10 16:03:24,356 - INFO - Returning vial TTAB_dilution_0 to home location: main_8mL_rack index 18
+2026-07-10 16:03:24,356 - INFO - Moving vial TTAB_dilution_0 to main_8mL_rack: 18
+2026-07-10 16:03:24,356 - DEBUG - Grabbing vial 18 with index 18
+2026-07-10 16:03:26,733 - DEBUG - Dropping off vial 18 at location main_8mL_rack with index 18
+2026-07-10 16:03:29,946 - INFO -     TTAB_stock -> home
+2026-07-10 16:03:29,946 - INFO - Returning vial TTAB_stock to home location: main_8mL_rack index 2
+2026-07-10 16:03:29,946 - INFO - Moving vial TTAB_stock to main_8mL_rack: 2
+2026-07-10 16:03:29,946 - DEBUG - Grabbing vial 2 with index 2
+2026-07-10 16:03:32,302 - DEBUG - Dropping off vial 2 at location main_8mL_rack with index 2
+2026-07-10 16:03:35,738 - INFO - Replaying movement for SDS: 7 vials
+2026-07-10 16:03:35,738 - INFO -   Positioning surfactant A vials by concentration (concentrated -> dilute):
+2026-07-10 16:03:35,738 - INFO -     SDS_stock (50.00mM) -> main_8mL_rack[47]
+2026-07-10 16:03:35,738 - INFO - Moving vial SDS_stock to main_8mL_rack: 47
+2026-07-10 16:03:35,738 - DEBUG - Grabbing vial 1 with index 1
+2026-07-10 16:03:37,834 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 47
+2026-07-10 16:03:41,315 - INFO -     SDS_dilution_0 (10.00mM) -> main_8mL_rack[46]
+2026-07-10 16:03:41,315 - INFO - Moving vial SDS_dilution_0 to main_8mL_rack: 46
+2026-07-10 16:03:41,315 - DEBUG - Grabbing vial 12 with index 12
+2026-07-10 16:03:43,753 - DEBUG - Dropping off vial 12 at location main_8mL_rack with index 46
+2026-07-10 16:03:47,096 - INFO -     SDS_dilution_1 (4.00mM) -> main_8mL_rack[45]
+2026-07-10 16:03:47,096 - INFO - Moving vial SDS_dilution_1 to main_8mL_rack: 45
+2026-07-10 16:03:47,099 - DEBUG - Grabbing vial 13 with index 13
+2026-07-10 16:03:49,545 - DEBUG - Dropping off vial 13 at location main_8mL_rack with index 45
+2026-07-10 16:03:52,876 - INFO -     SDS_dilution_2 (1.50mM) -> main_8mL_rack[44]
+2026-07-10 16:03:52,876 - INFO - Moving vial SDS_dilution_2 to main_8mL_rack: 44
+2026-07-10 16:03:52,876 - DEBUG - Grabbing vial 14 with index 14
+2026-07-10 16:03:55,370 - DEBUG - Dropping off vial 14 at location main_8mL_rack with index 44
+2026-07-10 16:03:58,749 - INFO -     SDS_dilution_3 (0.70mM) -> clamp
+2026-07-10 16:03:58,749 - INFO - Moving vial SDS_dilution_3 to clamp: 0
+2026-07-10 16:03:58,749 - DEBUG - Grabbing vial 15 with index 15
+2026-07-10 16:04:01,244 - DEBUG - Dropping off vial 15 at location clamp with index 0
+2026-07-10 16:04:04,211 - INFO -     SDS_dilution_4 (0.30mM) -> main_8mL_rack[43]
+2026-07-10 16:04:04,211 - INFO - Moving vial SDS_dilution_4 to main_8mL_rack: 43
+2026-07-10 16:04:04,211 - DEBUG - Grabbing vial 16 with index 16
+2026-07-10 16:04:06,440 - DEBUG - Dropping off vial 16 at location main_8mL_rack with index 43
+2026-07-10 16:04:09,848 - INFO -     SDS_dilution_5 (0.10mM) -> heater[2]
+2026-07-10 16:04:09,848 - INFO - Moving vial SDS_dilution_5 to heater: 2
+2026-07-10 16:04:09,848 - DEBUG - Grabbing vial 17 with index 17
+2026-07-10 16:04:12,423 - DEBUG - Dropping off vial 17 at location heater with index 2
+2026-07-10 16:04:16,236 - INFO -   Dispensing order will be: dilute -> concentrated
+2026-07-10 16:04:16,236 - INFO -   Returning surfactant A vials to home positions:
+2026-07-10 16:04:16,236 - INFO -     SDS_dilution_5 -> home
+2026-07-10 16:04:16,236 - INFO - Returning vial SDS_dilution_5 to home location: main_8mL_rack index 17
+2026-07-10 16:04:16,236 - INFO - Moving vial SDS_dilution_5 to main_8mL_rack: 17
+2026-07-10 16:04:16,236 - DEBUG - Grabbing vial 17 with index 17
+2026-07-10 16:04:16,534 - DEBUG - Dropping off vial 17 at location main_8mL_rack with index 17
+2026-07-10 16:04:20,339 - INFO -     SDS_dilution_4 -> home
+2026-07-10 16:04:20,339 - INFO - Returning vial SDS_dilution_4 to home location: main_8mL_rack index 16
+2026-07-10 16:04:20,339 - INFO - Moving vial SDS_dilution_4 to main_8mL_rack: 16
+2026-07-10 16:04:20,339 - DEBUG - Grabbing vial 16 with index 16
+2026-07-10 16:04:22,921 - DEBUG - Dropping off vial 16 at location main_8mL_rack with index 16
+2026-07-10 16:04:26,322 - INFO -     SDS_dilution_3 -> home
+2026-07-10 16:04:26,322 - INFO - Returning vial SDS_dilution_3 to home location: main_8mL_rack index 15
+2026-07-10 16:04:26,322 - INFO - Moving vial SDS_dilution_3 to main_8mL_rack: 15
+2026-07-10 16:04:26,322 - DEBUG - Grabbing vial 15 with index 15
+2026-07-10 16:04:28,578 - DEBUG - Dropping off vial 15 at location main_8mL_rack with index 15
+2026-07-10 16:04:31,551 - INFO -     SDS_dilution_2 -> home
+2026-07-10 16:04:31,551 - INFO - Returning vial SDS_dilution_2 to home location: main_8mL_rack index 14
+2026-07-10 16:04:31,551 - INFO - Moving vial SDS_dilution_2 to main_8mL_rack: 14
+2026-07-10 16:04:31,551 - DEBUG - Grabbing vial 14 with index 14
+2026-07-10 16:04:34,072 - DEBUG - Dropping off vial 14 at location main_8mL_rack with index 14
+2026-07-10 16:04:37,423 - INFO -     SDS_dilution_1 -> home
+2026-07-10 16:04:37,423 - INFO - Returning vial SDS_dilution_1 to home location: main_8mL_rack index 13
+2026-07-10 16:04:37,423 - INFO - Moving vial SDS_dilution_1 to main_8mL_rack: 13
+2026-07-10 16:04:37,423 - DEBUG - Grabbing vial 13 with index 13
+2026-07-10 16:04:39,914 - DEBUG - Dropping off vial 13 at location main_8mL_rack with index 13
+2026-07-10 16:04:43,267 - INFO -     SDS_dilution_0 -> home
+2026-07-10 16:04:43,267 - INFO - Returning vial SDS_dilution_0 to home location: main_8mL_rack index 12
+2026-07-10 16:04:43,267 - INFO - Moving vial SDS_dilution_0 to main_8mL_rack: 12
+2026-07-10 16:04:43,267 - DEBUG - Grabbing vial 12 with index 12
+2026-07-10 16:04:45,740 - DEBUG - Dropping off vial 12 at location main_8mL_rack with index 12
+2026-07-10 16:04:49,081 - INFO -     SDS_stock -> home
+2026-07-10 16:04:49,083 - INFO - Returning vial SDS_stock to home location: main_8mL_rack index 1
+2026-07-10 16:04:49,083 - INFO - Moving vial SDS_stock to main_8mL_rack: 1
+2026-07-10 16:04:49,083 - DEBUG - Grabbing vial 1 with index 1
+2026-07-10 16:04:51,526 - DEBUG - Dropping off vial 1 at location main_8mL_rack with index 1
+2026-07-10 16:04:54,984 - INFO - Replaying movement for CHAPS: 7 vials
+2026-07-10 16:04:54,994 - INFO -   Positioning surfactant A vials by concentration (concentrated -> dilute):
+2026-07-10 16:04:54,994 - INFO -     CHAPS_stock (30.00mM) -> main_8mL_rack[47]
+2026-07-10 16:04:54,994 - INFO - Moving vial CHAPS_stock to main_8mL_rack: 47
+2026-07-10 16:04:54,994 - DEBUG - Grabbing vial 0 with index 0
+2026-07-10 16:04:57,064 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 47
+2026-07-10 16:05:00,561 - INFO -     CHAPS_dilution_0 (5.00mM) -> main_8mL_rack[46]
+2026-07-10 16:05:00,561 - INFO - Moving vial CHAPS_dilution_0 to main_8mL_rack: 46
+2026-07-10 16:05:00,561 - DEBUG - Grabbing vial 6 with index 6
+2026-07-10 16:05:03,067 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 46
+2026-07-10 16:05:06,517 - INFO -     CHAPS_dilution_1 (3.00mM) -> main_8mL_rack[45]
+2026-07-10 16:05:06,517 - INFO - Moving vial CHAPS_dilution_1 to main_8mL_rack: 45
+2026-07-10 16:05:06,517 - DEBUG - Grabbing vial 7 with index 7
+2026-07-10 16:05:09,040 - DEBUG - Dropping off vial 7 at location main_8mL_rack with index 45
+2026-07-10 16:05:12,484 - INFO -     CHAPS_dilution_2 (1.00mM) -> main_8mL_rack[44]
+2026-07-10 16:05:12,484 - INFO - Moving vial CHAPS_dilution_2 to main_8mL_rack: 44
+2026-07-10 16:05:12,484 - DEBUG - Grabbing vial 8 with index 8
+2026-07-10 16:05:15,056 - DEBUG - Dropping off vial 8 at location main_8mL_rack with index 44
+2026-07-10 16:05:18,556 - INFO -     CHAPS_dilution_3 (0.50mM) -> clamp
+2026-07-10 16:05:18,556 - INFO - Moving vial CHAPS_dilution_3 to clamp: 0
+2026-07-10 16:05:18,556 - DEBUG - Grabbing vial 9 with index 9
+2026-07-10 16:05:21,157 - DEBUG - Dropping off vial 9 at location clamp with index 0
+2026-07-10 16:05:24,014 - INFO -     CHAPS_dilution_4 (0.20mM) -> main_8mL_rack[43]
+2026-07-10 16:05:24,014 - INFO - Moving vial CHAPS_dilution_4 to main_8mL_rack: 43
+2026-07-10 16:05:24,014 - DEBUG - Grabbing vial 10 with index 10
+2026-07-10 16:05:26,174 - DEBUG - Dropping off vial 10 at location main_8mL_rack with index 43
+2026-07-10 16:05:29,710 - INFO -     CHAPS_dilution_5 (0.10mM) -> heater[2]
+2026-07-10 16:05:29,711 - INFO - Moving vial CHAPS_dilution_5 to heater: 2
+2026-07-10 16:05:29,711 - DEBUG - Grabbing vial 11 with index 11
+2026-07-10 16:05:32,368 - DEBUG - Dropping off vial 11 at location heater with index 2
+2026-07-10 16:05:36,084 - INFO -   Dispensing order will be: dilute -> concentrated
+2026-07-10 16:05:36,084 - INFO -   Returning surfactant A vials to home positions:
+2026-07-10 16:05:36,084 - INFO -     CHAPS_dilution_5 -> home
+2026-07-10 16:05:36,084 - INFO - Returning vial CHAPS_dilution_5 to home location: main_8mL_rack index 11
+2026-07-10 16:05:36,084 - INFO - Moving vial CHAPS_dilution_5 to main_8mL_rack: 11
+2026-07-10 16:05:36,084 - DEBUG - Grabbing vial 11 with index 11
+2026-07-10 16:05:36,376 - DEBUG - Dropping off vial 11 at location main_8mL_rack with index 11
+2026-07-10 16:05:40,101 - INFO -     CHAPS_dilution_4 -> home
+2026-07-10 16:05:40,101 - INFO - Returning vial CHAPS_dilution_4 to home location: main_8mL_rack index 10
+2026-07-10 16:05:40,101 - INFO - Moving vial CHAPS_dilution_4 to main_8mL_rack: 10
+2026-07-10 16:05:40,101 - DEBUG - Grabbing vial 10 with index 10
+2026-07-10 16:05:42,737 - DEBUG - Dropping off vial 10 at location main_8mL_rack with index 10
+2026-07-10 16:05:46,266 - INFO -     CHAPS_dilution_3 -> home
+2026-07-10 16:05:46,266 - INFO - Returning vial CHAPS_dilution_3 to home location: main_8mL_rack index 9
+2026-07-10 16:05:46,266 - INFO - Moving vial CHAPS_dilution_3 to main_8mL_rack: 9
+2026-07-10 16:05:46,266 - DEBUG - Grabbing vial 9 with index 9
+2026-07-10 16:05:48,434 - DEBUG - Dropping off vial 9 at location main_8mL_rack with index 9
+2026-07-10 16:05:51,283 - INFO -     CHAPS_dilution_2 -> home
+2026-07-10 16:05:51,283 - INFO - Returning vial CHAPS_dilution_2 to home location: main_8mL_rack index 8
+2026-07-10 16:05:51,283 - INFO - Moving vial CHAPS_dilution_2 to main_8mL_rack: 8
+2026-07-10 16:05:51,283 - DEBUG - Grabbing vial 8 with index 8
+2026-07-10 16:05:53,886 - DEBUG - Dropping off vial 8 at location main_8mL_rack with index 8
+2026-07-10 16:05:57,386 - INFO -     CHAPS_dilution_1 -> home
+2026-07-10 16:05:57,386 - INFO - Returning vial CHAPS_dilution_1 to home location: main_8mL_rack index 7
+2026-07-10 16:05:57,386 - INFO - Moving vial CHAPS_dilution_1 to main_8mL_rack: 7
+2026-07-10 16:05:57,386 - DEBUG - Grabbing vial 7 with index 7
+2026-07-10 16:05:59,954 - DEBUG - Dropping off vial 7 at location main_8mL_rack with index 7
+2026-07-10 16:06:03,396 - INFO -     CHAPS_dilution_0 -> home
+2026-07-10 16:06:03,396 - INFO - Returning vial CHAPS_dilution_0 to home location: main_8mL_rack index 6
+2026-07-10 16:06:03,396 - INFO - Moving vial CHAPS_dilution_0 to main_8mL_rack: 6
+2026-07-10 16:06:03,396 - DEBUG - Grabbing vial 6 with index 6
+2026-07-10 16:06:05,940 - DEBUG - Dropping off vial 6 at location main_8mL_rack with index 6
+2026-07-10 16:06:09,381 - INFO -     CHAPS_stock -> home
+2026-07-10 16:06:09,381 - INFO - Returning vial CHAPS_stock to home location: main_8mL_rack index 0
+2026-07-10 16:06:09,381 - INFO - Moving vial CHAPS_stock to main_8mL_rack: 0
+2026-07-10 16:06:09,381 - DEBUG - Grabbing vial 0 with index 0
+2026-07-10 16:06:11,910 - DEBUG - Dropping off vial 0 at location main_8mL_rack with index 0
+2026-07-10 16:06:15,420 - INFO - Replaying water/buffer placement movements
+2026-07-10 16:06:15,420 - INFO - Moving vial water to main_8mL_rack: 44
+2026-07-10 16:06:15,420 - DEBUG - Grabbing vial 28 with index 28
+2026-07-10 16:06:17,599 - DEBUG - Dropping off vial 28 at location main_8mL_rack with index 44
