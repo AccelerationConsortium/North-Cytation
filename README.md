@@ -1,6 +1,6 @@
 <h1> Lash-E: A Friendly, Flexible Robotic Platform for Rapid Workflow Development  </h1>
 
-All code written by Owen Melville with contributions by Ilya Yakavets, Monique Ngan, ChatGPT and Claude. 
+All code written by Owen Melville with contributions by Ilya Yakavets, Monique Ngan, ChatGPT and Claude. Workflow code is written by individual users. 
 
 
 <h2>File List:</h2>
