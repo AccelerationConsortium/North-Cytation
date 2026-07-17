@@ -7,7 +7,7 @@ All code written by Owen Melville with contributions by Ilya Yakavets, Monique N
 
 - <b>North_Safe.py</b> Contains the reusable code for the control of the North Robot and the North Track which goes between the Cytation 5 and the North Robot. This is the most in-depth file.
   
-- <b> biotek_new.py </b> Contains the code for control of the Cytation 5. Ilya has a newer version with more capabilities.
+- <b> biotek_new.py </b> Contains the code for control of the Cytation 5. 
   
 - <b> master_usdl_coordinator.py </b> Contains reusable workflow code that uses multiple instruments: Cytation 5, North Robot & Track & Heater & Solid Dispenser, Photoreactor
    
