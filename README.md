@@ -1,6 +1,6 @@
-<h1> North Robot - Cytation 5 uSDL </h1>
+<h1> Lash-E: A Friendly, Flexible Robotic Platform for Rapid Workflow Development  </h1>
 
-All code written by Owen Melville with contributions by Ilya Yakavets, Monique Ngan and ChatGPT. 
+All code written by Owen Melville with contributions by Ilya Yakavets, Monique Ngan, ChatGPT and Claude. 
 
 
 <h2>File List:</h2>
