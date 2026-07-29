@@ -3867,6 +3867,7 @@ class North_Robot(North_Base):
 
     #Recap the vial in the clamp
     #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
+    #SP: Note: I made this change on this date
     def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None):
         self.logger.debug("Recapping clamped vial")
         
@@ -3884,8 +3885,10 @@ class North_Robot(North_Base):
         self.goto_location_if_not_there(vial_clamp_cap, move_speed=move_speed)
         if not self.simulate:
             time.sleep(0.5)
+
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap
+        
         self.GRIPPER_STATUS = None
         self.c9.open_clamp()
 

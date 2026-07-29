@@ -198,6 +198,7 @@ if __name__ == "__main__":
             metal_salt_vial="metal_salt_1",
             metal_salt_volume_mL=0.500,
         )
+
     finally:
         # Turn off slide heater and return robot home after all experiments
         lash_e.logger.info("Turning off slide heater")
