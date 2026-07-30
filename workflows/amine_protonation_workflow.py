@@ -46,7 +46,7 @@ from master_usdl_coordinator import Lash_E
 
 INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/amine_protonation_vials.csv"
 
-SIMULATE = True  # Set to False for hardware execution
+SIMULATE = False  # Set to False for hardware execution
 
 # HCl addition is fixed: 5 uL of 6 M HCl into the stirring reactor vial
 HCL_VIAL = "hcl_stock"

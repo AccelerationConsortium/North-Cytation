@@ -53,7 +53,7 @@ HOME_AT_END = True
 
 # Set to True to skip all surfactant/recipe logic and only move the water vial
 # through SAFE_POSITIONS_FOR_WATER_TEST.
-WATER_VIAL_MOVEMENT_ONLY = True
+WATER_VIAL_MOVEMENT_ONLY = False
 
 RUN_WATER_SAFE_POSITION_ASPIRATION_TEST = True
 WATER_TEST_VIAL = "water"
