@@ -290,7 +290,15 @@ def generate_achievable_boundary_samples(n_boundary_points, plans=None, logger=N
     import logging as _log
     _logger = logger or _log.getLogger(__name__)
 
-    levels = max(15, int(n_boundary_points * 3))
+    # Boundary candidates scale with levels ** (n - 1), because the boundary
+    # is an (n - 1)-dimensional surface.  Scaling levels linearly with the
+    # requested point count makes the full n-D feasibility grid explode in
+    # higher dimensions (for example, 96 points became a 288^4 grid).
+    boundary_dimension = max(1, n_surfactants - 1)
+    levels = max(
+        15,
+        int(np.ceil((n_boundary_points * 3) ** (1.0 / boundary_dimension))),
+    )
     _logger.info(f"Boundary sampling: {levels}^{n_surfactants} grid...")
 
     axes = [
