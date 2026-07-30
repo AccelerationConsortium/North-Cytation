@@ -21,7 +21,7 @@ Differs from the 2D file in three places only:
 
 Excluded vs 2D file: kinetics, CMC controls, adaptive baseline-rectangle
 re-bounding, 2D heatmaps, contour plots. Post-experiment N-D analysis is
-left to a separate script that reads the saved CSV.
+left to a separate script that reads the saved CSV. 
 
 Volume budget per well: WELL_VOLUME_UL = PYRENE + sum(surf vols) + water.
 Per-surfactant cap is BUDGET / N where BUDGET = WELL_VOLUME_UL - PYRENE.
@@ -2154,7 +2154,6 @@ def run_multidim_workflow(lash_e):
     # this pre-filtered list in order — one continuous low-discrepancy sequence.
     if RECOMMENDER_TYPE in ('sobol', 'random'):
         from scipy.stats.qmc import Sobol as _SobolInit
-        import numpy as np
         _sample_max = simplex_max_conc_mm if INIT_STRATEGY == 'simplex' else cube_max_conc_mm
         # Pool size: must cover all oversampled draws across all iterations.
         # Each iteration requests up to GRADIENT_SUGGESTIONS_PER_ITERATION * RECOMMEND_OVERSAMPLE_FACTOR
@@ -2244,13 +2243,62 @@ def run_multidim_workflow(lash_e):
     else:
         first_plate_df = init_exp_df
 
-    lash_e.grab_new_wellplate()
+    # Preserve a global, human-readable well index before any per-chunk rebasing.
+    first_plate_df["global_wellplate_index"] = first_plate_df["wellplate_index"]
+
+    # The initial batch (controls + boundary/interior init points) can exceed a
+    # single plate's capacity (e.g. high-dimensional simplex boundary sampling).
+    # Split it into ≤MAX_WELLS_PER_PLATE chunks, dispensing/measuring/rotating
+    # plates between chunks using the same mechanics as the Bayesian loop below.
+    n_initial_total = len(first_plate_df)
+    n_initial_chunks = int(np.ceil(n_initial_total / MAX_WELLS_PER_PLATE))
+    if n_initial_chunks > 1:
+        lash_e.logger.warning(
+            f"Initial batch of {n_initial_total} wells exceeds {MAX_WELLS_PER_PLATE}/plate; "
+            f"requires {n_initial_chunks} plates."
+        )
+        _send_workflow_slack(
+            f"{experiment_name} initial batch: {n_initial_total} wells requires "
+            f"{n_initial_chunks} plates (exceeds {MAX_WELLS_PER_PLATE}/plate)."
+        )
+
     save_results(first_plate_df, output_folder, "experiment_plan_initial")
-    well_recipes_df = execute_dispensing_nd(lash_e, first_plate_df)
-    well_recipes_df = dispense_dmso(lash_e, well_recipes_df)
-    well_recipes_df = measure_and_process_turbidity_nd(lash_e, well_recipes_df)
-    well_recipes_df = measure_and_process_fluorescence_nd(lash_e, well_recipes_df)
-    well_recipes_df['iteration'] = 0
+
+    well_recipes_df = None
+    current_wellplate_wells = 0
+    plate_number = 0  # incremented on every grab_new_wellplate()
+
+    for chunk_i in range(n_initial_chunks):
+        lo = chunk_i * MAX_WELLS_PER_PLATE
+        hi = min(lo + MAX_WELLS_PER_PLATE, n_initial_total)
+        chunk_df = first_plate_df.iloc[lo:hi].copy()
+        chunk_df["wellplate_index"] = range(len(chunk_df))  # rebase for the physical plate
+
+        if chunk_i == 0:
+            lash_e.grab_new_wellplate()
+            plate_number += 1
+        chunk_df["plate_number"] = plate_number
+
+        chunk_df = execute_dispensing_nd(lash_e, chunk_df)
+        chunk_df = dispense_dmso(lash_e, chunk_df)
+        chunk_df = measure_and_process_turbidity_nd(lash_e, chunk_df)
+        chunk_df = measure_and_process_fluorescence_nd(lash_e, chunk_df)
+        chunk_df['iteration'] = 0
+
+        well_recipes_df = chunk_df if well_recipes_df is None else pd.concat(
+            [well_recipes_df, chunk_df], ignore_index=True
+        )
+        current_wellplate_wells = len(chunk_df)  # wells on the plate still physically loaded
+
+        if chunk_i < n_initial_chunks - 1:
+            lash_e.logger.info(
+                f"Initial-batch plate {chunk_i + 1}/{n_initial_chunks} full "
+                f"({current_wellplate_wells} wells); rotating plate."
+            )
+            lash_e.discard_used_wellplate()
+            lash_e.grab_new_wellplate()
+            plate_number += 1
+
     save_results(well_recipes_df, output_folder, "results_after_initial_grid")
 
     # Plot initial grid so it can be compared against the final distribution.
@@ -2326,12 +2374,12 @@ def run_multidim_workflow(lash_e):
     except Exception as e:
         lash_e.logger.warning(f"Initial grid plotting failed (non-fatal): {e}")
 
-    current_wellplate_wells = len(well_recipes_df)
     n_exp_wells = len(init_exp_df)
     lash_e.logger.info(
-        f"Initial grid complete: {n_exp_wells} experiment wells + {n_controls} controls "
+        f"Initial batch complete: {n_exp_wells} experiment wells + {n_controls} controls "
+        f"across {n_initial_chunks} plate(s) "
         f"({current_wellplate_wells}/{MAX_WELLS_PER_PLATE} on current plate, "
-        f"{current_wellplate_wells}/{TARGET_TOTAL_WELLS} total budget used)."
+        f"{len(well_recipes_df)}/{TARGET_TOTAL_WELLS} total budget used)."
     )
 
     # Plot 1D CMC controls immediately after first measurement round.
@@ -2368,6 +2416,7 @@ def run_multidim_workflow(lash_e):
             lash_e.discard_used_wellplate()
             lash_e.grab_new_wellplate()
             current_wellplate_wells = 0
+            plate_number += 1
             continue
 
         # Recommender -> N-D points
@@ -2452,6 +2501,12 @@ def run_multidim_workflow(lash_e):
         next_recipes_df = build_well_recipes_df(
             points, plans, starting_well_index=current_wellplate_wells,
         )
+
+        # Continue the global well/plate record started during the initial batch.
+        _global_start = well_recipes_df["global_wellplate_index"].max() + 1
+        next_recipes_df["global_wellplate_index"] = range(_global_start, _global_start + len(next_recipes_df))
+        next_recipes_df["plate_number"] = plate_number
+
         next_recipes_df = execute_dispensing_nd(lash_e, next_recipes_df)
         next_recipes_df = dispense_dmso(lash_e, next_recipes_df)
         next_recipes_df = measure_and_process_turbidity_nd(lash_e, next_recipes_df)
@@ -2472,6 +2527,7 @@ def run_multidim_workflow(lash_e):
             lash_e.discard_used_wellplate()
             lash_e.grab_new_wellplate()
             current_wellplate_wells = 0
+            plate_number += 1
 
         iteration += 1
 
