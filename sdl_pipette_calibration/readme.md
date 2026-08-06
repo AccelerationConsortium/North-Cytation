@@ -1,10 +1,17 @@
 # SDL Pipette Calibration
 
-Automated pipetting-parameter calibration using multi-objective Bayesian
-optimization. Given a target volume and a way to measure delivered volume, the
-system searches over a hardware parameter space (speeds, wait times, air gaps,
-blowout, overaspirate) and returns an optimized recipe balancing accuracy,
-precision, and time.
+Different liquids pipette differently. Viscous liquids, volatile solvents, and
+surfactant-containing solutions all behave differently from water — and even the
+same liquid behaves differently at different volumes. The result is systematic
+pipetting error that is hard to correct by hand, and different for different systems.
+
+This framework **automatically calibrates pipetting parameters for a specific
+liquid class** using multi-objective Bayesian optimization. You tell it what
+liquid you are pipetting, what volumes you care about, and how to measure
+delivered volume. It then searches over your hardware's parameter space (speeds,
+wait times, air gaps, blowout, overaspirate volume) and returns a per-volume
+recipe optimized for accuracy, precision, and time. The result is a CSV of
+calibrated parameters you can load and use directly in your pipetting protocols.
 
 The decision layer is **purely software** — no specific robot or balance is
 required. You plug in a protocol module that implements four functions
@@ -100,6 +107,69 @@ python run_validation.py
 The optimizer handles replication, transfer learning between volumes, and
 produces analysis outputs (plots, feature importance, statistical summaries)
 automatically.
+
+## Understanding and Using the Outputs
+
+Each calibration run creates a timestamped folder under `output/`. The key file
+is **`optimal_conditions.csv`** — this is the end product of calibration.
+
+### Output files
+
+| File | What it contains |
+|------|------------------|
+| `optimal_conditions.csv` | **The calibration result.** One row per target volume with the best parameter set found and its achieved accuracy, precision, and timing. Copy this to `optimized_parameters/` to keep it. |
+| `optimal_conditions.json` | Same data as the CSV, in JSON format |
+| `trial_results.csv` | Every parameter combination tried during the run with its measured outcomes — useful for understanding the search |
+| `raw_measurements.csv` | Individual replicate measurements for every trial |
+| `analysis_report.txt` | Human-readable summary of the best results per volume |
+| `experiment_summary.json` | Full run metadata (config, timings, counts) |
+| `experiment_config_used.yaml` | Snapshot of the exact config used — useful for reproducing the run |
+
+### Reading the optimal conditions
+
+The `optimal_conditions.csv` has one row per calibrated volume. Key columns:
+
+```
+volume_target_ml   — target volume
+deviation_pct      — achieved accuracy (lower is better)
+precision_cv_pct   — achieved precision as CV% (lower is better)
+duration_s         — average time per pipetting operation
+status             — "success" or "failed" against your tolerances
+calibration_overaspirate_vol  — the key correction volume
+hardware_parameters_*         — one column per tuned hardware parameter
+```
+
+### Using the calibrated parameters in your protocols
+
+`pipetting_wizard.py` provides a ready-to-use loader that reads an
+`optimal_conditions.csv` and returns the right parameters for any target volume,
+interpolating between calibrated points if needed:
+
+```python
+from pipetting_wizard import PipettingWizard
+
+wizard = PipettingWizard(search_directory="optimized_parameters/")
+params = wizard.get_parameters_for_volume(target_volume_ml=0.05, liquid="water")
+# params is a dict of {parameter_name: value} ready to pass to your hardware
+```
+
+### Validating the calibration
+
+Before using calibrated parameters in production, validate them with an
+independent set of measurements:
+
+```bash
+# Point at the optimal_conditions.csv from your calibration run
+python run_validation.py
+```
+
+Configure the validation target in `experiment_config.yaml`:
+
+```yaml
+validation:
+  optimal_conditions_file: optimized_parameters/optimal_conditions_water.csv
+  replicates_per_volume: 5
+```
 
 ## Customizing Your Setup
 
