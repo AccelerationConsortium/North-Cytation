@@ -149,6 +149,7 @@ MAX_ITERATIONS = 20            # Safety cap; loop also stops if TARGET_TOTAL_WEL
 
 # Plate handling
 MAX_WELLS_PER_PLATE = 96
+INITIAL_BATCH_CHUNK_SIZE = 96  # Dispense/measure granularity for initial batch (can be < MAX_WELLS_PER_PLATE for finer control)
 
 # Controls (placed in the first plate before active learning starts)
 # Regular controls: 1 water blank + 1 pure-stock well per surfactant
@@ -2267,16 +2268,37 @@ def run_multidim_workflow(lash_e):
     well_recipes_df = None
     current_wellplate_wells = 0
     plate_number = 0  # incremented on every grab_new_wellplate()
+    n_initial_chunks = int(np.ceil(n_initial_total / INITIAL_BATCH_CHUNK_SIZE))
 
     for chunk_i in range(n_initial_chunks):
-        lo = chunk_i * MAX_WELLS_PER_PLATE
-        hi = min(lo + MAX_WELLS_PER_PLATE, n_initial_total)
+        lo = chunk_i * INITIAL_BATCH_CHUNK_SIZE
+        hi = min(lo + INITIAL_BATCH_CHUNK_SIZE, n_initial_total)
         chunk_df = first_plate_df.iloc[lo:hi].copy()
         chunk_df["wellplate_index"] = range(len(chunk_df))  # rebase for the physical plate
 
         if chunk_i == 0:
             lash_e.grab_new_wellplate()
             plate_number += 1
+        elif current_wellplate_wells + len(chunk_df) > MAX_WELLS_PER_PLATE:
+            # Physical plate is full; rotate before this chunk
+            lash_e.logger.info(
+                f"Initial-batch chunk {chunk_i} exceeds physical plate capacity "
+                f"({current_wellplate_wells} + {len(chunk_df)} > {MAX_WELLS_PER_PLATE}); rotating plate."
+            )
+            lash_e.discard_used_wellplate()
+            lash_e.grab_new_wellplate()
+            current_wellplate_wells = 0
+            plate_number += 1
+        
+        # Refill consumables between chunks (same pattern as active learning iterations)
+        fill_water_vial(lash_e, "water")
+        fill_water_vial(lash_e, "water_2")
+        for s in SURFACTANTS:
+            refill_surfactant_vial(lash_e, f"{s}_stock", liquid="SDS")
+        if dilution_recipes:
+            create_substocks_from_recipes(lash_e, dilution_recipes)
+        lash_e.nr_robot.home_robot_components()
+        
         chunk_df["plate_number"] = plate_number
 
         chunk_df = execute_dispensing_nd(lash_e, chunk_df)
@@ -2288,16 +2310,7 @@ def run_multidim_workflow(lash_e):
         well_recipes_df = chunk_df if well_recipes_df is None else pd.concat(
             [well_recipes_df, chunk_df], ignore_index=True
         )
-        current_wellplate_wells = len(chunk_df)  # wells on the plate still physically loaded
-
-        if chunk_i < n_initial_chunks - 1:
-            lash_e.logger.info(
-                f"Initial-batch plate {chunk_i + 1}/{n_initial_chunks} full "
-                f"({current_wellplate_wells} wells); rotating plate."
-            )
-            lash_e.discard_used_wellplate()
-            lash_e.grab_new_wellplate()
-            plate_number += 1
+        current_wellplate_wells += len(chunk_df)  # accumulate wells on physical plate
 
     save_results(well_recipes_df, output_folder, "results_after_initial_grid")
 
