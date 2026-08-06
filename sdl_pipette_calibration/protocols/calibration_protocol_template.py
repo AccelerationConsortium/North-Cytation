@@ -1,6 +1,31 @@
 """Template for creating custom calibration protocols.
 
 Copy this file and replace the TODO sections with your hardware-specific code.
+
+State Dictionary
+----------------
+The state dict is a plain Python dict returned by initialize() and passed to
+every subsequent measure() and wrapup() call. It is your protocol's persistent
+memory for the duration of a calibration run — put anything in it that your
+hardware needs to keep track of between calls.
+
+Suggested keys (add or remove freely):
+    initialized_at    datetime   When the protocol was initialized
+    liquid            str        Liquid type label (from config)
+    measurement_count int        Running count of measurements taken (increment in measure())
+
+    # Hardware objects — examples:
+    robot             object     Your robot/instrument handle
+    balance           object     Your measurement device handle
+
+    # Workflow state — examples from calibration_protocol_northrobot.py:
+    source_vial       object     Vial to aspirate from
+    measurement_vial  object     Vial used for mass measurement
+    swap_enabled      bool       Whether vial swapping is active
+
+There are no enforced required keys beyond what your own measure() and
+wrapup() implementations expect. The framework passes state through opaquely
+and never inspects its contents.
 """
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -11,7 +36,28 @@ class TemplateCalibrationProtocol(CalibrationProtocolBase):
     """Template calibration protocol - replace with your hardware implementation."""
     
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Initialize your hardware."""
+        """Initialize your hardware.
+        
+        This method is called once at the start of calibration to set up hardware
+        and create a state dictionary that will be passed to all subsequent calls.
+        
+        Args:
+            cfg: Configuration dictionary containing experiment settings.
+                 Access your settings via cfg['experiment'] and cfg['hardware_parameters'].
+        
+        Returns:
+            state: Dictionary containing hardware objects and settings for later use.
+                   At minimum, should contain: initialized_at, liquid, measurement_count.
+                   Add your hardware objects here (robot, balance, etc.).
+        
+        Raises:
+            RuntimeError: If hardware initialization fails (connection, calibration, etc.)
+            ValueError: If configuration is invalid or missing required settings.
+        
+        Note:
+            This state dict will be passed to measure() and wrapup(), so store anything
+            you need throughout the calibration run.
+        """
         
         # Get liquid type from config
         liquid = cfg['experiment']['liquid']
@@ -29,17 +75,49 @@ class TemplateCalibrationProtocol(CalibrationProtocolBase):
         }
     
     def measure(self, state: Dict[str, Any], volume_mL: float, params: Dict[str, Any], replicates: int = 1) -> List[Dict[str, Any]]:
-        """Perform measurements with given parameters."""
+        """Perform pipetting measurements with given parameters.
+        
+        Called by the optimizer to test parameter combinations. Must execute the pipetting
+        operation and return measured volumes for each replicate.
+        
+        Args:
+            state: Protocol state dictionary from initialize().
+            volume_mL: Target volume to pipette (in milliliters).
+            params: Dictionary of hardware parameters from the optimizer.
+                    Includes 'overaspirate_vol' (required) and any other parameters
+                    defined in hardware_parameters section of the config.
+            replicates: Number of times to repeat the measurement (default: 1).
+        
+        Returns:
+            List of measurement dictionaries, one per replicate.
+            Each dict MUST contain:
+                - replicate: int (1-indexed replicate number)
+                - volume: float (measured volume in mL)
+                - elapsed_s: float (time taken in seconds)
+                - target_volume_mL: float (the target volume)
+            Each dict SHOULD ALSO echo back all input params for analysis.
+        
+        Raises:
+            RuntimeError: If hardware fails during measurement (tip error, scale timeout, etc.)
+            ValueError: If parameters are out of hardware limits.
+        
+        Important:
+            - Always extract and use overaspirate_vol from params
+            - Update state['measurement_count'] after each measurement
+            - Return results in the exact format specified above
+        """
         
         results = []
         
         for rep in range(replicates):
-            # Extract parameters - use only what you need for your hardware
+            # Extract parameters - use only what you need for your hardware.
+            # Parameter names here must match the names defined in hardware_parameters in the config.
             overaspirate_vol = params.get('overaspirate_vol', 0.004) # You must use this parameter
             
-            # TODO: Extract any hardware-specific parameters you need:
-            # my_speed_param = params.get('my_speed_param', default_value)
-            # my_timing_param = params.get('my_timing_param', default_value)
+            # TODO: Extract your hardware-specific parameters the same way, e.g.:
+            # aspirate_speed = params.get('aspirate_speed', 10)   # matches hardware_parameters.aspirate_speed in config
+            # aspirate_wait_time = params.get('aspirate_wait_time', 1.0)  # matches hardware_parameters.aspirate_wait_time
+            # Then pass them to your hardware calls below.
             
             # TODO: Replace this simulation with your hardware calls
             import random
@@ -75,7 +153,21 @@ class TemplateCalibrationProtocol(CalibrationProtocolBase):
         return results
     
     def wrapup(self, state: Dict[str, Any]) -> None:
-        """Clean up hardware resources."""
+        """Clean up hardware resources and return to safe state.
+        
+        Called once at the end of calibration to safely shut down hardware,
+        close connections, and prepare for the next run.
+        
+        Args:
+            state: Protocol state dictionary from initialize().
+        
+        Returns:
+            None
+        
+        Note:
+            Should not raise exceptions. Log any cleanup issues as warnings instead.
+            Move hardware to safe positions (home position, tip ejection, etc.).
+        """
         
         # TODO: Clean up your hardware here
         # my_robot.home()
@@ -84,17 +176,25 @@ class TemplateCalibrationProtocol(CalibrationProtocolBase):
         print(f"Cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
 
     def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
-        """Get hardware-specific parameter constraints for your system.
+        """Get hardware-specific parameter constraints for optimization.
         
-        This method should return a list of constraint strings that will be
-        passed to the Bayesian optimizer. Constraints should be in the format
-        that Ax understands, e.g., "param1 + param2 <= 100".
+        Return a list of constraint strings that limit how parameter combinations
+        can vary. Constraints are passed to the Ax optimizer in algebraic format.
         
         Args:
-            target_volume_ml: The target volume for this optimization run
-            
+            target_volume_ml: The target volume for this optimization (in mL).
+                              Use to calculate volume-dependent constraints.
+        
         Returns:
-            List of constraint strings for the optimizer
+            List of constraint strings in Ax format. Examples:
+                - "my_air_vol + overaspirate_vol <= 0.15"  (volume limit)
+                - "aspirate_speed * dispense_speed <= 1000"  (speed interaction)
+                - []  (no constraints)
+        
+        Note:
+            Constraints help the optimizer respect hardware limits without wasting
+            trials on impossible parameter combinations.
+            Return empty list if your hardware has no special constraints.
         """
         constraints = []
         

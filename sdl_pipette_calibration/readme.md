@@ -12,6 +12,34 @@ required. You plug in a protocol module that implements four functions
 optimizer takes it from there. A simulated protocol is bundled so you can run
 the entire pipeline end-to-end with no hardware at all.
 
+## Architecture
+
+```mermaid
+flowchart TD
+    CFG["experiment_config.yaml\n─────────────────\nLiquid, volumes, parameter\nbounds, objectives, budgets"]
+
+    EXP["experiment.py\n─────────────────\nOrchestrates the run:\nscreening → optimization\n→ analysis per volume"]
+
+    BAY["bayesian_recommender.py\n─────────────────\nAx/BoTorch optimizer\nSuggests next parameters\nto try"]
+
+    PROTO["Your Protocol\n─────────────────\ninitialize(cfg)\nmeasure(state, volume, params)\nwrapup(state)"]
+
+    HW["Hardware\n─────────────────\nRobot + balance\n(or simulation)"]
+
+    OUT["output/ directory\n─────────────────\nOptimized parameters CSV\nPlots, raw measurements\nRun summary"]
+
+    CFG --> EXP
+    EXP -->|"next params to test"| BAY
+    BAY -->|"suggested params"| EXP
+    EXP -->|"volume + params"| PROTO
+    PROTO -->|"measured volumes + timings"| EXP
+    PROTO <-->|"hardware calls"| HW
+    EXP -->|"results"| OUT
+```
+
+> **Swap hardware** by changing one line in the config (`hardware_protocol`).
+> The optimizer and analysis pipeline are unchanged.
+
 ## Features
 
 - **Hardware Abstraction** — swap protocols by editing one line of YAML
@@ -25,6 +53,8 @@ the entire pipeline end-to-end with no hardware at all.
 ## Quick Start
 
 ### 1. Install
+
+Requires **Python 3.10 or later**.
 
 ```bash
 cd sdl_pipette_calibration
@@ -57,6 +87,19 @@ then:
 ```bash
 python run_validation.py
 ```
+
+## Example Workflow
+
+1. **Start with simulation** — set `experiment.simulate: true`, run `python run_calibration.py`
+2. **Inspect outputs** — look at `output/<run_name>/` for plots and CSVs
+3. **Adjust parameter bounds** — tune `hardware_parameters` for your setup
+4. **Write your protocol** — copy `protocols/calibration_protocol_template.py`
+5. **Run on hardware** — set `experiment.simulate: false`, run `python run_calibration.py`
+6. **Validate** — point `validation.optimal_conditions_file` at the run's CSV, run `python run_validation.py`
+
+The optimizer handles replication, transfer learning between volumes, and
+produces analysis outputs (plots, feature importance, statistical summaries)
+automatically.
 
 ## Customizing Your Setup
 
@@ -93,7 +136,6 @@ hardware_parameters:
     default: 10
     type: integer
     round_to_nearest: 1
-    time_affecting: true
     description: Aspiration speed (relative units).
 
   aspirate_wait_time:
@@ -101,7 +143,6 @@ hardware_parameters:
     default: 10.0
     type: float
     round_to_nearest: 0.1
-    time_affecting: true
     description: Wait time after aspiration (seconds).
 ```
 
@@ -162,14 +203,18 @@ Your protocol **must** implement these four methods:
 
 ### `initialize(cfg) -> Dict[str, Any]`
 - Initialize hardware
-- Return state dictionary with hardware objects/settings
-- State will be passed to all subsequent calls
+- Return a **state dictionary** — a plain dict of whatever your hardware needs to track
+  across the calibration run (robot handles, vial positions, measurement counters, etc.)
+- State is passed unchanged to every `measure()` and `wrapup()` call; the framework never inspects its contents
+- See `protocols/calibration_protocol_template.py` for suggested keys and examples
 
 ### `measure(state, volume_mL, params, replicates) -> List[Dict[str, Any]]`
 - Perform pipetting measurements
-- `params` contains optimization parameters (speeds, volumes, etc.)
+- `params` is a dict of parameter values chosen by the optimizer — keys match exactly the names defined in `hardware_parameters` in the config (e.g. `aspirate_speed` in config → `params.get('aspirate_speed', 10)` in your protocol)
+- `overaspirate_vol` is always present in `params` and must be used to increase the aspirated volume
 - Return list of measurement dictionaries, one per replicate
 - Each result must have: `replicate`, `volume` (measured in mL), `elapsed_s`
+- Echo `**params` into each result dict so the optimizer can log what parameter values were tested
 
 ### `wrapup(state) -> None`
 - Clean up hardware resources
@@ -219,18 +264,41 @@ def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
 ```
 
 ### External Data Integration
-Load existing calibration data to bootstrap optimization:
+Load existing calibration data to bootstrap the optimizer — this replaces the
+initial screening phase with real historical results instead of random trials,
+so the optimizer starts from a better position.
+
+The CSV must contain these columns:
+- `target_volume_ml` — the target volume for each measurement
+- `measured_volume_ml` — the actual measured volume
+- `measurement_time_s` — how long the measurement took
+- One column per hardware parameter you want to seed (names must match your `hardware_parameters` config keys exactly)
+
+See `input_data/external_calibration_data.csv` for a complete working example.
 
 ```yaml
 screening:
   external_data:
     enabled: true
-    data_path: "my_previous_data.csv" 
-    volume_filter_ml: 0.01  # Only use data for specific volume
+    data_path: "input_data/external_calibration_data.csv"
+    volume_filter_ml: 0.05   # Only use rows matching this target volume (optional)
+    liquid_filter: water     # Only use rows matching this liquid type (optional)
 ```
 
-### LLM-Powered Parameter Suggestions
-Enable AI-powered parameter suggestions (experimental):
+### LLM-Powered Parameter Suggestions *(experimental)*
+The system can use a large language model to suggest promising parameter
+combinations during the screening phase, in addition to or instead of random
+exploration. In practice, the current calibration data and parameter
+descriptions are sent to the LLM as a prompt; the response is parsed for
+concrete parameter values which are then run as screening trials.
+
+The implementation uses [LM Studio](https://lmstudio.ai/) as a local model
+server with an OpenAI-compatible API endpoint, so no external API key or cloud
+service is required — the model runs on your own machine.
+
+> **Note:** This feature is experimental. Results depend heavily on the model
+> and prompt template used. The Bayesian optimizer will still run regardless of
+> LLM suggestion quality.
 
 ```yaml
 optimization:
@@ -308,15 +376,9 @@ sdl_pipette_calibration/
 2. Look at `data_structures.py` for the expected types and fields
 3. `experiment_config.yaml` is fully annotated — it documents every option inline
 
-## Example Workflow
+## Authors
 
-1. **Start with simulation** — set `experiment.simulate: true`, run `python run_calibration.py`
-2. **Inspect outputs** — look at `output/<run_name>/` for plots and CSVs
-3. **Adjust parameter bounds** — tune `hardware_parameters` for your setup
-4. **Write your protocol** — copy `protocols/calibration_protocol_template.py`
-5. **Run on hardware** — set `experiment.simulate: false`, run `python run_calibration.py`
-6. **Validate** — point `validation.optimal_conditions_file` at the run's CSV, run `python run_validation.py`
+Owen A. Melville, Enrui Lin, Ilya Yakakets, Yimu Zhao 
+Acceleration Consortium, University of Toronto
 
-The optimizer handles replication, transfer learning between volumes, and
-produces analysis outputs (plots, feature importance, statistical summaries)
-automatically.
+Developed at the intersection of self-driving lab research and hardware automation.

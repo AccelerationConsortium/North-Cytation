@@ -1,4 +1,22 @@
-"""Hardware calibration protocol for North Robot system.
+"""Hardware calibration protocol for the North Robotics SDL platform.
+
+⚠️  THIS FILE IS HARDWARE-SPECIFIC AND WILL NOT RUN ON OTHER SYSTEMS ⚠️
+
+This protocol is the production implementation used in the North Robotics lab.
+It imports proprietary North Robot libraries (master_usdl_coordinator, Lash_E,
+slack_agent) that are not part of this public repository and are not available
+to external users.
+
+It is included here as a reference example showing how a full hardware protocol
+is structured. If you are adapting this framework to your own hardware, use
+    protocols/calibration_protocol_template.py
+as your starting point instead.
+
+What this file demonstrates:
+- How to initialize real hardware (robot + balance) in initialize()
+- How to extract params from the optimizer and drive hardware in measure()
+- How to handle vial swapping, tip conditioning, and mass-to-volume conversion
+- How to set volume-dependent tip constraints in get_parameter_constraints()
 
 Unified minimal interface:
     initialize(cfg) -> state (dict)
