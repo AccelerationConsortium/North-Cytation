@@ -1,6 +1,8 @@
-# DispenseRITE: Automated Pipetting Calibration for Self-Driving Labs
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/49d0588a-94c4-473e-a88e-f87f7f09fce7" width="512" alt="DispenseRITE logo"/>
+</p>
 
-<img width="256" height="256" alt="ChatGPT Image Aug 6, 2026, 02_20_20 PM" src="https://github.com/user-attachments/assets/49d0588a-94c4-473e-a88e-f87f7f09fce7" />
+# DispenseRITE: Automated Pipetting Calibration for Self-Driving Labs
 
 Different liquids pipette differently. Viscous liquids, volatile solvents, and
 surfactant-containing solutions all behave differently from water — and even the
