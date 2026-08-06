@@ -114,11 +114,6 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             print(f"Warning: Could not read config file ({e}), using fallback")
             volume_targets = []
         
-        # DEBUG: Show what's in the passed config vs full config
-        print(f"DEBUG: cfg keys = {list(cfg.keys()) if cfg else 'cfg is None'}")
-        print(f"DEBUG: cfg['experiment'] keys = {list(cfg['experiment'].keys()) if cfg and 'experiment' in cfg else 'no experiment'}")
-        print(f"DEBUG: volume_targets_ml from file = {volume_targets}")
-        
         # Extract volume targets to determine tip conditioning
         if volume_targets:
             max_volume = max(volume_targets)
@@ -283,7 +278,6 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             source_volume = lash_e.nr_robot.get_vial_info(source_vial, 'vial_volume')
             min_source_volume = 3.0  # mL - threshold for swapping when source gets low
             
-            # DEBUG: Always print current volumes
             print(f"STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
             
             # Swap when source vial gets too low (< 2 mL)
