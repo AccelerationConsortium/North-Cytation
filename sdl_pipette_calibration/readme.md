@@ -1,5 +1,8 @@
 # DispenseRITE: Automated Pipetting Calibration for Self-Driving Labs
 
+![Uploading ChatGPT Image Aug 6, 2026, 02_20_20 PM.png…]()
+
+
 Different liquids pipette differently. Viscous liquids, volatile solvents, and
 surfactant-containing solutions all behave differently from water — and even the
 same liquid behaves differently at different volumes. The result is systematic
