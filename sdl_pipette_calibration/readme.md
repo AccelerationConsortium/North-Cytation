@@ -19,6 +19,11 @@ required. You plug in a protocol module that implements four functions
 optimizer takes it from there. A simulated protocol is bundled so you can run
 the entire pipeline end-to-end with no hardware at all.
 
+The standard measurement approach is **gravimetric** — dispense onto a balance
+and convert mass to volume using the liquid's density. Any measurement method
+that returns a delivered volume works, including fluorescence, imaging, or
+conductivity, as long as your protocol translates it into a volume in mL.
+
 ## Architecture
 
 ```mermaid
@@ -191,9 +196,23 @@ experiment:
   name: my_calibration_run
   description: Testing accuracy across four volumes
   random_seed: 30
-  max_total_measurements: 96
+  max_total_measurements: 96  # See "Measurement budget" below
   num_screening_trials: 8
 ```
+
+#### Measurement budget
+
+Every trial consumes physical resources — tips, liquid, and time. The
+`max_total_measurements` setting caps the total number of individual pipetting
+measurements across the entire run. This matters because:
+
+- **Tips are finite** — a tip rack typically holds 96 tips; once they are gone the run must stop
+- **Slow hardware** — if each measurement takes 30–60 seconds, 96 measurements is already a 1–3 hour run
+- **Multiple volumes** — the budget is shared across all volumes in `volume_targets_ml`; calibrating 4 volumes with 96 measurements means roughly 24 measurements per volume
+
+A typical starting point is **96 measurements** (one full tip rack). Increase
+it if you have more tips available and want the optimizer to search more
+thoroughly; decrease it for quick exploratory runs.
 
 ### Hardware parameter search space
 
@@ -449,6 +468,7 @@ sdl_pipette_calibration/
 ## Authors
 
 Owen A. Melville, Enrui Lin, Ilya Yakakets, Yimu Zhao 
+
 Acceleration Consortium, University of Toronto
 
 Developed at the intersection of self-driving lab research and hardware automation.
