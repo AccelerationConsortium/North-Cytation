@@ -1,12 +1,12 @@
-# SDL Pipette Calibration
+# DispenseRITE: Automated Pipetting Calibration for Self-Driving Labs
 
 Different liquids pipette differently. Viscous liquids, volatile solvents, and
 surfactant-containing solutions all behave differently from water — and even the
 same liquid behaves differently at different volumes. The result is systematic
 pipetting error that is hard to correct by hand, and different for different systems.
 
-This framework **automatically calibrates pipetting parameters for a specific
-liquid class** using multi-objective Bayesian optimization. You tell it what
+**DispenseRITE** automatically calibrates pipetting parameters for a specific
+liquid class using multi-objective Bayesian optimization. You tell it what
 liquid you are pipetting, what volumes you care about, and how to measure
 delivered volume. It then searches over your hardware's parameter space (speeds,
 wait times, air gaps, blowout, overaspirate volume) and returns a per-volume
@@ -471,4 +471,4 @@ Owen A. Melville, Enrui Lin, Ilya Yakakets, Yimu Zhao
 
 Acceleration Consortium, University of Toronto
 
-Developed at the intersection of self-driving lab research and hardware automation.
+DispenseRITE was developed at the intersection of self-driving lab research and hardware automation.
