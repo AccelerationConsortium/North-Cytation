@@ -1054,7 +1054,7 @@ def refill_surfactant_vial(lash_e, vial_name, liquid='SDS'):
     # Calculate volume needed to fill to max capacity
     fill_volume_ml = min(max_volume_ml - current_volume_ml, current_volume_refill_ml)
     
-    if fill_volume_ml <= 2.0:  # Already nearly full (within 2mL)
+    if fill_volume_ml <= 1.5:  # Already nearly full (within 1.5mL)
         lash_e.logger.info(f"    Surfactant vial '{vial_name}' already full ({current_volume_ml:.2f}mL), skipping fill")
         return
         
