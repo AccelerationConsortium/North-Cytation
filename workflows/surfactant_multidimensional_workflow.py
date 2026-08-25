@@ -106,7 +106,8 @@ TURBIDITY_PENALTY_ENABLED = False  # Set False to disable penalty for all recomm
 # Buffer addition settings
 ADD_BUFFER = True  # Set to False to skip buffer addition
 BUFFER_VOLUME_UL = 20  # uL buffer to add per well
-SELECTED_BUFFER = 'MES'  # Buffer vial name (must exist in input CSV)
+SELECTED_BUFFER = 'NaCl'  # Buffer vial name (must exist in input CSV)
+BUFFER_FAILOVER_THRESHOLD_ML = 3.0  # Switch to backup vial (SELECTED_BUFFER + "_1") below this volume
 MIN_WATER_DISPENSE_UL = 1.0  # Ignore water dispenses smaller than this threshold
 
 # Use a tiny epsilon only for floating-point comparisons. Do not allow
@@ -1097,6 +1098,25 @@ def _shim_df_for_surfactant(df, surf_name):
     return shim
 
 
+def _get_active_buffer_vial(lash_e):
+    """Return the buffer vial name to use for this dispensing round.
+
+    Checks the primary buffer vial (SELECTED_BUFFER) volume. If it has fallen
+    below BUFFER_FAILOVER_THRESHOLD_ML, switches to the backup vial
+    (SELECTED_BUFFER + "_1"). Raises if neither vial is found.
+    """
+    primary = SELECTED_BUFFER
+    failover = f"{SELECTED_BUFFER}_1"
+    vol_ml = lash_e.nr_robot.get_vial_info(primary, 'vial_volume')
+    if vol_ml < BUFFER_FAILOVER_THRESHOLD_ML:
+        lash_e.logger.info(
+            f"Buffer vial '{primary}' volume {vol_ml:.2f}mL below "
+            f"{BUFFER_FAILOVER_THRESHOLD_ML:.1f}mL threshold - switching to '{failover}'"
+        )
+        return failover
+    return primary
+
+
 def execute_dispensing_nd(lash_e, well_recipes_df):
     """N-D analog of execute_dispensing.
 
@@ -1175,18 +1195,19 @@ def execute_dispensing_nd(lash_e, well_recipes_df):
         lash_e.nr_robot.move_vial_to_location("water", "main_8mL_rack", 44)
         lash_e.nr_robot.move_vial_to_location("water_2", "main_8mL_rack", 45)
         if ADD_BUFFER:
-            lash_e.nr_robot.move_vial_to_location(SELECTED_BUFFER, "main_8mL_rack", 47)
+            active_buffer = _get_active_buffer_vial(lash_e)
+            lash_e.nr_robot.move_vial_to_location(active_buffer, "main_8mL_rack", 47)
         if len(w1) > 0:
             dispense_component_to_wellplate(lash_e, w1, "water", "water", "water_volume_ul")
         if len(w2) > 0:
             dispense_component_to_wellplate(lash_e, w2, "water_2", "water", "water_volume_ul")
         if ADD_BUFFER:
-            dispense_component_to_wellplate(lash_e, well_recipes_df, SELECTED_BUFFER, "water", "buffer_volume_ul")
+            dispense_component_to_wellplate(lash_e, well_recipes_df, active_buffer, "water", "buffer_volume_ul")
         lash_e.nr_robot.remove_pipet()
         return_water_vial_home(lash_e, "water")
         return_water_vial_home(lash_e, "water_2")
         if ADD_BUFFER:
-            lash_e.nr_robot.return_vial_home(SELECTED_BUFFER)
+            lash_e.nr_robot.return_vial_home(active_buffer)
 
     return well_recipes_df
 
