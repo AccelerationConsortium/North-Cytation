@@ -1,0 +1,153 @@
+{
+  "schema_version": "1.0",
+  "created_date": "2026-09-02",
+  "task": {
+    "title": "Reconstruct Ilya V2 hardware-run pipetting parameters",
+    "primary_questions": [
+      "Which pipetting-wizard calibration files were actually selected during non-simulated Ilya V2 experiments?",
+      "What effective pipetting parameters were used for every component and requested volume?"
+    ],
+    "workflow_path": "workflows/ilya_workflow_v2.py"
+  },
+  "known_from_workflow": {
+    "components": [
+      "water",
+      "water_dye",
+      "glycerol",
+      "glycerol_dye",
+      "ethanol",
+      "ethanol_dye"
+    ],
+    "requested_volumes_uL": [70, 100, 150],
+    "component_to_liquid_type": {
+      "water": "water",
+      "water_dye": "water",
+      "glycerol": "glycerol",
+      "glycerol_dye": "glycerol",
+      "ethanol": "ethanol",
+      "ethanol_dye": "ethanol"
+    },
+    "notes": [
+      "The workflow supplies the base liquid type to aspirate_from_vial and dispense_into_wellplate.",
+      "The vial/component name retains the _dye suffix, but the liquid argument does not.",
+      "The robot library and pipetting wizard therefore control the final file lookup and effective parameters."
+    ]
+  },
+  "historical_findings_to_verify": {
+    "likely_hardware_period": "2026-06-11 or later",
+    "reason": "Prior repository inspection indicated that the dye calibration files, relevant workflow changes, and SIMULATE=False appeared together around June 11.",
+    "excluded_evidence": {
+      "period": "2026-06-09",
+      "reason": "The located timing artifacts completed three rounds in only a few seconds and were identified as simulation runs. They do not prove hardware parameters."
+    },
+    "candidate_calibration_files": [
+      {
+        "liquid_type": "water",
+        "candidate_filename": "optimal_conditions_water_complete.csv",
+        "status": "candidate_not_log_confirmed"
+      },
+      {
+        "liquid_type": "glycerol",
+        "candidate_filename": "optimal_conditions_glycerol_dye.csv",
+        "status": "candidate_not_log_confirmed"
+      },
+      {
+        "liquid_type": "ethanol",
+        "candidate_filename": "optimal_conditions_ethanol_dye.csv",
+        "status": "candidate_not_log_confirmed"
+      }
+    ],
+    "warning": "Do not report candidate filenames as experimentally confirmed unless the hardware logs or an exact run-era source snapshot establish them."
+  },
+  "log_analysis_instructions": {
+    "run_identification": [
+      "Identify every actual execution of workflows/ilya_workflow_v2.py.",
+      "Exclude simulation runs.",
+      "Report each log filename and timestamp plus evidence that real hardware was controlled.",
+      "Determine which run produced the final experimental data, if the evidence permits."
+    ],
+    "search_terms": [
+      "_source_file",
+      "optimal_conditions",
+      "pipetting wizard",
+      "liquid_type",
+      "water",
+      "glycerol",
+      "ethanol",
+      "aspirate_from_vial",
+      "dispense_into_wellplate"
+    ],
+    "file_selection": [
+      "Extract the exact calibration file path selected for each liquid type.",
+      "Retain raw matching messages, timestamps, logger names, and source log filenames.",
+      "Report whether different runs selected different paths or file versions."
+    ],
+    "effective_parameters": [
+      "Extract actual wizard output or robot method arguments for requested volumes 70, 100, and 150 uL.",
+      "Capture every logged aspiration and dispensing parameter, including speed, acceleration, wait time, cycles, air gap, overaspiration, correction or compensation, heights, retract settings, and any other effective fields.",
+      "Distinguish requested volume from adjusted, measured, or commanded volume.",
+      "Prefer logged runtime values over values inferred from current CSV files."
+    ],
+    "source_reconstruction": [
+      "Identify the exact source revision used for each hardware run when possible.",
+      "Explain the wizard lookup algorithm: filename matching, row selection, interpolation, defaults, and workflow-level overrides.",
+      "Compare logged values with calibration CSV files as they existed on the experiment date, not only current working-tree contents."
+    ]
+  },
+  "required_rows": [
+    {"component": "water", "liquid_type": "water", "requested_volume_uL": 70},
+    {"component": "water", "liquid_type": "water", "requested_volume_uL": 100},
+    {"component": "water", "liquid_type": "water", "requested_volume_uL": 150},
+    {"component": "water_dye", "liquid_type": "water", "requested_volume_uL": 70},
+    {"component": "water_dye", "liquid_type": "water", "requested_volume_uL": 100},
+    {"component": "water_dye", "liquid_type": "water", "requested_volume_uL": 150},
+    {"component": "glycerol", "liquid_type": "glycerol", "requested_volume_uL": 70},
+    {"component": "glycerol", "liquid_type": "glycerol", "requested_volume_uL": 100},
+    {"component": "glycerol", "liquid_type": "glycerol", "requested_volume_uL": 150},
+    {"component": "glycerol_dye", "liquid_type": "glycerol", "requested_volume_uL": 70},
+    {"component": "glycerol_dye", "liquid_type": "glycerol", "requested_volume_uL": 100},
+    {"component": "glycerol_dye", "liquid_type": "glycerol", "requested_volume_uL": 150},
+    {"component": "ethanol", "liquid_type": "ethanol", "requested_volume_uL": 70},
+    {"component": "ethanol", "liquid_type": "ethanol", "requested_volume_uL": 100},
+    {"component": "ethanol", "liquid_type": "ethanol", "requested_volume_uL": 150},
+    {"component": "ethanol_dye", "liquid_type": "ethanol", "requested_volume_uL": 70},
+    {"component": "ethanol_dye", "liquid_type": "ethanol", "requested_volume_uL": 100},
+    {"component": "ethanol_dye", "liquid_type": "ethanol", "requested_volume_uL": 150}
+  ],
+  "required_output_schema": {
+    "run_timestamp": "string_or_null",
+    "component": "string",
+    "vial_name": "string_or_null",
+    "liquid_type": "string",
+    "requested_volume_uL": "number",
+    "commanded_or_adjusted_volume_uL": "number_or_null",
+    "calibration_source_file": "string_or_null",
+    "calibration_selection_method": "exact_row_or_interpolation_or_default_or_unknown",
+    "calibration_input_rows": "array",
+    "aspiration_parameters": "object",
+    "dispense_parameters": "object",
+    "workflow_overrides": "object",
+    "evidence_log_file": "string_or_null",
+    "evidence_timestamp": "string_or_null",
+    "evidence_logger": "string_or_null",
+    "evidence_message": "string_or_null",
+    "confidence": "confirmed_or_inferred_or_unresolved",
+    "ambiguities": "array"
+  },
+  "evidence_policy": {
+    "confirmed": "Directly supported by a real hardware-run log or an exact run-era artifact tied to that run.",
+    "inferred": "Reconstructed from run-era source or calibration data but not explicitly recorded in the hardware log.",
+    "unresolved": "Insufficient evidence or conflicting evidence.",
+    "prohibitions": [
+      "Do not use current calibration-file contents as proof of historical contents.",
+      "Do not treat simulated timing logs as hardware evidence.",
+      "Do not silently substitute a candidate filename for a logged filename."
+    ]
+  },
+  "desired_deliverables": [
+    "A machine-readable table containing all 18 required rows.",
+    "A concise summary of which wizard files are hardware-log confirmed.",
+    "Raw evidence excerpts sufficient to audit each confirmed conclusion.",
+    "A list of unresolved issues, especially mutable file lookups or missing historical versions."
+  ]
+}
