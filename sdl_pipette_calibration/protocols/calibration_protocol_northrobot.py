@@ -1,4 +1,22 @@
-"""Hardware calibration protocol for North Robot system.
+"""Hardware calibration protocol for the North Robotics SDL platform.
+
+⚠️  THIS FILE IS HARDWARE-SPECIFIC AND WILL NOT RUN ON OTHER SYSTEMS ⚠️
+
+This protocol is the production implementation used in the North Robotics lab.
+It imports proprietary North Robot libraries (master_usdl_coordinator, Lash_E,
+slack_agent) that are not part of this public repository and are not available
+to external users.
+
+It is included here as a reference example showing how a full hardware protocol
+is structured. If you are adapting this framework to your own hardware, use
+    protocols/calibration_protocol_template.py
+as your starting point instead.
+
+What this file demonstrates:
+- How to initialize real hardware (robot + balance) in initialize()
+- How to extract params from the optimizer and drive hardware in measure()
+- How to handle vial swapping, tip conditioning, and mass-to-volume conversion
+- How to set volume-dependent tip constraints in get_parameter_constraints()
 
 Unified minimal interface:
     initialize(cfg) -> state (dict)
@@ -95,11 +113,6 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         except Exception as e:
             print(f"Warning: Could not read config file ({e}), using fallback")
             volume_targets = []
-        
-        # DEBUG: Show what's in the passed config vs full config
-        print(f"DEBUG: cfg keys = {list(cfg.keys()) if cfg else 'cfg is None'}")
-        print(f"DEBUG: cfg['experiment'] keys = {list(cfg['experiment'].keys()) if cfg and 'experiment' in cfg else 'no experiment'}")
-        print(f"DEBUG: volume_targets_ml from file = {volume_targets}")
         
         # Extract volume targets to determine tip conditioning
         if volume_targets:
@@ -265,7 +278,6 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             source_volume = lash_e.nr_robot.get_vial_info(source_vial, 'vial_volume')
             min_source_volume = 3.0  # mL - threshold for swapping when source gets low
             
-            # DEBUG: Always print current volumes
             print(f"STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
             
             # Swap when source vial gets too low (< 2 mL)

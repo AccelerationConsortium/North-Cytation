@@ -432,10 +432,6 @@ class ExperimentConfig:
         """Check if parameter inheritance is enabled."""
         return self._config.get('optimization', {}).get('parameter_inheritance', {}).get('enabled', False)
     
-    def carry_optimizer_history(self) -> bool:
-        """Check if optimizer state should be carried across volumes."""
-        return self._config.get('optimization', {}).get('parameter_inheritance', {}).get('carry_optimizer_state', False)
-    
     # First volume final calibration
     def is_first_volume_final_calibration_enabled(self) -> bool:
         """Check if final overaspirate calibration is enabled for first volume."""

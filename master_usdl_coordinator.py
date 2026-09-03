@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 import logging
 import threading
+import experiment_run_logger
 
 # Import ConfigManager for workflow config handling
 try:
@@ -263,6 +264,11 @@ class Lash_E:
         # Make sure messages don't propagate to root logger (which might have its own handlers)
         self.logger.propagate = False
 
+        # Track this run in logs/experiment_runs.csv (start/stop, status) with no workflow-file changes required
+        self._run_tracker = experiment_run_logger.start_run(
+            self.workflow_name, self.simulate, self.log_filename, self.logger, logging_folder
+        )
+
         # Log config loading results (now that logger is available)
         if self.config_loaded:
             self.logger.info(f"Workflow config loaded: {self.workflow_name}")
@@ -281,6 +287,7 @@ class Lash_E:
             # Exit early if workflow was aborted
             if not self._workflow_should_continue:
                 self.logger.info("Workflow aborted by user - skipping hardware initialization")
+                experiment_run_logger.cancel_run(self._run_tracker)  # aborted before hardware init - don't log as a run
                 return
         else:
             self.logger.info("GUI disabled - skipping status review, proceeding directly to hardware initialization")

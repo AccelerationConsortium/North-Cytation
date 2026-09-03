@@ -91,7 +91,28 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
             return param_value * 0.01  # Minimal timing contribution
     
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Initialize simulation protocol."""
+        """Initialize simulation protocol.
+        
+        Sets up the simulated environment, applies deterministic seeding if configured,
+        and extracts required experiment settings.
+        
+        Args:
+            cfg: Configuration dictionary from experiment_config.yaml.
+                 Must contain: cfg['experiment']['liquid']
+        
+        Returns:
+            state: Dictionary with simulation state including:
+                   - initialized_at: datetime of initialization
+                   - liquid: liquid type label
+                   - seeded: whether random seeding was applied
+                   - measurement_count: tracks number of measurements
+        
+        Raises:
+            ValueError: If cfg is missing required 'experiment' or 'liquid' section
+        
+        Note:
+            Seeding precedence: cfg['random_seed'] > CAL_SIM_SEED env var > unseeded
+        """
         # Deterministic seeding precedence: cfg.random_seed > env CAL_SIM_SEED > no seed
         seeded = False
         if cfg and isinstance(cfg, dict) and 'random_seed' in cfg:
@@ -129,7 +150,32 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         return state
 
     def measure(self, state: Dict[str, Any], volume_mL: float, params: Dict[str, Any], replicates: int = 1) -> List[Dict[str, Any]]:
-        """Simulate pipetting measurements."""
+        """Simulate pipetting measurements with given parameters.
+        
+        Generates realistic measurement results based on parameter values and
+        random noise, simulating what hardware would produce.
+        
+        Args:
+            state: Simulation state from initialize().
+            volume_mL: Target volume to simulate (in milliliters).
+            params: Hardware parameters to test, including 'overaspirate_vol'.
+            replicates: Number of replicate measurements to simulate (default: 1).
+        
+        Returns:
+            List of simulated measurement dictionaries, one per replicate.
+            Each dict contains:
+                - replicate: int (1-indexed)
+                - volume: float (simulated measured volume in mL)
+                - elapsed_s: float (simulated operation time in seconds)
+                - actual_elapsed_s: float (wall-clock time for this measurement)
+                - start_time, end_time: ISO format timestamps
+                - target_volume_mL: float
+                - All input params echoed back
+        
+        Note:
+            Adds random noise based on parameter values to produce realistic variation.
+            Uses hardware-agnostic parameter interpretation (speed, wait, volume keywords).
+        """
         results = []
         
         for rep in range(replicates):
@@ -163,11 +209,38 @@ class SimulatedCalibrationProtocol(CalibrationProtocolBase):
         return results
 
     def wrapup(self, state: Dict[str, Any]) -> None:
-        """Clean up simulation resources."""
+        """Clean up simulation resources.
+        
+        Performs final logging and state cleanup for the simulation run.
+        
+        Args:
+            state: Simulation state from initialize().
+        
+        Returns:
+            None
+        
+        Note:
+            For simulation, this is minimal. In real hardware, would close connections.
+        """
         print(f"Simulation cleanup completed. Total measurements: {state.get('measurement_count', 0)}")
 
     def get_parameter_constraints(self, target_volume_ml: float) -> List[str]:
-        """Get hardware-specific parameter constraints for North Robot simulation."""
+        """Get hardware-specific parameter constraints for North Robot simulation.
+        
+        Simulates North Robot's physical tip volume constraints.
+        Different tip sizes are used for different volume ranges.
+        
+        Args:
+            target_volume_ml: The target volume for this optimization (in mL).
+        
+        Returns:
+            List of constraint strings specific to North Robot hardware.
+            Constraints ensure overaspirate_vol doesn't exceed available tip space.
+        
+        Note:
+            Uses 0.2mL tips for volumes < 200µL, 1.0mL tips for larger volumes.
+            This simulates the same constraints as calibration_protocol_northrobot.py.
+        """
         constraints = []
         
         # North Robot tip volume constraint (same logic as hardware)

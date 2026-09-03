@@ -2,35 +2,43 @@
 # ── Main experiment settings ───────────────────────────────────────────────
 # Edit liquid, volume_targets_ml, simulate, and hardware_protocol for each run.
 experiment:
-  liquid: ethanol
-  volume_targets_ml:
+  liquid: ethanol                                  # REQUIRED: Label for the liquid being pipetted
+  volume_targets_ml:                               # REQUIRED: List of target volumes (mL) to optimize
   - 0.05
-  simulate: false
-  hardware_protocol: calibration_protocol_northrobot
-  simulation_protocol: calibration_protocol_simulated
-  name: multi_volume_calibration_test
-  description: Testing calibration across 4 volumes
-  random_seed: 30
-  max_total_measurements: 96
-  max_measurements_first_volume: 96
-  max_replicates_per_trial: 3
-  num_screening_trials: 8
-  two_point_calibration_replicates: 0
-  fixed_parameters:
+  simulate: false                                  # REQUIRED: true=simulation mode (no hardware), false=real hardware
+  hardware_protocol: calibration_protocol_northrobot  # REQUIRED (when simulate: false): Protocol module name for your hardware
+  simulation_protocol: calibration_protocol_simulated  # OPTIONAL: Protocol for simulation mode (default provided)
+  name: multi_volume_calibration_test              # OPTIONAL: Run name for output directory (default: auto-generated)
+  description: Testing calibration across 4 volumes # OPTIONAL: Description of this calibration run
+  random_seed: 30                                   # OPTIONAL: Seed for reproducibility (default: random)
+  max_total_measurements: 96                       # OPTIONAL: Total measurement budget across all volumes (default: 96)
+  max_measurements_first_volume: 96                # OPTIONAL: Measurement budget for first volume only (default: 96)
+  max_replicates_per_trial: 3                      # OPTIONAL: Max replicate measurements per trial (default: 3)
+  num_screening_trials: 8                          # OPTIONAL: Initial screening trials before Bayesian optimization (default: 8)
+  two_point_calibration_replicates: 0              # OPTIONAL: Two-point calibration replicates (advanced feature, default: 0, RECOMMENDED: 3)
+  fixed_parameters:                                # OPTIONAL: Parameters to exclude from optimization
     # Parameters listed here are held constant and excluded from optimization.
     # Their bounds/defaults in hardware_parameters are kept for reference.
     # Remove a key from this block to let the optimizer tune it.
-    asp_disp_cycles: 0
-    post_asp_air_vol: 0
-    post_retract_wait_time: 5.0
-    retract_speed: 5.0
-    dispense_wait_time: 3.0
+    asp_disp_cycles: 0                             # OPTIONAL: Hold this parameter constant, remove if you want to optimize it
+    post_asp_air_vol: 0                            # OPTIONAL: Hold this parameter constant, remove if you want to optimize it
+    post_retract_wait_time: 5.0                    # OPTIONAL: Hold this parameter constant, remove if you want to optimize it
+    retract_speed: 5.0                             # OPTIONAL: Hold this parameter constant, remove if you want to optimize it
+    dispense_wait_time: 3.0                        # OPTIONAL: Hold this parameter constant, remove if you want to optimize it
 
-# ── Calibration target parameter ───────────────────────────────────────────
-# overaspirate_vol is treated separately from hardware_parameters and is always tuned.
+# ── Calibration target parameter ───────────────────────────────────────────────
+# overaspirate_vol: System-defined parameter always tuned by the optimizer.
+# Field definitions:
+#   bounds: [min, max] - Search range for optimization
+#   default: Starting value if optimization not used
+#   type: 'float' or 'integer'
+#   volume_dependent: If true, re-optimized per target volume
+#   max_fraction_of_target: Cap overaspirate as fraction of target volume
+#   round_to_nearest: Rounding precision for output values
+# REQUIRED: This parameter definition is mandatory.
 calibration_parameters:
-  overaspirate_vol:
-    bounds: [0.0, 0.025]
+  overaspirate_vol:                                # REQUIRED: Always-tuned parameter for volume correction
+    bounds: [0.0, 0.025]                           # These bounds should be higher for thicker liquids
     default: 0.004
     type: float
     volume_dependent: true
@@ -40,8 +48,22 @@ calibration_parameters:
       Can be used to crudely correct accuracy at minimal cost to time. May reduce precision if overused.
 
 # ── Hardware parameter search space ────────────────────────────────────────
-# Parameters in experiment.fixed_parameters are excluded from optimization
-# but their bounds/defaults stay here for reference.
+# Each parameter name must match exactly a parameter your hardware_protocol extracts
+# from the config and uses in the measure() method.
+# The optimizer searches over all parameters here EXCEPT those listed in
+# experiment.fixed_parameters, which are held constant.
+#
+# Field definitions:
+#   bounds: [min, max] - Search range for this parameter
+#   default: Starting/fallback value
+#   type: 'integer' or 'float' - Data type for this parameter
+#   description: Explanation of what this parameter does (for documentation)
+#   round_to_nearest: Rounding precision for output values (e.g., 0.1 = round to nearest 0.1)
+#   volume_dependent: (optional) If true, re-optimize for each target volume
+#
+# CRITICAL: Parameter names here must match exactly what your hardware_protocol
+# extracts from params dict in the measure() method.
+# See protocols/calibration_protocol_template.py for how to extract these.
 hardware_parameters:
   aspirate_speed:
     bounds: [2, 30]
@@ -51,7 +73,6 @@ hardware_parameters:
       with thicker liquids for accuracy and precision but increases operation time. Slower aspiration reduces cavitation and
       bubble formation in viscous liquids.
     round_to_nearest: 1
-    time_affecting: true
   dispense_speed:
     bounds: [2, 30]
     default: 10
@@ -60,7 +81,6 @@ hardware_parameters:
       thicker liquids for accuracy, but making it low (fast) may help expel liquids quickly which can be helpful since it
       is simpler to push out than pull in. Fast dispense can reduce dripping time.
     round_to_nearest: 1
-    time_affecting: true
   aspirate_wait_time:
     bounds: [0.0, 30.0]
     default: 10.0
@@ -69,7 +89,6 @@ hardware_parameters:
       after liquid is drawn into tip. Critical for viscous liquids >1000 cP to prevent incomplete aspiration and ensure accurate
       volume transfer.
     round_to_nearest: 0.1
-    time_affecting: true
   dispense_wait_time:
     bounds: [0, 15.0]
     default: 1.5
@@ -77,7 +96,6 @@ hardware_parameters:
     description: Wait time after dispense (seconds) - Allows complete liquid evacuation from tip and pressure equilibration.
       Longer waits help ensure all liquid is expelled, especially important for viscous liquids that flow slowly.
     round_to_nearest: 0.1
-    time_affecting: true
   post_asp_air_vol:
     bounds: [0.0, 0.1]
     default: 0.0
@@ -85,7 +103,6 @@ hardware_parameters:
     description: Post-aspiration air gap volume (mL) - Creates a gas bubble after your liquid. Seems to help more for larger
       volumes with large tips but can hurt with thick liquids. Provides barrier against backflow during transport.
     round_to_nearest: 0.001
-    time_affecting: false
   pre_asp_air_vol:
     bounds: [0.0, 0.5]
     default: 0.0
@@ -93,7 +110,6 @@ hardware_parameters:
     description: Pre-aspiration air volume (mL) - A faster way to achieve blowout and push liquid from the tip, but it is
       more constrained and can cause liquid to get stuck in the tip. Creates air cushion before liquid aspiration.
     round_to_nearest: 0.001
-    time_affecting: false
     volume_dependent: true
   blowout_vol:
     bounds: [0.0, 0.5]
@@ -103,7 +119,6 @@ hardware_parameters:
       If dispense_speed is high (slow) then this blowout will take a long time. More effective for viscous liquids that stick
       to tips.
     round_to_nearest: 0.001
-    time_affecting: false
   post_retract_wait_time:
     bounds: [0.0, 15.0]
     default: 5.0
@@ -111,76 +126,77 @@ hardware_parameters:
     description: Wait time after aspiration in liquid (seconds) - Allows thick liquid to drip off the outside of tip. Only
       relevant for quite viscous liquids that need time for external dripping, e.g. ~5s for glycerol-level viscosity.
     round_to_nearest: 0.1
-    time_affecting: true
 
 # ── Optimizer settings ─────────────────────────────────────────────────────
+# OPTIONAL: All fields here have sensible defaults.
 optimization:
-  objectives:
+  objectives:                                      # OPTIONAL: Weights for evaluating pipetting conditions with the best combination of accuracy, precision, and time (default: 0.4/0.5/0.1)
     # weights must sum to 1.0
-    accuracy_weight: 0.4
-    precision_weight: 0.5
-    time_weight: 0.1
-  objective_thresholds:
-    deviation_threshold_pct: 50.0
-    variability_threshold_pct: 25.0
-    time_threshold_s: 120.0
-  optimizer:
-    type: multi_objective
-    backend: qNEHVI
-    backend_subsequent: GPEI
-  stopping_criteria:
-    min_good_trials: 100
-  parameter_inheritance:
-    enabled: true
-    carry_optimizer_state: false
-  use_range_based_variability: false
-  first_volume_final_calibration:
-    enabled: false
-    skip_if_good_trial: true
+    accuracy_weight: 0.4                           # OPTIONAL: Weight for measurement accuracy (0-1)
+    precision_weight: 0.5                          # OPTIONAL: Weight for measurement precision/reproducibility (0-1)
+    time_weight: 0.1                               # OPTIONAL: Weight for operation time (0-1)
+  objective_thresholds:                            # OPTIONAL: Maximum useful thresholds for each objective - used by the Bayesian optimizer to avoid over-optimizing beyond practical limits.
+    deviation_threshold_pct: 50.0                  # OPTIONAL: Target accuracy threshold (%)
+    variability_threshold_pct: 25.0                # OPTIONAL: Target precision threshold (%)
+    time_threshold_s: 120.0                        # OPTIONAL: Target time threshold (seconds)
+  optimizer:                                       # OPTIONAL: Optimizer algorithm selection
+    type: multi_objective                          # OPTIONAL: "multi_objective" or "single_objective"
+    backend: qNEHVI                                # OPTIONAL: "qNEHVI" (multi-objective) or "qLogEI" (single-objective)
+    backend_subsequent: GPEI                       # OPTIONAL: Algorithm for subsequent volumes
+  stopping_criteria:                               # OPTIONAL: For stopping optimization early if objectives are met in a sufficient number of trials
+    min_good_trials: 5                             # OPTIONAL: Minimum trials meeting quality threshold
+  parameter_inheritance:                           # OPTIONAL: Transfer learning between volumes
+    enabled: true                                  # OPTIONAL: Enable transfer learning (default: true)
+  use_range_based_variability: false               # OPTIONAL: Advanced variability calculation (default: false)
+  first_volume_final_calibration:                  # OPTIONAL: Final 2-point calibration mode
+    enabled: false                                 # OPTIONAL: Enable final calibration (default: false)
+    skip_if_good_trial: true                       # OPTIONAL: Skip if already meeting quality (default: true)
     description: Performs final 2-point overaspirate calibration on first volume before proceeding to next volume
-  # LLM-assisted optimization (experimental - requires API key)
+  # OPTIONAL: LLM-assisted optimization (experimental - requires API key)
   llm_optimization:
-    enabled: false
-    config_path: calibration_screening_llm_template.json
+    enabled: false                                 # OPTIONAL: Enable LLM parameter suggestions (default: false)
+    config_path: calibration_screening_llm_template.json  # OPTIONAL: LLM config path
 
 # ── Output ──────────────────────────────────────────────────────────────────
+# OPTIONAL: All fields here have sensible defaults.
 output:
-  base_directory: output/
-  export_optimal_conditions: true
-  generate_plots: true
-  save_raw_measurements: true
+  base_directory: output/                          # OPTIONAL: Directory for run outputs (default: output/)
+  export_optimal_conditions: true                  # OPTIONAL: Export optimized parameters to CSV (default: true)
+  generate_plots: true                             # OPTIONAL: Generate analysis plots (default: true)
+  save_raw_measurements: true                      # OPTIONAL: Save raw measurement data (default: true)
 
-# ── Validation settings ─────────────────────────────────────────────────────
+# ── Validation settings ──────────────────────────────────────────────────────────
+# OPTIONAL: Used only when running run_validation.py
 validation:
-  # Set to your calibration output path before running run_validation.py
+  # REQUIRED (for run_validation.py): Set to your calibration output path
   optimal_conditions_file: optimized_parameters/optimal_conditions_example.csv
-  volumes_ml:
+  volumes_ml:                                      # OPTIONAL: Volumes to validate (default: from calibration)
   - 0.05
-  replicates_per_volume: 5
+  replicates_per_volume: 5                         # OPTIONAL: Replicates per volume in validation (default: 5)
   output_directory: validation/
   generate_plots: true
-  save_raw_data: true
   success_criteria:
     use_volume_tolerances: true
 
 # ── Advanced: screening options ────────────────────────────────────────────
-# LLM suggestions and external data injection (both disabled by default).
+# OPTIONAL: Advanced features for bootstrapping optimization from prior data.
 screening:
-  use_llm_suggestions: false
-  llm_config_path: calibration_screening_llm_template.json
-  external_data:
-    enabled: false
-    data_path: input_data/external_calibration_data.csv
-    volume_filter_ml:
-    liquid_filter:
-    required_columns: []
+  use_llm_suggestions: false                       # OPTIONAL: Enable AI parameter suggestions (experimental, default: false)
+  llm_config_path: calibration_screening_llm_template.json  # OPTIONAL: LLM config file path
+  external_data:                                   # OPTIONAL: Bootstrap from prior calibration data
+    enabled: false                                 # OPTIONAL: Enable external data injection (default: false)
+    data_path: input_data/external_calibration_data.csv  # OPTIONAL: Path to external CSV data
+    volume_filter_ml:                              # OPTIONAL: Filter data by target volume (default: all)
+    liquid_filter:                                 # OPTIONAL: Filter data by liquid type (default: all)
+    required_columns: []                           # OPTIONAL: CSV columns to require (default: none)
 
-# ── Pass/fail tolerances by volume range ────────────────────────────────────
+# ── Pass/fail tolerances by volume range ────────────────────────────────────────────────
+# OPTIONAL: Tolerance thresholds for validation (advanced tuning).
 tolerances:
-  simulation:
-    deviation_multiplier: 1.5
-    variability_multiplier: 1.5
-  volume_ranges:
+  simulation:                                      # OPTIONAL: Simulation mode tolerance scaling
+    deviation_multiplier: 1.5                      # OPTIONAL: Accuracy tolerance multiplier
+    variability_multiplier: 1.5                    # OPTIONAL: Precision tolerance multiplier
+  volume_ranges:                                   # OPTIONAL: Volume-dependent tolerance ranges
   - volume_min_ul: 200
     volume_max_ul: 1000
     tolerance_pct: 1.0
@@ -198,9 +214,9 @@ tolerances:
     tolerance_pct: 10.0
 
 # ── Advanced: adaptive replication ──────────────────────────────────────────
-# Automatically run extra replicates when a measurement looks noisy.
+# OPTIONAL: Automatically run extra replicates when measurements are noisy.
 adaptive_measurement:
-  enabled: true
-  base_replicates: 1
-  deviation_threshold_pct: 100.0
-  penalty_variability_pct: 100.0
+  enabled: true                                    # OPTIONAL: Enable adaptive replication (default: true)
+  base_replicates: 1                               # OPTIONAL: Base number of replicates per trial (default: 1)
+  deviation_threshold_pct: 100.0                   # OPTIONAL: Trigger extra replicates if accuracy varies (default: 100%)
+  penalty_variability_pct: 100.0                   # OPTIONAL: Trigger extra replicates if precision varies (default: 100%)
