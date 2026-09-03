@@ -1,9 +1,12 @@
 """Automatic per-run experiment logging, wired in by Lash_E.__init__ - no workflow file changes needed.
 
 Design summary (see /memories/session/plan.md for the full history of this design):
-- Exactly one fully-populated row is written to logs/experiment_runs.csv per run, at the end.
+- Exactly one fully-populated row is written to experiment_tracking/experiment_runs.csv per
+  run, at the end. This module lives in experiment_tracking/ (not logs/) specifically so the
+  CSV is NOT covered by the .gitignore'd logs/ folder and can actually sync via git.
 - Crash detection uses an invisible marker file (logs/.active_runs/{run_id}.txt), never a
-  partially-filled CSV row, so every CSV column is always meaningful.
+  partially-filled CSV row, so every CSV column is always meaningful. The marker/error dirs
+  stay under the caller's logging_folder (local-only, alongside the raw per-run .log file).
 - No global hooks (no sys.excepthook replacement, no SIGINT handler) - only atexit plus a
   passive read of sys.last_value/sys.last_traceback, which Python itself already populates
   for any uncaught exception (including Ctrl-C's KeyboardInterrupt).
@@ -12,11 +15,20 @@ import atexit
 import csv
 import ctypes
 import getpass
+import inspect
 import os
 import sys
 import traceback
 import uuid
 from datetime import datetime
+
+# Files that are internal plumbing, never the actual workflow - skip over them when walking
+# the call stack to find whichever file really constructed Lash_E(...).
+_INTERNAL_CALLER_FILENAMES = {"experiment_run_logger.py", "master_usdl_coordinator.py"}
+
+# The CSV always lives next to this module (experiment_tracking/), regardless of the caller's
+# logging_folder - that's what keeps it out of the gitignored logs/ folder and syncable.
+_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 CSV_FIELDS = [
     "run_id", "workflow_name", "simulate", "datetime_started", "datetime_stopped",
@@ -55,6 +67,21 @@ def _pid_is_running(pid):
     except (AttributeError, OSError, ValueError):
         # Not on Windows, or pid unparseable - assume dead so a stuck marker still gets healed.
         return False
+
+
+def _detect_caller_filename():
+    """Walk the call stack to find the first frame outside this module and
+    master_usdl_coordinator.py - i.e. the actual file whose code constructed Lash_E(...),
+    regardless of how the overall process was launched (direct script, GUI, batch driver, etc.).
+    Falls back to the process entry point if something unexpected prevents stack inspection.
+    """
+    try:
+        for frame_info in inspect.stack():
+            if os.path.basename(frame_info.filename) not in _INTERNAL_CALLER_FILENAMES:
+                return os.path.basename(frame_info.filename)
+    except Exception:
+        pass
+    return os.path.basename(sys.argv[0])
 
 
 def _read_marker(marker_path):
@@ -124,11 +151,13 @@ def _heal_orphaned_runs(csv_path, marker_dir):
 def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
     """Register this run for tracking. Call once, early in Lash_E.__init__.
 
-    logging_folder must be the same folder Lash_E already writes its per-run .log file to,
-    so experiment_runs.csv/marker/error files always land next to it regardless of the
-    caller's current working directory (both are resolved the same way relative to cwd).
+    logging_folder must be the same folder Lash_E already writes its per-run .log file to, so
+    the local-only marker/error files land next to it regardless of the caller's current
+    working directory. experiment_runs.csv itself always lives next to this module
+    (experiment_tracking/), independent of logging_folder, so it stays out of the
+    gitignored logs/ folder no matter what the caller passes.
     """
-    csv_path = os.path.join(logging_folder, "experiment_runs.csv")
+    csv_path = os.path.join(_MODULE_DIR, "experiment_runs.csv")
     marker_dir = os.path.join(logging_folder, ".active_runs")
     error_dir = os.path.join(logging_folder, "experiment_run_errors")
 
@@ -144,7 +173,7 @@ def start_run(workflow_name, simulate, log_filename, logger, logging_folder):
     _heal_orphaned_runs(csv_path, marker_dir)
 
     run_id = uuid.uuid4().hex[:8]
-    workflow_name = workflow_name or os.path.basename(sys.argv[0])
+    workflow_name = workflow_name or _detect_caller_filename()
     datetime_started = datetime.now().strftime(DATETIME_FMT)
 
     os.makedirs(marker_dir, exist_ok=True)

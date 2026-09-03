@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 import logging
 import threading
-import experiment_run_logger
+from experiment_tracking import experiment_run_logger
 
 # Import ConfigManager for workflow config handling
 try:
