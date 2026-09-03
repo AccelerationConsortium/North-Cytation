@@ -14,8 +14,8 @@ Analyzes log files to calculate equipment utilization metrics and create visuali
 # ANALYZE_START_DATE = "March 2026"    # Whole month
 # ANALYZE_START_DATE = None            # From beginning
 
-ANALYZE_START_DATE = "May 2026"  # Edit this line to change start date
-ANALYZE_END_DATE = None       # Edit this line to change end date (None = auto-detect end of month/period)
+ANALYZE_START_DATE = "2025-08-01"  # Edit this line to change start date
+ANALYZE_END_DATE = "2026-08-31"       # Edit this line to change end date (None = auto-detect end of month/period)
 
 #=============================================================================
 
@@ -382,9 +382,9 @@ class LabUtilizationAnalyzer:
             ax2.plot(weekly_usage['week_start'], weekly_usage['duration_hours'], 
                      'o-', color='darkgreen', linewidth=2, markersize=6, alpha=0.8, label='Weekly Usage')
             
-            # Format x-axis dates for weekly view
-            ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-            ax2.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=1))
+            # Format x-axis dates for weekly view - monthly ticks with year
+            ax2.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+            ax2.xaxis.set_major_locator(mdates.MonthLocator())
         else:
             ax2.text(0.5, 0.5, 'No complete weeks in date range', transform=ax2.transAxes, 
                     ha='center', va='center', fontsize=12)
@@ -394,7 +394,7 @@ class LabUtilizationAnalyzer:
         ax2.set_title('Weekly System Utilization (Complete Weeks Only)')
         ax2.legend(loc='upper right')
         ax2.grid(True, alpha=0.3, axis='y')
-        ax2.tick_params(axis='x', rotation=45)
+        ax2.tick_params(axis='x', rotation=90)
         
         # 3. Summary statistics
         ax3 = axes[2]

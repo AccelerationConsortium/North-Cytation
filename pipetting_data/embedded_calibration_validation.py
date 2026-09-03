@@ -1297,6 +1297,18 @@ def validate_pipetting_accuracy(
                             result['optimization_stage'] = 1
             else:
                 print(f"    ✅ Stage 1 measurements within tolerance - no optimization needed")
+                if not (hasattr(lash_e, 'simulate') and lash_e.simulate):
+                    try:
+                        import slack_agent
+                        slack_agent.send_slack_message(
+                            f"✅ CALIBRATION VALIDATION PASSED (no optimization needed)\n"
+                            f"Liquid: {liquid_type}\n"
+                            f"Volume: {volume_ml*1000:.1f}uL\n"
+                            f"Stage 1 measurements within tolerance - parameters unchanged.\n"
+                            f"Session: {session_id}"
+                        )
+                    except Exception as slack_error:
+                        print(f"    Warning: Could not send Slack notification: {slack_error}")
     
     # === DATA ANALYSIS ===
     df = pd.DataFrame(all_results)

@@ -44,16 +44,16 @@ def sample_workflow(input_vial_status_file, target_vial):
     # Step 4: Use the Python controller (same path the workflow uses)
     print("\n=== Step 4: Via Python controller (initialize + fan on for 10 sec) ===")
     lash_e = Lash_E(input_vial_status_file, initialize_robot=False, initialize_biotek=False, initialize_track=False)
-    lash_e.photoreactor.initialize_photoreactor()
+    #lash_e.photoreactor.initialize_photoreactor()
     lash_e.photoreactor.turn_on_reactor_fan(reactor_num=0, rpm=600)
     time.sleep(10)
     lash_e.photoreactor.turn_off_reactor_fan(reactor_num=0)
 
     # LED test (uncomment to run)
-    # print("\n=== LED test ===")
-    # lash_e.photoreactor.turn_on_reactor_led(reactor_num=0, intensity=100)
-    # time.sleep(5)
-    # lash_e.photoreactor.turn_off_reactor_led(reactor_num=0)
+    print("\n=== LED test ===")
+    lash_e.photoreactor.turn_on_reactor_led(reactor_num=0, intensity=100)
+    time.sleep(5)
+    lash_e.photoreactor.turn_off_reactor_led(reactor_num=0)
 
     print("\n=== Done ===")
 

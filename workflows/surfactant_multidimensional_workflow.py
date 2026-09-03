@@ -2658,4 +2658,19 @@ if __name__ == "__main__":
             lash_e, validation_folder, surfactant_names=[SURFACTANTS[0]],
         )
 
-    run_multidim_workflow(lash_e)
+    try:
+        run_multidim_workflow(lash_e)
+    except Exception as e:
+        lash_e.logger.error(f"Workflow crashed: {type(e).__name__}: {e}")
+        if not lash_e.simulate:
+            try:
+                import slack_agent
+                slack_agent.safe_send_slack_message(
+                    f"WORKFLOW CRASHED\n"
+                    f"Error type: {type(e).__name__}\n"
+                    f"Details: {e}\n"
+                    f"Check terminal for full traceback."
+                )
+            except Exception:
+                pass
+        raise

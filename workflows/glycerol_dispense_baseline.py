@@ -323,7 +323,7 @@ def _create_incremental_csv_headers(csv_path):
         "measured_mass_g", "temp_c", "humidity_pct", "pressure_pa",
         "pre_baseline_std", "post_baseline_std", "pre_stable_pct", "post_stable_pct",
         "glycerol_opened_date", "days_bottle_opened",
-        "mass_data_file", "status"
+        "mass_data_file", "status", "run_type"
     ]
     
     # Create CSV with headers
@@ -372,7 +372,8 @@ def _save_row_result_immediately(campaign_folder, row_idx, row, volume_ul, row_r
             "glycerol_opened_date": GLYCEROL_OPENED_DATE,
             "days_bottle_opened": days_since_opened,
             "mass_data_file": row_result.get("mass_data_file"),
-            "status": "ok" if row_result else "failed"
+            "status": "ok" if row_result else "failed",
+            "run_type": "original",
         }
         
         # Append to CSV
