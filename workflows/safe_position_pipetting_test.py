@@ -32,7 +32,7 @@ VOLUMES_ML = [0.05, 0.25]
 
 
 def safe_position_pipetting_test(simulate: bool = SIMULATE):
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, initialize_biotek=False, simulate=simulate, show_gui=False)
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, initialize_biotek=False, simulate=simulate, show_gui=True)
 
     for i, (location, location_index) in enumerate(SAFE_POSITIONS):
         volume = VOLUMES_ML[i % 2]
@@ -44,6 +44,8 @@ def safe_position_pipetting_test(simulate: bool = SIMULATE):
         lash_e.nr_robot.move_vial_to_location(VIAL_A, location, location_index)
         lash_e.nr_robot.dispense_from_vial_into_vial(VIAL_A, VIAL_B, volume)
         lash_e.nr_robot.return_vial_home(VIAL_A)
+
+    input("Pausing...")
 
     lash_e.logger.info("Safe position pipetting test complete.")
 
