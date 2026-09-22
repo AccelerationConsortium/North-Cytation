@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 import slack_agent
 import pipetting_data.embedded_calibration_validation as pipette_validator
-from degradation_spectral_analyzer_program import process_degradation_spectral_data
+
 
 
 #config params
