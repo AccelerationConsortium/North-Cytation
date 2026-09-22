@@ -17,8 +17,8 @@ def sample_workflow(input_vial_status_file, target_vial):
 
     #Is the second reactor reactor_num = 0 or reactor_num = 2?
 
-    #lash_e.photoreactor.turn_on_reactor_led(reactor_num=reactor_num,intensity=100)
-    #lash_e.photoreactor.turn_on_reactor_fan(reactor_num=reactor_num,rpm=600)
+    lash_e.photoreactor.turn_on_reactor_led(reactor_num=reactor_num,intensity=100)
+    lash_e.photoreactor.turn_on_reactor_fan(reactor_num=reactor_num,rpm=600)
 
     time.sleep(5)
 

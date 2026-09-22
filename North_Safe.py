@@ -3839,7 +3839,7 @@ class North_Robot(North_Base):
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self, revs=3.0, move_speed=None):
+    def uncap_clamp_vial(self, revs=1.6, move_speed=None):
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -3864,11 +3864,27 @@ class North_Robot(North_Base):
         self.VIAL_DF.at[clamp_vial_index, 'capped']=False
         self.GRIPPER_VIAL_INDEX = clamp_vial_index
         self.save_robot_status()
-
+#revs for uncap was 3.0, SP changes to 1.6 on 22-Sep-2026. We were orginally overunscrewing it resulting in cap weakening
     #Recap the vial in the clamp
     #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
     #SP: Note: I made this change on this date
-    def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None):
+    def recap_clamp_vial(self, revs=1.80, torque_thresh = 550, move_speed=None, pre_cap_uncap_revs=None):
+#Orgina recap revs were 1.8, SP changd to 1.0 on 22-Sep-2026
+        """
+        Recap the vial currently held in the clamp.
+
+        Args:
+            revs (float): Revolutions used by c9.cap()'s pre-twist phase before torque-checking begins.
+            torque_thresh (int): Torque (mA) that must be exceeded during the torque-checking phase for the cap
+                to be considered tight.
+            move_speed (float, optional): Override velocity for the move to vial_clamp_cap.
+            pre_cap_uncap_revs (float, optional): If set, after arriving at vial_clamp_cap (and before the normal
+                c9.cap() call) the gripper spins the cap backward (c9.uncap) by this many revolutions first. This
+                is a "thread-finding" half-decap - spinning the cap counter-clockwise a small amount until it
+                catches the vial's threads - which reduces the risk of cross-threading before the forward
+                capping/torque-check phase. Typical values are small, e.g. 0.3-0.75 revs. Leave as None (default)
+                to skip this step and behave exactly as before.
+        """
         self.logger.debug("Recapping clamped vial")
         
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -3885,6 +3901,10 @@ class North_Robot(North_Base):
         self.goto_location_if_not_there(vial_clamp_cap, move_speed=move_speed)
         if not self.simulate:
             time.sleep(0.5)
+
+        if pre_cap_uncap_revs is not None:
+            self.logger.debug(f"Pre-cap half decap: spinning cap back {pre_cap_uncap_revs} revs to find threads")
+            self.c9.uncap(revs=pre_cap_uncap_revs)
 
         self.c9.cap(revs=revs, torque_thresh = torque_thresh) #Cap the vial #Cap the vial
         self.c9.open_gripper() #Open the gripper to release the cap

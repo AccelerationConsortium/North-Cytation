@@ -198,7 +198,9 @@ class EnhancedRobotArmController:
         self.current_gripper_angle = 0.0
         self.gripper_is_open = False
         self.is_homed = False
-        
+        self.free_move_active = False  # True when servos are disengaged for manual teaching
+        self.free_move_locked_z = False  # True if Z-axis was kept engaged during last free-move session
+
         # Position system configuration
         self.vial_file_path = vial_file_path
         self.workflow_positions = load_positions_from_system()
@@ -479,6 +481,12 @@ class EnhancedRobotArmController:
                 
             def close_clamp(self):
                 logger.info("SIMULATION: Closing clamp")
+
+            def uncap(self, revs=3.0):
+                logger.info(f"SIMULATION: Uncapping ({revs} revs)")
+
+            def cap(self, revs=1.80, torque_thresh=550):
+                logger.info(f"SIMULATION: Capping ({revs} revs, torque_thresh={torque_thresh})")
                 
             def goto(self, position_list, wait=True):
                 """Move to absolute position [gripper, elbow, shoulder, z] per API."""
@@ -543,7 +551,13 @@ class EnhancedRobotArmController:
         """Create the enhanced GUI window with position management."""
         self.root = tk.Tk()
         self.root.title("North Robot Arm Position Control")
-        self.root.geometry("1100x740")
+        # Size the window to fit the available screen (leaving room for the taskbar),
+        # instead of a fixed 1100x900 that can extend off-screen on smaller displays.
+        screen_height = self.root.winfo_screenheight()
+        screen_width = self.root.winfo_screenwidth()
+        window_width = min(1100, screen_width - 60)
+        window_height = min(900, screen_height - 80)
+        self.root.geometry(f"{window_width}x{window_height}")
         self.root.resizable(True, True)
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
@@ -570,14 +584,14 @@ class EnhancedRobotArmController:
         right_frame.columnconfigure(0, weight=1)
 
         # ── LEFT: Connection Status ─────────────────────────────────────────
-        status_frame = ttk.LabelFrame(left_frame, text="Connection Status", padding="8")
-        status_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        status_frame = ttk.LabelFrame(left_frame, text="Connection Status", padding="6")
+        status_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
         self.status_label = ttk.Label(status_frame, text="Disconnected", foreground="red")
         self.status_label.pack(anchor=tk.W)
 
         # ── LEFT: Position Selection (2 dropdowns) ─────────────────────────
-        pos_sel_frame = ttk.LabelFrame(left_frame, text="Position Selection", padding="8")
-        pos_sel_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        pos_sel_frame = ttk.LabelFrame(left_frame, text="Position Selection", padding="6")
+        pos_sel_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
 
         # Build position groups: locator_var -> [full_key, ...]
         self.position_groups = {}
@@ -623,8 +637,8 @@ class EnhancedRobotArmController:
                    command=self.goto_arbitrary_counts).pack(side=tk.LEFT)
 
         # ── LEFT: Current Position ──────────────────────────────────────────
-        pos_frame = ttk.LabelFrame(left_frame, text="Current Position", padding="8")
-        pos_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        pos_frame = ttk.LabelFrame(left_frame, text="Current Position", padding="6")
+        pos_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
 
         self.z_position_label = ttk.Label(pos_frame, text="Z: Unknown")
         self.z_position_label.grid(row=0, column=0, sticky=tk.W)
@@ -639,15 +653,15 @@ class EnhancedRobotArmController:
         self.gripper_status_label.grid(row=2, column=0, columnspan=2, sticky=tk.W)
 
         # ── LEFT: Robot Controls ────────────────────────────────────────────
-        control_frame = ttk.LabelFrame(left_frame, text="Robot Controls", padding="8")
-        control_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        control_frame = ttk.LabelFrame(left_frame, text="Robot Controls", padding="6")
+        control_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
 
         self.home_button = ttk.Button(control_frame, text="HOME ROBOT",
                                       command=self.home_robot, style="Accent.TButton")
-        self.home_button.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 6))
+        self.home_button.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 4))
         
         ttk.Button(control_frame, text="MOVE HOME",
-                   command=self.move_home, style="Warning.TButton").grid(row=0, column=2, sticky=(tk.W, tk.E), pady=(0, 6), padx=(4, 0))
+                   command=self.move_home, style="Warning.TButton").grid(row=0, column=2, sticky=(tk.W, tk.E), pady=(0, 4), padx=(4, 0))
 
         ttk.Label(control_frame, text="Z:").grid(row=1, column=0, sticky=tk.W)
         ttk.Button(control_frame, text="▲ UP",
@@ -677,18 +691,39 @@ class EnhancedRobotArmController:
         ttk.Button(control_frame, text="🔄 CCW", command=self.move_gripper_ccw).grid(row=5, column=1, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="↻ CW", command=self.move_gripper_cw).grid(row=5, column=2, padx=2, sticky=(tk.W, tk.E))
         
-        ttk.Label(control_frame, text="Clamp:").grid(row=6, column=0, sticky=tk.W)
+        ttk.Label(control_frame, text="Clamp:").grid(row=6, column=0, sticky=tk.W, pady=1)
         ttk.Button(control_frame, text="🔓 OPEN", command=self.open_clamp,
-                   style="Success.TButton").grid(row=6, column=1, padx=2, sticky=(tk.W, tk.E))
+                   style="Success.TButton").grid(row=6, column=1, padx=2, pady=1, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="🔒 CLOSE", command=self.close_clamp,
-                   style="Warning.TButton").grid(row=6, column=2, padx=2, sticky=(tk.W, tk.E))
+                   style="Warning.TButton").grid(row=6, column=2, padx=2, pady=1, sticky=(tk.W, tk.E))
 
-        ttk.Label(control_frame, text="Pipet:").grid(row=7, column=0, sticky=tk.W)
+        ttk.Label(control_frame, text="Cap/Decap:").grid(row=7, column=0, sticky=tk.W, pady=1)
+        ttk.Button(control_frame, text="🧴 DECAP", command=self.decap_vial,
+                   style="Success.TButton").grid(row=7, column=1, padx=2, pady=1, sticky=(tk.W, tk.E))
+        ttk.Button(control_frame, text="🔩 CAP", command=self.cap_vial,
+                   style="Warning.TButton").grid(row=7, column=2, padx=2, pady=1, sticky=(tk.W, tk.E))
+
+        ttk.Label(control_frame, text="Teach:").grid(row=8, column=0, sticky=tk.W, pady=(4, 1))
+        self.free_move_button = ttk.Button(control_frame, text="Free Move (Servo Off)",
+                                           command=self.toggle_free_move)
+        self.free_move_button.grid(row=8, column=1, columnspan=2, padx=2, pady=(4, 1), sticky=(tk.W, tk.E))
+
+        self.keep_z_locked_var = tk.BooleanVar(value=True)
+        self.keep_z_locked_check = ttk.Checkbutton(
+            control_frame, text="Keep Z-axis holding (locked while others free-move)",
+            variable=self.keep_z_locked_var)
+        self.keep_z_locked_check.grid(row=9, column=0, columnspan=3, sticky=tk.W)
+
+        self.free_move_status_label = ttk.Label(control_frame,
+            text="Servos engaged (normal)", foreground="gray")
+        self.free_move_status_label.grid(row=10, column=0, columnspan=3, sticky=tk.W, pady=(2, 6))
+
+        ttk.Label(control_frame, text="Pipet:").grid(row=11, column=0, sticky=tk.W)
         ttk.Button(control_frame, text="GET LARGE",
-                   command=self.get_pipet_large).grid(row=7, column=1, padx=2, sticky=(tk.W, tk.E))
+                   command=self.get_pipet_large).grid(row=11, column=1, padx=2, sticky=(tk.W, tk.E))
         ttk.Button(control_frame, text="GET SMALL",
-                   command=self.get_pipet_small).grid(row=7, column=2, padx=2, sticky=(tk.W, tk.E))
-        ttk.Label(control_frame, text="Held tip:").grid(row=8, column=0, sticky=tk.W)
+                   command=self.get_pipet_small).grid(row=11, column=2, padx=2, sticky=(tk.W, tk.E))
+        ttk.Label(control_frame, text="Held tip:").grid(row=12, column=0, sticky=tk.W)
         self.held_tip_var = tk.StringVar(value="(auto)")
         held_tip_combo = ttk.Combobox(
             control_frame,
@@ -696,11 +731,11 @@ class EnhancedRobotArmController:
             values=["(auto)", "large_tip", "small_tip", "none"],
             state="readonly", width=9,
         )
-        held_tip_combo.grid(row=8, column=1, columnspan=2, padx=2, sticky=(tk.W, tk.E))
+        held_tip_combo.grid(row=12, column=1, columnspan=2, padx=2, sticky=(tk.W, tk.E))
         held_tip_combo.bind("<<ComboboxSelected>>", self.on_held_tip_selected)
         ttk.Button(control_frame, text="REMOVE PIPET",
                    command=self.remove_pipet_action).grid(
-            row=9, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
+            row=13, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(2, 0))
 
         control_frame.columnconfigure(1, weight=1)
         control_frame.columnconfigure(2, weight=1)
@@ -1864,6 +1899,50 @@ class EnhancedRobotArmController:
         except Exception as e:
             logger.error(f"Error closing clamp: {str(e)}")
 
+    def decap_vial(self):
+        """Spin the gripper to unscrew a cap from a vial clamped at the current position.
+
+        This calls the raw c9.uncap() primitive directly (same primitive used by
+        North_Safe.uncap_clamp_vial) so this tool can be used to jog/verify the
+        decap position and motion without requiring vial tracking (VIAL_DF) setup.
+        Assumes the gripper is already closed around the cap and a vial is held
+        in the clamp - this tool does not perform those safety checks.
+        """
+        if not self.is_connected:
+            logger.warning("Cannot decap: Robot not connected")
+            return
+        try:
+            if hasattr(self.robot, 'uncap'):
+                self.robot.uncap(revs=3.0)
+                logger.info("Decap: uncap motion complete (revs=3.0)")
+                self.update_display()
+            else:
+                logger.warning("Decap control not available on this robot")
+        except Exception as e:
+            logger.error(f"Error decapping: {str(e)}")
+
+    def cap_vial(self):
+        """Spin the gripper to screw a cap onto a vial clamped at the current position.
+
+        This calls the raw c9.cap() primitive directly (same primitive used by
+        North_Safe.recap_clamp_vial) so this tool can be used to jog/verify the
+        cap position and motion without requiring vial tracking (VIAL_DF) setup.
+        Assumes the gripper is holding the cap above a clamped, uncapped vial -
+        this tool does not perform those safety checks.
+        """
+        if not self.is_connected:
+            logger.warning("Cannot cap: Robot not connected")
+            return
+        try:
+            if hasattr(self.robot, 'cap'):
+                self.robot.cap(revs=1.80, torque_thresh=550)
+                logger.info("Cap: cap motion complete (revs=1.80, torque_thresh=550)")
+                self.update_display()
+            else:
+                logger.warning("Cap control not available on this robot")
+        except Exception as e:
+            logger.error(f"Error capping: {str(e)}")
+
     def get_pipet_large(self):
         """Get a large tip using nr_robot."""
         if self.nr_robot is not None:
@@ -2330,7 +2409,124 @@ class EnhancedRobotArmController:
         finally:
             self.home_button.config(text="🏠 HOME ROBOT", state="normal")
             self.update_display()
-            
+
+    def toggle_free_move(self):
+        """Enable or disable 'free move' (servo-off) mode for manual teaching.
+
+        When enabled, the disengaged axes' servos are turned off via axis_servo(axis, False)
+        so the arm can be repositioned by hand. There is no holding torque on a disengaged
+        axis - it will not actively resist gravity or being pushed.
+
+        If "Keep Z-axis holding" is checked, the Z axis servo is left engaged (holding
+        torque maintained, arm will not drop/rise on its own) while the gripper, elbow,
+        and shoulder axes are disengaged for manual repositioning. This is a per-axis
+        choice exposed by axis_servo() - there is no mode where a single axis both holds
+        position AND is freely movable by hand; an axis is either servoed (holds, can't be
+        hand-moved) or free (movable by hand, no holding torque).
+
+        get_robot_positions()/get_current_positions() query the controller's live
+        encoder counts directly (AXPS packet), so they read correctly regardless of
+        servo state - use 'Save w/ Name' or 'Save Temp' to capture a taught position.
+        Per the North API, any axis that was disengaged must be re-homed before it can
+        be commanded to move again after its servo is re-enabled.
+        """
+        if not self.is_connected:
+            messagebox.showerror("Error", "Robot not connected")
+            return
+
+        if not hasattr(self.robot, 'axis_servo'):
+            messagebox.showinfo("Not Available",
+                "This robot interface does not expose axis_servo() - "
+                "free move is not available in simulation mode.")
+            return
+
+        keep_z_locked = self.keep_z_locked_var.get()
+        free_axes = [self.robot.GRIPPER, self.robot.ELBOW, self.robot.SHOULDER]
+        if not keep_z_locked:
+            free_axes.append(self.robot.Z_AXIS)
+
+        if not self.free_move_active:
+            z_note = (
+                "- The Z-axis will stay ENGAGED (holding torque) so the arm will not "
+                "move up/down on its own; only the gripper, elbow, and shoulder axes "
+                "will be free to move by hand.\n"
+                if keep_z_locked else
+                "- ALL axes including Z will be disengaged - there is NO holding torque "
+                "anywhere, support the arm so it does not fall.\n"
+            )
+            confirmed = messagebox.askyesno(
+                "Enable Free Move",
+                "This disengages axis servos so the arm can be moved by hand.\n\n"
+                f"{z_note}"
+                "- Do not command any automated moves on a disengaged axis until you "
+                "re-engage and re-home it.\n\n"
+                "Continue?"
+            )
+            if not confirmed:
+                return
+            try:
+                for axis in free_axes:
+                    self.robot.axis_servo(axis, False)
+                self.free_move_active = True
+                self.free_move_locked_z = keep_z_locked
+                self.is_homed = False
+                self.free_move_button.config(text="Re-engage Servo")
+                self.keep_z_locked_check.config(state="disabled")
+                if keep_z_locked:
+                    self.free_move_status_label.config(
+                        text="FREE MOVE - gripper/elbow/shoulder disengaged, Z locked/holding",
+                        foreground="red")
+                else:
+                    self.free_move_status_label.config(
+                        text="FREE MOVE - ALL servos disengaged, position by hand",
+                        foreground="red")
+                logger.info(
+                    f"Free move enabled: axes {free_axes} disengaged for manual teaching "
+                    f"(Z locked: {keep_z_locked})")
+                self.session_history.append({
+                    "timestamp": datetime.now().strftime("%H:%M:%S"),
+                    "action": "free_move_enabled",
+                    "z_locked": keep_z_locked,
+                })
+            except Exception as e:
+                logger.error(f"Error disengaging servos: {str(e)}")
+                messagebox.showerror("Error", f"Failed to disengage servos:\n{str(e)}")
+        else:
+            try:
+                # Re-engage whichever axes were actually disengaged last time.
+                axes_to_reengage = [self.robot.GRIPPER, self.robot.ELBOW, self.robot.SHOULDER]
+                if not getattr(self, 'free_move_locked_z', False):
+                    axes_to_reengage.append(self.robot.Z_AXIS)
+                for axis in axes_to_reengage:
+                    self.robot.axis_servo(axis, True)
+                self.free_move_active = False
+                self.free_move_button.config(text="Free Move (Servo Off)")
+                self.keep_z_locked_check.config(state="normal")
+                self.free_move_status_label.config(
+                    text="Servos engaged - re-home before moving", foreground="orange")
+                logger.info(f"Free move disabled: axes {axes_to_reengage} re-engaged")
+                self.session_history.append({
+                    "timestamp": datetime.now().strftime("%H:%M:%S"),
+                    "action": "free_move_disabled",
+                })
+
+                needs_home = messagebox.askyesno(
+                    "Re-home Required",
+                    "Servos are re-engaged. The North API requires the robot to be "
+                    "re-homed before any further commanded moves.\n\n"
+                    "Home the robot now?"
+                )
+                if needs_home:
+                    self.home_robot()
+                else:
+                    messagebox.showwarning("Not Homed",
+                        "Robot is not homed. Do not command moves until you home it "
+                        "using the HOME ROBOT button.")
+            except Exception as e:
+                logger.error(f"Error re-engaging servos: {str(e)}")
+                messagebox.showerror("Error", f"Failed to re-engage servos:\n{str(e)}")
+        self.update_display()
+
     def move_home(self):
         """Move robot to home position (faster than homing - just moves to [0,0,0,0])."""
         if not self.is_connected:
