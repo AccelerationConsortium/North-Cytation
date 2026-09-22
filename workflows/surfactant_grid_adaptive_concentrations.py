@@ -2116,7 +2116,7 @@ def validate_and_convert_recipe_volumes(batch_df):
     
     return validated_df
 
-def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, volume_column, should_condition_tip=True):
+def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, volume_column, should_condition_tip=True, well_plate_type="96 WELL PLATE"):
     """
     Unified dispensing method for any liquid component.
     
@@ -2127,6 +2127,7 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
         liquid_type: Type of liquid for pipetting parameters ('water', 'DMSO')
         volume_column: Column name for volume (e.g., 'surf_A_volume_ul', 'water_volume_ul')
         should_condition_tip: Boolean, condition tip for first dispense only (default True)
+        well_plate_type: Type of wellplate for robot positioning (default "96 WELL PLATE")
     """
     logger = lash_e.logger
     
@@ -2218,7 +2219,8 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
             lash_e.nr_robot.dispense_into_wellplate(
                 dest_wp_num_array=[well_idx],
                 amount_mL_array=[volume_ml],
-                liquid=liquid_type
+                liquid=liquid_type,
+                well_plate_type=well_plate_type,
             )
 
     # --- Pass 2: large tip ---
@@ -2237,7 +2239,8 @@ def dispense_component_to_wellplate(lash_e, batch_df, vial_name, liquid_type, vo
             lash_e.nr_robot.dispense_into_wellplate(
                 dest_wp_num_array=[well_idx],
                 amount_mL_array=[volume_ml],
-                liquid=liquid_type
+                liquid=liquid_type,
+                well_plate_type=well_plate_type,
             )
            
     logger.info(f"    {component_name}: Dispensing complete")
