@@ -48,8 +48,8 @@ The example inventory supplies 8 mL parent stock and 20 mL solvent in a 20 mL
 vial to cover these larger preparations plus plate dispensing. Replace these
 example values with the actual loaded inventory.
 Before plate dispensing, each 8 mL source vial is moved individually to
-`main_8mL_rack[47]`, following Ailsa's dye staging pattern. Keep that position
-empty and do not assign it as a vial home. Tips are removed before staging;
+`clamp[0]` before each plate dispense. Keep the clamp empty and do not assign
+it as a vial home. Tips are removed before staging;
 serial dispensing removes the used tip and returns the source home before the
 next source is staged. Large vials stay in place. Substock preparation retains
 the existing vial-to-vial transfer behavior. The robot's cap accessibility check

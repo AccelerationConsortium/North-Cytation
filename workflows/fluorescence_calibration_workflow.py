@@ -215,10 +215,10 @@ def execute(config=None):
         if not path or not Path(path).is_file():
             raise ValueError(f"Set an existing, plate-matched Cytation protocol: {path}")
     inventory = pd.read_csv(c["INPUT_VIAL_STATUS_FILE"]).set_index("vial_name")
-    # Reuse Ailsa's dye staging position one source at a time.
+    # Stage one 8 mL source at the clamp; large vials remain in place.
     for location, index in (("location", "location_index"), ("home_location", "home_location_index")):
-        if ((inventory[location] == "main_8mL_rack") & (inventory[index] == 47)).any():
-            raise ValueError("Keep main_8mL_rack position 47 free for plate-dispensing staging")
+        if ((inventory[location] == "clamp") & (inventory[index] == 0)).any():
+            raise ValueError("Keep clamp[0] free for plate-dispensing staging")
     requirements = {"dye_stock": recipes.stock_ml.sum(), "solvent": recipes.solvent_ml.sum()}
     for row in plan.itertuples():
         for source, volume in ((row.medium, row.medium_volume_ul), (row.dye_source, row.dye_volume_ul)):
@@ -266,9 +266,9 @@ def execute(config=None):
                 volumes = pd.DataFrame({source: subset.set_index("well_index")[volume_column] / 1000})
                 if inventory.loc[source, "vial_type"] == "8_mL":
                     lash.nr_robot.remove_pipet()
-                    if lash.nr_robot.get_vial_in_location("main_8mL_rack", 47) is not None:
-                        raise RuntimeError("Plate-dispensing staging position 47 is occupied")
-                    lash.nr_robot.move_vial_to_location(source, "main_8mL_rack", 47)
+                    if lash.nr_robot.get_vial_in_location("clamp", 0) is not None:
+                        raise RuntimeError("Plate-dispensing staging clamp[0] is occupied")
+                    lash.nr_robot.move_vial_to_location(source, "clamp", 0)
                 # Serial dispensing removes its tip and returns the source home.
                 # Large vials are aspirated in place, with no staging move.
                 lash.nr_robot.dispense_from_vials_into_wellplate(

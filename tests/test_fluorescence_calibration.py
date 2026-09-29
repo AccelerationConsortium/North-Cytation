@@ -89,7 +89,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         moves = lash.nr_robot.move_vial_to_location.call_args_list
         self.assertEqual({call.args[0] for call in moves},
                          {"water", "surfactant", "dye_stock", "dye_b1_s1", "dye_b1_s2"})
-        self.assertTrue(all(call.args[1:] == ("main_8mL_rack", 47) for call in moves))
+        self.assertTrue(all(call.args[1:] == ("clamp", 0) for call in moves))
         calls = lash.nr_robot.method_calls
         for i, call in enumerate(calls):
             if call[0] == "move_vial_to_location":
