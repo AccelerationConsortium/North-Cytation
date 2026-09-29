@@ -46,7 +46,7 @@ DEFAULTS = {
 # the proposed 355/373/383 settings. Other dyes remain placeholders.
 PROTOCOLS = {
     "pyrene": (r"C:\Protocols\CMC_Fluorescence_96.prt", ["334_373", "334_384"]),
-    "coumarin-6": (None, ["485_528"]),
+    "coumarin-6": (r"C:\Protocols\Coumarin_96.prt", ["485_530"]),
     "nile-red": (None, ["550_648"]),
 }
 PLATES = {"96 WELL PLATE": (96, 12), "48 WELL PLATE": (48, 8)}
