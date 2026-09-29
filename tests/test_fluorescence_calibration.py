@@ -15,15 +15,15 @@ from workflows.fluorescence_calibration_workflow import (
 class FluorescenceCalibrationTests(unittest.TestCase):
     def test_constant_solvent_and_concentration(self):
         plan, recipes = build_plan({**DEFAULTS, "STOCK_CONCENTRATION_UM": 100})
-        self.assertEqual(len(plan), 36)
-        self.assertEqual(len(recipes), 2)
+        self.assertEqual(len(plan), 45)
+        self.assertEqual(len(recipes), 3)
         self.assertEqual((plan.dilution_factor == 0).sum(), 9)
         np.testing.assert_allclose(plan.dye_volume_ul + plan.medium_volume_ul, 200)
         np.testing.assert_allclose(plan.concentration_um, plan.dilution_factor * 2.5)
         np.testing.assert_allclose(plan[plan.medium != "solvent"].solvent_fraction, 0.025)
         np.testing.assert_allclose(recipes.stock_ml + recipes.solvent_ml, 6)
-        np.testing.assert_allclose(recipes.stock_ml, [1.5, 3.0])
-        np.testing.assert_allclose(recipes.solvent_ml, [4.5, 3.0])
+        np.testing.assert_allclose(recipes.stock_ml, [0.6, 1.5, 3.0])
+        np.testing.assert_allclose(recipes.solvent_ml, [5.4, 4.5, 3.0])
 
     def test_repeated_randomized_multiplate_plan(self):
         config = {**DEFAULTS, "REPETITIONS": 2, "REPLICATES": 5,
@@ -32,7 +32,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         plan, recipes = build_plan(config)
         pd.testing.assert_frame_equal(plan, build_plan(config)[0])
         self.assertEqual(plan.plate.nunique(), 4)
-        self.assertEqual(len(recipes), 4)
+        self.assertEqual(len(recipes), 6)
         self.assertFalse(plan.duplicated(["plate", "well_position"]).any())
         self.assertLess(plan.well_index.max(), 48)
         self.assertEqual(set(plan.substock_batch), {1, 2})
@@ -47,7 +47,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                 build_plan({**DEFAULTS, **override})
 
     def test_blank_correction_and_repeat_reads_are_not_independent_wells(self):
-        plan, _ = build_plan(DEFAULTS)
+        test_config = {**DEFAULTS, "DILUTION_FACTORS": [0.0, 0.5, 1.0], "SUBSTOCK_VOLUME_ML": 1.0}
+        plan, _ = build_plan(test_config)
         plan["signal"] = 50 + plan.concentration_relative * 1000
         reads = pd.concat([plan.assign(measurement_replicate=i) for i in (1, 2)])
         summary = summarize(reads, ["signal"])
@@ -63,7 +64,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         lash.nr_track.NUM_SOURCE = 1
         lash.nr_robot.WELLPLATES = {"96 WELL PLATE": {"max_volume_per_well": 0.3}}
         lash.nr_robot.get_vial_in_location.return_value = None
-        plan, _ = build_plan(DEFAULTS)
+        test_config = {**DEFAULTS, "DILUTION_FACTORS": [0.0, 0.25, 0.5, 1.0], "SUBSTOCK_VOLUME_ML": 1.0}
+        plan, _ = build_plan(test_config)
         data = pd.DataFrame({"well_position": plan.well_position,
                              "334_373": 10 + plan.concentration_relative * 100,
                              "334_384": 20 + plan.concentration_relative * 200})
@@ -74,7 +76,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             protocol = Path(temporary) / "test.prt"
             protocol.touch()
             with patch.dict("sys.modules", {"master_usdl_coordinator": module}):
-                output = execute({**DEFAULTS, "SIMULATE": False,
+                output = execute({**test_config, "SIMULATE": False,
                                   "PROTOCOL_FILE": str(protocol), "SHAKE_PROTOCOL_FILE": str(protocol)})
         self.assertEqual(lash.nr_robot.dispense_from_vial_into_vial.call_count, 4)
         lash.discard_used_wellplate.assert_called_once()
@@ -86,7 +88,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         self.assertAlmostEqual(total_dispensed, 7.2)
         moves = lash.nr_robot.move_vial_to_location.call_args_list
         self.assertEqual({call.args[0] for call in moves},
-                         {"water", "surfactant", "dye_stock", "dye_b1_s0", "dye_b1_s1"})
+                         {"water", "surfactant", "dye_stock", "dye_b1_s1", "dye_b1_s2"})
         self.assertTrue(all(call.args[1:] == ("main_8mL_rack", 47) for call in moves))
         calls = lash.nr_robot.method_calls
         for i, call in enumerate(calls):

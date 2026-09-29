@@ -20,9 +20,11 @@ Substocks are diluted directly from the parent stock with pure solvent and
 vortexed; the undiluted level uses the parent vial. All aqueous wells therefore
 have 2.5% solvent. The solvent reference is entirely native solvent.
 
-Set `STOCK_CONCENTRATION_UM` to report absolute dye concentrations. Without it,
-concentrations are fractions of the parent stock, including dilution into the
-well (defaults: 0, 0.00625, 0.0125, 0.025). Set surfactant concentration and CMC
+The built-in parent-stock concentrations are pyrene 48.6 uM, Nile Red 50 uM,
+and Coumarin-6 3 uM. Override `STOCK_CONCENTRATION_UM` when needed. A dilution
+factor is relative to the parent stock; the final well concentration also
+includes the 5/200 addition dilution. Thus factor 1.0 is 1.215 uM pyrene in
+the well, not 48.6 uM. Set surfactant concentration and CMC
 in mM to check that the final diluted surfactant remains above the supplied CMC.
 The workflow uses a pre-made surfactant solution; it does not prepare this stock.
 
@@ -42,7 +44,7 @@ Before hardware execution, update the example vial status CSV to the actual
 loaded rack positions and volumes, including empty destinations named in the
 generated substock recipes. Extra levels and fresh batches require extra vials.
 Source requirements include a 0.1 mL reserve; there is no automatic refill.
-The example inventory supplies 6 mL parent stock and 12 mL solvent in a 20 mL
+The example inventory supplies 8 mL parent stock and 20 mL solvent in a 20 mL
 vial to cover these larger preparations plus plate dispensing. Replace these
 example values with the actual loaded inventory.
 Before plate dispensing, each 8 mL source vial is moved individually to

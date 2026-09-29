@@ -20,7 +20,7 @@ DEFAULTS = {
     "DYE": "pyrene",
     "DYE_SOLVENT": "DMSO",
     "STOCK_CONCENTRATION_UM": None,
-    "DILUTION_FACTORS": [0.1, 0.25, 0.5, 1.0],
+    "DILUTION_FACTORS": [0.0, 0.1, 0.25, 0.5, 1.0],
     "DYE_VOLUME_UL": 5.0,
     "TOTAL_VOLUME_UL": 200.0,
     "SUBSTOCK_VOLUME_ML": 6.0,
@@ -50,6 +50,7 @@ PROTOCOLS = {
     "nile-red": (None, ["550_648"]),
 }
 PLATES = {"96 WELL PLATE": (96, 12), "48 WELL PLATE": (48, 8)}
+STOCK_CONCENTRATIONS_UM = {"pyrene": 48.6, "nile-red": 50.0, "coumarin-6": 3.0}
 
 
 def build_plan(config):
@@ -67,9 +68,9 @@ def build_plan(config):
             raise ValueError(f"{key} must be finite and positive")
     factors = c["DILUTION_FACTORS"]
     if len(factors) < 2 or len(set(factors)) != len(factors) or any(
-        not math.isfinite(f) or not 0 < f <= 1 for f in factors
+        not math.isfinite(f) or not 0 <= f <= 1 for f in factors
     ):
-        raise ValueError("Provide at least two distinct dilution factors in (0, 1]")
+        raise ValueError("Provide at least two distinct dilution factors in [0, 1]")
     if sorted(c["DISPENSE_ORDER"]) != ["dye", "medium"]:
         raise ValueError("DISPENSE_ORDER must contain medium and dye once each")
     fraction = c["DYE_VOLUME_UL"] / c["TOTAL_VOLUME_UL"]
@@ -82,13 +83,16 @@ def build_plan(config):
     cmc = c["SURFACTANT_CMC_MM"]
     if surf is not None and cmc is not None and surf * (1 - fraction) <= cmc:
         raise ValueError("Final surfactant concentration must remain above the configured CMC")
+    stock_concentration = c["STOCK_CONCENTRATION_UM"]
+    if stock_concentration is None:
+        stock_concentration = STOCK_CONCENTRATIONS_UM[c["DYE"].lower()]
     capacity, columns = PLATES[c["WELLPLATE_TYPE"]]
     rng = np.random.default_rng(c["RANDOMIZATION_SEED"])
     rows, recipes = [], []
     sets = c["REPETITIONS"] if c["FRESH_SUBSTOCKS"] else 1
     for batch in range(1, sets + 1):
         for level, factor in enumerate(factors):
-            if factor < 1:
+            if 0 < factor < 1:
                 recipes.append(dict(batch=batch, vial=f"dye_b{batch}_s{level}",
                                     stock_ml=c["SUBSTOCK_VOLUME_ML"] * factor,
                                     solvent_ml=c["SUBSTOCK_VOLUME_ML"] * (1 - factor)))
@@ -97,7 +101,7 @@ def build_plan(config):
         batch = repetition if c["FRESH_SUBSTOCKS"] else 1
         block = []
         for medium in ("water", "surfactant", "solvent"):
-            for level, factor in enumerate([*factors, 0.0]):
+            for level, factor in enumerate(factors):
                 source = "solvent" if factor == 0 else (
                     "dye_stock" if factor == 1 else f"dye_b{batch}_s{level}")
                 for replicate in range(1, c["REPLICATES"] + 1):
@@ -105,8 +109,7 @@ def build_plan(config):
                         replicate=replicate, medium=medium, dye_source=source,
                         dye=c["DYE"], dye_solvent=c["DYE_SOLVENT"],
                         dilution_factor=factor, concentration_relative=factor * fraction,
-                        concentration_um=None if c["STOCK_CONCENTRATION_UM"] is None else
-                        c["STOCK_CONCENTRATION_UM"] * factor * fraction,
+                        concentration_um=stock_concentration * factor * fraction,
                         dye_volume_ul=c["DYE_VOLUME_UL"],
                         medium_volume_ul=c["TOTAL_VOLUME_UL"] - c["DYE_VOLUME_UL"],
                         solvent_fraction=1.0 if medium == "solvent" else fraction,
@@ -167,6 +170,25 @@ def fit_calibration(summary, channels, stock_concentration_um=None):
     return pd.DataFrame(fits)
 
 
+def plot_calibration(summary, channels, output_dir):
+    """Save intensity-versus-concentration plots, one panel per medium/channel."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    x_column = "concentration_um" if "concentration_um" in summary else "concentration_relative"
+    for medium, group in summary.groupby("medium"):
+        for channel in channels:
+            fig, ax = plt.subplots(figsize=(6, 4))
+            y = f"{channel}_mean"
+            error = f"{channel}_std"
+            ax.errorbar(group[x_column], group[y], yerr=group[error], marker="o", linestyle="-", capsize=3)
+            ax.set(title=f"{channel}: {medium}", xlabel="Dye concentration (uM)" if x_column == "concentration_um" else "Relative dye concentration", ylabel="Fluorescence intensity")
+            ax.grid(alpha=0.25)
+            fig.tight_layout()
+            fig.savefig(Path(output_dir) / f"intensity_vs_concentration_{medium}_{channel}.png", dpi=180)
+            plt.close(fig)
+
+
 def execute(config=None):
     """Save a plan; optionally prepare substocks, dispense plates and read fluorescence."""
     if config is None:
@@ -185,8 +207,8 @@ def execute(config=None):
     if c["SIMULATE"]:
         print(f"Plan only: {len(plan)} wells on {plan.plate.nunique()} plates. Saved to {output}")
         return output
-    if not protocol or (c["DYE"].lower() != "pyrene" and not c["RAW_CHANNELS"]):
-        raise ValueError("This dye is a placeholder: set PROTOCOL_FILE and RAW_CHANNELS before execution")
+    if not protocol or not channels:
+        raise ValueError("Set PROTOCOL_FILE/RAW_CHANNELS (or a configured dye protocol and channels) before execution")
     if c["WELLPLATE_TYPE"] != "96 WELL PLATE" and not c["PROTOCOL_FILE"]:
         raise ValueError("Set a fluorescence protocol matching the selected plate format")
     for path in (protocol, c["SHAKE_PROTOCOL_FILE"]):
@@ -272,9 +294,12 @@ def execute(config=None):
             pd.concat(measurements).to_csv(output / "fluorescence_results.csv", index=False)
         lash.discard_used_wellplate()
     summary = summarize(pd.concat(measurements), channels)
+    effective_stock = c["STOCK_CONCENTRATION_UM"] or STOCK_CONCENTRATIONS_UM[c["DYE"].lower()]
+    summary["concentration_um"] = summary["concentration_relative"] * effective_stock
     summary.to_csv(output / "calibration_summary.csv", index=False)
-    fit_calibration(summary, channels, c["STOCK_CONCENTRATION_UM"]).to_csv(
+    fit_calibration(summary, channels, effective_stock).to_csv(
         output / "calibration_fits.csv", index=False)
+    plot_calibration(summary, channels, output)
     print(f"Calibration measurements saved to {output}")
     return output
 
