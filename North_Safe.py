@@ -3839,7 +3839,7 @@ class North_Robot(North_Base):
         return int(matching_vials[0]) if len(matching_vials) > 0 else None
 
     #Uncap the vial in the clamp
-    def uncap_clamp_vial(self, revs=1.6, move_speed=None):
+    def uncap_clamp_vial(self, revs=1.5, move_speed=None):
         self.logger.debug("Removing cap from clamped vial")
 
         clamp_vial_index = self.get_vial_in_location('clamp',0)
@@ -3864,7 +3864,7 @@ class North_Robot(North_Base):
         self.VIAL_DF.at[clamp_vial_index, 'capped']=False
         self.GRIPPER_VIAL_INDEX = clamp_vial_index
         self.save_robot_status()
-#revs for uncap was 3.0, SP changes to 1.6 on 22-Sep-2026. We were orginally overunscrewing it resulting in cap weakening
+#revs for uncap was 3.0, SP changes to 2.0 (orginally changed to 1.6 bt the next day found 2 works much beter) on 22-Sep-2026. We were orginally overunscrewing it resulting in cap weakening
     #Recap the vial in the clamp
     #OAM: Note, April 14, 2026  changed revs=2.2 to 1.8 and torque_thresh from 600 to 550
     #SP: Note: I made this change on this date
