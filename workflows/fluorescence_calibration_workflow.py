@@ -247,7 +247,7 @@ def execute(config=None):
     # Construct Lash_E (and its status-review GUI) before reading inventory, so
     # volumes/locations edited in the GUI are what gets validated below.
     from master_usdl_coordinator import Lash_E, flatten_cytation_data
-    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"], show_gui=False,
+    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"], show_gui=True,
                   workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow")
     inventory = pd.read_csv(c["INPUT_VIAL_STATUS_FILE"]).set_index("vial_name")
     # Stage one 8 mL source at the clamp; large vials remain in place.
