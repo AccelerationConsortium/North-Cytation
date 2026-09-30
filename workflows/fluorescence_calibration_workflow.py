@@ -47,7 +47,7 @@ DEFAULTS = {
 PROTOCOLS = {
     "pyrene": (r"C:\Protocols\CMC_Fluorescence_96.prt", ["334_373", "334_384"]),
     "coumarin-6": (r"C:\Protocols\Coumarin_96.prt", ["485_530"]),
-    "nile-red": (None, ["550_648"]),
+    "nile-red": (r"C:\Protocols\NileRed_96.prt", ["550_648"]),
 }
 PLATES = {"96 WELL PLATE": (96, 12), "48 WELL PLATE": (48, 8)}
 STOCK_CONCENTRATIONS_UM = {"pyrene": 48.6, "nile-red": 50.0, "coumarin-6": 3.0}
