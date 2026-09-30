@@ -1780,8 +1780,9 @@ class North_Robot(North_Base):
             max_volume = tip_config.get('volume', 0)
             min_volume = tip_config.get('min_suggested_volume', 0)
             
-            # Check if volume fits within this tip's range
-            if min_volume <= volume < max_volume:
+            # Check if volume fits within this tip's range (inclusive of the
+            # tip's own max capacity, e.g. exactly 1.0mL for a 1.0mL large_tip)
+            if min_volume <= volume <= max_volume:
                 available_tips.append((tip_name, min_volume, max_volume))
         
         if not available_tips:
@@ -1815,7 +1816,7 @@ class North_Robot(North_Base):
         # Apply liquid-specific calibration if available
         if liquid is not None:
             try:
-                wizard = PipettingWizard()
+                wizard = PipettingWizard(logger=self.logger)
                 calibrated_params = wizard.get_pipetting_parameters(liquid, volume, compensate_overvolume, smooth_overvolume)
                 
                 if calibrated_params is not None:
