@@ -31,7 +31,17 @@ data['is_reliable_turbidity'] = data['turbidity_600'] <= 0.2
 # ALWAYS support simulation mode for development/testing
 SIMULATE = True  # Set in workflow config
 lash_e = Lash_E(vial_file, simulate=SIMULATE)
+```
 
+**CRITICAL**: `SIMULATE=True` must run every workflow step, never skip them. `Lash_E`/`North_Robot`/`North_Track`/`Biotek_Wrapper` already implement simulate mode internally - they stub out physical hardware and log `"SIMULATION MODE: Would pause for error: ..."` instead of raising. Running the real workflow body with `simulate=True` is how bugs get caught before hardware time is spent.
+
+```python
+# ❌ WRONG - never gate the automation calls themselves on SIMULATE
+if SIMULATE:
+    return output  # real dispensing/measuring code never runs, never gets tested
+lash_e.nr_robot.dispense_from_vial_into_vial(...)
+```
+It IS fine to use `SIMULATE`/`lash_e.simulate` to skip file/folder creation that only matters for real runs, or to substitute synthetic instrument data when a real reader has no simulated output (e.g. `measure_wellplate()` returns `None` in simulate mode - see `simulate_dye_fluorescence()` in `workflows/surfactant_grid_ailsa.py`). It is never fine to use it to skip dispensing, vial moves, or other automation calls.
 
 ### 3. YAML-Driven Configuration
 All robot state and configuration stored in YAML files under `robot_state/`:
@@ -44,15 +54,33 @@ All robot state and configuration stored in YAML files under `robot_state/`:
 
 ### 4. Workflow Structure Pattern
 ```python
-# Standard workflow initialization
+import sys
+sys.path.append("../utoronto_demo")  # Always first, before any local imports
+
+# Workflow config constants: module-level UPPERCASE constants (never a dict or
+# function-local variables) so ConfigManager can auto-detect them and persist
+# them to workflow_configs/<workflow_name>.yaml
+SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/experiment_vials.csv"
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE)
+_CONFIG_KEYS = ["SIMULATE", "INPUT_VIAL_STATUS_FILE"]  # extend per workflow
 
-# Move to working position
-lash_e.nr_robot.move_vial_to_location("target_vial", "clamp", 0)
+def execute(config=None):
+    if config is None:
+        from workflow_config_manager import ConfigManager
+        ConfigManager.setup_and_reload_config("this_workflow_name", globals())
+        config = {key: globals()[key] for key in _CONFIG_KEYS}
+    c = config
+    lash_e = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"],
+                    workflow_globals=globals(), workflow_name="this_workflow_name")
 
-# Get fresh wellplate for measurements
-lash_e.nr_track.get_new_wellplate()
+    # Move to working position
+    lash_e.nr_robot.move_vial_to_location("target_vial", "clamp", 0)
+
+    # Get fresh wellplate for measurements
+    lash_e.nr_track.get_new_wellplate()
+
+if __name__ == "__main__":
+    execute()
 ```
 
 ### 5. Error Handling & Slack Integration
