@@ -11,7 +11,9 @@ Current status:
 - Runtime behavior matches the replay workflow when DYE="pyrene".
 - Study config fields are loaded through the standard workflow config system.
 - Dye dispensing is local to this workflow and uses DYE_SOLVENT as the dispense liquid.
-- Non-pyrene fluorescence protocols are registered but intentionally not implemented yet.
+- coumarin-6 and nile-red protocols are real/implemented for hardware runs, but
+  simulate_dye_fluorescence() only generates synthetic data for DYE="pyrene" -
+  running SIMULATE=True with those dyes will still raise NotImplementedError.
 """
 
 import sys
@@ -107,21 +109,25 @@ _DYE_PROTOCOLS = {
             "ratio",
         ),
     },
-    "coumarin-6": { #Needs to be implemented
-        "implemented": False,
-        "fluorescence_protocol_file": r"C:\Protocols\CMC_Coumarin6_96_NOT_CREATED.prt",
-        "raw_column_mapping": {},
-        "primary_metric": "fluorescence_coumarin6",
+    "coumarin-6": {
+        "implemented": True,
+        "fluorescence_protocol_file": r"C:\Protocols\Coumarin_96.prt",
+        "raw_column_mapping": {
+            "485_530": "fluorescence_485_530",
+        },
+        "primary_metric": "fluorescence_485_530",
         "metric_kind": "intensity",
-        "measurement_value_columns": ("fluorescence_coumarin6",),
+        "measurement_value_columns": ("fluorescence_485_530",),
     },
-    "Nile-red": {#Needs to be implemented
-        "implemented": False, 
-        "fluorescence_protocol_file": r"C:\Protocols\CMC_NileRed_96_NOT_CREATED.prt",
-        "raw_column_mapping": {},
-        "primary_metric": "fluorescence_nile_red",
-        "metric_kind": "intensity_or_shift",
-        "measurement_value_columns": ("fluorescence_nile_red",),
+    "nile-red": {
+        "implemented": True,
+        "fluorescence_protocol_file": r"C:\Protocols\NileRed_96.prt",
+        "raw_column_mapping": {
+            "550_648": "fluorescence_550_648",
+        },
+        "primary_metric": "fluorescence_550_648",
+        "metric_kind": "intensity",
+        "measurement_value_columns": ("fluorescence_550_648",),
     },
 }
 

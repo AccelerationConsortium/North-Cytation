@@ -753,17 +753,9 @@ def validate_pipetting_accuracy(
         calib_folder = None
         save_raw_data = False  # Force disable file saving when output_folder is None
     
-    # Store actual parameters used for validation session (not defaults)
-    # Get the robot's actual optimized parameters that were used
-    actual_params = lash_e.nr_robot._get_optimized_parameters(
-        volume=volumes_ml[0] if volumes_ml else 0.1,  # Use first volume as representative
-        liquid=liquid_type,
-        user_parameters=parameters,
-        compensate_overvolume=compensate_overvolume,
-        smooth_overvolume=smooth_overvolume
-    )
-    param_values = _get_parameter_values(actual_params, "pipetting")
-    
+    # NOTE: parameters are resolved per-volume (and per-stage) further below, not once
+    # here - a single upfront snapshot would misrepresent every volume except whichever
+    # happened to be listed first in volumes_ml.
     print(f"\\n=== Vial-to-Vial Validation ===\\nSession ID: {session_id}")
     print(f"Source: {source_vial}")
     print(f"Destination: {destination_vial}")
@@ -806,6 +798,18 @@ def validate_pipetting_accuracy(
         # Calculate appropriate quality threshold for this volume
         current_threshold = quality_std_threshold if quality_std_threshold is not None else calculate_quality_threshold(volume_ml)
         print(f"  Using quality threshold: {current_threshold:.6f}g ({current_threshold*1000:.3f}mg)")
+        
+        # Resolve parameters for THIS volume specifically - mirrors exactly what
+        # dispense_from_vial_into_vial resolves internally, so the logged values always
+        # reflect the volume actually being measured, never a different volume in this sweep.
+        stage1_resolved_params = lash_e.nr_robot._get_optimized_parameters(
+            volume=volume_ml,
+            liquid=liquid_type,
+            user_parameters=parameters,
+            compensate_overvolume=compensate_overvolume,
+            smooth_overvolume=smooth_overvolume
+        )
+        stage1_param_values = _get_parameter_values(stage1_resolved_params, "pipetting")
         
         for rep in range(replicates):
             print(f"  Replicate {rep + 1}/{replicates}...")
@@ -905,7 +909,8 @@ def validate_pipetting_accuracy(
                 'retry_count': retry_count,
                 'stability_info': stability_info,
                 'volume_index': volume_idx,  # Track which volume in the list
-                'optimization_stage': 1  # Mark initial measurements as Stage 1
+                'optimization_stage': 1,  # Mark initial measurements as Stage 1
+                **stage1_param_values  # Parameters actually resolved for this volume
             }
             all_results.append(result)
             
@@ -933,26 +938,9 @@ def validate_pipetting_accuracy(
                 try:
                     from pipetting_data.pipetting_parameters import PipettingParameters
                     
-                    # Get the actual parameters Stage 1 used - this is the true baseline
-                    base_params = lash_e.nr_robot._get_optimized_parameters(
-                        volume=volume_ml,
-                        liquid=liquid_type,
-                        user_parameters=parameters,
-                        compensate_overvolume=compensate_overvolume,
-                        smooth_overvolume=smooth_overvolume
-                    )
-                    initial_overaspirate = base_params.overaspirate_vol
-                    
-                    # Get the robot's current optimized parameters for this volume/liquid.
-                    # This reads the persisted calibration CSV so initial_overaspirate
-                    # reflects the value saved by a previous optimization run.
-                    base_params = lash_e.nr_robot._get_optimized_parameters(
-                        volume=volume_ml, 
-                        liquid=liquid_type, 
-                        user_parameters=parameters,  # Include any user overrides
-                        compensate_overvolume=compensate_overvolume,
-                        smooth_overvolume=smooth_overvolume
-                    )
+                    # Reuse the parameters already resolved for this exact volume at the
+                    # top of the loop - same call, same volume, avoids a redundant wizard lookup.
+                    base_params = stage1_resolved_params
                     
                     # Get initial overaspirate from calibration CSV (via base_params),
                     # NOT from the user-supplied parameters arg (typically None -> 0.004).
@@ -1069,7 +1057,8 @@ def validate_pipetting_accuracy(
                             'retry_count': 0,
                             'stability_info': None,
                             'volume_index': volume_idx,
-                            'optimization_stage': 2
+                            'optimization_stage': 2,
+                            **_get_parameter_values(stage2_params, "pipetting")  # Params actually used for Stage 2
                         }
                         all_results.append(stage2_result_dict)
                         
@@ -1178,7 +1167,8 @@ def validate_pipetting_accuracy(
                             'retry_count': 0,
                             'stability_info': None,
                             'volume_index': volume_idx,
-                            'optimization_stage': 3
+                            'optimization_stage': 3,
+                            **_get_parameter_values(stage3_params, "pipetting")  # Params actually used for Stage 3
                         }
                         all_results.append(stage3_result_dict)
                         
@@ -1327,6 +1317,18 @@ def validate_pipetting_accuracy(
         df_analysis = df
         print(f"    Standard validation analysis based on {len(df_analysis)} measurements")
     
+    # Per-volume parameters actually reflected in df_analysis (the highest stage reached
+    # for adaptive correction, or the only stage otherwise) - never a stale snapshot from
+    # an unrelated volume in this sweep.
+    PIPETTING_PARAM_FIELD_NAMES = list(_get_parameter_values(None, "pipetting").keys())
+    params_by_volume = {}
+    for volume in volumes_ml:
+        subset = df_analysis[df_analysis['target_volume_ml'] == volume]
+        if len(subset) > 0:
+            params_by_volume[volume] = {k: subset.iloc[0][k] for k in PIPETTING_PARAM_FIELD_NAMES if k in subset.columns}
+        else:
+            params_by_volume[volume] = {}
+    
     # === ZERO-VOLUME DETECTION ===
     # Check if all measurements are significantly below target (< 10%)  
     df_analysis['volume_ratio'] = df_analysis['measured_volume_ml'] / df_analysis['target_volume_ml']
@@ -1465,7 +1467,7 @@ def validate_pipetting_accuracy(
             'destination_vial': destination_vial,
             'switch_pipet': switch_pipet,
             'timestamp': timestamp,
-            'parameters_used': param_values
+            'parameters_used': params_by_volume
         }
     }
     
@@ -1481,6 +1483,10 @@ def validate_pipetting_accuracy(
         # Calculate accuracy for this measurement
         accuracy_pct = ((row['measured_volume_ml'] - row['target_volume_ml']) / row['target_volume_ml']) * 100
         
+        # Use THIS row's own resolved parameters (captured at dispense time for its
+        # specific stage), not a single session-wide snapshot - volume order no longer matters.
+        row_param_values = {k: row[k] for k in PIPETTING_PARAM_FIELD_NAMES if k in row}
+        
         measurement_record = {
             'timestamp': timestamp,
             'session_id': session_id,
@@ -1494,7 +1500,7 @@ def validate_pipetting_accuracy(
             'volume_index': row['volume_index'],
             'source_vial': source_vial,
             'destination_vial': destination_vial,
-            **param_values  # Add all parameter columns
+            **row_param_values  # Add parameter columns actually used for THIS row
         }
         measurements_data.append(measurement_record)
     
@@ -1520,7 +1526,7 @@ def validate_pipetting_accuracy(
             'output_folder_path': calib_folder,
             'source_vial': source_vial,
             'destination_vial': destination_vial,
-            **param_values  # Add all parameter columns
+            **params_by_volume.get(volume_stat['target_volume_ml'], {})  # Params for THIS volume
         }
         
         _append_to_master_sessions(session_record, "pipetting")
