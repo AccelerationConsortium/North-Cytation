@@ -5,60 +5,81 @@ Defaults generate a hardware-free plan; edit the generated workflow config to ru
 Concentrations are relative to the parent dye stock unless its concentration is set.
 """
 
+import sys
+sys.path.append("../utoronto_demo")
+
 from datetime import datetime
 from pathlib import Path
+import logging
 import math
 
 import numpy as np
 import pandas as pd
 import yaml
 
+logger = logging.getLogger(__name__)
 
-DEFAULTS = {
-    "SIMULATE": True,
-    "INPUT_VIAL_STATUS_FILE": "status/fluorescence_calibration_vials.csv",
-    "DYE": "pyrene",
-    "DYE_SOLVENT": "DMSO",
-    "STOCK_CONCENTRATION_UM": None,
-    "DILUTION_FACTORS": [0.0, 0.1, 0.25, 0.5, 1.0],
-    "DYE_VOLUME_UL": 5.0,
-    "TOTAL_VOLUME_UL": 200.0,
-    "SUBSTOCK_VOLUME_ML": 6.0,
-    "REPLICATES": 3,
-    "REPETITIONS": 1,
-    "FRESH_SUBSTOCKS": False,
-    "MEASUREMENT_REPLICATES": 1,
-    "RANDOMIZED_ORDER": False,
-    "RANDOMIZATION_SEED": 42,
-    "WELLPLATE_TYPE": "96 WELL PLATE",
-    "DISPENSE_ORDER": ["medium", "dye"],
-    "SURFACTANT_NAME": "SDS",
-    "SURFACTANT_CONCENTRATION_MM": None,
-    "SURFACTANT_CMC_MM": None,
-    "SURFACTANT_LIQUID": "water",
-    "VORTEX_SECONDS": 5,
-    "PROTOCOL_FILE": None,
-    "RAW_CHANNELS": None,
-    "SHAKE_PROTOCOL_FILE": r"C:\Protocols\shake_5_wait_5.prt",
-}
 
+# Workflow config constants, auto-detected by ConfigManager and persisted to
+# workflow_configs/fluorescence_calibration_workflow.yaml (standard pattern:
+# module-level UPPERCASE constants + workflow_globals=globals() at Lash_E init).
+SIMULATE = True
+INPUT_VIAL_STATUS_FILE = "status/fluorescence_calibration_vials.csv"
+DYE = "coumarin-6"
+DYE_SOLVENT = "DMSO"
+STOCK_CONCENTRATION_UM = None
+DILUTION_FACTORS = [0.0, 0.1, 0.25, 0.5, 1.0]
+DYE_VOLUME_UL = 5.0
+TOTAL_VOLUME_UL = 200.0
+SUBSTOCK_VOLUME_ML = 6.0
+REPLICATES = 3
+REPETITIONS = 1
+FRESH_SUBSTOCKS = False
+MEASUREMENT_REPLICATES = 1
+RANDOMIZED_ORDER = False
+RANDOMIZATION_SEED = 42
+WELLPLATE_TYPE = "96 WELL PLATE"
+DISPENSE_ORDER = ["medium", "dye"]
+SURFACTANT_NAME = "SDS"
+SURFACTANT_CONCENTRATION_MM = None
+SURFACTANT_CMC_MM = None
+SURFACTANT_LIQUID = "water"
+VORTEX_SECONDS = 5
+PROTOCOL_FILE = None
+RAW_CHANNELS = None
+SHAKE_PROTOCOL_FILE = r"C:\Protocols\shake_5_wait_5.prt"
+
+# Names of the constants above; used to snapshot them into a plain config dict.
+_CONFIG_KEYS = [
+    "SIMULATE", "INPUT_VIAL_STATUS_FILE", "DYE", "DYE_SOLVENT",
+    "STOCK_CONCENTRATION_UM", "DILUTION_FACTORS", "DYE_VOLUME_UL",
+    "TOTAL_VOLUME_UL", "SUBSTOCK_VOLUME_ML", "REPLICATES", "REPETITIONS",
+    "FRESH_SUBSTOCKS", "MEASUREMENT_REPLICATES", "RANDOMIZED_ORDER",
+    "RANDOMIZATION_SEED", "WELLPLATE_TYPE", "DISPENSE_ORDER",
+    "SURFACTANT_NAME", "SURFACTANT_CONCENTRATION_MM", "SURFACTANT_CMC_MM",
+    "SURFACTANT_LIQUID", "VORTEX_SECONDS", "PROTOCOL_FILE", "RAW_CHANNELS",
+    "SHAKE_PROTOCOL_FILE",
+]
+
+# Leading underscore keeps these lookup tables out of ConfigManager's
+# auto-detected config (it only picks up non-underscore constants).
 # Pyrene settings match surfactant_grid_ailsa, pending Cytation verification of
 # the proposed 355/373/383 settings. Other dyes remain placeholders.
-PROTOCOLS = {
+_PROTOCOLS = {
     "pyrene": (r"C:\Protocols\CMC_Fluorescence_96.prt", ["334_373", "334_384"]),
     "coumarin-6": (r"C:\Protocols\Coumarin_96.prt", ["485_530"]),
-    "nile-red": (None, ["550_648"]),
+    "nile-red": (r"C:\Protocols\NileRed_96.prt", ["550_648"]),
 }
-PLATES = {"96 WELL PLATE": (96, 12), "48 WELL PLATE": (48, 8)}
-STOCK_CONCENTRATIONS_UM = {"pyrene": 48.6, "nile-red": 50.0, "coumarin-6": 3.0}
+_PLATES = {"96 WELL PLATE": (96, 12), "48 WELL PLATE": (48, 8)}
+_STOCK_CONCENTRATIONS_UM = {"pyrene": 48.6, "nile-red": 50.0, "coumarin-6": 3.0}
 
 
 def build_plan(config):
     """Return well map and direct-from-parent substock recipes, without hardware."""
     c = config
-    if c["DYE"].lower() not in PROTOCOLS:
+    if c["DYE"].lower() not in _PROTOCOLS:
         raise ValueError("DYE must be pyrene, coumarin-6 or nile-red")
-    if c["WELLPLATE_TYPE"] not in PLATES:
+    if c["WELLPLATE_TYPE"] not in _PLATES:
         raise ValueError("Only configured 48/96-well plates are supported; 24 needs robot geometry")
     for key in ("REPLICATES", "REPETITIONS", "MEASUREMENT_REPLICATES"):
         if type(c[key]) is not int or c[key] < 1:
@@ -85,8 +106,8 @@ def build_plan(config):
         raise ValueError("Final surfactant concentration must remain above the configured CMC")
     stock_concentration = c["STOCK_CONCENTRATION_UM"]
     if stock_concentration is None:
-        stock_concentration = STOCK_CONCENTRATIONS_UM[c["DYE"].lower()]
-    capacity, columns = PLATES[c["WELLPLATE_TYPE"]]
+        stock_concentration = _STOCK_CONCENTRATIONS_UM[c["DYE"].lower()]
+    capacity, columns = _PLATES[c["WELLPLATE_TYPE"]]
     rng = np.random.default_rng(c["RANDOMIZATION_SEED"])
     rows, recipes = [], []
     sets = c["REPETITIONS"] if c["FRESH_SUBSTOCKS"] else 1
@@ -193,10 +214,11 @@ def execute(config=None):
     """Save a plan; optionally prepare substocks, dispense plates and read fluorescence."""
     if config is None:
         from workflow_config_manager import ConfigManager
-        config = ConfigManager.get_or_create_config("fluorescence_calibration_workflow", DEFAULTS)
-    c = {**DEFAULTS, **config}
+        ConfigManager.setup_and_reload_config("fluorescence_calibration_workflow", globals())
+        config = {key: globals()[key] for key in _CONFIG_KEYS}
+    c = config
     plan, recipes = build_plan(c)
-    protocol, channels = PROTOCOLS[c["DYE"].lower()]
+    protocol, channels = _PROTOCOLS[c["DYE"].lower()]
     protocol = c["PROTOCOL_FILE"] or protocol
     channels = c["RAW_CHANNELS"] or channels
     output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
@@ -205,7 +227,7 @@ def execute(config=None):
     recipes.to_csv(output / "substock_recipes.csv", index=False)
     (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
     if c["SIMULATE"]:
-        print(f"Plan only: {len(plan)} wells on {plan.plate.nunique()} plates. Saved to {output}")
+        logger.info(f"Plan only: {len(plan)} wells on {plan.plate.nunique()} plates. Saved to {output}")
         return output
     if not protocol or not channels:
         raise ValueError("Set PROTOCOL_FILE/RAW_CHANNELS (or a configured dye protocol and channels) before execution")
@@ -214,30 +236,16 @@ def execute(config=None):
     for path in (protocol, c["SHAKE_PROTOCOL_FILE"]):
         if not path or not Path(path).is_file():
             raise ValueError(f"Set an existing, plate-matched Cytation protocol: {path}")
+    # Construct Lash_E (and its status-review GUI) before reading inventory, so
+    # volumes/locations edited in the GUI are what gets validated below.
+    from master_usdl_coordinator import Lash_E, flatten_cytation_data
+    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=False,
+                  workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow")
     inventory = pd.read_csv(c["INPUT_VIAL_STATUS_FILE"]).set_index("vial_name")
     # Stage one 8 mL source at the clamp; large vials remain in place.
     for location, index in (("location", "location_index"), ("home_location", "home_location_index")):
         if ((inventory[location] == "clamp") & (inventory[index] == 0)).any():
             raise ValueError("Keep clamp[0] free for plate-dispensing staging")
-    requirements = {"dye_stock": recipes.stock_ml.sum(), "solvent": recipes.solvent_ml.sum()}
-    for row in plan.itertuples():
-        for source, volume in ((row.medium, row.medium_volume_ul), (row.dye_source, row.dye_volume_ul)):
-            requirements[source] = requirements.get(source, 0) + volume / 1000
-    for source, required in requirements.items():
-        if source not in inventory.index:
-            raise ValueError(f"Missing vial {source} in input status")
-        available = inventory.loc[source, "vial_volume"]
-        if source in set(recipes.vial):
-            if available != 0:
-                raise ValueError(f"Substock destination {source} must start empty")
-            if c["SUBSTOCK_VOLUME_ML"] > 7:
-                raise ValueError("Substocks must fit the specified 8 mL destination vials")
-        elif not math.isfinite(available) or available < required + 0.1:
-            raise ValueError(f"{source} needs at least {required + 0.1:.3f} mL including reserve")
-    from master_usdl_coordinator import Lash_E, flatten_cytation_data
-    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=False)
-    lash.nr_robot.check_input_file()
-    lash.nr_track.check_input_file()
     if lash.nr_track.CURRENT_WP_TYPE != c["WELLPLATE_TYPE"]:
         raise ValueError("Track plate type must match configured WELLPLATE_TYPE")
     plate_config = lash.nr_robot.WELLPLATES[c["WELLPLATE_TYPE"]]
@@ -294,13 +302,13 @@ def execute(config=None):
             pd.concat(measurements).to_csv(output / "fluorescence_results.csv", index=False)
         lash.discard_used_wellplate()
     summary = summarize(pd.concat(measurements), channels)
-    effective_stock = c["STOCK_CONCENTRATION_UM"] or STOCK_CONCENTRATIONS_UM[c["DYE"].lower()]
+    effective_stock = c["STOCK_CONCENTRATION_UM"] or _STOCK_CONCENTRATIONS_UM[c["DYE"].lower()]
     summary["concentration_um"] = summary["concentration_relative"] * effective_stock
     summary.to_csv(output / "calibration_summary.csv", index=False)
     fit_calibration(summary, channels, effective_stock).to_csv(
         output / "calibration_fits.csv", index=False)
     plot_calibration(summary, channels, output)
-    print(f"Calibration measurements saved to {output}")
+    lash.logger.info(f"Calibration measurements saved to {output}")
     return output
 
 

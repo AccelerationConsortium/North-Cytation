@@ -11,7 +11,7 @@ VIAL_FILE = "../utoronto_demo/status/sample_capped_vial.txt"  # Vials used
 def sample_workflow(input_vial_status_file, target_vial):
   
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(input_vial_status_file,initialize_robot=False,initialize_biotek=False,initialize_track=False, show_gui=False)
+    lash_e = Lash_E(input_vial_status_file,initialize_robot=False,initialize_biotek=False,initialize_track=False, show_gui=True)
 
     reactor_num = 0
 

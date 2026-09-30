@@ -1766,8 +1766,18 @@ class ConfigEditor(QWidget):
                     if isinstance(original_value, list) and isinstance(original_value[0] if original_value else "", str):
                         # Parse comma-separated list
                         self.config_data[key] = [item.strip() for item in text.split(',') if item.strip()]
-                    else:
+                    elif isinstance(original_value, str):
                         self.config_data[key] = text
+                    elif original_value is None and text.strip() in ("None", "null", "~", ""):
+                        self.config_data[key] = None
+                    else:
+                        # Non-string originals (numeric lists, etc.) were displayed via
+                        # str()/repr(); parse back through YAML to restore the real type.
+                        try:
+                            self.config_data[key] = yaml.safe_load(text)
+                        except yaml.YAMLError as e:
+                            QMessageBox.warning(self, "YAML Error", f"Invalid value for {key}: {e}")
+                            return
                 elif isinstance(widget, QTextEdit):
                     # Parse YAML text for complex structures
                     try:
