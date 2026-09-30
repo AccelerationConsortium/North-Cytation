@@ -191,6 +191,15 @@ def fit_calibration(summary, channels, stock_concentration_um=None):
     return pd.DataFrame(fits)
 
 
+def simulate_fluorescence_readout(wells, channels):
+    """Fake Cytation reads for simulate mode: intensity rises with relative dye concentration."""
+    rng = np.random.default_rng(0)
+    data = {"well_position": wells.well_position.to_numpy()}
+    for channel in channels:
+        data[channel] = 500 + wells.concentration_relative.to_numpy() * 5000 + rng.normal(0, 20, len(wells))
+    return pd.DataFrame(data)
+
+
 def plot_calibration(summary, channels, output_dir):
     """Save intensity-versus-concentration plots, one panel per medium/channel."""
     import matplotlib
@@ -226,20 +235,19 @@ def execute(config=None):
     plan.to_csv(output / "well_plan.csv", index=False)
     recipes.to_csv(output / "substock_recipes.csv", index=False)
     (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
-    if c["SIMULATE"]:
-        logger.info(f"Plan only: {len(plan)} wells on {plan.plate.nunique()} plates. Saved to {output}")
-        return output
     if not protocol or not channels:
         raise ValueError("Set PROTOCOL_FILE/RAW_CHANNELS (or a configured dye protocol and channels) before execution")
     if c["WELLPLATE_TYPE"] != "96 WELL PLATE" and not c["PROTOCOL_FILE"]:
         raise ValueError("Set a fluorescence protocol matching the selected plate format")
-    for path in (protocol, c["SHAKE_PROTOCOL_FILE"]):
-        if not path or not Path(path).is_file():
-            raise ValueError(f"Set an existing, plate-matched Cytation protocol: {path}")
+    # Protocol files live on the Cytation PC; simulate mode never opens them, so skip the check.
+    if not c["SIMULATE"]:
+        for path in (protocol, c["SHAKE_PROTOCOL_FILE"]):
+            if not path or not Path(path).is_file():
+                raise ValueError(f"Set an existing, plate-matched Cytation protocol: {path}")
     # Construct Lash_E (and its status-review GUI) before reading inventory, so
     # volumes/locations edited in the GUI are what gets validated below.
     from master_usdl_coordinator import Lash_E, flatten_cytation_data
-    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=False,
+    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"], show_gui=False,
                   workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow")
     inventory = pd.read_csv(c["INPUT_VIAL_STATUS_FILE"]).set_index("vial_name")
     # Stage one 8 mL source at the clamp; large vials remain in place.
@@ -286,12 +294,15 @@ def execute(config=None):
         for read in range(1, c["MEASUREMENT_REPLICATES"] + 1):
             raw = lash.measure_wellplate(protocol, wells.well_index.tolist(), plate_type=c["WELLPLATE_TYPE"])
             if raw is None:
-                raise RuntimeError(f"No fluorescence data for plate {plate}, read {read}")
-            raw.to_csv(output / f"raw_plate_{plate}_read_{read}.csv")
-            data = flatten_cytation_data(raw, "fluorescence")
-            if not set(["well_position", *channels]).issubset(data.columns):
-                raise ValueError(f"Unexpected Cytation channels: {list(data.columns)}")
-            data["well_position"] = data.well_position.map(lambda p: f"{str(p)[0].upper()}{int(str(p)[1:])}")
+                if not lash.simulate:
+                    raise RuntimeError(f"No fluorescence data for plate {plate}, read {read}")
+                data = simulate_fluorescence_readout(wells, channels)
+            else:
+                raw.to_csv(output / f"raw_plate_{plate}_read_{read}.csv")
+                data = flatten_cytation_data(raw, "fluorescence")
+                if not set(["well_position", *channels]).issubset(data.columns):
+                    raise ValueError(f"Unexpected Cytation channels: {list(data.columns)}")
+                data["well_position"] = data.well_position.map(lambda p: f"{str(p)[0].upper()}{int(str(p)[1:])}")
             merged = wells.merge(data[["well_position", *channels]], on="well_position",
                                  how="left", validate="one_to_one")
             merged[channels] = merged[channels].apply(pd.to_numeric, errors="raise")
