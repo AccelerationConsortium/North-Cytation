@@ -25,7 +25,6 @@ from master_usdl_coordinator import Lash_E, flatten_cytation_data
 
 from workflows.surfactant_grid_adaptive_concentrations import (
     ADD_BUFFER,
-    INPUT_VIAL_STATUS_FILE,
     REFILL_THRESHOLD_ML,
     SHAKE_WAIT_PROTOCOL,
     SELECTED_BUFFER,
@@ -47,12 +46,15 @@ from workflows.surfactant_grid_adaptive_concentrations import (
 # CONFIG
 # ============================================================================
 
-# Source CSVs (override in workflow_configs/surfactant_grid_ailsa.yaml if needed).
-SOURCE_EXPERIMENT_FOLDER = (
-    "output/surfactant_grid_DTAB_TTAB_Apr_22_Experiment_20260423_033959"
-)
-RECIPES_CSV = "iterative_experiment_results.csv"
-STOCKS_CSV = "experiment_plan_stock_solutions.csv"
+# Dedicated vial layout for this workflow (SDS + BDDAC) - do not reuse the
+# shared adaptive_concentrations vial file, which other experiments rely on.
+INPUT_VIAL_STATUS_FILE = "status/surfactant_grid_ailsa_vials.csv"
+
+# Per-well recipe CSV (override in workflow_configs/surfactant_grid_ailsa.yaml).
+# Other candidate recipe files in inputs/: active_learning_first73_96well_recipe.csv,
+# swap_refined73_scored_96well_recipe.csv.
+RECIPES_CSV = "inputs/gradient_proposal_snapped_96well_recipe.csv"
+STOCKS_CSV = "inputs/experiment_plan_stock_solutions_SDS_BDDAC.csv"
 
 SIMULATE = False
 
@@ -67,7 +69,8 @@ DYE = "pyrene"
 DYE_SOLVENT = "DMSO"
 DYE_VIAL = "dye_vial"
 DYE_VOLUME_UL = 5
-DISPENSE_ORDER = ["surfactant_A", "water", "buffer", "surfactant_B", "dye"]
+# "buffer" omitted: this recipe set has ADD_BUFFER=False and buffer_volume_ul=0 throughout.
+DISPENSE_ORDER = ["surfactant_A", "water", "surfactant_B", "dye"]
 
 PREPARATION_REPLICATES = 3
 MEASUREMENT_REPLICATES = 3
@@ -88,6 +91,19 @@ WATER_REFILL_THRESHOLD_ML = 8.0
 
 # Tag appended to the new experiment folder name.
 EXPERIMENT_TAG = "study"
+
+# Snapshot of the constants above (plus the imported ones ConfigManager has
+# historically persisted for this workflow) used by execute()/ConfigManager.
+_CONFIG_KEYS = [
+    "INPUT_VIAL_STATUS_FILE", "RECIPES_CSV", "STOCKS_CSV", "SIMULATE",
+    "MAX_WELLS", "WELLPLATE_TYPE", "DYE", "DYE_SOLVENT", "DYE_VIAL",
+    "DYE_VOLUME_UL", "DISPENSE_ORDER", "PREPARATION_REPLICATES",
+    "MEASUREMENT_REPLICATES", "RANDOMIZED_ORDER", "RANDOMIZATION_SEED",
+    "EXECUTION_BLOCK_SIZE", "REFILL_CHECK_CHUNK_SIZE",
+    "WATER_REFILL_THRESHOLD_ML", "EXPERIMENT_TAG",
+    "ADD_BUFFER", "REFILL_THRESHOLD_ML", "SHAKE_WAIT_PROTOCOL",
+    "SELECTED_BUFFER", "TURBIDITY_PROTOCOL_FILE",
+]
 
 # Safe rack positions assigned by position_surfactant_vials_by_concentration,
 # in the same order that function uses (concentrated -> dilute).
@@ -1545,20 +1561,28 @@ def execute_study_workflow(
 # ENTRY POINT
 # ============================================================================
 
-if __name__ == "__main__":
-    recipes_path = os.path.join(SOURCE_EXPERIMENT_FOLDER, RECIPES_CSV)
-    stocks_path = os.path.join(SOURCE_EXPERIMENT_FOLDER, STOCKS_CSV)
+def execute(config=None):
+    """Load config via ConfigManager (or use the given dict) and replay the study."""
+    if config is None:
+        from workflow_config_manager import ConfigManager
+        ConfigManager.setup_and_reload_config("surfactant_grid_ailsa", globals())
+        config = {key: globals()[key] for key in _CONFIG_KEYS}
+    c = config
 
     lash_e = Lash_E(
-        INPUT_VIAL_STATUS_FILE,
-        simulate=SIMULATE,
+        c["INPUT_VIAL_STATUS_FILE"],
+        simulate=c["SIMULATE"],
         workflow_globals=globals(),
         workflow_name="surfactant_grid_ailsa",
     )
-    execute_study_workflow(
-        recipes_path,
-        stocks_path,
+    return execute_study_workflow(
+        c["RECIPES_CSV"],
+        c["STOCKS_CSV"],
         lash_e,
-        simulate=SIMULATE,
-        max_wells=MAX_WELLS,
+        simulate=c["SIMULATE"],
+        max_wells=c["MAX_WELLS"],
     )
+
+
+if __name__ == "__main__":
+    execute()
