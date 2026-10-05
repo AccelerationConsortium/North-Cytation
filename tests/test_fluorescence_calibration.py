@@ -50,7 +50,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         test_config = {**DEFAULTS, "DILUTION_FACTORS": [0.0, 0.5, 1.0], "SUBSTOCK_VOLUME_ML": 1.0}
         plan, _ = build_plan(test_config)
         plan["signal"] = 50 + plan.concentration_relative * 1000
-        reads = pd.concat([plan.assign(measurement_replicate=i) for i in (1, 2)])
+        reads = pd.concat([plan.assign(measurement_replicate=i, timepoint_min=0) for i in (1, 2)])
         summary = summarize(reads, ["signal"])
         self.assertTrue((summary.signal_count == 3).all())
         np.testing.assert_allclose(summary.signal_blank_corrected, summary.concentration_relative * 1000)

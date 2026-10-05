@@ -4,7 +4,7 @@ sys.path.append("../utoronto_demo")
 from master_usdl_coordinator import Lash_E
 
 
-VIAL_FILE = "../utoronto_demo/status/sample_input_vials.csv"  # Vials used
+VIAL_FILE = "../utoronto_demo/status/fluorescence_calibration_vials.csv"  # Vials used
 
 #Define your workflow! Make sure that it has parameters that can be changed!
 def test_vortex(input_vial_status_file, target_vial_num,vortex_time):
@@ -22,4 +22,4 @@ def test_vortex(input_vial_status_file, target_vial_num,vortex_time):
 
   
 
-test_vortex(VIAL_FILE,'target_vial', 3)
+test_vortex(VIAL_FILE,'dye_b1_s1', 3)
