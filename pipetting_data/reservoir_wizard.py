@@ -257,19 +257,20 @@ class ReservoirWizard:
         
         compensated_count = 0
         adjustment_details = []
+        detail_lines = []
         
         for idx, row in df.iterrows():
             volume_target = row['volume_target']  # mL
             volume_measured = row['volume_measured']  # mL  
             current_overasp = row['overaspirate_vol']  # mL
             
-            # Calculate volume error in mL (different from pipetting which uses uL)
-            volume_error = volume_measured - volume_target  # Positive = over-target, Negative = under-target
+            # Calculate volume deviation in mL (different from pipetting which uses uL)
+            volume_deviation = volume_measured - volume_target  # Positive = over-target, Negative = under-target
             
             # Adjust overaspirate: if over-target, decrease overasp; if under-target, increase overasp
-            # Apply full compensation for the measured error
-            adjustment_factor = 1.0  # Apply 100% of the measured error
-            adjustment = -volume_error * adjustment_factor  # Negative error (under) → positive adjustment (increase overasp)
+            # Apply full compensation for the measured deviation
+            adjustment_factor = 1.0  # Apply 100% of the measured deviation
+            adjustment = -volume_deviation * adjustment_factor  # Negative deviation (under) -> positive adjustment (increase overasp)
             
             new_overasp = current_overasp + adjustment
             
@@ -284,26 +285,25 @@ class ReservoirWizard:
             # Store details for reporting
             adjustment_details.append({
                 'volume': volume_target,
-                'error': volume_error, 
+                'deviation': volume_deviation, 
                 'adjustment_ml': actual_adjustment_ml,
                 'old_overasp': current_overasp,
                 'new_overasp': new_overasp
             })
             
-            # Apply compensation if there's any volume error >0.001mL (1uL equivalent)
-            if abs(volume_error) > 0.001:  # Only skip truly negligible errors
+            # Apply compensation if there's any volume deviation >0.001mL (1uL equivalent)
+            if abs(volume_deviation) > 0.001:  # Only skip truly negligible deviations
                 df.at[idx, 'overaspirate_vol'] = new_overasp
                 compensated_count += 1
                 
-                logging.debug(f"  {volume_target}mL: error {volume_error:+.3f}mL → overasp {current_overasp:.4f}→{new_overasp:.4f}mL "
-                      f"(Δ{actual_adjustment_ml:+.3f}mL)")
-            else:
-                logging.debug(f"  {volume_target}mL: error {volume_error:+.3f}mL → no adjustment needed (negligible)")
+                detail_lines.append(f"{volume_target}mL: deviation {volume_deviation:+.3f}mL -> overasp "
+                      f"{current_overasp:.4f}->{new_overasp:.4f}mL (delta{actual_adjustment_ml:+.3f}mL)")
         
         if compensated_count > 0:
             logging.info(f"Applied reservoir overvolume compensation to {compensated_count}/{len(df)} parameter sets")
+            logging.debug("Reservoir overvolume compensation details: " + "; ".join(detail_lines))
         else:
-            logging.debug("No reservoir overvolume compensation applied - all volume errors were negligible (<0.001mL)")
+            logging.debug("No reservoir overvolume compensation applied - all volume deviations were negligible (<0.001mL)")
             
         return df
     

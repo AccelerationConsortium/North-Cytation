@@ -269,6 +269,7 @@ class PipettingWizard:
         
         compensated_count = 0
         adjustment_details = []
+        detail_lines = []
         
         for idx, row in df.iterrows():
             volume_target = row['volume_target']  # uL
@@ -277,19 +278,18 @@ class PipettingWizard:
             
             # Skip rows with invalid measurement data (but allow fresh optimization data)
             if pd.isna(volume_measured) or volume_measured is None:
-                self.logger.debug(f"  {volume_target}uL: skipping overvolume compensation (no measurement data)")
                 continue
                 
-            # Calculate volume error in uL
-            volume_error = volume_measured - volume_target  # Positive = over-target, Negative = under-target
+            # Calculate volume deviation (measured vs target) in uL
+            volume_deviation = volume_measured - volume_target  # Positive = over-target, Negative = under-target
             
-            # Convert error to mL to match overaspirate units
-            volume_error_ml = volume_error / 1000  # Convert uL to mL
+            # Convert deviation to mL to match overaspirate units
+            volume_deviation_ml = volume_deviation / 1000  # Convert uL to mL
             
             # Adjust overaspirate: if over-target, decrease overasp; if under-target, increase overasp
-            # Apply full compensation for the measured error
-            adjustment_factor = 1.0  # Apply 100% of the measured error
-            adjustment = -volume_error_ml * adjustment_factor  # Negative error (under) → positive adjustment (increase overasp)
+            # Apply full compensation for the measured deviation
+            adjustment_factor = 1.0  # Apply 100% of the measured deviation
+            adjustment = -volume_deviation_ml * adjustment_factor  # Negative deviation (under) -> positive adjustment (increase overasp)
             
             new_overasp = current_overasp + adjustment
             
@@ -306,26 +306,25 @@ class PipettingWizard:
             # Store details for reporting
             adjustment_details.append({
                 'volume': volume_target,
-                'error': volume_error, 
+                'deviation': volume_deviation, 
                 'adjustment_ul': actual_adjustment_ul,
                 'old_overasp': current_overasp,
                 'new_overasp': new_overasp
             })
             
-            # Always apply compensation if there's any volume error >0.01uL
-            if abs(volume_error) > 0.01:  # Only skip truly negligible errors
+            # Always apply compensation if there's any volume deviation >0.01uL
+            if abs(volume_deviation) > 0.01:  # Only skip truly negligible deviations
                 df.at[idx, 'overaspirate_vol'] = new_overasp
                 compensated_count += 1
                 
-                self.logger.debug(f"  {volume_target}uL: error {volume_error:+.2f}uL -> overasp {current_overasp:.4f}->{new_overasp:.4f}mL "
-                      f"(delta{actual_adjustment_ul:+.2f}uL)")
-            else:
-                self.logger.debug(f"  {volume_target}uL: error {volume_error:+.2f}uL -> no adjustment needed (negligible)")
+                detail_lines.append(f"{volume_target}uL: deviation {volume_deviation:+.2f}uL -> overasp "
+                      f"{current_overasp:.4f}->{new_overasp:.4f}mL (delta{actual_adjustment_ul:+.2f}uL)")
         
         if compensated_count > 0:
             self.logger.info(f"Applied overvolume compensation to {compensated_count}/{len(df)} parameter sets")
+            self.logger.debug("Overvolume compensation details: " + "; ".join(detail_lines))
         else:
-            self.logger.debug("No overvolume compensation applied - all volume errors were negligible (<0.01uL)")
+            self.logger.debug("No overvolume compensation applied - all volume deviations were negligible (<0.01uL)")
             
         return df
     

@@ -45,6 +45,8 @@ def sample_workflow(aspiration_volume: float, replicates: int = 3, simulate = Tr
     INPUT_VIAL_STATUS_FILE = "../utoronto_demo/status/sample_input_vials.csv"
     lash_e = Lash_E(INPUT_VIAL_STATUS_FILE,initialize_t8=True,initialize_p2=True,simulate=simulate) # Initialize the Lash_E class with the input vial status file
 
+    lash_e.nr_robot.home_robot_components() #home the robot
+
     lash_e.temp_controller.set_temp(40) # Set the temperature of the heater to 40 degrees Celsius
 
     lash_e.grab_new_wellplate() #Grab a wellplate from the source tray

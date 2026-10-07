@@ -31,10 +31,14 @@ The workflow uses a pre-made surfactant solution; it does not prepare this stock
 `REPLICATES` counts independently dispensed wells. `REPETITIONS` repeats the
 whole experiment on new plates. `FRESH_SUBSTOCKS` creates distinct dilution vials
 for each repetition; otherwise all repetitions share substocks.
-`MEASUREMENT_REPLICATES` repeats reads of the same wells. The parent stock remains
-shared even when fresh dilutions are prepared. `RANDOMIZED_ORDER` randomizes well
-assignment reproducibly with `RANDOMIZATION_SEED`. Dispensing is grouped by source;
-this option does not randomize chronological pipetting order.
+`MEASUREMENT_SCHEDULE_MIN` lists elapsed minutes (since the plate is ready) at
+which to read it for kinetics, e.g. `[0, 10, 20]`; it must start at 0 and each
+gap must be at least `MIN_SCHEDULE_GAP_MIN` minutes. `MEASUREMENT_REPLICATES`
+repeats reads back-to-back at each scheduled timepoint. There is no shake/wait
+step between dispensing and the first read; add one back if needed. The parent
+stock remains shared even when fresh dilutions are prepared. `RANDOMIZED_ORDER`
+randomizes well assignment reproducibly with `RANDOMIZATION_SEED`. Dispensing is
+grouped by source; this option does not randomize chronological pipetting order.
 
 `DISPENSE_ORDER` can be `[medium, dye]` or `[dye, medium]`. Set `DYE_SOLVENT` to the
 robot's calibrated liquid name. The aqueous surfactant pipetting liquid defaults
