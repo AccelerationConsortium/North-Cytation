@@ -314,6 +314,10 @@ def execute(config=None):
     from master_usdl_coordinator import Lash_E, flatten_cytation_data
     lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"], show_gui=True,
                   workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow")
+    # Lash_E's GUI can edit config values and reloads them into globals() internally;
+    # re-snapshot here so the rest of execute() doesn't run on the pre-GUI config.
+    config = {key: globals()[key] for key in _CONFIG_KEYS}
+    c = config
     if not c["SIMULATE"]:
         slack_agent.send_slack_message(
             f"Fluorescence calibration workflow started: {c['DYE']} in {', '.join(plan.medium.unique())}")
