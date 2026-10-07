@@ -1,23 +1,30 @@
 """
 Template for creating new workflows in the North Robotics automation system.
-Copy this file and modify it to create your own workflow.
-
-Author: North Robotics Team
-Date: {DATE}
+Copy this file, replace the vial/protocol placeholders, and add experiment steps.
+The script filename determines its workflow_configs/<name>.yaml configuration.
+Lash_E creates the config if missing and owns the normal startup GUI review.
+Human/operator: execute() uses the settings confirmed in that GUI.
+Automation: execute(config=complete_config, show_gui=False) uses exactly that
+configuration, without opening the GUI or reading/writing workflow YAML.
+Supplying config does not mean simulation: its SIMULATE value selects the mode.
+execute(show_gui=False) uses saved YAML without operator review.
+The example enables temperature control but not powder dispensing. If adding
+photoreactor steps, add supported per-reactor shutdown calls to cleanup too.
+Simulation runs every automation step, but may return no instrument data.
+Live runs send best-effort Slack lifecycle updates; simulation never sends Slack.
 """
 import sys
 sys.path.append("../utoronto_demo")  # Always first, before any local imports
 
-import logging
-import time
+from pathlib import Path
+from copy import deepcopy
 
 from master_usdl_coordinator import Lash_E
-from pipetting_data.pipetting_parameters import PipettingParameters
 
-logger = logging.getLogger(__name__)
+_WORKFLOW_NAME = Path(__file__).stem
 
 # Workflow config constants, auto-detected by ConfigManager and persisted to
-# workflow_configs/your_workflow_name.yaml (module-level UPPERCASE constants +
+# workflow_configs/<script_name>.yaml (module-level UPPERCASE constants +
 # workflow_globals=globals() at Lash_E init). Keep these as module globals, not
 # a dict or function-local variables - ConfigManager only picks up the former.
 #
@@ -41,43 +48,100 @@ _CONFIG_KEYS = [
 ]
 
 
-def execute(config=None):
-    """
-    [REPLACE] Brief description of what this workflow does.
+def _initialize_workflow(config=None, show_gui=True):
+    """Return the coordinator and one authoritative experiment-config snapshot.
 
-    Workflow Steps:
-        1. [REPLACE] Initialize system
-        2. [REPLACE] Describe each major step
-        3. [REPLACE] ...
-        4. [REPLACE] Final measurements and cleanup
+    With no supplied config, preload saved YAML to select the correct startup
+    vial file and simulation mode. This is NOT the final experiment config.
+    Lash_E creates missing YAML, reloads it, shows the GUI when requested, and
+    reloads operator edits. Only AFTER it returns do we snapshot the confirmed
+    globals. Build plans and perform calculations using that returned snapshot.
+
+    A supplied config is a complete mapping containing every _CONFIG_KEYS key,
+    not a partial override. Use it with show_gui=False for scheduler/robot calls.
+    Copy it so this run cannot mutate the caller's configuration. Do not pass
+    workflow globals to Lash_E in this mode: that would let saved YAML override
+    the supplied values. No workflow YAML is loaded or saved on this path.
+
+    Keep experiment validation after review in execute(), allowing the human
+    to correct settings before they are used. Cancellation is checked there.
     """
-    if config is None:
+    supplied_config = config is not None
+    if supplied_config and show_gui:
+        raise ValueError("Explicit config requires show_gui=False; otherwise use execute() for GUI review.")
+    if not supplied_config:
         from workflow_config_manager import ConfigManager
-        ConfigManager.setup_and_reload_config("your_workflow_name", globals())
+        ConfigManager.setup_and_reload_config(_WORKFLOW_NAME, globals())
         config = {key: globals()[key] for key in _CONFIG_KEYS}
-    c = config
-
-    logger.info("Starting your_workflow_name workflow")
-    logger.info(f"Parameters: param1={c['PARAM1']}, param2={c['PARAM2']}, simulate={c['SIMULATE']}")
+    launch_config = deepcopy({key: config[key] for key in _CONFIG_KEYS})
+    if supplied_config:
+        if not isinstance(launch_config["SIMULATE"], bool):
+            raise ValueError("SIMULATE must be a boolean.")
+        if not Path(launch_config["INPUT_VIAL_STATUS_FILE"]).is_file():
+            raise FileNotFoundError(launch_config["INPUT_VIAL_STATUS_FILE"])
 
     # Initialize the system - adjust initialization flags as needed.
-    # simulate=c["SIMULATE"] runs the full workflow body safely: hardware moves
-    # are stubbed out and errors are logged instead of raised, so the ONLY
-    # difference from a real run should be "no physical hardware moved".
+    # Simulated controllers execute the workflow without physical movement;
+    # instrument data and error behavior still differ from a live run.
     lash_e = Lash_E(
-        c["INPUT_VIAL_STATUS_FILE"],
+        launch_config["INPUT_VIAL_STATUS_FILE"],
         initialize_t8=True,      # Temperature controller
-        initialize_p2=True,      # Photoreactor
-        simulate=c["SIMULATE"],
-        workflow_globals=globals(), workflow_name="your_workflow_name",
+        initialize_p2=False,
+        simulate=launch_config["SIMULATE"],
+        workflow_globals=None if supplied_config else globals(),
+        workflow_name=None if supplied_config else _WORKFLOW_NAME,
+        show_gui=show_gui,
     )
+    confirmed_config = launch_config if supplied_config else deepcopy(
+        {key: globals()[key] for key in _CONFIG_KEYS}
+    )
+    return lash_e, confirmed_config
 
-    # === SAFETY CHECKS ===
-    # Always validate input files before starting
-    lash_e.nr_robot.check_input_file()
-    lash_e.nr_track.check_input_file()
+
+def _send_workflow_slack(lash_e, message):
+    """Send live-run updates without letting Slack failures fail the experiment."""
+    if lash_e.simulate:
+        return
+    try:
+        import slack_agent
+        if not slack_agent.safe_send_slack_message(message):
+            lash_e.logger.warning("Slack notification was not delivered (non-fatal)")
+    except Exception as error:
+        lash_e.logger.warning(f"Slack notification failed (non-fatal): {error}")
+
+
+def execute(config=None, show_gui=True):
+    """[REPLACE] Describe the experiment performed using confirmed parameters.
+
+    execute(): normal operator GUI; confirmed GUI/YAML values win.
+    execute(config=complete_config, show_gui=False): automated run; supplied
+    values win, with no GUI or YAML override. Include every _CONFIG_KEYS key.
+    Neither mode changes the scientific workflow body or skips automation steps.
+    """
+    lash_e, c = _initialize_workflow(config=config, show_gui=show_gui)
+    if not lash_e._workflow_should_continue:
+        return None
+    logger = lash_e.logger
 
     try:
+        if not isinstance(c["SIMULATE"], bool):
+            raise ValueError("SIMULATE must be a boolean.")
+        if not Path(c["INPUT_VIAL_STATUS_FILE"]).is_file():
+            raise FileNotFoundError(c["INPUT_VIAL_STATUS_FILE"])
+        if Path(c["INPUT_VIAL_STATUS_FILE"]).resolve() != Path(lash_e.nr_robot.VIAL_FILE).resolve():
+            raise ValueError("Vial file changed during review. Restart with the new vial file before running.")
+        if c["SIMULATE"] != lash_e.simulate:
+            raise ValueError("Workflow and controller simulation modes do not match.")
+        if not isinstance(c["PARAM2"], int) or isinstance(c["PARAM2"], bool) or not 1 <= c["PARAM2"] <= 96:
+            raise ValueError("PARAM2 must be an integer between 1 and 96 for this 96-well example.")
+        if not lash_e.simulate and not Path(c["MEASUREMENT_PROTOCOL_FILE"]).is_file():
+            raise FileNotFoundError(c["MEASUREMENT_PROTOCOL_FILE"])
+        logger.info(f"Starting {_WORKFLOW_NAME} workflow")
+        logger.info(f"Parameters: param1={c['PARAM1']}, param2={c['PARAM2']}, simulate={lash_e.simulate}")
+        _send_workflow_slack(
+            lash_e,
+            f"{_WORKFLOW_NAME} started | wells={c['PARAM2']} | temperature={c['TARGET_TEMPERATURE']}C",
+        )
         # === STEP 1: SETUP ===
         logger.info("Step 1: System setup")
 
@@ -171,18 +235,22 @@ def execute(config=None):
         lash_e.discard_used_wellplate()
 
         logger.info("Workflow completed successfully")
+        _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} completed successfully")
         return data
 
-    except Exception as e:
-        logger.error(f"Workflow failed with error: {e}")
-        # Emergency cleanup
-        try:
-            lash_e.temp_controller.turn_off_heating()
-            lash_e.temp_controller.turn_off_stirring()
-            lash_e.photoreactor.emergency_stop()
-            lash_e.nr_robot.move_home()
-        except Exception:
-            pass
+    except (Exception, KeyboardInterrupt) as e:
+        logger.exception(f"Workflow failed with error: {e}")
+        for label, action in (
+            ("turn_off_heating", lash_e.temp_controller.turn_off_heating),
+            ("turn_off_stirring", lash_e.temp_controller.turn_off_stirring),
+            ("move_home", lash_e.nr_robot.move_home),
+        ):
+            try:
+                action()
+            except Exception:
+                logger.exception(f"Cleanup failed: {label}")
+        outcome = "interrupted by operator" if isinstance(e, KeyboardInterrupt) else f"failed: {e}"
+        _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} {outcome}; cleanup attempted, review experiment log")
         raise
 
 

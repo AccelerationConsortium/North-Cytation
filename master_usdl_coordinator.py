@@ -233,52 +233,13 @@ class Lash_E:
         self.logger = logging.getLogger("my_logger")
         self.logger.setLevel(logging.DEBUG)
 
-        # Clear any old handlers to avoid duplication
-        if self.logger.hasHandlers():
-            self.logger.handlers.clear()
-
-        suffix = "_simulate" if simulate else ""
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        log_filename = f"experiment_log{timestamp}{suffix}.log"
-        log_path = os.path.join(logging_folder, log_filename)
-        os.makedirs(logging_folder, exist_ok=True)
-        
-        # Store log filename for use by North_Robot for organizing mass measurement files
-        self.log_filename = log_filename
-
-        # File handler (DEBUG and up)
-        file_handler = logging.FileHandler(log_path)
-        file_handler.setLevel(logging.DEBUG)
-
-        # Console handler (INFO and up) → bind to stdout explicitly
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
-
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        console_handler.setFormatter(formatter)
-
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(console_handler)
-
-        # Make sure messages don't propagate to root logger (which might have its own handlers)
+        for handler in list(self.logger.handlers):
+            self.logger.removeHandler(handler)
+            handler.close()
+        self.logger.addHandler(logging.NullHandler())
         self.logger.propagate = False
-
-        # Track this run in logs/experiment_runs.csv (start/stop, status) with no workflow-file changes required
-        self._run_tracker = experiment_run_logger.start_run(
-            self.workflow_name, self.simulate, self.log_filename, self.logger, logging_folder
-        )
-
-        # Log config loading results (now that logger is available)
-        if self.config_loaded:
-            self.logger.info(f"Workflow config loaded: {self.workflow_name}")
-            self.logger.info(f"Config keys updated: {len(self.config_keys_loaded)} ({', '.join(self.config_keys_loaded)})")
-            self.logger.info(f"SIMULATE mode: {self.simulate}")
-        else:
-            if workflow_globals is not None or workflow_name is not None:
-                self.logger.warning("Incomplete config info provided - config loading skipped")
-            else:
-                self.logger.debug("No workflow config provided - using default initialization")
+        self.log_filename = None
+        self._run_tracker = None
 
         # Check input status before hardware initialization (if GUI enabled)
         if self.show_gui:
@@ -287,7 +248,6 @@ class Lash_E:
             # Exit early if workflow was aborted
             if not self._workflow_should_continue:
                 self.logger.info("Workflow aborted by user - skipping hardware initialization")
-                experiment_run_logger.cancel_run(self._run_tracker)  # aborted before hardware init - don't log as a run
                 return
         else:
             self.logger.info("GUI disabled - skipping status review, proceeding directly to hardware initialization")
@@ -301,6 +261,41 @@ class Lash_E:
             updated_simulate = workflow_globals.get('SIMULATE', self.simulate)
             if updated_simulate != self.simulate:
                 self.update_simulate_flag(updated_simulate)
+
+        if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
+            from scheduler.simulation_state import validate_launch
+            validate_launch(self.simulate, vial_file)
+
+        suffix = "_simulate" if self.simulate else ""
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        self.log_filename = f"experiment_log{timestamp}{suffix}.log"
+        os.makedirs(logging_folder, exist_ok=True)
+        file_handler = logging.FileHandler(os.path.join(logging_folder, self.log_filename))
+        file_handler.setLevel(logging.DEBUG)
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
+        for handler in list(self.logger.handlers):
+            self.logger.removeHandler(handler)
+            handler.close()
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
+        if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
+            from scheduler.simulation_state import attach_diagnostics
+            attach_diagnostics(self.logger)
+
+        if self.config_loaded:
+            self.logger.info(f"Workflow config confirmed: {self.workflow_name}")
+            self.logger.info(f"Config keys loaded: {len(self.config_keys_loaded)} ({', '.join(self.config_keys_loaded)})")
+        elif workflow_globals is not None or workflow_name is not None:
+            self.logger.warning("Incomplete config info provided - config loading skipped")
+        self.logger.info(f"Confirmed SIMULATE mode: {self.simulate}")
+
+        self._run_tracker = experiment_run_logger.start_run(
+            self.workflow_name, self.simulate, self.log_filename, self.logger, logging_folder
+        )
 
         # Create hardware objects AFTER config reload to use correct simulate flag
         if not self.simulate:
@@ -342,6 +337,10 @@ class Lash_E:
             self.powder_dispenser = MagicMock()
             self.temp_controller = MagicMock()
             #self.nr_track = MagicMock(c9)
+
+            if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
+                from scheduler.simulation_state import register_coordinator
+                register_coordinator(self)
 
     def update_simulate_flag(self, new_simulate_value):
         """

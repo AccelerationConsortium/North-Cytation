@@ -151,6 +151,9 @@ class North_Track(North_Base):
         #Load yaml data
         self.logger.debug("Loading track status from file: %s", "robot_state/track_status.yaml")
         self.TRACK_STATUS_FILE = "robot_state/track_status.yaml"
+        if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
+            from scheduler.simulation_state import configure_controller
+            configure_controller(self, "track")
         self.get_track_status() #set NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED from yaml file
         
         # Load track positions configuration
@@ -225,7 +228,11 @@ class North_Track(North_Base):
             "current_gripper_position": self.CURRENT_GRIPPER_POSITION
         }
 
-        if not self.simulate: #not simulating
+        save_state = not self.simulate
+        if getattr(self, "_scheduler_state_root", None) is not None:
+            from scheduler.simulation_state import can_save
+            save_state = can_save(self, self.TRACK_STATUS_FILE)
+        if save_state:
             # Writing to a file
             with open(self.TRACK_STATUS_FILE, "w") as file:
                 yaml.dump(track_status, file, default_flow_style=False)
@@ -975,6 +982,9 @@ class North_Robot(North_Base):
         self.simulate = simulate
 
         self.logger.info("Initializing North Robot...")
+        if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
+            from scheduler.simulation_state import configure_controller
+            configure_controller(self, "robot")
 
         # Load all configuration files (static config)
         self._load_configuration_files()
@@ -1451,7 +1461,11 @@ class North_Robot(North_Base):
             "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME) if self.PIPET_FLUID_VOLUME is not None else 0.0
         }
 
-        if not self.simulate: 
+        save_state = not self.simulate
+        if getattr(self, "_scheduler_state_root", None) is not None:
+            from scheduler.simulation_state import can_save
+            save_state = can_save(self, self.VIAL_FILE, self.ROBOT_STATUS_FILE)
+        if save_state:
             # Writing to a file
             self.VIAL_DF.to_csv(self.VIAL_FILE, index=False,sep=',') #Save the status of the vial dataframe
             with open(self.ROBOT_STATUS_FILE, "w") as file:
@@ -1531,6 +1545,8 @@ class North_Robot(North_Base):
         
         if selected_rack is None:
             self.pause_after_error(f"All {tip_type} racks are empty! Please refill tips then hit enter on the terminal!")
+            if getattr(self, "_scheduler_state_root", None) is not None:
+                raise RuntimeError(f"Scheduler simulation exhausted {tip_type}; no refill was performed.")
             # Reset all racks to 0 tips used
             self.logger.info("Resetting all pipet rack counters to 0 after refill")
             self.PIPETS_USED = {rack_name: 0 for rack_name in self.PIPET_RACKS.keys()}
@@ -1565,6 +1581,8 @@ class North_Robot(North_Base):
             tip_type (str, optional): Reset only racks of this tip type ('large_tip' or 'small_tip')
                                     If None, reset all racks
         """
+        if getattr(self, "_scheduler_state_root", None) is not None:
+            raise RuntimeError("Scheduler simulation cannot assume a manual pipet refill.")
         if tip_type:
             # Reset only racks of specified tip type
             for rack_name, rack_config in self.PIPET_RACKS.items():

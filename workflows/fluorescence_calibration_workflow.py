@@ -1,7 +1,7 @@
 """Constant-solvent fluorescence standards in water, surfactant and solvent.
 
 Run from the repository root: python -m workflows.fluorescence_calibration_workflow
-Defaults generate a hardware-free plan; edit the generated workflow config to run.
+Defaults execute the simulated workflow after startup GUI review.
 Concentrations are relative to the parent dye stock unless its concentration is set.
 """
 
@@ -219,22 +219,21 @@ def plot_calibration(summary, channels, output_dir):
             plt.close(fig)
 
 
-def execute(config=None):
-    """Save a plan; optionally prepare substocks, dispense plates and read fluorescence."""
-    if config is None:
-        from workflow_config_manager import ConfigManager
-        ConfigManager.setup_and_reload_config("fluorescence_calibration_workflow", globals())
-        config = {key: globals()[key] for key in _CONFIG_KEYS}
-    c = config
+def execute(config=None, show_gui=True):
+    """Review settings normally, or use complete config with show_gui=False."""
+    from workflows._workflow_startup import prepare_config, confirmed_config
+    launch = prepare_config(globals(), "fluorescence_calibration_workflow", config, show_gui)
+    from master_usdl_coordinator import Lash_E, flatten_cytation_data
+    lash = Lash_E(launch["INPUT_VIAL_STATUS_FILE"], simulate=launch["SIMULATE"], show_gui=show_gui,
+                  workflow_globals=globals() if config is None else None,
+                  workflow_name="fluorescence_calibration_workflow" if config is None else None)
+    if not lash._workflow_should_continue:
+        return None
+    c = confirmed_config(globals(), launch, lash)
     plan, recipes = build_plan(c)
     protocol, channels = _PROTOCOLS[c["DYE"].lower()]
     protocol = c["PROTOCOL_FILE"] or protocol
     channels = c["RAW_CHANNELS"] or channels
-    output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
-    output.mkdir(parents=True)
-    plan.to_csv(output / "well_plan.csv", index=False)
-    recipes.to_csv(output / "substock_recipes.csv", index=False)
-    (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
     if not protocol or not channels:
         raise ValueError("Set PROTOCOL_FILE/RAW_CHANNELS (or a configured dye protocol and channels) before execution")
     if c["WELLPLATE_TYPE"] != "96 WELL PLATE" and not c["PROTOCOL_FILE"]:
@@ -244,11 +243,6 @@ def execute(config=None):
         for path in (protocol, c["SHAKE_PROTOCOL_FILE"]):
             if not path or not Path(path).is_file():
                 raise ValueError(f"Set an existing, plate-matched Cytation protocol: {path}")
-    # Construct Lash_E (and its status-review GUI) before reading inventory, so
-    # volumes/locations edited in the GUI are what gets validated below.
-    from master_usdl_coordinator import Lash_E, flatten_cytation_data
-    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"], show_gui=True,
-                  workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow")
     inventory = pd.read_csv(c["INPUT_VIAL_STATUS_FILE"]).set_index("vial_name")
     # Stage one 8 mL source at the clamp; large vials remain in place.
     for location, index in (("location", "location_index"), ("home_location", "home_location_index")):
@@ -261,6 +255,11 @@ def execute(config=None):
         raise ValueError("Total volume exceeds plate capacity")
     if lash.nr_track.NUM_SOURCE < plan.plate.nunique():
         raise ValueError("Load enough plates for the complete experiment")
+    output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
+    output.mkdir(parents=True)
+    plan.to_csv(output / "well_plan.csv", index=False)
+    recipes.to_csv(output / "substock_recipes.csv", index=False)
+    (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
     prepared, measurements = set(), []
     for plate, wells in plan.groupby("plate", sort=True):
         batch = int(wells.substock_batch.iloc[0])

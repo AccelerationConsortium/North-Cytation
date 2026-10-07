@@ -225,7 +225,7 @@ class ConfigManager:
         for key, value in workflow_globals.items():
             if key.isupper() and not key.startswith('_') and not callable(value):
                 # Only include constants (uppercase, not private, not functions)
-                if isinstance(value, (str, int, float, bool, list, dict)):
+                if value is None or isinstance(value, (str, int, float, bool, list, dict)):
                     workflow_constants[key] = value
         
         if logger:
@@ -331,7 +331,7 @@ class ConfigManager:
         workflow_constants = {}
         for key, value in workflow_globals.items():
             if key.isupper() and not key.startswith('_') and not callable(value):
-                if isinstance(value, (str, int, float, bool, list, dict)):
+                if value is None or isinstance(value, (str, int, float, bool, list, dict)):
                     workflow_constants[key] = value
         
         if logger:

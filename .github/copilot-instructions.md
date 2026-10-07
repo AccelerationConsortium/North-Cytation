@@ -50,7 +50,9 @@ All robot state and configuration stored in YAML files under `robot_state/`:
 - `robot_hardware.yaml` - Axis mappings, speeds, physical constants
 - `vial_positions.yaml` - Physical locations for vials/labware
 
-**Critical**: Always validate YAML files before workflows using `check_input_file()` methods.
+**Critical**: Validate required YAML/state inputs and reviewed experiment settings.
+Do not call deprecated robot/track `check_input_file()` methods: they prompt on
+the terminal. Use the normal startup GUI for operator review.
 
 ### 4. Workflow Structure Pattern
 ```python
@@ -64,14 +66,12 @@ SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/experiment_vials.csv"
 _CONFIG_KEYS = ["SIMULATE", "INPUT_VIAL_STATUS_FILE"]  # extend per workflow
 
-def execute(config=None):
-    if config is None:
-        from workflow_config_manager import ConfigManager
-        ConfigManager.setup_and_reload_config("this_workflow_name", globals())
-        config = {key: globals()[key] for key in _CONFIG_KEYS}
-    c = config
-    lash_e = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"],
+def execute():
+    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE,
                     workflow_globals=globals(), workflow_name="this_workflow_name")
+    if not lash_e._workflow_should_continue:
+        return
+    c = {key: globals()[key] for key in _CONFIG_KEYS}
 
     # Move to working position
     lash_e.nr_robot.move_vial_to_location("target_vial", "clamp", 0)
@@ -83,12 +83,42 @@ if __name__ == "__main__":
     execute()
 ```
 
+**CRITICAL: Confirmed configuration is authoritative.** `Lash_E` creates/loads
+workflow YAML and owns startup GUI review. GUI edits update module globals, not
+dictionaries, recipes or plans built earlier. Snapshot config AFTER `Lash_E`
+returns; validate, calculate, plan and execute using that snapshot. A preload
+may select the startup vial file/mode, but it is not the confirmed experiment
+config. Do not build experiment plans or cache scientific parameters before review.
+
+For workflows also called by a scheduler/robot, follow the documented local
+`_initialize_workflow` helper in `workflows/workflow_template.py`:
+- `execute()` uses GUI-confirmed YAML/global values.
+- `execute(config=complete_config, show_gui=False)` uses the supplied mapping
+    without workflow YAML reload/write. Require every `_CONFIG_KEYS` key; do not
+    silently merge partial overrides. Do not pass `workflow_globals` to `Lash_E`
+    on this path, since that enables YAML overrides.
+- Reject supplied config with `show_gui=True` rather than guessing precedence.
+- `show_gui=False` only skips review; it does not imply simulation. `SIMULATE`
+    must be explicit in the selected config and agree with the controllers.
+- Test GUI edits with a mocked review changing parameters and assert that the
+    plan and automation calls use the changed values. Test supplied-config
+    isolation with no YAML load. Never use unrestricted mocks as proof that a
+    controller method exists.
+
 ### 5. Error Handling & Slack Integration
 ```python
 # Unified error pattern via North_Base.pause_after_error()
 self.pause_after_error("Error description", send_slack=True)
 # Automatically logs, sends Slack notification, pauses for human intervention
 ```
+
+Include workflow-level Slack start, completion and failure/interruption updates
+as demonstrated by `_send_workflow_slack` in `workflows/workflow_template.py`.
+Use the confirmed controller's `lash_e.simulate` to suppress all notifications
+and Slack imports during simulation. Use `slack_agent.safe_send_slack_message`
+for best-effort updates; log failed delivery/import as a non-fatal warning.
+Attempt hardware cleanup before failure notification and preserve the original
+exception. Do not label an interrupted or failed workflow completed.
 
 ### 6. Logging Standards
 **CRITICAL**: Never use Unicode characters in logging messages (μ, →, ±, etc.)

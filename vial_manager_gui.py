@@ -1394,12 +1394,12 @@ class TrackStatusWidget(QWidget):
                 except ValueError:
                     active_pos = active_pos_text
             
-            self.track_data = {
+            self.track_data.update({
                 'active_wellplate_position': active_pos,
                 'num_in_source': self.num_source_spin.value(),
                 'num_in_waste': self.num_waste_spin.value(),
                 'wellplate_type': self.wellplate_type_combo.currentText()
-            }
+            })
             
             # Save to file
             with open(self.track_file_path, 'w') as file:
@@ -1407,9 +1407,11 @@ class TrackStatusWidget(QWidget):
             
             if not silent:
                 QMessageBox.information(self, "Success", "Track status saved successfully!")
+            return True
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save track status: {str(e)}")
+            return False
 
 
 class RobotStatusWidget(QWidget):
@@ -1560,7 +1562,7 @@ class RobotStatusWidget(QWidget):
                     return text
             
             # Update data from form
-            self.robot_data = {
+            self.robot_data.update({
                 'gripper_status': parse_nullable_field(self.gripper_status_edit.text()),
                 'gripper_vial_index': parse_nullable_field(self.gripper_vial_index_edit.text()),
                 'held_pipet_type': parse_nullable_field(self.held_pipet_type_edit.text()),
@@ -1572,7 +1574,7 @@ class RobotStatusWidget(QWidget):
                     'small_tip_rack_1': self.small_tip_rack_1_spin.value(),
                     'small_tip_rack_2': self.small_tip_rack_2_spin.value()
                 }
-            }
+            })
             
             # Save to file
             with open(self.robot_file_path, 'w') as file:
@@ -1580,9 +1582,11 @@ class RobotStatusWidget(QWidget):
             
             if not silent:
                 QMessageBox.information(self, "Success", "Robot status saved successfully!")
+            return True
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save robot status: {str(e)}")
+            return False
 
 
 class ConfigEditor(QWidget):
@@ -1626,14 +1630,15 @@ class ConfigEditor(QWidget):
         self.config_status_label.setStyleSheet("padding: 5px; background: #f0f0f0;")
         layout.addWidget(self.config_status_label)
     
-    def load_workflow_config(self, workflow_name):
+    def load_workflow_config(self, workflow_name, config_file=None):
         """Load configuration for the specified workflow."""
         if not ConfigManager:
             self.config_status_label.setText("ConfigManager not available")
             return False
         
         try:
-            config_file = os.path.join("workflow_configs", f"{workflow_name}.yaml")
+            if config_file is None:
+                config_file = os.path.join("workflow_configs", f"{workflow_name}.yaml")
             self.config_file = config_file
             
             if os.path.exists(config_file):
@@ -1748,7 +1753,7 @@ class ConfigEditor(QWidget):
     def _save_config(self, silent=False):
         """Save current configuration values to file."""
         if not self.config_file:
-            return
+            return False
         
         try:
             # Update config_data with current widget values
@@ -1777,7 +1782,7 @@ class ConfigEditor(QWidget):
                             self.config_data[key] = yaml.safe_load(text)
                         except yaml.YAMLError as e:
                             QMessageBox.warning(self, "YAML Error", f"Invalid value for {key}: {e}")
-                            return
+                            return False
                 elif isinstance(widget, QTextEdit):
                     # Parse YAML text for complex structures
                     try:
@@ -1785,7 +1790,7 @@ class ConfigEditor(QWidget):
                         self.config_data[key] = yaml.safe_load(yaml_text)
                     except yaml.YAMLError as e:
                         QMessageBox.warning(self, "YAML Error", f"Invalid YAML for {key}: {e}")
-                        return
+                        return False
 
             # Ensure directory exists
             os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
@@ -1807,10 +1812,12 @@ class ConfigEditor(QWidget):
             self.config_status_label.setText(f"Config saved successfully at {datetime.now().strftime('%H:%M:%S')}")
             if not silent:
                 QMessageBox.information(self, "Success", "Configuration saved successfully!")
+            return True
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save configuration: {str(e)}")
             self.config_status_label.setText(f"Save failed: {str(e)}")
+            return False
     
     def _reload_config(self):
         """Reload configuration from file."""
@@ -1825,14 +1832,19 @@ class ConfigEditor(QWidget):
         
         if reply == QMessageBox.Yes:
             workflow_name = Path(self.config_file).stem
-            self.load_workflow_config(workflow_name)
+            self.load_workflow_config(workflow_name, self.config_file)
 
 
 class VialManagerMainWindow(QMainWindow):
     """Main window for visual vial management."""
+
+    preparation_finished = Signal(bool)
     
-    def __init__(self):
+    def __init__(self, preparation_mode=False):
         super().__init__()
+        self._preparation_mode = preparation_mode
+        self._preparation_saved = False
+        self._preparation_baseline = None
         self.setWindowTitle("Visual Vial Manager")
         self.setGeometry(100, 100, 1500, 1000)  # 25% larger than 1200x800
         
@@ -1850,7 +1862,7 @@ class VialManagerMainWindow(QMainWindow):
         self._setup_status_bar()
         
         # Load default file if provided via command line
-        if len(sys.argv) > 1:
+        if not self._preparation_mode and len(sys.argv) > 1:
             self.load_status_file(sys.argv[1])
     
     def _setup_ui(self):
@@ -1918,6 +1930,15 @@ class VialManagerMainWindow(QMainWindow):
         )
         self.abort_workflow_button.hide()  # Hidden by default
         button_layout.addWidget(self.abort_workflow_button)
+
+        if self._preparation_mode:
+            self.load_button.hide()
+            self.save_return_button = QPushButton("Save and Return")
+            self.save_return_button.clicked.connect(self._save_and_return)
+            button_layout.addWidget(self.save_return_button)
+            self.close_setup_button = QPushButton("Close")
+            self.close_setup_button.clicked.connect(self.close)
+            button_layout.addWidget(self.close_setup_button)
         
         # Stats label
         self.stats_label = QLabel("No vials loaded")
@@ -1932,7 +1953,7 @@ class VialManagerMainWindow(QMainWindow):
         # File menu
         file_menu = menubar.addMenu("&File")
         
-        if not self._workflow_mode:
+        if not self._workflow_mode and not self._preparation_mode:
             # Standard mode - include Load Status File
             load_action = QAction("&Load Status File...", self)
             load_action.setShortcut("Ctrl+O")
@@ -1941,7 +1962,7 @@ class VialManagerMainWindow(QMainWindow):
         
         save_action = QAction("&Save Changes", self)
         save_action.setShortcut("Ctrl+S")
-        save_action.triggered.connect(self._save_file)
+        save_action.triggered.connect(self._save_all if self._preparation_mode else self._save_file)
         file_menu.addAction(save_action)
         
         reload_action = QAction("&Reload from File", self)
@@ -2182,6 +2203,8 @@ class VialManagerMainWindow(QMainWindow):
         # Robot status tab
         self.robot_status_widget = RobotStatusWidget()
         self.tab_widget.addTab(self.robot_status_widget, "Robot Status")
+        if self._preparation_mode:
+            self._prepare_shared_status_tabs()
     
     def _setup_workflow_mode(self, vial_file_path, lash_e_instance, workflow_name=None):
         """Configure GUI for workflow mode with optional config editing."""
@@ -2243,6 +2266,92 @@ class VialManagerMainWindow(QMainWindow):
             self._lash_e_instance.logger.warning("ConfigManager not available - config editing disabled")
         else:
             self._lash_e_instance.logger.info("No workflow name provided - config editing not available")
+
+    def setup_preparation(self, vial_file_path, workflow_name, config_file):
+        if not self._preparation_mode:
+            raise RuntimeError("Preparation mode must be requested when constructing the window.")
+        if not Path(config_file).is_file():
+            raise FileNotFoundError(config_file)
+        if not self.load_status_file(str(vial_file_path)):
+            raise ValueError(f"Could not load vial file: {vial_file_path}")
+        self.config_editor = ConfigEditor()
+        if not self.config_editor.load_workflow_config(workflow_name, str(config_file)):
+            raise ValueError(f"Could not load workflow config: {config_file}")
+        self.tab_widget.addTab(self.config_editor, "Workflow Config")
+        self.setWindowTitle(f"Workflow Setup - {workflow_name}")
+        self._prepare_shared_status_tabs()
+        self._preparation_baseline = self._preparation_state()
+        self.status_bar.showMessage("Workflow setup")
+
+    def _prepare_shared_status_tabs(self):
+        for attribute in ("track_status_widget", "robot_status_widget"):
+            widget = getattr(self, attribute, None)
+            if widget is not None:
+                widget.setEnabled(True)
+                widget.setToolTip("Shared starting state for the whole queue, not a per-workflow reset")
+
+    def _preparation_state(self):
+        values = []
+        for key, widget in self.config_editor.config_widgets.items():
+            if isinstance(widget, QCheckBox):
+                value = widget.isChecked()
+            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+                value = widget.value()
+            elif isinstance(widget, QTextEdit):
+                value = widget.toPlainText()
+            else:
+                value = widget.text()
+            values.append((key, value))
+        shared_values = []
+        for attribute in ("track_status_widget", "robot_status_widget"):
+            widget = getattr(self, attribute)
+            for control in widget.findChildren(QWidget):
+                if isinstance(control, QLineEdit):
+                    value = control.text()
+                elif isinstance(control, (QSpinBox, QDoubleSpinBox)):
+                    value = control.value()
+                elif isinstance(control, QComboBox):
+                    value = control.currentText()
+                else:
+                    continue
+                shared_values.append(value)
+        return repr(self.original_vials_data), tuple(values), tuple(shared_values)
+
+    def _save_preparation(self):
+        self._preparation_saved = False
+        if not self._save_file():
+            return False
+        if not self.config_editor._save_config(silent=True):
+            return False
+        if not self.track_status_widget._save_track_status(silent=True):
+            return False
+        if not self.robot_status_widget._save_robot_status(silent=True):
+            return False
+        self._preparation_baseline = self._preparation_state()
+        self._preparation_saved = True
+        self.status_bar.showMessage("Vials, workflow config and shared robot/track status saved")
+        return True
+
+    def _save_and_return(self):
+        if self._save_preparation():
+            self.close()
+
+    def closeEvent(self, event):
+        if self._preparation_mode and self._preparation_baseline is not None:
+            if self._preparation_state() != self._preparation_baseline:
+                reply = QMessageBox.question(
+                    self, "Unsaved Changes", "Save changes before returning to the scheduler?",
+                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                    QMessageBox.Save,
+                )
+                if reply == QMessageBox.Cancel:
+                    event.ignore()
+                    return
+                if reply == QMessageBox.Save and not self._save_preparation():
+                    event.ignore()
+                    return
+            self.preparation_finished.emit(self._preparation_saved)
+        super().closeEvent(event)
     
     def _update_button_visibility(self):
         """Update button visibility based on workflow mode."""
@@ -2349,11 +2458,15 @@ class VialManagerMainWindow(QMainWindow):
                 self.robot_status_widget._load_robot_status()
             if hasattr(self, 'config_editor'):
                 self.config_editor._reload_config()
+            if self._preparation_mode:
+                self._prepare_shared_status_tabs()
             
             self.status_bar.showMessage("All data reloaded from files")
 
     def _save_all(self):
         """Save all modified data (vials, track, robot, config)."""
+        if self._preparation_mode:
+            return self._save_preparation()
         success_count = 0
         errors = []
         
@@ -2567,7 +2680,7 @@ class VialManagerMainWindow(QMainWindow):
     def _save_file(self):
         """Save current vial data back to CSV file."""
         if not self.status_file_path:
-            return
+            return False
             
         try:
             # original_vials_data is the single source of truth — every widget edit
@@ -2639,10 +2752,13 @@ class VialManagerMainWindow(QMainWindow):
                     writer.writerows(all_vials_data)
                 
                 self.status_bar.showMessage("File saved successfully")
+                return True
+            return False
                 
         except Exception as e:
             QMessageBox.critical(self, "Save Error", 
                                f"Failed to save file:\n{str(e)}")
+            return False
     
     def _reload_file(self):
         """Reload file from disk."""
