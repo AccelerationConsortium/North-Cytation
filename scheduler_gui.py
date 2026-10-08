@@ -88,8 +88,10 @@ def read_workflow_vial_path(name):
     if not isinstance(config, dict):
         raise ValueError("Workflow config must be a YAML mapping.")
     vial_value = config["INPUT_VIAL_STATUS_FILE"]
+    if vial_value is None:
+        return config_path, None
     if not isinstance(vial_value, str) or not vial_value.strip():
-        raise ValueError("INPUT_VIAL_STATUS_FILE must be a nonempty path.")
+        raise ValueError("INPUT_VIAL_STATUS_FILE must be a nonempty path or explicit null for no vial tracking.")
     vial_path = (REPO_ROOT / vial_value).resolve()
     if not vial_path.is_file():
         raise FileNotFoundError(f"Vial file does not exist: {vial_path}")
@@ -104,7 +106,8 @@ def read_vial_occupancy(workflow_names, areas):
     for name in workflow_names:
         try:
             _, path = read_workflow_vial_path(name)
-            sources.setdefault(path, set()).add(name)
+            if path is not None:
+                sources.setdefault(path, set()).add(name)
         except (OSError, ValueError, KeyError, yaml.YAMLError) as error:
             errors.append(f"{name}: {error}")
     for path, names in sources.items():
@@ -261,6 +264,9 @@ class SchedulerWindow(QMainWindow):
         self.setWindowTitle("Workflow Scheduler")
         self.resize(1000, 725)
         self.setup_window = None
+        self.execution_mode = "simulation"
+        self.approved_simulation_inputs = None
+        self.pending_simulation_inputs = None
         self.simulation_process = None
         self.simulation_session = None
         self.simulation_rows = []
@@ -353,6 +359,9 @@ class SchedulerWindow(QMainWindow):
             if label == "Simulate":
                 self.simulate_button = button
                 button.clicked.connect(self.start_simulation)
+            else:
+                self.run_button = button
+                button.clicked.connect(self.start_live_run)
             footer.addWidget(button)
         layout.addLayout(footer)
         self.statusBar().showMessage("Queue not running")
@@ -440,6 +449,7 @@ class SchedulerWindow(QMainWindow):
         self.vial_layout.refresh(names)
         if self.simulation_process is None:
             self.simulate_button.setEnabled(bool(names) and len(names) == self.table.rowCount())
+            self.update_live_run_enabled()
 
     def set_simulation_busy(self, busy):
         self.table.setEnabled(not busy)
@@ -449,6 +459,105 @@ class SchedulerWindow(QMainWindow):
                 widget.setEnabled(not busy)
         self.simulate_button.setEnabled(not busy and bool(self.simulation_rows))
         self.stop_button.setEnabled(busy)
+        self.run_button.setEnabled(False)
+
+    def queue_input_fingerprint(self):
+        from scheduler.live_runner import fingerprint
+        names = []
+        paths = [REPO_ROOT / "robot_state" / "robot_status.yaml", REPO_ROOT / "robot_state" / "track_status.yaml"]
+        paths.extend((REPO_ROOT / "robot_state").glob("*.yaml"))
+        for row in range(self.table.rowCount()):
+            selector = self.table.cellWidget(row, 0)
+            name = selector.currentData()
+            if name not in self.workflow_names or selector.currentText() != name:
+                raise ValueError("Every queue row must select a workflow.")
+            config_path, vial_path = read_workflow_vial_path(name)
+            names.append(name)
+            paths.extend([config_path, REPO_ROOT / "workflows" / f"{name}.py"])
+            if vial_path is not None:
+                paths.append(vial_path)
+            config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            for value in config.values():
+                if isinstance(value, str):
+                    candidate = REPO_ROOT / value
+                    if candidate.is_file():
+                        paths.append(candidate)
+        paths.extend((REPO_ROOT / "workflows").glob("*.py"))
+        return {"workflows": names, "files": fingerprint(paths)}
+
+    def update_live_run_enabled(self):
+        allowed = self.simulation_process is None and self.approved_simulation_inputs is not None
+        if allowed:
+            try:
+                allowed = self.queue_input_fingerprint() == self.approved_simulation_inputs
+            except (OSError, ValueError, KeyError, yaml.YAMLError):
+                allowed = False
+        allowed = allowed and not self.vial_layout.errors.text() and not any(
+            len(claims) > 1 for claims in self.vial_layout.occupancy.values()
+        )
+        self.run_button.setEnabled(bool(allowed))
+
+    def start_live_run(self):
+        if self.simulation_process is not None or self.setup_window is not None:
+            return
+        self.refresh_vial_layout()
+        if not self.run_button.isEnabled():
+            QMessageBox.warning(self, "Run Blocked", "Simulate this unchanged queue successfully with zero errors and no vial conflicts first.")
+            return
+        response = QMessageBox.question(
+            self, "Start Real Hardware?", "Run the approved queue on REAL hardware?\n"
+            "Confirm the physical inventory matches the saved state and no other hardware workflow is running.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        )
+        if response != QMessageBox.Yes:
+            return
+        from uuid import uuid4
+        from scheduler.live_runner import fingerprint
+        try:
+            if self.queue_input_fingerprint() != self.approved_simulation_inputs:
+                raise ValueError("Inputs changed during confirmation; simulate again.")
+            root = REPO_ROOT / "scheduler" / "state" / ("live_" + uuid4().hex)
+            root.mkdir(parents=True)
+            vial_files = []
+            for row in range(self.table.rowCount()):
+                name = self.table.cellWidget(row, 0).currentData()
+                config_path, vial_path = read_workflow_vial_path(name)
+                if vial_path is not None:
+                    vial_files.append(str(vial_path))
+            for row in range(self.table.rowCount()):
+                name = self.table.cellWidget(row, 0).currentData()
+                config_path, vial_path = read_workflow_vial_path(name)
+                config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+                config["SIMULATE"] = False
+                config["INPUT_VIAL_STATUS_FILE"] = str(vial_path) if vial_path is not None else None
+                folder = root / "jobs" / f"{row:03d}"
+                folder.mkdir(parents=True)
+                (folder / "input.json").write_text(json.dumps({
+                    "workflow": name, "config": config,
+                    "input_hashes": {path: digest for path, digest in self.approved_simulation_inputs["files"].items()
+                                     if path not in set(vial_files) | {
+                                         str((REPO_ROOT / "robot_state" / "robot_status.yaml").resolve()),
+                                         str((REPO_ROOT / "robot_state" / "track_status.yaml").resolve())
+                                     } or (vial_path is not None and path == str(vial_path))},
+                    "state_root": str(REPO_ROOT / "robot_state"), "vial_files": vial_files,
+                }), encoding="utf-8")
+        except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as error:
+            QMessageBox.warning(self, "Run Blocked", str(error))
+            return
+        self.execution_mode = "live"
+        self.approved_simulation_inputs = None
+        self.simulation_session = root
+        self.simulation_rows = list(range(self.table.rowCount()))
+        self.simulation_index = 0
+        self.stop_simulation_requested = False
+        self.table.clearSelection()
+        for row in self.simulation_rows:
+            self.table.item(row, 2).setText("Pending run")
+            self.table.item(row, 3).setText("")
+            self.table.item(row, 3).setData(Qt.UserRole, None)
+            self.set_simulation_row_colour(row, None)
+        self.set_simulation_busy(True)
+        self.launch_next_simulation()
 
     def set_simulation_row_colour(self, row, state):
         colours = {"running": "#fff0a6", "success": "#ccebd5", "error": "#f5cccc"}
@@ -470,6 +579,8 @@ class SchedulerWindow(QMainWindow):
         from scheduler.simulation_state import create_session
         from scheduler.simulation_runner import handoff_issues
         jobs = []
+        self.execution_mode = "simulation"
+        self.approved_simulation_inputs = None
         allow_conflicts = False
         try:
             self.refresh_vial_layout()
@@ -495,6 +606,7 @@ class SchedulerWindow(QMainWindow):
                 jobs.append((row, name, config, vial_path))
             if not jobs:
                 return
+            self.pending_simulation_inputs = self.queue_input_fingerprint()
             root = create_session([job[3] for job in jobs])
             issues = handoff_issues(root)
             if allow_conflicts:
@@ -504,7 +616,7 @@ class SchedulerWindow(QMainWindow):
             for index, (row, name, config, vial_path) in enumerate(jobs):
                 folder = root / "jobs" / f"{index:03d}"
                 folder.mkdir(parents=True)
-                config["INPUT_VIAL_STATUS_FILE"] = str(vial_path)
+                config["INPUT_VIAL_STATUS_FILE"] = str(vial_path) if vial_path is not None else None
                 (folder / "input.json").write_text(json.dumps({
                     "workflow": name, "config": config, "allow_vial_conflicts": allow_conflicts
                 }), encoding="utf-8")
@@ -537,11 +649,13 @@ class SchedulerWindow(QMainWindow):
         process.finished.connect(self.simulation_finished)
         process.errorOccurred.connect(self.simulation_process_error)
         self.simulation_process = process
-        self.table.item(row, 2).setText("Simulating")
+        live = self.execution_mode == "live"
+        self.table.item(row, 2).setText("Running" if live else "Simulating")
         self.set_simulation_row_colour(row, "running")
-        self.statusBar().showMessage(f"Simulating {self.simulation_index + 1} of {len(self.simulation_rows)}")
-        process.start(sys.executable, ["-u", "-m", "scheduler.simulation_runner", "--session",
-                                     str(self.simulation_session), "--job", folder.name])
+        self.statusBar().showMessage(f"{'Running' if live else 'Simulating'} {self.simulation_index + 1} of {len(self.simulation_rows)}")
+        arguments = (["-u", "-m", "scheduler.live_runner", "--job-folder", str(folder)] if live else
+                 ["-u", "-m", "scheduler.simulation_runner", "--session", str(self.simulation_session), "--job", folder.name])
+        process.start(sys.executable, arguments)
 
     def simulation_process_error(self, error):
         if error == QProcess.FailedToStart:
@@ -560,19 +674,25 @@ class SchedulerWindow(QMainWindow):
             errors = sum(record["level"] in {"ERROR", "CRITICAL"} for record in records)
             warnings = sum(record["level"] == "WARNING" for record in records)
             okay = exit_code == 0 and exit_status == QProcess.NormalExit and result["completed"] and result["handoff_ok"]
+            live = self.execution_mode == "live"
+            if live and errors:
+                okay = False
             self.set_simulation_row_colour(row, "success" if okay and not errors else "error")
-            self.table.item(row, 2).setText("Needs attention" if okay and errors else "Simulated" if okay else "Simulation incomplete")
+            self.table.item(row, 2).setText(("Completed" if okay else "Run failed") if live else
+                                          "Needs attention" if okay and errors else "Simulated" if okay else "Simulation incomplete")
             self.table.item(row, 3).setText(f"{errors} errors, {warnings} warnings")
             result["console_log"] = str(folder / "console.log")
-            result["end_state"] = str(self.simulation_session / "end_states" / folder.name)
+            if not live:
+                result["end_state"] = str(self.simulation_session / "end_states" / folder.name)
             self.table.item(row, 3).setData(Qt.UserRole, result)
-            messages = "\n".join(f"{record['level']}: {record['message']}" for record in records)
+            ordered_records = sorted(records, key=lambda record: record["level"] not in {"ERROR", "CRITICAL"})
+            messages = "\n".join(f"{record['level']}: {record['message']}" for record in ordered_records)
             self.table.item(row, 3).setToolTip(messages[:6000] or "No logged errors or warnings")
         except (OSError, ValueError, KeyError, TypeError) as error:
             okay = False
             self.set_simulation_row_colour(row, "error")
             message = f"Child did not return a valid simulation report: {error}. {process.errorString()}"
-            self.table.item(row, 2).setText("Simulation incomplete")
+            self.table.item(row, 2).setText("Run failed" if self.execution_mode == "live" else "Simulation incomplete")
             self.table.item(row, 3).setText("1 error")
             self.table.item(row, 3).setToolTip(message)
             self.table.item(row, 3).setData(Qt.UserRole, {
@@ -585,17 +705,23 @@ class SchedulerWindow(QMainWindow):
         self.launch_next_simulation()
 
     def finish_simulation_queue(self):
+        live = self.execution_mode == "live"
         for row in self.simulation_rows[self.simulation_index:]:
-            self.table.item(row, 2).setText("Not simulated")
+            self.table.item(row, 2).setText("Not run" if live else "Not simulated")
+        if not live and not self.stop_simulation_requested and all(
+            self.table.item(row, 2).text() == "Simulated" for row in self.simulation_rows
+        ):
+            self.approved_simulation_inputs = self.pending_simulation_inputs
         self.set_simulation_busy(False)
         self.stop_button.setEnabled(False)
-        self.statusBar().showMessage(f"Simulation stopped | {self.simulation_session}" if self.stop_simulation_requested
-                                     else f"Simulation finished | {self.simulation_session}")
+        self.refresh_vial_layout()
+        label = "Run" if live else "Simulation"
+        self.statusBar().showMessage(f"{label} {'stopped' if self.stop_simulation_requested else 'finished'} | {self.simulation_session}")
 
     def stop_after_current(self):
         self.stop_simulation_requested = True
         self.stop_button.setEnabled(False)
-        self.statusBar().showMessage("Stopping after the current simulation; child will not be terminated")
+        self.statusBar().showMessage("Stopping after the current workflow; child will not be terminated")
 
     def show_simulation_notes(self, row, column):
         if column != 3:
@@ -604,12 +730,13 @@ class SchedulerWindow(QMainWindow):
         if not result:
             return
         dialog = QDialog(self)
-        dialog.setWindowTitle("Simulation Notes")
+        dialog.setWindowTitle("Workflow Notes")
         dialog.resize(760, 500)
         layout = QVBoxLayout(dialog)
         text = QTextEdit()
         text.setReadOnly(True)
-        messages = [f"{record['level']}: {record['message']}" for record in result["records"]]
+        ordered_records = sorted(result["records"], key=lambda record: record["level"] not in {"ERROR", "CRITICAL"})
+        messages = [f"{record['level']}: {record['message']}" for record in ordered_records]
         for key in ("tips_used", "plates_used", "log_file", "console_log", "end_state"):
             if key in result:
                 messages.append(f"{key}: {result[key]}")
@@ -619,7 +746,7 @@ class SchedulerWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self.simulation_process is not None:
-            QMessageBox.warning(self, "Simulation Running", "Wait for the current simulation to finish before closing.")
+            QMessageBox.warning(self, "Workflow Running", "Wait for the current workflow to finish before closing.")
             event.ignore()
             return
         super().closeEvent(event)
@@ -654,8 +781,7 @@ class SchedulerWindow(QMainWindow):
             if not saved:
                 return
             try:
-                updated = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-                updated_path = (REPO_ROOT / updated["INPUT_VIAL_STATUS_FILE"]).resolve()
+                _, updated_path = read_workflow_vial_path(name)
                 if updated_path != vial_path:
                     status.setText("Review vial file")
                     notes.setText("Vial path changed. Open Setup again to review the new file.")
@@ -703,7 +829,7 @@ class SchedulerWindow(QMainWindow):
         self.table.item(destination, 3).setData(Qt.UserRole, current_report)
         for position in (row, destination):
             text = self.table.item(position, 2).text()
-            state = "success" if text == "Simulated" else "error" if text in {"Needs attention", "Simulation incomplete"} else None
+            state = "success" if text in {"Simulated", "Completed"} else "error" if text in {"Needs attention", "Simulation incomplete", "Run failed"} else None
             self.set_simulation_row_colour(position, state)
         self.table.selectRow(destination)
         self.refresh_vial_layout()

@@ -21,11 +21,14 @@ class CoordinatorRunTrackingTests(unittest.TestCase):
         methods = [node for node in coordinator.body if isinstance(node, ast.FunctionDef)
                    and node.name in {"__init__", "update_simulate_flag"}]
         events = []
-        values = {"SIMULATE": initial}
+        values = {"SIMULATE": initial, "INPUT_VIAL_STATUS_FILE": "vials.csv"}
 
-        def reload_config(name, namespace, logger):
+        def resolve_config(name, namespace, **kwargs):
+            return values.copy()
+
+        def confirm_config(name, namespace, launch, **kwargs):
             namespace["SIMULATE"] = confirmed if "review" in events or not show_gui else initial
-            return {"SIMULATE": namespace["SIMULATE"]}
+            return namespace.copy()
 
         def review(instance):
             events.append("review")
@@ -52,7 +55,7 @@ class CoordinatorRunTrackingTests(unittest.TestCase):
         tracker = Mock(side_effect=track)
         namespace = {
             "logging": logging, "os": os, "sys": sys, "datetime": datetime,
-            "ConfigManager": types.SimpleNamespace(setup_config_if_missing=Mock(), load_and_update_globals=reload_config),
+            "ConfigManager": types.SimpleNamespace(resolve_workflow_config=resolve_config, confirm_workflow_config=confirm_config),
             "experiment_run_logger": types.SimpleNamespace(start_run=tracker),
         }
         exec(compile(ast.Module(body=methods, type_ignores=[]), str(source), "exec"), namespace)

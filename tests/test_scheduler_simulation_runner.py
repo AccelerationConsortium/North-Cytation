@@ -133,7 +133,7 @@ class SimulationRunnerTests(unittest.TestCase):
             result = runner.run_job(self.root, "held_tip")
         self.assertFalse(result["handoff_ok"])
 
-    def test_tip_exhaustion_cannot_reset_counters(self):
+    def test_tip_exhaustion_logs_and_continues(self):
         tree = ast.parse((REPO_ROOT / "North_Safe.py").read_text(encoding="utf-8-sig"))
         cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "North_Robot")
         method = next(node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "get_pipet")
@@ -142,11 +142,28 @@ class SimulationRunnerTests(unittest.TestCase):
         robot = types.SimpleNamespace(HELD_PIPET_TYPE=None, _scheduler_state_root=str(self.root),
                                       PIPET_RACKS={"rack": {"tip_type": "small_tip"}},
                                       PIPETS_USED={"rack": 2}, pause_after_error=Mock(), logger=Mock(),
-                                      get_config_parameter=Mock(return_value=2), save_robot_status=Mock())
-        with self.assertRaisesRegex(RuntimeError, "exhausted"):
-            namespace["get_pipet"](robot, "small_tip")
-        self.assertEqual(robot.PIPETS_USED, {"rack": 2})
-        robot.save_robot_status.assert_not_called()
+                                      get_config_parameter=Mock(return_value=2), save_robot_status=Mock(),
+                                      _calculate_tip_position=Mock(return_value=0), _move_to_pipet_tip=Mock(),
+                                      _perform_pipet_pickup=Mock())
+        namespace["get_pipet"](robot, "small_tip")
+        robot.pause_after_error.assert_called_once()
+        self.assertEqual(robot.PIPETS_USED, {"rack": 1})
+        self.assertEqual(robot.HELD_PIPET_TYPE, "small_tip")
+        robot._perform_pipet_pickup.assert_called_once()
+
+    def test_reset_marks_totals_unavailable_without_stopping(self):
+        self.job("reset")
+
+        def execute(config, show_gui):
+            self.execute(config, show_gui)
+            logging.getLogger("my_logger").info("Resetting all pipet rack counters to 0 after refill")
+
+        with patch.object(runner.importlib, "import_module", return_value=types.SimpleNamespace(execute=execute)):
+            result = runner.run_job(self.root, "reset")
+        self.assertTrue(result["completed"])
+        self.assertTrue(result["handoff_ok"])
+        self.assertEqual(result["tips_used"], "Unavailable after tip counter reset")
+        self.assertTrue(any(record["level"] == "ERROR" for record in result["records"]))
 
 
 if __name__ == "__main__":

@@ -46,6 +46,8 @@ def validate_launch(simulate, vial_file):
         return
     if simulate is not True:
         raise ValueError("Scheduler simulation cannot initialize live hardware.")
+    if vial_file is None:
+        return
     manifest = json.loads((root / "session.json").read_text(encoding="utf-8"))
     vial = _checked_file(root, vial_file)
     if str(vial) not in manifest["vial_files"].values():
@@ -77,7 +79,8 @@ def can_save(controller, *paths):
     if root is None or root != Path(value).resolve() or controller.simulate is not True:
         raise ValueError("Simulation session changed; refusing state write.")
     for path in paths:
-        _checked_file(root, path)
+        if path is not None:
+            _checked_file(root, path)
     return True
 
 
@@ -88,9 +91,7 @@ def register_coordinator(coordinator):
 
 def create_session(vial_files):
     """Copy reviewed starting inputs once. Later jobs use updated copies."""
-    sources = {str(Path(value).resolve()) for value in vial_files}
-    if not sources:
-        raise ValueError("At least one vial file is required.")
+    sources = {str(Path(value).resolve()) for value in vial_files if value is not None}
     for path in sources:
         if not Path(path).is_file():
             raise FileNotFoundError(path)
@@ -124,8 +125,9 @@ def simulated_config(root, config):
     root = Path(root).resolve()
     manifest = json.loads((root / "session.json").read_text(encoding="utf-8"))
     selected = deepcopy(config)
-    source = str(Path(selected["INPUT_VIAL_STATUS_FILE"]).resolve())
-    selected["INPUT_VIAL_STATUS_FILE"] = manifest["vial_files"][source]
+    if selected["INPUT_VIAL_STATUS_FILE"] is not None:
+        source = str(Path(selected["INPUT_VIAL_STATUS_FILE"]).resolve())
+        selected["INPUT_VIAL_STATUS_FILE"] = manifest["vial_files"][source]
     selected["SIMULATE"] = True
     return selected
 

@@ -213,6 +213,57 @@ class SimulationStateTests(unittest.TestCase):
         self.assertFalse((self.root / "logs").exists())
         self.assert_live_unchanged()
 
+    def test_no_vial_session_saves_robot_track_only_and_carries_state(self):
+        root = state.create_session([])
+        original_config = {"SIMULATE": False, "INPUT_VIAL_STATUS_FILE": None}
+        selected = state.simulated_config(root, original_config)
+        self.assertIsNone(selected["INPUT_VIAL_STATUS_FILE"])
+        self.assertTrue(selected["SIMULATE"])
+        with state.workflow_state(root, "no_vials"):
+            robot = self.Robot()
+            robot.simulate = True
+            robot.VIAL_FILE = None
+            state.configure_controller(robot, "robot")
+            robot.GRIPPER_STATUS = None
+            robot.GRIPPER_VIAL_INDEX = None
+            robot.HELD_PIPET_TYPE = None
+            robot.PIPETS_USED = {"rack": 3}
+            robot.PIPET_FLUID_VIAL_INDEX = None
+            robot.PIPET_FLUID_VOLUME = 0
+            robot.VIAL_DF = Mock()
+            track = self.Track()
+            track.simulate = True
+            state.configure_controller(track, "track")
+            track.NUM_SOURCE = 9
+            track.NUM_WASTE = 1
+            track.CURRENT_WP_TYPE = "96 WELL PLATE"
+            track.ACTIVE_WELLPLATE_POSITION = None
+            track.CURRENT_GRIPPER_LOCATION = "home"
+            track.CURRENT_GRIPPER_POSITION = {"x": 0, "z": 0}
+            state.register_coordinator(types.SimpleNamespace(nr_robot=robot, nr_track=track))
+        robot.VIAL_DF.to_csv.assert_not_called()
+        self.assertEqual(list((root / "vials").iterdir()), [])
+        self.assertEqual(yaml.safe_load((root / "robot_status.yaml").read_text())["pipets_used"], {"rack": 3})
+        self.assertEqual(yaml.safe_load((root / "track_status.yaml").read_text())["num_in_source"], 9)
+        self.assertTrue((root / "end_states" / "no_vials" / "robot_status.yaml").is_file())
+        self.assert_live_unchanged()
+
+    def test_live_no_vial_robot_save_writes_status_without_csv(self):
+        robot = self.Robot()
+        robot.simulate = False
+        robot.VIAL_FILE = None
+        robot.ROBOT_STATUS_FILE = str(self.repo / "robot_state" / "robot_status.yaml")
+        robot.GRIPPER_STATUS = None
+        robot.GRIPPER_VIAL_INDEX = None
+        robot.HELD_PIPET_TYPE = None
+        robot.PIPETS_USED = {"rack": 2}
+        robot.PIPET_FLUID_VIAL_INDEX = None
+        robot.PIPET_FLUID_VOLUME = 0
+        robot.VIAL_DF = Mock()
+        robot.save_robot_status()
+        robot.VIAL_DF.to_csv.assert_not_called()
+        self.assertEqual(yaml.safe_load(Path(robot.ROBOT_STATUS_FILE).read_text())["pipets_used"], {"rack": 2})
+
 
 if __name__ == "__main__":
     unittest.main()

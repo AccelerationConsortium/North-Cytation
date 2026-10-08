@@ -25,10 +25,16 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.vial_file = self.root / "vials.csv"
         shutil.copyfile(REPO_ROOT / "status" / "fluorescence_calibration_vials.csv", self.vial_file)
+        inventory = pd.read_csv(self.vial_file)
+        inventory.loc[inventory.vial_name.str.startswith('dye_b'), 'vial_volume'] = 0.0
+        inventory.to_csv(self.vial_file, index=False)
         self.original_directory = Path.cwd()
         os.chdir(self.root)
         self.addCleanup(os.chdir, self.original_directory)
-        self.config = {**BASE_CONFIG, "INPUT_VIAL_STATUS_FILE": str(self.vial_file)}
+        self.config = {**BASE_CONFIG, "INPUT_VIAL_STATUS_FILE": str(self.vial_file), "MEASUREMENT_SCHEDULE_MIN": [0]}
+        slack = patch.object(workflow, "slack_agent", MagicMock())
+        slack.start()
+        self.addCleanup(slack.stop)
 
     def fake_coordinator(self, simulate):
         lash = MagicMock()
@@ -88,20 +94,21 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
     def test_execution_with_fake_hardware(self):
         lash = self.fake_coordinator(simulate=False)
-        test_config = {**self.config, "DILUTION_FACTORS": [0.0, 0.25, 0.5, 1.0], "SUBSTOCK_VOLUME_ML": 1.0}
+        test_config = {**self.config, "DILUTION_FACTORS": [0.0, 0.25, 0.5, 1.0], "SUBSTOCK_VOLUME_ML": 2.0}
         plan, _ = build_plan(test_config)
         data = pd.DataFrame({"well_position": plan.well_position,
                              "334_373": 10 + plan.concentration_relative * 100,
                              "334_384": 20 + plan.concentration_relative * 200})
-        lash.measure_wellplate.side_effect = [None, data]
+        lash.measure_wellplate.side_effect = [data]
         module = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
                                        flatten_cytation_data=lambda raw, _: raw)
         with tempfile.TemporaryDirectory() as temporary:
             protocol = Path(temporary) / "test.prt"
             protocol.touch()
+            lash.workflow_config = {**test_config, "SIMULATE": False, "PROTOCOL_FILE": str(protocol)}
             with patch.dict("sys.modules", {"master_usdl_coordinator": module}):
                 output = execute({**test_config, "SIMULATE": False,
-                                  "PROTOCOL_FILE": str(protocol), "SHAKE_PROTOCOL_FILE": str(protocol)}, show_gui=False)
+                                  "PROTOCOL_FILE": str(protocol)}, show_gui=False)
         self.assertEqual(lash.nr_robot.dispense_from_vial_into_vial.call_count, 4)
         lash.discard_used_wellplate.assert_called_once()
         measured = pd.read_csv(output / "fluorescence_results.csv")
@@ -127,7 +134,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         confirmed = {**initial, "SIMULATE": True, "REPLICATES": 1, "DILUTION_FACTORS": [0.0, 0.5, 1.0],
                      "DYE_VOLUME_UL": 10.0, "SUBSTOCK_VOLUME_ML": 2.0,
                      "PROTOCOL_FILE": "confirmed.prt", "RAW_CHANNELS": ["confirmed_signal"],
-                     "SHAKE_PROTOCOL_FILE": "confirmed_shake.prt", "MEASUREMENT_REPLICATES": 2}
+                     "MEASUREMENT_REPLICATES": 2}
         lash = self.fake_coordinator(simulate=True)
         lash.measure_wellplate.return_value = None
         events = []
@@ -140,6 +147,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             self.assertTrue(kwargs["show_gui"])
             self.assertFalse((self.root / "output").exists())
             kwargs["workflow_globals"].update(confirmed)
+            lash.workflow_config = confirmed.copy()
             return lash
 
         def confirmed_plan(config):
@@ -165,7 +173,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         self.assertEqual(len(reads), 18)
         self.assertIn("confirmed_signal", reads.columns)
         self.assertEqual([call.args[0] for call in lash.measure_wellplate.call_args_list],
-                         ["confirmed_shake.prt", "confirmed.prt", "confirmed.prt"])
+                         ["confirmed.prt", "confirmed.prt"])
 
     def test_cancel_does_not_build_plan_or_dispense(self):
         lash = self.fake_coordinator(simulate=True)
@@ -177,24 +185,29 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
         self.assertFalse((self.root / "output").exists())
 
-    def test_controller_mode_mismatch_fails_before_planning(self):
-        lash = self.fake_coordinator(simulate=False)
+    def test_supplied_config_is_delegated_before_planning(self):
+        lash = self.fake_coordinator(simulate=True)
+        lash.workflow_config = {**self.config, "SIMULATE": True}
         coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash), flatten_cytation_data=MagicMock())
-        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), patch.object(workflow, "build_plan") as planner:
-            with self.assertRaisesRegex(ValueError, "simulation modes"):
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), patch.object(workflow, "build_plan", side_effect=RuntimeError("test stop before automation")) as planner:
+            with self.assertRaisesRegex(RuntimeError, "test stop"):
                 execute({**self.config, "SIMULATE": True}, show_gui=False)
-        planner.assert_not_called()
+        coordinator.Lash_E.assert_called_once()
+        self.assertNotIn("simulate", coordinator.Lash_E.call_args.kwargs)
+        self.assertFalse(coordinator.Lash_E.call_args.kwargs['show_gui'])
+        self.assertEqual(planner.call_args.args[0], lash.workflow_config)
         lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
         self.assertFalse((self.root / "output").exists())
 
-    def test_changed_vial_path_fails_before_planning(self):
+    def test_selected_vial_path_comes_from_confirmed_coordinator_config(self):
         (self.root / "other.csv").touch()
         lash = self.fake_coordinator(simulate=True)
+        lash.workflow_config = {**self.config, "SIMULATE": True, "INPUT_VIAL_STATUS_FILE": str(self.root / "other.csv")}
         coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash), flatten_cytation_data=MagicMock())
-        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), patch.object(workflow, "build_plan") as planner:
-            with self.assertRaisesRegex(ValueError, "Vial file changed"):
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), patch.object(workflow, "build_plan", side_effect=RuntimeError("test stop before automation")) as planner:
+            with self.assertRaisesRegex(RuntimeError, "test stop"):
                 execute({**self.config, "SIMULATE": True, "INPUT_VIAL_STATUS_FILE": str(self.root / "other.csv")}, show_gui=False)
-        planner.assert_not_called()
+        self.assertEqual(planner.call_args.args[0]['INPUT_VIAL_STATUS_FILE'], str(self.root / "other.csv"))
         lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
         self.assertFalse((self.root / "output").exists())
 
@@ -204,6 +217,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
         def review(*args, **kwargs):
             kwargs["workflow_globals"].update(initial, REPLICATES=0)
+            lash.workflow_config = {**initial, "REPLICATES": 0}
             return lash
 
         manager = types.SimpleNamespace(setup_and_reload_config=lambda name, namespace: namespace.update(initial))

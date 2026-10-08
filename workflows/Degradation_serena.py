@@ -660,17 +660,12 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, solvent='2MeTH
 def execute(config=None, show_gui=True):
     """Run normally with GUI review, or with complete config and no GUI."""
     global slack_agent, output_dir
-    from workflows._workflow_startup import prepare_config, confirmed_config
-    launch = prepare_config(globals(), "Degradation_serena", config, show_gui)
     lash_e = Lash_E(
-        launch["INPUT_VIAL_STATUS_FILE"], simulate=launch["SIMULATE"], initialize_t8=True,
-        workflow_globals=globals() if config is None else None,
-        workflow_name="Degradation_serena" if config is None else None,
-        show_gui=show_gui,
+        initialize_t8=True, workflow_globals=globals(), workflow_name="Degradation_serena",
+        config=config, show_gui=show_gui,
     )
     if not lash_e._workflow_should_continue:
         return None
-    confirmed_config(globals(), launch, lash_e)
     waste_state = {"waste_index": 0, "current_waste_vial": "waste_0"}
 
     if not SIMULATE:

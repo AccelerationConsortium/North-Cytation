@@ -6,6 +6,7 @@ import types
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
+from workflow_config_manager import ConfigManager
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +31,14 @@ class WorkflowTemplateTests(unittest.TestCase):
             measure_wellplate=Mock(return_value=None),
             discard_used_wellplate=Mock(),
         )
-        self.constructor = Mock(return_value=self.lash)
+        def initialize(*args, **kwargs):
+            self.lash.workflow_config = ConfigManager.resolve_workflow_config(
+                kwargs['workflow_name'], kwargs['workflow_globals'],
+                config=kwargs['config'], show_gui=kwargs['show_gui'],
+            )
+            return self.lash
+
+        self.constructor = Mock(side_effect=initialize)
         with patch.dict(sys.modules, {
             "master_usdl_coordinator": types.SimpleNamespace(Lash_E=self.constructor),
         }):
@@ -42,7 +50,9 @@ class WorkflowTemplateTests(unittest.TestCase):
     def test_explicit_config_runs_complete_simulated_body_without_yaml(self):
         self.execute(self.config, show_gui=False)
         kwargs = self.constructor.call_args.kwargs
-        self.assertIsNone(kwargs["workflow_globals"])
+        self.assertIs(kwargs["workflow_globals"], self.execute.__globals__)
+        self.assertEqual(kwargs["config"], self.config)
+        self.assertNotIn("simulate", kwargs)
         self.assertFalse(kwargs["show_gui"])
         self.assertFalse(kwargs["initialize_p2"])
         self.lash.grab_new_wellplate.assert_called_once()
@@ -52,67 +62,53 @@ class WorkflowTemplateTests(unittest.TestCase):
         self.lash.discard_used_wellplate.assert_called_once()
 
     def test_normal_start_uses_gui_edited_parameters_and_filename(self):
-        def load_config(name, namespace):
-            self.assertEqual(name, "workflow_template")
-            namespace.update(self.config)
-
         def show_review(*args, **kwargs):
             self.assertTrue(kwargs["show_gui"])
             self.assertEqual(kwargs["workflow_name"], "workflow_template")
             kwargs["workflow_globals"]["TARGET_TEMPERATURE"] = 33.0
             kwargs["workflow_globals"]["PARAM2"] = 4
+            self.lash.workflow_config = {**self.config, 'TARGET_TEMPERATURE': 33.0, 'PARAM2': 4}
             return self.lash
 
-        manager = types.SimpleNamespace(setup_and_reload_config=Mock(side_effect=load_config))
         self.constructor.side_effect = show_review
-        with patch.dict(sys.modules, {"workflow_config_manager": types.SimpleNamespace(ConfigManager=manager)}):
-            self.execute()
+        self.execute()
         self.temperature.set_temp.assert_called_once_with(33.0)
         self.assertEqual(self.lash.measure_wellplate.call_args.args[1], [0, 1, 2, 3])
 
     def test_explicit_config_with_gui_is_rejected_before_controller_creation(self):
         with self.assertRaisesRegex(ValueError, "show_gui=False"):
             self.execute(self.config)
-        self.constructor.assert_not_called()
+        self.lash.grab_new_wellplate.assert_not_called()
 
     def test_supplied_config_is_copied_and_does_not_load_yaml(self):
-        manager = types.SimpleNamespace(setup_and_reload_config=Mock(side_effect=AssertionError("YAML must not load")))
-        initializer = self.module["_initialize_workflow"]
-        namespace = initializer.__globals__
+        namespace = self.execute.__globals__
         keys = namespace["_CONFIG_KEYS"] + ["EXPERIMENT_POINTS"]
         supplied = {**self.config, "EXPERIMENT_POINTS": [1, 2]}
-        with patch.dict(namespace, {"_CONFIG_KEYS": keys}), patch.dict(sys.modules, {
-            "workflow_config_manager": types.SimpleNamespace(ConfigManager=manager),
-        }):
-            lash, confirmed = initializer(supplied, show_gui=False)
-        self.assertIs(lash, self.lash)
+        with patch.dict(namespace, {"_CONFIG_KEYS": keys}), patch.object(
+            ConfigManager, 'load_and_update_globals', side_effect=AssertionError('YAML must not load')
+        ) as loader:
+            confirmed = ConfigManager.resolve_workflow_config('workflow_template', namespace, supplied, False)
         self.assertIsNot(confirmed, supplied)
         confirmed["EXPERIMENT_POINTS"].append(3)
         self.assertEqual(supplied["EXPERIMENT_POINTS"], [1, 2])
-        manager.setup_and_reload_config.assert_not_called()
+        loader.assert_not_called()
 
     def test_partial_supplied_config_is_rejected_before_hardware(self):
         incomplete = self.config.copy()
         del incomplete["TARGET_TEMPERATURE"]
         with self.assertRaises(KeyError):
             self.execute(incomplete, show_gui=False)
-        self.constructor.assert_not_called()
+        self.lash.grab_new_wellplate.assert_not_called()
 
     def test_gui_can_correct_launch_values_before_experiment_validation(self):
-        initial = {**self.config, "INPUT_VIAL_STATUS_FILE": str(self.vials.parent / "missing.csv"),
-                   "PARAM2": 0}
-        manager = types.SimpleNamespace(
-            setup_and_reload_config=lambda name, namespace: namespace.update(initial)
-        )
-
         def review(*args, **kwargs):
-            self.assertEqual(args[0], initial["INPUT_VIAL_STATUS_FILE"])
+            self.assertEqual(args, ())
             kwargs["workflow_globals"].update(self.config, PARAM2=4)
+            self.lash.workflow_config = {**self.config, 'PARAM2': 4}
             return self.lash
 
         self.constructor.side_effect = review
-        with patch.dict(sys.modules, {"workflow_config_manager": types.SimpleNamespace(ConfigManager=manager)}):
-            self.execute()
+        self.execute()
         self.assertEqual(self.lash.measure_wellplate.call_args.args[1], [0, 1, 2, 3])
 
     def test_cancel_does_not_execute_steps(self):

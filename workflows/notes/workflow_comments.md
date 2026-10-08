@@ -8,18 +8,18 @@ following corrections are now implemented in `workflows/workflow_template.py`:
 1. Derive the workflow/config name from the script filename and refresh the
    local parameter dictionary after startup GUI review.
 2. Preserve `execute()` with the normal `show_gui=True` startup. For explicit
-   parameters, use `execute(config=..., show_gui=False)`; this path does not
-   pass globals to the coordinator, so YAML cannot override the supplied config.
-  Startup is encapsulated in the documented local `_initialize_workflow`
-  helper. Preloaded YAML selects initial vial/mode values only; experiment
-  settings are copied after GUI review. Supplied config must include all
-  `_CONFIG_KEYS` and is copied independently, not merged with saved YAML.
-  Supplied-config startup checks precede hardware because no GUI review is
-  available to correct them; normal-run experiment validation follows review.
+  parameters, use `execute(config=..., show_gui=False)`. Pass config, workflow
+  globals/name and show_gui directly to Lash_E, then read lash_e.workflow_config.
+  ConfigManager owns config selection, required-key checking and snapshots;
+  supplied config is independent and never merged with/read from saved YAML.
+  The extra workflow-startup file and template initialization helper were
+  removed on 2026-10-07. Workflow authors no longer preload config or pass a
+  redundant simulate argument. Normal-run experiment validation follows review.
 3. Remove deprecated `check_input_file()` calls and their terminal prompts.
    Validate vial-file existence, well count, simulation-mode agreement, and
-   live protocol existence. A changed vial-file path during GUI review raises
-   an error requiring restart rather than mixing different inventories.
+  live protocol existence. Lash_E now chooses the startup vial path from config
+  and uses the final reviewed path for controllers, rather than keeping a stale
+  constructor argument captured before review.
 4. Use `lash_e.logger` for workflow steps and failures.
 5. Remove the nonexistent photoreactor `emergency_stop()` call. Independently
    attempt supported heater shutdown, stirrer shutdown and robot homing;
@@ -93,21 +93,23 @@ Remaining concerns and subsequent fixes:
 - [x] **Launch compatibility.** All five retained workflows now expose
   `execute(config=None, show_gui=True)`. Normal script Run still opens the GUI.
   `execute(config=complete_config, show_gui=False)` uses supplied values without
-  YAML reload/override. Shared config-only helpers are in
-  `workflows/_workflow_startup.py`; legacy helpers receive supplied module
-  constants too. Supplied config must contain all declared/detected config keys.
+  YAML reload/override. This is managed centrally by ConfigManager and Lash_E;
+  legacy helpers receive supplied module constants too. Supplied config must
+  contain all declared/detected config keys. The vortex example uses this same
+  path without a separate startup import.
 - [x] **Generic scheduler Setup.** Removed the temporary Ailsa-only restriction.
   The same matching-YAML/INPUT_VIAL_STATUS_FILE handler opens each workflow's
   editor without importing or executing it. Missing config/key/path is reported.
 - [ ] **Ailsa upstairs merge reconciliation.** User approved local launch
   changes. Review the `execute()` section when merging the upstairs refresh fix;
   preserve its post-GUI refresh and the new config/show_gui launch interface.
-- [ ] **Full execution validation.** Thirty-six focused hardware-free tests
+- [ ] **Full execution validation.** Eighty-five focused hardware-free tests
   pass. Legacy launch tests execute the actual entrypoint in an isolated
   namespace and stop at a mocked first automation call; they do not certify
   full workflow imports, long-run scientific behavior, external dependencies,
-  instrument protocols or physical readiness. Scheduler simulation and Run
-  remain disabled; stateful simulation and live queue failure policy are pending.
+  instrument protocols or physical readiness. Scheduler simulation and gated
+  live Run are implemented; hardware validation is still required. Real vortex
+  simulation is checked separately; no physical run was performed here.
 
 ## Archived Workflow Configs
 

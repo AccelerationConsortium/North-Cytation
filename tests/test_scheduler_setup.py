@@ -181,6 +181,27 @@ class SchedulerSetupTests(unittest.TestCase):
             editor._save_and_return()
         self.assertFalse(editor._preparation_saved)
 
+    def test_no_vial_setup_saves_config_and_shared_state_without_csv(self):
+        config = yaml.safe_load(self.config.read_text())
+        config["INPUT_VIAL_STATUS_FILE"] = None
+        self.config.write_text(yaml.safe_dump(config))
+        editor = VialManagerMainWindow(preparation_mode=True)
+        self.addCleanup(editor.deleteLater)
+        editor.setup_preparation(None, "surfactant_grid_ailsa", self.config)
+        self.redirect_status(editor)
+        self.assertIsNone(editor.status_file_path)
+        self.assertFalse(editor.return_home_button.isEnabled())
+        self.assertTrue(editor.robot_status_widget.isEnabled())
+        self.assertTrue(editor.track_status_widget.isEnabled())
+        self.assertTrue(all(not widget.isEnabled() for widget in editor.rack_widgets.values()))
+        before = self.vials.read_bytes()
+        editor.track_status_widget.num_source_spin.setValue(3)
+        self.assertTrue(editor._save_preparation())
+        self.assertIsNone(yaml.safe_load(self.config.read_text())["INPUT_VIAL_STATUS_FILE"])
+        self.assertEqual(yaml.safe_load(self.track_file.read_text())["num_in_source"], 3)
+        self.assertEqual(self.vials.read_bytes(), before)
+        editor.close()
+
     def test_second_workflow_setup_uses_its_own_config_and_vial_file(self):
         name = "fluorescence_calibration_workflow"
         second_vials = self.root / "status" / "fluorescence_calibration_vials.csv"

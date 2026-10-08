@@ -287,15 +287,12 @@ def plot_kinetics(wells, channels, output_dir):
 
 def execute(config=None, show_gui=True):
     """Review settings normally, or use complete config with show_gui=False."""
-    from workflows._workflow_startup import prepare_config, confirmed_config
-    launch = prepare_config(globals(), "fluorescence_calibration_workflow", config, show_gui)
     from master_usdl_coordinator import Lash_E, flatten_cytation_data
-    lash = Lash_E(launch["INPUT_VIAL_STATUS_FILE"], simulate=launch["SIMULATE"], show_gui=show_gui,
-                  workflow_globals=globals() if config is None else None,
-                  workflow_name="fluorescence_calibration_workflow" if config is None else None)
+    lash = Lash_E(workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow",
+                  config=config, show_gui=show_gui)
     if not lash._workflow_should_continue:
         return None
-    c = confirmed_config(globals(), launch, lash)
+    c = lash.workflow_config
     plan, recipes = build_plan(c)
     protocol, channels = _PROTOCOLS[c["DYE"].lower()]
     protocol = c["PROTOCOL_FILE"] or protocol
@@ -313,15 +310,6 @@ def execute(config=None, show_gui=True):
     # Protocol files live on the Cytation PC; simulate mode never opens them, so skip the check.
     if not c["SIMULATE"] and not Path(protocol).is_file():
         raise ValueError(f"Set an existing, plate-matched Cytation protocol: {protocol}")
-    # Construct Lash_E (and its status-review GUI) before reading inventory, so
-    # volumes/locations edited in the GUI are what gets validated below.
-    from master_usdl_coordinator import Lash_E, flatten_cytation_data
-    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"], show_gui=True,
-                  workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow")
-    # Lash_E's GUI can edit config values and reloads them into globals() internally;
-    # re-snapshot here so the rest of execute() doesn't run on the pre-GUI config.
-    config = {key: globals()[key] for key in _CONFIG_KEYS}
-    c = config
     if not c["SIMULATE"]:
         slack_agent.send_slack_message(
             f"Fluorescence calibration workflow started: {c['DYE']} in {', '.join(plan.medium.unique())}")

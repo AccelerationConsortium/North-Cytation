@@ -193,7 +193,7 @@ class Lash_E:
     powder_dispenser = None
     simulate = None
 
-    def __init__(self, vial_file=None, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs", workflow_globals=None, workflow_name=None, show_gui=True):
+    def __init__(self, vial_file=None, initialize_robot=True,initialize_track=True,initialize_biotek=True,initialize_t8=False,initialize_p2=False,simulate=False,logging_folder="../utoronto_demo/logs", workflow_globals=None, workflow_name=None, show_gui=True, config=None):
         """
         Initialize Lash_E coordinator.
         
@@ -201,23 +201,27 @@ class Lash_E:
             show_gui (bool): If True (default), shows the vial manager GUI for status review.
                            If False, skips GUI and proceeds directly to hardware initialization.
                            Use show_gui=False for batch operations or automated workflows.
+            config (mapping): Complete automated workflow settings. Requires
+                              show_gui=False; saved YAML is not read or written.
+                              Provide workflow_globals/name to identify required keys.
+            workflow_config (attribute): Confirmed settings after review. Build
+                                         experiment plans from this snapshot.
         """
         
         # Handle workflow config loading before any other initialization
-        if workflow_globals is not None and workflow_name is not None and ConfigManager is not None:
-            # Setup config file if it doesn't exist (preserves user edits if it does exist)
-            ConfigManager.setup_config_if_missing(workflow_name, workflow_globals)
-            
-            # Load config from file (with user edits) and update globals
-            updated_config = ConfigManager.load_and_update_globals(workflow_name, workflow_globals, None)  # Logger not yet available
-            
-            # Use updated SIMULATE value from config (overrides the passed simulate parameter)
-            simulate = workflow_globals.get('SIMULATE', simulate)
-            
-            # Store config info for later reference
+        self.workflow_config = None
+        launch_config = None
+        if config is not None or (workflow_globals is not None and workflow_name is not None):
+            if ConfigManager is None:
+                raise RuntimeError("ConfigManager is required for workflow configuration.")
+            launch_config = ConfigManager.resolve_workflow_config(
+                workflow_name, workflow_globals, config=config, show_gui=show_gui
+            )
+            simulate = launch_config['SIMULATE']
+            vial_file = launch_config['INPUT_VIAL_STATUS_FILE']
             self.workflow_name = workflow_name
-            self.config_loaded = True
-            self.config_keys_loaded = list(updated_config.keys()) if updated_config else []
+            self.config_loaded = config is None
+            self.config_keys_loaded = list(launch_config)
         else:
             self.workflow_name = None
             self.config_loaded = False
@@ -253,12 +257,14 @@ class Lash_E:
             self.logger.info("GUI disabled - skipping status review, proceeding directly to hardware initialization")
             
         # Reload config from file after GUI may have updated YAML values
-        if workflow_globals is not None and workflow_name is not None and ConfigManager is not None:
-            self.logger.debug("Reloading config after status check to get updated values")
-            updated_config = ConfigManager.load_and_update_globals(workflow_name, workflow_globals, self.logger)
-            
-            # Update simulate flag with fresh value from file
-            updated_simulate = workflow_globals.get('SIMULATE', self.simulate)
+        if launch_config is not None:
+            self.workflow_config = ConfigManager.confirm_workflow_config(
+                workflow_name, workflow_globals, launch_config,
+                supplied=config is not None, logger=self.logger,
+            )
+            vial_file = self.workflow_config['INPUT_VIAL_STATUS_FILE']
+            self.vial_file = vial_file
+            updated_simulate = self.workflow_config['SIMULATE']
             if updated_simulate != self.simulate:
                 self.update_simulate_flag(updated_simulate)
 
@@ -289,6 +295,8 @@ class Lash_E:
         if self.config_loaded:
             self.logger.info(f"Workflow config confirmed: {self.workflow_name}")
             self.logger.info(f"Config keys loaded: {len(self.config_keys_loaded)} ({', '.join(self.config_keys_loaded)})")
+        elif config is not None:
+            self.logger.info(f"Supplied workflow config: {self.workflow_name}")
         elif workflow_globals is not None or workflow_name is not None:
             self.logger.warning("Incomplete config info provided - config loading skipped")
         self.logger.info(f"Confirmed SIMULATE mode: {self.simulate}")
@@ -414,10 +422,10 @@ class Lash_E:
             gui.setWindowTitle("Robot Status Review - Workflow Initialization")
             
             # Detect workflow name from main module
-            workflow_name = None
+            workflow_name = self.workflow_name
             try:
                 import __main__
-                if hasattr(__main__, '__file__') and __main__.__file__:
+                if workflow_name is None and hasattr(__main__, '__file__') and __main__.__file__:
                     script_name = os.path.basename(__main__.__file__)
                     workflow_name = os.path.splitext(script_name)[0]  # Remove .py extension
                     self.logger.info(f"Detected workflow name: {workflow_name}")

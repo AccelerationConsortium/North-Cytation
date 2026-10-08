@@ -5122,17 +5122,12 @@ def execute_2_stage_workflow(lash_e, surfactant_a_name="SDS", surfactant_b_name=
 def execute(config=None, show_gui=True):
     """Run normally with GUI review, or with complete config and no GUI."""
     global ADD_BUFFER, SELECTED_BUFFER
-    from workflows._workflow_startup import prepare_config, confirmed_config
-    launch = prepare_config(globals(), "surfactant_grid_adaptive_concentrations", config, show_gui)
     
     # Initialize Lash_E with automatic config handling
-    lash_e = Lash_E(launch["INPUT_VIAL_STATUS_FILE"], simulate=launch["SIMULATE"],
-                    workflow_globals=globals() if config is None else None,
-                    workflow_name='surfactant_grid_adaptive_concentrations' if config is None else None,
-                    show_gui=show_gui)
+    lash_e = Lash_E(workflow_globals=globals(), workflow_name='surfactant_grid_adaptive_concentrations',
+                    config=config, show_gui=show_gui)
     if not lash_e._workflow_should_continue:
         return None
-    confirmed_config(globals(), launch, lash_e)
 
     # Configure matplotlib globally to prevent popup windows
     import matplotlib

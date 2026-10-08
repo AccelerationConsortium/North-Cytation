@@ -18,11 +18,16 @@ from scheduler import simulation_state as state
 
 class Diagnostics(logging.Handler):
     def __init__(self):
-        super().__init__(logging.WARNING)
+        super().__init__(logging.INFO)
         self.records = []
+        self.tip_counters_reset = False
 
     def emit(self, record):
-        self.records.append({"level": record.levelname, "message": record.getMessage()})
+        message = record.getMessage()
+        if message.startswith("Resetting all pipet rack counters") or message.startswith("Reset all pipet counters") or (message.startswith("Reset ") and "tips used" in message):
+            self.tip_counters_reset = True
+        if record.levelno >= logging.WARNING:
+            self.records.append({"level": record.levelname, "message": message})
 
 
 def handoff_issues(root):
@@ -97,7 +102,10 @@ def run_job(root, job_id):
             })
         result["handoff_ok"] = not blocking_issues
         final_tips = yaml.safe_load((root / "robot_status.yaml").read_text())["pipets_used"]
-        result["tips_used"] = {rack: final_tips[rack] - initial_tips[rack] for rack in final_tips}
+        if diagnostics.tip_counters_reset or any(final_tips[rack] < initial_tips[rack] for rack in final_tips):
+            result["tips_used"] = "Unavailable after tip counter reset"
+        else:
+            result["tips_used"] = {rack: final_tips[rack] - initial_tips[rack] for rack in final_tips}
         final_plates = yaml.safe_load((root / "track_status.yaml").read_text())["num_in_source"]
         result["plates_used"] = initial_plates - final_plates
     except (Exception, KeyboardInterrupt, SystemExit):

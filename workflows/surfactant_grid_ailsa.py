@@ -1563,19 +1563,13 @@ def execute_study_workflow(
 
 def execute(config=None, show_gui=True):
     """Use GUI-confirmed settings, or complete config with show_gui=False."""
-    from workflows._workflow_startup import prepare_config, confirmed_config
-    launch = prepare_config(globals(), "surfactant_grid_ailsa", config, show_gui)
-
     lash_e = Lash_E(
-        launch["INPUT_VIAL_STATUS_FILE"],
-        simulate=launch["SIMULATE"],
-        workflow_globals=globals() if config is None else None,
-        workflow_name="surfactant_grid_ailsa" if config is None else None,
-        show_gui=show_gui,
+        workflow_globals=globals(), workflow_name="surfactant_grid_ailsa",
+        config=config, show_gui=show_gui,
     )
     if not lash_e._workflow_should_continue:
         return None
-    c = confirmed_config(globals(), launch, lash_e)
+    c = lash_e.workflow_config
     return execute_study_workflow(
         c["RECIPES_CSV"],
         c["STOCKS_CSV"],

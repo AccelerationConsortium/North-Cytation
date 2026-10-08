@@ -2636,22 +2636,17 @@ def run_multidim_workflow(lash_e):
 
 def execute(config=None, show_gui=True):
     """Run normally with GUI review, or with complete config and no GUI."""
-    from workflows._workflow_startup import prepare_config, confirmed_config
-    launch = prepare_config(globals(), "surfactant_multidimensional_workflow", config, show_gui)
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     plt.ioff()
 
     lash_e = Lash_E(
-        launch["INPUT_VIAL_STATUS_FILE"], simulate=launch["SIMULATE"],
-        workflow_globals=globals() if config is None else None,
-        workflow_name="surfactant_multidimensional_workflow" if config is None else None,
-        show_gui=show_gui,
+        workflow_globals=globals(), workflow_name="surfactant_multidimensional_workflow",
+        config=config, show_gui=show_gui,
     )
     if not lash_e._workflow_should_continue:
         return None
-    confirmed_config(globals(), launch, lash_e)
 
     fill_water_vial(lash_e, "water")
     fill_water_vial(lash_e, "water_2")

@@ -2272,7 +2272,13 @@ class VialManagerMainWindow(QMainWindow):
             raise RuntimeError("Preparation mode must be requested when constructing the window.")
         if not Path(config_file).is_file():
             raise FileNotFoundError(config_file)
-        if not self.load_status_file(str(vial_file_path)):
+        if vial_file_path is None:
+            self.status_file_path = None
+            self.original_vials_data = []
+            self._populate_racks([])
+            self._update_ui_state()
+            self.file_info_label.setText("No vial tracking for this workflow")
+        elif not self.load_status_file(str(vial_file_path)):
             raise ValueError(f"Could not load vial file: {vial_file_path}")
         self.config_editor = ConfigEditor()
         if not self.config_editor.load_workflow_config(workflow_name, str(config_file)):
@@ -2284,6 +2290,10 @@ class VialManagerMainWindow(QMainWindow):
         self.status_bar.showMessage("Workflow setup")
 
     def _prepare_shared_status_tabs(self):
+        if self.status_file_path is None:
+            for widget in self.rack_widgets.values():
+                widget.setEnabled(False)
+            self.return_home_button.setEnabled(False)
         for attribute in ("track_status_widget", "robot_status_widget"):
             widget = getattr(self, attribute, None)
             if widget is not None:
@@ -2319,7 +2329,7 @@ class VialManagerMainWindow(QMainWindow):
 
     def _save_preparation(self):
         self._preparation_saved = False
-        if not self._save_file():
+        if self.status_file_path is not None and not self._save_file():
             return False
         if not self.config_editor._save_config(silent=True):
             return False

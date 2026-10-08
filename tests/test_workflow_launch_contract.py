@@ -12,7 +12,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from workflows._workflow_startup import prepare_config
+from workflow_config_manager import ConfigManager
 
 
 WORKFLOWS = (
@@ -66,7 +66,16 @@ class WorkflowLaunchContractTests(unittest.TestCase):
         body = Mock(side_effect=ExperimentBodyReached())
         robot = types.SimpleNamespace(VIAL_FILE=str(self.vials), home_robot_components=body)
         lash = types.SimpleNamespace(_workflow_should_continue=True, simulate=True, nr_robot=robot)
-        constructor = Mock(return_value=lash)
+        def initialize(*args, **kwargs):
+            selected = ConfigManager.resolve_workflow_config(
+                kwargs['workflow_name'], kwargs['workflow_globals'],
+                config=kwargs['config'], show_gui=kwargs['show_gui'],
+            )
+            lash.workflow_config = selected
+            lash.simulate = selected['SIMULATE']
+            return lash
+
+        constructor = Mock(side_effect=initialize)
         namespace.update(Lash_E=constructor, fill_water_vial=body, execute_study_workflow=body,
                          build_plan=body, run_multidim_workflow=body)
         function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "execute")
@@ -87,7 +96,9 @@ class WorkflowLaunchContractTests(unittest.TestCase):
                     with self.assertRaises(ExperimentBodyReached):
                         namespace["execute"](config=config, show_gui=False)
                 self.assertFalse(constructor.call_args.kwargs["show_gui"])
-                self.assertIsNone(constructor.call_args.kwargs["workflow_globals"])
+                self.assertIs(constructor.call_args.kwargs["workflow_globals"], namespace)
+                self.assertNotIn("simulate", constructor.call_args.kwargs)
+                self.assertEqual(constructor.call_args.kwargs["config"], config)
                 self.assertEqual(config, original)
                 self.assertTrue(body.called)
 
@@ -95,20 +106,16 @@ class WorkflowLaunchContractTests(unittest.TestCase):
         for name in WORKFLOWS:
             with self.subTest(workflow=name):
                 namespace, config, lash, constructor, body = self.entrypoint(name)
-                initial = {**config, "SIMULATE": False}
-                manager = types.SimpleNamespace(
-                    setup_and_reload_config=lambda workflow_name, target: target.update(deepcopy(initial))
-                )
-
                 def review(*args, **kwargs):
                     self.assertTrue(kwargs["show_gui"])
                     self.assertEqual(kwargs["workflow_name"], name)
-                    self.assertFalse(kwargs["simulate"])
+                    self.assertNotIn("simulate", kwargs)
                     kwargs["workflow_globals"]["SIMULATE"] = True
+                    lash.workflow_config = deepcopy(config)
                     return lash
 
                 constructor.side_effect = review
-                modules = {**self.plot_modules, "workflow_config_manager": types.SimpleNamespace(ConfigManager=manager)}
+                modules = self.plot_modules.copy()
                 if name == "fluorescence_calibration_workflow":
                     modules["master_usdl_coordinator"] = types.SimpleNamespace(
                         Lash_E=constructor, flatten_cytation_data=Mock()
@@ -138,9 +145,9 @@ class WorkflowLaunchContractTests(unittest.TestCase):
     def test_partial_or_ambiguous_supplied_config_is_rejected(self):
         namespace = {"SIMULATE": True, "INPUT_VIAL_STATUS_FILE": str(self.vials), "REPLICATES": 3}
         with self.assertRaisesRegex(ValueError, "show_gui=False"):
-            prepare_config(namespace, "test", namespace.copy(), True)
+            ConfigManager.resolve_workflow_config("test", namespace, namespace.copy(), True)
         with self.assertRaises(KeyError):
-            prepare_config(namespace, "test", {"SIMULATE": True}, False)
+            ConfigManager.resolve_workflow_config("test", namespace, {"SIMULATE": True}, False)
 
     def test_config_manager_preserves_explicit_null_constants(self):
         from workflow_config_manager import ConfigManager
@@ -158,6 +165,10 @@ class WorkflowLaunchContractTests(unittest.TestCase):
         for name in WORKFLOWS:
             with self.subTest(workflow=name):
                 tree = ast.parse((REPO_ROOT / "workflows" / f"{name}.py").read_text(encoding="utf-8-sig"))
+                execute = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "execute")
+                coordinator_calls = [node for node in ast.walk(execute) if isinstance(node, ast.Call)
+                                     and isinstance(node.func, ast.Name) and node.func.id == "Lash_E"]
+                self.assertEqual(len(coordinator_calls), 1, f"{name} must construct exactly one coordinator")
                 main = next(node for node in tree.body if isinstance(node, ast.If) and "__name__" in ast.unparse(node.test))
                 self.assertTrue(any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                                     and node.func.id == "execute" for node in ast.walk(main)))

@@ -1467,7 +1467,8 @@ class North_Robot(North_Base):
             save_state = can_save(self, self.VIAL_FILE, self.ROBOT_STATUS_FILE)
         if save_state:
             # Writing to a file
-            self.VIAL_DF.to_csv(self.VIAL_FILE, index=False,sep=',') #Save the status of the vial dataframe
+            if self.VIAL_FILE is not None:
+                self.VIAL_DF.to_csv(self.VIAL_FILE, index=False,sep=',') #Save the status of the vial dataframe
             with open(self.ROBOT_STATUS_FILE, "w") as file:
                 yaml.dump(robot_status, file, default_flow_style=False)
 
@@ -1545,8 +1546,6 @@ class North_Robot(North_Base):
         
         if selected_rack is None:
             self.pause_after_error(f"All {tip_type} racks are empty! Please refill tips then hit enter on the terminal!")
-            if getattr(self, "_scheduler_state_root", None) is not None:
-                raise RuntimeError(f"Scheduler simulation exhausted {tip_type}; no refill was performed.")
             # Reset all racks to 0 tips used
             self.logger.info("Resetting all pipet rack counters to 0 after refill")
             self.PIPETS_USED = {rack_name: 0 for rack_name in self.PIPET_RACKS.keys()}
@@ -1581,8 +1580,6 @@ class North_Robot(North_Base):
             tip_type (str, optional): Reset only racks of this tip type ('large_tip' or 'small_tip')
                                     If None, reset all racks
         """
-        if getattr(self, "_scheduler_state_root", None) is not None:
-            raise RuntimeError("Scheduler simulation cannot assume a manual pipet refill.")
         if tip_type:
             # Reset only racks of specified tip type
             for rack_name, rack_config in self.PIPET_RACKS.items():

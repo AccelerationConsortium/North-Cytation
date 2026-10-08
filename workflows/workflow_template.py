@@ -11,13 +11,14 @@ execute(show_gui=False) uses saved YAML without operator review.
 The example enables temperature control but not powder dispensing. If adding
 photoreactor steps, add supported per-reactor shutdown calls to cleanup too.
 Simulation runs every automation step, but may return no instrument data.
+Tasks without vial operations may set INPUT_VIAL_STATUS_FILE=None explicitly;
+this disables vial tracking, not shared robot/track state or config review.
 Live runs send best-effort Slack lifecycle updates; simulation never sends Slack.
 """
 import sys
 sys.path.append("../utoronto_demo")  # Always first, before any local imports
 
 from pathlib import Path
-from copy import deepcopy
 
 from master_usdl_coordinator import Lash_E
 
@@ -48,54 +49,32 @@ _CONFIG_KEYS = [
 ]
 
 
-def _initialize_workflow(config=None, show_gui=True):
-    """Return the coordinator and one authoritative experiment-config snapshot.
+def validate_experiment(config, lash_e):
+    """Validate confirmed inputs before any experiment steps.
 
-    With no supplied config, preload saved YAML to select the correct startup
-    vial file and simulation mode. This is NOT the final experiment config.
-    Lash_E creates missing YAML, reloads it, shows the GUI when requested, and
-    reloads operator edits. Only AFTER it returns do we snapshot the confirmed
-    globals. Build plans and perform calculations using that returned snapshot.
-
-    A supplied config is a complete mapping containing every _CONFIG_KEYS key,
-    not a partial override. Use it with show_gui=False for scheduler/robot calls.
-    Copy it so this run cannot mutate the caller's configuration. Do not pass
-    workflow globals to Lash_E in this mode: that would let saved YAML override
-    the supplied values. No workflow YAML is loaded or saved on this path.
-
-    Keep experiment validation after review in execute(), allowing the human
-    to correct settings before they are used. Cancellation is checked there.
+    Replace the example well-count/protocol constraints with this experiment's
+    requirements. ConfigManager owns loading and required-key validation;
+    this function does not load, merge or change configuration.
     """
-    supplied_config = config is not None
-    if supplied_config and show_gui:
-        raise ValueError("Explicit config requires show_gui=False; otherwise use execute() for GUI review.")
-    if not supplied_config:
-        from workflow_config_manager import ConfigManager
-        ConfigManager.setup_and_reload_config(_WORKFLOW_NAME, globals())
-        config = {key: globals()[key] for key in _CONFIG_KEYS}
-    launch_config = deepcopy({key: config[key] for key in _CONFIG_KEYS})
-    if supplied_config:
-        if not isinstance(launch_config["SIMULATE"], bool):
-            raise ValueError("SIMULATE must be a boolean.")
-        if not Path(launch_config["INPUT_VIAL_STATUS_FILE"]).is_file():
-            raise FileNotFoundError(launch_config["INPUT_VIAL_STATUS_FILE"])
+    if not isinstance(config["SIMULATE"], bool):
+        raise ValueError("SIMULATE must be a boolean.")
+    vial_file = config["INPUT_VIAL_STATUS_FILE"]
+    if vial_file is not None and not Path(vial_file).is_file():
+        raise FileNotFoundError(vial_file)
+    actual_vial_file = lash_e.nr_robot.VIAL_FILE
+    if (vial_file is None) != (actual_vial_file is None) or (
+        vial_file is not None and Path(vial_file).resolve() != Path(actual_vial_file).resolve()
+    ):
+        raise ValueError("Vial file changed during review. Restart with the new vial file before running.")
+    if config["SIMULATE"] != lash_e.simulate:
+        raise ValueError("Workflow and controller simulation modes do not match.")
 
-    # Initialize the system - adjust initialization flags as needed.
-    # Simulated controllers execute the workflow without physical movement;
-    # instrument data and error behavior still differ from a live run.
-    lash_e = Lash_E(
-        launch_config["INPUT_VIAL_STATUS_FILE"],
-        initialize_t8=True,      # Temperature controller
-        initialize_p2=False,
-        simulate=launch_config["SIMULATE"],
-        workflow_globals=None if supplied_config else globals(),
-        workflow_name=None if supplied_config else _WORKFLOW_NAME,
-        show_gui=show_gui,
-    )
-    confirmed_config = launch_config if supplied_config else deepcopy(
-        {key: globals()[key] for key in _CONFIG_KEYS}
-    )
-    return lash_e, confirmed_config
+    well_count = config["PARAM2"]
+    if type(well_count) is not int or not 1 <= well_count <= 96:
+        raise ValueError("PARAM2 must be an integer between 1 and 96 for this 96-well example.")
+    protocol_file = config["MEASUREMENT_PROTOCOL_FILE"]
+    if not lash_e.simulate and not Path(protocol_file).is_file():
+        raise FileNotFoundError(protocol_file)
 
 
 def _send_workflow_slack(lash_e, message):
@@ -116,26 +95,22 @@ def execute(config=None, show_gui=True):
     execute(): normal operator GUI; confirmed GUI/YAML values win.
     execute(config=complete_config, show_gui=False): automated run; supplied
     values win, with no GUI or YAML override. Include every _CONFIG_KEYS key.
+    ConfigManager handles selection through Lash_E; do not preload, merge or
+    snapshot config here. Use lash_e.workflow_config after startup returns.
     Neither mode changes the scientific workflow body or skips automation steps.
     """
-    lash_e, c = _initialize_workflow(config=config, show_gui=show_gui)
+    lash_e = Lash_E(
+        initialize_t8=True, initialize_p2=False,
+        workflow_globals=globals(), workflow_name=_WORKFLOW_NAME,
+        config=config, show_gui=show_gui,
+    )
     if not lash_e._workflow_should_continue:
         return None
     logger = lash_e.logger
+    c = lash_e.workflow_config
 
     try:
-        if not isinstance(c["SIMULATE"], bool):
-            raise ValueError("SIMULATE must be a boolean.")
-        if not Path(c["INPUT_VIAL_STATUS_FILE"]).is_file():
-            raise FileNotFoundError(c["INPUT_VIAL_STATUS_FILE"])
-        if Path(c["INPUT_VIAL_STATUS_FILE"]).resolve() != Path(lash_e.nr_robot.VIAL_FILE).resolve():
-            raise ValueError("Vial file changed during review. Restart with the new vial file before running.")
-        if c["SIMULATE"] != lash_e.simulate:
-            raise ValueError("Workflow and controller simulation modes do not match.")
-        if not isinstance(c["PARAM2"], int) or isinstance(c["PARAM2"], bool) or not 1 <= c["PARAM2"] <= 96:
-            raise ValueError("PARAM2 must be an integer between 1 and 96 for this 96-well example.")
-        if not lash_e.simulate and not Path(c["MEASUREMENT_PROTOCOL_FILE"]).is_file():
-            raise FileNotFoundError(c["MEASUREMENT_PROTOCOL_FILE"])
+        validate_experiment(c, lash_e)
         logger.info(f"Starting {_WORKFLOW_NAME} workflow")
         logger.info(f"Parameters: param1={c['PARAM1']}, param2={c['PARAM2']}, simulate={lash_e.simulate}")
         _send_workflow_slack(

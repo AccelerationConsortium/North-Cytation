@@ -66,12 +66,12 @@ SIMULATE = True
 INPUT_VIAL_STATUS_FILE = "status/experiment_vials.csv"
 _CONFIG_KEYS = ["SIMULATE", "INPUT_VIAL_STATUS_FILE"]  # extend per workflow
 
-def execute():
-    lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE,
-                    workflow_globals=globals(), workflow_name="this_workflow_name")
+def execute(config=None, show_gui=True):
+    lash_e = Lash_E(workflow_globals=globals(), workflow_name="this_workflow_name",
+                    config=config, show_gui=show_gui)
     if not lash_e._workflow_should_continue:
         return
-    c = {key: globals()[key] for key in _CONFIG_KEYS}
+    c = lash_e.workflow_config
 
     # Move to working position
     lash_e.nr_robot.move_vial_to_location("target_vial", "clamp", 0)
@@ -83,23 +83,30 @@ if __name__ == "__main__":
     execute()
 ```
 
-**CRITICAL: Confirmed configuration is authoritative.** `Lash_E` creates/loads
-workflow YAML and owns startup GUI review. GUI edits update module globals, not
-dictionaries, recipes or plans built earlier. Snapshot config AFTER `Lash_E`
-returns; validate, calculate, plan and execute using that snapshot. A preload
-may select the startup vial file/mode, but it is not the confirmed experiment
-config. Do not build experiment plans or cache scientific parameters before review.
+**CRITICAL: Confirmed configuration is authoritative.** ConfigManager owns
+constant detection, YAML creation/loading, complete supplied-config validation
+and snapshots. `Lash_E` calls it before/after startup GUI review and exposes
+`lash_e.workflow_config` after confirmation. GUI edits update globals too for
+legacy helpers, but do not update plans/dictionaries built earlier. Validate,
+calculate, plan and execute using `lash_e.workflow_config` only AFTER `Lash_E`
+returns. Do not preload configuration or cache scientific parameters in workflows.
 
-For workflows also called by a scheduler/robot, follow the documented local
-`_initialize_workflow` helper in `workflows/workflow_template.py`:
+Follow `workflows/workflow_template.py` or the small `test_vortex_scheduler.py`
+example; do not add another config manager or workflow-startup helper:
 - `execute()` uses GUI-confirmed YAML/global values.
 - `execute(config=complete_config, show_gui=False)` uses the supplied mapping
     without workflow YAML reload/write. Require every `_CONFIG_KEYS` key; do not
-    silently merge partial overrides. Do not pass `workflow_globals` to `Lash_E`
-    on this path, since that enables YAML overrides.
+    silently merge partial overrides. Pass `config`, `workflow_globals`,
+    `workflow_name` and `show_gui` directly to `Lash_E`; ConfigManager selects
+    the supplied path and bypasses YAML. The workflow should not branch on config.
 - Reject supplied config with `show_gui=True` rather than guessing precedence.
 - `show_gui=False` only skips review; it does not imply simulation. `SIMULATE`
     must be explicit in the selected config and agree with the controllers.
+- With workflow config, do not redundantly pass `simulate` or a preloaded vial
+    path: `Lash_E` selects both from that config before controller initialization.
+    `INPUT_VIAL_STATUS_FILE=None` explicitly disables vial tracking; missing keys
+    or invalid paths do not. Plain legacy `Lash_E(vial_file, simulate=...)` calls
+    without workflow config continue to use their explicit arguments.
 - Test GUI edits with a mocked review changing parameters and assert that the
     plan and automation calls use the changed values. Test supplied-config
     isolation with no YAML load. Never use unrestricted mocks as proof that a

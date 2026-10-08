@@ -10,7 +10,7 @@ VIAL_FILE = "../utoronto_demo/status/fluorescence_calibration_vials.csv"  # Vial
 def test_vortex(input_vial_status_file, target_vial_num,vortex_time):
   
     #Initialize the workstation, which includes the robot, track, cytation and photoreactors
-    lash_e = Lash_E(input_vial_status_file)
+    lash_e = Lash_E(input_vial_status_file, simulate=True, show_gui=False)
 
     #lash_e.nr_robot.check_input_file()
 
