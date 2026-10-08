@@ -31,6 +31,12 @@ import time
 import sys
 import os
 import yaml
+import logging
+import math
+import random
+from numbers import Real
+from contextlib import contextmanager
+from copy import deepcopy
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -41,7 +47,8 @@ from calibration_protocol_base import CalibrationProtocolBase
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
-import slack_agent
+
+logger = logging.getLogger(__name__)
 
 # Tip conditioning volume will be calculated dynamically based on target volumes
 
@@ -77,6 +84,72 @@ from pipetting_data.pipetting_parameters import PipettingParameters
 
 class HardwareCalibrationProtocol(CalibrationProtocolBase):
     """Hardware calibration protocol implementing the abstract interface."""
+
+    _workflow_binding = None
+
+    def _report(self, message=""):
+        if self._workflow_binding is None:
+            print(message)
+        else:
+            lash_e = self._workflow_binding[0]
+            message = str(message).replace("\u00b5", "u").replace("\u03bc", "u")
+            lash_e.logger.info(message.encode('ascii', errors='replace').decode('ascii'))
+
+    @contextmanager
+    def workflow_session(self, lash_e, config, target_vial):
+        """Temporarily borrow a controller and full phase config from a workflow."""
+        if self._workflow_binding is not None:
+            raise RuntimeError("A North calibration workflow session is already active")
+        if config['experiment']['simulate'] != lash_e.simulate:
+            raise ValueError("Protocol and controller simulation modes do not match")
+        self._workflow_binding = (lash_e, deepcopy(config), target_vial)
+        try:
+            experiment = self._workflow_binding[1]['experiment']
+            self._workflow_random = (random.Random(experiment['random_seed'])
+                                     if lash_e.simulate and 'random_seed' in experiment else None)
+            yield self
+        finally:
+            self._workflow_binding = None
+            self._workflow_random = None
+
+    def _initialize_workflow(self, cfg):
+        lash_e, config, target_vial = self._workflow_binding
+        experiment = config['experiment']
+        liquid = experiment['liquid']
+        if cfg['experiment']['liquid'] != liquid:
+            raise ValueError("Engine liquid does not match the bound workflow")
+        if liquid not in LIQUIDS:
+            raise ValueError(f"Unknown calibration liquid: {liquid}")
+        self.quality_std_threshold = experiment['quality_std_threshold_g']
+        self.conditioning_volume = self.get_tip_conditioning_volume(max(experiment['volume_targets_ml']))
+        robot = lash_e.nr_robot
+        robot.home_robot_components()
+        robot.move_vial_to_location(target_vial, "clamp", 0)
+        source_index = robot.normalize_vial_index(target_vial)
+        if not robot.is_vial_pipetable(source_index):
+            robot._ensure_vial_accessible_for_pipetting(target_vial, use_safe_location=False)
+        if not LIQUIDS[liquid]['refill_pipets']:
+            parameters = PipettingParameters(aspirate_speed=15, dispense_speed=5,
+                                            dispense_wait_time=0.0, blowout_vol=0.5)
+            robot.aspirate_from_vial(target_vial, self.conditioning_volume, move_up=False, parameters=parameters)
+            robot.dispense_into_vial(target_vial, self.conditioning_volume, initial_move=False, parameters=parameters)
+            for cycle in range(3):
+                robot.aspirate_from_vial(target_vial, self.conditioning_volume,
+                                        move_to_aspirate=False, parameters=parameters)
+                robot.dispense_into_vial(target_vial, self.conditioning_volume,
+                                        initial_move=False, parameters=parameters)
+        robot.c9.goto(robot.get_location(use_pipet=True, location_name='clamp', location_index=0))
+        logger.info("North calibration protocol ready: liquid=%s, vial=%s", liquid, target_vial)
+        return {
+            'initialized_at': datetime.now(), 'liquid': liquid, 'lash_e': lash_e,
+            'source_vial': target_vial, 'measurement_vial': target_vial,
+            'swap_enabled': False, 'measurement_count': 0,
+            'continuous_mass_monitoring': experiment['continuous_monitoring'],
+            'max_retries_per_measurement': experiment['max_retries_per_measurement'],
+            'simulate': lash_e.simulate, 'adjust_volume': experiment['adjust_volume'],
+            'workflow_managed': True,
+            'simulation_random': self._workflow_random,
+        }
     
     def get_tip_conditioning_volume(self, target_volume_ml: float) -> float:
         """Calculate appropriate conditioning volume based on target pipetting volume."""
@@ -87,6 +160,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
     
     def initialize(self, cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Initialize hardware protocol with North Robot's internal simulation."""
+        if self._workflow_binding is not None:
+            return self._initialize_workflow(cfg)
                
         # Get liquid from experiment config - FAIL if missing
         if not cfg or 'experiment' not in cfg:
@@ -149,6 +224,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         self.quality_std_threshold = 0.1  # <<< CHANGE THIS VALUE FOR DIFFERENT QUALITY LEVELS
 
         if not simulate:
+            import slack_agent
             slack_agent.send_slack_message("🤖 North Robot calibration/validation started!")
 
         
@@ -278,7 +354,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             source_volume = lash_e.nr_robot.get_vial_info(source_vial, 'vial_volume')
             min_source_volume = 3.0  # mL - threshold for swapping when source gets low
             
-            print(f"STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
+            self._report(f"STATUS: measurement_vial={measurement_vial} ({measurement_volume:.2f}mL), source_vial={source_vial} ({source_volume:.2f}mL)")
             
             # Swap when source vial gets too low (< 2 mL)
             # AND measurement vial has accumulated enough liquid to become the new source (> 1 mL)
@@ -288,7 +364,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                           measurement_volume > 1.0)
             
             if should_swap:
-                print(f"🔄 SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL (< {min_source_volume}mL), measurement vial ({measurement_vial}) has {measurement_volume:.2f}mL")
+                self._report(f"🔄 SWAP: Source vial ({source_vial}) low at {source_volume:.2f}mL (< {min_source_volume}mL), measurement vial ({measurement_vial}) has {measurement_volume:.2f}mL")
                 
                 # First: Return the old measurement vial (at clamp) to its home position
                 lash_e.nr_robot.remove_pipet()
@@ -317,12 +393,12 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         lash_e.nr_robot.dispense_into_vial(state['source_vial'], self.conditioning_volume, initial_move=False, parameters=conditioning_params)
                     #lash_e.nr_robot.move_home()
                 
-                print(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
+                self._report(f"SWAP complete: source={state['source_vial']}, measurement={state['measurement_vial']}")
             else:
-                print(f"✋ NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
+                self._report(f"✋ NO SWAP: source_vial has {source_volume:.2f}mL (>= {min_source_volume}mL threshold) or measurement_vial has {measurement_volume:.2f}mL (<= 1.0mL)")
                 
         except Exception as e:
-            print(f"WARNING: Vial swap check failed: {e}")
+            self._report(f"WARNING: Vial swap check failed: {e}")
 
     def _evaluate_measurement(self, stability_info: Dict[str, Any], std_threshold: float = 0.001) -> bool:
         """Evaluate if a measurement is acceptable based on stability criteria.
@@ -350,16 +426,44 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         
         # Both baselines must be stable
         is_acceptable = pre_stable and post_stable
-        
-        print(f"    Quality check: pre={pre_stable_pct:.1f}% stable (std={stability_info['pre_baseline_std']:.6f}g), "
-              f"post={post_stable_pct:.1f}% stable (std={stability_info['post_baseline_std']:.6f}g)")
-        print(f"    Result: {'ACCEPTABLE' if is_acceptable else 'RETRY NEEDED'} (threshold: {std_threshold:.6f}g)")
-        
+        self._report(
+            f"    Quality check: pre={pre_stable_pct:.1f}% stable (std={stability_info['pre_baseline_std']:.6f}g), "
+            f"post={post_stable_pct:.1f}% stable (std={stability_info['post_baseline_std']:.6f}g)"
+        )
+        self._report(
+            f"    Result: {'ACCEPTABLE' if is_acceptable else 'RETRY NEEDED'} (threshold: {std_threshold:.6f}g)"
+        )
         return is_acceptable
+
+    def validate_workflow_capacity(self, volume_ml, params):
+        """Enforce the North tip constraints for compensated measurement inputs."""
+        hardware = params['parameters'] if isinstance(params.get('parameters'), dict) else params
+        tip_capacity = 0.2 if volume_ml < 0.2 else 1.0
+        liquid_total = volume_ml + params['overaspirate_vol'] + hardware['post_asp_air_vol']
+        if liquid_total > tip_capacity + 1e-9:
+            raise ValueError("Measurement parameters exceed North tip capacity")
+        if liquid_total + hardware['pre_asp_air_vol'] > 1.0 + 1e-9:
+            raise ValueError("Measurement parameters exceed North maximum safe volume")
 
     def measure(self, state: Dict[str, Any], volume_mL: float, params: Dict[str, Any], replicates: int = 1) -> List[Dict[str, Any]]:
         """Perform hardware measurement with given parameters."""
-        
+        hw_params = params['parameters'] if isinstance(params.get('parameters'), dict) else params
+        if state.get('workflow_managed', False):
+            required = ('aspirate_speed', 'dispense_speed', 'aspirate_wait_time',
+                        'dispense_wait_time', 'pre_asp_air_vol', 'retract_speed',
+                        'blowout_vol', 'post_asp_air_vol', 'post_retract_wait_time',
+                        'asp_disp_cycles', 'overaspirate_vol')
+            for name in required:
+                source = params if name == 'overaspirate_vol' else hw_params
+                if name not in source:
+                    raise ValueError(f"Missing required pipetting parameter: {name}")
+                value = source[name]
+                if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
+                    raise ValueError(f"Pipetting parameter {name} must be a finite real number")
+            self.validate_workflow_capacity(volume_mL, params)
+            if state['simulate'] and state['simulation_random'] is None:
+                raise ValueError("Workflow simulation measurement requires experiment.random_seed")
+
         # Check if we need to swap vials before pipetting
         self._check_and_swap_vials(state, swap_enabled=state.get('swap_enabled', False))
         
@@ -400,7 +504,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
             except KeyError as e:
                 raise ValueError(f"Missing required parameter structure - params dict malformed: {e}") from e
             
-            print(f"  Rep {rep+1}/{replicates}: {volume_uL:.1f}uL with params {pipet_params}")
+            self._report(f"  Rep {rep+1}/{replicates}: {volume_uL:.1f}uL with params {pipet_params}")
             
             # Perform pipetting operation: aspirate from source, dispense into measurement vial
             source_vial = state['source_vial']
@@ -418,9 +522,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     # Move source vial to scale position and read mass
                     lash_e.nr_robot.move_vial_to_location(source_vial, "clamp", 0)
                     before_mass_g = lash_e.nr_robot.c9.read_steady_scale()
-                    print(f"    Before: source={source_volume_before:.3f}mL, source_mass={before_mass_g:.6f}g")
+                    self._report(f"    Before: source={source_volume_before:.3f}mL, source_mass={before_mass_g:.6f}g")
                 except Exception as e:
-                    print(f"    Warning: Could not get initial state for volume adjustment: {e}")
+                    self._report(f"    Warning: Could not get initial state for volume adjustment: {e}")
            
             if not simulate:
                 # Real hardware measurements with quality-controlled retry loop
@@ -430,7 +534,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 while not measurement_acceptable and retry_count <= max_retries:
                     if retry_count > 0:
-                        print(f"    Retry attempt {retry_count}/{max_retries}")
+                        self._report(f"    Retry attempt {retry_count}/{max_retries}")
                     
                     # Start timing just before the successful measurement attempt
                     rep_start = time.perf_counter()
@@ -462,10 +566,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     # Check if pipet removal is needed for this liquid (viscous liquids)
                     if LIQUIDS[state['liquid']]['refill_pipets']:
                         lash_e.nr_robot.remove_pipet()
-                        print(f"    Removed pipet (refill_pipets=True for {state['liquid']})")
+                        self._report(f"    Removed pipet (refill_pipets=True for {state['liquid']})")
                         
                     if not measurement_acceptable and retry_count <= max_retries:
-                        print(f"    WARNING! Measurement quality insufficient, retrying...")
+                        self._report(f"    WARNING! Measurement quality insufficient, retrying...")
                 
                 # Convert mass to volume using liquid density
                 liquid = state['liquid']
@@ -480,7 +584,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     measured_mass_mg = 0.0
                     measured_volume_mL = 0.0
                 
-                print(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
+                self._report(f"    Mass: {measured_mass_mg:.2f}mg -> Volume: {measured_volume_mL*1000:.2f}uL (density: {density_g_mL:.3f}g/mL)")
                 
                 # Volume adjustment tracking - correct robot's source vial tracking with actual measured changes
                 if state.get('adjust_volume', False) and before_mass_g > 0 and source_volume_before is not None:
@@ -497,8 +601,8 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                         # Safety check: Only apply correction if mass difference is reasonable (< 300mg)
                         max_reasonable_mass_g = 0.3  # 300mg threshold
                         if abs(actual_mass_consumed_g) > max_reasonable_mass_g:
-                            print(f"    ⚠️  IGNORING volume correction: Mass change {actual_mass_consumed_g*1000:.1f}mg exceeds {max_reasonable_mass_g*1000:.0f}mg threshold")
-                            print(f"    Keeping robot's nominal volume tracking (likely scale positioning issue)")
+                            self._report(f"    ⚠️  IGNORING volume correction: Mass change {actual_mass_consumed_g*1000:.1f}mg exceeds {max_reasonable_mass_g*1000:.0f}mg threshold")
+                            self._report(f"    Keeping robot's nominal volume tracking (likely scale positioning issue)")
                         else:
                             # Calculate corrected source volume based on actual consumption
                             corrected_source_volume = source_volume_before - actual_volume_consumed_ml
@@ -506,17 +610,17 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                             # Manually override robot's source volume tracking with actual measurement
                             if source_vial_index is not None:
                                 lash_e.nr_robot.VIAL_DF.at[source_vial_index, 'vial_volume'] = corrected_source_volume
-                                print(f"    ✅ Corrected source: {corrected_source_volume:.6f}mL (actual consumed: {actual_volume_consumed_ml*1000:.2f}µL vs nominal {volume_mL*1000:.2f}µL)")
+                                self._report(f"    ✅ Corrected source: {corrected_source_volume:.6f}mL (actual consumed: {actual_volume_consumed_ml*1000:.2f}µL vs nominal {volume_mL*1000:.2f}µL)")
                             
                             # Save the corrected volume
                             lash_e.nr_robot.save_robot_status()
                             
                             # Warning if source volume is getting low
                             if corrected_source_volume < 0.5:
-                                print(f"    ⚠️  WARNING: Source vial volume low: {corrected_source_volume:.3f}mL remaining")
+                                self._report(f"    ⚠️  WARNING: Source vial volume low: {corrected_source_volume:.3f}mL remaining")
                         
                     except Exception as e:
-                        print(f"    Warning: Could not correct volume tracking: {e}")
+                        self._report(f"    Warning: Could not correct volume tracking: {e}")
                 
                 
                 
@@ -535,8 +639,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 # Basic simulation logic
                 base_efficiency = 0.8  # Start at 80% efficiency (target - 20%)
-                overaspirate_effect = pipet_params.get('overaspirate_vol', 0.004) * 1000  # Convert to uL
-                noise = random.uniform(-0.02, 0.02) * volume_mL  # ±2% noise
+                overaspirate_effect = pipet_params['overaspirate_vol'] * 1000  # Convert to uL
+                noise_source = state['simulation_random'] if state.get('workflow_managed', False) else random
+                noise = noise_source.uniform(-0.02, 0.02) * volume_mL  # ±2% noise
                 
                 # Simple formula: base efficiency + overaspirate helps + noise
                 simulated_volume_mL = (volume_mL * base_efficiency) + (overaspirate_effect / 1000) + noise
@@ -573,11 +678,11 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                     current_volume = lash_e.nr_robot.get_vial_info(source_vial, 'vial_volume')
                     result['source_volume_remaining_ml'] = current_volume
                 except Exception as e:
-                    print(f"    Warning: Could not get current source volume for results: {e}")
+                    self._report(f"    Warning: Could not get current source volume for results: {e}")
             
             results.append(result)
-            print(f"    Measured: {measured_volume_uL:.1f}uL (target: {volume_uL:.1f}uL) in {elapsed_s:.2f}s")
-            print()  # Add visual separation between measurement cycles
+            self._report(f"    Measured: {measured_volume_uL:.1f}uL (target: {volume_uL:.1f}uL) in {elapsed_s:.2f}s")
+            self._report()  # Add visual separation between measurement cycles
         
         return results
 
@@ -590,6 +695,14 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
         """
         
         lash_e = state.get('lash_e')
+        if state.get('workflow_managed', False):
+            if not skip_physical_cleanup and not state.get('physical_cleanup_done', False):
+                lash_e.nr_robot.remove_pipet()
+                lash_e.nr_robot.return_vial_home(state['measurement_vial'])
+                lash_e.nr_robot.move_home()
+                state['physical_cleanup_done'] = True
+            logger.info("North protocol phase cleanup complete; workflow retains controller")
+            return True
         if lash_e:
             try:
                 if not skip_physical_cleanup:
@@ -604,6 +717,7 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 # Send slack notification
                 try:
                     if not state.get('simulate', True) and not skip_physical_cleanup:
+                        import slack_agent
                         slack_agent.send_slack_message("🤖 North Robot calibration finished! All measurements completed.")
                 except Exception as e:
                     print(f"WARNING: Slack notification failed: {e}")

@@ -165,6 +165,8 @@ logger.info(f"Range: ±{tolerance:.1f}μL")
 
 ## Development Practices
 
+- **Do not create Python environments or install packages without explicit user permission.** Missing imports are a reason to check the selected interpreter and existing environments first, not to create a venv, Conda environment, or install dependencies automatically.
+- On this computer, calibration and scheduler tests use the existing interpreter at `C:\Users\owenm\OneDrive\Desktop\Python\Baybe\.conda\python.exe`. Use its explicit path; do not invoke environment-creation tools. On other computers, identify the existing working environment rather than assuming this path exists.
 - Start with minimal, lean implementations focused on proof-of-concept
 - Use `simulate=True` for development - no hardware required
 - Follow the Lash_E → validation → execution → analysis pattern

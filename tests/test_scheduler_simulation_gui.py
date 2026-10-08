@@ -99,6 +99,7 @@ class SimulationGuiTests(unittest.TestCase):
         original = (self.root / "robot_state" / "robot_status.yaml").read_bytes()
         self.window.start_simulation()
         self.assertFalse(self.window.table.isEnabled())
+        self.assertTrue(all(not widget.isEnabled() for widget in self.window.shared_state_widgets))
         self.assertEqual(self.window.table.item(0, 2).background().color().name(), "#fff0a6")
         self.wait_for_queue()
         session = self.window.simulation_session
@@ -111,9 +112,73 @@ class SimulationGuiTests(unittest.TestCase):
         self.assertEqual(HarmlessProcess.launches[0][0], sys.executable)
         self.assertEqual((self.root / "robot_state" / "robot_status.yaml").read_bytes(), original)
         self.assertTrue(self.window.table.isEnabled())
+        self.assertTrue(all(widget.isEnabled() for widget in self.window.shared_state_widgets))
+
+    def test_unsaved_shared_edits_block_simulation_and_live_without_writes(self):
+        before = {path: path.read_bytes() for path in (self.root / "robot_state").glob("*.yaml")}
+        self.window.approved_simulation_inputs = self.window.queue_input_fingerprint()
+        self.window.update_live_run_enabled()
+        self.assertTrue(self.window.run_button.isEnabled())
+        self.window.robot_status_widget.gripper_status_edit.setText("held")
+        self.assertFalse(self.window.simulate_button.isEnabled())
+        self.assertFalse(self.window.run_button.isEnabled())
+        with patch.object(QMessageBox, "warning") as warning, patch.object(QMessageBox, "question") as confirm:
+            self.window.start_simulation()
+            self.window.start_live_run()
+        self.assertEqual(warning.call_count, 2)
+        confirm.assert_not_called()
+        self.assertEqual(HarmlessProcess.launches, [])
+        for path, content in before.items():
+            self.assertEqual(path.read_bytes(), content)
+
+    def test_simulation_does_not_reload_shared_editors_or_expand_minimal_yaml(self):
+        robot = self.window.robot_status_widget
+        track = self.window.track_status_widget
+        before = {path: path.read_bytes() for path in (self.root / "robot_state").glob("*.yaml")}
+        with patch.object(robot, "_load_robot_status", wraps=robot._load_robot_status) as robot_reload, patch.object(
+            track, "_load_track_status", wraps=track._load_track_status
+        ) as track_reload:
+            self.window.start_simulation()
+            self.wait_for_queue()
+        robot_reload.assert_not_called()
+        track_reload.assert_not_called()
+        self.assertFalse(self.window.shared_state_dirty())
+        self.assertTrue(self.window.run_button.isEnabled())
+        for path, content in before.items():
+            self.assertEqual(path.read_bytes(), content)
+
+    def test_live_finish_reloads_clean_shared_editors_without_saving(self):
+        robot = self.window.robot_status_widget
+        track = self.window.track_status_widget
+        robot_path = Path(robot.robot_file_path)
+        updated = yaml.safe_load(robot_path.read_text())
+        updated["pipet_fluid_volume"] = 17
+        robot_path.write_text(yaml.safe_dump(updated))
+        before = robot_path.read_bytes()
+        self.window.execution_mode = "live"
+        with patch.object(robot, "_save_robot_status") as robot_save, patch.object(
+            track, "_save_track_status"
+        ) as track_save:
+            self.window.finish_simulation_queue()
+        self.assertEqual(robot.pipet_fluid_volume_spin.value(), 17)
+        self.assertFalse(self.window.shared_state_dirty())
+        self.assertEqual(robot_path.read_bytes(), before)
+        robot_save.assert_not_called()
+        track_save.assert_not_called()
+
+    def test_live_finish_preserves_pending_shared_edits(self):
+        robot = self.window.robot_status_widget
+        robot.pipet_fluid_volume_spin.setValue(17)
+        self.window.execution_mode = "live"
+        with patch.object(robot, "_load_robot_status") as reload:
+            self.window.finish_simulation_queue()
+        reload.assert_not_called()
+        self.assertEqual(robot.pipet_fluid_volume_spin.value(), 17)
+        self.assertTrue(self.window.shared_state_dirty())
+        self.assertFalse(self.window.simulate_button.isEnabled())
 
     def test_fatal_first_child_does_not_launch_second(self):
-        config_path = self.root / "workflow_configs" / "first.yaml"
+        config_path = Path(self.window.row_config_path(self.window.table.cellWidget(0, 0)))
         config = yaml.safe_load(config_path.read_text())
         config["TEST_FAILURE"] = True
         config_path.write_text(yaml.safe_dump(config))
@@ -169,7 +234,7 @@ class SimulationGuiTests(unittest.TestCase):
         self.assertFalse(self.window.run_button.isEnabled())
 
     def test_live_error_even_with_successful_child_exit_stops_queue(self):
-        path = self.root / "workflow_configs" / "first.yaml"
+        path = Path(self.window.row_config_path(self.window.table.cellWidget(0, 0)))
         config = yaml.safe_load(path.read_text())
         config["TEST_LIVE_ERROR"] = True
         path.write_text(yaml.safe_dump(config))
@@ -201,7 +266,7 @@ class SimulationGuiTests(unittest.TestCase):
         self.assertFalse(self.window.run_button.isEnabled())
 
     def test_simulation_error_blocks_live_run_even_when_completed(self):
-        path = self.root / "workflow_configs" / "first.yaml"
+        path = Path(self.window.row_config_path(self.window.table.cellWidget(0, 0)))
         config = yaml.safe_load(path.read_text())
         config["TEST_SIMULATION_ERROR"] = True
         path.write_text(yaml.safe_dump(config))
@@ -215,8 +280,8 @@ class SimulationGuiTests(unittest.TestCase):
         self.assertEqual(self.window.execution_mode, "simulation")
 
     def test_vial_less_queue_simulates_and_live_spec_keeps_null(self):
-        for name in ("first", "second"):
-            path = self.root / "workflow_configs" / f"{name}.yaml"
+        for row in range(self.window.table.rowCount()):
+            path = Path(self.window.row_config_path(self.window.table.cellWidget(row, 0)))
             config = yaml.safe_load(path.read_text())
             config["INPUT_VIAL_STATUS_FILE"] = None
             path.write_text(yaml.safe_dump(config))
@@ -234,6 +299,114 @@ class SimulationGuiTests(unittest.TestCase):
         self.assertIsNone(specification["config"]["INPUT_VIAL_STATUS_FILE"])
         self.assertEqual(specification["vial_files"], [])
         self.assertEqual(self.window.table.item(1, 2).text(), "Completed")
+
+    def test_repeated_workflow_configs_survive_simulation_and_live_preparation(self):
+        alternate = self.root / "workflow_configs" / "first_other.yaml"
+        alternate.write_text(yaml.safe_dump({
+            "SIMULATE": True, "INPUT_VIAL_STATUS_FILE": "status/second.csv",
+            "LIQUID": "glycerol", "VOLUME_TARGETS_ML": [0.2]
+        }))
+        second = self.window.table.cellWidget(1, 0)
+        second.setCurrentIndex(second.findData("first"))
+        self.window.set_row_config(second, alternate)
+        before = alternate.read_bytes()
+        self.assertEqual(len(self.window.vial_layout.occupancy), 2)
+        self.window.start_simulation()
+        self.wait_for_queue()
+        simulation = self.window.simulation_session
+        first_job = json.loads((simulation / "jobs/000/input.json").read_text())
+        second_job = json.loads((simulation / "jobs/001/input.json").read_text())
+        self.assertEqual(first_job["workflow"], second_job["workflow"])
+        self.assertNotEqual(first_job["config_file"], second_job["config_file"])
+        self.assertEqual(second_job["config"]["LIQUID"], "glycerol")
+        self.assertTrue(self.window.run_button.isEnabled())
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+            self.window.start_live_run()
+        self.wait_for_queue()
+        live = json.loads((self.window.simulation_session / "jobs/001/input.json").read_text())
+        self.assertEqual(live["config_file"], self.window.row_config_path(second))
+        self.assertNotEqual(live["config_file"], str(alternate.resolve()))
+        self.assertEqual(live["config"]["VOLUME_TARGETS_ML"], [0.2])
+        self.assertIs(live["config"]["SIMULATE"], False)
+        self.assertEqual(alternate.read_bytes(), before)
+
+    def test_repeated_workflow_move_preserves_config_and_invalidates_approval(self):
+        alternate = self.root / "workflow_configs" / "first_range.yaml"
+        alternate.write_text(yaml.safe_dump({
+            "SIMULATE": True, "INPUT_VIAL_STATUS_FILE": "status/first.csv",
+            "VOLUME_TARGETS_ML": [0.01, 0.005]
+        }))
+        second = self.window.table.cellWidget(1, 0)
+        second.setCurrentIndex(second.findData("first"))
+        self.window.set_row_config(second, alternate)
+        first_path = self.window.row_config_path(self.window.table.cellWidget(0, 0))
+        second_path = self.window.row_config_path(second)
+        second_id = second.property("job_id")
+        self.assertEqual(len(self.window.vial_layout.occupancy), 1)
+        self.window.start_simulation()
+        self.wait_for_queue()
+        before = self.window.queue_input_fingerprint()
+        self.assertTrue(self.window.run_button.isEnabled())
+        self.window.table.selectRow(1)
+        self.window.move_row(-1)
+        self.assertEqual(self.window.row_config_path(self.window.table.cellWidget(0, 0)),
+                         second_path)
+        self.assertEqual(self.window.table.cellWidget(0, 0).property("job_id"), second_id)
+        self.assertEqual(self.window.table.cellWidget(0, 0).property("config_source"), str(alternate.resolve()))
+        self.assertEqual(self.window.row_config_path(self.window.table.cellWidget(1, 0)), first_path)
+        self.assertNotEqual(before, self.window.queue_input_fingerprint())
+        self.assertFalse(self.window.run_button.isEnabled())
+
+    def test_new_rows_snapshot_default_once_and_explicit_loading_is_independent(self):
+        source = self.root / "workflow_configs" / "first.yaml"
+        before = source.read_bytes()
+        selector = self.window.table.cellWidget(0, 0)
+        first_path = Path(self.window.row_config_path(selector))
+        config = yaml.safe_load(source.read_text())
+        config["VOLUME_TARGETS_ML"] = [0.01]
+        source.write_text(yaml.safe_dump(config))
+        self.window.add_row("first")
+        third = self.window.table.cellWidget(2, 0)
+        third_path = Path(self.window.row_config_path(third))
+        self.assertEqual(first_path.read_bytes(), before)
+        self.assertEqual(yaml.safe_load(third_path.read_text())["VOLUME_TARGETS_ML"], [0.01])
+        self.assertNotEqual(first_path, third_path)
+        config["VOLUME_TARGETS_ML"] = [0.2]
+        source.write_text(yaml.safe_dump(config))
+        self.window.set_row_config(third, source)
+        self.assertEqual(first_path.read_bytes(), before)
+        self.assertEqual(yaml.safe_load(third_path.read_text())["VOLUME_TARGETS_ML"], [0.2])
+        self.assertEqual(self.window.table.columnCount(), 5)
+
+    def test_snapshot_edit_invalidates_approval_but_source_edit_does_not(self):
+        alternate = self.root / "workflow_configs" / "first_extra.yaml"
+        alternate.write_bytes((self.root / "workflow_configs" / "first.yaml").read_bytes())
+        self.window.set_row_config(self.window.table.cellWidget(0, 0), alternate)
+        self.window.start_simulation()
+        self.wait_for_queue()
+        self.assertTrue(self.window.run_button.isEnabled())
+        config = yaml.safe_load(alternate.read_text())
+        config["VOLUME_TARGETS_ML"] = [0.2]
+        alternate.write_text(yaml.safe_dump(config))
+        self.window.refresh_vial_layout()
+        self.assertTrue(self.window.run_button.isEnabled())
+        snapshot = Path(self.window.row_config_path(self.window.table.cellWidget(0, 0)))
+        snapshot.write_text(yaml.safe_dump(config))
+        self.window.refresh_vial_layout()
+        self.assertFalse(self.window.run_button.isEnabled())
+
+    def test_switch_to_missing_workflow_config_never_uses_previous_snapshot(self):
+        selector = self.window.table.cellWidget(0, 0)
+        previous = Path(self.window.row_config_path(selector))
+        (self.root / "workflow_configs" / "second.yaml").unlink()
+        selector.setCurrentIndex(selector.findData("second"))
+        self.assertFalse(previous.exists())
+        self.assertEqual(self.window.table.item(0, 2).text(), "Review setup")
+        self.assertTrue(self.window.vial_layout.errors.text())
+        with patch.object(QMessageBox, "warning") as blocked:
+            self.window.start_simulation()
+        blocked.assert_called_once()
+        self.assertFalse(HarmlessProcess.launches)
 
 
 if __name__ == "__main__":

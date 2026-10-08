@@ -85,6 +85,29 @@ Remaining concerns and subsequent fixes:
 
 ## Tracked Follow-Ups
 
+- [ ] **Easier vial movement in the vial GUI - under consideration.** Moving
+  vials between locations/slots is currently cumbersome. Review the existing
+  interaction and simplify selecting a vial and its destination, with clear
+  occupied-slot feedback. Choose the interaction with the user before
+  implementation. Preserve CSV saving and normal startup review; the scheduler's
+  aggregate vial layout remains read-only. Editing recorded vial locations
+  must not be confused with commanding physical robot moves.
+- [ ] **Per-row configs for repeated workflows - under consideration.** Allow
+  the same workflow to appear multiple times with independent reviewed config
+  snapshots, rather than every Setup button editing the same workflow YAML.
+  Editing one row must not change the other rows. Decide how row configs are
+  saved/reloaded and how config changes invalidate simulation approval before
+  implementation. Keep the existing normal workflow startup available.
+- [ ] **Liquid calibration/validation tasks - under consideration, linked to
+  per-row configs.** Explore adapting the existing pipette calibration and
+  validation tools (currently under `sdl_pipette_calibration/`) to the scheduler's
+  normal GUI and supplied-config entrypoints. The selected liquid must be an
+  explicit config parameter, along with the task's required vial selections and
+  calibration/validation settings; reuse existing calibration logic rather than
+  duplicate it. Example: queue the same validation workflow for different
+  liquids using the same vial file. Shared vial volumes/locations and tip/plate
+  state must carry forward between jobs, not reset for each config snapshot.
+  These are linked design candidates, not approved implementation work yet.
 - [ ] **Adaptive failure signalling - deferred by user.** An incomplete result
   (`workflow_complete=False`) can currently end with exit code zero. Before
   enabling queued execution, ensure the outer entrypoint logs/propagates this

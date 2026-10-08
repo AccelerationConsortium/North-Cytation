@@ -7,6 +7,7 @@ import math
 from statistics import median
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from uuid import uuid4
 
 import yaml
 from PySide6.QtCore import Qt, QProcess
@@ -15,15 +16,19 @@ from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QDialog,
+    QDoubleSpinBox,
+    QFileDialog,
     QGridLayout,
     QHeaderView,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSpinBox,
     QStyle,
     QTableWidget,
     QTableWidgetItem,
@@ -35,7 +40,6 @@ from PySide6.QtWidgets import (
 
 
 REPO_ROOT = Path(__file__).resolve().parent
-_DISABLED_LAYOUT_AREAS = {"12_well_ilya", "small_vial_rack", "50mL_vial_rack"}
 
 
 def read_runtime_estimates():
@@ -82,8 +86,8 @@ def format_runtime(seconds):
     return f"{hours} h {minutes:02d} min" if hours else f"{minutes} min"
 
 
-def read_workflow_vial_path(name):
-    config_path = REPO_ROOT / "workflow_configs" / f"{name}.yaml"
+def read_workflow_vial_path(name, config_file=None):
+    config_path = (REPO_ROOT / config_file).resolve() if config_file is not None else REPO_ROOT / "workflow_configs" / f"{name}.yaml"
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     if not isinstance(config, dict):
         raise ValueError("Workflow config must be a YAML mapping.")
@@ -103,13 +107,15 @@ def read_vial_occupancy(workflow_names, areas):
     sources = {}
     errors = []
     occupancy = {}
-    for name in workflow_names:
+    for job in workflow_names:
+        name, config_file = (job, None) if isinstance(job, str) else job
+        label = name if config_file is None else f"{name} [{config_file}]"
         try:
-            _, path = read_workflow_vial_path(name)
+            _, path = read_workflow_vial_path(name, config_file)
             if path is not None:
-                sources.setdefault(path, set()).add(name)
+                sources.setdefault(path, set()).add(label)
         except (OSError, ValueError, KeyError, yaml.YAMLError) as error:
-            errors.append(f"{name}: {error}")
+            errors.append(f"{label}: {error}")
     for path, names in sources.items():
         try:
             with path.open(newline="", encoding="utf-8-sig") as stream:
@@ -120,7 +126,7 @@ def read_vial_occupancy(workflow_names, areas):
                 for line, record in enumerate(reader, start=2):
                     try:
                         location = record["location"].strip()
-                        if location not in areas:
+                        if location not in areas or not areas[location]["rack_present"]:
                             raise ValueError(f"Unknown or disabled current location: {location!r}")
                         number = Decimal(record["location_index"])
                         if not number.is_finite() or number != number.to_integral_value():
@@ -187,7 +193,10 @@ class VialLayout(QWidget):
             self.areas = yaml.safe_load((REPO_ROOT / "robot_state" / "vial_positions.yaml").read_text(encoding="utf-8"))
             if not isinstance(self.areas, dict) or not self.areas:
                 raise ValueError("Vial positions must define at least one area.")
-            self.areas = {name: area for name, area in self.areas.items() if name not in _DISABLED_LAYOUT_AREAS}
+            for name, area in self.areas.items():
+                if type(area["rack_present"]) is not bool:
+                    raise ValueError(f"rack_present must be true or false: {name}")
+            self.areas = {name: area for name, area in self.areas.items() if area["rack_present"]}
             for section_index, (name, area) in enumerate(self.areas.items()):
                 size = area["rack_size"]
                 rows = area["grid_params"]["num_rows"]
@@ -264,6 +273,8 @@ class SchedulerWindow(QMainWindow):
         self.setWindowTitle("Workflow Scheduler")
         self.resize(1000, 725)
         self.setup_window = None
+        self.setup_root = REPO_ROOT / "temp" / "scheduler_setup" / uuid4().hex
+        self._moving_rows = False
         self.execution_mode = "simulation"
         self.approved_simulation_inputs = None
         self.pending_simulation_inputs = None
@@ -272,6 +283,9 @@ class SchedulerWindow(QMainWindow):
         self.simulation_rows = []
         self.simulation_index = 0
         self.stop_simulation_requested = False
+        self._execution_busy = False
+        self._loading_shared_state = False
+        self.shared_state_baselines = {}
         self.runtime_estimates, self.runtime_history_warning = read_runtime_estimates()
         self.workflow_names = sorted(
             path.stem
@@ -365,12 +379,119 @@ class SchedulerWindow(QMainWindow):
             footer.addWidget(button)
         layout.addLayout(footer)
         self.statusBar().showMessage("Queue not running")
+        self.setup_shared_state_tabs()
         self.add_row()
 
+    def setup_shared_state_tabs(self):
+        from vial_manager_gui import RobotStatusWidget, TrackStatusWidget
+
+        self.robot_status_widget = RobotStatusWidget(
+            REPO_ROOT / "robot_state" / "robot_status.yaml", show_load_errors=False)
+        self.track_status_widget = TrackStatusWidget(
+            REPO_ROOT / "robot_state" / "track_status.yaml", show_load_errors=False)
+        self.shared_state_widgets = (self.robot_status_widget, self.track_status_widget)
+        for widget, title, save, reload in (
+            (self.robot_status_widget, "Robot Status", self.robot_status_widget._save_robot_status,
+             self.robot_status_widget._load_robot_status),
+            (self.track_status_widget, "Track Status", self.track_status_widget._save_track_status,
+             self.track_status_widget._load_track_status),
+        ):
+            self.tabs.addTab(widget, title)
+            buttons = QHBoxLayout()
+            save_button = QPushButton("Save")
+            save_button.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+            save_button.setAccessibleName(f"Save {title}")
+            save_button.clicked.connect(lambda checked=False, widget=widget, save=save:
+                                        self.save_shared_state(widget, save))
+            buttons.addWidget(save_button)
+            reload_button = QPushButton("Reload")
+            reload_button.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
+            reload_button.setAccessibleName(f"Reload {title}")
+            reload_button.setToolTip("Reload saved state and discard pending edits")
+            reload_button.clicked.connect(lambda checked=False, widget=widget, reload=reload:
+                                         self.reload_shared_state(widget, reload))
+            buttons.addWidget(reload_button)
+            buttons.addStretch()
+            widget.layout().addLayout(buttons)
+            self.shared_state_baselines[widget] = self.shared_state_snapshot(widget)
+            widget.state_saved.connect(lambda widget=widget, reload=reload:
+                                       self.shared_state_saved(widget, reload))
+            for control in widget.findChildren(QWidget):
+                if isinstance(control, QLineEdit):
+                    control.textChanged.connect(self.shared_state_changed)
+                elif isinstance(control, (QSpinBox, QDoubleSpinBox)):
+                    control.valueChanged.connect(self.shared_state_changed)
+                elif isinstance(control, QComboBox):
+                    control.currentIndexChanged.connect(self.shared_state_changed)
+
+    def shared_state_snapshot(self, widget):
+        values = []
+        for control in widget.findChildren(QWidget):
+            if isinstance(control, QLineEdit):
+                values.append(control.text())
+            elif isinstance(control, (QSpinBox, QDoubleSpinBox)):
+                values.append(control.value())
+            elif isinstance(control, QComboBox):
+                values.append(control.currentText())
+        return tuple(values)
+
+    def shared_state_dirty(self):
+        return any(self.shared_state_snapshot(widget) != self.shared_state_baselines[widget]
+                   for widget in self.shared_state_widgets)
+
+    def shared_state_ready(self):
+        return all(widget.state_loaded for widget in self.shared_state_widgets) and not self.shared_state_dirty()
+
+    def shared_state_changed(self, *args):
+        if self._loading_shared_state:
+            return
+        self.approved_simulation_inputs = None
+        self.pending_simulation_inputs = None
+        self.refresh_vial_layout()
+        if self.shared_state_dirty():
+            self.statusBar().showMessage("Unsaved robot/track edits: Save or Reload before Simulate or Run")
+
+    def save_shared_state(self, widget, save):
+        if self._execution_busy or self.setup_window is not None:
+            return
+        if not widget.state_loaded:
+            QMessageBox.warning(self, "Cannot Save Shared State", "Load a valid shared state file with Reload before saving.")
+            return
+        save(silent=True)
+
+    def shared_state_saved(self, widget, reload):
+        self._loading_shared_state = True
+        try:
+            if reload():
+                self.shared_state_baselines[widget] = self.shared_state_snapshot(widget)
+        finally:
+            self._loading_shared_state = False
+        self.shared_state_changed()
+        if self.shared_state_ready():
+            self.statusBar().showMessage("Shared state saved; simulate again before Run")
+
+    def reload_shared_state(self, widget, reload, confirm=True):
+        if self._execution_busy or self.setup_window is not None:
+            return
+        dirty = self.shared_state_snapshot(widget) != self.shared_state_baselines[widget]
+        if confirm and dirty and QMessageBox.question(
+            self, "Discard Shared Edits?", "Reload saved state and discard pending edits in this tab?",
+            QMessageBox.Discard | QMessageBox.Cancel, QMessageBox.Cancel,
+        ) != QMessageBox.Discard:
+            return
+        self.shared_state_saved(widget, reload)
+        if not widget.state_loaded:
+            self.statusBar().showMessage("Cannot load shared robot/track state; check the YAML files and Reload")
+        elif self.shared_state_ready():
+            self.statusBar().showMessage("Shared state reloaded; simulate again before Run")
+
     def add_row(self, selected_workflow=None):
+        if self.setup_window is not None or self.simulation_process is not None:
+            return
         row = self.table.rowCount()
         self.table.insertRow(row)
         selector = QComboBox()
+        selector.setProperty("job_id", uuid4().hex)
         selector.setEditable(True)
         selector.setInsertPolicy(QComboBox.NoInsert)
         selector.addItem("Select workflow...", None)
@@ -384,7 +505,7 @@ class SchedulerWindow(QMainWindow):
         setup = QPushButton("Setup")
         setup.setIcon(self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
         setup.setEnabled(selected_workflow in self.workflow_names)
-        setup.setToolTip("Edit the selected workflow's vial file and configuration")
+        setup.setToolTip("Edit this row's configuration and vial file")
         self.table.setCellWidget(row, 1, setup)
         status = QTableWidgetItem("Not configured" if selected_workflow else "Not selected")
         self.table.setItem(row, 2, status)
@@ -393,13 +514,25 @@ class SchedulerWindow(QMainWindow):
         estimate = QTableWidgetItem("")
         self.table.setItem(row, 4, estimate)
         self.update_runtime_estimate(selector, estimate)
+        if selected_workflow in self.workflow_names:
+            self.initialize_row_config(selector, status, notes)
 
         def selection_changed():
+            if self._moving_rows:
+                return
+            self.approved_simulation_inputs = None
             name = selector.currentData()
             valid = name is not None and selector.currentText() == name
             setup.setEnabled(valid)
-            status.setText("Not configured" if valid else "Not selected")
-            notes.setText("")
+            if selector.property("snapshot_workflow") != (name if valid else None):
+                selector.setProperty("config_file", None)
+                selector.setProperty("snapshot_workflow", name if valid else None)
+                selector.setProperty("config_source", None)
+                status.setText("Not configured" if valid else "Not selected")
+                notes.setText("")
+                if valid:
+                    self.initialize_row_config(selector, status, notes)
+            notes.setToolTip("")
             notes.setData(Qt.UserRole, None)
             self.set_simulation_row_colour(self.table.indexFromItem(status).row(), None)
             self.update_runtime_estimate(selector, estimate)
@@ -410,6 +543,49 @@ class SchedulerWindow(QMainWindow):
         setup.clicked.connect(lambda: self.open_setup(selector, status, notes))
         self.table.selectRow(row)
         self.count_label.setText(f"{self.table.rowCount()} queued")
+        self.refresh_vial_layout()
+
+    def row_config_path(self, selector):
+        return selector.property("config_file")
+
+    def initialize_row_config(self, selector, status, notes):
+        name = selector.currentData()
+        selector.setProperty("snapshot_workflow", name)
+        target = self.setup_root / f"{selector.property('job_id')}.yaml"
+        selector.setProperty("config_file", str(target))
+        try:
+            target.unlink(missing_ok=True)
+            self.set_row_config(selector, None)
+        except (OSError, ValueError, KeyError, yaml.YAMLError) as error:
+            status.setText("Review setup")
+            notes.setText(str(error))
+
+    def set_row_config(self, selector, path):
+        if self.setup_window is not None or self.simulation_process is not None:
+            raise ValueError("Cannot change configuration while setup or execution is open.")
+        name = selector.currentData()
+        source = (REPO_ROOT / path).resolve() if path is not None else REPO_ROOT / "workflow_configs" / f"{name}.yaml"
+        content = source.read_bytes()
+        config = yaml.safe_load(content)
+        if not isinstance(config, dict):
+            raise ValueError("Workflow config must be a YAML mapping.")
+        target = self.setup_root / f"{selector.property('job_id')}.yaml"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        selector.setProperty("config_file", str(target))
+        selector.setProperty("config_source", str(source))
+        selector.setProperty("snapshot_workflow", name)
+        self.approved_simulation_inputs = None
+        self.pending_simulation_inputs = None
+        for row in range(self.table.rowCount()):
+            if self.table.cellWidget(row, 0) is selector:
+                self.table.item(row, 2).setText("Not configured")
+                notes = self.table.item(row, 3)
+                notes.setText("")
+                notes.setToolTip("")
+                notes.setData(Qt.UserRole, None)
+                self.set_simulation_row_colour(row, None)
+                break
         self.refresh_vial_layout()
 
     def update_runtime_estimate(self, selector, item):
@@ -440,30 +616,39 @@ class SchedulerWindow(QMainWindow):
             self.update_runtime_estimate(self.table.cellWidget(row, 0), self.table.item(row, 4))
 
     def refresh_vial_layout(self):
+        if self._moving_rows:
+            return
         names = []
         for row in range(self.table.rowCount()):
             selector = self.table.cellWidget(row, 0)
             name = selector.currentData()
             if name in self.workflow_names and selector.currentText() == name:
-                names.append(name)
+                names.append((name, self.row_config_path(selector)))
         self.vial_layout.refresh(names)
-        if self.simulation_process is None:
-            self.simulate_button.setEnabled(bool(names) and len(names) == self.table.rowCount())
+        if not self._execution_busy:
+            self.simulate_button.setEnabled(self.setup_window is None and self.shared_state_ready()
+                                            and bool(names) and len(names) == self.table.rowCount())
             self.update_live_run_enabled()
+        if not all(widget.state_loaded for widget in self.shared_state_widgets):
+            self.statusBar().showMessage("Cannot load shared robot/track state; check the YAML files and Reload")
 
     def set_simulation_busy(self, busy):
+        self._execution_busy = busy and self.setup_window is None
         self.table.setEnabled(not busy)
+        for widget in self.shared_state_widgets:
+            widget.setEnabled(not busy)
         for index in range(self.queue_toolbar.count()):
             widget = self.queue_toolbar.itemAt(index).widget()
             if isinstance(widget, QPushButton):
                 widget.setEnabled(not busy)
-        self.simulate_button.setEnabled(not busy and bool(self.simulation_rows))
-        self.stop_button.setEnabled(busy)
+        self.simulate_button.setEnabled(not busy and self.shared_state_ready() and bool(self.simulation_rows))
+        self.stop_button.setEnabled(self._execution_busy)
         self.run_button.setEnabled(False)
 
     def queue_input_fingerprint(self):
         from scheduler.live_runner import fingerprint
         names = []
+        jobs = []
         paths = [REPO_ROOT / "robot_state" / "robot_status.yaml", REPO_ROOT / "robot_state" / "track_status.yaml"]
         paths.extend((REPO_ROOT / "robot_state").glob("*.yaml"))
         for row in range(self.table.rowCount()):
@@ -471,8 +656,9 @@ class SchedulerWindow(QMainWindow):
             name = selector.currentData()
             if name not in self.workflow_names or selector.currentText() != name:
                 raise ValueError("Every queue row must select a workflow.")
-            config_path, vial_path = read_workflow_vial_path(name)
+            config_path, vial_path = read_workflow_vial_path(name, self.row_config_path(selector))
             names.append(name)
+            jobs.append((selector.property("job_id"), name, str(config_path.resolve())))
             paths.extend([config_path, REPO_ROOT / "workflows" / f"{name}.py"])
             if vial_path is not None:
                 paths.append(vial_path)
@@ -483,10 +669,11 @@ class SchedulerWindow(QMainWindow):
                     if candidate.is_file():
                         paths.append(candidate)
         paths.extend((REPO_ROOT / "workflows").glob("*.py"))
-        return {"workflows": names, "files": fingerprint(paths)}
+        return {"workflows": names, "jobs": jobs, "files": fingerprint(paths)}
 
     def update_live_run_enabled(self):
-        allowed = self.simulation_process is None and self.approved_simulation_inputs is not None
+        allowed = (not self._execution_busy and self.setup_window is None and self.shared_state_ready()
+               and self.approved_simulation_inputs is not None)
         if allowed:
             try:
                 allowed = self.queue_input_fingerprint() == self.approved_simulation_inputs
@@ -498,7 +685,7 @@ class SchedulerWindow(QMainWindow):
         self.run_button.setEnabled(bool(allowed))
 
     def start_live_run(self):
-        if self.simulation_process is not None or self.setup_window is not None:
+        if self._execution_busy or self.setup_window is not None:
             return
         self.refresh_vial_layout()
         if not self.run_button.isEnabled():
@@ -512,28 +699,28 @@ class SchedulerWindow(QMainWindow):
         if response != QMessageBox.Yes:
             return
         from uuid import uuid4
-        from scheduler.live_runner import fingerprint
         try:
             if self.queue_input_fingerprint() != self.approved_simulation_inputs:
                 raise ValueError("Inputs changed during confirmation; simulate again.")
             root = REPO_ROOT / "scheduler" / "state" / ("live_" + uuid4().hex)
             root.mkdir(parents=True)
             vial_files = []
+            jobs = []
             for row in range(self.table.rowCount()):
-                name = self.table.cellWidget(row, 0).currentData()
-                config_path, vial_path = read_workflow_vial_path(name)
+                selector = self.table.cellWidget(row, 0)
+                name = selector.currentData()
+                config_path, vial_path = read_workflow_vial_path(name, self.row_config_path(selector))
+                config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+                jobs.append((row, name, config_path, config, vial_path))
                 if vial_path is not None:
                     vial_files.append(str(vial_path))
-            for row in range(self.table.rowCount()):
-                name = self.table.cellWidget(row, 0).currentData()
-                config_path, vial_path = read_workflow_vial_path(name)
-                config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            for row, name, config_path, config, vial_path in jobs:
                 config["SIMULATE"] = False
                 config["INPUT_VIAL_STATUS_FILE"] = str(vial_path) if vial_path is not None else None
                 folder = root / "jobs" / f"{row:03d}"
                 folder.mkdir(parents=True)
                 (folder / "input.json").write_text(json.dumps({
-                    "workflow": name, "config": config,
+                    "workflow": name, "config_file": str(config_path.resolve()), "config": config,
                     "input_hashes": {path: digest for path, digest in self.approved_simulation_inputs["files"].items()
                                      if path not in set(vial_files) | {
                                          str((REPO_ROOT / "robot_state" / "robot_status.yaml").resolve()),
@@ -541,6 +728,8 @@ class SchedulerWindow(QMainWindow):
                                      } or (vial_path is not None and path == str(vial_path))},
                     "state_root": str(REPO_ROOT / "robot_state"), "vial_files": vial_files,
                 }), encoding="utf-8")
+            if self.queue_input_fingerprint() != self.approved_simulation_inputs:
+                raise ValueError("Inputs changed during preparation; simulate again.")
         except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as error:
             QMessageBox.warning(self, "Run Blocked", str(error))
             return
@@ -574,7 +763,10 @@ class SchedulerWindow(QMainWindow):
                 )
 
     def start_simulation(self):
-        if self.simulation_process is not None or self.setup_window is not None:
+        if self._execution_busy or self.setup_window is not None:
+            return
+        if not self.shared_state_ready():
+            QMessageBox.warning(self, "Cannot Simulate Queue", "Save or Reload robot/track state before launching.")
             return
         from scheduler.simulation_state import create_session
         from scheduler.simulation_runner import handoff_issues
@@ -596,30 +788,33 @@ class SchedulerWindow(QMainWindow):
                 if response != QMessageBox.Yes:
                     return
                 allow_conflicts = True
+            self.pending_simulation_inputs = self.queue_input_fingerprint()
             for row in range(self.table.rowCount()):
                 selector = self.table.cellWidget(row, 0)
                 name = selector.currentData()
                 if name not in self.workflow_names or selector.currentText() != name:
                     raise ValueError(f"Select a workflow for row {row + 1}.")
-                config_path, vial_path = read_workflow_vial_path(name)
+                config_path, vial_path = read_workflow_vial_path(name, self.row_config_path(selector))
                 config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-                jobs.append((row, name, config, vial_path))
+                jobs.append((row, name, config, vial_path, config_path))
             if not jobs:
                 return
-            self.pending_simulation_inputs = self.queue_input_fingerprint()
             root = create_session([job[3] for job in jobs])
             issues = handoff_issues(root)
             if allow_conflicts:
                 issues = [issue for issue in issues if not issue.startswith("Current vial-position conflict")]
             if issues:
                 raise ValueError("Initial state requires review:\n" + "\n".join(issues))
-            for index, (row, name, config, vial_path) in enumerate(jobs):
+            for index, (row, name, config, vial_path, config_path) in enumerate(jobs):
                 folder = root / "jobs" / f"{index:03d}"
                 folder.mkdir(parents=True)
                 config["INPUT_VIAL_STATUS_FILE"] = str(vial_path) if vial_path is not None else None
                 (folder / "input.json").write_text(json.dumps({
-                    "workflow": name, "config": config, "allow_vial_conflicts": allow_conflicts
+                    "workflow": name, "config_file": str(config_path.resolve()),
+                    "config": config, "allow_vial_conflicts": allow_conflicts
                 }), encoding="utf-8")
+            if self.queue_input_fingerprint() != self.pending_simulation_inputs:
+                raise ValueError("Inputs changed during preparation; simulate again.")
         except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as error:
             QMessageBox.warning(self, "Cannot Simulate Queue", str(error))
             return
@@ -713,6 +908,9 @@ class SchedulerWindow(QMainWindow):
         ):
             self.approved_simulation_inputs = self.pending_simulation_inputs
         self.set_simulation_busy(False)
+        if live and not self.shared_state_dirty():
+            self.reload_shared_state(self.robot_status_widget, self.robot_status_widget._load_robot_status, confirm=False)
+            self.reload_shared_state(self.track_status_widget, self.track_status_widget._load_track_status, confirm=False)
         self.stop_button.setEnabled(False)
         self.refresh_vial_layout()
         label = "Run" if live else "Simulation"
@@ -752,6 +950,8 @@ class SchedulerWindow(QMainWindow):
         super().closeEvent(event)
 
     def open_setup(self, selector, status, notes):
+        if self._execution_busy:
+            return
         if selector.currentData() not in self.workflow_names or selector.currentText() != selector.currentData():
             return
         if self.setup_window is not None:
@@ -762,26 +962,41 @@ class SchedulerWindow(QMainWindow):
         from vial_manager_gui import VialManagerMainWindow
 
         name = selector.currentData()
-        config_path = REPO_ROOT / "workflow_configs" / f"{name}.yaml"
+        config_file = self.row_config_path(selector)
         editor = None
+        draft = None
         try:
-            config_path, vial_path = read_workflow_vial_path(name)
-            editor = VialManagerMainWindow(preparation_mode=True)
-            editor.setup_preparation(vial_path, name, config_path)
+            if config_file is None or not Path(config_file).is_file():
+                self.set_row_config(selector, None)
+                config_file = self.row_config_path(selector)
+            config_path, vial_path = read_workflow_vial_path(name, config_file)
+            draft = config_path.with_name(config_path.stem + "_draft_" + uuid4().hex + ".yaml")
+            draft.write_bytes(config_path.read_bytes())
+            editor = VialManagerMainWindow(preparation_mode=True, include_shared_state=False)
+            editor.setup_preparation(vial_path, name, draft,
+                                     config_source=selector.property("config_source"), row_owned=True)
         except (OSError, ValueError, KeyError, yaml.YAMLError) as error:
             if editor is not None:
                 editor.deleteLater()
+            if draft is not None:
+                draft.unlink(missing_ok=True)
             notes.setText(str(error))
             QMessageBox.warning(self, "Cannot Open Setup", str(error))
             return
 
         def finished(saved):
             self.setup_window = None
-            self.refresh_vial_layout()
+            self.set_simulation_busy(False)
             if not saved:
+                draft.unlink(missing_ok=True)
+                self.refresh_vial_layout()
                 return
             try:
-                _, updated_path = read_workflow_vial_path(name)
+                _, updated_path = read_workflow_vial_path(name, draft)
+                config_path.write_bytes(draft.read_bytes())
+                selector.setProperty("config_source", editor.config_editor.config_source)
+                self.approved_simulation_inputs = None
+                self.pending_simulation_inputs = None
                 if updated_path != vial_path:
                     status.setText("Review vial file")
                     notes.setText("Vial path changed. Open Setup again to review the new file.")
@@ -793,15 +1008,21 @@ class SchedulerWindow(QMainWindow):
             except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as error:
                 status.setText("Review setup")
                 notes.setText(str(error))
+            finally:
+                draft.unlink(missing_ok=True)
+                self.refresh_vial_layout()
 
         editor.setParent(self, Qt.Window)
         editor.setWindowModality(Qt.WindowModal)
         editor.setAttribute(Qt.WA_DeleteOnClose)
         editor.preparation_finished.connect(finished)
         self.setup_window = editor
+        self.set_simulation_busy(True)
         editor.show()
 
     def remove_row(self):
+        if self.setup_window is not None or self.simulation_process is not None:
+            return
         row = self.table.currentRow()
         if row >= 0:
             self.table.removeRow(row)
@@ -809,24 +1030,46 @@ class SchedulerWindow(QMainWindow):
             self.refresh_vial_layout()
 
     def move_row(self, direction):
+        if self.setup_window is not None or self.simulation_process is not None:
+            return
         row = self.table.currentRow()
         destination = row + direction
         if row < 0 or not 0 <= destination < self.table.rowCount():
             return
         current = self.table.cellWidget(row, 0)
         neighbor = self.table.cellWidget(destination, 0)
+        properties = ("job_id", "config_file", "config_source", "snapshot_workflow")
+        current_config = [current.property(key) for key in properties]
+        neighbor_config = [neighbor.property(key) for key in properties]
         current_report = self.table.item(row, 3).data(Qt.UserRole)
         neighbor_report = self.table.item(destination, 3).data(Qt.UserRole)
         current_details = [self.table.item(row, column).text() for column in (2, 3)]
         neighbor_details = [self.table.item(destination, column).text() for column in (2, 3)]
+        current_tooltip = self.table.item(row, 3).toolTip()
+        neighbor_tooltip = self.table.item(destination, 3).toolTip()
         current_index = current.currentIndex()
-        current.setCurrentIndex(neighbor.currentIndex())
-        neighbor.setCurrentIndex(current_index)
+        self._moving_rows = True
+        try:
+            current.setCurrentIndex(neighbor.currentIndex())
+            neighbor.setCurrentIndex(current_index)
+            for key, current_value, neighbor_value in zip(properties, current_config, neighbor_config):
+                current.setProperty(key, neighbor_value)
+                neighbor.setProperty(key, current_value)
+            self.table.cellWidget(row, 1).setEnabled(current.currentData() in self.workflow_names)
+            self.table.cellWidget(destination, 1).setEnabled(neighbor.currentData() in self.workflow_names)
+            self.update_runtime_estimate(current, self.table.item(row, 4))
+            self.update_runtime_estimate(neighbor, self.table.item(destination, 4))
+            self.approved_simulation_inputs = None
+            self.pending_simulation_inputs = None
+        finally:
+            self._moving_rows = False
         for column, current_detail, neighbor_detail in zip((2, 3), current_details, neighbor_details):
             self.table.item(row, column).setText(neighbor_detail)
             self.table.item(destination, column).setText(current_detail)
         self.table.item(row, 3).setData(Qt.UserRole, neighbor_report)
         self.table.item(destination, 3).setData(Qt.UserRole, current_report)
+        self.table.item(row, 3).setToolTip(neighbor_tooltip)
+        self.table.item(destination, 3).setToolTip(current_tooltip)
         for position in (row, destination):
             text = self.table.item(position, 2).text()
             state = "success" if text in {"Simulated", "Completed"} else "error" if text in {"Needs attention", "Simulation incomplete", "Run failed"} else None

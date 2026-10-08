@@ -119,6 +119,34 @@ class SchedulerVialLayoutTests(unittest.TestCase):
         self.assertEqual(view.summary.text(), "Layout unavailable")
         self.assertIn("Cannot load", view.errors.text())
 
+    def test_presence_flag_controls_visibility_and_occupancy(self):
+        self.workflow("first", [self.record("absent vial", "small_vial_rack", 0)])
+        view = scheduler_gui.VialLayout()
+        self.addCleanup(view.deleteLater)
+        self.assertNotIn(("small_vial_rack", 0), view.slots)
+        claims, errors = scheduler_gui.read_vial_occupancy(["first"], self.areas)
+        self.assertFalse(claims)
+        self.assertIn("disabled current location", errors[0])
+        self.areas["small_vial_rack"]["rack_present"] = True
+        (self.root / "robot_state" / "vial_positions.yaml").write_text(yaml.safe_dump(self.areas))
+        enabled = scheduler_gui.VialLayout()
+        self.addCleanup(enabled.deleteLater)
+        enabled.refresh(["first"])
+        self.assertEqual(enabled.slots["small_vial_rack", 0].property("occupancy"), "occupied")
+
+    def test_missing_or_non_boolean_presence_flag_is_reported(self):
+        for value in (None, "false"):
+            with self.subTest(value=value):
+                areas = {name: area.copy() for name, area in self.areas.items()}
+                if value is None:
+                    del areas["heater"]["rack_present"]
+                else:
+                    areas["heater"]["rack_present"] = value
+                (self.root / "robot_state" / "vial_positions.yaml").write_text(yaml.safe_dump(areas))
+                view = scheduler_gui.VialLayout()
+                self.addCleanup(view.deleteLater)
+                self.assertIn("rack_present", view.load_error)
+
 
 if __name__ == "__main__":
     unittest.main()

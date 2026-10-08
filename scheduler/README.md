@@ -3,6 +3,50 @@
 The user-facing window remains `scheduler_gui.py` in the repository root.
 This folder contains internal scheduler support, not another workflow entrypoint.
 
+## Per-Row Configuration
+
+Each selected workflow row owns a private configuration snapshot, copied once
+from `workflow_configs/<workflow>.yaml`. Repeated workflows have independent
+settings. The queue has five columns; all configuration actions are in Setup.
+Private snapshots use stable job IDs under
+`temp/scheduler_setup/<sessionUUID>/<jobUUID>.yaml`, not row numbers.
+Missing or invalid presets are reported on the affected row without importing
+the workflow. Setup retries an unavailable initial preset when opened again.
+
+Setup edits a separate draft. **Save and Return** applies that draft to this row
+and saves its vial CSV, but never writes robot or track YAML. It does not overwrite the workflow
+preset. **Cancel** or window close discards the draft, with a discard prompt for
+unsaved edits. Saving a draft through the File menu is not a row commit.
+
+The Configuration tab has two explicit preset actions:
+- **Load Preset** chooses a YAML and confirms replacing the current draft.
+- **Save to Disk** collects current editor values, writes configuration only to
+    the chosen preset (confirming overwrite), and updates the draft while leaving
+    Setup open. Other queued rows do not change. A later Cancel discards the draft
+    but does not undo an explicitly saved disk preset.
+
+Moving a row preserves its job identity, snapshot, preset provenance and reports.
+Changing its workflow initializes a fresh snapshot; loading or applying settings
+clears live approval. External preset edits never automatically update existing
+rows. Relative resource paths resolve from the repository root, not the preset
+or snapshot directory. Shared vial CSVs are read once and remain evolving
+physical inventory, not per-row resets. Robot/track tabs belong to the scheduler,
+not the row-owned Setup window. Row preparation never creates hidden shared-state editors.
+
+Occupancy, simulation and live preparation all read private row snapshots.
+Fingerprints cover ordered job identities/workflows/snapshot paths and their
+contents, plus referenced vial/base inputs and shared state. Preset provenance
+alone is not fingerprinted. Job `input.json` contains the full effective config
+and private `config_file`; runners do not reload the source preset. Private
+snapshots are retained when removing rows, so execution records remain readable.
+
+For programmatic preset loading, `window.set_row_config(selector, path)` copies
+that preset into the row snapshot; `None` explicitly reloads the workflow default.
+`window.row_config_path(selector)` returns the private path. The selector's
+`config_source` property holds optional preset provenance; workflow identity
+remains in `currentData()`. Configuration and queue edits are blocked while Setup
+or a child process is open. Standalone vial-manager Save All behavior is unchanged.
+
 ## Small Tasks and Optional Vial Tracking
 
 Each scheduler task still needs a matching workflow YAML and the common
@@ -11,7 +55,7 @@ set `INPUT_VIAL_STATUS_FILE: null` explicitly for tasks that do not use vials.
 A missing key, empty string or invalid path is still an error, not a request
 to disable tracking. No empty/dummy CSV is created.
 
-For a no-vial job, Setup shows config and editable shared robot/track state;
+For a no-vial job, Setup shows config only;
 the vial views are disabled and contribute no occupancy/conflicts. Simulation
 still copies and carries shared robot/track state and saves end snapshots.
 Robot state saves omit only the absent CSV. Live jobs keep the same explicit
@@ -125,10 +169,20 @@ Exceptions, unexpected input prompts, or dirty end state stop launching dependen
 Stop After Current prevents the next launch without killing the active child;
 the window cannot close while a child is running.
 
-Setup includes editable robot/track tabs. Save All / Save and Return persist
+The scheduler includes Robot Status and Track Status tabs using the existing
+vial-manager widgets. Each tab has explicit Save and Reload controls for
 the shared starting inventory, including the source plate count and tips used.
 These are global starting values copied once per queue simulation, not a reset
-before each workflow. Shared-only edits participate in the unsaved-change prompt.
+before each workflow. Pending shared edits immediately clear live approval and
+disable both Simulate and Run until saved or discarded with Reload. Reload
+confirms discarding pending edits. Saving or reloading requires a new simulation
+before Run; launching never automatically saves shared state. Missing or unreadable
+shared files block launches and cannot be overwritten through Save until Reload succeeds.
+Shared controls and the queue are disabled during Setup and queue execution.
+Live queue completion reloads shared editors only when there are no pending edits;
+simulation leaves the saved lab state and editor baseline untouched.
+Standalone vial-manager and non-row-owned preparation retain their original
+robot/track tabs and Save All behavior.
 
 Invalid files must be resolved before simulation. Current-position conflicts
 offer an explicit simulation-only confirmation; accepting it records conflict
