@@ -8,7 +8,6 @@ from master_usdl_coordinator import Lash_E
 from pipetting_data.pipetting_parameters import PipettingParameters
 import pandas as pd
 from pathlib import Path
-from degradation_spectral_analyzer_program import process_degradation_spectral_data
 
 EXPERIMENT_REPEATS = 1  # Define at module level
 
@@ -113,7 +112,7 @@ def create_samples_and_measure(lash_e, output_dir, first_well_index, cytation_pr
     # Check track status - if gripper is at origin, use safe movement
     safe_movement = False
     try:
-        with open('robot_state/track_status.yaml', 'r') as f:
+        with open(lash_e.nr_track.TRACK_STATUS_FILE, 'r') as f:
             track_status = yaml.safe_load(f)
             if track_status.get('current_gripper_location') == 'origin':
                 safe_movement = True
@@ -200,7 +199,7 @@ def move_lid_to_wellplate(lash_e):
 def move_lid_to_storage(lash_e):
     waypoint_locations = None
     try:
-        with open('robot_state/track_status.yaml', 'r') as f:
+        with open(lash_e.nr_track.TRACK_STATUS_FILE, 'r') as f:
             track_status = yaml.safe_load(f)
             if track_status.get('current_gripper_location') == 'origin':
                 waypoint_locations = ['cytation_safe_area']
@@ -451,6 +450,7 @@ def process_sample_spectral_data(output_dir, sample_name, logger=None):
         
         # Run the spectral analyzer on the temp directory containing only this sample
         try:
+            from degradation_spectral_analyzer_program import process_degradation_spectral_data
             spectral_results = process_degradation_spectral_data(temp_dir, logger)
             
             # Move results back to main output directory with sample prefix
@@ -657,40 +657,41 @@ def degradation_workflow(lash_e, i, acid_type, acid_molar_excess, solvent='2MeTH
     if not SIMULATE:   
         slack_agent.send_slack_message(f"Degradation workflow for {sample_name} completed!")
 
-# Run my workflow here!
+def execute(config=None, show_gui=True):
+    """Run normally with GUI review, or with complete config and no GUI."""
+    global slack_agent, output_dir
+    lash_e = Lash_E(
+        initialize_t8=True, workflow_globals=globals(), workflow_name="Degradation_serena",
+        config=config, show_gui=show_gui,
+    )
+    if not lash_e._workflow_should_continue:
+        return None
+    waste_state = {"waste_index": 0, "current_waste_vial": "waste_0"}
+
+    if not SIMULATE:
+        import slack_agent
+        output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / EXPERIMENT_NAME
+        output_dir.mkdir(parents=True, exist_ok=True)
+        lash_e.logger.info("Output directory created at: %s", output_dir)
+        slack_agent.send_slack_message("Degradation workflow started!")
+        if VALIDATE_LIQUIDS:
+            validate_key_liquids(lash_e, output_dir)
+    else:
+        output_dir = None
+        if VALIDATE_LIQUIDS:
+            validate_key_liquids(lash_e, output_dir)
+
+    lash_e.nr_robot.home_robot_components()
+    for i in range(1, EXPERIMENT_REPEATS+1):
+        degradation_workflow(lash_e, i, acid_type='6M_p_TSA', solvent='toluene', acid_molar_excess=1000, waste_state=waste_state)
+
+    lash_e.logger.info("Final vial status:")
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    lash_e.logger.info(lash_e.nr_robot.VIAL_DF)
 
 
-# f. Initialize the workstation, which includes the robot, track, cytation and photoreactors
-lash_e = Lash_E(INPUT_VIAL_STATUS_FILE, simulate=SIMULATE, initialize_t8=True, workflow_globals=globals(), workflow_name='Degradation_serena')
-
-waste_state = {"waste_index": 0, "current_waste_vial": "waste_0"}
-
-#create file name for the output data
-if not SIMULATE:
-    import slack_agent
-    output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / EXPERIMENT_NAME #appends exp_name to the output directory
-    output_dir.mkdir(parents=True, exist_ok=True)
-    lash_e.logger.info("Output directory created at: %s", output_dir)
-    slack_agent.send_slack_message("Degradation workflow started!")
-# Run validation if enabled
-    if VALIDATE_LIQUIDS:
-        validate_key_liquids(lash_e, output_dir)
-else:
-    output_dir = None
-    if VALIDATE_LIQUIDS:
-        validate_key_liquids(lash_e, output_dir)  # Also validate in simulation
-    
-
-
-lash_e.nr_robot.home_robot_components()
-
-for i in range(1, EXPERIMENT_REPEATS+1): 
-    degradation_workflow(lash_e, i, acid_type='6M_p_TSA', solvent='toluene', acid_molar_excess=1000, waste_state=waste_state)
-
-# Print final vial status
-lash_e.logger.info("Final vial status:")
-pd.set_option('display.max_columns', None)  # Show all columns
-pd.set_option('display.width', None)        # Don't wrap lines
-print(lash_e.nr_robot.VIAL_DF)
+if __name__ == "__main__":
+    execute()
 
 

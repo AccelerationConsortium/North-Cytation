@@ -31,11 +31,71 @@ import yaml
 from datetime import datetime
 from pathlib import Path
 import logging
+from copy import deepcopy
 
 class ConfigManager:
     """Manages workflow configuration files with automatic creation and validation."""
     
     CONFIG_DIR = "workflow_configs"
+
+    @staticmethod
+    def workflow_constants(workflow_globals):
+        """Detect the public configuration constants persisted in workflow YAML."""
+        return {
+            key: value for key, value in workflow_globals.items()
+            if key.isupper() and not key.startswith('_') and not callable(value)
+            and (value is None or isinstance(value, (str, int, float, bool, list, dict)))
+        }
+
+    @classmethod
+    def resolve_workflow_config(cls, workflow_name, workflow_globals, config=None,
+                                show_gui=True, logger=None):
+        """Select config for Lash_E; supplied config never reads or writes YAML.
+
+        Normal launch values are provisional until Lash_E finishes GUI review
+        and calls confirm_workflow_config. Supplied mappings must contain every
+        required key; do not merge them with defaults or saved YAML. Updating
+        globals keeps legacy workflow functions on the same selected settings.
+        """
+        if config is not None and show_gui:
+            raise ValueError("Explicit config requires show_gui=False; otherwise use execute() for GUI review.")
+        if workflow_globals is None or workflow_name is None:
+            raise ValueError("Workflow config requires workflow_globals and workflow_name.")
+        constants = cls.workflow_constants(workflow_globals)
+        keys = workflow_globals['_CONFIG_KEYS'] if '_CONFIG_KEYS' in workflow_globals else [
+            key for key, value in constants.items()
+            if value is not None or key == 'INPUT_VIAL_STATUS_FILE'
+        ]
+        if config is None:
+            cls.setup_config_if_missing(workflow_name, workflow_globals, logger)
+            cls.load_and_update_globals(workflow_name, workflow_globals, logger, strict=True)
+            selected = {key: workflow_globals[key] for key in keys}
+        else:
+            missing = [key for key in keys if key not in config]
+            if missing:
+                raise KeyError(f"Incomplete config for {workflow_name}; missing keys: {', '.join(missing)}")
+            selected = {key: config[key] for key in keys}
+        if type(selected['SIMULATE']) is not bool:
+            raise ValueError("SIMULATE must be a boolean.")
+        if config is not None and selected['INPUT_VIAL_STATUS_FILE'] is not None:
+            if not Path(selected['INPUT_VIAL_STATUS_FILE']).is_file():
+                raise FileNotFoundError(selected['INPUT_VIAL_STATUS_FILE'])
+        selected = deepcopy(selected)
+        workflow_globals.update(deepcopy(selected))
+        return selected
+
+    @classmethod
+    def confirm_workflow_config(cls, workflow_name, workflow_globals, launch, supplied=False, logger=None):
+        """Return confirmed values after review; never reload a supplied config."""
+        if supplied:
+            selected = deepcopy(launch)
+        else:
+            cls.load_and_update_globals(workflow_name, workflow_globals, logger, strict=True)
+            selected = deepcopy({key: workflow_globals[key] for key in launch})
+        if type(selected['SIMULATE']) is not bool:
+            raise ValueError("SIMULATE must be a boolean.")
+        workflow_globals.update(deepcopy(selected))
+        return selected
     
     @classmethod
     def get_or_create_config(cls, workflow_name, default_config, logger=None):
@@ -125,6 +185,7 @@ class ConfigManager:
     def _save_config_file(cls, config_file, config, logger=None):
         """Save configuration to YAML file with descriptive header."""
         try:
+            Path(config_file).parent.mkdir(parents=True, exist_ok=True)
             with open(config_file, 'w') as f:
                 # Write header comment
                 f.write(f"# Workflow Configuration File\n")
@@ -221,12 +282,7 @@ class ConfigManager:
             dict: Configuration values loaded from file or detected defaults
         """
         # Automatically filter globals for workflow constants
-        workflow_constants = {}
-        for key, value in workflow_globals.items():
-            if key.isupper() and not key.startswith('_') and not callable(value):
-                # Only include constants (uppercase, not private, not functions)
-                if isinstance(value, (str, int, float, bool, list, dict)):
-                    workflow_constants[key] = value
+        workflow_constants = cls.workflow_constants(workflow_globals)
         
         if logger:
             logger.info(f"Config Manager: Auto-detected {len(workflow_constants)} constants from workflow globals")
@@ -237,7 +293,7 @@ class ConfigManager:
         return cls.get_or_create_config(workflow_name, workflow_constants, logger)
 
     @classmethod
-    def load_and_update_globals(cls, workflow_name, target_globals, logger=None):
+    def load_and_update_globals(cls, workflow_name, target_globals, logger=None, strict=False):
         """
         Load config from file and update only the detected constants in globals.
         
@@ -252,6 +308,8 @@ class ConfigManager:
         config_file = os.path.join(cls.CONFIG_DIR, f"{workflow_name}.yaml")
         
         if not os.path.exists(config_file):
+            if strict:
+                raise FileNotFoundError(config_file)
             if logger:
                 logger.warning(f"Config Manager: No config file found at {config_file}")
             else:
@@ -261,6 +319,8 @@ class ConfigManager:
         try:
             # Load current config from file
             config = cls._load_config_file(config_file, logger)
+            if not isinstance(config, dict):
+                raise ValueError(f"Workflow config must be a YAML mapping: {config_file}")
             
             # Only update globals for detected constants (uppercase, not private, not callable)
             updated_count = 0
@@ -277,6 +337,8 @@ class ConfigManager:
             return config
             
         except Exception as e:
+            if strict:
+                raise
             if logger:
                 logger.error(f"Config Manager: Failed to load and update globals: {e}")
             else:
@@ -328,11 +390,7 @@ class ConfigManager:
             return False
         
         # Config doesn't exist - create it from detected constants
-        workflow_constants = {}
-        for key, value in workflow_globals.items():
-            if key.isupper() and not key.startswith('_') and not callable(value):
-                if isinstance(value, (str, int, float, bool, list, dict)):
-                    workflow_constants[key] = value
+        workflow_constants = cls.workflow_constants(workflow_globals)
         
         if logger:
             logger.info(f"Config Manager: Creating new config with {len(workflow_constants)} detected constants")

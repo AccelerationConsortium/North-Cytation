@@ -124,6 +124,13 @@ class North_Base:
             else:
                 self.logger.warning(f"Cannot access {config_name} parameter '{parameter}' - {config_name} configuration not loaded, using default: {default}")
             return default
+
+        if config_name == 'vial_positions':
+            rack = config_dict[key]
+            if type(rack['rack_present']) is not bool:
+                raise ValueError(f"rack_present must be true or false: {key}")
+            if not rack['rack_present']:
+                raise ValueError(f"Rack is not present on the deck: {key}")
         
         # Try both integer and string keys since YAML may parse numeric keys as integers
         item_config = config_dict.get(key, {})
@@ -151,6 +158,9 @@ class North_Track(North_Base):
         #Load yaml data
         self.logger.debug("Loading track status from file: %s", "robot_state/track_status.yaml")
         self.TRACK_STATUS_FILE = "robot_state/track_status.yaml"
+        if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
+            from scheduler.simulation_state import configure_controller
+            configure_controller(self, "track")
         self.get_track_status() #set NUM_SOURCE, NUM_WASTE, CURRENT_WP_TYPE and NR_OCCUPIED from yaml file
         
         # Load track positions configuration
@@ -225,7 +235,11 @@ class North_Track(North_Base):
             "current_gripper_position": self.CURRENT_GRIPPER_POSITION
         }
 
-        if not self.simulate: #not simulating
+        save_state = not self.simulate
+        if getattr(self, "_scheduler_state_root", None) is not None:
+            from scheduler.simulation_state import can_save
+            save_state = can_save(self, self.TRACK_STATUS_FILE)
+        if save_state:
             # Writing to a file
             with open(self.TRACK_STATUS_FILE, "w") as file:
                 yaml.dump(track_status, file, default_flow_style=False)
@@ -975,6 +989,9 @@ class North_Robot(North_Base):
         self.simulate = simulate
 
         self.logger.info("Initializing North Robot...")
+        if os.environ.get("NORTH_SCHEDULER_SIMULATION_STATE"):
+            from scheduler.simulation_state import configure_controller
+            configure_controller(self, "robot")
 
         # Load all configuration files (static config)
         self._load_configuration_files()
@@ -1001,6 +1018,10 @@ class North_Robot(North_Base):
         for attr_name, (file_path, description) in config_files.items():
             # Use convert_none=True for all files, wellplates are optional
             setattr(self, attr_name, self._load_yaml_file(file_path, description, required=True, convert_none=True))
+
+        for rack_name, rack in self.VIAL_POSITIONS.items():
+            if type(rack['rack_present']) is not bool:
+                raise ValueError(f"rack_present must be true or false: {rack_name}")
         
         # Initialize pipet usage tracking from loaded rack configuration
         self.PIPETS_USED = {rack_name: 0 for rack_name in self.PIPET_RACKS.keys()} if self.PIPET_RACKS else {}
@@ -1451,9 +1472,14 @@ class North_Robot(North_Base):
             "pipet_fluid_volume": float(self.PIPET_FLUID_VOLUME) if self.PIPET_FLUID_VOLUME is not None else 0.0
         }
 
-        if not self.simulate: 
+        save_state = not self.simulate
+        if getattr(self, "_scheduler_state_root", None) is not None:
+            from scheduler.simulation_state import can_save
+            save_state = can_save(self, self.VIAL_FILE, self.ROBOT_STATUS_FILE)
+        if save_state:
             # Writing to a file
-            self.VIAL_DF.to_csv(self.VIAL_FILE, index=False,sep=',') #Save the status of the vial dataframe
+            if self.VIAL_FILE is not None:
+                self.VIAL_DF.to_csv(self.VIAL_FILE, index=False,sep=',') #Save the status of the vial dataframe
             with open(self.ROBOT_STATUS_FILE, "w") as file:
                 yaml.dump(robot_status, file, default_flow_style=False)
 
@@ -2414,9 +2440,6 @@ class North_Robot(North_Base):
             compensate_overvolume (bool): Apply overvolume compensation based on measured accuracy (default: True)
             smooth_overvolume (bool): Apply local smoothing to remove overvolume outliers (default: False)
         """
-        # Use intelligent parameter resolution: defaults → liquid-calibrated → user overrides
-        parameters = self._get_optimized_parameters(volume, liquid, parameters, compensate_overvolume, smooth_overvolume)
-
         self.logger.info(f"Dispensing {volume:.3f} mL from {source_vial_name} to {dest_vial_name}")
 
         source_vial_index = self.normalize_vial_index(source_vial_name)
@@ -2426,39 +2449,34 @@ class North_Robot(North_Base):
             self.logger.warning("Cannot dispense <=0 mL")
             return
 
-        # Calculate total tip volume requirement including optimized parameters
-        total_tip_volume_required = (volume + 
-                                    parameters.overaspirate_vol + 
-                                    parameters.pre_asp_air_vol + 
-                                    parameters.post_asp_air_vol)
+        user_parameters = parameters
+        if specified_tip is not None:
+            max_system_volume = self.PIPET_TIPS[specified_tip]['volume']
+        else:
+            max_system_volume = max(tip_config['volume'] for tip_config in self.PIPET_TIPS.values())
+        if max_system_volume <= 0:
+            raise ValueError("Pipet tip capacity must be positive")
 
-        # Handle large volumes by splitting based on TOTAL tip volume requirement.
-        # After recalculating parameters for a sub-volume the pre_asp_air_vol and other
-        # overheads may change, so we iterate: split → recalculate → verify → re-split if
-        # necessary, until the recalculated total fits within the tip's physical capacity.
-        max_system_volume = max((tip_config.get('volume', 0) for tip_config in self.PIPET_TIPS.values()), default=1.0)
-        repeats = 1
-
-        if total_tip_volume_required > max_system_volume:
-            repeats = math.ceil(total_tip_volume_required / max_system_volume)
+        repeats = max(1, math.ceil(volume / max_system_volume))
+        for _ in range(10):
             sub_volume = volume / repeats
+            parameters = self._get_optimized_parameters(
+                sub_volume, liquid, user_parameters, compensate_overvolume, smooth_overvolume)
+            total_tip_volume_required = (max(sub_volume, round(sub_volume, 3)) +
+                                         parameters.overaspirate_vol +
+                                         parameters.pre_asp_air_vol +
+                                         parameters.post_asp_air_vol)
+            if total_tip_volume_required <= max_system_volume:
+                break
+            repeats += 1
+        else:
+            raise ValueError(
+                f"Cannot split {volume:.3f} mL into transfers within pipet tip capacity "
+                f"({max_system_volume:.3f} mL) with the resolved pipetting parameters")
 
-            # Iteratively increase splits until the recalculated params for the sub-volume
-            # also fit — handles cases where pre_asp_air_vol grows for smaller volumes.
-            for _ in range(10):  # safety cap to prevent infinite loop
-                sub_params = self._get_optimized_parameters(sub_volume, liquid, parameters)
-                sub_total = (sub_volume +
-                             sub_params.overaspirate_vol +
-                             sub_params.pre_asp_air_vol +
-                             sub_params.post_asp_air_vol)
-                if sub_total <= max_system_volume:
-                    break
-                repeats += 1
-                sub_volume = volume / repeats
-
-            volume = sub_volume
-            parameters = self._get_optimized_parameters(volume, liquid, parameters)
-            self.logger.info(f"Total tip volume ({total_tip_volume_required:.3f} mL) exceeds capacity, splitting into {repeats} transfers of {round(volume,3)} mL each")
+        if repeats > 1:
+            self.logger.info(f"Splitting {volume:.3f} mL into {repeats} transfers of {sub_volume:.3f} mL each to fit pipet tip capacity")
+        volume = sub_volume
 
         total_mass = 0
         for i in range(repeats):

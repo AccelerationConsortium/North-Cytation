@@ -1,7 +1,7 @@
 """Constant-solvent fluorescence standards in water, surfactant and solvent.
 
 Run from the repository root: python -m workflows.fluorescence_calibration_workflow
-Defaults generate a hardware-free plan; edit the generated workflow config to run.
+Defaults execute the simulated workflow after startup GUI review.
 Concentrations are relative to the parent dye stock unless its concentration is set.
 """
 
@@ -285,13 +285,14 @@ def plot_kinetics(wells, channels, output_dir):
             plt.close(fig)
 
 
-def execute(config=None):
-    """Save a plan; optionally prepare substocks, dispense plates and read fluorescence."""
-    if config is None:
-        from workflow_config_manager import ConfigManager
-        ConfigManager.setup_and_reload_config("fluorescence_calibration_workflow", globals())
-        config = {key: globals()[key] for key in _CONFIG_KEYS}
-    c = config
+def execute(config=None, show_gui=True):
+    """Review settings normally, or use complete config with show_gui=False."""
+    from master_usdl_coordinator import Lash_E, flatten_cytation_data
+    lash = Lash_E(workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow",
+                  config=config, show_gui=show_gui)
+    if not lash._workflow_should_continue:
+        return None
+    c = lash.workflow_config
     plan, recipes = build_plan(c)
     protocol, channels = _PROTOCOLS[c["DYE"].lower()]
     protocol = c["PROTOCOL_FILE"] or protocol
@@ -309,15 +310,6 @@ def execute(config=None):
     # Protocol files live on the Cytation PC; simulate mode never opens them, so skip the check.
     if not c["SIMULATE"] and not Path(protocol).is_file():
         raise ValueError(f"Set an existing, plate-matched Cytation protocol: {protocol}")
-    # Construct Lash_E (and its status-review GUI) before reading inventory, so
-    # volumes/locations edited in the GUI are what gets validated below.
-    from master_usdl_coordinator import Lash_E, flatten_cytation_data
-    lash = Lash_E(c["INPUT_VIAL_STATUS_FILE"], simulate=c["SIMULATE"], show_gui=True,
-                  workflow_globals=globals(), workflow_name="fluorescence_calibration_workflow")
-    # Lash_E's GUI can edit config values and reloads them into globals() internally;
-    # re-snapshot here so the rest of execute() doesn't run on the pre-GUI config.
-    config = {key: globals()[key] for key in _CONFIG_KEYS}
-    c = config
     if not c["SIMULATE"]:
         slack_agent.send_slack_message(
             f"Fluorescence calibration workflow started: {c['DYE']} in {', '.join(plan.medium.unique())}")
@@ -333,6 +325,11 @@ def execute(config=None):
         raise ValueError("Total volume exceeds plate capacity")
     if lash.nr_track.NUM_SOURCE < plan.plate.nunique():
         raise ValueError("Load enough plates for the complete experiment")
+    output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
+    output.mkdir(parents=True)
+    plan.to_csv(output / "well_plan.csv", index=False)
+    recipes.to_csv(output / "substock_recipes.csv", index=False)
+    (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
     prepared, measurements = set(), []
     for plate, wells in plan.groupby("plate", sort=True):
         batch = int(wells.substock_batch.iloc[0])

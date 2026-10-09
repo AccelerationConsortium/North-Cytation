@@ -23,6 +23,9 @@ import csv
 import yaml
 import re
 import glob
+import json
+from uuid import uuid4
+from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -57,9 +60,85 @@ def disable_wheel_events(widget):
     widget.wheelEvent = lambda event: None
 
 
-class ClickableLabel(QLabel):
+VIAL_MOVE_MIME = "application/x-north-vial-layout"
+
+
+class VialDropTarget:
+    def _drag_payload(self, event):
+        window = self.window()
+        if not isinstance(window, VialManagerMainWindow) or window._layout_readonly:
+            return None
+        if not event.mimeData().hasFormat(VIAL_MOVE_MIME):
+            return None
+        try:
+            payload = json.loads(bytes(event.mimeData().data(VIAL_MOVE_MIME)))
+            if payload['owner'] != window._drag_owner:
+                return None
+            matches = [vial for vial in window.original_vials_data
+                       if str(vial['vial_index']) == payload['vial_index']]
+            if len(matches) != 1:
+                return None
+            vial = matches[0]
+            if [vial['location'], int(Decimal(str(vial['location_index'])))] != payload['source']:
+                return None
+            return payload
+        except (ValueError, KeyError, TypeError, InvalidOperation, OverflowError):
+            return None
+
+    def _drop_address(self):
+        if isinstance(self, VialWidget):
+            return self.vial_data['location'], self.vial_data['location_index']
+        if hasattr(self, 'location_name'):
+            return self.location_name, self.position
+        return self.location, self.location_index
+
+    def _highlight_drop(self, enabled):
+        if enabled and not hasattr(self, '_drop_style'):
+            self._drop_style = self.styleSheet()
+            self.setStyleSheet(self._drop_style +
+                              f"\n{type(self).__name__} {{ border: 3px solid #0078d4; }}")
+        elif not enabled and hasattr(self, '_drop_style'):
+            self.setStyleSheet(self._drop_style)
+            del self._drop_style
+
+    def dragEnterEvent(self, event):
+        if self._drag_payload(event) is not None:
+            event.setDropAction(Qt.MoveAction)
+            event.accept()
+            self._highlight_drop(True)
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        self.dragEnterEvent(event)
+
+    def dragLeaveEvent(self, event):
+        self._highlight_drop(False)
+        event.accept()
+
+    def dropEvent(self, event):
+        payload = self._drag_payload(event)
+        self._highlight_drop(False)
+        if payload is None:
+            event.ignore()
+            return
+        window = self.window()
+        location, index = self._drop_address()
+        if window._move_vial(payload['vial_index'], location, index, refresh=False):
+            event.setDropAction(Qt.MoveAction)
+            event.accept()
+            QTimer.singleShot(0, window._refresh_after_drop)
+        else:
+            event.ignore()
+
+
+class ClickableLabel(VialDropTarget, QLabel):
     '''Clickable QLabel for empty vial slots.'''
     clicked = Signal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setAcceptDrops(True)
     
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -67,7 +146,7 @@ class ClickableLabel(QLabel):
         super().mousePressEvent(event)
 
 
-class VialWidget(QFrame):
+class VialWidget(VialDropTarget, QFrame):
     """Visual representation of a single vial that can be clicked and edited."""
     
     vial_clicked = Signal(dict)  # Emits vial data when clicked
@@ -76,6 +155,8 @@ class VialWidget(QFrame):
     def __init__(self, vial_data: Dict, parent=None):
         super().__init__(parent)
         self.vial_data = vial_data.copy()
+        self._press_position = None
+        self._drag_started = False
         self.setFixedSize(150, 100)  # Even wider vial widget for longer names
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
         self.setLineWidth(2)
@@ -117,6 +198,8 @@ class VialWidget(QFrame):
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setFont(font)
         layout.addWidget(self.status_label)
+        for label in (self.name_label, self.volume_label, self.status_label):
+            label.setAttribute(Qt.WA_TransparentForMouseEvents)
         
         self._update_appearance()
     
@@ -173,8 +256,54 @@ class VialWidget(QFrame):
     def mousePressEvent(self, event):
         """Handle mouse clicks to emit vial data."""
         if event.button() == Qt.LeftButton:
-            self.vial_clicked.emit(self.vial_data.copy())
+            self._press_position = event.position().toPoint()
+            self._drag_started = False
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        window = self.window()
+        if (self._press_position is None or self._drag_started or
+                not event.buttons() & Qt.LeftButton or
+                not isinstance(window, VialManagerMainWindow) or window._layout_readonly):
+            return
+        if (event.position().toPoint() - self._press_position).manhattanLength() < QApplication.startDragDistance():
+            return
+        self._drag_started = True
+        try:
+            window._validate_vial_positions(window.original_vials_data)
+        except (ValueError, KeyError, TypeError) as error:
+            self._press_position = None
+            QMessageBox.warning(window, "Cannot Move Vial", str(error))
+            return
+        payload = {
+            'owner': window._drag_owner,
+            'vial_index': str(self.vial_data['vial_index']),
+            'source': [self.vial_data['location'], int(Decimal(str(self.vial_data['location_index'])))],
+        }
+        mime = QMimeData()
+        mime.setData(VIAL_MOVE_MIME, json.dumps(payload).encode('utf-8'))
+        drag = QDrag(self)
+        drag.setMimeData(mime)
+        drag.setPixmap(self.grab())
+        drag.setHotSpot(self._press_position)
+        window._active_drag = True
+        try:
+            drag.exec(Qt.MoveAction)
+        finally:
+            window._active_drag = False
+            window._drag_tab_timer.stop()
+            window._drag_tab_index = -1
+            self._press_position = None
+            window._refresh_after_drop()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if self._press_position is not None and not self._drag_started:
+                window = self.window()
+                if not isinstance(window, VialManagerMainWindow) or not window._layout_readonly:
+                    self.vial_clicked.emit(self.vial_data.copy())
+            self._press_position = None
+        super().mouseReleaseEvent(event)
     
     def update_vial_data(self, new_data: Dict):
         """Update vial data and refresh display."""
@@ -622,7 +751,7 @@ class VialRackWidget(QScrollArea):
     vial_edited = Signal(dict)  # Emits updated vial data
     vial_added = Signal(dict)   # Emits new vial data
     
-    def __init__(self, location_name: str, parent=None):
+    def __init__(self, location_name: str, parent=None, area=None):
         super().__init__(parent)
         self.location_name = location_name
         self.vials = {}  # location_index -> VialWidget
@@ -638,29 +767,32 @@ class VialRackWidget(QScrollArea):
         self.grid_layout = QGridLayout(self.content_widget)
         self.grid_layout.setSpacing(5)
         
-        # Configure grid size based on location
-        if "8mL" in location_name or "main" in location_name:
-            self.grid_rows = 6
-            self.grid_cols = 8
-        elif "large" in location_name:
-            self.grid_rows = 2  # Keep as 2x2 for better layout
-            self.grid_cols = 2
-        elif "50mL" in location_name:
-            self.grid_rows = 1
-            self.grid_cols = 2
-        else:
-            self.grid_rows = 4  # Default
-            self.grid_cols = 4
+        if area is None:
+            with (Path(__file__).resolve().parent / "robot_state" / "vial_positions.yaml").open(
+                    encoding="utf-8") as stream:
+                area = yaml.safe_load(stream)[location_name]
+        self.grid_rows = area['grid_params']['num_rows']
+        self.grid_cols = area['grid_params']['num_cols']
+        self.rack_size = area['rack_size']
         
         self._setup_grid()
     
     def _setup_grid(self):
         """Set up the empty vial grid."""
+        while self.grid_layout.count():
+            item = self.grid_layout.takeAt(0)
+            if item.widget():
+                item.widget().hide()
+                item.widget().deleteLater()
+        self.vials.clear()
+        self.empty_slots.clear()
         for row in range(self.grid_rows):
             for col in range(self.grid_cols):
                 # Calculate position number to match our column-major right-to-left layout
                 column_number = (self.grid_cols - 1) - col  # Rightmost col = 0
                 position = column_number * self.grid_rows + row
+                if position >= self.rack_size:
+                    continue
                 
                 # Create clickable empty slot placeholder
                 placeholder = ClickableLabel(f"{position}")
@@ -698,7 +830,7 @@ class VialRackWidget(QScrollArea):
                 print(f"[DEBUG] Failed to parse location_index for vial: {vial_data}")
                 continue
                 
-            if location_index >= self.grid_rows * self.grid_cols:
+            if not 0 <= location_index < self.rack_size:
                 print(f"[DEBUG] Skipping vial {vial_data.get('vial_name', 'unknown')}: index {location_index} out of bounds ({self.grid_rows}x{self.grid_cols})")
                 continue  # Skip if position is out of bounds
             
@@ -715,7 +847,10 @@ class VialRackWidget(QScrollArea):
             if old_item:
                 old_widget = old_item.widget()
                 if old_widget:
+                    self.grid_layout.removeWidget(old_widget)
+                    old_widget.hide()
                     old_widget.deleteLater()
+            self.empty_slots.pop(location_index, None)
             
             try:
                 # Create vial widget
@@ -734,62 +869,7 @@ class VialRackWidget(QScrollArea):
         """Handle vial click to open edit dialog."""
         dialog = VialEditDialog(vial_data, self)
         if dialog.exec() == QDialog.Accepted:
-            updated_data = dialog.get_vial_data()
-            
-            # Get location index for grid operations
-            location_index = int(float(vial_data.get('location_index', 0)))
-            
-            # Check for vial removal
-            if updated_data.get('_remove'):
-                # Remove vial from grid and data
-                if location_index in self.vials:
-                    self.vials[location_index].deleteLater()
-                    del self.vials[location_index]
-                
-                # Remove from data list
-                self.vial_data_list = [v for v in self.vial_data_list if v.get('vial_index') != vial_data.get('vial_index')]
-                
-                # Restore empty placeholder
-                row = location_index % self.grid_rows
-                column_number = (self.grid_cols - 1) - (location_index // self.grid_rows)
-                col = column_number if column_number >= 0 else 0
-                
-                if 0 <= row < self.grid_rows and 0 <= col < self.grid_cols:
-                    placeholder = ClickableLabel(f"{location_index}")
-                    placeholder.setAlignment(Qt.AlignCenter)
-                    placeholder.setStyleSheet("""
-                        ClickableLabel {
-                            border: 1px dashed #ccc;
-                            border-radius: 8px;
-                            color: #999;
-                            background-color: #f9f9f9;
-                        }
-                        ClickableLabel:hover {
-                            background-color: #e8f4fd;
-                            border-color: #0078d4;
-                        }
-                    """)
-                    placeholder.setFixedSize(80, 100)
-                    placeholder.position = location_index
-                    placeholder.location_name = self.location_name
-                    placeholder.clicked.connect(self._on_empty_slot_clicked)
-                    
-                    self.grid_layout.addWidget(placeholder, row, col)
-                    self.empty_slots[location_index] = placeholder
-                
-                self.vial_edited.emit(updated_data)  # Notify of removal
-            else:
-                # Update the vial widget
-                if location_index in self.vials:
-                    self.vials[location_index].update_vial_data(updated_data)
-                
-                # Update our data list - use original vial_data to find the entry
-                for i, vial in enumerate(self.vial_data_list):
-                    if vial.get('vial_index') == vial_data.get('vial_index'):
-                        self.vial_data_list[i] = updated_data
-                        break
-                
-                self.vial_edited.emit(updated_data)
+            self.vial_edited.emit(dialog.get_vial_data())
     
     def _on_empty_slot_clicked(self):
         """Handle clicking on empty slot to add new vial."""
@@ -814,26 +894,6 @@ class VialRackWidget(QScrollArea):
         dialog.setWindowTitle('Add New Vial')
         if dialog.exec() == QDialog.Accepted:
             updated_data = dialog.get_vial_data()
-            
-            # Remove the placeholder
-            if position in self.empty_slots:
-                self.empty_slots[position].deleteLater()
-                del self.empty_slots[position]
-            
-            # Add to data list
-            self.vial_data_list.append(updated_data)
-            
-            # Create and add vial widget
-            row = position % self.grid_rows
-            column_number = (self.grid_cols - 1) - (position // self.grid_rows)
-            col = column_number if column_number >= 0 else 0
-            
-            vial_widget = VialWidget(updated_data)
-            vial_widget.vial_clicked.connect(self._on_vial_clicked)
-            
-            self.grid_layout.addWidget(vial_widget, row, col)
-            self.vials[position] = vial_widget
-            
             self.vial_added.emit(updated_data)
     
     def _get_next_vial_index(self) -> int:
@@ -881,8 +941,13 @@ class CombinedRackWidget(QScrollArea):
     
     vial_edited = Signal(dict)  # Emits updated vial data
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, areas=None):
         super().__init__(parent)
+        if areas is None:
+            with (Path(__file__).resolve().parent / "robot_state" / "vial_positions.yaml").open(
+                    encoding="utf-8") as stream:
+                areas = yaml.safe_load(stream)
+        self.areas = areas
         self.vials = {}  # (location, location_index) -> VialWidget
         self.vial_data_list = []
         
@@ -903,6 +968,7 @@ class CombinedRackWidget(QScrollArea):
         while self.main_layout.count():
             item = self.main_layout.takeAt(0)
             if item.widget():
+                item.widget().hide()
                 item.widget().deleteLater()
 
         # Large Vial Rack section (2x2 grid)
@@ -944,6 +1010,7 @@ class CombinedRackWidget(QScrollArea):
                 self.large_vial_placeholders[('large_vial_rack', pos)] = (placeholder, row, col)
         
         self.main_layout.addWidget(large_vial_group)
+        large_vial_group.setVisible(self.areas['large_vial_rack']['rack_present'])
         
         # Photoreactor Array section (single position)
         photoreactor_group = QGroupBox("Photoreactor Array")
@@ -974,6 +1041,7 @@ class CombinedRackWidget(QScrollArea):
         self.photoreactor_placeholders[('photoreactor_array', 0)] = (placeholder, 0, 0)
         
         self.main_layout.addWidget(photoreactor_group)
+        photoreactor_group.setVisible(self.areas['photoreactor_array']['rack_present'])
         
         # Clamp section (single position)
         clamp_group = QGroupBox("Clamp Position")
@@ -1004,6 +1072,7 @@ class CombinedRackWidget(QScrollArea):
         self.clamp_placeholders[('clamp', 0)] = (placeholder, 0, 0)
         
         self.main_layout.addWidget(clamp_group)
+        clamp_group.setVisible(self.areas['clamp']['rack_present'])
         
         # Add stretch to push everything to top
         self.main_layout.addStretch()
@@ -1037,6 +1106,8 @@ class CombinedRackWidget(QScrollArea):
                 placeholder, row, col = grid_info
                 
                 # Remove placeholder and add vial widget
+                grid_layout.removeWidget(placeholder)
+                placeholder.hide()
                 placeholder.deleteLater()
                 
                 # Create vial widget
@@ -1053,39 +1124,7 @@ class CombinedRackWidget(QScrollArea):
         """Handle vial click to open edit dialog."""
         dialog = VialEditDialog(vial_data, self)
         if dialog.exec() == QDialog.Accepted:
-            updated_data = dialog.get_vial_data()
-            
-            # Get keys for operations
-            location = vial_data.get('location')
-            location_index = int(float(vial_data.get('location_index', 0)))
-            key = (location, location_index)
-            
-            # Check for vial removal
-            if updated_data.get('_remove'):
-                # Remove vial from grid and data
-                if key in self.vials:
-                    self.vials[key].deleteLater()
-                    del self.vials[key]
-                
-                # Remove from data list
-                self.vial_data_list = [v for v in self.vial_data_list if v.get('vial_index') != vial_data.get('vial_index')]
-                
-                # Restore empty placeholder
-                self._restore_placeholder(location, location_index)
-                
-                self.vial_edited.emit(updated_data)  # Notify of removal
-            else:
-                # Update the vial widget
-                if key in self.vials:
-                    self.vials[key].update_vial_data(updated_data)
-                
-                # Update our data list - use original vial_data to find the entry
-                for i, vial in enumerate(self.vial_data_list):
-                    if vial.get('vial_index') == vial_data.get('vial_index'):
-                        self.vial_data_list[i] = updated_data
-                        break
-                
-                self.vial_edited.emit(updated_data)
+            self.vial_edited.emit(dialog.get_vial_data())
     
     def _restore_placeholder(self, location: str, location_index: int):
         """Restore empty placeholder after vial removal."""
@@ -1202,55 +1241,7 @@ class CombinedRackWidget(QScrollArea):
         dialog.setWindowTitle('Add New Vial')
         if dialog.exec() == QDialog.Accepted:
             updated_data = dialog.get_vial_data()
-            
-            # Remove the placeholder from the appropriate dict
-            key = (location, location_index)
-            if key in self.large_vial_placeholders:
-                self.large_vial_placeholders[key][0].deleteLater()
-                del self.large_vial_placeholders[key]
-            elif key in self.photoreactor_placeholders:
-                self.photoreactor_placeholders[key][0].deleteLater()
-                del self.photoreactor_placeholders[key]
-            elif key in self.clamp_placeholders:
-                self.clamp_placeholders[key][0].deleteLater()
-                del self.clamp_placeholders[key]
-            
-            # Add to data list
-            self.vial_data_list.append(updated_data)
-            
-            # Create and add vial widget
-            if location == 'large_vial_rack':
-                # Use same clockwise mapping as _setup_sections: [3,0][2,1]
-                clockwise_positions = [[3, 0], [2, 1]]
-                
-                # Find the correct row, col for this location_index
-                row, col = None, None
-                for r in range(2):
-                    for c in range(2):
-                        if clockwise_positions[r][c] == location_index:
-                            row, col = r, c
-                            break
-                    if row is not None:
-                        break
-                
-                grid_layout = self.large_vial_grid
-            elif location == 'photoreactor_array':
-                row, col = 0, 0
-                grid_layout = self.photoreactor_grid
-            elif location == 'clamp':
-                row, col = 0, 0
-                grid_layout = self.clamp_grid
-            else:
-                return  # Unknown location
-            
-            if row is not None and col is not None:
-                vial_widget = VialWidget(updated_data)
-                vial_widget.vial_clicked.connect(self._on_vial_clicked)
-                
-                grid_layout.addWidget(vial_widget, row, col)
-                self.vials[key] = vial_widget
-                
-                self.vial_edited.emit(updated_data)
+            self.vial_edited.emit(updated_data)
     
     def _get_next_vial_index(self) -> int:
         """Get the next available vial index globally across all racks."""
@@ -1295,10 +1286,14 @@ class CombinedRackWidget(QScrollArea):
 class TrackStatusWidget(QWidget):
     """Widget for editing track status YAML file."""
     
-    def __init__(self):
+    state_saved = Signal()
+
+    def __init__(self, file_path=None, show_load_errors=True):
         super().__init__()
         self.track_data = {}
-        self.track_file_path = os.path.join("robot_state", "track_status.yaml")
+        self.track_file_path = str(file_path) if file_path is not None else os.path.join("robot_state", "track_status.yaml")
+        self.show_load_errors = show_load_errors
+        self.state_loaded = False
         self._setup_ui()
         self._load_track_status()
     
@@ -1350,17 +1345,23 @@ class TrackStatusWidget(QWidget):
     
     def _load_track_status(self):
         """Load track status from YAML file."""
+        self.state_loaded = False
         try:
             with open(self.track_file_path, 'r') as file:
                 self.track_data = yaml.safe_load(file) or {}
             
             self._populate_form()
+            self.state_loaded = True
+            return True
             
         except FileNotFoundError:
-            QMessageBox.warning(self, "File Not Found", 
+            if self.show_load_errors:
+                QMessageBox.warning(self, "File Not Found",
                               f"Track status file not found: {self.track_file_path}")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load track status: {str(e)}")
+            if self.show_load_errors:
+                QMessageBox.critical(self, "Error", f"Failed to load track status: {str(e)}")
+        return False
     
     def _populate_form(self):
         """Populate form with loaded data."""
@@ -1394,31 +1395,38 @@ class TrackStatusWidget(QWidget):
                 except ValueError:
                     active_pos = active_pos_text
             
-            self.track_data = {
+            self.track_data.update({
                 'active_wellplate_position': active_pos,
                 'num_in_source': self.num_source_spin.value(),
                 'num_in_waste': self.num_waste_spin.value(),
                 'wellplate_type': self.wellplate_type_combo.currentText()
-            }
+            })
             
             # Save to file
             with open(self.track_file_path, 'w') as file:
                 yaml.dump(self.track_data, file, default_flow_style=False)
+            self.state_saved.emit()
             
             if not silent:
                 QMessageBox.information(self, "Success", "Track status saved successfully!")
+            return True
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save track status: {str(e)}")
+            return False
 
 
 class RobotStatusWidget(QWidget):
     """Widget for editing robot status YAML file."""
     
-    def __init__(self):
+    state_saved = Signal()
+
+    def __init__(self, file_path=None, show_load_errors=True):
         super().__init__()
         self.robot_data = {}
-        self.robot_file_path = os.path.join("robot_state", "robot_status.yaml")
+        self.robot_file_path = str(file_path) if file_path is not None else os.path.join("robot_state", "robot_status.yaml")
+        self.show_load_errors = show_load_errors
+        self.state_loaded = False
         self._setup_ui()
         self._load_robot_status()
     
@@ -1509,17 +1517,23 @@ class RobotStatusWidget(QWidget):
     
     def _load_robot_status(self):
         """Load robot status from YAML file."""
+        self.state_loaded = False
         try:
             with open(self.robot_file_path, 'r') as file:
                 self.robot_data = yaml.safe_load(file) or {}
             
             self._populate_form()
+            self.state_loaded = True
+            return True
             
         except FileNotFoundError:
-            QMessageBox.warning(self, "File Not Found", 
+            if self.show_load_errors:
+                QMessageBox.warning(self, "File Not Found",
                               f"Robot status file not found: {self.robot_file_path}")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load robot status: {str(e)}")
+            if self.show_load_errors:
+                QMessageBox.critical(self, "Error", f"Failed to load robot status: {str(e)}")
+        return False
     
     def _populate_form(self):
         """Populate form with loaded data."""
@@ -1560,7 +1574,7 @@ class RobotStatusWidget(QWidget):
                     return text
             
             # Update data from form
-            self.robot_data = {
+            self.robot_data.update({
                 'gripper_status': parse_nullable_field(self.gripper_status_edit.text()),
                 'gripper_vial_index': parse_nullable_field(self.gripper_vial_index_edit.text()),
                 'held_pipet_type': parse_nullable_field(self.held_pipet_type_edit.text()),
@@ -1572,17 +1586,20 @@ class RobotStatusWidget(QWidget):
                     'small_tip_rack_1': self.small_tip_rack_1_spin.value(),
                     'small_tip_rack_2': self.small_tip_rack_2_spin.value()
                 }
-            }
+            })
             
             # Save to file
             with open(self.robot_file_path, 'w') as file:
                 yaml.dump(self.robot_data, file, default_flow_style=False)
+            self.state_saved.emit()
             
             if not silent:
                 QMessageBox.information(self, "Success", "Robot status saved successfully!")
+            return True
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save robot status: {str(e)}")
+            return False
 
 
 class ConfigEditor(QWidget):
@@ -1593,6 +1610,8 @@ class ConfigEditor(QWidget):
         self.config_file = None
         self.config_data = {}
         self.config_widgets = {}  # key -> widget mapping
+        self.config_source = None
+        self.workflow_name = None
         self._setup_ui()
     
     def _setup_ui(self):
@@ -1606,6 +1625,16 @@ class ConfigEditor(QWidget):
         header_layout.addWidget(self.config_info_label)
         
         header_layout.addStretch()
+        self.load_preset_button = QPushButton("Load Preset")
+        self.load_preset_button.setToolTip("Replace this Setup draft with a configuration preset")
+        self.load_preset_button.clicked.connect(self._load_preset)
+        header_layout.addWidget(self.load_preset_button)
+        self.save_disk_button = QPushButton("Save to Disk")
+        self.save_disk_button.setToolTip("Save workflow configuration only; other queued rows are unchanged")
+        self.save_disk_button.clicked.connect(self._save_to_disk)
+        header_layout.addWidget(self.save_disk_button)
+        self.load_preset_button.hide()
+        self.save_disk_button.hide()
         
         layout.addLayout(header_layout)
         
@@ -1626,14 +1655,15 @@ class ConfigEditor(QWidget):
         self.config_status_label.setStyleSheet("padding: 5px; background: #f0f0f0;")
         layout.addWidget(self.config_status_label)
     
-    def load_workflow_config(self, workflow_name):
+    def load_workflow_config(self, workflow_name, config_file=None):
         """Load configuration for the specified workflow."""
         if not ConfigManager:
             self.config_status_label.setText("ConfigManager not available")
             return False
         
         try:
-            config_file = os.path.join("workflow_configs", f"{workflow_name}.yaml")
+            if config_file is None:
+                config_file = os.path.join("workflow_configs", f"{workflow_name}.yaml")
             self.config_file = config_file
             
             if os.path.exists(config_file):
@@ -1748,7 +1778,7 @@ class ConfigEditor(QWidget):
     def _save_config(self, silent=False):
         """Save current configuration values to file."""
         if not self.config_file:
-            return
+            return False
         
         try:
             # Update config_data with current widget values
@@ -1777,7 +1807,7 @@ class ConfigEditor(QWidget):
                             self.config_data[key] = yaml.safe_load(text)
                         except yaml.YAMLError as e:
                             QMessageBox.warning(self, "YAML Error", f"Invalid value for {key}: {e}")
-                            return
+                            return False
                 elif isinstance(widget, QTextEdit):
                     # Parse YAML text for complex structures
                     try:
@@ -1785,7 +1815,7 @@ class ConfigEditor(QWidget):
                         self.config_data[key] = yaml.safe_load(yaml_text)
                     except yaml.YAMLError as e:
                         QMessageBox.warning(self, "YAML Error", f"Invalid YAML for {key}: {e}")
-                        return
+                        return False
 
             # Ensure directory exists
             os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
@@ -1807,10 +1837,12 @@ class ConfigEditor(QWidget):
             self.config_status_label.setText(f"Config saved successfully at {datetime.now().strftime('%H:%M:%S')}")
             if not silent:
                 QMessageBox.information(self, "Success", "Configuration saved successfully!")
+            return True
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save configuration: {str(e)}")
             self.config_status_label.setText(f"Save failed: {str(e)}")
+            return False
     
     def _reload_config(self):
         """Reload configuration from file."""
@@ -1825,20 +1857,109 @@ class ConfigEditor(QWidget):
         
         if reply == QMessageBox.Yes:
             workflow_name = Path(self.config_file).stem
-            self.load_workflow_config(workflow_name)
+            self.load_workflow_config(workflow_name, self.config_file)
+
+    def enable_row_owned(self, workflow_name, config_source):
+        self.workflow_name = workflow_name
+        self.config_source = str(config_source) if config_source is not None else None
+        self.config_info_label.setText(f"Configuration: {workflow_name}")
+        self.load_preset_button.show()
+        self.save_disk_button.show()
+
+    def _load_preset(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load Preset", self.config_source or str(Path("workflow_configs").resolve()),
+            "YAML files (*.yaml *.yml)"
+        )
+        if not path:
+            return
+        if QMessageBox.question(
+            self, "Replace Configuration?", "Replace the current configuration draft?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        ) != QMessageBox.Yes:
+            return
+        draft = self.config_file
+        try:
+            config = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+            if not isinstance(config, dict):
+                raise ValueError("Workflow config must be a YAML mapping.")
+            if not self.load_workflow_config(self.workflow_name, path):
+                raise ValueError(f"Could not load preset: {path}")
+            self.config_source = str(Path(path).resolve())
+            self.config_info_label.setText(f"Configuration: {self.workflow_name}")
+        except (OSError, ValueError, yaml.YAMLError) as error:
+            QMessageBox.warning(self, "Cannot Load Preset", str(error))
+        finally:
+            self.config_file = draft
+
+    def _save_to_disk(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Configuration to Disk", self.config_source or str(Path("workflow_configs").resolve()),
+            "YAML files (*.yaml *.yml)", options=QFileDialog.DontConfirmOverwrite,
+        )
+        if not path:
+            return
+        target = Path(path)
+        if not target.suffix:
+            target = target.with_suffix(".yaml")
+        if target.exists() and QMessageBox.question(
+            self, "Overwrite Configuration?", f"Replace {target}?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        ) != QMessageBox.Yes:
+            return
+        if not self._save_config(silent=True):
+            return
+        try:
+            target.write_text(yaml.safe_dump(self.config_data, sort_keys=False), encoding="utf-8")
+            self.config_source = str(target.resolve())
+            self.config_status_label.setText(f"Configuration saved to {target.name}")
+        except (OSError, yaml.YAMLError) as error:
+            QMessageBox.warning(self, "Cannot Save Configuration", str(error))
 
 
 class VialManagerMainWindow(QMainWindow):
     """Main window for visual vial management."""
+
+    preparation_finished = Signal(bool)
     
-    def __init__(self):
+    def __init__(self, preparation_mode=False, include_shared_state=True):
         super().__init__()
+        self.include_shared_state = include_shared_state
+        self.track_status_widget = None
+        self.robot_status_widget = None
+        self._preparation_mode = preparation_mode
+        self._preparation_saved = False
+        self._preparation_baseline = None
+        self._row_owned = False
         self.setWindowTitle("Visual Vial Manager")
         self.setGeometry(100, 100, 1500, 1000)  # 25% larger than 1200x800
         
         self.status_file_path = None
         self.original_vials_data = []
         self.rack_widgets = {}  # location_name -> VialRackWidget
+        self._layout_readonly = False
+        self._drag_owner = uuid4().hex
+        self._active_drag = False
+        self._layout_refresh_pending = False
+        self._drag_tab_index = -1
+        self._drag_tab_timer = QTimer(self)
+        self._drag_tab_timer.setSingleShot(True)
+        self._drag_tab_timer.setInterval(450)
+        self._drag_tab_timer.timeout.connect(self._switch_drag_tab)
+        with (Path(__file__).resolve().parent / "robot_state" / "vial_positions.yaml").open(
+                encoding="utf-8") as stream:
+            self.vial_areas = yaml.safe_load(stream)
+        if not isinstance(self.vial_areas, dict) or not self.vial_areas:
+            raise ValueError("Vial rack definitions are missing or invalid.")
+        for location, area in self.vial_areas.items():
+            if type(area['rack_present']) is not bool:
+                raise ValueError(f"rack_present must be true or false: {location}")
+            rows = area['grid_params']['num_rows']
+            columns = area['grid_params']['num_cols']
+            capacity = area['rack_size']
+            if (any(type(value) is not int or value <= 0 for value in (rows, columns, capacity))
+                    or capacity > rows * columns):
+                raise ValueError(f"Invalid grid dimensions for {location}.")
         
         # Workflow mode attributes
         self._workflow_mode = False
@@ -1850,7 +1971,7 @@ class VialManagerMainWindow(QMainWindow):
         self._setup_status_bar()
         
         # Load default file if provided via command line
-        if len(sys.argv) > 1:
+        if not self._preparation_mode and len(sys.argv) > 1:
             self.load_status_file(sys.argv[1])
     
     def _setup_ui(self):
@@ -1867,6 +1988,8 @@ class VialManagerMainWindow(QMainWindow):
         
         # Tab widget for different racks/locations
         self.tab_widget = QTabWidget()
+        self.tab_widget.tabBar().setAcceptDrops(True)
+        self.tab_widget.tabBar().installEventFilter(self)
         layout.addWidget(self.tab_widget)
         
         # Button bar
@@ -1918,6 +2041,15 @@ class VialManagerMainWindow(QMainWindow):
         )
         self.abort_workflow_button.hide()  # Hidden by default
         button_layout.addWidget(self.abort_workflow_button)
+
+        if self._preparation_mode:
+            self.load_button.hide()
+            self.save_return_button = QPushButton("Save and Return")
+            self.save_return_button.clicked.connect(self._save_and_return)
+            button_layout.addWidget(self.save_return_button)
+            self.close_setup_button = QPushButton("Close")
+            self.close_setup_button.clicked.connect(self.close)
+            button_layout.addWidget(self.close_setup_button)
         
         # Stats label
         self.stats_label = QLabel("No vials loaded")
@@ -1932,7 +2064,7 @@ class VialManagerMainWindow(QMainWindow):
         # File menu
         file_menu = menubar.addMenu("&File")
         
-        if not self._workflow_mode:
+        if not self._workflow_mode and not self._preparation_mode:
             # Standard mode - include Load Status File
             load_action = QAction("&Load Status File...", self)
             load_action.setShortcut("Ctrl+O")
@@ -1941,7 +2073,7 @@ class VialManagerMainWindow(QMainWindow):
         
         save_action = QAction("&Save Changes", self)
         save_action.setShortcut("Ctrl+S")
-        save_action.triggered.connect(self._save_file)
+        save_action.triggered.connect(self._save_all if self._preparation_mode else self._save_file)
         file_menu.addAction(save_action)
         
         reload_action = QAction("&Reload from File", self)
@@ -2029,7 +2161,7 @@ class VialManagerMainWindow(QMainWindow):
         self.rack_widgets.clear()
         
         # Group vials by location
-        locations = set(vial.get('location', 'unknown') for vial in vials_data)
+        locations = {name for name, area in self.vial_areas.items() if area['rack_present']}
         
         # Create special combined view for auxiliary locations
         aux_locations = {'large_vial_rack', 'photoreactor_array', 'clamp'}
@@ -2037,8 +2169,6 @@ class VialManagerMainWindow(QMainWindow):
         # First add main_8mL_rack tab with log vials display (always show, even if empty)
         main_locations = {loc for loc in locations if '8mL' in loc or 'main' in loc}
         # Always show the main rack tab using a default name if no vials exist yet
-        if not main_locations:
-            main_locations = {'main_8mL_rack'}
         first_main_processed = False
         for location in sorted(main_locations):
             if location and location != 'unknown':
@@ -2048,7 +2178,7 @@ class VialManagerMainWindow(QMainWindow):
                     main_tab_layout = QHBoxLayout(main_tab_widget)
                     
                     # Add the rack widget to the left
-                    rack_widget = VialRackWidget(location)
+                    rack_widget = VialRackWidget(location, area=self.vial_areas[location])
                     rack_widget.vial_edited.connect(self._on_vial_edited)
                     rack_widget.vial_added.connect(self._on_vial_edited)  # Handle new vials
                     rack_widget.add_vials(vials_data)
@@ -2069,22 +2199,25 @@ class VialManagerMainWindow(QMainWindow):
                     self.log_vials_widget.update_csv_vials(current_vial_names)
                     print(f"[DEBUG] CSV vials loaded: {current_vial_names}")
                     
+                    main_tab_widget.setProperty('vialLayoutTab', True)
                     self.tab_widget.addTab(main_tab_widget, location)
                     self.rack_widgets[location] = rack_widget
                     first_main_processed = True
                 else:
                     # Regular rack widget for additional main locations
-                    rack_widget = VialRackWidget(location)
+                    rack_widget = VialRackWidget(location, area=self.vial_areas[location])
                     rack_widget.vial_edited.connect(self._on_vial_edited)
                     rack_widget.vial_added.connect(self._on_vial_edited)  # Handle new vials
                     
+                    rack_widget.setProperty('vialLayoutTab', True)
                     self.tab_widget.addTab(rack_widget, location)
                     self.rack_widgets[location] = rack_widget
                     rack_widget.add_vials(vials_data)
         
         # Then add auxiliary racks tab (always show, even if empty)        
         # Create combined auxiliary rack widget
-        combined_widget = CombinedRackWidget()
+        combined_widget = CombinedRackWidget(areas=self.vial_areas)
+        combined_widget.setProperty('vialLayoutTab', True)
         combined_widget.vial_edited.connect(self._on_vial_edited)
         self.tab_widget.addTab(combined_widget, "Auxiliary Racks")
         self.rack_widgets['_combined_aux'] = combined_widget
@@ -2093,10 +2226,11 @@ class VialManagerMainWindow(QMainWindow):
         # Finally add other location tabs (excluding auxiliary and main ones)
         other_locations = {loc for loc in locations if loc and loc != 'unknown' and loc not in aux_locations and '8mL' not in loc and 'main' not in loc}
         for location in sorted(other_locations):
-            rack_widget = VialRackWidget(location)
+            rack_widget = VialRackWidget(location, area=self.vial_areas[location])
             rack_widget.vial_edited.connect(self._on_vial_edited)
             rack_widget.vial_added.connect(self._on_vial_edited)  # Handle new vials
             
+            rack_widget.setProperty('vialLayoutTab', True)
             self.tab_widget.addTab(rack_widget, location)
             self.rack_widgets[location] = rack_widget
             rack_widget.add_vials(vials_data)
@@ -2111,6 +2245,24 @@ class VialManagerMainWindow(QMainWindow):
     
     def _on_vial_edited(self, updated_vial_data: Dict):
         """Handle vial edit from any rack."""
+        if not updated_vial_data.get('_remove'):
+            candidate = [vial.copy() for vial in self.original_vials_data]
+            matches = [vial for vial in candidate
+                       if str(vial['vial_index']) == str(updated_vial_data['vial_index'])]
+            if len(matches) > 1:
+                QMessageBox.warning(self, "Invalid Vial Edit", "Vial identity is ambiguous.")
+                self._reload_all_widgets()
+                return
+            if matches:
+                matches[0].update(updated_vial_data)
+            else:
+                candidate.append(updated_vial_data.copy())
+            try:
+                self._validate_vial_positions(candidate)
+            except (ValueError, KeyError, TypeError) as error:
+                QMessageBox.warning(self, "Invalid Vial Edit", str(error))
+                self._reload_all_widgets()
+                return
         # Handle removal or addition/edit
         vial_index = updated_vial_data.get('vial_index')
         
@@ -2171,10 +2323,121 @@ class VialManagerMainWindow(QMainWindow):
             
             self.status_bar.showMessage("Vial data modified - remember to save changes")
         
+        self._reload_all_widgets()
         self._update_ui_state()
-    
+
+    def _validate_vial_positions(self, records):
+        occupied = set()
+        identities = set()
+        for vial in records:
+            identity = str(vial['vial_index'])
+            if not identity.strip() or identity in identities:
+                raise ValueError(f"Missing or duplicate vial identity: {identity!r}")
+            identities.add(identity)
+            for location_key, index_key in (("location", "location_index"),
+                                            ("home_location", "home_location_index")):
+                if location_key == "home_location" and not vial.get(location_key):
+                    continue
+                location = vial[location_key]
+                if location not in self.vial_areas:
+                    raise ValueError(f"Unknown location: {location!r}")
+                if not self.vial_areas[location]['rack_present']:
+                    raise ValueError(f"Rack is not present on the deck: {location}")
+                try:
+                    number = Decimal(str(vial[index_key]))
+                except InvalidOperation as error:
+                    raise ValueError(f"Invalid {index_key}: {vial[index_key]!r}") from error
+                if not number.is_finite() or number != number.to_integral_value():
+                    raise ValueError(f"{index_key} must be an integer.")
+                index = int(number)
+                if not 0 <= index < self.vial_areas[location]['rack_size']:
+                    raise ValueError(f"Slot {index} is outside {location}.")
+                if location_key == "location":
+                    address = (location, index)
+                    if address in occupied:
+                        raise ValueError(f"Slot {location}[{index}] is occupied by more than one vial.")
+                    occupied.add(address)
+
+    def _move_vial(self, vial_index, location, index, refresh=True):
+        if self._layout_readonly or self.status_file_path is None:
+            return False
+        try:
+            self._validate_vial_positions(self.original_vials_data)
+            number = Decimal(str(index))
+            if not number.is_finite() or number != number.to_integral_value():
+                raise ValueError("Destination index must be an integer.")
+            index = int(number)
+            if (location not in self.vial_areas or not self.vial_areas[location]['rack_present']
+                    or not 0 <= index < self.vial_areas[location]['rack_size']):
+                raise ValueError(f"Invalid destination: {location}[{index}]")
+            candidate = [vial.copy() for vial in self.original_vials_data]
+            matches = [vial for vial in candidate if str(vial['vial_index']) == str(vial_index)]
+            if len(matches) != 1:
+                raise ValueError("The source vial is missing or ambiguous.")
+            source = matches[0]
+            source_address = (source['location'], int(Decimal(str(source['location_index']))))
+            if source_address == (location, index):
+                return True
+            destinations = [vial for vial in candidate if vial['location'] == location
+                            and Decimal(str(vial['location_index'])) == index]
+            if len(destinations) > 1:
+                raise ValueError("The destination contains multiple vials.")
+            if destinations:
+                destinations[0].update(location=source_address[0], location_index=source_address[1],
+                                       home_location=source_address[0], home_location_index=source_address[1])
+            source.update(location=location, location_index=index,
+                          home_location=location, home_location_index=index)
+            self._validate_vial_positions(candidate)
+        except (ValueError, KeyError, TypeError, InvalidOperation) as error:
+            QMessageBox.warning(self, "Cannot Move Vial", str(error))
+            return False
+        self.original_vials_data = candidate
+        self._layout_refresh_pending = True
+        self._update_ui_state()
+        self.status_bar.showMessage("Vials swapped - remember to save changes" if destinations else
+                                    "Vial moved - remember to save changes")
+        if refresh:
+            self._refresh_after_drop()
+        return True
+
+    def _refresh_after_drop(self):
+        if self._layout_refresh_pending and not self._active_drag:
+            self._layout_refresh_pending = False
+            self._reload_all_widgets()
+
+    def _switch_drag_tab(self):
+        if self._active_drag and self._drag_tab_index >= 0:
+            self.tab_widget.setCurrentIndex(self._drag_tab_index)
+
+    def eventFilter(self, watched, event):
+        if watched is self.tab_widget.tabBar():
+            if event.type() in (QEvent.DragEnter, QEvent.DragMove):
+                index = watched.tabAt(event.position().toPoint())
+                page = self.tab_widget.widget(index)
+                if (self._active_drag and not self._layout_readonly and
+                        event.mimeData().hasFormat(VIAL_MOVE_MIME) and page is not None and
+                        page.property('vialLayoutTab')):
+                    if index != self._drag_tab_index:
+                        self._drag_tab_index = index
+                        self._drag_tab_timer.start()
+                    event.setDropAction(Qt.MoveAction)
+                    event.accept()
+                else:
+                    self._drag_tab_timer.stop()
+                    self._drag_tab_index = -1
+                    event.ignore()
+                return True
+            if event.type() in (QEvent.DragLeave, QEvent.Drop):
+                self._drag_tab_timer.stop()
+                self._drag_tab_index = -1
+                event.ignore()
+                return True
+        return super().eventFilter(watched, event)
+
     def _add_yaml_tabs(self):
         """Add YAML editing tabs for track and robot status."""
+        if not self.include_shared_state:
+            return
         # Track status tab
         self.track_status_widget = TrackStatusWidget()
         self.tab_widget.addTab(self.track_status_widget, "Track Status")
@@ -2182,6 +2445,8 @@ class VialManagerMainWindow(QMainWindow):
         # Robot status tab
         self.robot_status_widget = RobotStatusWidget()
         self.tab_widget.addTab(self.robot_status_widget, "Robot Status")
+        if self._preparation_mode:
+            self._prepare_shared_status_tabs()
     
     def _setup_workflow_mode(self, vial_file_path, lash_e_instance, workflow_name=None):
         """Configure GUI for workflow mode with optional config editing."""
@@ -2243,6 +2508,134 @@ class VialManagerMainWindow(QMainWindow):
             self._lash_e_instance.logger.warning("ConfigManager not available - config editing disabled")
         else:
             self._lash_e_instance.logger.info("No workflow name provided - config editing not available")
+
+    def setup_preparation(self, vial_file_path, workflow_name, config_file, *, config_source=None, row_owned=False):
+        if not self._preparation_mode:
+            raise RuntimeError("Preparation mode must be requested when constructing the window.")
+        if not Path(config_file).is_file():
+            raise FileNotFoundError(config_file)
+        self._row_owned = row_owned
+        if row_owned:
+            self.include_shared_state = False
+            for attribute in ("track_status_widget", "robot_status_widget"):
+                widget = getattr(self, attribute, None)
+                if widget is not None:
+                    self.tab_widget.removeTab(self.tab_widget.indexOf(widget))
+                    widget.deleteLater()
+                    setattr(self, attribute, None)
+        if vial_file_path is None:
+            self.status_file_path = None
+            self.original_vials_data = []
+            self._populate_racks([])
+            self._update_ui_state()
+            self.file_info_label.setText("No vial tracking for this workflow")
+        elif not self.load_status_file(str(vial_file_path)):
+            raise ValueError(f"Could not load vial file: {vial_file_path}")
+        self.config_editor = ConfigEditor()
+        if not self.config_editor.load_workflow_config(workflow_name, str(config_file)):
+            raise ValueError(f"Could not load workflow config: {config_file}")
+        self.tab_widget.addTab(self.config_editor, "Workflow Config")
+        if row_owned:
+            self.config_editor.enable_row_owned(workflow_name, config_source)
+            self.save_all_button.hide()
+            self.close_setup_button.setText("Cancel")
+            self.close_setup_button.setToolTip("Discard the configuration draft and return")
+            self.save_return_button.setToolTip("Apply configuration to this row and save its vial file")
+        self.setWindowTitle(f"Workflow Setup - {workflow_name}")
+        self._prepare_shared_status_tabs()
+        self._preparation_baseline = self._preparation_state()
+        self.status_bar.showMessage("Workflow setup")
+
+    def _prepare_shared_status_tabs(self):
+        if self.status_file_path is None:
+            for widget in self.rack_widgets.values():
+                widget.setEnabled(False)
+            self.return_home_button.setEnabled(False)
+        for attribute in ("track_status_widget", "robot_status_widget"):
+            widget = getattr(self, attribute, None)
+            if widget is not None:
+                widget.setEnabled(True)
+                widget.setToolTip("Shared starting state for the whole queue, not a per-workflow reset")
+
+    def _preparation_state(self):
+        values = []
+        for key, widget in self.config_editor.config_widgets.items():
+            if isinstance(widget, QCheckBox):
+                value = widget.isChecked()
+            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+                value = widget.value()
+            elif isinstance(widget, QTextEdit):
+                value = widget.toPlainText()
+            else:
+                value = widget.text()
+            values.append((key, value))
+        shared_values = []
+        for attribute in ("track_status_widget", "robot_status_widget"):
+            widget = getattr(self, attribute, None)
+            if widget is None:
+                continue
+            for control in widget.findChildren(QWidget):
+                if isinstance(control, QLineEdit):
+                    value = control.text()
+                elif isinstance(control, (QSpinBox, QDoubleSpinBox)):
+                    value = control.value()
+                elif isinstance(control, QComboBox):
+                    value = control.currentText()
+                else:
+                    continue
+                shared_values.append(value)
+        return repr(self.original_vials_data), tuple(values), tuple(shared_values)
+
+    def _save_preparation(self):
+        self._preparation_saved = False
+        if self.status_file_path is not None and not self._save_file():
+            return False
+        if not self.config_editor._save_config(silent=True):
+            return False
+        if self.track_status_widget is not None and not self.track_status_widget._save_track_status(silent=True):
+            return False
+        if self.robot_status_widget is not None and not self.robot_status_widget._save_robot_status(silent=True):
+            return False
+        self._preparation_baseline = self._preparation_state()
+        self._preparation_saved = not self._row_owned
+        self.status_bar.showMessage("Configuration draft and vial file saved" if self._row_owned else
+                        "Vials, workflow config and shared robot/track status saved")
+        return True
+
+    def _save_and_return(self):
+        if self._save_preparation():
+            self._preparation_saved = True
+            self.close()
+
+    def closeEvent(self, event):
+        if self._preparation_mode and self._preparation_baseline is not None:
+            if self._row_owned and not self._preparation_saved:
+                if self._preparation_state() != self._preparation_baseline:
+                    reply = QMessageBox.question(
+                        self, "Discard Changes?", "Discard this Setup draft?",
+                        QMessageBox.Discard | QMessageBox.Cancel, QMessageBox.Discard,
+                    )
+                    if reply != QMessageBox.Discard:
+                        event.ignore()
+                        return
+                self.preparation_finished.emit(False)
+                super().closeEvent(event)
+                return
+            if self._preparation_state() != self._preparation_baseline:
+                self._preparation_saved = False
+                reply = QMessageBox.question(
+                    self, "Unsaved Changes", "Save changes before returning to the scheduler?",
+                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                    QMessageBox.Save,
+                )
+                if reply == QMessageBox.Cancel:
+                    event.ignore()
+                    return
+                if reply == QMessageBox.Save and not self._save_preparation():
+                    event.ignore()
+                    return
+            self.preparation_finished.emit(self._preparation_saved)
+        super().closeEvent(event)
     
     def _update_button_visibility(self):
         """Update button visibility based on workflow mode."""
@@ -2259,7 +2652,9 @@ class VialManagerMainWindow(QMainWindow):
     
     def _set_interface_readonly(self, readonly=True):
         """Enable or disable interface editing."""
-        
+        self._layout_readonly = readonly
+        for rack in self.rack_widgets.values():
+            rack.setEnabled(not readonly)
         self.save_all_button.setEnabled(not readonly)
         self.reload_button.setEnabled(not readonly and self.status_file_path is not None)
         # Note: Individual vial editing will be handled by the widgets themselves
@@ -2343,17 +2738,21 @@ class VialManagerMainWindow(QMainWindow):
                 self.load_status_file(self.status_file_path)
             
             # Reload other components
-            if hasattr(self, 'track_status_widget'):
+            if getattr(self, 'track_status_widget', None) is not None:
                 self.track_status_widget._load_track_status()
-            if hasattr(self, 'robot_status_widget'):
+            if getattr(self, 'robot_status_widget', None) is not None:
                 self.robot_status_widget._load_robot_status()
             if hasattr(self, 'config_editor'):
                 self.config_editor._reload_config()
+            if self._preparation_mode:
+                self._prepare_shared_status_tabs()
             
             self.status_bar.showMessage("All data reloaded from files")
 
     def _save_all(self):
         """Save all modified data (vials, track, robot, config)."""
+        if self._preparation_mode:
+            return self._save_preparation()
         success_count = 0
         errors = []
         
@@ -2367,7 +2766,7 @@ class VialManagerMainWindow(QMainWindow):
         
         # Save track status
         try:
-            if hasattr(self, 'track_status_widget'):
+            if getattr(self, 'track_status_widget', None) is not None:
                 self.track_status_widget._save_track_status(silent=True)
                 success_count += 1
         except Exception as e:
@@ -2375,7 +2774,7 @@ class VialManagerMainWindow(QMainWindow):
         
         # Save robot status
         try:
-            if hasattr(self, 'robot_status_widget'):
+            if getattr(self, 'robot_status_widget', None) is not None:
                 self.robot_status_widget._save_robot_status(silent=True)
                 success_count += 1
         except Exception as e:
@@ -2567,12 +2966,13 @@ class VialManagerMainWindow(QMainWindow):
     def _save_file(self):
         """Save current vial data back to CSV file."""
         if not self.status_file_path:
-            return
+            return False
             
         try:
             # original_vials_data is the single source of truth — every widget edit
             # flows through _on_vial_edited() which keeps it current.
             all_vials_data = list(self.original_vials_data)
+            self._validate_vial_positions(all_vials_data)
             
             # Check for duplicate vial names - BLOCK the save if found
             seen_names = set()
@@ -2639,10 +3039,13 @@ class VialManagerMainWindow(QMainWindow):
                     writer.writerows(all_vials_data)
                 
                 self.status_bar.showMessage("File saved successfully")
+                return True
+            return False
                 
         except Exception as e:
             QMessageBox.critical(self, "Save Error", 
                                f"Failed to save file:\n{str(e)}")
+            return False
     
     def _reload_file(self):
         """Reload file from disk."""
