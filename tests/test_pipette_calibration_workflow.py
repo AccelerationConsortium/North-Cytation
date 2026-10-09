@@ -118,6 +118,20 @@ class NorthProtocolMeasurementTests(unittest.TestCase):
             self.assertEqual(self.robot.mock_calls, [])
             self.assertEqual(state['measurement_count'], 0)
 
+    def test_routine_simulation_stays_near_target_and_retains_correction_effect(self):
+        self.config['experiment']['volume_targets_ml'] = [0.02, 0.2, 0.55, 0.9]
+        with self.protocol.workflow_session(self.lash, self.config, 'water'):
+            state = self.protocol.initialize({'experiment': {'liquid': 'water'}})
+            for volume in self.config['experiment']['volume_targets_ml']:
+                parameters = dict(self.parameters, overaspirate_vol=0.0)
+                measurements = self.protocol.measure(state, volume, parameters, replicates=32)
+                for measurement in measurements:
+                    self.assertLessEqual(abs(measurement['volume'] / volume - 1), .006 + 1e-12)
+                parameters['overaspirate_vol'] = volume * .005
+                corrected = self.protocol.measure(state, volume, parameters, replicates=32)
+                for measurement in corrected:
+                    self.assertLessEqual(abs(measurement['volume'] / volume - 1), .001 + 1e-12)
+
     def test_nonfinite_nonreal_and_bool_parameters_rejected(self):
         with self.protocol.workflow_session(self.lash, self.config, 'water'):
             state = self.protocol.initialize({'experiment': {'liquid': 'water'}})
@@ -155,7 +169,7 @@ class NorthProtocolMeasurementTests(unittest.TestCase):
 
     def test_session_seed_restarts_noise_without_using_global_random(self):
         expected_random = random.Random(30)
-        expected = [0.02 * 0.8 + 0.004 + expected_random.uniform(-0.02, 0.02) * 0.02
+        expected = [0.02 * 0.995 + 0.004 + expected_random.uniform(-0.001, 0.001) * 0.02
                     for replicate in range(3)]
         global_state = random.getstate()
         for phase in range(2):
@@ -186,11 +200,11 @@ class NorthProtocolMeasurementTests(unittest.TestCase):
         self.assertEqual(output.call_args_list[1].args, ('',))
         state = {'lash_e': self.lash, 'source_vial': 'water', 'measurement_vial': 'water',
                  'simulate': True, 'liquid': 'water', 'measurement_count': 0}
-        with patch.object(random, 'uniform', return_value=0.01) as noise, \
+        with patch.object(random, 'uniform', return_value=0.001) as noise, \
                 patch.object(builtins, 'print'):
             result = self.protocol.measure(state, 0.02, {})[0]
-        noise.assert_called_once_with(-0.02, 0.02)
-        self.assertAlmostEqual(result['volume'], 0.0162)
+        noise.assert_called_once_with(-0.001, 0.001)
+        self.assertAlmostEqual(result['volume'], 0.01992)
         self.assertEqual(result['overaspirate_vol'], 0.0)
         self.lash.logger.info.assert_not_called()
 

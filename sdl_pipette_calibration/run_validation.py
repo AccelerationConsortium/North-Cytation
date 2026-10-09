@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sdl_pipette_calibration import ExperimentConfig
 from sdl_pipette_calibration.protocol_loader import create_protocol
+from sdl_pipette_calibration.parameter_constraints import constrain_parameters
 from sdl_pipette_calibration.pipetting_wizard import PipettingWizard
 
 
@@ -155,6 +156,13 @@ class ValidationRunner:
         return optimal_conditions
     
     def _get_parameters_for_volume(self, target_volume_ml: float, optimal_conditions: pd.DataFrame) -> Dict[str, float]:
+        """Apply protocol constraints after CSV compensation and interpolation."""
+        parameters = self._get_unconstrained_parameters_for_volume(target_volume_ml, optimal_conditions)
+        return constrain_parameters(
+            parameters, self.protocol.protocol.get_parameter_constraints(target_volume_ml),
+            {'target_volume_ml': target_volume_ml})
+
+    def _get_unconstrained_parameters_for_volume(self, target_volume_ml: float, optimal_conditions: pd.DataFrame) -> Dict[str, float]:
         """Get optimal parameters for a target volume using pipetting wizard with overvolume compensation."""
         try:
             # Apply overvolume compensation to the optimal conditions before interpolation

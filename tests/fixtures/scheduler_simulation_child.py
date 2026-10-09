@@ -1,6 +1,7 @@
 """Harmless child process for testing GUI queue sequencing, never hardware."""
 import json
 import sys
+import time
 from pathlib import Path
 import yaml
 
@@ -8,6 +9,10 @@ root = Path(sys.argv[1])
 job_id = sys.argv[2]
 folder = root / "jobs" / job_id
 job = json.loads((folder / "input.json").read_text())
+if job["config"].get("TEST_OUTPUT_DELAY"):
+    print("Child is still running", flush=True)
+    print("Child stderr is visible", file=sys.stderr, flush=True)
+    time.sleep(job["config"]["TEST_OUTPUT_DELAY"])
 with (root / "order.txt").open("a") as stream:
     stream.write(job_id + "\n")
 state_path = root / "robot_status.yaml"

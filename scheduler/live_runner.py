@@ -132,6 +132,11 @@ def main():
     parser.add_argument("--job-folder", required=True)
     args = parser.parse_args()
     result = run_job(args.job_folder)
+    if result["exception"]:
+        # Re-raise so this becomes a genuinely unhandled exception in this process -
+        # run_job() caught it to still write result.json, but experiment_run_logger's
+        # atexit hook needs an unhandled exception to tag the run "failed" instead of "completed".
+        raise RuntimeError(result["exception"])
     raise SystemExit(0 if result["completed"] and result["handoff_ok"] else 1)
 
 

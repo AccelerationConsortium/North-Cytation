@@ -1802,13 +1802,14 @@ class North_Robot(North_Base):
         
         # Get all available tip types from configuration
         available_tips = []
+        largest_capacity = max((config.get('volume', 0) for config in self.PIPET_TIPS.values()), default=0)
         for tip_name, tip_config in self.PIPET_TIPS.items():
             max_volume = tip_config.get('volume', 0)
             min_volume = tip_config.get('min_suggested_volume', 0)
             
-            # Check if volume fits within this tip's range (inclusive of the
-            # tip's own max capacity, e.g. exactly 1.0mL for a 1.0mL large_tip)
-            if min_volume <= volume <= max_volume:
+            # Upper selection boundaries are exclusive, except the largest
+            # available tip also accepts its exact maximum capacity.
+            if min_volume <= volume and (volume < max_volume or volume == max_volume == largest_capacity):
                 available_tips.append((tip_name, min_volume, max_volume))
         
         if not available_tips:

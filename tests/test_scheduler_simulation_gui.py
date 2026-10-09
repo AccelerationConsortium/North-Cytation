@@ -1,4 +1,5 @@
 import json
+import io
 import os
 import sys
 import tempfile
@@ -113,6 +114,36 @@ class SimulationGuiTests(unittest.TestCase):
         self.assertEqual((self.root / "robot_state" / "robot_status.yaml").read_bytes(), original)
         self.assertTrue(self.window.table.isEnabled())
         self.assertTrue(all(widget.isEnabled() for widget in self.window.shared_state_widgets))
+
+    def test_child_output_reaches_terminal_before_exit_and_remains_in_log(self):
+        for row in range(2):
+            path = Path(self.window.row_config_path(self.window.table.cellWidget(row, 0)))
+            config = yaml.safe_load(path.read_text())
+            config["TEST_OUTPUT_DELAY"] = 0.6
+            path.write_text(yaml.safe_dump(config))
+        for live in (False, True):
+            with self.subTest(live=live):
+                terminal = io.StringIO()
+                observed_while_running = []
+                timer = QTimer()
+                timer.setInterval(20)
+                timer.timeout.connect(lambda: observed_while_running.append(
+                    self.window.simulation_process is not None
+                    and "Child stderr is visible" in terminal.getvalue()
+                ))
+                with patch.object(sys, "stdout", terminal):
+                    timer.start()
+                    if live:
+                        with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+                            self.window.start_live_run()
+                    else:
+                        self.window.start_simulation()
+                    self.wait_for_queue()
+                    timer.stop()
+                saved = "".join((self.window.simulation_session / "jobs" / f"{row:03d}" / "console.log").read_text()
+                                for row in range(2))
+                self.assertTrue(any(observed_while_running), "No output reached terminal while child was running")
+                self.assertEqual(terminal.getvalue(), saved)
 
     def test_unsaved_shared_edits_block_simulation_and_live_without_writes(self):
         before = {path: path.read_bytes() for path in (self.root / "robot_state").glob("*.yaml")}

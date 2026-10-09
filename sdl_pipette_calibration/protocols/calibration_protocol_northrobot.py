@@ -625,7 +625,9 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 
                 
             else:
-                # Simple simulation: target volume - 20% + overaspirate + noise
+                # Routine simulation: small delivery bias + overaspirate + noise.
+                # Large shortfalls belong in explicit fault/regression scenarios,
+                # rather than making ordinary high-volume calibration infeasible.
                 import random
                 
                 # Start timing for simulation
@@ -638,10 +640,10 @@ class HardwareCalibrationProtocol(CalibrationProtocolBase):
                 )
                 
                 # Basic simulation logic
-                base_efficiency = 0.8  # Start at 80% efficiency (target - 20%)
+                base_efficiency = 0.995  # 0.5% shortfall before calibration
                 overaspirate_effect = pipet_params['overaspirate_vol'] * 1000  # Convert to uL
                 noise_source = state['simulation_random'] if state.get('workflow_managed', False) else random
-                noise = noise_source.uniform(-0.02, 0.02) * volume_mL  # ±2% noise
+                noise = noise_source.uniform(-0.001, 0.001) * volume_mL  # +/-0.1% noise
                 
                 # Simple formula: base efficiency + overaspirate helps + noise
                 simulated_volume_mL = (volume_mL * base_efficiency) + (overaspirate_effect / 1000) + noise

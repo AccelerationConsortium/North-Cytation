@@ -1,7 +1,11 @@
 """One-time backfill of historical experiment logs into logs/experiment_runs.csv.
 
 Scope (per investigation + explicit user decisions):
-- Only modern-format, non-simulated `experiment_log*.log` files (has per-line timestamps).
+- Modern-format `experiment_log*.log` files (has per-line timestamps), both simulated and
+  non-simulated. The `simulate` column is derived from the `_simulate` filename suffix
+  (set by master_usdl_coordinator.py's `suffix = "_simulate" if self.simulate else ""`) -
+  the original version of this script silently excluded every `_simulate.log` file and
+  hardcoded `simulate=False`, which is why the master CSV was missing simulated history.
 - Old no-timestamp `.txt`-era logs (~271 files) are excluded entirely - nothing reliable is
   recoverable from them (no stop time, no duration, no workflow name).
 - workflow_name resolution, in priority order:
@@ -103,6 +107,7 @@ def resolve_status(lines):
 
 
 def process_file(path, filename):
+    simulate = "_simulate" in filename
     with open(path, "r", encoding="utf-8", errors="replace") as f:
         lines = f.readlines()
 
@@ -123,7 +128,7 @@ def process_file(path, filename):
     return {
         "run_id": uuid.uuid4().hex[:8],
         "workflow_name": resolve_workflow_name(lines),
-        "simulate": False,
+        "simulate": simulate,
         "datetime_started": started,
         "datetime_stopped": stopped,
         "status": resolve_status(lines),
@@ -138,7 +143,7 @@ def main():
     existing = load_existing_log_filenames()
     candidates = [
         f for f in os.listdir(LOGS_DIR)
-        if f.endswith(".log") and "simulate" not in f and f not in existing
+        if f.endswith(".log") and f not in existing
     ]
 
     rows = []

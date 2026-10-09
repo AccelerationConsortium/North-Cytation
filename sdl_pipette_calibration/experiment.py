@@ -37,9 +37,10 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
 import pandas as pd
 import numpy as np
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 from .constraint_calibration import ConstraintCalibrator
+from .parameter_constraints import feasible_interval, distinct_bounded_point, constrain_parameters
 from .data_structures import (
     PipettingParameters, TrialResult, VolumeCalibrationResult, 
     ExperimentResults, ConstraintBoundsUpdate, TwoPointCalibrationResult,
@@ -200,7 +201,6 @@ class CalibrationExperiment:
             if optimal_conditions:
                 # Use the proven _export_optimal_conditions logic
                 import pandas as pd
-                from dataclasses import asdict
                 
                 # Flatten parameters for CSV export (same as existing logic)
                 flattened_conditions = []
@@ -1159,6 +1159,10 @@ class CalibrationExperiment:
                 else:
                     logger.info("GOOD: overaspirate_vol correctly NOT being fixed by transfer learning")
         
+        # Explicit experiment settings take precedence over transfer learning,
+        # including parameters marked volume-dependent in the scientific config.
+        fixed_params.update(self.config.get_fixed_parameters())
+
         # Create optimizer type based on config backends
         try:
             backend = self.config.get_optimizer_backend() if is_first_volume else self.config.get_optimizer_backend_subsequent()
@@ -1460,7 +1464,24 @@ class CalibrationExperiment:
             logger.error(f"Could not import ConstraintCalibrator: {e}")
             return calibration_trials, None
         
-        # Point 1: Test with base overaspirate from optimized parameters
+        # Reduce the same protocol inequalities used by the optimizer with
+        # hardware parameters fixed. Calibration may expand the learned search
+        # bounds, but must never expand the protocol's feasible interval.
+        constraints = list(self.protocol_module.get_parameter_constraints(target_volume_ml))
+        fixed_values = optimized_params.to_protocol_dict()
+        fixed_values['target_volume_ml'] = target_volume_ml
+        lower, upper = feasible_interval(
+            constraints, fixed_values, 'overaspirate_vol', lower=-0.010)
+        baseline = min(upper, max(lower, optimized_params.overaspirate_vol))
+        # Check room for a meaningful probe before performing either measurement.
+        distinct_bounded_point(baseline, baseline + 0.002, lower, upper, 0.002)
+        if baseline != optimized_params.overaspirate_vol:
+            logger.info("Bounding two-point baseline from %.6f to %.6f mL", optimized_params.overaspirate_vol, baseline)
+        optimized_params = PipettingParameters(
+            calibration=CalibrationParameters(overaspirate_vol=baseline),
+            hardware=optimized_params.hardware)
+
+        # Point 1: Test with the feasible baseline parameters
         two_point_reps = self.config.get_two_point_calibration_replicates()
         logger.info(f"Point 1: Testing with base overaspirate {optimized_params.overaspirate_vol*1000:.1f}uL ({two_point_reps} replicates)")
         point_1_trial = self._execute_trial(
@@ -1496,11 +1517,16 @@ class CalibrationExperiment:
             direction = "decreased" 
             direction_sign = "-"
         
-        # Allow negative overaspirate but set reasonable lower bound (-10uL)
-        point_2_overaspirate_ml = max(-0.010, point_2_overaspirate_ml)
+        proposed = point_2_overaspirate_ml
+        point_2_overaspirate_ml = distinct_bounded_point(
+            optimized_params.overaspirate_vol, proposed, lower, upper, 0.002)
+        if point_2_overaspirate_ml != proposed:
+            logger.info("Bounding two-point probe from %.6f to %.6f mL", proposed, point_2_overaspirate_ml)
+        direction = 'increased' if point_2_overaspirate_ml > optimized_params.overaspirate_vol else 'decreased'
+        direction_sign = '+' if direction == 'increased' else '-'
+        spread_ul = abs(point_2_overaspirate_ml - optimized_params.overaspirate_vol) * 1000
         
         # Execute Point 2
-        from .data_structures import PipettingParameters, CalibrationParameters
         point_2_params = PipettingParameters(
             calibration=CalibrationParameters(overaspirate_vol=point_2_overaspirate_ml),
             hardware=optimized_params.hardware
@@ -1548,6 +1574,20 @@ class CalibrationExperiment:
         
         # Convert to constraint update
         constraint_update = calibrator.create_constraint_update(calibration_result)
+        # A fitted optimum may itself lie outside the physical feasible region.
+        # Keep its evidence in source_calibration, but constrain the values passed
+        # to inherited measurements and subsequent optimization.
+        bounded_min = max(lower, constraint_update.min_value)
+        bounded_max = min(upper, constraint_update.max_value)
+        if bounded_min >= bounded_max:
+            bounded_min = min(baseline, point_2_overaspirate_ml)
+            bounded_max = max(baseline, point_2_overaspirate_ml)
+            logger.warning("Fitted calibration range is outside protocol constraints; using the feasible tested interval")
+        bounded_optimal = min(bounded_max, max(bounded_min, constraint_update.optimal_overaspirate_ml))
+        constraint_update = replace(
+            constraint_update, min_value=bounded_min, max_value=bounded_max,
+            optimal_overaspirate_ml=bounded_optimal,
+            justification=constraint_update.justification + '; bounded by protocol constraints')
         
         return calibration_trials, constraint_update
     
@@ -1652,6 +1692,16 @@ class CalibrationExperiment:
         logger.info(f"Using optimal overaspirate: {optimal_overaspirate_ml*1000:.2f}uL")
         
         inherited_params = self._create_inherited_parameters(target_volume_ml, optimal_overaspirate_ml)
+        # Inheritance can select different hardware parameters from those used
+        # by the two-point baseline, so re-evaluate constraints for this mapping.
+        fixed_values = inherited_params.to_protocol_dict()
+        fixed_values['target_volume_ml'] = target_volume_ml
+        lower, upper = feasible_interval(
+            self.protocol_module.get_parameter_constraints(target_volume_ml),
+            fixed_values, 'overaspirate_vol', lower=-0.010)
+        optimal_overaspirate_ml = min(upper, max(lower, optimal_overaspirate_ml))
+        inherited_params = replace(
+            inherited_params, calibration=CalibrationParameters(optimal_overaspirate_ml))
         
         # Execute the trial using adaptive measurement (don't force replicates)
         logger.info(f"Executing inherited trial: overaspirate={optimal_overaspirate_ml*1000:.2f}uL")
@@ -1729,6 +1779,12 @@ class CalibrationExperiment:
                       strategy: str = "optimization",
                       liquid: str = "water") -> TrialResult:
         """Execute a complete trial with adaptive measurement."""
+        prepared = constrain_parameters(
+            parameters.to_protocol_dict(),
+            self.protocol_module.get_parameter_constraints(target_volume_ml),
+            {'target_volume_ml': target_volume_ml})
+        parameters = replace(
+            parameters, calibration=CalibrationParameters(prepared['overaspirate_vol']))
         measurements: List[RawMeasurement] = []
         
         # Determine number of initial replicates
@@ -2040,4 +2096,3 @@ class CalibrationExperiment:
             f.write("=" * 80 + "\n\n")
         
         logger.info(f"Constraint calibration results saved to: {calibration_file}")
-    

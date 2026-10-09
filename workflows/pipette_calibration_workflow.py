@@ -99,11 +99,14 @@ _CONFIG_KEYS = [
 
 
 def _number(value, label, minimum=0, integer=False, positive=False):
+    """Validate a finite number; minimum=None permits signed corrections."""
     if (isinstance(value, bool) or not isinstance(value, Real)
-            or not math.isfinite(value) or value < minimum
+            or not math.isfinite(value) or (minimum is not None and value < minimum)
             or (positive and value <= 0) or (integer and type(value) is not int)):
+        bound = " greater than zero" if positive else (
+            f" at least {minimum}" if minimum is not None else "")
         raise ValueError(f"{label} must be a finite {'integer' if integer else 'number'}"
-                         f" {'greater than zero' if positive else f'at least {minimum}'}")
+                         f"{bound}")
     return value
 
 
@@ -231,6 +234,7 @@ def _snapshot(path, raw):
 
 def _preflight_artifact(path, raw):
     from sdl_pipette_calibration.pipetting_wizard import PipettingWizard
+    from sdl_pipette_calibration.parameter_constraints import constrain_parameters
 
     if not path.is_file():
         raise FileNotFoundError(f"Current run final exporter CSV missing: {path}")
@@ -245,7 +249,9 @@ def _preflight_artifact(path, raw):
         if column not in data:
             raise ValueError(f"Final CSV missing mandatory column: {column}")
         for value in data[column]:
-            _number(value, column, positive=column in ("volume_target_ul", "volume_measured_ml"))
+            _number(value, column,
+                    minimum=None if column == "calibration_overaspirate_vol" else 0,
+                    positive=column in ("volume_target_ul", "volume_measured_ml"))
     if data["volume_target_ul"].duplicated().any():
         raise ValueError("Final CSV contains duplicate calibrated volumes")
     expected = sorted(volume * 1000 for volume in raw["experiment"]["volume_targets_ml"])
@@ -257,8 +263,11 @@ def _preflight_artifact(path, raw):
     protocol = importlib.import_module(_PROTOCOL_NAME).protocol_instance
     for volume in raw["validation"]["volumes_ml"]:
         parameters = wizard.interpolate_parameters(compensated, volume)
+        parameters = constrain_parameters(
+            parameters, protocol.get_parameter_constraints(volume), {'target_volume_ml': volume})
         for name in required | {"overaspirate_vol", "volume_ml"}:
-            _number(parameters[name], f"Interpolated {name}")
+            _number(parameters[name], f"Interpolated {name}",
+                    minimum=None if name == "overaspirate_vol" else 0)
         protocol.validate_workflow_capacity(volume, parameters)
 
 
@@ -354,9 +363,10 @@ def execute(config=None, show_gui=True):
         with protocol.workflow_session(lash_e, validation_raw, confirmed["TARGET_VIAL"]):
             validation_results = validator.run_validation()
         summary = _check_validation(validation_results, confirmed)
-        message = (f"{_WORKFLOW_NAME} completed | validation "
+        message = (f"{_WORKFLOW_NAME} completed | liquid={confirmed['LIQUID']} | validation "
                    f"{summary['volumes_passed']}/{summary['total_volumes_tested']} volumes passed "
-                   f"({summary['overall_pass_rate']:.1%}); parameters not installed")
+                   f"({summary['overall_pass_rate']:.1%}); parameters not installed | "
+                   f"output_dir={output} | optimal_conditions_file={artifact}")
         lash_e.logger.info(message)
         _send_workflow_slack(lash_e, message)
         failed = False

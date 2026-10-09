@@ -2,10 +2,18 @@
 hardware_parameters_* columns) into a legacy pipetting_data calibration CSV
 (the format PipettingWizard reads), merging by volume_target.
 
+The legacy file is backed up (timestamped copy alongside it) before being
+overwritten, since this is the live file PipettingWizard reads for real
+pipetting parameters.
+
 Usage:
     python import_calibration_run.py <new_run_optimal_conditions.csv> <legacy_csv>
 """
+import shutil
 import sys
+from datetime import datetime
+from pathlib import Path
+
 import pandas as pd
 
 COLUMN_MAP = {
@@ -38,11 +46,19 @@ def convert(new_run_csv, legacy_csv):
     # unless the legacy file already tracks them
     new_df = new_df.reindex(columns=legacy_df.columns)
 
+    legacy_path = Path(legacy_csv)
+    backup_path = legacy_path.with_name(
+        f"{legacy_path.stem}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}{legacy_path.suffix}"
+    )
+    shutil.copy2(legacy_path, backup_path)
+
     merged = pd.concat([legacy_df, new_df], ignore_index=True)
     merged = merged.drop_duplicates(subset='volume_target', keep='last')
     merged = merged.sort_values('volume_target').reset_index(drop=True)
     merged.to_csv(legacy_csv, index=False)
+    print(f"Backed up {legacy_csv} to {backup_path}")
     print(f"Merged {len(new_df)} rows into {legacy_csv} ({len(merged)} total rows)")
+    return backup_path
 
 
 if __name__ == "__main__":

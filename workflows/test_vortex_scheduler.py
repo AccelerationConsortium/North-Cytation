@@ -47,6 +47,7 @@ def execute(config=None, show_gui=True):
     
     lash_e.logger.info(f"Vortex task: {c['TARGET_VIAL']} for {c['VORTEX_TIME']} seconds")
     try:
+        lash_e.nr_robot.home_robot_components()
         lash_e.nr_robot.vortex_vial(c["TARGET_VIAL"], vortex_time=c["VORTEX_TIME"])
         lash_e.nr_robot.return_vial_home(c["TARGET_VIAL"])
         lash_e.nr_robot.move_home()

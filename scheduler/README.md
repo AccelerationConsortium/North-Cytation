@@ -127,7 +127,10 @@ the final export: the child runner must exit the context before it exits.
 The GUI Simulate button launches one child at a time using the interpreter
 running the GUI, saved config copies and `show_gui=False`. Simulation is forced
 on in memory; saved configs are not changed. Child output is redirected to each
-session's `jobs/<job_id>/console.log`, with no output-pipe accumulation and no
+session's `jobs/<job_id>/console.log` and mirrored to the launching terminal every
+100 ms for both simulation and live jobs. Output uses UTF-8; the final log tail
+is mirrored before advancing the queue. The child still writes directly to its
+log, so a closed terminal does not interrupt recording. There is no output-pipe accumulation and no
 runtime, inactivity or estimate-based timeout. Ordinary per-experiment logs
 and run tracking still operate.
 

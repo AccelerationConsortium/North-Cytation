@@ -4,13 +4,15 @@ import csv
 import html
 import json
 import math
+import time
 from statistics import median
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from uuid import uuid4
 
 import yaml
-from PySide6.QtCore import Qt, QProcess
+from scheduler.console_output import ConsoleLogMirror
+from PySide6.QtCore import Qt, QProcess, QProcessEnvironment
 from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import (
     QApplication,
@@ -71,7 +73,7 @@ def read_runtime_estimates():
     except (OSError, ValueError, csv.Error) as error:
         return {}, f"Cannot read runtime history: {error}"
     estimates = {
-        name: (median(values), len(values), min(values), max(values))
+        name: (median(values), len(values), min(values), max(values), values)
         for name, values in durations.items()
     }
     warning = f"Skipped {skipped} completed real-run records with invalid duration or workflow identity." if skipped else ""
@@ -282,6 +284,7 @@ class SchedulerWindow(QMainWindow):
         self.simulation_session = None
         self.simulation_rows = []
         self.simulation_index = 0
+        self.simulation_job_start_time = None
         self.stop_simulation_requested = False
         self._execution_busy = False
         self._loading_shared_state = False
@@ -341,8 +344,8 @@ class SchedulerWindow(QMainWindow):
         toolbar.addWidget(self.count_label)
         queue_layout.addLayout(toolbar)
 
-        self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Workflow", "Setup", "Status", "Notes", "Estimated Time"])
+        self.table = QTableWidget(0, 6)
+        self.table.setHorizontalHeaderLabels(["Workflow", "Setup", "Status", "Notes", "Estimated Time", "Actual Time"])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -353,6 +356,7 @@ class SchedulerWindow(QMainWindow):
         self.table.setColumnWidth(1, 110)
         self.table.setColumnWidth(2, 150)
         self.table.setColumnWidth(4, 135)
+        self.table.setColumnWidth(5, 135)
         self.table.cellDoubleClicked.connect(self.show_simulation_notes)
         queue_layout.addWidget(self.table)
 
@@ -514,6 +518,8 @@ class SchedulerWindow(QMainWindow):
         estimate = QTableWidgetItem("")
         self.table.setItem(row, 4, estimate)
         self.update_runtime_estimate(selector, estimate)
+        actual = QTableWidgetItem("")
+        self.table.setItem(row, 5, actual)
         if selected_workflow in self.workflow_names:
             self.initialize_row_config(selector, status, notes)
 
@@ -599,12 +605,13 @@ class SchedulerWindow(QMainWindow):
             item.setText("History unavailable" if self.runtime_history_warning.startswith("Cannot read") else "No history")
             item.setToolTip(self.runtime_history_warning or "No completed non-simulated runs for this workflow.")
             return
-        seconds, count, shortest, longest = estimate
+        seconds, count, shortest, longest, values = estimate
         item.setText(format_runtime(seconds))
         details = (
             f"Median of {count} completed non-simulated runs.\n"
             f"Historical range: {format_runtime(shortest)} to {format_runtime(longest)}.\n"
-            "Workflow-level estimate; experiment settings may differ. No execution timeout."
+            "\nIndividual completed run durations:\n"
+            + "\n".join(f"{index}. {format_runtime(duration)}" for index, duration in enumerate(values, start=1))
         )
         if self.runtime_history_warning:
             details += "\n" + self.runtime_history_warning
@@ -744,6 +751,8 @@ class SchedulerWindow(QMainWindow):
             self.table.item(row, 2).setText("Pending run")
             self.table.item(row, 3).setText("")
             self.table.item(row, 3).setData(Qt.UserRole, None)
+            self.table.item(row, 5).setText("")
+            self.table.item(row, 5).setToolTip("")
             self.set_simulation_row_colour(row, None)
         self.set_simulation_busy(True)
         self.launch_next_simulation()
@@ -827,6 +836,8 @@ class SchedulerWindow(QMainWindow):
             self.table.item(row, 2).setText("Pending simulation")
             self.table.item(row, 3).setText("")
             self.table.item(row, 3).setData(Qt.UserRole, None)
+            self.table.item(row, 5).setText("")
+            self.table.item(row, 5).setToolTip("")
             self.set_simulation_row_colour(row, None)
         self.set_simulation_busy(True)
         self.launch_next_simulation()
@@ -841,6 +852,10 @@ class SchedulerWindow(QMainWindow):
         process.setWorkingDirectory(str(REPO_ROOT))
         process.setProcessChannelMode(QProcess.MergedChannels)
         process.setStandardOutputFile(str(folder / "console.log"))
+        environment = QProcessEnvironment.systemEnvironment()
+        environment.insert("PYTHONIOENCODING", "utf-8")
+        process.setProcessEnvironment(environment)
+        self.console_mirror = ConsoleLogMirror(folder / "console.log", sys.stdout, self)
         process.finished.connect(self.simulation_finished)
         process.errorOccurred.connect(self.simulation_process_error)
         self.simulation_process = process
@@ -848,6 +863,7 @@ class SchedulerWindow(QMainWindow):
         self.table.item(row, 2).setText("Running" if live else "Simulating")
         self.set_simulation_row_colour(row, "running")
         self.statusBar().showMessage(f"{'Running' if live else 'Simulating'} {self.simulation_index + 1} of {len(self.simulation_rows)}")
+        self.simulation_job_start_time = time.monotonic()
         arguments = (["-u", "-m", "scheduler.live_runner", "--job-folder", str(folder)] if live else
                  ["-u", "-m", "scheduler.simulation_runner", "--session", str(self.simulation_session), "--job", folder.name])
         process.start(sys.executable, arguments)
@@ -860,9 +876,16 @@ class SchedulerWindow(QMainWindow):
         process = self.simulation_process
         if process is None:
             return
+        self.console_mirror.finish()
+        self.console_mirror = None
         self.simulation_process = None
         row = self.simulation_rows[self.simulation_index]
         folder = self.simulation_session / "jobs" / f"{self.simulation_index:03d}"
+        elapsed = time.monotonic() - self.simulation_job_start_time
+        self.table.item(row, 5).setText(format_runtime(elapsed))
+        self.table.item(row, 5).setToolTip(
+            f"Actual wall-clock duration of this {'run' if self.execution_mode == 'live' else 'simulation'}: {round(elapsed)} s."
+        )
         try:
             result = json.loads((folder / "result.json").read_text(encoding="utf-8"))
             records = result["records"]
@@ -922,6 +945,9 @@ class SchedulerWindow(QMainWindow):
         self.statusBar().showMessage("Stopping after the current workflow; child will not be terminated")
 
     def show_simulation_notes(self, row, column):
+        if column in (4, 5):
+            self.show_time_details(row, column)
+            return
         if column != 3:
             return
         result = self.table.item(row, 3).data(Qt.UserRole)
@@ -939,6 +965,23 @@ class SchedulerWindow(QMainWindow):
             if key in result:
                 messages.append(f"{key}: {result[key]}")
         text.setPlainText("\n\n".join(messages) or "No logged errors or warnings")
+        layout.addWidget(text)
+        dialog.exec()
+
+    def show_time_details(self, row, column):
+        item = self.table.item(row, column)
+        if item is None:
+            return
+        details = item.toolTip()
+        if not details:
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Estimated Time Details" if column == 4 else "Actual Time Details")
+        dialog.resize(600, 300)
+        layout = QVBoxLayout(dialog)
+        text = QTextEdit()
+        text.setReadOnly(True)
+        text.setPlainText(details)
         layout.addWidget(text)
         dialog.exec()
 
@@ -1043,10 +1086,12 @@ class SchedulerWindow(QMainWindow):
         neighbor_config = [neighbor.property(key) for key in properties]
         current_report = self.table.item(row, 3).data(Qt.UserRole)
         neighbor_report = self.table.item(destination, 3).data(Qt.UserRole)
-        current_details = [self.table.item(row, column).text() for column in (2, 3)]
-        neighbor_details = [self.table.item(destination, column).text() for column in (2, 3)]
+        current_details = [self.table.item(row, column).text() for column in (2, 3, 5)]
+        neighbor_details = [self.table.item(destination, column).text() for column in (2, 3, 5)]
         current_tooltip = self.table.item(row, 3).toolTip()
         neighbor_tooltip = self.table.item(destination, 3).toolTip()
+        current_actual_tooltip = self.table.item(row, 5).toolTip()
+        neighbor_actual_tooltip = self.table.item(destination, 5).toolTip()
         current_index = current.currentIndex()
         self._moving_rows = True
         try:
@@ -1063,13 +1108,15 @@ class SchedulerWindow(QMainWindow):
             self.pending_simulation_inputs = None
         finally:
             self._moving_rows = False
-        for column, current_detail, neighbor_detail in zip((2, 3), current_details, neighbor_details):
+        for column, current_detail, neighbor_detail in zip((2, 3, 5), current_details, neighbor_details):
             self.table.item(row, column).setText(neighbor_detail)
             self.table.item(destination, column).setText(current_detail)
         self.table.item(row, 3).setData(Qt.UserRole, neighbor_report)
         self.table.item(destination, 3).setData(Qt.UserRole, current_report)
         self.table.item(row, 3).setToolTip(neighbor_tooltip)
         self.table.item(destination, 3).setToolTip(current_tooltip)
+        self.table.item(row, 5).setToolTip(neighbor_actual_tooltip)
+        self.table.item(destination, 5).setToolTip(current_actual_tooltip)
         for position in (row, destination):
             text = self.table.item(position, 2).text()
             state = "success" if text in {"Simulated", "Completed"} else "error" if text in {"Needs attention", "Simulation incomplete", "Run failed"} else None
