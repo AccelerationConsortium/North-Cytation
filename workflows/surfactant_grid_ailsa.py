@@ -70,9 +70,9 @@ DYE_SOLVENT = "DMSO"
 DYE_VIAL = "dye_vial"
 DYE_VOLUME_UL = 5
 # "buffer" omitted: this recipe set has ADD_BUFFER=False and buffer_volume_ul=0 throughout.
-DISPENSE_ORDER = ["surfactant_A", "water", "surfactant_B", "dye"]
+DISPENSE_ORDER = ["surfactant_B", "water", "surfactant_A", "dye"]
 
-PREPARATION_REPLICATES = 3
+PREPARATION_REPLICATES = 1
 MEASUREMENT_REPLICATES = 3
 
 RANDOMIZED_ORDER = False
@@ -1501,6 +1501,9 @@ def execute_study_workflow(
     """Replay a grid CSV in one pass with study config available locally."""
     study_config = get_study_config()
 
+    # Home robot once before the first experiment
+    lash_e.nr_robot.home_robot_components()
+
     lash_e.logger.info("=" * 80)
     lash_e.logger.info("SURFACTANT GRID STUDY WORKFLOW")
     lash_e.logger.info(f"Recipes:  {recipes_path}")
@@ -1516,6 +1519,13 @@ def execute_study_workflow(
         f"Surfactants: {surfactant_a_name} + {surfactant_b_name}, "
         f"{len(well_recipes_df)} rows, {len(dilution_recipes)} substocks"
     )
+
+    if not simulate:
+        import slack_agent
+        slack_agent.send_slack_message(
+            f"Starting surfactant grid study workflow: {surfactant_a_name}+{surfactant_b_name}, "
+            f"{len(well_recipes_df)} wells, {PREPARATION_REPLICATES} prep replicate(s)"
+        )
 
     if max_wells > 0:
         well_recipes_df = well_recipes_df.iloc[:max_wells].reset_index(drop=True)
@@ -1542,6 +1552,12 @@ def execute_study_workflow(
             f"Completed preparation replicate {preparation_replicate}: "
             f"{replicate_result['output_folder']}"
         )
+        if not simulate:
+            import slack_agent
+            slack_agent.send_slack_message(
+                f"Preparation replicate {preparation_replicate}/{PREPARATION_REPLICATES} complete: "
+                f"{replicate_result['output_folder']}"
+            )
 
     pipette = get_pipette_usage_breakdown(lash_e)
     lash_e.logger.info(
@@ -1549,6 +1565,14 @@ def execute_study_workflow(
         f"total={pipette['total']}"
     )
     lash_e.logger.info("STUDY WORKFLOW COMPLETE")
+
+    if not simulate:
+        import slack_agent
+        slack_agent.send_slack_message(
+            f"Surfactant grid study workflow complete: {surfactant_a_name}+{surfactant_b_name}, "
+            f"{PREPARATION_REPLICATES} prep replicate(s), "
+            f"pipette tips used: large={pipette['large_tips']} small={pipette['small_tips']}"
+        )
 
     return {
         "replicate_results": replicate_results,
