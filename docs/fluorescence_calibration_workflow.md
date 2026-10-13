@@ -11,11 +11,11 @@ The default `SIMULATE: true` writes plans only, without importing hardware drive
 or fabricating fluorescence measurements. Config files follow the repository's
 existing convention and are locally ignored by Git.
 
-The default experiment uses 36 wells: three media (water, premixed surfactant,
+The default experiment uses 45 wells: three media (water, premixed surfactant,
 native dye solvent), three dye levels plus a matched solvent-only blank, each
 in triplicate. Each well receives 195 uL medium and 5 uL dye substock or solvent.
-Each diluted substock is 6 mL: 1.5 mL parent stock + 4.5 mL solvent for 0.25x,
-or 3 mL parent stock + 3 mL solvent for 0.5x.
+The default dilution factors are 0, 0.1, 0.25, 0.5 and 1. Each diluted
+substock is 6 mL; for example, 0.25x uses 1.5 mL parent stock and 4.5 mL solvent.
 Substocks are diluted directly from the parent stock with pure solvent and
 vortexed; the undiluted level uses the parent vial. All aqueous wells therefore
 have 2.5% solvent. The solvent reference is entirely native solvent.
@@ -27,6 +27,20 @@ includes the 5/200 addition dilution. Thus factor 1.0 is 1.215 uM pyrene in
 the well, not 48.6 uM. Set surfactant concentration and CMC
 in mM to check that the final diluted surfactant remains above the supplied CMC.
 The workflow uses a pre-made surfactant solution; it does not prepare this stock.
+
+Each workflow row specifies one pair with `DYE` and `DYE_SOLVENT`.
+For example, `pyrene` and `DMSO` generate the prefix `pyrene_DMSO`;
+`coumarin-6` and `acetone` generate `coumarin6_acetone`. The prefix is the
+dye and solvent with punctuation removed, joined by an underscore. Each pair
+generates its parent stock name
+`<pair>_stock` and dilution vial names `<pair>_s<level>`. With
+`FRESH_SUBSTOCKS: true`, it includes the repetition number, for example
+`pyrene_DMSO_r2_s1`. The solvent
+vial is named by the row's actual `DYE_SOLVENT` value (`DMSO` or `acetone`), not a
+literal `solvent` vial. `water` and `surfactant` remain fixed vial names. The
+solvent-only medium and blank wells remain available through `TEST_SOLVENT`.
+The example vial CSV contains both pairs in one inventory. Queue separate rows
+with different `DYE` and `DYE_SOLVENT` values and the same CSV to run both pairs in order.
 
 `REPLICATES` counts independently dispensed wells. `REPETITIONS` repeats the
 whole experiment on new plates. `FRESH_SUBSTOCKS` creates distinct dilution vials
@@ -40,13 +54,14 @@ stock remains shared even when fresh dilutions are prepared. `RANDOMIZED_ORDER`
 randomizes well assignment reproducibly with `RANDOMIZATION_SEED`. Dispensing is
 grouped by source; this option does not randomize chronological pipetting order.
 
-`DISPENSE_ORDER` can be `[medium, dye]` or `[dye, medium]`. Set `DYE_SOLVENT` to the
-robot's calibrated liquid name. The aqueous surfactant pipetting liquid defaults
+`DISPENSE_ORDER` can be `[medium, dye]` or `[dye, medium]`. The selected pair's
+solvent is passed as the dye pipetting liquid name. The aqueous surfactant pipetting liquid defaults
 to water and can be changed with `SURFACTANT_LIQUID`.
 
 Before hardware execution, update the example vial status CSV to the actual
 loaded rack positions and volumes, including empty destinations named in the
-generated substock recipes. Extra levels and fresh batches require extra vials.
+generated substock recipes. The workflow checks that all generated vial names
+exist before dispensing. Extra levels and fresh batches require extra vials.
 Source requirements include a 0.1 mL reserve; there is no automatic refill.
 The example inventory supplies 8 mL parent stock and 20 mL solvent in a 20 mL
 vial to cover these larger preparations plus plate dispensing. Replace these

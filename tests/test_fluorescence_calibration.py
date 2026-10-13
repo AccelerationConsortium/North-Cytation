@@ -15,7 +15,6 @@ from workflows.fluorescence_calibration_workflow import build_plan, execute, fit
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BASE_CONFIG = {key: getattr(workflow, key) for key in workflow._CONFIG_KEYS}
-BASE_CONFIG["DYE"] = "pyrene"
 
 
 class FluorescenceCalibrationTests(unittest.TestCase):
@@ -26,7 +25,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         self.vial_file = self.root / "vials.csv"
         shutil.copyfile(REPO_ROOT / "status" / "fluorescence_calibration_vials.csv", self.vial_file)
         inventory = pd.read_csv(self.vial_file)
-        inventory.loc[inventory.vial_name.str.startswith('dye_b'), 'vial_volume'] = 0.0
+        inventory.loc[inventory.vial_name.str.contains(r'_s\d+$'), 'vial_volume'] = 0.0
         inventory.to_csv(self.vial_file, index=False)
         self.original_directory = Path.cwd()
         os.chdir(self.root)
@@ -59,6 +58,51 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         np.testing.assert_allclose(recipes.stock_ml, [0.6, 1.5, 3.0])
         np.testing.assert_allclose(recipes.solvent_ml, [5.4, 4.5, 3.0])
 
+    def test_selected_pair_generates_pair_specific_vials(self):
+        config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone"}
+        plan, recipes = build_plan(config)
+        self.assertEqual(set(plan.dye), {"coumarin-6"})
+        self.assertEqual(set(plan.dye_solvent), {"acetone"})
+        self.assertEqual(set(recipes.vial), {
+            "coumarin6_acetone_s1", "coumarin6_acetone_s2",
+            "coumarin6_acetone_s3",
+        })
+        self.assertEqual(set(plan.loc[plan.dilution_factor == 0, "dye_source"]), {"acetone"})
+        self.assertEqual(set(plan.loc[plan.dilution_factor == 1, "dye_source"]),
+                         {"coumarin6_acetone_stock"})
+
+    def test_selected_pair_uses_actual_solvent_vial_in_execution(self):
+        lash = self.fake_coordinator(simulate=True)
+        config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone"}
+        lash.workflow_config = config
+        lash.measure_wellplate.return_value = None
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+            execute(config, show_gui=False)
+        preparation_sources = [call.args[0] for call in lash.nr_robot.dispense_from_vial_into_vial.call_args_list]
+        self.assertIn("acetone", preparation_sources)
+        self.assertIn("coumarin6_acetone_stock", preparation_sources)
+        self.assertNotIn("DMSO", preparation_sources)
+        plate_sources = {column for call in lash.nr_robot.dispense_from_vials_into_wellplate.call_args_list
+                         for column in call.args[0].columns}
+        self.assertIn("acetone", plate_sources)
+        self.assertNotIn("DMSO", plate_sources)
+
+    def test_missing_generated_vials_are_reported_before_dispensing(self):
+        inventory = pd.read_csv(self.vial_file)
+        inventory = inventory[inventory.vial_name != "coumarin6_acetone_s2"]
+        inventory.to_csv(self.vial_file, index=False)
+        lash = self.fake_coordinator(simulate=True)
+        config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone"}
+        lash.workflow_config = config
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+            with self.assertRaisesRegex(ValueError, "coumarin6_acetone_s2"):
+                execute(config, show_gui=False)
+        lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
+
     def test_repeated_randomized_multiplate_plan(self):
         config = {**self.config, "REPETITIONS": 2, "REPLICATES": 5,
                   "WELLPLATE_TYPE": "48 WELL PLATE", "RANDOMIZED_ORDER": True,
@@ -67,6 +111,10 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         pd.testing.assert_frame_equal(plan, build_plan(config)[0])
         self.assertEqual(plan.plate.nunique(), 4)
         self.assertEqual(len(recipes), 6)
+        self.assertEqual(set(recipes.vial), {
+            "pyrene_DMSO_r1_s1", "pyrene_DMSO_r1_s2", "pyrene_DMSO_r1_s3",
+            "pyrene_DMSO_r2_s1", "pyrene_DMSO_r2_s2", "pyrene_DMSO_r2_s3",
+        })
         self.assertFalse(plan.duplicated(["plate", "well_position"]).any())
         self.assertLess(plan.well_index.max(), 48)
         self.assertEqual(set(plan.substock_batch), {1, 2})
@@ -76,7 +124,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                          {"DILUTION_FACTORS": [0.5, 0.5]}, {"WELLPLATE_TYPE": "24 WELL PLATE"},
                          {"SURFACTANT_CONCENTRATION_MM": 10, "SURFACTANT_CMC_MM": 9.9},
                          {"REPETITIONS": 21, "SUBSTOCK_VOLUME_ML": 1.0},
-                         {"TOTAL_VOLUME_UL": float("nan")}):
+                         {"TOTAL_VOLUME_UL": float("nan")},
+                         {"DYE": "unknown"}, {"DYE_SOLVENT": "---"}):
             with self.subTest(override=override), self.assertRaises(ValueError):
                 build_plan({**self.config, **override})
 
@@ -119,7 +168,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         self.assertAlmostEqual(total_dispensed, 7.2)
         moves = lash.nr_robot.move_vial_to_location.call_args_list
         self.assertEqual({call.args[0] for call in moves},
-                         {"water", "surfactant", "dye_stock", "dye_b1_s1", "dye_b1_s2"})
+                         {"water", "surfactant", "pyrene_DMSO_stock", "pyrene_DMSO_s1", "pyrene_DMSO_s2"})
         self.assertTrue(all(call.args[1:] == ("clamp", 0) for call in moves))
         calls = lash.nr_robot.method_calls
         for i, call in enumerate(calls):

@@ -51,7 +51,12 @@ def execute(config=None, show_gui=True):
         lash_e.nr_robot.vortex_vial(c["TARGET_VIAL"], vortex_time=c["VORTEX_TIME"])
         lash_e.nr_robot.return_vial_home(c["TARGET_VIAL"])
         lash_e.nr_robot.move_home()
-    except (Exception, KeyboardInterrupt):
+    except KeyboardInterrupt:
+        lash_e.logger.exception("Vortex task interrupted")
+        from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+        cleanup_after_keyboard_interrupt(lash_e)
+        raise
+    except Exception:
         lash_e.logger.exception("Vortex task failed")
         raise
     lash_e.logger.info("Vortex task completed")

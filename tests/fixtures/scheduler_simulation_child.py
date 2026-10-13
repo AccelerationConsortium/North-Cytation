@@ -2,6 +2,7 @@
 import json
 import sys
 import time
+import shutil
 from pathlib import Path
 import yaml
 
@@ -33,5 +34,12 @@ if "--live-fixture" not in sys.argv and job["config"].get("TEST_SIMULATION_ERROR
 if "--live-fixture" in sys.argv and job["config"].get("TEST_LIVE_ERROR", False):
     result["records"].append({"level": "ERROR", "message": "live test error with successful exit"})
 (folder / "result.json").write_text(json.dumps(result))
+if "--live-fixture" not in sys.argv and not failed:
+    snapshot = root / "end_states" / job_id
+    snapshot.mkdir(parents=True)
+    for name in ("robot_status.yaml", "track_status.yaml"):
+        shutil.copy2(root / name, snapshot / name)
+    shutil.copytree(root / "vials", snapshot / "vials")
+    (snapshot / "result.json").write_text(json.dumps({"completed": True}))
 print("Harmless simulated child finished")
 raise SystemExit(1 if failed else 0)

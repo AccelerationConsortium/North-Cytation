@@ -77,6 +77,8 @@ class SimulationGuiTests(unittest.TestCase):
         self.window.add_row("second")
 
     def wait_for_queue(self):
+        if self.window.simulation_process is None:
+            return
         loop = QEventLoop()
         timer = QTimer()
         timer.setInterval(10)
@@ -114,6 +116,25 @@ class SimulationGuiTests(unittest.TestCase):
         self.assertEqual((self.root / "robot_state" / "robot_status.yaml").read_bytes(), original)
         self.assertTrue(self.window.table.isEnabled())
         self.assertTrue(all(widget.isEnabled() for widget in self.window.shared_state_widgets))
+
+    def test_retry_reuses_successful_prefix_and_runs_changed_job(self):
+        second = Path(self.window.row_config_path(self.window.table.cellWidget(1, 0)))
+        config = yaml.safe_load(second.read_text())
+        config["TEST_FAILURE"] = True
+        second.write_text(yaml.safe_dump(config))
+        self.window.start_simulation()
+        self.wait_for_queue()
+        self.assertEqual(len(HarmlessProcess.launches), 2)
+        config.pop("TEST_FAILURE")
+        second.write_text(yaml.safe_dump(config))
+        self.window.start_simulation()
+        self.wait_for_queue()
+        self.assertEqual(len(HarmlessProcess.launches), 3)
+        session = self.window.simulation_session
+        second_result = json.loads((session / "jobs" / "001" / "result.json").read_text())
+        self.assertEqual(second_result["tips_before"], 1)
+        self.assertEqual(self.window.table.item(0, 2).text(), "Simulated")
+        self.assertTrue(self.window.run_button.isEnabled())
 
     def test_child_output_reaches_terminal_before_exit_and_remains_in_log(self):
         for row in range(2):
@@ -407,7 +428,7 @@ class SimulationGuiTests(unittest.TestCase):
         self.window.set_row_config(third, source)
         self.assertEqual(first_path.read_bytes(), before)
         self.assertEqual(yaml.safe_load(third_path.read_text())["VOLUME_TARGETS_ML"], [0.2])
-        self.assertEqual(self.window.table.columnCount(), 5)
+        self.assertEqual(self.window.table.columnCount(), 6)
 
     def test_snapshot_edit_invalidates_approval_but_source_edit_does_not(self):
         alternate = self.root / "workflow_configs" / "first_extra.yaml"

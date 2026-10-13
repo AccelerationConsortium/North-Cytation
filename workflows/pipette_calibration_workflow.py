@@ -374,7 +374,11 @@ def execute(config=None, show_gui=True):
                 "optimal_conditions_file": str(artifact), "output_dir": str(output)}
     except (Exception, KeyboardInterrupt) as error:
         lash_e.logger.exception("Pipette calibration workflow failed")
-        _cleanup(lash_e, confirmed, physical=True)
+        if isinstance(error, KeyboardInterrupt):
+            from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+            cleanup_after_keyboard_interrupt(lash_e)
+        else:
+            _cleanup(lash_e, confirmed, physical=True)
         outcome = "interrupted" if isinstance(error, KeyboardInterrupt) else f"failed: {error}"
         _send_workflow_slack(lash_e, f"{_WORKFLOW_NAME} {outcome}; cleanup attempted")
         raise
