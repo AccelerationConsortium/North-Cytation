@@ -666,29 +666,36 @@ def execute(config=None, show_gui=True):
     )
     if not lash_e._workflow_should_continue:
         return None
-    waste_state = {"waste_index": 0, "current_waste_vial": "waste_0"}
 
-    if not SIMULATE:
-        import slack_agent
-        output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / EXPERIMENT_NAME
-        output_dir.mkdir(parents=True, exist_ok=True)
-        lash_e.logger.info("Output directory created at: %s", output_dir)
-        slack_agent.send_slack_message("Degradation workflow started!")
-        if VALIDATE_LIQUIDS:
-            validate_key_liquids(lash_e, output_dir)
-    else:
-        output_dir = None
-        if VALIDATE_LIQUIDS:
-            validate_key_liquids(lash_e, output_dir)
+    from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+    try:
+        waste_state = {"waste_index": 0, "current_waste_vial": "waste_0"}
 
-    lash_e.nr_robot.home_robot_components()
-    for i in range(1, EXPERIMENT_REPEATS+1):
-        degradation_workflow(lash_e, i, acid_type='6M_p_TSA', solvent='toluene', acid_molar_excess=1000, waste_state=waste_state)
+        if not SIMULATE:
+            import slack_agent
+            output_dir = Path(r'C:\Users\Imaging Controller\Desktop\SQ') / EXPERIMENT_NAME
+            output_dir.mkdir(parents=True, exist_ok=True)
+            lash_e.logger.info("Output directory created at: %s", output_dir)
+            slack_agent.send_slack_message("Degradation workflow started!")
+            if VALIDATE_LIQUIDS:
+                validate_key_liquids(lash_e, output_dir)
+        else:
+            output_dir = None
+            if VALIDATE_LIQUIDS:
+                validate_key_liquids(lash_e, output_dir)
 
-    lash_e.logger.info("Final vial status:")
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
-    lash_e.logger.info(lash_e.nr_robot.VIAL_DF)
+        lash_e.nr_robot.home_robot_components()
+        for i in range(1, EXPERIMENT_REPEATS+1):
+            degradation_workflow(lash_e, i, acid_type='6M_p_TSA', solvent='toluene', acid_molar_excess=1000, waste_state=waste_state)
+
+        lash_e.logger.info("Final vial status:")
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', None)
+        lash_e.logger.info(lash_e.nr_robot.VIAL_DF)
+    except KeyboardInterrupt:
+        lash_e.logger.warning("Workflow interrupted by keyboard; attempting cleanup")
+        cleanup_after_keyboard_interrupt(lash_e)
+        raise
 
 
 if __name__ == "__main__":

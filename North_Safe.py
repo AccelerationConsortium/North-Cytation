@@ -1426,10 +1426,13 @@ class North_Robot(North_Base):
         # Handle leftover liquid in pipet tip
         if self.PIPET_FLUID_VIAL_INDEX is not None and self.PIPET_FLUID_VOLUME > 0:
             self.logger.warning(f"The robot reports having {self.PIPET_FLUID_VOLUME:.3f} mL liquid in its tip... Returning that liquid...")
-            vial_index = self.PIPET_FLUID_VIAL_INDEX 
-            volume_existing = self.get_vial_info(vial_index, 'vial_volume')
-            self.dispense_into_vial(vial_index, 1.0) #Dispense 1.0 mL to fully empty the pipet
-            self.VIAL_DF.loc[self.VIAL_DF['vial_index'] == vial_index, 'vial_volume'] = volume_existing + self.PIPET_FLUID_VOLUME
+            # Credit only the recorded liquid volume to the vial. The air blowout
+            # clears residual liquid without counting an extra 1 mL as liquid.
+            self.dispense_into_vial(
+                self.PIPET_FLUID_VIAL_INDEX,
+                self.PIPET_FLUID_VOLUME,
+                parameters={"blowout_vol": 1.0},
+            )
         elif self.PIPET_FLUID_VIAL_INDEX is not None:
             self.logger.info(f"Robot reports having a vial index for liquid but only {self.PIPET_FLUID_VOLUME:.3f} mL volume - skipping dispense")
 

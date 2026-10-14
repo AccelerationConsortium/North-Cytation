@@ -1593,14 +1593,21 @@ def execute(config=None, show_gui=True):
     )
     if not lash_e._workflow_should_continue:
         return None
-    c = lash_e.workflow_config
-    return execute_study_workflow(
-        c["RECIPES_CSV"],
-        c["STOCKS_CSV"],
-        lash_e,
-        simulate=c["SIMULATE"],
-        max_wells=c["MAX_WELLS"],
-    )
+
+    from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+    try:
+        c = lash_e.workflow_config
+        return execute_study_workflow(
+            c["RECIPES_CSV"],
+            c["STOCKS_CSV"],
+            lash_e,
+            simulate=c["SIMULATE"],
+            max_wells=c["MAX_WELLS"],
+        )
+    except KeyboardInterrupt:
+        lash_e.logger.warning("Workflow interrupted by keyboard; attempting cleanup")
+        cleanup_after_keyboard_interrupt(lash_e)
+        raise
 
 
 if __name__ == "__main__":

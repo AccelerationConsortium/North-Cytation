@@ -2648,19 +2648,26 @@ def execute(config=None, show_gui=True):
     if not lash_e._workflow_should_continue:
         return None
 
-    fill_water_vial(lash_e, "water")
-    fill_water_vial(lash_e, "water_2")
+    from workflows.interrupt_cleanup import cleanup_after_keyboard_interrupt
+    try:
 
-    if VALIDATE_LIQUIDS:
-        validation_folder = os.path.join(
-            "output", f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-        )
-        os.makedirs(validation_folder, exist_ok=True)
-        validate_pipetting_system(
-            lash_e, validation_folder, surfactant_names=[SURFACTANTS[0]],
-        )
+        fill_water_vial(lash_e, "water")
+        fill_water_vial(lash_e, "water_2")
 
-    return run_multidim_workflow(lash_e)
+        if VALIDATE_LIQUIDS:
+            validation_folder = os.path.join(
+                "output", f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            )
+            os.makedirs(validation_folder, exist_ok=True)
+            validate_pipetting_system(
+                lash_e, validation_folder, surfactant_names=[SURFACTANTS[0]],
+            )
+
+        return run_multidim_workflow(lash_e)
+    except KeyboardInterrupt:
+        lash_e.logger.warning("Workflow interrupted by keyboard; attempting cleanup")
+        cleanup_after_keyboard_interrupt(lash_e)
+        raise
 
 
 if __name__ == "__main__":

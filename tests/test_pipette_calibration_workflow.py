@@ -326,7 +326,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         WorkflowConfigTests.setUp(self)
         self.temporary = tempfile.TemporaryDirectory(prefix='north_calibration_tests_')
         self.addCleanup(self.temporary.cleanup)
-        self.directory = Path(self.temporary.name)
+        self.directory = Path(self.temporary.name).resolve()
         self.source_bytes = self.base_path.read_bytes()
         raw = yaml.safe_load(self.source_bytes)
         raw['output']['base_directory'] = str(self.directory / 'output')
@@ -351,7 +351,8 @@ class WorkflowExecutionTests(unittest.TestCase):
             'normalize_vial_index', 'is_vial_pipetable',
             '_ensure_vial_accessible_for_pipetting', 'aspirate_from_vial',
             'dispense_into_vial', 'get_location', 'c9', 'remove_pipet',
-            'return_vial_home', 'move_home', 'get_vial_info'])
+            'return_vial_home', 'move_home', 'get_vial_info',
+            '_perform_physical_cleanup'])
         self.robot.VIAL_FILE = self.config['INPUT_VIAL_STATUS_FILE']
         self.robot.normalize_vial_index.return_value = 0
         self.robot.is_vial_pipetable.return_value = True
@@ -577,9 +578,14 @@ class WorkflowExecutionTests(unittest.TestCase):
                         self.workflow.execute(config=deepcopy(self.config), show_gui=False)
                 self.assertIs(raised.exception, failure)
                 validator.assert_not_called()
-                self.robot.return_vial_home.assert_called_once_with(self.config['TARGET_VIAL'])
-                self.robot.move_home.assert_called_once()
-                self.robot.c9.network.disconnect.assert_called_once()
+                if isinstance(failure, KeyboardInterrupt):
+                    self.robot._perform_physical_cleanup.assert_called_once_with()
+                    self.robot.return_vial_home.assert_not_called()
+                    self.robot.c9.network.disconnect.assert_not_called()
+                else:
+                    self.robot.return_vial_home.assert_called_once_with(self.config['TARGET_VIAL'])
+                    self.robot.move_home.assert_called_once()
+                    self.robot.c9.network.disconnect.assert_called_once()
                 self.assertTrue(self.controllers[0].logger.exception.called)
                 messages = [call.args[1] for call in slack.call_args_list]
                 self.assertFalse(any('completed' in message for message in messages))

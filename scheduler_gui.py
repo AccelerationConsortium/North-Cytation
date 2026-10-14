@@ -3,6 +3,7 @@ import sys
 import csv
 import html
 import json
+import shutil
 import math
 import time
 from statistics import median
@@ -286,6 +287,7 @@ class SchedulerWindow(QMainWindow):
         self.simulation_index = 0
         self.simulation_job_start_time = None
         self.stop_simulation_requested = False
+        self.simulation_signatures = []
         self._execution_busy = False
         self._loading_shared_state = False
         self.shared_state_baselines = {}
@@ -678,6 +680,24 @@ class SchedulerWindow(QMainWindow):
         paths.extend((REPO_ROOT / "workflows").glob("*.py"))
         return {"workflows": names, "jobs": jobs, "files": fingerprint(paths)}
 
+    def simulation_prefix_signatures(self, fingerprint, jobs):
+        """Capture shared inputs and each successful prefix's own inputs."""
+        specific = set()
+        for _, name, _, vial_path, config_path in jobs:
+            specific.add(str(config_path.resolve()))
+            specific.add(str((REPO_ROOT / "workflows" / f"{name}.py").resolve()))
+            if vial_path is not None:
+                specific.add(str(vial_path.resolve()))
+        common = {path: digest for path, digest in fingerprint["files"].items() if path not in specific}
+        signatures = []
+        for index, (_, name, _, vial_path, config_path) in enumerate(jobs):
+            own = [config_path, REPO_ROOT / "workflows" / f"{name}.py"]
+            if vial_path is not None:
+                own.append(vial_path)
+            common.update({str(path.resolve()): fingerprint["files"][str(path.resolve())] for path in own})
+            signatures.append({"jobs": fingerprint["jobs"][:index + 1], "files": dict(common)})
+        return signatures
+
     def update_live_run_enabled(self):
         allowed = (not self._execution_busy and self.setup_window is None and self.shared_state_ready()
                and self.approved_simulation_inputs is not None)
@@ -783,6 +803,8 @@ class SchedulerWindow(QMainWindow):
         from scheduler.simulation_state import create_session
         from scheduler.simulation_runner import handoff_issues
         jobs = []
+        previous_session = self.simulation_session if self.execution_mode == "simulation" else None
+        previous_signatures = self.simulation_signatures
         self.execution_mode = "simulation"
         self.approved_simulation_inputs = None
         allow_conflicts = False
@@ -811,15 +833,47 @@ class SchedulerWindow(QMainWindow):
                 jobs.append((row, name, config, vial_path, config_path))
             if not jobs:
                 return
+            signatures = self.simulation_prefix_signatures(self.pending_simulation_inputs, jobs)
+            for signature in signatures:
+                signature["allow_vial_conflicts"] = allow_conflicts
+            reused = 0
+            if previous_session is not None:
+                old_vials = json.loads((previous_session / "session.json").read_text(encoding="utf-8"))["vial_files"]
+                new_vials = {str(job[3].resolve()) for job in jobs if job[3] is not None}
+                if set(old_vials) == new_vials:
+                    for index, signature in enumerate(signatures):
+                        folder = previous_session / "jobs" / f"{index:03d}"
+                        snapshot = previous_session / "end_states" / f"{index:03d}"
+                        if (index >= len(previous_signatures) or signature != previous_signatures[index]
+                                or not (snapshot / "result.json").is_file()
+                                or not (folder / "result.json").is_file()):
+                            break
+                        result = json.loads((folder / "result.json").read_text(encoding="utf-8"))
+                        if not result.get("completed") or not result.get("handoff_ok") or any(
+                            record["level"] in {"ERROR", "CRITICAL"} for record in result["records"]
+                        ):
+                            break
+                        reused += 1
             root = create_session([job[3] for job in jobs])
-            issues = handoff_issues(root)
-            if allow_conflicts:
-                issues = [issue for issue in issues if not issue.startswith("Current vial-position conflict")]
-            if issues:
-                raise ValueError("Initial state requires review:\n" + "\n".join(issues))
+            if reused:
+                for index in range(reused):
+                    name = f"{index:03d}"
+                    shutil.copytree(previous_session / "jobs" / name, root / "jobs" / name)
+                    shutil.copytree(previous_session / "end_states" / name, root / "end_states" / name)
+                snapshot = root / "end_states" / f"{reused - 1:03d}"
+                for name in ("robot_status.yaml", "track_status.yaml"):
+                    shutil.copy2(snapshot / name, root / name)
+                for vial in (snapshot / "vials").iterdir():
+                    shutil.copy2(vial, root / "vials" / vial.name)
+            else:
+                issues = handoff_issues(root)
+                if allow_conflicts:
+                    issues = [issue for issue in issues if not issue.startswith("Current vial-position conflict")]
+                if issues:
+                    raise ValueError("Initial state requires review:\n" + "\n".join(issues))
             for index, (row, name, config, vial_path, config_path) in enumerate(jobs):
                 folder = root / "jobs" / f"{index:03d}"
-                folder.mkdir(parents=True)
+                folder.mkdir(parents=True, exist_ok=True)
                 config["INPUT_VIAL_STATUS_FILE"] = str(vial_path) if vial_path is not None else None
                 (folder / "input.json").write_text(json.dumps({
                     "workflow": name, "config_file": str(config_path.resolve()),
@@ -831,11 +885,20 @@ class SchedulerWindow(QMainWindow):
             QMessageBox.warning(self, "Cannot Simulate Queue", str(error))
             return
         self.simulation_session = root
+        self.simulation_signatures = signatures
         self.simulation_rows = [job[0] for job in jobs]
-        self.simulation_index = 0
+        self.simulation_index = reused
         self.stop_simulation_requested = False
         self.table.clearSelection()
         for row in self.simulation_rows:
+            if row < reused:
+                self.table.item(row, 2).setText("Simulated")
+                result = self.table.item(row, 3).data(Qt.UserRole)
+                if result:
+                    result["console_log"] = str(root / "jobs" / f"{row:03d}" / "console.log")
+                    result["end_state"] = str(root / "end_states" / f"{row:03d}")
+                self.set_simulation_row_colour(row, "success")
+                continue
             self.table.item(row, 2).setText("Pending simulation")
             self.table.item(row, 3).setText("")
             self.table.item(row, 3).setData(Qt.UserRole, None)

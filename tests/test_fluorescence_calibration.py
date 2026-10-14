@@ -15,7 +15,6 @@ from workflows.fluorescence_calibration_workflow import build_plan, execute, fit
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BASE_CONFIG = {key: getattr(workflow, key) for key in workflow._CONFIG_KEYS}
-BASE_CONFIG["DYE"] = "pyrene"
 
 
 class FluorescenceCalibrationTests(unittest.TestCase):
@@ -26,7 +25,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         self.vial_file = self.root / "vials.csv"
         shutil.copyfile(REPO_ROOT / "status" / "fluorescence_calibration_vials.csv", self.vial_file)
         inventory = pd.read_csv(self.vial_file)
-        inventory.loc[inventory.vial_name.str.startswith('dye_b'), 'vial_volume'] = 0.0
+        inventory.loc[inventory.vial_name.str.contains(r'_s\d+$'), 'vial_volume'] = 0.0
         inventory.to_csv(self.vial_file, index=False)
         self.original_directory = Path.cwd()
         os.chdir(self.root)
@@ -65,11 +64,11 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                 original = robot.VIAL_DF[["home_location", "home_location_index"]].copy()
                 def transfer(*args, **kwargs):
                     if "closed" in (source_cap, destination_cap):
-                        self.assertEqual(robot.get_vial_info("dye_stock", "home_location_index"), 0)
-                        self.assertEqual(robot.get_vial_info("dye_b1_s1", "home_location_index"), 1)
+                        self.assertEqual(robot.get_vial_info("pyrene_DMSO_stock", "home_location_index"), 0)
+                        self.assertEqual(robot.get_vial_info("pyrene_DMSO_s1", "home_location_index"), 1)
                     return "transferred"
                 robot.dispense_from_vial_into_vial.side_effect = transfer
-                result = workflow.dispense_vial_to_vial(lash, "dye_stock", "dye_b1_s1", 3.0, "DMSO")
+                result = workflow.dispense_vial_to_vial(lash, "pyrene_DMSO_stock", "pyrene_DMSO_s1", 3.0, "DMSO")
                 self.assertEqual(result, "transferred")
                 pd.testing.assert_frame_equal(original, robot.VIAL_DF[original.columns])
                 if source_cap == destination_cap == "open":
@@ -78,7 +77,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                     robot.return_vial_home.assert_not_called()
                 else:
                     self.assertEqual([call.args for call in robot.move_vial_to_location.call_args_list],
-                                     [("dye_stock", "main_8mL_rack", 0), ("dye_b1_s1", "main_8mL_rack", 1)])
+                                     [("pyrene_DMSO_stock", "main_8mL_rack", 0), ("pyrene_DMSO_s1", "main_8mL_rack", 1)])
                     calls = robot.method_calls
                     move_index = next(i for i, call in enumerate(calls) if call[0] == "move_vial_to_location")
                     self.assertTrue(any(call[0] == "remove_pipet" for call in calls[:move_index]))
@@ -87,9 +86,10 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
     def test_large_source_stays_in_place_with_closed_destination(self):
         lash = self.fake_coordinator(simulate=True)
-        workflow.dispense_vial_to_vial(lash, "solvent", "dye_b1_s1", 3.0, "DMSO")
-        lash.nr_robot.move_vial_to_location.assert_called_once_with("dye_b1_s1", "main_8mL_rack", 1)
-        lash.nr_robot.return_vial_home.assert_called_once_with("dye_b1_s1")
+        lash.nr_robot.VIAL_DF.at[4, "cap_type"] = "closed"
+        workflow.dispense_vial_to_vial(lash, "DMSO", "pyrene_DMSO_s1", 3.0, "DMSO")
+        lash.nr_robot.move_vial_to_location.assert_called_once_with("pyrene_DMSO_s1", "main_8mL_rack", 1)
+        lash.nr_robot.return_vial_home.assert_called_once_with("pyrene_DMSO_s1")
 
     def test_split_closed_cap_transfer_uses_safe_homes_for_clamp_exchanges(self):
         from North_Safe import North_Robot
@@ -99,6 +99,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         lash = self.fake_coordinator(simulate=True)
         robot = lash.nr_robot
         rows = robot.VIAL_DF
+        rows.loc[[0, 4], "cap_type"] = "closed"
         robot.normalize_vial_index.side_effect = lambda vial: (
             int(rows.loc[rows.vial_name == vial, "vial_index"].iloc[0])
             if isinstance(vial, str) else vial)
@@ -133,29 +134,31 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         robot.dispense_from_vial_into_vial.side_effect = lambda *args, **kwargs: (
             North_Robot.dispense_from_vial_into_vial(robot, *args, **kwargs))
         with patch.object(PipettingWizard, "get_max_calibrated_volume", return_value=None):
-            workflow.dispense_vial_to_vial(lash, "dye_stock", "dye_b1_s1", 2.5, "DMSO")
+            workflow.dispense_vial_to_vial(lash, "pyrene_DMSO_stock", "pyrene_DMSO_s1", 2.5, "DMSO")
         self.assertGreater(robot.aspirate_from_vial.call_count, 1)
         self.assertTrue(all(slot in (0, 1) for slot, _ in returns[:-2]))
-        self.assertEqual([slot for slot, _ in returns[-2:]], [18, 24])
-        self.assertEqual(robot.get_vial_info("dye_stock", "location_index"), 18)
-        self.assertEqual(robot.get_vial_info("dye_b1_s1", "location_index"), 24)
+        self.assertEqual([slot for slot, _ in returns[-2:]], [6, 9])
+        self.assertEqual(robot.get_vial_info("pyrene_DMSO_stock", "location_index"), 6)
+        self.assertEqual(robot.get_vial_info("pyrene_DMSO_s1", "location_index"), 9)
 
     def test_occupied_staging_slot_fails_before_movements(self):
         lash = self.fake_coordinator(simulate=True)
+        lash.nr_robot.VIAL_DF.at[4, "cap_type"] = "closed"
         lash.nr_robot.get_vial_in_location.side_effect = [None, 2]
         with self.assertRaisesRegex(RuntimeError, "staging.*occupied"):
-            workflow.dispense_vial_to_vial(lash, "dye_stock", "dye_b1_s1", 3.0, "DMSO")
+            workflow.dispense_vial_to_vial(lash, "pyrene_DMSO_stock", "pyrene_DMSO_s1", 3.0, "DMSO")
         lash.nr_robot.remove_pipet.assert_not_called()
         lash.nr_robot.move_vial_to_location.assert_not_called()
         lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
 
     def test_transfer_failure_restores_homes_without_recovery_movements(self):
         lash = self.fake_coordinator(simulate=True)
+        lash.nr_robot.VIAL_DF.at[4, "cap_type"] = "closed"
         robot = lash.nr_robot
         original = robot.VIAL_DF[["home_location", "home_location_index"]].copy()
         robot.dispense_from_vial_into_vial.side_effect = RuntimeError("transfer interrupted")
         with self.assertRaisesRegex(RuntimeError, "interrupted"):
-            workflow.dispense_vial_to_vial(lash, "dye_stock", "dye_b1_s1", 3.0, "DMSO")
+            workflow.dispense_vial_to_vial(lash, "pyrene_DMSO_stock", "pyrene_DMSO_s1", 3.0, "DMSO")
         pd.testing.assert_frame_equal(original, robot.VIAL_DF[original.columns])
         robot.save_robot_status.assert_called_once()
         robot.return_vial_home.assert_not_called()
@@ -172,6 +175,91 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         np.testing.assert_allclose(recipes.stock_ml, [0.6, 1.5, 3.0])
         np.testing.assert_allclose(recipes.solvent_ml, [5.4, 4.5, 3.0])
 
+    def test_selected_pair_generates_pair_specific_vials(self):
+        config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone"}
+        plan, recipes = build_plan(config)
+        self.assertEqual(set(plan.dye), {"coumarin-6"})
+        self.assertEqual(set(plan.dye_solvent), {"acetone"})
+        self.assertEqual(set(recipes.vial), {
+            "coumarin6_acetone_s1", "coumarin6_acetone_s2",
+            "coumarin6_acetone_s3",
+        })
+        self.assertEqual(set(plan.loc[plan.dilution_factor == 0, "dye_source"]), {"acetone_working"})
+        self.assertEqual(set(plan.loc[plan.dilution_factor == 1, "dye_source"]),
+                         {"coumarin6_acetone_stock"})
+
+    def test_selected_pair_uses_actual_solvent_vial_in_execution(self):
+        lash = self.fake_coordinator(simulate=True)
+        config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone"}
+        lash.workflow_config = config
+        lash.measure_wellplate.return_value = None
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+            execute(config, show_gui=False)
+        preparation_sources = [call.args[0] for call in lash.nr_robot.dispense_from_vial_into_vial.call_args_list]
+        self.assertIn("acetone", preparation_sources)
+        self.assertIn("coumarin6_acetone_stock", preparation_sources)
+        self.assertNotIn("DMSO", preparation_sources)
+        plate_sources = {column for call in lash.nr_robot.dispense_from_vials_into_wellplate.call_args_list
+                         for column in call.args[0].columns}
+        self.assertIn("acetone_working", plate_sources)
+        self.assertNotIn("acetone", plate_sources)
+        self.assertNotIn("DMSO_working", plate_sources)
+        self.assertNotIn("DMSO", plate_sources)
+
+    def test_prefilled_working_solvent_is_selected_for_each_pair(self):
+        inventory = pd.read_csv(self.vial_file)
+        inventory.loc[inventory.vial_name.str.endswith("_working"), "vial_volume"] = 6.0
+        inventory.to_csv(self.vial_file, index=False)
+        for dye, solvent in (("pyrene", "DMSO"), ("coumarin-6", "acetone")):
+            with self.subTest(dye=dye, solvent=solvent):
+                lash = self.fake_coordinator(simulate=True)
+                lash.workflow_config = {**self.config, "DYE": dye, "DYE_SOLVENT": solvent,
+                                        "SIMULATE": True}
+                lash.measure_wellplate.return_value = None
+                coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                                    flatten_cytation_data=MagicMock())
+                with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+                    output = execute(lash.workflow_config, show_gui=False)
+                transfers = lash.nr_robot.dispense_from_vial_into_vial.call_args_list
+                self.assertTrue(all(not call.args[1].endswith("_working") for call in transfers))
+                plate_sources = {column for call in lash.nr_robot.dispense_from_vials_into_wellplate.call_args_list
+                                 for column in call.args[0].columns}
+                self.assertIn(f"{solvent}_working", plate_sources)
+                self.assertNotIn(solvent, plate_sources)
+                plan = pd.read_csv(output / "well_plan.csv")
+                self.assertEqual(set(plan.loc[plan.dilution_factor == 0, "dye_source"]),
+                                 {f"{solvent}_working"})
+
+    def test_interrupt_during_staged_transfer_restores_homes_and_runs_cleanup(self):
+        lash = self.fake_coordinator(simulate=True)
+        lash.workflow_config = {**self.config, "SIMULATE": True}
+        original = lash.nr_robot.VIAL_DF[["home_location", "home_location_index"]].copy()
+        lash.nr_robot.dispense_from_vial_into_vial.side_effect = KeyboardInterrupt
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}), patch(
+                "workflows.interrupt_cleanup.cleanup_after_keyboard_interrupt") as cleanup:
+            with self.assertRaises(KeyboardInterrupt):
+                execute(lash.workflow_config, show_gui=False)
+        cleanup.assert_called_once_with(lash)
+        pd.testing.assert_frame_equal(original, lash.nr_robot.VIAL_DF[original.columns])
+
+    def test_missing_generated_vials_are_reported_before_dispensing(self):
+        inventory = pd.read_csv(self.vial_file)
+        inventory = inventory[inventory.vial_name != "coumarin6_acetone_s2"]
+        inventory.to_csv(self.vial_file, index=False)
+        lash = self.fake_coordinator(simulate=True)
+        config = {**self.config, "DYE": "coumarin-6", "DYE_SOLVENT": "acetone"}
+        lash.workflow_config = config
+        coordinator = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                            flatten_cytation_data=MagicMock())
+        with patch.dict("sys.modules", {"master_usdl_coordinator": coordinator}):
+            with self.assertRaisesRegex(ValueError, "coumarin6_acetone_s2"):
+                execute(config, show_gui=False)
+        lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
+
     def test_repeated_randomized_multiplate_plan(self):
         config = {**self.config, "REPETITIONS": 2, "REPLICATES": 5,
                   "WELLPLATE_TYPE": "48 WELL PLATE", "RANDOMIZED_ORDER": True,
@@ -180,6 +268,10 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         pd.testing.assert_frame_equal(plan, build_plan(config)[0])
         self.assertEqual(plan.plate.nunique(), 4)
         self.assertEqual(len(recipes), 6)
+        self.assertEqual(set(recipes.vial), {
+            "pyrene_DMSO_r1_s1", "pyrene_DMSO_r1_s2", "pyrene_DMSO_r1_s3",
+            "pyrene_DMSO_r2_s1", "pyrene_DMSO_r2_s2", "pyrene_DMSO_r2_s3",
+        })
         self.assertFalse(plan.duplicated(["plate", "well_position"]).any())
         self.assertLess(plan.well_index.max(), 48)
         self.assertEqual(set(plan.substock_batch), {1, 2})
@@ -189,7 +281,8 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                          {"DILUTION_FACTORS": [0.5, 0.5]}, {"WELLPLATE_TYPE": "24 WELL PLATE"},
                          {"SURFACTANT_CONCENTRATION_MM": 10, "SURFACTANT_CMC_MM": 9.9},
                          {"REPETITIONS": 21, "SUBSTOCK_VOLUME_ML": 1.0},
-                         {"TOTAL_VOLUME_UL": float("nan")}):
+                         {"TOTAL_VOLUME_UL": float("nan")},
+                         {"DYE": "unknown"}, {"DYE_SOLVENT": "---"}):
             with self.subTest(override=override), self.assertRaises(ValueError):
                 build_plan({**self.config, **override})
 
@@ -224,7 +317,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                                   "PROTOCOL_FILE": str(protocol)}, show_gui=False)
         self.assertEqual(lash.nr_robot.dispense_from_vial_into_vial.call_count, 5)
         self.assertEqual(lash.nr_robot.dispense_from_vial_into_vial.call_args_list[0].args,
-                         ("solvent", "solvent_working", 6.0))
+                         ("DMSO", "DMSO_working", 6.0))
         lash.discard_used_wellplate.assert_called_once()
         measured = pd.read_csv(output / "fluorescence_results.csv")
         self.assertEqual(len(measured), 36)
@@ -233,14 +326,14 @@ class FluorescenceCalibrationTests(unittest.TestCase):
                               lash.nr_robot.dispense_from_vials_into_wellplate.call_args_list)
         self.assertAlmostEqual(total_dispensed, 7.2)
         plate_calls = lash.nr_robot.dispense_from_vials_into_wellplate.call_args_list
-        self.assertTrue(all("solvent" not in call.args[0].columns for call in plate_calls))
-        working_dispensed = sum(call.args[0]["solvent_working"].sum() for call in plate_calls
-                                if "solvent_working" in call.args[0].columns)
+        self.assertTrue(all("DMSO" not in call.args[0].columns for call in plate_calls))
+        working_dispensed = sum(call.args[0]["DMSO_working"].sum() for call in plate_calls
+                                if "DMSO_working" in call.args[0].columns)
         self.assertAlmostEqual(working_dispensed, 2.385)
         moves = [call for call in lash.nr_robot.move_vial_to_location.call_args_list
                  if call.args[1] == "clamp"]
         self.assertEqual({call.args[0] for call in moves},
-                         {"water", "surfactant", "dye_stock", "dye_b1_s1", "dye_b1_s2", "solvent_working"})
+                         {"water", "surfactant", "pyrene_DMSO_stock", "pyrene_DMSO_s1", "pyrene_DMSO_s2", "DMSO_working"})
         self.assertTrue(all(call.args[1:] == ("clamp", 0) for call in moves))
         calls = lash.nr_robot.method_calls
         for i, call in enumerate(calls):
@@ -252,7 +345,7 @@ class FluorescenceCalibrationTests(unittest.TestCase):
 
     def test_resuming_nearly_full_working_solvent_does_not_refill(self):
         inventory = pd.read_csv(self.vial_file)
-        inventory.loc[inventory.vial_name == "solvent_working", "vial_volume"] = 5.97
+        inventory.loc[inventory.vial_name == "DMSO_working", "vial_volume"] = 5.97
         inventory.to_csv(self.vial_file, index=False)
         lash = self.fake_coordinator(simulate=True)
         lash.workflow_config = {**self.config, "SIMULATE": True}
@@ -262,13 +355,13 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         with patch.dict("sys.modules", {"master_usdl_coordinator": module}):
             execute(lash.workflow_config, show_gui=False)
         transfers = lash.nr_robot.dispense_from_vial_into_vial.call_args_list
-        self.assertTrue(all(call.args[1] != "solvent_working" for call in transfers))
+        self.assertTrue(all(call.args[1] != "DMSO_working" for call in transfers))
 
     def test_insufficient_bulk_or_working_solvent_stops_before_transfers(self):
         for changes in ({"bulk": 18.0}, {"repetitions": 3}):
             with self.subTest(changes=changes):
                 inventory = pd.read_csv(self.vial_file)
-                inventory.loc[inventory.vial_name == "solvent", "vial_volume"] = changes.get("bulk", 19.9)
+                inventory.loc[inventory.vial_name == "DMSO", "vial_volume"] = changes.get("bulk", 19.9)
                 inventory.to_csv(self.vial_file, index=False)
                 lash = self.fake_coordinator(simulate=True)
                 lash.workflow_config = {**self.config, "SIMULATE": True,
