@@ -146,7 +146,7 @@ def build_plan(config):
         block = []
         for medium in media:
             for level, factor in enumerate(factors):
-                source = "solvent" if factor == 0 else (
+                source = "solvent_working" if factor == 0 else (
                     "dye_stock" if factor == 1 else f"dye_b{batch}_s{level}")
                 for replicate in range(1, c["REPLICATES"] + 1):
                     block.append(dict(repetition=repetition, substock_batch=batch,
@@ -285,6 +285,47 @@ def plot_kinetics(wells, channels, output_dir):
             plt.close(fig)
 
 
+def dispense_vial_to_vial(lash, source, destination, volume, liquid):
+    """Stage movable vials when a closed cap requires clamp exchanges."""
+    robot = lash.nr_robot
+    if not any(robot.get_vial_info(vial, "cap_type") == "closed"
+               for vial in (source, destination)):
+        return robot.dispense_from_vial_into_vial(source, destination, volume, liquid=liquid)
+    if volume <= 0:
+        return robot.dispense_from_vial_into_vial(source, destination, volume, liquid=liquid)
+
+    staged = []
+    for vial, slot in ((source, 0), (destination, 1)):
+        if not robot.is_vial_movable(vial):
+            continue  # Large solvent sources are aspirated in place.
+        index = robot.get_vial_info(vial, "vial_index")
+        occupant = robot.get_vial_in_location("main_8mL_rack", slot)
+        if occupant is not None and occupant != index:
+            raise RuntimeError(f"Vial-transfer staging main_8mL_rack[{slot}] is occupied")
+        staged.append((vial, index, slot,
+                       robot.get_vial_info(vial, "home_location"),
+                       robot.get_vial_info(vial, "home_location_index")))
+
+    robot.remove_pipet()
+    try:
+        for vial, index, slot, _, _ in staged:
+            # Clamp exchanges return the previous vial home with a tip attached.
+            robot.VIAL_DF.at[index, "home_location"] = "main_8mL_rack"
+            robot.VIAL_DF.at[index, "home_location_index"] = slot
+            robot.move_vial_to_location(vial, "main_8mL_rack", slot)
+        result = robot.dispense_from_vial_into_vial(source, destination, volume, liquid=liquid)
+        robot.remove_pipet()
+    finally:
+        # Restore metadata even on failure; do not attempt recovery movements.
+        for _, index, _, home, home_index in staged:
+            robot.VIAL_DF.at[index, "home_location"] = home
+            robot.VIAL_DF.at[index, "home_location_index"] = home_index
+        robot.save_robot_status()
+    for vial, _, _, _, _ in staged:
+        robot.return_vial_home(vial)
+    return result
+
+
 def execute(config=None, show_gui=True):
     """Review settings normally, or use complete config with show_gui=False."""
     from master_usdl_coordinator import Lash_E, flatten_cytation_data
@@ -325,11 +366,31 @@ def execute(config=None, show_gui=True):
         raise ValueError("Total volume exceeds plate capacity")
     if lash.nr_track.NUM_SOURCE < plan.plate.nunique():
         raise ValueError("Load enough plates for the complete experiment")
+    if "solvent_working" not in inventory.index:
+        raise ValueError("Load an empty closed-cap 8 mL vial named solvent_working")
+    working = inventory.loc["solvent_working"]
+    if working.vial_type != "8_mL" or working.cap_type != "closed":
+        raise ValueError("solvent_working must be a closed-cap 8 mL vial")
+    working_required = (
+        plan.loc[plan.dye_source == "solvent_working", "dye_volume_ul"].sum()
+        + plan.loc[plan.medium == "solvent", "medium_volume_ul"].sum()) / 1000
+    # A nearly full working vial may already have served blanks before interruption.
+    working_fill = max(0.0, 6.0 - working.vial_volume) if working.vial_volume < 5.9 else 0.0
+    if working_required + 0.1 > working.vial_volume + working_fill:
+        raise ValueError("Insufficient working solvent for plate dispensing (including 0.1 mL reserve)")
+    pending_solvent = sum(recipe.solvent_ml for recipe in recipes.itertuples()
+                          if inventory.loc[recipe.vial, "vial_volume"] + 1.0
+                          < recipe.solvent_ml + recipe.stock_ml)
+    if inventory.loc["solvent", "vial_volume"] < pending_solvent + working_fill + 0.1:
+        raise ValueError("Insufficient bulk solvent for substocks and the 6 mL working vial")
     output = Path("output") / ("fluorescence_calibration_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
     output.mkdir(parents=True)
     plan.to_csv(output / "well_plan.csv", index=False)
     recipes.to_csv(output / "substock_recipes.csv", index=False)
     (output / "config.yaml").write_text(yaml.safe_dump(c, sort_keys=False))
+    if working_fill > 0:
+        dispense_vial_to_vial(lash, "solvent", "solvent_working", working_fill,
+                             liquid=c["DYE_SOLVENT"])
     prepared, measurements = set(), []
     for plate, wells in plan.groupby("plate", sort=True):
         batch = int(wells.substock_batch.iloc[0])
@@ -342,8 +403,8 @@ def execute(config=None, show_gui=True):
                     lash.logger.info(f"Skipping already-prepared substock {recipe.vial}")
                     continue
                 for source, volume in (("solvent", recipe.solvent_ml), ("dye_stock", recipe.stock_ml)):
-                    lash.nr_robot.dispense_from_vial_into_vial(source, recipe.vial, volume,
-                                                             liquid=c["DYE_SOLVENT"])
+                    dispense_vial_to_vial(lash, source, recipe.vial, volume,
+                                         liquid=c["DYE_SOLVENT"])
                 lash.nr_robot.vortex_vial(recipe.vial, c["VORTEX_SECONDS"])
                 lash.nr_robot.return_vial_home(recipe.vial)
             prepared.add(batch)
@@ -354,6 +415,8 @@ def execute(config=None, show_gui=True):
             for source, subset in wells.groupby(source_column):
                 liquid = (c["DYE_SOLVENT"] if component == "dye" or source == "solvent"
                           else c["SURFACTANT_LIQUID"] if source == "surfactant" else "water")
+                if source == "solvent":
+                    source = "solvent_working"
                 volumes = pd.DataFrame({source: subset.set_index("well_index")[volume_column] / 1000})
                 if inventory.loc[source, "vial_type"] == "8_mL":
                     lash.nr_robot.remove_pipet()

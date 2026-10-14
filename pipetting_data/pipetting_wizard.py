@@ -128,6 +128,24 @@ class PipettingWizard:
             self.logger.error(f"Error loading calibration file {file_path}: {e}")
             return None
     
+    def get_max_calibrated_volume(self, liquid: str) -> Optional[float]:
+        """Return the largest valid calibrated target volume in mL, if available."""
+        max_volume_ul = None
+        for file_path in self.find_calibration_files(liquid):
+            cache_key = str(file_path)
+            df = self.cache.get(cache_key)
+            if df is None:
+                df = self.load_calibration_data(file_path)
+                if df is None:
+                    continue
+                self.cache[cache_key] = df
+            volumes = pd.to_numeric(df['volume_target'], errors='coerce')
+            volumes = volumes[np.isfinite(volumes) & (volumes > 0)]
+            if not volumes.empty:
+                candidate = float(volumes.max())
+                max_volume_ul = candidate if max_volume_ul is None else max(max_volume_ul, candidate)
+        return None if max_volume_ul is None else max_volume_ul / 1000
+
     def find_best_calibration_file(self, liquid: str, target_volume_ml: float) -> Optional[Tuple[Path, pd.DataFrame]]:
         """
         Find the best calibration file for interpolation.

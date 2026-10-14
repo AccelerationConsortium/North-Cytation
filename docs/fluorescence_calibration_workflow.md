@@ -48,16 +48,27 @@ Before hardware execution, update the example vial status CSV to the actual
 loaded rack positions and volumes, including empty destinations named in the
 generated substock recipes. Extra levels and fresh batches require extra vials.
 Source requirements include a 0.1 mL reserve; there is no automatic refill.
-The example inventory supplies 8 mL parent stock and 20 mL solvent in a 20 mL
-vial to cover these larger preparations plus plate dispensing. Replace these
-example values with the actual loaded inventory.
+The example inventory supplies 7.8 mL parent stock and 19.9 mL solvent in a 20 mL
+vial. Load an additional empty closed-cap 8 mL vial named `solvent_working` at
+`main_8mL_rack[27]`. The workflow fills it with 6 mL from the bulk `solvent`
+source before dispensing; substocks still use the bulk source. All solvent
+additions to the plate, including matched blanks and solvent-only medium,
+use `solvent_working` staged at the clamp. A resumed run skips filling a working
+vial already holding at least 5.9 mL. Volume checks reject runs exceeding the
+available bulk or working solvent, including a 0.1 mL reserve.
+Replace example values with the actual loaded inventory.
 Before plate dispensing, each 8 mL source vial is moved individually to
 `clamp[0]` before each plate dispense. Keep the clamp empty and do not assign
 it as a vial home. Tips are removed before staging;
 serial dispensing removes the used tip and returns the source home before the
-next source is staged. Large vials stay in place. Substock preparation retains
-the existing vial-to-vial transfer behavior. The robot's cap accessibility check
-still applies; use the example open-cap setup for dispensing at the staged position.
+next source is staged. Large vials stay in place.
+During substock preparation, vial-to-vial transfers involving at least one
+closed cap stage movable source and destination vials at `main_8mL_rack[0]`
+and `[1]`, respectively. Keep these staging slots free. Temporary home locations
+keep clamp exchanges safe while a pipet is attached; original homes are restored
+and staged vials returned after the transfer with the tip removed. Large sources
+remain in place, and open/open transfers use the existing direct dispensing call.
+North Safe continues to handle cap accessibility and collision checks.
 Set total well volume for your plate. 48- and 96-well formats are supported;
 24-well requires robot geometry and is rejected. Match the track configuration,
 physical fluorescence plate, and Cytation protocols to the selected format.

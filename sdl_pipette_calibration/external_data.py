@@ -59,7 +59,7 @@ class ExternalDataLoader:
             logger.info("External data is enabled, calling _load_external_data()")
             self._load_external_data()
         else:
-            logger.warning("External data is DISABLED - no loading will occur")
+            logger.info("External data is disabled; no loading will occur")
         logger.info("=== EXTERNAL DATA LOADER INIT COMPLETE ===")
     
     def _load_external_data(self):

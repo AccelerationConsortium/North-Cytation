@@ -143,6 +143,14 @@ the queue order, saved configs, vial files, robot/track/hardware YAML, workflow
 scripts and existing file-valued config inputs. Changes require re-simulation.
 Approval is local to this window and is consumed when starting a live queue.
 
+Live children check settings, hardware definitions and workflow files against
+the simulation review. Mutable inventory (all queued vial CSVs and robot/track
+status) is checked against that review for the first job, then against the
+previous successful live job's end-state fingerprints. Expected inventory
+updates carry forward; edits between jobs, missing handoffs and failed handoffs
+block execution. End-state fingerprints are captured under the live launch lock
+and stored as `state_hashes` in each successful job's `result.json`.
+
 Run requires explicit real-hardware confirmation. The scheduler copies the
 saved config into each live job, sets `SIMULATE=False` in that copy and invokes
 `execute(config=..., show_gui=False)` using original vial/state paths, never

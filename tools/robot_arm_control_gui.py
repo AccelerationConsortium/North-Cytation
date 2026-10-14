@@ -40,6 +40,9 @@ Coordinate System:
 
 Author: Enhanced for North Robotics X-Y Position Management
 Date: March 17, 2026
+
+Run from the project folder:
+    python tools/robot_arm_control_gui.py
 """
 
 import tkinter as tk
@@ -57,11 +60,15 @@ from datetime import datetime
 from pathlib import Path
 from math import cos, sin
 
-# Add the project root to path for imports
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-# Also add utoronto_demo path for positioning system
-sys.path.append("../utoronto_demo")
+# Resolve resources from this file so launching outside the repo also works.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ROBOT_STATE_DIR = PROJECT_ROOT / "robot_state"
+TEMP_DIR = PROJECT_ROOT / "temp"
+DEFAULT_VIAL_FILE = PROJECT_ROOT / "status" / "surfactant_grid_vials_expanded.csv"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+logger = logging.getLogger(__name__)
 
 try:
     from north import NorthC9
@@ -176,7 +183,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('enhanced_arm_position_control.log'),
+        logging.FileHandler(PROJECT_ROOT / "enhanced_arm_position_control.log"),
         logging.StreamHandler()
     ]
 )
@@ -213,7 +220,7 @@ class EnhancedRobotArmController:
         self.custom_position_name = None  # Will be set in GUI initialization
         
         # Create temp directory for saved positions
-        self.temp_dir = Path("temp")
+        self.temp_dir = TEMP_DIR
         self.temp_dir.mkdir(exist_ok=True)
         
         # Movement increments
@@ -266,10 +273,9 @@ class EnhancedRobotArmController:
         """
         import yaml
         configs = {}
-        base_dir = os.path.dirname(__file__)
 
         # ── vial_positions.yaml (labware with gripper + pipetting arrays) ──
-        vial_path = os.path.join(base_dir, '..', 'robot_state', 'vial_positions.yaml')
+        vial_path = ROBOT_STATE_DIR / "vial_positions.yaml"
         try:
             with open(vial_path, 'r') as f:
                 data = yaml.safe_load(f)
@@ -288,7 +294,7 @@ class EnhancedRobotArmController:
             logger.warning(f"Could not load grid configs from vial_positions.yaml: {e}")
 
         # ── pipet_racks.yaml (tip racks with a single capture array) ────────
-        racks_path = os.path.join(base_dir, '..', 'robot_state', 'pipet_racks.yaml')
+        racks_path = ROBOT_STATE_DIR / "pipet_racks.yaml"
         try:
             with open(racks_path, 'r') as f:
                 data = yaml.safe_load(f)
@@ -1215,7 +1221,7 @@ class EnhancedRobotArmController:
                 return
             
             # Create temp directory if it doesn't exist
-            temp_dir = Path("temp")
+            temp_dir = TEMP_DIR
             temp_dir.mkdir(exist_ok=True)
             
             # Get current position
@@ -1285,7 +1291,7 @@ class EnhancedRobotArmController:
     def show_saved_positions_window(self):
         """Show a window with all saved positions from temp folder."""
         try:
-            temp_dir = Path("temp")
+            temp_dir = TEMP_DIR
             if not temp_dir.exists():
                 messagebox.showinfo("Info", "No saved positions found. Save some positions first!")
                 return
@@ -1402,7 +1408,7 @@ class EnhancedRobotArmController:
     def export_saved_positions_csv(self):
         """Export all saved positions to a CSV file."""
         try:
-            temp_dir = Path("temp")
+            temp_dir = TEMP_DIR
             if not temp_dir.exists() or not list(temp_dir.glob("*.json")):
                 messagebox.showinfo("Info", "No saved positions found to export")
                 return
@@ -1455,7 +1461,7 @@ class EnhancedRobotArmController:
     def open_temp_folder(self):
         """Open the temp folder in file explorer."""
         try:
-            temp_dir = Path("temp")
+            temp_dir = TEMP_DIR
             temp_dir.mkdir(exist_ok=True)  # Create if doesn't exist
             
             import subprocess
@@ -2232,7 +2238,7 @@ class EnhancedRobotArmController:
             return
 
         # ── 4. Read Locator.py ───────────────────────────────────────────────
-        locator_path = os.path.join(os.path.dirname(__file__), '..', 'robot_state', 'Locator.py')
+        locator_path = str(ROBOT_STATE_DIR / "Locator.py")
         locator_path = os.path.normpath(locator_path)
         try:
             with open(locator_path, 'r') as f:
@@ -2577,23 +2583,20 @@ class EnhancedRobotArmController:
 
 def main():
     """Main entry point with configuration options."""
+    # Lash_E and the hardware drivers still use repo-relative configuration paths.
+    os.chdir(PROJECT_ROOT)
     # Setup logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('enhanced_robot_arm_controller.log'),
+            logging.FileHandler(PROJECT_ROOT / "enhanced_robot_arm_controller.log"),
             logging.StreamHandler()
         ]
     )
     
     # Initialize with optional vial file for full integration
-    default_vial_file = "status/surfactant_grid_vials_expanded.csv"
-    if not os.path.exists(default_vial_file):
-        default_vial_file = "../status/surfactant_grid_vials_expanded.csv"
-        if not os.path.exists(default_vial_file):
-            default_vial_file = "../utoronto_demo/status/surfactant_grid_vials_expanded.csv"
-    vial_file = default_vial_file if os.path.exists(default_vial_file) else None
+    vial_file = str(DEFAULT_VIAL_FILE) if DEFAULT_VIAL_FILE.exists() else None
     
     try:
         controller = EnhancedRobotArmController(

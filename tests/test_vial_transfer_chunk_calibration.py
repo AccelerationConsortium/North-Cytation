@@ -29,6 +29,9 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
         self.lookup_flags = []
         self.overhead = lambda volume: 0.02
         self.real_lookup = PipettingWizard.get_pipetting_parameters
+        self.calibrated_max = self.stack.enter_context(patch.object(
+            PipettingWizard, 'get_max_calibrated_volume', autospec=True,
+            return_value=None))
 
         def calibration(wizard, liquid, volume, compensate_overvolume=True,
                         smooth_overvolume=False):
@@ -130,8 +133,20 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
 
     def test_no_liquid_uses_defaults_and_splits(self):
         self.transfer(1.25)
+        self.calibrated_max.assert_not_called()
         self.lookup.assert_not_called()
         self.assert_transfers([0.625, 0.625])
+
+    def test_large_preparation_respects_liquid_calibration_maximum(self):
+        self.calibrated_max.return_value = 0.8
+        self.transfer(5.4, liquid='acetone')
+        self.assertEqual(self.lookup_volumes, [5.4 / 7])
+        self.assert_transfers([5.4 / 7] * 7)
+
+    def test_calibrated_maximum_does_not_replace_tip_capacity(self):
+        self.calibrated_max.return_value = 0.8
+        self.transfer(0.3, liquid='water', specified_tip='small_tip')
+        self.assert_transfers([0.15, 0.15])
 
     def test_single_transfer_retains_calibration(self):
         self.transfer(0.1, liquid='water')
@@ -164,6 +179,7 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
 
     def test_real_wizard_interpolates_chunks_without_total_volume_warning(self):
         frame = self.calibration_frame([400, 800])
+        self.calibrated_max.return_value = 0.8
         with patch.object(PipettingWizard, 'get_pipetting_parameters',
                           new=self.real_lookup), \
                 patch.object(PipettingWizard, 'find_best_calibration_file',
@@ -175,8 +191,9 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
         self.assertAlmostEqual(
             self.aspirate.call_args.kwargs['parameters'].overaspirate_vol, 0.03125)
 
-    def test_real_wizard_still_warns_for_out_of_range_chunk(self):
-        frame = self.calibration_frame([200, 400])
+    def test_real_wizard_still_warns_for_chunk_below_calibrated_minimum(self):
+        frame = self.calibration_frame([700, 800])
+        self.calibrated_max.return_value = 0.8
         with patch.object(PipettingWizard, 'get_pipetting_parameters',
                           new=self.real_lookup), \
                 patch.object(PipettingWizard, 'find_best_calibration_file',
@@ -186,9 +203,21 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
         warning.assert_called_once()
         message = warning.call_args.args[0]
         self.assertIn('625.0uL', message)
-        self.assertIn('25% outside the calibrated range', message)
+        self.assertIn('below available range', message)
         self.assertNotIn('1250', message)
         self.assert_transfers([0.625, 0.625])
+
+    def test_real_wizard_avoids_900ul_warning_for_large_preparation(self):
+        frame = self.calibration_frame([5, 800])
+        self.calibrated_max.return_value = 0.8
+        with patch.object(PipettingWizard, 'get_pipetting_parameters',
+                          new=self.real_lookup), \
+                patch.object(PipettingWizard, 'find_best_calibration_file',
+                             autospec=True, return_value=(Path('acetone.csv'), frame)), \
+                patch.object(self.robot.logger, 'warning') as warning:
+            self.transfer(5.4, liquid='acetone')
+        warning.assert_not_called()
+        self.assert_transfers([5.4 / 7] * 7)
 
     def test_nonpositive_volume_does_not_lookup_or_transfer(self):
         for volume in (0, -0.1):
@@ -196,6 +225,26 @@ class VialTransferChunkCalibrationTests(unittest.TestCase):
         self.lookup.assert_not_called()
         self.aspirate.assert_not_called()
         self.dispense.assert_not_called()
+
+
+class CalibratedVolumeLimitTests(unittest.TestCase):
+    def test_maximum_across_valid_files_is_returned_in_ml(self):
+        wizard = PipettingWizard()
+        files = [Path('small.csv'), Path('large.csv'), Path('invalid.csv')]
+        frames = [pd.DataFrame({'volume_target': [5, 50]}),
+                  pd.DataFrame({'volume_target': [5, 800]}), None]
+        with patch.object(wizard, 'find_calibration_files', return_value=files), \
+                patch.object(wizard, 'load_calibration_data', side_effect=frames):
+            self.assertEqual(wizard.get_max_calibrated_volume('water'), 0.8)
+
+    def test_missing_or_invalid_calibration_has_no_limit(self):
+        wizard = PipettingWizard()
+        with patch.object(wizard, 'find_calibration_files', return_value=[]):
+            self.assertIsNone(wizard.get_max_calibrated_volume('unknown'))
+        frame = pd.DataFrame({'volume_target': [None, float('inf'), -5, 0, 'bad']})
+        with patch.object(wizard, 'find_calibration_files', return_value=[Path('bad.csv')]), \
+                patch.object(wizard, 'load_calibration_data', return_value=frame):
+            self.assertIsNone(wizard.get_max_calibrated_volume('water'))
 
 
 if __name__ == '__main__':

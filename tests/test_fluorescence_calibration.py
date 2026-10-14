@@ -45,7 +45,120 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         lash.nr_track.NUM_SOURCE = 1
         lash.nr_robot.WELLPLATES = {"96 WELL PLATE": {"max_volume_per_well": 0.3}}
         lash.nr_robot.get_vial_in_location.return_value = None
+        lash.nr_robot.VIAL_DF = pd.read_csv(self.vial_file).set_index("vial_index", drop=False)
+        def vial_info(vial, column):
+            rows = lash.nr_robot.VIAL_DF
+            return rows.loc[rows.vial_name == vial, column].iloc[0]
+        lash.nr_robot.get_vial_info.side_effect = vial_info
+        lash.nr_robot.is_vial_movable.side_effect = lambda vial: (
+            vial_info(vial, "vial_type") == "8_mL" and bool(vial_info(vial, "capped")))
         return lash
+
+    def test_transfer_staging_depends_on_either_closed_cap(self):
+        for source_cap, destination_cap in (("open", "open"), ("closed", "open"),
+                                            ("open", "closed"), ("closed", "closed")):
+            with self.subTest(source=source_cap, destination=destination_cap):
+                lash = self.fake_coordinator(simulate=True)
+                robot = lash.nr_robot
+                robot.VIAL_DF.at[0, "cap_type"] = source_cap
+                robot.VIAL_DF.at[4, "cap_type"] = destination_cap
+                original = robot.VIAL_DF[["home_location", "home_location_index"]].copy()
+                def transfer(*args, **kwargs):
+                    if "closed" in (source_cap, destination_cap):
+                        self.assertEqual(robot.get_vial_info("dye_stock", "home_location_index"), 0)
+                        self.assertEqual(robot.get_vial_info("dye_b1_s1", "home_location_index"), 1)
+                    return "transferred"
+                robot.dispense_from_vial_into_vial.side_effect = transfer
+                result = workflow.dispense_vial_to_vial(lash, "dye_stock", "dye_b1_s1", 3.0, "DMSO")
+                self.assertEqual(result, "transferred")
+                pd.testing.assert_frame_equal(original, robot.VIAL_DF[original.columns])
+                if source_cap == destination_cap == "open":
+                    robot.move_vial_to_location.assert_not_called()
+                    robot.remove_pipet.assert_not_called()
+                    robot.return_vial_home.assert_not_called()
+                else:
+                    self.assertEqual([call.args for call in robot.move_vial_to_location.call_args_list],
+                                     [("dye_stock", "main_8mL_rack", 0), ("dye_b1_s1", "main_8mL_rack", 1)])
+                    calls = robot.method_calls
+                    move_index = next(i for i, call in enumerate(calls) if call[0] == "move_vial_to_location")
+                    self.assertTrue(any(call[0] == "remove_pipet" for call in calls[:move_index]))
+                    return_index = next(i for i, call in enumerate(calls) if call[0] == "return_vial_home")
+                    self.assertTrue(any(call[0] == "remove_pipet" for call in calls[move_index:return_index]))
+
+    def test_large_source_stays_in_place_with_closed_destination(self):
+        lash = self.fake_coordinator(simulate=True)
+        workflow.dispense_vial_to_vial(lash, "solvent", "dye_b1_s1", 3.0, "DMSO")
+        lash.nr_robot.move_vial_to_location.assert_called_once_with("dye_b1_s1", "main_8mL_rack", 1)
+        lash.nr_robot.return_vial_home.assert_called_once_with("dye_b1_s1")
+
+    def test_split_closed_cap_transfer_uses_safe_homes_for_clamp_exchanges(self):
+        from North_Safe import North_Robot
+        from pipetting_data.pipetting_parameters import PipettingParameters
+        from pipetting_data.pipetting_wizard import PipettingWizard
+
+        lash = self.fake_coordinator(simulate=True)
+        robot = lash.nr_robot
+        rows = robot.VIAL_DF
+        robot.normalize_vial_index.side_effect = lambda vial: (
+            int(rows.loc[rows.vial_name == vial, "vial_index"].iloc[0])
+            if isinstance(vial, str) else vial)
+        robot.get_vial_index_from_name.side_effect = robot.normalize_vial_index.side_effect
+        robot.get_vial_info.side_effect = lambda vial, column: rows.at[robot.normalize_vial_index(vial), column]
+        robot.get_vial_in_location.side_effect = lambda location, slot: next(
+            iter(rows.loc[(rows.location == location) & (rows.location_index == slot), "vial_index"]), None)
+        robot.is_vial_movable.side_effect = lambda vial: North_Robot.is_vial_movable(robot, vial)
+        robot.is_vial_pipetable.side_effect = lambda vial: North_Robot.is_vial_pipetable(robot, vial)
+        robot.GRIPPER_STATUS = None
+        def move(vial, location, location_index, **kwargs):
+            index = robot.normalize_vial_index(vial)
+            rows.at[index, "location"] = location
+            rows.at[index, "location_index"] = location_index
+        robot.move_vial_to_location.side_effect = move
+        def cap(capped, **kwargs):
+            rows.at[robot.get_vial_in_location("clamp", 0), "capped"] = capped
+            robot.GRIPPER_STATUS = None if capped else "Cap"
+        robot.uncap_clamp_vial.side_effect = lambda **kwargs: cap(False)
+        robot.recap_clamp_vial.side_effect = lambda **kwargs: cap(True)
+        returns = []
+        def return_home(vial, **kwargs):
+            returns.append((robot.get_vial_info(vial, "home_location_index"), robot.GRIPPER_STATUS))
+            North_Robot.return_vial_home(robot, vial, **kwargs)
+        robot.return_vial_home.side_effect = return_home
+        robot.PIPET_TIPS = {"large_tip": {"volume": 1.0}}
+        robot._get_optimized_parameters.return_value = PipettingParameters()
+        robot.aspirate_from_vial.side_effect = lambda vial, *args, **kwargs: (
+            North_Robot._ensure_vial_accessible_for_pipetting(robot, vial))
+        robot.dispense_into_vial.side_effect = lambda vial, *args, **kwargs: (
+            North_Robot._ensure_vial_accessible_for_pipetting(robot, vial), None)[1]
+        robot.dispense_from_vial_into_vial.side_effect = lambda *args, **kwargs: (
+            North_Robot.dispense_from_vial_into_vial(robot, *args, **kwargs))
+        with patch.object(PipettingWizard, "get_max_calibrated_volume", return_value=None):
+            workflow.dispense_vial_to_vial(lash, "dye_stock", "dye_b1_s1", 2.5, "DMSO")
+        self.assertGreater(robot.aspirate_from_vial.call_count, 1)
+        self.assertTrue(all(slot in (0, 1) for slot, _ in returns[:-2]))
+        self.assertEqual([slot for slot, _ in returns[-2:]], [18, 24])
+        self.assertEqual(robot.get_vial_info("dye_stock", "location_index"), 18)
+        self.assertEqual(robot.get_vial_info("dye_b1_s1", "location_index"), 24)
+
+    def test_occupied_staging_slot_fails_before_movements(self):
+        lash = self.fake_coordinator(simulate=True)
+        lash.nr_robot.get_vial_in_location.side_effect = [None, 2]
+        with self.assertRaisesRegex(RuntimeError, "staging.*occupied"):
+            workflow.dispense_vial_to_vial(lash, "dye_stock", "dye_b1_s1", 3.0, "DMSO")
+        lash.nr_robot.remove_pipet.assert_not_called()
+        lash.nr_robot.move_vial_to_location.assert_not_called()
+        lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
+
+    def test_transfer_failure_restores_homes_without_recovery_movements(self):
+        lash = self.fake_coordinator(simulate=True)
+        robot = lash.nr_robot
+        original = robot.VIAL_DF[["home_location", "home_location_index"]].copy()
+        robot.dispense_from_vial_into_vial.side_effect = RuntimeError("transfer interrupted")
+        with self.assertRaisesRegex(RuntimeError, "interrupted"):
+            workflow.dispense_vial_to_vial(lash, "dye_stock", "dye_b1_s1", 3.0, "DMSO")
+        pd.testing.assert_frame_equal(original, robot.VIAL_DF[original.columns])
+        robot.save_robot_status.assert_called_once()
+        robot.return_vial_home.assert_not_called()
 
     def test_constant_solvent_and_concentration(self):
         plan, recipes = build_plan({**self.config, "STOCK_CONCENTRATION_UM": 100})
@@ -109,7 +222,9 @@ class FluorescenceCalibrationTests(unittest.TestCase):
             with patch.dict("sys.modules", {"master_usdl_coordinator": module}):
                 output = execute({**test_config, "SIMULATE": False,
                                   "PROTOCOL_FILE": str(protocol)}, show_gui=False)
-        self.assertEqual(lash.nr_robot.dispense_from_vial_into_vial.call_count, 4)
+        self.assertEqual(lash.nr_robot.dispense_from_vial_into_vial.call_count, 5)
+        self.assertEqual(lash.nr_robot.dispense_from_vial_into_vial.call_args_list[0].args,
+                         ("solvent", "solvent_working", 6.0))
         lash.discard_used_wellplate.assert_called_once()
         measured = pd.read_csv(output / "fluorescence_results.csv")
         self.assertEqual(len(measured), 36)
@@ -117,17 +232,54 @@ class FluorescenceCalibrationTests(unittest.TestCase):
         total_dispensed = sum(call.args[0].sum().sum() for call in
                               lash.nr_robot.dispense_from_vials_into_wellplate.call_args_list)
         self.assertAlmostEqual(total_dispensed, 7.2)
-        moves = lash.nr_robot.move_vial_to_location.call_args_list
+        plate_calls = lash.nr_robot.dispense_from_vials_into_wellplate.call_args_list
+        self.assertTrue(all("solvent" not in call.args[0].columns for call in plate_calls))
+        working_dispensed = sum(call.args[0]["solvent_working"].sum() for call in plate_calls
+                                if "solvent_working" in call.args[0].columns)
+        self.assertAlmostEqual(working_dispensed, 2.385)
+        moves = [call for call in lash.nr_robot.move_vial_to_location.call_args_list
+                 if call.args[1] == "clamp"]
         self.assertEqual({call.args[0] for call in moves},
-                         {"water", "surfactant", "dye_stock", "dye_b1_s1", "dye_b1_s2"})
+                         {"water", "surfactant", "dye_stock", "dye_b1_s1", "dye_b1_s2", "solvent_working"})
         self.assertTrue(all(call.args[1:] == ("clamp", 0) for call in moves))
         calls = lash.nr_robot.method_calls
         for i, call in enumerate(calls):
-            if call[0] == "move_vial_to_location":
+            if call[0] == "move_vial_to_location" and call.args[1] == "clamp":
                 self.assertEqual(calls[i - 2][0], "remove_pipet")
                 self.assertEqual(calls[i + 1][0], "dispense_from_vials_into_wellplate")
                 self.assertEqual(list(calls[i + 1].args[0].columns), [call.args[0]])
                 self.assertEqual(calls[i + 1].kwargs["strategy"], "serial")
+
+    def test_resuming_nearly_full_working_solvent_does_not_refill(self):
+        inventory = pd.read_csv(self.vial_file)
+        inventory.loc[inventory.vial_name == "solvent_working", "vial_volume"] = 5.97
+        inventory.to_csv(self.vial_file, index=False)
+        lash = self.fake_coordinator(simulate=True)
+        lash.workflow_config = {**self.config, "SIMULATE": True}
+        lash.measure_wellplate.return_value = None
+        module = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                       flatten_cytation_data=lambda raw, _: raw)
+        with patch.dict("sys.modules", {"master_usdl_coordinator": module}):
+            execute(lash.workflow_config, show_gui=False)
+        transfers = lash.nr_robot.dispense_from_vial_into_vial.call_args_list
+        self.assertTrue(all(call.args[1] != "solvent_working" for call in transfers))
+
+    def test_insufficient_bulk_or_working_solvent_stops_before_transfers(self):
+        for changes in ({"bulk": 18.0}, {"repetitions": 3}):
+            with self.subTest(changes=changes):
+                inventory = pd.read_csv(self.vial_file)
+                inventory.loc[inventory.vial_name == "solvent", "vial_volume"] = changes.get("bulk", 19.9)
+                inventory.to_csv(self.vial_file, index=False)
+                lash = self.fake_coordinator(simulate=True)
+                lash.workflow_config = {**self.config, "SIMULATE": True,
+                                        "REPETITIONS": changes.get("repetitions", 1)}
+                lash.nr_track.NUM_SOURCE = 10
+                module = types.SimpleNamespace(Lash_E=MagicMock(return_value=lash),
+                                               flatten_cytation_data=lambda raw, _: raw)
+                with patch.dict("sys.modules", {"master_usdl_coordinator": module}), self.assertRaisesRegex(
+                        ValueError, "[Ii]nsufficient.*solvent"):
+                    execute(lash.workflow_config, show_gui=False)
+                lash.nr_robot.dispense_from_vial_into_vial.assert_not_called()
 
     def test_gui_changes_drive_plan_recipes_protocol_and_saved_config(self):
         initial = {**self.config, "SIMULATE": False}

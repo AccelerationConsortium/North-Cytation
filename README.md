@@ -30,6 +30,8 @@ All code written by Owen Melville with contributions by Ilya Yakavets, Monique N
 - <b> status: </b> Because we move between different workflows, we keep digital versions of each workflows vial status state. 
 
 - <b> tests: </b> Contains short test or commonly used programs for the setup.
+
+- <b> tools: </b> Contains standalone robot utilities. Run the arm position and gripper GUI with `python tools/robot_arm_control_gui.py` using the robot's Python environment.
   
 - <b> workflows: </b> Contains active workflows that are designed for the setup, such as the color matching workflow.
 
